@@ -1,0 +1,30 @@
+name: Native macOS
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Ensure C++ formatter is available
+        run: |
+          if ! xcrun --find clang-format >/dev/null 2>&1; then
+            brew install clang-format
+          fi
+      - name: Verify native sources, build, tests, and linkage
+        run: make ci
+      - name: Stage and validate the local app bundle
+        run: |
+          ./script/build_and_run.sh --build-only
+          source ./script/build_paths.sh
+          codesign --verify --deep --strict "$DUST3D_BUILD_ROOT/app/Dust3DViewer.app"

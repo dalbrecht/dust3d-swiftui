@@ -1,0 +1,2 @@
+# Dust3D archives use byte offsets and a CRLF header; never normalize them.
+*.ds3 binary

@@ -53,3 +53,6 @@ application/obj
 application/qrc_QtAwesome.cpp
 application/qrc_resources.cpp
 build/
+.build/
+.swiftpm/
+.cache/
