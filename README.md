@@ -1,5 +1,9 @@
 # Dust3D
 
+## Native macOS viewer (SwiftUI, no Qt)
+
+This repository now includes a native SwiftUI/Metal viewer backed by the existing C++17 engine. Build and launch with `./script/build_and_run.sh`; use `make ci` for native verification. See [native/README.md](native/README.md) for document support, architecture, and coding standards. The Qt application remains available below as the original implementation.
+
 Dust3D is a cross-platform 3D modeling software that makes it easy to create 3D models for video games, 3D printing, and more. It features built-in rigging, procedural animation and UV unwrapping, with export to GLB and FBX formats.
 
 For more information, visit [dust3d.org](https://dust3d.org/).
@@ -70,3 +74,6 @@ git clone https://github.com/huxingyi/dust3d.git
 Dust3D is licensed under the MIT License - see the [LICENSE](https://github.com/huxingyi/dust3d/blob/master/LICENSE) file for details.
 
 <!-- Sponsors begin --><!-- Sponsors end -->
+## Native product roadmap
+
+The native viewer is a standalone read-only app. The editor will be a separate SwiftUI app sharing the Qt-free engine. See the [full editor implementation and repository restructuring plan](docs/editor-port-plan.md), including the proposed split into Apple UI and portable core repositories.

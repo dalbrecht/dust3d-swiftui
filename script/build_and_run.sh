@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODE="${1:-run}"
+APP_NAME="Dust3DViewer"
+BUNDLE_ID="org.dust3d.viewer"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/script/build_paths.sh"
+APP_BUNDLE="$DUST3D_BUILD_ROOT/app/$APP_NAME.app"
+APP_CONTENTS="$APP_BUNDLE/Contents"
+APP_BINARY="$APP_CONTENTS/MacOS/$APP_NAME"
+cd "$ROOT_DIR"
+
+case "$MODE" in
+    run|--debug|--logs|--telemetry|--verify|--build-only) ;;
+    *) echo "usage: $0 [--debug|--logs|--telemetry|--verify|--build-only]" >&2; exit 2 ;;
+esac
+
+if [ "$MODE" != "--build-only" ]; then
+    pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+fi
+./script/swift.sh build
+BUILD_DIR="$DUST3D_BINARY_DIR"
+mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources" "$ROOT_DIR/dist"
+cp "$BUILD_DIR/$APP_NAME" "$APP_BINARY"
+cp "$BUILD_DIR/libDust3DEngine.a" "$ROOT_DIR/dist/libDust3DEngine.a"
+cp -R "$BUILD_DIR/Dust3DNative_Dust3DViewer.bundle" "$APP_CONTENTS/Resources/"
+chmod +x "$APP_BINARY"
+cat > "$APP_CONTENTS/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleExecutable</key><string>$APP_NAME</string>
+<key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
+<key>CFBundleName</key><string>Dust3D Viewer</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>0.1.0</string>
+<key>CFBundleVersion</key><string>1</string>
+<key>LSMinimumSystemVersion</key><string>14.0</string>
+<key>NSPrincipalClass</key><string>NSApplication</string>
+<key>NSHighResolutionCapable</key><true/>
+<key>CFBundleDocumentTypes</key><array><dict>
+<key>CFBundleTypeName</key><string>Dust3D Document</string>
+<key>CFBundleTypeRole</key><string>Viewer</string>
+<key>LSHandlerRank</key><string>Alternate</string>
+<key>LSItemContentTypes</key><array><string>org.dust3d.document</string></array>
+</dict></array>
+<key>UTImportedTypeDeclarations</key><array><dict>
+<key>UTTypeIdentifier</key><string>org.dust3d.document</string>
+<key>UTTypeDescription</key><string>Dust3D Document</string>
+<key>UTTypeConformsTo</key><array><string>public.data</string></array>
+<key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>ds3</string></array></dict>
+</dict></array>
+</dict></plist>
+PLIST
+# Strip copied Finder metadata before ad-hoc signing this local development bundle.
+xattr -cr "$APP_BUNDLE"
+codesign --force --sign - "$APP_BUNDLE"
+codesign --verify --deep --strict "$APP_BUNDLE"
+# A ZIP keeps File Provider Finder metadata outside the app's sealed resources.
+ditto -c -k --keepParent "$APP_BUNDLE" "$ROOT_DIR/dist/$APP_NAME.zip"
+
+case "$MODE" in
+    --build-only) echo "$APP_BUNDLE" ;;
+    run) /usr/bin/open -n "$APP_BUNDLE" ;;
+    --debug) lldb -- "$APP_BINARY" ;;
+    --logs)
+        /usr/bin/open -n "$APP_BUNDLE"
+        /usr/bin/log stream --info --style compact --predicate "process == \"$APP_NAME\""
+        ;;
+    --telemetry)
+        /usr/bin/open -n "$APP_BUNDLE"
+        /usr/bin/log stream --info --style compact --predicate "subsystem == \"$BUNDLE_ID\""
+        ;;
+    --verify)
+        /usr/bin/open -n "$APP_BUNDLE"
+        sleep 1
+        pgrep -x "$APP_NAME" >/dev/null
+        ;;
+esac

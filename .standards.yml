@@ -1,0 +1,12 @@
+version: 1
+languages:
+  - swift
+  - cpp # Project supplement: upstream has no C++ block or detector.
+agents:
+  - codex
+role: app
+coverage:
+  minimum: 95
+  domain: 100
+architecture: clean
+security: strict
