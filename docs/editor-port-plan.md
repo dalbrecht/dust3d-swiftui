@@ -1,6 +1,6 @@
 # Native editor implementation and repository plan
 
-Status: proposed delivery plan, October 14, 2026. The viewer PR is the first independent deliverable; editor work begins after it lands. Estimates below are sequencing guidance, not a delivery commitment.
+Status: active repository setup and proposed editor delivery plan, October 14, 2026. The viewer PR is the first independent deliverable; editor work begins after it lands. Estimates below are sequencing guidance, not a delivery commitment.
 
 ## Product boundary
 
@@ -10,14 +10,14 @@ Full implementation means native support for the existing repository's document,
 
 ## Repository structure and ownership
 
-**Recommended end state: two repositories, reached in stages.** Keep `dalbrecht/dust3d-swiftui` for Apple apps. Create a separately authorized Dust3D core fork for portable C++ and its native C API. Do not create or publish that repository as part of this plan. A fork preserves upstream ancestry, licenses and a manageable path for integrating geometry fixes. Choose the repository name and upstream tracking branch when creating it.
+**Selected end state: two public MIT repositories.** Keep [`dalbrecht/dust3d-swiftui`](https://github.com/dalbrecht/dust3d-swiftui) for Apple apps, and use [`dalbrecht/dust3d-core`](https://github.com/dalbrecht/dust3d-core) for portable C++ and its native C API. The user authorized repository setup on October 14, 2026. The core preserves the existing Git history and tracks [`huxingyi/dust3d`](https://github.com/huxingyi/dust3d); it is a maintained downstream, not a decision to stop integrating upstream. The Apple repository remains the existing GitHub fork and can be used to submit focused upstream contributions. The new core repository is a history-preserving duplicate with an explicit upstream remote and tracking branch, rather than a second GitHub-network fork. Preserve the original MIT copyright/license and all third-party notices; new project code uses MIT. Third-party components retain their existing licenses, not an assumed MIT relicensing.
 
 | Repository | Owns | Must not own |
 | --- | --- | --- |
 | Apple apps (`dust3d-swiftui`) | Swift document/application layers, viewer and editor executables, SwiftUI components, Metal renderer/shaders, Apple packaging, UI tests | Geometry algorithms, duplicate vendored C++ dependencies, Qt controllers |
 | Core fork (proposed) | `dust3d/`, required geometry dependencies, validated archive/document adapters, versioned C ABI, headless build/CLI, C++ tests/fuzzers and upstream integration | SwiftUI/AppKit, app state, Metal UI, Qt-dependent public headers |
 
-Initially keep both in this repo so document and ABI contracts can change together. Organize native code along these boundaries before moving it:
+Repository infrastructure is established now; migrate app consumption only after the core contract and editable-document requirements are proven. The viewer PR stays independently landable with its current in-tree engine. Until the Apple dependency migration lands, the viewer branch is the source for its adapter; after migration, the core becomes the single source of truth. Cross-repository changes use paired PRs and exact commit pins, never unrecorded copies. Organize native code along these boundaries before moving it:
 
 ```text
 native/Engine/                    # future core adapter; remains Qt-free
@@ -38,10 +38,10 @@ These are target boundaries, not instructions to add empty modules. Extract rend
 
 Two repos improve upstream merges, portable CI and release ownership, but introduce coordinated versioning, cross-repo changes and binary supply-chain work. A single repo is simpler while editable snapshot and asset APIs are changing. Do not copy the engine into a second repo and independently patch both.
 
-1. Finish viewer landing and establish editor load/save requirements (M0–M1). Record actual upstream provenance and local divergence; this fork includes modeling and animation changes that must survive extraction.
+1. Finish viewer landing and establish editor load/save requirements (M0–M1). Setup verified both the Apple fork master and upstream HEAD at `3fbcaa7a3e8792d1c2ca31ca2ade442dcd21b222`; preserve that provenance and re-audit divergence on each synchronization. The core starts from that ancestry plus the native adapter, with no rewrite of inherited history.
 2. Give the engine a standalone CMake build and headless contract tests in addition to its current SwiftPM build. Use explicit source/dependency lists. Demonstrate a clean build with no Apple or Qt frameworks.
 3. Version the C API: capability query, ABI version, sized structs, explicit ownership/destruction, error/status contracts, and document/mesh/asset handles. Keep STL, Qt types and exceptions private. Capture limits and cancellation semantics in public documentation.
-4. Extract into the core fork while preserving Git history and all dependency license notices. Keep upstream geometry changes separate from native-adapter changes where possible. Resolve inherited warning fixes through focused C++ PRs rather than whole-tree formatting.
+4. Maintain the history-preserving core repository and all dependency license notices. Keep upstream geometry changes separate from native-adapter changes where possible. Resolve inherited warning fixes through focused C++ PRs rather than whole-tree formatting.
 5. Start with an exact pinned source revision integrated by a documented submodule/build adapter. SwiftPM cannot assume a C/C++ target can import source files from outside its package; prove the layout on a clean clone, or build/link the standalone core through a generated local artifact. Do not use a moving branch or developer-specific search path.
 6. When the ABI stabilizes, publish checksummed static XCFramework releases for arm64 and x86_64 macOS with headers/module map, symbols and licenses. Consume a versioned SwiftPM binary target from the Apple repo. Support a documented local-source override for engine development. Test deployment-target and Swift toolchain compatibility, and package transitive C++ dependencies without symbol duplication.
 7. Run contract fixtures against every candidate core release, then update the Apple dependency in its own PR. Upgrade viewer and editor together only after both pass. Retain the last compatible engine release for rollback.
@@ -172,5 +172,33 @@ Implement M1's document codec and immutable state with lossless round-trip fixtu
 
 1. Review and land the standalone viewer PR; do not merge it automatically.
 2. Open document/command foundation PRs against the landed branch and track the parity checklist as issues.
-3. Split the core only after standalone build and document/API gates pass; publish engine versions through reviewed releases.
+3. Switch Apple app consumption to the established core repository only after standalone build and document/API gates pass; publish engine versions through reviewed releases.
 4. Ship editor previews by completed milestone with explicit unsupported-feature behavior. Declare full parity only after M8 acceptance, not after the initial editing UI.
+
+## Upstream relationship and synchronization
+
+The core default branch is `master`; `upstream-sync` contains only upstream commits. Retain upstream file paths and keep new adapters/build/tests separate. The legacy Qt tree remains reference material and is excluded from the core build; deleting it is unnecessary and would increase synchronization conflicts.
+
+Configure `origin` to the core repository and `upstream` to `https://github.com/huxingyi/dust3d.git`. Advance `upstream-sync` by fast-forward only after fetching upstream master. Open a `codex/sync-upstream-*` PR that merges that exact tracking commit into core master. Inspect changes to serialization, vendored dependencies, geometry and licenses; run the compatibility corpus and sanitizer matrix before approval. Never auto-reset maintained master to upstream or force-push a synchronization branch. Record the upstream revision and release contract in each core release. Where a portable fix is suitable, propose a focused PR through the existing GitHub fork; upstream acceptance is optional and must not be assumed.
+
+A sync workflow may check and open a PR when explicitly enabled, but setup does not schedule unattended synchronization or contact upstream maintainers. Check upstream during maintenance/release work. Signed/checksummed core releases and exact dependency pins keep Apple releases reproducible.
+
+## Rigorous core testing program
+
+Yes: separating the portable engine allows tests to run without SwiftUI, Metal, Qt or a display server, independently of Apple app release schedules. Repository separation enables this; the tests and gates still have to be implemented and maintained.
+
+Initial setup provides a standalone CMake/CTest build and headless C API contract tests. CI covers Linux and macOS, with separate address/undefined-behavior sanitizer coverage on Linux. This is a foundation, not a claim of complete algorithm coverage.
+
+Expand in this order:
+
+1. **Trust boundary:** archive offsets/lengths/depth, invalid identifiers/references, nonfinite geometry, unsupported assets, ownership/lifetimes, bounded diagnostics and failure state. Add regression fixtures for every discovered defect.
+2. **Document fidelity:** semantic load/save equivalence, unknown fields/assets, version compatibility, malformed inputs, independent Python-produced archives and Qt round trips.
+3. **Geometry properties:** finite vertices/unit normals, valid indices, nondegenerate triangles where appropriate, manifold/watertight properties when required by a feature, stable bounds, modifier combinations and permutation/orientation cases. Compare semantics and tolerances rather than incidental vertex order.
+4. **Differential corpus:** run known models through upstream and downstream builds; classify intentional differences and fail unexplained regressions. Preserve the upstream executable/version used for each baseline. Add representative real documents with appropriate permission and licensing.
+5. **Dynamic analysis:** ASan/UBSan on new and inherited execution paths, leak checks, and TSan once concurrency semantics are implemented. Serialization currently prevents concurrent generation; test concurrent callers without assuming algorithms are internally thread-safe.
+6. **Fuzzing:** libFuzzer targets for archive/XML/asset decoding and command sequences, seeded with minimized corpus cases. Use short PR smoke budgets and longer explicitly configured nightly runs; retain crash reproducers as regression tests. Do not add nightly schedules without authorization.
+7. **Coverage:** LLVM branch/line reports separated into new adapter and inherited geometry. Establish the inherited baseline first; enforce at least 95% meaningful new adapter coverage and 100% pure validation/domain coverage where testable, with documented boundary exceptions. Block changed-code regressions and track legacy coverage improvement; never claim Swift XCTest coverage measures C++.
+8. **Resource/performance:** fixed benchmark corpus, wall time, peak RSS, output size, cancellation and stress tests. Establish budgets on controlled runners; investigate significant changes before shipping. Limits in the current parser do not bound CPU/memory inside geometry generation.
+9. **ABI/release compatibility:** compile a pure-C consumer, verify symbols/header layout and ownership against supported released clients, test clean installs, no Qt linkage, required license notices, and both Apple apps against each candidate engine release.
+
+All core dependency upgrades and upstream-sync PRs use the same tests. Keep fixture metadata (source, license, upstream revision, expected behavior, tolerance) next to fixtures. Review intentional baseline changes; do not automatically bless newly generated output. Core release readiness requires documented sanitizer, compatibility and ownership results, not just a successful build.
