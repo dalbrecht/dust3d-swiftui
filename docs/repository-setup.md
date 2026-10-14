@@ -27,3 +27,9 @@ See the [updated implementation and testing plan](editor-port-plan.md). Initial
 headless tests cover a pure-C ABI consumer, null handles, rejected archives, early
 input limits, two real generated models and mesh-buffer ownership. Full algorithm
 coverage, fuzzing, document encoding and differential fixtures are scheduled work.
+
+The persistent local core checkout is `.workspaces/dust3d-core` (ignored by the
+Apple repository), with `origin` and `upstream` remotes and pinned standards
+initialized. Initial macOS standalone CMake and ASan/UBSan builds each passed all
+seven contracts. Track expanded quality gates in
+[core issue #1](https://github.com/dalbrecht/dust3d-core/issues/1).
