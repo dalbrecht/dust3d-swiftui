@@ -38,6 +38,26 @@ public enum DocumentCommand: Sendable {
     case setNode(id: String, position: NodePosition, radius: Double)
 }
 
+/// Stable node metadata for editor presentation. Geometry and unknown XML remain in the archive.
+public struct DocumentNode: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let title: String
+    public let value: EditableNode
+    public let isVisible: Bool
+    public let isEditable: Bool
+}
+
+public struct DocumentEdge: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let fromID: String
+    public let toID: String
+}
+
+public struct DocumentContents: Sendable {
+    public let nodes: [DocumentNode]
+    public let edges: [DocumentEdge]
+}
+
 /// Immutable archive value. Unchanged saves retain every input byte, including unknown assets.
 public struct Dust3DDocument: Sendable {
     private struct Item: Sendable {
@@ -131,6 +151,10 @@ public struct Dust3DDocument: Sendable {
     public func node(id: String) throws -> EditableNode {
         let xml = try Self.xml(modelXML, root: "canvas")
         let node = try Self.findNode(id, in: xml)
+        return try Self.decodeNode(node)
+    }
+
+    private static func decodeNode(_ node: XMLElement) throws -> EditableNode {
         func number(_ name: String) throws -> Double {
             guard let value = node.attribute(forName: name)?.stringValue.flatMap(Double.init),
                 value.isFinite, abs(value) <= 1_000_000
@@ -188,6 +212,57 @@ public struct Dust3DDocument: Sendable {
         guard result.count <= 256 * 1024 * 1024 - payload.count else { throw DocumentError.limitExceeded }
         result.append(payload)
         return try Dust3DDocument(data: result)
+    }
+
+    /// Inspect the editable graph once, retaining source ordering and stable IDs.
+    public func editorContents() throws -> DocumentContents {
+        let xml = try Self.xml(modelXML, root: "canvas")
+        let partContainers = xml.rootElement()?.elements(forName: "parts") ?? []
+        let edgeContainers = xml.rootElement()?.elements(forName: "edges") ?? []
+        guard partContainers.count <= 1, edgeContainers.count <= 1 else { throw DocumentError.invalidNode }
+        var parts: [String: (visible: Bool, editable: Bool)] = [:]
+        func isTrue(_ value: String?) -> Bool { value == "true" || value == "True" || value == "1" }
+        for part in partContainers.first?.elements(forName: "part") ?? [] {
+            guard let id = part.attribute(forName: "id")?.stringValue, parts[id] == nil else {
+                throw DocumentError.invalidNode
+            }
+            let visible = part.attribute(forName: "visible").map { isTrue($0.stringValue) } ?? true
+            parts[id] = (visible, visible && !isTrue(part.attribute(forName: "locked")?.stringValue))
+        }
+        let elements = try Self.nodes(xml)
+        guard elements.count <= 10_000 else { throw DocumentError.limitExceeded }
+        let nodes = try elements.enumerated().map { index, node -> DocumentNode in
+            guard let id = node.attribute(forName: "id")?.stringValue else { throw DocumentError.invalidNode }
+            let partID = node.attribute(forName: "partId")?.stringValue
+            if let partID, parts[partID] == nil { throw DocumentError.invalidNode }
+            let part = partID.flatMap { parts[$0] }
+            let name = node.attribute(forName: "name")?.stringValue ?? ""
+            return DocumentNode(
+                id: id, title: name.isEmpty ? "Node \(index + 1)" : name,
+                value: try Self.decodeNode(node), isVisible: part?.visible ?? true,
+                isEditable: part?.editable ?? true)
+        }
+        let ids = Set(nodes.map(\.id))
+        var edgeIDs = Set<String>()
+        let edges = try (edgeContainers.first?.elements(forName: "edge") ?? []).map { edge -> DocumentEdge in
+            guard let id = edge.attribute(forName: "id")?.stringValue, edgeIDs.insert(id).inserted,
+                let from = edge.attribute(forName: "from")?.stringValue,
+                let to = edge.attribute(forName: "to")?.stringValue,
+                ids.contains(from), ids.contains(to)
+            else { throw DocumentError.invalidNode }
+            return DocumentEdge(id: id, fromID: from, toID: to)
+        }
+        guard edges.count <= 20_000 else { throw DocumentError.limitExceeded }
+        return DocumentContents(nodes: nodes, edges: edges)
+    }
+
+    /// Construct a valid blank document for a native untitled document window.
+    public static func emptyArchive() -> Data {
+        let model = Data("<canvas><nodes/><edges/><parts/><components/></canvas>".utf8)
+        let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+        let prefix = "DUST3D 1.0 xml "
+        return Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+            + model
     }
 
     private static func unsigned(_ text: String?) -> Int? {

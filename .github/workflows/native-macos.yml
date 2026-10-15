@@ -23,3 +23,5 @@ jobs:
           ./script/build_and_run.sh --build-only
           source ./script/build_paths.sh
           codesign --verify --deep --strict "$DUST3D_BUILD_ROOT/app/Dust3DViewer.app"
+          ./script/build_and_run.sh --editor --build-only
+          codesign --verify --deep --strict "$DUST3D_BUILD_ROOT/app/Dust3DEditor.app"

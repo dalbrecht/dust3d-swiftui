@@ -9,3 +9,8 @@ script = ""
 name = "Run"
 icon = "run"
 command = "./script/build_and_run.sh"
+
+[[actions]]
+name = "Run Editor"
+icon = "run"
+command = "./script/build_and_run.sh --editor"

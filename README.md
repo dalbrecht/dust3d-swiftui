@@ -1,8 +1,8 @@
 # Dust3D
 
-## Native macOS viewer (SwiftUI, no Qt)
+## Native macOS apps (SwiftUI, no Qt)
 
-This repository now includes a native SwiftUI/Metal viewer backed by the existing C++17 engine. Build and launch with `./script/build_and_run.sh`; use `make ci` for native verification. See [native/README.md](native/README.md) for document support, architecture, and coding standards. The Qt application remains available below as the original implementation.
+This repository now includes a native SwiftUI/Metal viewer backed by the existing C++17 engine. Build and launch with `./script/build_and_run.sh`; use `make ci` for native verification. See [native/README.md](native/README.md) for document support, architecture, and coding standards. The separate editor runs with `./script/build_and_run.sh --editor` (or `make run-editor`). It opens/saves `.ds3` documents and supports node selection, front/side dragging, coordinate/radius edits, and undo/redo. See [editor usage](Sources/Dust3DEditor/README.md). The Qt application remains available below as the original implementation.
 
 Dust3D is a cross-platform 3D modeling software that makes it easy to create 3D models for video games, 3D printing, and more. It features built-in rigging, procedural animation and UV unwrapping, with export to GLB and FBX formats.
 
@@ -76,4 +76,4 @@ Dust3D is licensed under the MIT License - see the [LICENSE](https://github.com/
 <!-- Sponsors begin --><!-- Sponsors end -->
 ## Native product roadmap
 
-The native viewer is a standalone read-only app. The editor will be a separate SwiftUI app sharing the Qt-free engine. See the [full editor implementation and repository restructuring plan](docs/editor-port-plan.md), including the proposed split into Apple UI and portable core repositories.
+The native viewer is a standalone read-only app. The editor is a separate SwiftUI app sharing the pinned Qt-free engine and Metal renderer. The initial graph-editing slice is implemented; full modeling parity remains planned. See the [full editor implementation and repository restructuring plan](docs/editor-port-plan.md), including the proposed split into Apple UI and portable core repositories.

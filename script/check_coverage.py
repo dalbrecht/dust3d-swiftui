@@ -15,6 +15,8 @@ files = {
 groups = [
     ("Swift mesh library", list((root / "Sources/Dust3DKit").glob("*.swift")), 95),
     ("Document library", list((root / "Sources/Dust3DDocument").glob("*.swift")), 95),
+    ("Editor model", list((root / "Sources/Dust3DEditorModel").glob("*.swift")), 95),
+    ("Pure editor state", [root / "Sources/Dust3DEditorModel/EditorState.swift"], 100),
     ("Pure undo domain", [root / "Sources/Dust3DDocument/DocumentHistory.swift"], 100),
 ]
 for name, paths, minimum in groups:

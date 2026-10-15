@@ -1,6 +1,6 @@
 # Native editor implementation and repository plan
 
-Status: active repository setup and proposed editor delivery plan, October 14, 2026. The viewer PR is the first independent deliverable; editor work begins after it lands. Estimates below are sequencing guidance, not a delivery commitment.
+Status: October 14, 2026. The viewer, pinned-core migration (#3), and lossless document/undo foundations (#5) have landed. A separate editor now implements selection, front/side movement, coordinate/radius edits, per-window undo/redo, and native open/save; see [implementation and validation](editor-app-verification.md). Full feature parity below remains pending. Estimates below are sequencing guidance, not a delivery commitment.
 
 ## Product boundary
 
@@ -15,15 +15,15 @@ Full implementation means native support for the existing repository's document,
 | Repository | Owns | Must not own |
 | --- | --- | --- |
 | Apple apps (`dust3d-swiftui`) | Swift document/application layers, viewer and editor executables, SwiftUI components, Metal renderer/shaders, Apple packaging, UI tests | Geometry algorithms, duplicate vendored C++ dependencies, Qt controllers |
-| Core fork (proposed) | `dust3d/`, required geometry dependencies, validated archive/document adapters, versioned C ABI, headless build/CLI, C++ tests/fuzzers and upstream integration | SwiftUI/AppKit, app state, Metal UI, Qt-dependent public headers |
+| Core downstream (`dust3d-core`) | `dust3d/`, required geometry dependencies, validated archive/document adapters, versioned C ABI, headless build/CLI, C++ tests/fuzzers and upstream integration | SwiftUI/AppKit, app state, Metal UI, Qt-dependent public headers |
 
-Repository infrastructure is established now; migrate app consumption only after the core contract and editable-document requirements are proven. The viewer PR stays independently landable with its current in-tree engine. Until the Apple dependency migration lands, the viewer branch is the source for its adapter; after migration, the core becomes the single source of truth. Cross-repository changes use paired PRs and exact commit pins, never unrecorded copies. Organize native code along these boundaries before moving it:
+Both repositories are established and the Apple apps consume an exact core revision. The core is the single source of truth for the native adapter. Cross-repository changes use paired PRs and exact commit pins, never unrecorded copies. Organize native code along these boundaries before moving it:
 
 ```text
-native/Engine/                    # future core adapter; remains Qt-free
 Sources/Dust3DKit/                 # typed Swift engine/document adapter
-Sources/Dust3DDocument/            # pure editor state and commands
-Sources/Dust3DApplication/         # generation, persistence, undo coordination
+Sources/Dust3DDocument/            # lossless archives, commands and history
+Sources/Dust3DEditorModel/         # per-document state, actor session, projection
+Sources/Dust3DApplication/         # future cross-app workflow extraction if needed
 Sources/Dust3DRendering/           # shared Metal rendering and picking
 Sources/Dust3DViewer/              # standalone read-only app
 Sources/Dust3DEditor/              # document scenes, tools, inspectors

@@ -1,10 +1,13 @@
-.PHONY: build test run format lint ci check-coverage check-qt-free sync-standards
+.PHONY: build test run run-editor format lint ci check-coverage check-qt-free sync-standards
 
 build:
 	./script/swift.sh build
 
 test:
 	./script/swift.sh test --enable-code-coverage
+
+run-editor:
+	./script/build_and_run.sh --editor
 
 run:
 	./script/build_and_run.sh

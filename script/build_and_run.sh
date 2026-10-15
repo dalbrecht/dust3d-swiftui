@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${1:-run}"
 APP_NAME="Dust3DViewer"
+DISPLAY_NAME="Dust3D Viewer"
 BUNDLE_ID="org.dust3d.viewer"
+DOCUMENT_ROLE="Viewer"
+if [ "${1:-}" = "--editor" ]; then
+    APP_NAME="Dust3DEditor"
+    DISPLAY_NAME="Dust3D Editor"
+    BUNDLE_ID="org.dust3d.editor"
+    DOCUMENT_ROLE="Editor"
+    shift
+fi
+MODE="${1:-run}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/script/build_paths.sh"
 APP_BUNDLE="$DUST3D_BUILD_ROOT/app/$APP_NAME.app"
@@ -13,18 +22,23 @@ cd "$ROOT_DIR"
 
 case "$MODE" in
     run|--debug|--logs|--telemetry|--verify|--build-only) ;;
-    *) echo "usage: $0 [--debug|--logs|--telemetry|--verify|--build-only]" >&2; exit 2 ;;
+    *) echo "usage: $0 [--editor] [--debug|--logs|--telemetry|--verify|--build-only]" >&2; exit 2 ;;
 esac
 
-if [ "$MODE" != "--build-only" ]; then
+if [ "$APP_NAME" = "Dust3DEditor" ] && [ "$MODE" != "--build-only" ]; then
+    if pgrep -x "$APP_NAME" >/dev/null 2>&1; then
+        echo "Quit Dust3D Editor normally before rebuilding so pending document edits can be saved." >&2
+        exit 1
+    fi
+elif [ "$MODE" != "--build-only" ]; then
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 fi
-./script/swift.sh build
+./script/swift.sh build --product "$APP_NAME"
 BUILD_DIR="$DUST3D_BINARY_DIR"
 mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources" "$ROOT_DIR/dist"
 cp "$BUILD_DIR/$APP_NAME" "$APP_BINARY"
 
-cp -R "$BUILD_DIR/Dust3DNative_Dust3DViewer.bundle" "$APP_CONTENTS/Resources/"
+cp -R "$BUILD_DIR/Dust3DNative_Dust3DRendering.bundle" "$APP_CONTENTS/Resources/"
 chmod +x "$APP_BINARY"
 cat > "$APP_CONTENTS/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -32,7 +46,7 @@ cat > "$APP_CONTENTS/Info.plist" <<PLIST
 <plist version="1.0"><dict>
 <key>CFBundleExecutable</key><string>$APP_NAME</string>
 <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
-<key>CFBundleName</key><string>Dust3D Viewer</string>
+<key>CFBundleName</key><string>$DISPLAY_NAME</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>0.1.0</string>
 <key>CFBundleVersion</key><string>1</string>
@@ -41,7 +55,7 @@ cat > "$APP_CONTENTS/Info.plist" <<PLIST
 <key>NSHighResolutionCapable</key><true/>
 <key>CFBundleDocumentTypes</key><array><dict>
 <key>CFBundleTypeName</key><string>Dust3D Document</string>
-<key>CFBundleTypeRole</key><string>Viewer</string>
+<key>CFBundleTypeRole</key><string>$DOCUMENT_ROLE</string>
 <key>LSHandlerRank</key><string>Alternate</string>
 <key>LSItemContentTypes</key><array><string>org.dust3d.document</string></array>
 </dict></array>
