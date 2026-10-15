@@ -50,7 +50,7 @@ public struct DocumentHistory: Sendable {
         guard let start = transactionStart else { throw DocumentError.noTransaction }
         let unchanged =
             try transactionChangesTopology
-            ? start.encoded() == document.encoded()
+            ? start.hasSameModel(as: document)
             : transactionNodes.allSatisfy { try start.node(id: $0) == document.node(id: $0) }
         if unchanged {
             document = start

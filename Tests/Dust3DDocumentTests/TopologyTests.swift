@@ -105,4 +105,47 @@ final class TopologyTests: XCTestCase {
         }
     }
 
+    func testNetZeroTopologyTransactionPreservesOriginalBytesAndRedo() throws {
+        let model = Data(
+            "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='0.1'/></nodes><parts><part id='p'/></parts></canvas>"
+                .utf8)
+        let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+        let prefix = "DUST3D 1.0 xml "
+        let bytes =
+            Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+            + model
+        var history = DocumentHistory(document: try Dust3DDocument(data: bytes))
+        try history.apply(.setNode(id: "a", position: .init(x: 1, y: 0, z: 0), radius: 0.1))
+        XCTAssertTrue(history.undo())
+        try history.beginTransaction()
+        try history.apply(
+            .addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 0, y: 1, z: 0), radius: 0.1))
+        try history.apply(.removeNode(id: "b"))
+        try history.endTransaction()
+        XCTAssertEqual(history.document.encoded(), bytes)
+        XCTAssertTrue(history.canRedo)
+        XCTAssertFalse(history.canUndo)
+
+        // Equal geometry must not hide an intentional change to unknown metadata.
+        let decoratedModel = Data(
+            String(decoding: model, as: UTF8.self).replacingOccurrences(
+                of: "<node id=", with: "<node custom='preserve' id="
+            ).utf8)
+        let decoratedHeader = "<ds3><model name='model.xml' offset='0' size='\(decoratedModel.count)'/></ds3>"
+        let decoratedBytes =
+            Data(
+                (prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + decoratedHeader.utf8.count)
+                    + decoratedHeader).utf8) + decoratedModel
+        var replacement = DocumentHistory(document: try Dust3DDocument(data: decoratedBytes))
+        try replacement.beginTransaction()
+        try replacement.apply(.removeNode(id: "a"))
+        try replacement.apply(
+            .addNode(id: "a", partID: "p", componentID: nil, position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        try replacement.endTransaction()
+        XCTAssertTrue(replacement.canUndo)
+        XCTAssertNotEqual(replacement.document.encoded(), decoratedBytes)
+        XCTAssertTrue(replacement.undo())
+        XCTAssertEqual(replacement.document.encoded(), decoratedBytes)
+    }
+
 }

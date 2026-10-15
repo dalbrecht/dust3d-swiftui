@@ -207,7 +207,7 @@ public struct Dust3DDocument: Sendable {
             }
             return node
         }
-        func edgeElements() -> [XMLElement] { container("edges").elements(forName: "edge") }
+        func edgeElements() -> [XMLElement] { root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] }
         switch command {
         case .addNode(let id, let partID, let componentID, let position, let radius):
             guard !id.isEmpty, !partID.isEmpty, !contents.nodes.contains(where: { $0.id == id }),
@@ -285,6 +285,26 @@ public struct Dust3DDocument: Sendable {
         let next = try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         _ = try next.editorContents()
         return next
+    }
+
+    // Commands only replace model XML. Normalize supported numeric spellings and XML
+    // serialization when detecting net-zero transactions; retain all unknown data.
+    func hasSameModel(as other: Dust3DDocument) throws -> Bool {
+        func canonical(_ data: Data) throws -> Data {
+            let model = try Self.xml(data, root: "canvas")
+            model.isStandalone = false
+            for node in try Self.nodes(model) {
+                for key in ["x", "y", "z", "radius"] {
+                    if let attribute = node.attribute(forName: key),
+                        let number = attribute.stringValue.flatMap(Double.init), number.isFinite
+                    {
+                        attribute.stringValue = String(number == 0 ? 0 : number)
+                    }
+                }
+            }
+            return model.xmlData(options: [.nodePreserveAll])
+        }
+        return try canonical(modelXML) == canonical(other.modelXML)
     }
 
     private func replacingModel(_ model: Data) throws -> Dust3DDocument {
