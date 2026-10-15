@@ -29,6 +29,15 @@ public struct EditorSnapshot: Sendable {
 
     public var selectedNodes: [DocumentNode] { nodes.filter { selectedIDs.contains($0.id) } }
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
+    /// Edges whose endpoints both belong to editable parts, independent of selection.
+    public var editableEdges: [DocumentEdge] {
+        let editable = Set(nodes.filter(\.isEditable).map(\.id))
+        return edges.filter { editable.contains($0.fromID) && editable.contains($0.toID) }
+    }
+    /// Editable edges entirely inside the selected node set.
+    public var reversibleEdges: [DocumentEdge] {
+        editableEdges.filter { selectedIDs.contains($0.fromID) && selectedIDs.contains($0.toID) }
+    }
     /// Editable same-part nodes that are not already joined to the current selection.
     public var connectionTargets: [DocumentNode] {
         guard selectedIDs.count == 1, let selected = selectedNode, selected.isEditable, let partID = selected.partID
@@ -137,6 +146,42 @@ public struct EditorState: Sendable {
                     radius: locks.contains(.radius) ? node.value.radius : node.value.radius * radiusFactor))
         }
         try apply([.setNodes(updates)])
+    }
+
+    /// Apply a basic transform as one atomic undo step, retaining selection and radii.
+    public mutating func transformSelection(_ transform: SelectionTransform) throws {
+        let nodes = snapshot.selectedNodes.filter(\.isEditable)
+        guard !nodes.isEmpty else { return }
+        let count = Double(nodes.count)
+        let center = NodePosition(
+            x: nodes.reduce(0) { $0 + $1.value.position.x } / count,
+            y: nodes.reduce(0) { $0 + $1.value.position.y } / count,
+            z: nodes.reduce(0) { $0 + $1.value.position.z } / count)
+        let updates = nodes.map { node in
+            let original = node.value.position
+            let proposed = transform.position(original, around: center)
+            let position =
+                transform == .exchangeXZ
+                ? proposed
+                : NodePosition(
+                    x: locks.contains(.x) ? original.x : proposed.x,
+                    y: locks.contains(.y) ? original.y : proposed.y,
+                    z: locks.contains(.z) ? original.z : proposed.z)
+            return NodeUpdate(id: node.id, value: .init(position: position, radius: node.value.radius))
+        }
+        if transform == .exchangeXZ {
+            // Qt's switchNodeXZ exchanges coordinates directly without movement locks.
+            var next = history
+            try next.apply(.setNodes(updates))
+            try publish(next)
+        } else {
+            try apply([.setNodes(updates)])
+        }
+    }
+
+    /// Reverse edges whose endpoints are both selected and editable, as one undo step.
+    public mutating func reverseSelectedEdges() throws {
+        try apply([.reverseEdges(snapshot.reversibleEdges.map(\.id))])
     }
 
     /// Drag an anchor, retaining its group if selected; otherwise select only the anchor.

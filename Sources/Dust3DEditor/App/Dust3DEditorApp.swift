@@ -28,6 +28,14 @@ struct Dust3DEditorApp: App {
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 Button("Clear Node Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
+                Menu("Transform Selected Nodes") {
+                    ForEach(SelectionTransform.allCases, id: \.self) { transform in
+                        Button(transform.rawValue) { store?.transformSelection(transform) }
+                    }
+                }
+                .disabled(store?.canTransform != true)
+                Button("Reverse Edges Between Selected Nodes") { store?.reverseSelectedEdges() }
+                    .disabled(store?.isWorking != false || store?.snapshot?.reversibleEdges.isEmpty != false)
                 Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
                     Toggle(

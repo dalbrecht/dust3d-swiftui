@@ -18,6 +18,7 @@ struct NodeInspector: View {
                 GroupInspector(store: store)
             } else if let node = store.snapshot?.selectedNode {
                 let targets = store.snapshot?.connectionTargets ?? []
+                let editableEdges = Set(store.snapshot?.editableEdges.map(\.id) ?? [])
                 Text(node.title).font(.title3)
                 Text(node.id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 Form {
@@ -39,6 +40,7 @@ struct NodeInspector: View {
                         .buttonStyle(.borderedProminent)
                 }
                 .disabled(store.isWorking || !node.isEditable)
+                SelectionTransformMenu(store: store)
                 Divider()
                 Menu("Connect to…") {
                     ForEach(targets) { target in
@@ -47,10 +49,14 @@ struct NodeInspector: View {
                 }
                 .disabled(store.isWorking || !node.isEditable || targets.isEmpty)
                 ForEach((store.snapshot?.edges ?? []).filter { $0.fromID == node.id || $0.toID == node.id }) { edge in
-                    Button(
-                        "Disconnect \(store.snapshot?.nodes.first(where: { $0.id == (edge.fromID == node.id ? edge.toID : edge.fromID) })?.title ?? "node")"
-                    ) { store.deleteEdge(edge.id) }
-                    .disabled(store.isWorking || !node.isEditable)
+                    let from = store.snapshot?.nodes.first { $0.id == edge.fromID }?.title ?? edge.fromID
+                    let to = store.snapshot?.nodes.first { $0.id == edge.toID }?.title ?? edge.toID
+                    Menu("\(from) → \(to)") {
+                        Button("Reverse Direction") { store.reverseEdge(edge.id) }
+                        Button("Disconnect") { store.deleteEdge(edge.id) }
+                    }
+                    .accessibilityLabel("Edge from \(from) to \(to)")
+                    .disabled(store.isWorking || !editableEdges.contains(edge.id))
                 }
                 Button("Delete Node", role: .destructive) { store.deleteNode() }
                     .disabled(store.isWorking || !node.isEditable)
@@ -117,11 +123,26 @@ private struct GroupInspector: View {
             }
             Text("Positive factors. 1 keeps the current size. The center uses editable nodes only.")
                 .font(.caption).foregroundStyle(.secondary)
+            SelectionTransformMenu(store: store)
+            Button("Reverse Selected Edges") { store.reverseSelectedEdges() }
+                .disabled(store.snapshot?.reversibleEdges.isEmpty != false)
             Divider()
             Button("Delete Selected Nodes", role: .destructive) { store.deleteSelection() }
             Text("Read-only nodes stay fixed. Each move or deletion is one undo step.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .disabled(store.isWorking || editable == 0)
+    }
+}
+
+private struct SelectionTransformMenu: View {
+    let store: EditorStore
+    var body: some View {
+        Menu("Transform Selected Nodes") {
+            ForEach(SelectionTransform.allCases, id: \.self) { transform in
+                Button(transform.rawValue) { store.transformSelection(transform) }
+            }
+        }
+        .disabled(!store.canTransform)
     }
 }

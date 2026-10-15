@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add lossless edge reversal, front/side quarter turns, axis flips and explicit X/Z exchange with one-step undo and direction-aware edge inspector actions.
+
 - Add front/side marquee selection and lock-aware group position/radius scaling around the editable selection center, with atomic undo/redo.
 
 - Add multi-node selection, group dragging and relative movement, and atomic group deletion with lock-aware undo/redo and lossless bulk archive commands.

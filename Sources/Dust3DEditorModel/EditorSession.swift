@@ -31,6 +31,12 @@ public actor EditorSession {
     public func scaleSelection(positionFactor: Double, radiusFactor: Double) throws -> EditorSnapshot {
         try update { try $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
     }
+    public func transformSelection(_ transform: SelectionTransform) throws -> EditorSnapshot {
+        try update { try $0.transformSelection(transform) }
+    }
+    public func reverseSelectedEdges() throws -> EditorSnapshot {
+        try update { try $0.reverseSelectedEdges() }
+    }
     public func move(id: String, to position: NodePosition) throws -> EditorSnapshot {
         try update { try $0.move(id: id, to: position) }
     }

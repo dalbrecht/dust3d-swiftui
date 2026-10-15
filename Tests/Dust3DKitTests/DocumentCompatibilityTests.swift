@@ -20,6 +20,22 @@ final class DocumentCompatibilityTests: XCTestCase {
         XCTAssertGreaterThan(mesh.triangleCount, 0)
     }
 
+    func testReversedChainIsReadableByPinnedNativeEngine() throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url))
+        let ids = try original.editorContents().edges.map(\.id)
+        let reversed = try original.applying(.reverseEdges(ids))
+        let mesh = try MeshLoader.load(data: reversed.encoded())
+        XCTAssertEqual(mesh.nodeCount, 3)
+        XCTAssertEqual(mesh.partCount, 1)
+        XCTAssertEqual(mesh.triangleCount, try MeshLoader.load(data: original.encoded()).triangleCount)
+        var history = DocumentHistory(document: original)
+        try history.apply(.reverseEdges(ids))
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+    }
+
     func testRepositorySwordPreservesAllBytes() throws {
         let url = try XCTUnwrap(Bundle.module.url(forResource: "Sword", withExtension: "ds3", subdirectory: "Fixtures"))
         let data = try Data(contentsOf: url)

@@ -57,6 +57,11 @@ final class EditorStore {
     func scaleSelection(positionFactor: Double, radiusFactor: Double) {
         perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
     }
+    var canTransform: Bool { !isWorking && snapshot?.selectedNodes.contains(where: \.isEditable) == true }
+    func transformSelection(_ transform: SelectionTransform) { perform { try await $0.transformSelection(transform) } }
+    func reverseSelectedEdges() { perform { try await $0.reverseSelectedEdges() } }
+    func reverseEdge(_ id: String) { perform { try await $0.apply([.reverseEdges([id])]) } }
+
     func deleteSelection() { perform { try await $0.deleteSelection() } }
 
     func edit(id: String, position: NodePosition, radius: Double) {
