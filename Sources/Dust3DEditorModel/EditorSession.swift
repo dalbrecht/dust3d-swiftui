@@ -29,6 +29,8 @@ public actor EditorSession {
     public func select(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.select(ids) } }
     /// Select one edge without dirtying the document or creating an undo entry.
     public func selectEdge(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectEdge(id) } }
+    /// Inspect a part without changing document bytes or undo history.
+    public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
     public func moveSelection(by delta: NodePosition) throws -> EditorSnapshot {

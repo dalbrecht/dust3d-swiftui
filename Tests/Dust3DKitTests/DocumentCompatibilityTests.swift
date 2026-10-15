@@ -5,6 +5,26 @@ import Foundation
 import XCTest
 
 final class DocumentCompatibilityTests: XCTestCase {
+    func testPartVisibilityAndDisablingMatchPinnedEngineGeneration() throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url)).applying(
+            .addNode(
+                id: "{99999999-9999-4999-8999-999999999999}", partID: "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}",
+                componentID: "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}", position: .init(x: 2, y: 0.5, z: 1), radius: 0.1)
+        )
+        let part = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
+        XCTAssertEqual(try MeshLoader.load(data: original.encoded()).triangleCount, 96)
+        let hidden = try original.applying(.setPartState(id: part, property: .visible, value: false))
+        XCTAssertEqual(try MeshLoader.load(data: hidden.encoded()).triangleCount, 96)
+        let locked = try original.applying(.setPartState(id: part, property: .locked, value: true))
+        XCTAssertEqual(try MeshLoader.load(data: locked.encoded()).triangleCount, 96)
+        let disabled = try original.applying(.setPartState(id: part, property: .disabled, value: true))
+        XCTAssertEqual(try MeshLoader.load(data: disabled.encoded()).triangleCount, 16)
+        let restored = try disabled.applying(.setPartState(id: part, property: .disabled, value: false))
+        XCTAssertEqual(try MeshLoader.load(data: restored.encoded()).triangleCount, 96)
+    }
+
     func testReferenceImageEditingRetainsPinnedEngineGeometryCompatibility() throws {
         let url = try XCTUnwrap(
             Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))

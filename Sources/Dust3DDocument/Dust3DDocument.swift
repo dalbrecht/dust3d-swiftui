@@ -7,6 +7,8 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidReferenceImage
     case limitExceeded
     case missingNode(String)
+    case missingPart(String)
+    case invalidPartName
     case invalidNode
     case cyclicProfile
     case conflictingAsset(String)
@@ -53,6 +55,10 @@ public struct NodeUpdate: Sendable {
 
 /// Atomic node and graph commands. Unknown archive data remains untouched.
 public enum DocumentCommand: Sendable {
+    /// Rename the legacy part name, preserving component names. Empty input restores the default label.
+    case setPartName(id: String, name: String)
+    /// Change a part flag, including restoring a hidden/locked/disabled part.
+    case setPartState(id: String, property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
     /// Full raster decoding/validation belongs at the platform import boundary.
     case setReferenceImagePNG(Data?)
@@ -90,6 +96,13 @@ public struct DocumentEdge: Identifiable, Equatable, Sendable {
 public struct DocumentContents: Sendable {
     public let nodes: [DocumentNode]
     public let edges: [DocumentEdge]
+    public let parts: [DocumentPart]
+
+    init(nodes: [DocumentNode], edges: [DocumentEdge], parts: [DocumentPart] = []) {
+        self.nodes = nodes
+        self.edges = edges
+        self.parts = parts
+    }
 }
 
 /// Immutable archive value. Unchanged saves retain every input byte, including unknown assets.
@@ -258,6 +271,45 @@ public struct Dust3DDocument: Sendable {
         func edgeElements() -> [XMLElement] { root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] }
         switch command {
         case .setReferenceImagePNG(let png): return try replacingReferenceImage(png)
+        case .setPartName(let id, let name):
+            guard name.utf8.count <= 1024,
+                name.unicodeScalars.allSatisfy({
+                    $0.value >= 0x20 && $0.value != 0xFFFE && $0.value != 0xFFFF
+                        && !CharacterSet.newlines.contains($0)
+                })
+            else { throw DocumentError.invalidPartName }
+            guard let current = contents.parts.first(where: { $0.id == id }),
+                let part = root.elements(forName: "parts").first?.elements(forName: "part").first(where: {
+                    $0.attribute(forName: "id")?.stringValue == id
+                })
+            else { throw DocumentError.missingPart(id) }
+            let value = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if current.name == value { return self }
+            part.removeAttribute(forName: "name")
+            if !value.isEmpty {
+                let attribute = XMLNode(kind: .attribute)
+                attribute.name = "name"
+                attribute.stringValue = value
+                part.addAttribute(attribute)
+            }
+        case .setPartState(let id, let property, let value):
+            guard let current = contents.parts.first(where: { $0.id == id }),
+                let part = root.elements(forName: "parts").first?.elements(forName: "part").first(where: {
+                    $0.attribute(forName: "id")?.stringValue == id
+                })
+            else { throw DocumentError.missingPart(id) }
+            let previous: Bool
+            switch property {
+            case .visible: previous = current.isVisible
+            case .locked: previous = current.isLocked
+            case .disabled: previous = current.isDisabled
+            }
+            if previous == value { return self }
+            part.removeAttribute(forName: property.rawValue)
+            let attribute = XMLNode(kind: .attribute)
+            attribute.name = property.rawValue
+            attribute.stringValue = value ? "true" : "false"
+            part.addAttribute(attribute)
         case .addNode(let id, let partID, let componentID, let position, let radius):
             guard !id.isEmpty, !partID.isEmpty, !contents.nodes.contains(where: { $0.id == id }),
                 contents.nodes.count < 10_000,
@@ -269,6 +321,7 @@ public struct Dust3DDocument: Sendable {
             }) {
                 func isTrue(_ value: String?) -> Bool { value == "true" || value == "True" || value == "1" }
                 guard !isTrue(part.attribute(forName: "locked")?.stringValue),
+                    !isTrue(part.attribute(forName: "disabled")?.stringValue),
                     part.attribute(forName: "visible").map({ isTrue($0.stringValue) }) ?? true
                 else { throw DocumentError.invalidNode }
             } else {
@@ -466,6 +519,18 @@ public struct Dust3DDocument: Sendable {
                     }
                 }
             }
+            for part in model.rootElement()?.elements(forName: "parts").first?.elements(forName: "part") ?? [] {
+                for property in PartStateProperty.allCases {
+                    guard let attribute = part.attribute(forName: property.rawValue) else { continue }
+                    let value = ["true", "True", "1"].contains(attribute.stringValue ?? "")
+                    let defaultValue = property == .visible
+                    if value == defaultValue {
+                        part.removeAttribute(forName: property.rawValue)
+                    } else {
+                        attribute.stringValue = value ? "true" : "false"
+                    }
+                }
+            }
             return model.xmlData(options: [.nodePreserveAll])
         }
         return try canonical(modelXML) == canonical(other.modelXML)
@@ -606,14 +671,22 @@ public struct Dust3DDocument: Sendable {
         let partContainers = xml.rootElement()?.elements(forName: "parts") ?? []
         let edgeContainers = xml.rootElement()?.elements(forName: "edges") ?? []
         guard partContainers.count <= 1, edgeContainers.count <= 1 else { throw DocumentError.invalidNode }
-        var parts: [String: (visible: Bool, editable: Bool)] = [:]
+        var parts: [String: DocumentPart] = [:]
+        var orderedParts: [DocumentPart] = []
         func isTrue(_ value: String?) -> Bool { value == "true" || value == "True" || value == "1" }
-        for part in partContainers.first?.elements(forName: "part") ?? [] {
-            guard let id = part.attribute(forName: "id")?.stringValue, parts[id] == nil else {
+        let partElements = partContainers.first?.elements(forName: "part") ?? []
+        guard partElements.count <= 10_000 else { throw DocumentError.limitExceeded }
+        for (index, part) in partElements.enumerated() {
+            guard let id = part.attribute(forName: "id")?.stringValue, !id.isEmpty, parts[id] == nil else {
                 throw DocumentError.invalidNode
             }
             let visible = part.attribute(forName: "visible").map { isTrue($0.stringValue) } ?? true
-            parts[id] = (visible, visible && !isTrue(part.attribute(forName: "locked")?.stringValue))
+            let value = DocumentPart(
+                id: id, name: part.attribute(forName: "name")?.stringValue ?? "", index: index,
+                isVisible: visible, isLocked: isTrue(part.attribute(forName: "locked")?.stringValue),
+                isDisabled: isTrue(part.attribute(forName: "disabled")?.stringValue))
+            parts[id] = value
+            orderedParts.append(value)
         }
         let elements = try Self.nodes(xml)
         guard elements.count <= 10_000 else { throw DocumentError.limitExceeded }
@@ -625,8 +698,8 @@ public struct Dust3DDocument: Sendable {
             let name = node.attribute(forName: "name")?.stringValue ?? ""
             return DocumentNode(
                 id: id, title: name.isEmpty ? "Node \(index + 1)" : name, partID: partID,
-                value: try Self.decodeNode(node), isVisible: part?.visible ?? true,
-                isEditable: part?.editable ?? true)
+                value: try Self.decodeNode(node), isVisible: part?.isEditVisible ?? true,
+                isEditable: part?.isEditable ?? true)
         }
         let ids = Set(nodes.map(\.id))
         var edgeIDs = Set<String>()
@@ -639,7 +712,7 @@ public struct Dust3DDocument: Sendable {
             return DocumentEdge(id: id, fromID: from, toID: to)
         }
         guard edges.count <= 20_000 else { throw DocumentError.limitExceeded }
-        return DocumentContents(nodes: nodes, edges: edges)
+        return DocumentContents(nodes: nodes, edges: edges, parts: orderedParts)
     }
 
     /// Construct a valid blank document for a native untitled document window.

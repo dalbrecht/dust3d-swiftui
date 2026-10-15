@@ -34,6 +34,7 @@ struct EditorRootView: View {
                 }
                 .listStyle(.sidebar)
                 .disabled(store.isWorking)
+                PartSidebar(store: store)
                 EdgeSidebar(store: store)
             }
             .frame(width: 180)
@@ -189,7 +190,11 @@ struct EditorRootView: View {
                 ContentUnavailableView {
                     Label("Mesh preview", systemImage: "cube.transparent")
                 } description: {
-                    Text("Open a .ds3 model to begin editing.")
+                    if store.snapshot?.nodes.isEmpty == false, store.snapshot?.hasEnabledGeometry == false {
+                        Text("Enable a part to generate the mesh.")
+                    } else {
+                        Text("Open a .ds3 model to begin editing.")
+                    }
                 }
             }
         }

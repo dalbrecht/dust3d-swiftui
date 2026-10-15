@@ -65,6 +65,15 @@ final class EditorStore {
 
     func select(_ ids: Set<String>) { perform(commits: false) { try await $0.select(ids) } }
     func selectEdge(_ id: String?) { perform(commits: false) { try await $0.selectEdge(id) } }
+    func selectPart(_ id: String?) { perform(commits: false) { try await $0.selectPart(id) } }
+    func renamePart(_ id: String, name: String) {
+        perform(regenerateMesh: false) { try await $0.apply([.setPartName(id: id, name: name)]) }
+    }
+    func setPartState(_ id: String, property: PartStateProperty, value: Bool) {
+        perform(regenerateMesh: property == .disabled) {
+            try await $0.apply([.setPartState(id: id, property: property, value: value)])
+        }
+    }
     func toggleSelection(_ id: String) { perform(commits: false) { try await $0.toggleSelection(id) } }
     func selectAll() { perform(commits: false) { try await $0.selectAll() } }
     func move(id: String, to position: NodePosition) { perform { try await $0.move(id: id, to: position) } }
@@ -167,9 +176,13 @@ final class EditorStore {
     }
 
     func fit() {
+        fitCanvas()
+        cameraReset += 1
+    }
+
+    private func fitCanvas() {
         let aspect = showsReferenceImage ? referenceImage.map { Double($0.width) / Double($0.height) } : nil
         bounds = CanvasBounds(nodes: snapshot?.nodes ?? [], referenceImageAspectRatio: aspect)
-        cameraReset += 1
     }
 
     func stop() {
@@ -193,9 +206,17 @@ final class EditorStore {
                 let next = try await action(session)
                 guard !Task.isCancelled, !stopped else { return }
                 let changed = next.documentRevision != snapshot?.documentRevision
+                // Visibility changes need fitting even when topology is unchanged; movements keep stable drag bounds.
                 let countChanged = next.nodes.count != snapshot?.nodes.count
+                let needsFit = !next.nodes.elementsEqual(snapshot?.nodes ?? []) {
+                    $0.id == $1.id && $0.isVisible == $1.isVisible
+                }
                 snapshot = next
-                if countChanged { fit() }
+                if countChanged {
+                    fit()
+                } else if needsFit {
+                    fitCanvas()
+                }
                 errorMessage = nil
                 if commits && changed {
                     onDocumentChanged?(next.document.encoded())
@@ -211,7 +232,7 @@ final class EditorStore {
     private func generate(_ snapshot: EditorSnapshot) {
         generation?.cancel()
         renderError = nil
-        guard !snapshot.nodes.isEmpty else {
+        guard snapshot.hasEnabledGeometry else {
             previewState.clear()
             return
         }
@@ -281,6 +302,8 @@ final class EditorStore {
             case .invalidReferenceImage: return "The reference image must contain PNG data."
             case .limitExceeded: return "The document or edit exceeds supported size or undo-history limits."
             case .missingNode(let id): return "Node \(id) is not present in this document."
+            case .missingPart(let id): return "Part \(id) is not present in this document."
+            case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
             case .conflictingAsset(let name): return "Clipboard asset \(name) conflicts with this document."
             case .cyclicProfile: return "This edit would create a cyclic cut-face reference."
@@ -302,7 +325,7 @@ final class EditorStore {
         if let editor = error as? EditorError {
             switch editor {
             case .notLoaded: return "Open a document before editing."
-            case .readOnlyNode: return "This node belongs to a locked or hidden part."
+            case .readOnlyNode: return "This node belongs to a locked, hidden or disabled part."
             case .invalidScale: return "Enter a finite, positive scale factor. Use 1 to keep the current size."
             }
         }

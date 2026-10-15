@@ -23,7 +23,7 @@ struct EdgeInspector: View {
             Button("Delete Edge", role: .destructive) { store.deleteSelection() }
                 .disabled(store.isWorking || store.snapshot?.canEditSelectedEdge != true)
             if store.snapshot?.canEditSelectedEdge != true {
-                Label("Locked or hidden endpoint", systemImage: "lock").font(.caption)
+                Label("Locked, hidden or disabled endpoint", systemImage: "lock").font(.caption)
             }
             Text(
                 "Reversing or deleting an edge is one undo step. Deleting an edge keeps its nodes and splits disconnected parts."
