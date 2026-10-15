@@ -66,6 +66,14 @@ final class EditorStore {
     func select(_ ids: Set<String>) { perform(commits: false) { try await $0.select(ids) } }
     func selectEdge(_ id: String?) { perform(commits: false) { try await $0.selectEdge(id) } }
     func selectPart(_ id: String?) { perform(commits: false) { try await $0.selectPart(id) } }
+    func setOrigin(x: String, y: String, z: String) {
+        guard !isWorking, !stopped else { return }
+        guard let x = Double(x), let y = Double(y), let z = Double(z) else {
+            errorMessage = Self.message(DocumentError.invalidOrigin)
+            return
+        }
+        perform { try await $0.apply([.setOrigin(.init(x: x, y: y, z: z))]) }
+    }
     func renamePart(_ id: String, name: String) {
         perform(regenerateMesh: false) { try await $0.apply([.setPartName(id: id, name: name)]) }
     }
@@ -327,6 +335,9 @@ final class EditorStore {
             switch editor {
             case .notLoaded: return "Open a document before editing."
             case .readOnlyNode: return "This node belongs to a locked, hidden or disabled part."
+            case .unavailableOrigin:
+                return
+                    "Set a complete supported document origin first. Unlock position axes to initialize an unavailable origin."
             case .invalidScale: return "Enter a finite, positive scale factor. Use 1 to keep the current size."
             }
         }

@@ -6,7 +6,7 @@ import XCTest
 final class GraphTransformTests: XCTestCase {
     private func document(locked: Bool = true, visible: Bool = true) throws -> Dust3DDocument {
         let model = Data(
-            "<canvas future='keep'><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='0.1' future='retain'/><node id='b' partId='p' x='2' y='4' z='6' radius='0.2'/><node id='c' partId='q' x='4' y='6' z='8' radius='0.3'/></nodes><edges><edge id='e' from='a' to='b' partId='p' future='edge'><future/></edge><edge id='r' from='b' to='c'/></edges><parts><part id='p'/><part id='q' locked='\(locked)' visible='\(visible)'/></parts></canvas>"
+            "<canvas originX='1' originY='2' originZ='3' future='keep'><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='0.1' future='retain'/><node id='b' partId='p' x='2' y='4' z='6' radius='0.2'/><node id='c' partId='q' x='4' y='6' z='8' radius='0.3'/></nodes><edges><edge id='e' from='a' to='b' partId='p' future='edge'><future/></edge><edge id='r' from='b' to='c'/></edges><parts><part id='p'/><part id='q' locked='\(locked)' visible='\(visible)'/></parts></canvas>"
                 .utf8)
         let header =
             "<ds3><model name='model.xml' offset='0' size='\(model.count)'/><image name='opaque' offset='\(model.count)' size='2'/></ds3>"
@@ -33,6 +33,12 @@ final class GraphTransformTests: XCTestCase {
             .sideAlignZ: .init(x: 0, y: 0, z: 3),
             .sideAlignY: .init(x: 0, y: 2, z: 0),
             .sideAlignCenter: .init(x: 0, y: 2, z: 3),
+            .originFrontX: .init(x: 1, y: 0, z: 0),
+            .originFrontY: .init(x: 0, y: 2, z: 0),
+            .originFrontCenter: .init(x: 1, y: 2, z: 0),
+            .originSideZ: .init(x: 0, y: 0, z: 3),
+            .originSideY: .init(x: 0, y: 2, z: 0),
+            .originSideCenter: .init(x: 0, y: 2, z: 3),
         ]
         XCTAssertEqual(expected.count, SelectionTransform.allCases.count)
         for transform in SelectionTransform.allCases {

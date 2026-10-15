@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add native document-origin coordinate controls and Front/Side alignment to the stored origin, with axis locks, unavailable-origin recovery, preview regeneration and lossless undo/redo.
+
 - Add bounded, lossless document-origin reading/editing with exact undo/redo and preservation of unsupported existing origin fields.
 
 - Align selected editable nodes to their local Front/Side center on either or both axes, respecting locks with one-step lossless undo/redo.

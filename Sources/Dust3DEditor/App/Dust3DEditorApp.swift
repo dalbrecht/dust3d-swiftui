@@ -34,6 +34,7 @@ struct Dust3DEditorApp: App {
                 Menu("Transform Selected Nodes") {
                     ForEach(SelectionTransform.allCases, id: \.self) { transform in
                         Button(transform.rawValue) { store?.transformSelection(transform) }
+                            .disabled(transform.usesOrigin && store?.snapshot?.origin == nil)
                     }
                 }
                 .disabled(store?.canTransform != true)

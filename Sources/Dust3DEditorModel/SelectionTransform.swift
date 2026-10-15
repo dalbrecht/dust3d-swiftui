@@ -18,6 +18,21 @@ public enum SelectionTransform: String, CaseIterable, Sendable {
     case sideAlignY = "Side: Align Y to Selection Center"
     case sideAlignCenter = "Side: Align Z/Y to Selection Center"
 
+    case originFrontX = "Front: Align X to Document Origin"
+    case originFrontY = "Front: Align Y to Document Origin"
+    case originFrontCenter = "Front: Align X/Y to Document Origin"
+    case originSideZ = "Side: Align Z to Document Origin"
+    case originSideY = "Side: Align Y to Document Origin"
+    case originSideCenter = "Side: Align Z/Y to Document Origin"
+
+    /// Global alignments require a complete supported stored origin.
+    public var usesOrigin: Bool {
+        switch self {
+        case .originFrontX, .originFrontY, .originFrontCenter, .originSideZ, .originSideY, .originSideCenter: true
+        default: false
+        }
+    }
+
     func position(_ position: NodePosition, around center: NodePosition) -> NodePosition {
         switch self {
         case .frontCounterclockwise:
@@ -32,11 +47,11 @@ public enum SelectionTransform: String, CaseIterable, Sendable {
         case .flipY: .init(x: position.x, y: 2 * center.y - position.y, z: position.z)
         case .flipZ: .init(x: position.x, y: position.y, z: 2 * center.z - position.z)
         case .exchangeXZ: .init(x: position.z, y: position.y, z: position.x)
-        case .frontAlignX: .init(x: center.x, y: position.y, z: position.z)
-        case .frontAlignY, .sideAlignY: .init(x: position.x, y: center.y, z: position.z)
-        case .frontAlignCenter: .init(x: center.x, y: center.y, z: position.z)
-        case .sideAlignZ: .init(x: position.x, y: position.y, z: center.z)
-        case .sideAlignCenter: .init(x: position.x, y: center.y, z: center.z)
+        case .frontAlignX, .originFrontX: .init(x: center.x, y: position.y, z: position.z)
+        case .frontAlignY, .sideAlignY, .originFrontY, .originSideY: .init(x: position.x, y: center.y, z: position.z)
+        case .frontAlignCenter, .originFrontCenter: .init(x: center.x, y: center.y, z: position.z)
+        case .sideAlignZ, .originSideZ: .init(x: position.x, y: position.y, z: center.z)
+        case .sideAlignCenter, .originSideCenter: .init(x: position.x, y: center.y, z: center.z)
         }
     }
 }
