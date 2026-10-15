@@ -102,7 +102,7 @@ Dependencies: M1. Suggested PRs: editor scene/shared rendering; selection/pickin
 
 - Add the editor executable and separate bundle ID; extract shared renderer without moving viewer state into editor modules. Use document scenes with independent state/undo per window.
 - Add front/side orthographic editing, 3D preview, reference image placement, node/edge overlays, hit testing, marquee/multiselect and coordinate transforms.
-- Implement drawing/connection, selection, move/scale/radius, delete, clipboard with UUID remapping, constraints and keyboard commands. Debounce preview generation, retain last valid mesh with explicit stale/error state.
+- Implement drawing/connection, selection, move/scale/radius, delete, clipboard with UUID remapping, constraints and keyboard commands. Debounce preview generation, retain last valid mesh with explicit stale/error state (implemented; see [verification](preview-resilience-verification.md)).
 - Done: create a capsule and multi-part sword, edit both, undo/redo, save/reopen in Qt; two windows do not share selections or undo; gestures remain responsive while generating.
 
 ### M3 — Complete procedural modeling

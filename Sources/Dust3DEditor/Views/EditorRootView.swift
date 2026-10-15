@@ -152,18 +152,28 @@ struct EditorRootView: View {
                 Spacer()
             }.padding(12)
             Divider()
-            if let error = store.previewError {
+            if let error = store.renderError ?? (store.mesh == nil ? store.previewState.errorMessage : nil) {
                 ContentUnavailableView {
                     Label("Preview unavailable", systemImage: "cube.transparent")
                 } description: {
                     Text(error)
+                } actions: {
+                    Button("Retry Preview") { store.retryPreview() }.disabled(store.isGenerating)
                 }
             } else if let mesh = store.mesh {
                 MeshViewport(
                     mesh: mesh, isWireframe: store.isWireframe, cameraReset: store.cameraReset,
                     meshRevision: store.previewRevision
-                ) { store.previewError = $0 }
+                ) { store.renderError = $0 }
                 .accessibilityLabel("3D mesh preview")
+                if store.previewState.isStale {
+                    Label("Showing last valid mesh", systemImage: "exclamationmark.triangle")
+                        .font(.caption).padding(8)
+                }
+                if let error = store.previewState.errorMessage {
+                    Text("Preview out of date: \(error)").font(.caption).padding(8)
+                    Button("Retry Preview") { store.retryPreview() }.padding(.bottom, 8)
+                }
                 Text("\(mesh.triangleCount) triangles · Drag to orbit · Scroll to zoom")
                     .font(.caption).foregroundStyle(.secondary).padding(8)
                 if store.isGenerating { ProgressView("Updating preview…").controlSize(.small).padding(8) }
