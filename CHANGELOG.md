@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Align selected editable nodes to their local Front/Side center on either or both axes, respecting locks with one-step lossless undo/redo.
+
 - Add native part selection, naming, visibility, locking and mesh-disable controls with lossless undo/redo and save support.
 
 - Import/render bounded native reference images with undoable removal, per-window opacity/visibility and lossless existing asset handling; align the canvas and clockwise transforms with Qt’s positive-Y-down image coordinates.
