@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add bounded, lossless document-origin reading/editing with exact undo/redo and preservation of unsupported existing origin fields.
+
 - Align selected editable nodes to their local Front/Side center on either or both axes, respecting locks with one-step lossless undo/redo.
 
 - Add native part selection, naming, visibility, locking and mesh-disable controls with lossless undo/redo and save support.
