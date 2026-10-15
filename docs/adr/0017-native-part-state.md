@@ -11,3 +11,5 @@ Apply each metadata change through existing immutable document commands/history.
 Names/flags do not implement hierarchy, grouping, reordering, modifiers or component naming. No C++/core dependency change or relaxation of the core's graph validation is involved. Verify native flags/history/save behavior and multi-part engine output independently of tests for document preservation.
 
 Canvas bounds recompute when visible node identities/state change, including Undo/Redo of visibility/disable flags. Pure position changes retain stable bounds during dragging. This avoids restoring outlying overlays outside the clipped canvas.
+
+Canvas-only refitting does not reset the 3D orbit camera. Explicit Fit and topology-count changes retain the existing combined fit behavior.

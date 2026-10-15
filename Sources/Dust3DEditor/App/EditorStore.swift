@@ -176,9 +176,13 @@ final class EditorStore {
     }
 
     func fit() {
+        fitCanvas()
+        cameraReset += 1
+    }
+
+    private func fitCanvas() {
         let aspect = showsReferenceImage ? referenceImage.map { Double($0.width) / Double($0.height) } : nil
         bounds = CanvasBounds(nodes: snapshot?.nodes ?? [], referenceImageAspectRatio: aspect)
-        cameraReset += 1
     }
 
     func stop() {
@@ -203,11 +207,16 @@ final class EditorStore {
                 guard !Task.isCancelled, !stopped else { return }
                 let changed = next.documentRevision != snapshot?.documentRevision
                 // Visibility changes need fitting even when topology is unchanged; movements keep stable drag bounds.
+                let countChanged = next.nodes.count != snapshot?.nodes.count
                 let needsFit = !next.nodes.elementsEqual(snapshot?.nodes ?? []) {
                     $0.id == $1.id && $0.isVisible == $1.isVisible
                 }
                 snapshot = next
-                if needsFit { fit() }
+                if countChanged {
+                    fit()
+                } else if needsFit {
+                    fitCanvas()
+                }
                 errorMessage = nil
                 if commits && changed {
                     onDocumentChanged?(next.document.encoded())

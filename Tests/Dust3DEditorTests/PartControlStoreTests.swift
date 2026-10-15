@@ -83,7 +83,7 @@ final class PartControlStoreTests: XCTestCase {
             let initialReset = store.cameraReset
             store.setPartState(far, property: property, value: !inactive)
             try await settle(store)
-            XCTAssertGreaterThan(store.cameraReset, initialReset)
+            XCTAssertEqual(store.cameraReset, initialReset, "Overlay changes must preserve the mesh orbit")
             func assertFarNodeFits(file: StaticString = #filePath, line: UInt = #line) {
                 for plane in EditingPlane.allCases {
                     let point = CanvasProjection(bounds: store.bounds, plane: plane, width: 600, height: 400)
@@ -96,12 +96,12 @@ final class PartControlStoreTests: XCTestCase {
             let shownReset = store.cameraReset
             store.undo()
             try await settle(store)
-            XCTAssertGreaterThan(store.cameraReset, shownReset)
+            XCTAssertEqual(store.cameraReset, shownReset)
             store.fit()
             let hiddenReset = store.cameraReset
             store.redo()
             try await settle(store)
-            XCTAssertGreaterThan(store.cameraReset, hiddenReset)
+            XCTAssertEqual(store.cameraReset, hiddenReset)
             assertFarNodeFits()
             let fitted = store.cameraReset
             store.move(id: "{22222222-2222-4222-8222-222222222222}", to: .init(x: 21, y: 20, z: 20))
