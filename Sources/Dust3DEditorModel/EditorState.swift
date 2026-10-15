@@ -20,9 +20,11 @@ public struct EditorSnapshot: Sendable {
     public let document: Dust3DDocument
     public let nodes: [DocumentNode]
     public let edges: [DocumentEdge]
+    public let parts: [DocumentPart]
     public let selectedID: String?
     public let selectedIDs: Set<String>
     public let selectedEdgeID: String?
+    public let selectedPartID: String?
     public let canUndo: Bool
     public let canRedo: Bool
     public let locks: Set<EditingConstraint>
@@ -32,6 +34,13 @@ public struct EditorSnapshot: Sendable {
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
     /// A single edge is selected independently of nodes, without changing document history.
     public var selectedEdge: DocumentEdge? { edges.first { $0.id == selectedEdgeID } }
+    /// A selected part remains inspectable even when hidden, locked or disabled.
+    public var selectedPart: DocumentPart? { parts.first { $0.id == selectedPartID } }
+    /// Visibility is an editing option; only disabled parts suppress generated geometry.
+    public var hasEnabledGeometry: Bool {
+        let disabled = Set(parts.filter(\.isDisabled).map(\.id))
+        return nodes.contains { node in node.partID.map { !disabled.contains($0) } ?? true }
+    }
     /// Both endpoints must be editable before the selected edge can be changed.
     public var canEditSelectedEdge: Bool {
         guard let selectedEdgeID else { return false }
@@ -67,7 +76,7 @@ public struct EditorSnapshot: Sendable {
     }
     /// Empty selection creates a part; one editable endpoint extends it. Groups need an explicit New Part.
     public var canAddNode: Bool {
-        guard selectedEdgeID == nil, selectedIDs.count <= 1 else { return false }
+        guard selectedPartID == nil, selectedEdgeID == nil, selectedIDs.count <= 1 else { return false }
         guard let selected = selectedNode else { return true }
         return selected.isEditable && (selected.partID == nil || connectableNodes.contains { $0.id == selected.id })
     }
@@ -113,6 +122,7 @@ public struct EditorState: Sendable {
     private var selectedID: String?
     private var selectedIDs: Set<String> = []
     private var selectedEdgeID: String?
+    private var selectedPartID: String?
     private var locks: Set<EditingConstraint> = []
     private var revision = 0
 
@@ -125,8 +135,9 @@ public struct EditorState: Sendable {
     /// Current immutable document, graph, selection and history availability.
     public var snapshot: EditorSnapshot {
         EditorSnapshot(
-            document: history.document, nodes: contents.nodes, edges: contents.edges,
+            document: history.document, nodes: contents.nodes, edges: contents.edges, parts: contents.parts,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
+            selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
             documentRevision: revision)
@@ -144,12 +155,23 @@ public struct EditorState: Sendable {
         selectedIDs = ids
         selectedID = contents.nodes.first { ids.contains($0.id) }?.id
         selectedEdgeID = nil
+        selectedPartID = nil
     }
 
     /// Inspect an existing edge or clear selection. Invalid IDs throw DocumentError.invalidNode atomically.
     public mutating func selectEdge(_ id: String?) throws {
         if let id, !contents.edges.contains(where: { $0.id == id }) { throw DocumentError.invalidNode }
         selectedEdgeID = id
+        selectedPartID = nil
+        selectedID = nil
+        selectedIDs = []
+    }
+
+    /// Inspect an existing part or clear selection. Missing IDs throw DocumentError.missingPart atomically.
+    public mutating func selectPart(_ id: String?) throws {
+        if let id, !contents.parts.contains(where: { $0.id == id }) { throw DocumentError.missingPart(id) }
+        selectedPartID = id
+        selectedEdgeID = nil
         selectedID = nil
         selectedIDs = []
     }
@@ -164,6 +186,7 @@ public struct EditorState: Sendable {
     /// Include all nodes, including read-only nodes for inspection.
     public mutating func selectAll() {
         selectedEdgeID = nil
+        selectedPartID = nil
         selectedIDs = Set(contents.nodes.map(\.id))
         selectedID = contents.nodes.first?.id
     }
@@ -352,6 +375,9 @@ public struct EditorState: Sendable {
         selectedID = contents.nodes.first { selectedIDs.contains($0.id) }?.id
         if let selectedEdgeID, !contents.edges.contains(where: { $0.id == selectedEdgeID }) {
             self.selectedEdgeID = nil
+        }
+        if let selectedPartID, !contents.parts.contains(where: { $0.id == selectedPartID }) {
+            self.selectedPartID = nil
         }
         history = next
         revision += 1

@@ -141,7 +141,7 @@ private struct NodeHandle: View {
         .accessibilityValue(selected ? "Selected" : "Not selected")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { select() }
-        .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked or hidden part")")
+        .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked, hidden or disabled part")")
     }
 }
 

@@ -15,9 +15,11 @@ struct NodeInspector: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Node inspector").font(.headline)
+            Text("Selection inspector").font(.headline)
             NodeClipboardMenu(store: store)
-            if let edge = store.snapshot?.selectedEdge {
+            if let part = store.snapshot?.selectedPart {
+                PartInspector(store: store, part: part)
+            } else if let edge = store.snapshot?.selectedEdge {
                 EdgeInspector(store: store, edge: edge)
             } else if (store.snapshot?.selectedIDs.count ?? 0) > 1 {
                 GroupInspector(store: store)
@@ -40,7 +42,7 @@ struct NodeInspector: View {
                 .id(draft.resetID)
                 .focusedValue(\.editorTextEditing, true)
                 .disabled(store.isWorking || !node.isEditable)
-                if !node.isEditable { Label("Locked or hidden part", systemImage: "lock").font(.caption) }
+                if !node.isEditable { Label("Locked, hidden or disabled part", systemImage: "lock").font(.caption) }
                 HStack {
                     Button("Reset") { draft.reset(node.value) }
                     Spacer()
@@ -75,7 +77,7 @@ struct NodeInspector: View {
                 Text("Coordinates use document units. Dragging moves in the selected canvas plane.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                Text("Select a node in the list or canvas.").foregroundStyle(.secondary)
+                Text("Select a node, edge or part.").foregroundStyle(.secondary)
             }
             Spacer()
         }

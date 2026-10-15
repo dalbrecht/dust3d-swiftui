@@ -224,6 +224,8 @@ final class EditorStateTests: XCTestCase {
         XCTAssertTrue(locked.snapshot.connectionTargets.isEmpty)
         XCTAssertFalse(locked.snapshot.canAddNode)
         var unassigned = try EditorState(document: document(unassigned: true))
+        // Unassigned legacy nodes must still attempt generation and surface diagnostics, rather than look disabled.
+        XCTAssertTrue(unassigned.snapshot.hasEnabledGeometry)
         try unassigned.select("a")
         XCTAssertTrue(unassigned.snapshot.connectionTargets.isEmpty)
         XCTAssertTrue(unassigned.snapshot.canAddNode)

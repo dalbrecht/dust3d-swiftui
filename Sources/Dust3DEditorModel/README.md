@@ -7,7 +7,7 @@ from the UI actor and returns immutable snapshots. Each window owns a session.
 
 Use `try await session.open(data:)`, select a node ID, then `edit(id:position:radius:)`.
 Open/edit failures retain the previous state. One edit call is one undo step;
-selection does not dirty the archive. Parts marked hidden or locked are read-only.
+selection does not dirty the archive. Parts marked hidden, locked or disabled are read-only.
 History bounds and lossless archive preservation come from Dust3DDocument.
 
 No SwiftUI, AppKit, Qt or additional package dependency. Run `make ci` at the repo
@@ -46,3 +46,5 @@ let pasted = try await target.paste(data: data)
 `selectEdge(_:)` selects one existing edge or clears selection, mutually exclusively with nodes. `selectedEdge` and `canEditSelectedEdge` expose inspection/mutation availability. Selection is transient and invalid IDs reject atomically. `session.deleteSelection()` deletes the editable selected edge through normalized splitting, or deletes editable selected nodes. Deleted edge selection is pruned and not revived by Undo. `CanvasProjection.edgeID(near:nodes:edges:tolerance:)` picks the nearest visible nondegenerate segment in screen points with document-order ties.
 
 CanvasProjection now follows Qt's positive-Y-down scene coordinates. CanvasBounds optionally includes `referenceImageAspectRatio` to fit the image-height-normalized rectangle together with visible nodes. Front/side clockwise formulas follow screen direction in this convention. Model positions and saved bytes are not migrated by changing the projection.
+
+`selectPart(_:)` selects an ordered part independently of nodes/edges, clearing those selections. Invalid IDs reject atomically; selection remains transient. Snapshots expose `parts`, `selectedPart` and `hasEnabledGeometry`; disabled parts hide editing overlays as well as excluding generation. Deleted/consumed part selections are pruned without being revived by Undo.
