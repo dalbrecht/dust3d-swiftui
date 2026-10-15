@@ -8,11 +8,12 @@ import Observation
 final class EditorStore {
     private(set) var snapshot: EditorSnapshot?
     private(set) var isWorking = false
-    private(set) var mesh: Mesh?
-    private(set) var previewRevision = 0
-    private(set) var isGenerating = false
+    private(set) var previewState = MeshPreviewState<Mesh>()
+    var mesh: Mesh? { previewState.value }
+    var previewRevision: Int { previewState.revision }
+    var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
-    var previewError: String?
+    var renderError: String?
     var bounds = CanvasBounds(nodes: [])
     var plane = EditingPlane.front
     var isWireframe = false
@@ -37,6 +38,7 @@ final class EditorStore {
             guard !Task.isCancelled, !stopped else { return }
             snapshot = next
             fit()
+            previewState.clear()
             generate(next)
         } catch {
             if !Task.isCancelled { errorMessage = Self.message(error) }
@@ -148,6 +150,7 @@ final class EditorStore {
         stopped = true
         operation?.cancel()
         generation?.cancel()
+        previewState.clear()
         onDocumentChanged = nil
     }
 
@@ -178,13 +181,13 @@ final class EditorStore {
 
     private func generate(_ snapshot: EditorSnapshot) {
         generation?.cancel()
-        previewError = nil
+        renderError = nil
         guard !snapshot.nodes.isEmpty else {
-            mesh = nil
-            isGenerating = false
+            previewState.clear()
             return
         }
-        isGenerating = true
+        let requestID = UUID()
+        previewState.begin(requestID: requestID)
         generation = Task {
             do {
                 try await Task.sleep(for: .milliseconds(150))
@@ -192,16 +195,17 @@ final class EditorStore {
                 guard !Task.isCancelled, !stopped, self.snapshot?.documentRevision == snapshot.documentRevision else {
                     return
                 }
-                mesh = result
-                previewRevision += 1
-                isGenerating = false
+                previewState.succeed(result, requestID: requestID)
             } catch {
                 guard !Task.isCancelled, !stopped else { return }
-                mesh = nil
-                previewError = Self.message(error)
-                isGenerating = false
+                previewState.fail(Self.message(error), requestID: requestID)
             }
         }
+    }
+
+    func retryPreview() {
+        guard !stopped, !isGenerating, let snapshot else { return }
+        generate(snapshot)
     }
 
     static func message(_ error: Error) -> String {

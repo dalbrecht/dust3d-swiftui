@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Retain the last valid editor mesh during generation updates/failures, with explicit stale status, retry and obsolete-result protection.
+
 - Add native node Cut/Copy/Paste and context-aware Select All, with versioned transport, fresh identities, normalized readonly/disconnected copies, one-step undo and lossless cross-window saves.
 
 - Add document-level node clipboard fragments, explicit identity remapping, linked-profile/asset preservation and atomic paste undo.
