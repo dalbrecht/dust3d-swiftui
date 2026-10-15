@@ -214,7 +214,8 @@ The editor now supports node selection/movement/radius editing, interaction lock
 multiselection/marquee/scaling/transforms, topology creation/deletion/splitting/joining,
 edge picking/reversal/inspection, native clipboard editing, undo/redo, open/save and
 resilient mesh previews. Reference-image archive editing, bounded platform import and Qt-aligned canvas
-rendering are implemented; crop/composition and origin tools remain pending. Verification records linked above state
+rendering, part-state controls, local/global alignment and origin editing/markers are implemented;
+crop/composition and origin dragging/settlement remain pending. Verification records linked above state
 actual test/native coverage and limits. The M1/M2 acceptance gates still include Qt GUI
 interoperability, recovery/failure cases and broader accessibility/performance checks;
 M3–M8 feature parity is not claimed.
