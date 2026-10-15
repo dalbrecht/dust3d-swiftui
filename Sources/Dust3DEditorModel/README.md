@@ -12,3 +12,7 @@ History bounds and lossless archive preservation come from Dust3DDocument.
 
 No SwiftUI, AppKit, Qt or additional package dependency. Run `make ci` at the repo
 root; tests cover command atomicity, undo, locks, projection and actor routing.
+
+`session.apply(commands, selecting:)` commits graph commands as one atomic undo
+step; a failed batch preserves document and selection. Deletion clears invalid
+selection. Undo restores document bytes; selection remains transient.

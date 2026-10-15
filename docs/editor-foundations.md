@@ -23,8 +23,10 @@ SwiftUI and Metal. It does not add editing controls to the viewer.
 
 This codec does not generate geometry. It can retain assets whose rendering is
 unsupported by the current viewer. It is not yet the full graph/part/component
-invariant model: topology commands, locks, schema migrations, modifier inspectors
-and complete editing semantics remain M1/M2 work. Unknown data is preserved rather
+invariant model: schema migrations, axis locks, modifier inspectors
+and complete editing semantics remain M1/M2 work. Node/edge topology commands
+and part-level locked/hidden guards are now implemented. New parts receive
+component links; deleting the last node retains part/component metadata. Unknown data is preserved rather
 than interpreted or silently converted into a partial editable model.
 
 ## Undo and persistence

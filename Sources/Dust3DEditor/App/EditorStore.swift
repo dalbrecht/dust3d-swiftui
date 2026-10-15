@@ -48,6 +48,40 @@ final class EditorStore {
         perform { try await $0.edit(id: id, position: position, radius: radius) }
     }
 
+    func addNode(newPart: Bool = false) {
+        let selected = newPart ? nil : snapshot?.selectedNode
+        let nodeID = Self.identifier()
+        let partID = selected?.partID ?? Self.identifier()
+        let position =
+            selected.map { NodePosition(x: $0.value.position.x, y: $0.value.position.y + 0.25, z: $0.value.position.z) }
+            ?? NodePosition(x: 0.5, y: 0.5, z: 0.5)
+        var commands: [DocumentCommand] = [
+            .addNode(
+                id: nodeID, partID: partID, componentID: selected?.partID == nil ? Self.identifier() : nil,
+                position: position, radius: selected?.value.radius ?? 0.1)
+        ]
+        if let selected, selected.partID != nil {
+            commands.append(.addEdge(id: Self.identifier(), from: selected.id, to: nodeID))
+        }
+        let transaction = commands
+        perform { try await $0.apply(transaction, selecting: nodeID) }
+    }
+
+    func connect(to id: String) {
+        guard let selected = snapshot?.selectedID else { return }
+        let command = DocumentCommand.addEdge(id: Self.identifier(), from: selected, to: id)
+        perform { try await $0.apply([command]) }
+    }
+
+    func deleteNode() {
+        guard let id = snapshot?.selectedID else { return }
+        perform { try await $0.apply([.removeNode(id: id)]) }
+    }
+
+    func deleteEdge(_ id: String) { perform { try await $0.apply([.removeEdge(id: id)]) } }
+
+    private static func identifier() -> String { "{\(UUID().uuidString.lowercased())}" }
+
     func undo() { perform { try await $0.undo() } }
     func redo() { perform { try await $0.redo() } }
 
@@ -74,7 +108,9 @@ final class EditorStore {
                 let next = try await action(session)
                 guard !Task.isCancelled, !stopped else { return }
                 let changed = next.documentRevision != snapshot?.documentRevision
+                let countChanged = next.nodes.count != snapshot?.nodes.count
                 snapshot = next
+                if countChanged { fit() }
                 errorMessage = nil
                 if commits && changed {
                     onDocumentChanged?(next.document.encoded())

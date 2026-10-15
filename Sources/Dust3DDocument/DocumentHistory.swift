@@ -4,6 +4,7 @@ public struct DocumentHistory: Sendable {
     private var undoStack: [Dust3DDocument] = []
     private var redoStack: [Dust3DDocument] = []
     private var transactionStart: Dust3DDocument?
+    private var transactionChangesTopology = false
     private var transactionNodes: Set<String> = []
     private var saved: Dust3DDocument
     private let maximumEntries: Int
@@ -33,6 +34,7 @@ public struct DocumentHistory: Sendable {
         } else {
             switch command {
             case .setNode(let id, _, _): transactionNodes.insert(id)
+            default: transactionChangesTopology = true
             }
         }
         document = next
@@ -46,7 +48,10 @@ public struct DocumentHistory: Sendable {
 
     public mutating func endTransaction() throws {
         guard let start = transactionStart else { throw DocumentError.noTransaction }
-        let unchanged = try transactionNodes.allSatisfy { try start.node(id: $0) == document.node(id: $0) }
+        let unchanged =
+            try transactionChangesTopology
+            ? start.encoded() == document.encoded()
+            : transactionNodes.allSatisfy { try start.node(id: $0) == document.node(id: $0) }
         if unchanged {
             document = start
         } else {
@@ -55,6 +60,7 @@ public struct DocumentHistory: Sendable {
         }
         transactionStart = nil
         transactionNodes.removeAll()
+        transactionChangesTopology = false
     }
 
     public mutating func cancelTransaction() {
@@ -62,6 +68,7 @@ public struct DocumentHistory: Sendable {
         document = start
         transactionStart = nil
         transactionNodes.removeAll()
+        transactionChangesTopology = false
     }
 
     @discardableResult public mutating func undo() -> Bool {

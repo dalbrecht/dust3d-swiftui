@@ -56,6 +56,29 @@ public struct EditorState: Sendable {
         selectedID = id
     }
 
+    /// Commit graph operations as one undo step. Failed batches preserve document and selection.
+    /// The optional selection must exist in the resulting document.
+    public mutating func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws {
+        var next = history
+        try next.beginTransaction()
+        for command in commands {
+            if case .setNode(let nodeID, _, _) = command {
+                guard let node = try next.document.editorContents().nodes.first(where: { $0.id == nodeID }),
+                    node.isEditable
+                else {
+                    throw EditorError.readOnlyNode
+                }
+            }
+            try next.apply(command)
+        }
+        try next.endTransaction()
+        if let id, !(try next.document.editorContents().nodes.contains(where: { $0.id == id })) {
+            throw DocumentError.missingNode(id)
+        }
+        try publish(next)
+        if let id { selectedID = id }
+    }
+
     /// Restore the previous archive, if available, retaining transient selection.
     public mutating func undo() throws {
         var next = history
@@ -72,6 +95,7 @@ public struct EditorState: Sendable {
         guard next.document.encoded() != history.document.encoded() else { return }
         let nextContents = try next.document.editorContents()
         contents = nextContents
+        if let id = selectedID, !contents.nodes.contains(where: { $0.id == id }) { selectedID = nil }
         history = next
         revision += 1
     }

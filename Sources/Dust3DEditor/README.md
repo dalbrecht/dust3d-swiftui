@@ -10,8 +10,11 @@ close handling. Each window has independent state. Locked/hidden parts cannot
 be changed. The mesh preview uses the same Qt-free engine and Metal renderer as
 the standalone viewer.
 
-New documents start empty; adding/deleting graph topology and full modeling
-inspectors are subsequent milestones. Unsupported mesh assets remain preserved
+New documents start empty. Use the + menu to Add Node (extend the selected node
+in the same part) or New Part. Connect to… and Disconnect edit edges in the
+selected node’s inspector. Delete Node removes its incident edges in one undo
+step. Part locks and visibility are enforced. Connecting different parts and
+duplicate/self edges is rejected. Full modeling inspectors remain later milestones. Unsupported mesh assets remain preserved
 even when the preview cannot display them. The standalone viewer remains read-only.
 
 Development: `make ci`. No Qt dependency, hand-maintained Xcode project or extra

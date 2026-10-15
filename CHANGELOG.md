@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add node/part creation, automatic chain extension, edge connection/disconnection and node deletion with incident-edge cleanup, grouped undo/redo and lossless saves.
+
 - Add a separate SwiftUI editor with per-window documents, node selection and front/side movement, coordinate/radius editing, undo/redo, native open/save, and asynchronous mesh preview.
 - Share the Metal renderer between viewer and editor; package and check Qt-free linkage for both apps.
 
