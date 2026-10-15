@@ -22,6 +22,7 @@ public struct EditorSnapshot: Sendable {
     public let edges: [DocumentEdge]
     public let selectedID: String?
     public let selectedIDs: Set<String>
+    public let selectedEdgeID: String?
     public let canUndo: Bool
     public let canRedo: Bool
     public let locks: Set<EditingConstraint>
@@ -29,6 +30,13 @@ public struct EditorSnapshot: Sendable {
 
     public var selectedNodes: [DocumentNode] { nodes.filter { selectedIDs.contains($0.id) } }
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
+    /// A single edge is selected independently of nodes, without changing document history.
+    public var selectedEdge: DocumentEdge? { edges.first { $0.id == selectedEdgeID } }
+    /// Both endpoints must be editable before the selected edge can be changed.
+    public var canEditSelectedEdge: Bool {
+        guard let selectedEdgeID else { return false }
+        return editableEdges.contains { $0.id == selectedEdgeID }
+    }
     /// Copy can include read-only nodes, but every copied node must belong to a part.
     public var canCopyNodes: Bool {
         let selected = selectedNodes
@@ -59,7 +67,7 @@ public struct EditorSnapshot: Sendable {
     }
     /// Empty selection creates a part; one editable endpoint extends it. Groups need an explicit New Part.
     public var canAddNode: Bool {
-        guard selectedIDs.count <= 1 else { return false }
+        guard selectedEdgeID == nil, selectedIDs.count <= 1 else { return false }
         guard let selected = selectedNode else { return true }
         return selected.isEditable && (selected.partID == nil || connectableNodes.contains { $0.id == selected.id })
     }
@@ -104,6 +112,7 @@ public struct EditorState: Sendable {
     private var contents: DocumentContents
     private var selectedID: String?
     private var selectedIDs: Set<String> = []
+    private var selectedEdgeID: String?
     private var locks: Set<EditingConstraint> = []
     private var revision = 0
 
@@ -117,7 +126,8 @@ public struct EditorState: Sendable {
     public var snapshot: EditorSnapshot {
         EditorSnapshot(
             document: history.document, nodes: contents.nodes, edges: contents.edges,
-            selectedID: selectedID, selectedIDs: selectedIDs, canUndo: history.canUndo, canRedo: history.canRedo,
+            selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
+            canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
             documentRevision: revision)
     }
@@ -133,6 +143,15 @@ public struct EditorState: Sendable {
         if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingNode(missing) }
         selectedIDs = ids
         selectedID = contents.nodes.first { ids.contains($0.id) }?.id
+        selectedEdgeID = nil
+    }
+
+    /// Inspect an existing edge or clear selection. Invalid IDs throw DocumentError.invalidNode atomically.
+    public mutating func selectEdge(_ id: String?) throws {
+        if let id, !contents.edges.contains(where: { $0.id == id }) { throw DocumentError.invalidNode }
+        selectedEdgeID = id
+        selectedID = nil
+        selectedIDs = []
     }
 
     /// Toggle a node without modifying document data or history.
@@ -144,6 +163,7 @@ public struct EditorState: Sendable {
 
     /// Include all nodes, including read-only nodes for inspection.
     public mutating func selectAll() {
+        selectedEdgeID = nil
         selectedIDs = Set(contents.nodes.map(\.id))
         selectedID = contents.nodes.first?.id
     }
@@ -242,6 +262,11 @@ public struct EditorState: Sendable {
     /// Low-level deletion without allocating identities. App callers use EditorSession.deleteSelection,
     /// which composes explicit split commands with removal in the same undo transaction.
     public mutating func deleteSelection() throws {
+        if let edge = snapshot.selectedEdge {
+            guard snapshot.canEditSelectedEdge else { throw EditorError.readOnlyNode }
+            try apply([.removeEdge(id: edge.id)])
+            return
+        }
         try apply([.removeNodes(snapshot.selectedNodes.filter(\.isEditable).map(\.id))])
     }
 
@@ -325,6 +350,9 @@ public struct EditorState: Sendable {
         contents = nextContents
         selectedIDs.formIntersection(contents.nodes.map(\.id))
         selectedID = contents.nodes.first { selectedIDs.contains($0.id) }?.id
+        if let selectedEdgeID, !contents.edges.contains(where: { $0.id == selectedEdgeID }) {
+            self.selectedEdgeID = nil
+        }
         history = next
         revision += 1
     }

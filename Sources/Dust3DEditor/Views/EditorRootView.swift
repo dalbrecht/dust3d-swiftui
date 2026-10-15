@@ -34,6 +34,7 @@ struct EditorRootView: View {
                 }
                 .listStyle(.sidebar)
                 .disabled(store.isWorking)
+                EdgeSidebar(store: store)
             }
             .frame(width: 180)
             Divider()

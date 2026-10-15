@@ -29,7 +29,7 @@ struct Dust3DEditorApp: App {
                 Button("Select All Nodes") { store?.selectAll() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
-                Button("Clear Node Selection") { store?.select(nil) }
+                Button("Clear Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 Menu("Transform Selected Nodes") {
                     ForEach(SelectionTransform.allCases, id: \.self) { transform in
@@ -39,6 +39,13 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.canTransform != true)
                 Button("Reverse Edges Between Selected Nodes") { store?.reverseSelectedEdges() }
                     .disabled(store?.isWorking != false || store?.snapshot?.reversibleEdges.isEmpty != false)
+                Button("Reverse Selected Edge") {
+                    if let id = store?.snapshot?.selectedEdgeID { store?.reverseEdge(id) }
+                }
+                .disabled(store?.isWorking != false || store?.snapshot?.canEditSelectedEdge != true)
+                Button("Delete Selected Edge") { store?.deleteSelection() }
+                    .keyboardShortcut(.delete, modifiers: [])
+                    .disabled(store?.isWorking != false || store?.snapshot?.canEditSelectedEdge != true)
                 Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
                     Toggle(

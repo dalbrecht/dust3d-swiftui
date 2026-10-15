@@ -15,7 +15,9 @@ struct NodeInspector: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Node inspector").font(.headline)
             NodeClipboardMenu(store: store)
-            if (store.snapshot?.selectedIDs.count ?? 0) > 1 {
+            if let edge = store.snapshot?.selectedEdge {
+                EdgeInspector(store: store, edge: edge)
+            } else if (store.snapshot?.selectedIDs.count ?? 0) > 1 {
                 GroupInspector(store: store)
             } else if let node = store.snapshot?.selectedNode {
                 let targets = store.snapshot?.connectionTargets ?? []
