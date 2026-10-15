@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add front/side marquee selection and lock-aware group position/radius scaling around the editable selection center, with atomic undo/redo.
+
 - Add multi-node selection, group dragging and relative movement, and atomic group deletion with lock-aware undo/redo and lossless bulk archive commands.
 
 - Add per-window X/Y/Z and radius interaction locks with canvas controls, inspector protection, lock-aware drag previews and Canvas menu keyboard commands.

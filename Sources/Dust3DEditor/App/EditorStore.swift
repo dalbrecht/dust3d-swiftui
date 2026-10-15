@@ -54,6 +54,9 @@ final class EditorStore {
     func selectAll() { perform(commits: false) { try await $0.selectAll() } }
     func move(id: String, to position: NodePosition) { perform { try await $0.move(id: id, to: position) } }
     func moveSelection(by delta: NodePosition) { perform { try await $0.moveSelection(by: delta) } }
+    func scaleSelection(positionFactor: Double, radiusFactor: Double) {
+        perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
+    }
     func deleteSelection() { perform { try await $0.deleteSelection() } }
 
     func edit(id: String, position: NodePosition, radius: Double) {
@@ -178,6 +181,7 @@ final class EditorStore {
             switch editor {
             case .notLoaded: return "Open a document before editing."
             case .readOnlyNode: return "This node belongs to a locked or hidden part."
+            case .invalidScale: return "Enter a finite, positive scale factor. Use 1 to keep the current size."
             }
         }
         return error.localizedDescription

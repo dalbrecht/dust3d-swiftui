@@ -87,6 +87,8 @@ private struct GroupInspector: View {
     @State private var x = 0.0
     @State private var y = 0.0
     @State private var z = 0.0
+    @State private var positionFactor = 1.0
+    @State private var radiusFactor = 1.0
 
     var body: some View {
         let selected = store.snapshot?.selectedNodes ?? []
@@ -102,6 +104,20 @@ private struct GroupInspector: View {
             }
             Button("Move Selection") { store.moveSelection(by: .init(x: x, y: y, z: z)) }
                 .buttonStyle(.borderedProminent)
+            Divider()
+            Text("Scale around selection center").font(.headline)
+            Form {
+                TextField("Positions ×", value: $positionFactor, format: .number)
+                    .disabled(store.locks.isSuperset(of: [.x, .y, .z]))
+                TextField("Radii ×", value: $radiusFactor, format: .number)
+                    .disabled(store.locks.contains(.radius))
+            }
+            Button("Scale Selection") {
+                store.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor)
+            }
+            Text("Positive factors. 1 keeps the current size. The center uses editable nodes only.")
+                .font(.caption).foregroundStyle(.secondary)
+            Divider()
             Button("Delete Selected Nodes", role: .destructive) { store.deleteSelection() }
             Text("Read-only nodes stay fixed. Each move or deletion is one undo step.")
                 .font(.caption).foregroundStyle(.secondary)

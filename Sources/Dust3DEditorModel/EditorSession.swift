@@ -28,6 +28,9 @@ public actor EditorSession {
     public func moveSelection(by delta: NodePosition) throws -> EditorSnapshot {
         try update { try $0.moveSelection(by: delta) }
     }
+    public func scaleSelection(positionFactor: Double, radiusFactor: Double) throws -> EditorSnapshot {
+        try update { try $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
+    }
     public func move(id: String, to position: NodePosition) throws -> EditorSnapshot {
         try update { try $0.move(id: id, to: position) }
     }

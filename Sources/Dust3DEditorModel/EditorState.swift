@@ -12,6 +12,7 @@ public enum EditingConstraint: String, CaseIterable, Sendable {
 public enum EditorError: Error, Equatable, Sendable {
     case notLoaded
     case readOnlyNode
+    case invalidScale
 }
 
 /// Immutable presentation snapshot crossing from the editing actor to its window.
@@ -105,6 +106,35 @@ public struct EditorState: Sendable {
                 value: .init(
                     position: .init(x: position.x + delta.x, y: position.y + delta.y, z: position.z + delta.z),
                     radius: node.value.radius))
+        }
+        try apply([.setNodes(updates)])
+    }
+
+    /// Scale editable node positions about their centroid and radii independently.
+    /// Factors must be finite and positive. Locks and read-only parts retain their values.
+    public mutating func scaleSelection(positionFactor: Double, radiusFactor: Double) throws {
+        guard positionFactor.isFinite, radiusFactor.isFinite, positionFactor > 0, radiusFactor > 0 else {
+            throw EditorError.invalidScale
+        }
+        let nodes = snapshot.selectedNodes.filter(\.isEditable)
+        guard !nodes.isEmpty else { return }
+        let count = Double(nodes.count)
+        let center = NodePosition(
+            x: nodes.reduce(0) { $0 + $1.value.position.x } / count,
+            y: nodes.reduce(0) { $0 + $1.value.position.y } / count,
+            z: nodes.reduce(0) { $0 + $1.value.position.z } / count)
+        let updates = nodes.map { node in
+            let position = node.value.position
+            return NodeUpdate(
+                id: node.id,
+                value: .init(
+                    position: positionFactor == 1
+                        ? position
+                        : .init(
+                            x: center.x + (position.x - center.x) * positionFactor,
+                            y: center.y + (position.y - center.y) * positionFactor,
+                            z: center.z + (position.z - center.z) * positionFactor),
+                    radius: node.value.radius * radiusFactor))
         }
         try apply([.setNodes(updates)])
     }
