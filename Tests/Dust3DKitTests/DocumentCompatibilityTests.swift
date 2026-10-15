@@ -5,6 +5,30 @@ import Foundation
 import XCTest
 
 final class DocumentCompatibilityTests: XCTestCase {
+    func testOriginEditsTranslatePinnedCoreGeometryWithoutMovingDocumentNodes() throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url))
+        let origin = try XCTUnwrap(original.origin())
+        let edited = try original.applying(
+            .setOrigin(.init(x: origin.x + 0.25, y: origin.y + 0.125, z: origin.z - 0.5)))
+        let before = try MeshLoader.load(data: original.encoded())
+        let after = try MeshLoader.load(data: edited.encoded())
+        XCTAssertEqual(before.triangleCount, after.triangleCount)
+        XCTAssertEqual(before.nodeCount, after.nodeCount)
+        XCTAssertEqual(before.partCount, after.partCount)
+        for axis in 0..<3 {
+            let expected: [Float] = [-0.25, 0.125, -0.5]
+            XCTAssertEqual(
+                try XCTUnwrap(after.vertices.map { $0.position[axis] }.min())
+                    - XCTUnwrap(before.vertices.map { $0.position[axis] }.min()), expected[axis], accuracy: 0.00001)
+            XCTAssertEqual(
+                try XCTUnwrap(after.vertices.map { $0.position[axis] }.max())
+                    - XCTUnwrap(before.vertices.map { $0.position[axis] }.max()), expected[axis], accuracy: 0.00001)
+        }
+        for node in try original.editorContents().nodes { XCTAssertEqual(try edited.node(id: node.id), node.value) }
+    }
+
     func testLocalAlignmentRemainsReadableByPinnedEngine() throws {
         let url = try XCTUnwrap(
             Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))

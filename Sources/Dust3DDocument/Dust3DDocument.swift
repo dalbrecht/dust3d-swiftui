@@ -5,6 +5,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidArchive
     case invalidXML
     case invalidReferenceImage
+    case invalidOrigin
     case limitExceeded
     case missingNode(String)
     case missingPart(String)
@@ -55,6 +56,8 @@ public struct NodeUpdate: Sendable {
 
 /// Atomic node and graph commands. Unknown archive data remains untouched.
 public enum DocumentCommand: Sendable {
+    /// Set finite canvas origin coordinates within ±1,000,000 without moving any nodes.
+    case setOrigin(NodePosition)
     /// Rename the legacy part name, preserving component names. Empty input restores the default label.
     case setPartName(id: String, name: String)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
@@ -208,6 +211,21 @@ public struct Dust3DDocument: Sendable {
         items.first { $0.name == "canvas.png" && $0.type == "asset" }?.range.count
     }
 
+    /// Read a complete finite bounded canvas origin, or nil for missing/unsupported coordinates.
+    /// Unsupported source attributes remain intact until an explicit origin edit or Undo.
+    public func origin() throws -> NodePosition? {
+        let model = try Self.xml(modelXML, root: "canvas")
+        return model.rootElement().flatMap(Self.decodeOrigin)
+    }
+
+    private static func decodeOrigin(_ root: XMLElement) -> NodePosition? {
+        let numbers = ["originX", "originY", "originZ"].compactMap {
+            root.attribute(forName: $0)?.stringValue.flatMap(Double.init)
+        }
+        guard numbers.count == 3, numbers.allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }) else { return nil }
+        return NodePosition(x: numbers[0], y: numbers[1], z: numbers[2])
+    }
+
     /// Read supported numeric fields of a node, or throw for a missing/invalid node.
     public func node(id: String) throws -> EditableNode {
         let xml = try Self.xml(modelXML, root: "canvas")
@@ -241,7 +259,7 @@ public struct Dust3DDocument: Sendable {
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
         switch command {
-        case .setNode, .setNodes, .setReferenceImagePNG: contents = DocumentContents(nodes: [], edges: [])
+        case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin: contents = DocumentContents(nodes: [], edges: [])
         default: contents = try editorContents()
         }
         let model = try Self.xml(modelXML, root: "canvas")
@@ -271,6 +289,22 @@ public struct Dust3DDocument: Sendable {
         func edgeElements() -> [XMLElement] { root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] }
         switch command {
         case .setReferenceImagePNG(let png): return try replacingReferenceImage(png)
+        case .setOrigin(let position):
+            guard [position.x, position.y, position.z].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }) else {
+                throw DocumentError.invalidOrigin
+            }
+            if Self.decodeOrigin(root) == position { return self }
+            for (name, value) in [("originX", position.x), ("originY", position.y), ("originZ", position.z)] {
+                let text = String(value == 0 ? 0 : value)
+                if let attribute = root.attribute(forName: name) {
+                    attribute.stringValue = text
+                } else {
+                    let attribute = XMLNode(kind: .attribute)
+                    attribute.name = name
+                    attribute.stringValue = text
+                    root.addAttribute(attribute)
+                }
+            }
         case .setPartName(let id, let name):
             guard name.utf8.count <= 1024,
                 name.unicodeScalars.allSatisfy({
@@ -508,6 +542,13 @@ public struct Dust3DDocument: Sendable {
                     {
                         container.detach()
                     }
+                }
+            }
+            for key in ["originX", "originY", "originZ"] {
+                if let attribute = model.rootElement()?.attribute(forName: key),
+                    let number = attribute.stringValue.flatMap(Double.init), number.isFinite, abs(number) <= 1_000_000
+                {
+                    attribute.stringValue = String(number == 0 ? 0 : number)
                 }
             }
             for node in try Self.nodes(model) {
