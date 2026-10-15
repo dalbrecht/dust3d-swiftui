@@ -4,7 +4,9 @@ import Foundation
 import XCTest
 
 final class EditorStateTests: XCTestCase {
-    private func document(locked: Bool = false, visible: Bool = true, edge: String? = nil) throws -> Dust3DDocument {
+    private func document(locked: Bool = false, visible: Bool = true, edge: String? = nil, unassigned: Bool = false)
+        throws -> Dust3DDocument
+    {
         let xml = """
             <canvas><nodes>
             <node id="a" partId="p" name="Tip" x="0" y="0" z="0.25" radius="0.1"/>
@@ -12,7 +14,7 @@ final class EditorStateTests: XCTestCase {
             </nodes><parts><part id="p" locked="\(locked)" visible="\(visible)"/></parts>
             <edges>\(edge ?? "<edge id='e' from='a' to='b'/>")</edges></canvas>
             """
-        let model = Data(xml.utf8)
+        let model = Data((unassigned ? xml.replacingOccurrences(of: " partId=\"p\"", with: "") : xml).utf8)
         let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
         let prefix = "DUST3D 1.0 xml "
         let bytes =
@@ -200,6 +202,29 @@ final class EditorStateTests: XCTestCase {
         XCTAssertTrue(removed.edges.isEmpty)
         let moved = try await session.apply([.setNode(id: "a", position: .init(x: 1, y: 2, z: 3), radius: 0.5)])
         XCTAssertEqual(moved.nodes.first?.value.radius, 0.5)
+    }
+
+    func testConnectionTargetsExcludeNeighborsAndReadonlyOrOtherParts() throws {
+        var state = try EditorState(document: document())
+        XCTAssertTrue(state.snapshot.connectionTargets.isEmpty)
+        try state.select("a")
+        XCTAssertTrue(state.snapshot.connectionTargets.isEmpty)
+        try state.apply([
+            .addNode(id: "c", partID: "p", componentID: nil, position: .init(x: 0, y: 1, z: 0), radius: 0.1),
+            .addNode(id: "d", partID: "p", componentID: nil, position: .init(x: 0, y: 2, z: 0), radius: 0.1),
+            .addEdge(id: "other", from: "c", to: "d"),
+            .addNode(
+                id: "foreign", partID: "q", componentID: "component-q", position: .init(x: 0, y: 0, z: 0), radius: 0.1),
+        ])
+        XCTAssertEqual(state.snapshot.connectionTargets.map(\.id), ["c", "d"])
+        try state.select("b")
+        XCTAssertEqual(state.snapshot.connectionTargets.map(\.id), ["c", "d"])
+        var locked = try EditorState(document: document(locked: true))
+        try locked.select("a")
+        XCTAssertTrue(locked.snapshot.connectionTargets.isEmpty)
+        var unassigned = try EditorState(document: document(unassigned: true))
+        try unassigned.select("a")
+        XCTAssertTrue(unassigned.snapshot.connectionTargets.isEmpty)
     }
 
 }

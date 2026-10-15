@@ -186,4 +186,34 @@ final class TopologyTests: XCTestCase {
         }
     }
 
+    func testNewPartCannotExceedComponentLimitButExistingPartCanGrow() throws {
+        let components = (0..<10_000).map {
+            "<component id='\(String(format: "{00000000-0000-4000-8000-%012d}", $0))'/>"
+        }.joined()
+        for namespace in ["", "xmlns='urn:dust3d'"] {
+            let model = Data(
+                "<canvas \(namespace)><nodes/><parts><part id='p'/></parts><components>\(components)</components></canvas>"
+                    .utf8)
+            let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+            let prefix = "DUST3D 1.0 xml "
+            let original = try Dust3DDocument(
+                data: Data(
+                    (prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+                    + model)
+            XCTAssertThrowsError(
+                try original.applying(
+                    .addNode(
+                        id: "a", partID: "new", componentID: "new-component", position: .init(x: 0, y: 0, z: 0),
+                        radius: 0.1
+                    ))
+            ) { error in
+                XCTAssertEqual(error as? DocumentError, .limitExceeded)
+            }
+            let extended = try original.applying(
+                .addNode(id: "a", partID: "p", componentID: nil, position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+            XCTAssertEqual(try extended.editorContents().nodes.count, 1)
+            XCTAssertEqual(original.modelXML, model)
+        }
+    }
+
 }

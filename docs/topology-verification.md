@@ -7,7 +7,7 @@ archive and selection; deletion clears invalid selection. Undo/redo restores
 complete archive snapshots, including the original bytes. Empty part/component
 metadata remains preserved when its last node is removed.
 
-`make ci` passes 58 tests, formatting, native builds and both-app Qt-link checks.
+`make ci` passes 60 tests, formatting, native builds and both-app Qt-link checks.
 New tests began red before API implementation. They cover create/connect/delete,
 incident-edge cleanup, exact undo archives, rejected duplicate/self/missing edges,
 invalid node inputs, atomic batches and cancellation, hidden/locked guards,
@@ -17,8 +17,8 @@ native engine. A second engine regression confirms that preserving an empty
 part after deleting its last node does not break another part. The engine integration test exposed missing blank-document
 origins; explicit origins fix new-model generation.
 
-Measured executable-line coverage: document library 606/618 (98.06%), editor model
-144/150 (96%), pure editor state 66/66 and undo history 91/91 (100%). Mesh library
+Measured executable-line coverage: document library 610/620 (98.39%), editor model
+167/173 (96.53%), pure editor state 89/89 and undo history 91/91 (100%). Mesh library
 remains 66/67 (98.51%). SwiftUI/GPU and inherited C++ are outside these metrics.
 
 Manual native app checks created two connected nodes in a blank document,
@@ -44,3 +44,9 @@ an empty edge container as a side effect.
 Automated review identified missing-container net-zero transactions. Regressions
 now cover absent nodes/edges, empty containers, attributes, comments, namespaces
 and CDATA. Canonical comparison ignores only metadata-free empty graph containers.
+
+Re-review findings are covered by a 10,000-component boundary test (new parts
+rejected; existing-part growth allowed) and pure connection-target tests. Native
+QA in an isolated app confirmed the middle of a three-node chain has a disabled
+Connect menu, and an endpoint offers only the unconnected node. The running
+editor’s edited document was left untouched.

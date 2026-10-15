@@ -17,6 +17,20 @@ public struct EditorSnapshot: Sendable {
     public let documentRevision: Int
 
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
+    /// Editable same-part nodes that are not already joined to the current selection.
+    public var connectionTargets: [DocumentNode] {
+        guard let selected = selectedNode, selected.isEditable, let partID = selected.partID else { return [] }
+        let neighbors = Set(
+            edges.compactMap { edge -> String? in
+                if edge.fromID == selected.id { return edge.toID }
+                if edge.toID == selected.id { return edge.fromID }
+                return nil
+            })
+        return nodes.filter {
+            $0.id != selected.id && $0.isEditable && $0.partID == partID && !neighbors.contains($0.id)
+        }
+    }
+
 }
 
 /// One document's selection and undo state. Failed edits never publish partial state.

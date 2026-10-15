@@ -14,6 +14,7 @@ struct NodeInspector: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Node inspector").font(.headline)
             if let node = store.snapshot?.selectedNode {
+                let targets = store.snapshot?.connectionTargets ?? []
                 Text(node.title).font(.title3)
                 Text(node.id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 Form {
@@ -33,15 +34,11 @@ struct NodeInspector: View {
                 .disabled(store.isWorking || !node.isEditable)
                 Divider()
                 Menu("Connect to…") {
-                    ForEach(
-                        (store.snapshot?.nodes ?? []).filter {
-                            $0.id != node.id && $0.partID == node.partID && $0.isEditable
-                        }
-                    ) { target in
+                    ForEach(targets) { target in
                         Button(target.title) { store.connect(to: target.id) }
                     }
                 }
-                .disabled(store.isWorking || !node.isEditable)
+                .disabled(store.isWorking || !node.isEditable || targets.isEmpty)
                 ForEach((store.snapshot?.edges ?? []).filter { $0.fromID == node.id || $0.toID == node.id }) { edge in
                     Button(
                         "Disconnect \(store.snapshot?.nodes.first(where: { $0.id == (edge.fromID == node.id ? edge.toID : edge.fromID) })?.title ?? "node")"
