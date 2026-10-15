@@ -204,7 +204,7 @@ final class EditorStateTests: XCTestCase {
         XCTAssertEqual(moved.nodes.first?.value.radius, 0.5)
     }
 
-    func testConnectionTargetsExcludeNeighborsAndReadonlyOrOtherParts() throws {
+    func testConnectionTargetsExcludeNeighborsAndReadonlyNodes() throws {
         var state = try EditorState(document: document())
         XCTAssertTrue(state.snapshot.connectionTargets.isEmpty)
         try state.select("a")
@@ -216,15 +216,17 @@ final class EditorStateTests: XCTestCase {
             .addNode(
                 id: "foreign", partID: "q", componentID: "component-q", position: .init(x: 0, y: 0, z: 0), radius: 0.1),
         ])
-        XCTAssertEqual(state.snapshot.connectionTargets.map(\.id), ["c", "d"])
+        XCTAssertEqual(state.snapshot.connectionTargets.map(\.id), ["c", "d", "foreign"])
         try state.select("b")
-        XCTAssertEqual(state.snapshot.connectionTargets.map(\.id), ["c", "d"])
+        XCTAssertEqual(state.snapshot.connectionTargets.map(\.id), ["c", "d", "foreign"])
         var locked = try EditorState(document: document(locked: true))
         try locked.select("a")
         XCTAssertTrue(locked.snapshot.connectionTargets.isEmpty)
+        XCTAssertFalse(locked.snapshot.canAddNode)
         var unassigned = try EditorState(document: document(unassigned: true))
         try unassigned.select("a")
         XCTAssertTrue(unassigned.snapshot.connectionTargets.isEmpty)
+        XCTAssertTrue(unassigned.snapshot.canAddNode)
     }
 
 }

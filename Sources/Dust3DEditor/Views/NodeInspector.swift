@@ -48,6 +48,7 @@ struct NodeInspector: View {
                     }
                 }
                 .disabled(store.isWorking || !node.isEditable || targets.isEmpty)
+                .help("Joining parts uses the selected node's part settings. Undo restores both parts.")
                 ForEach((store.snapshot?.edges ?? []).filter { $0.fromID == node.id || $0.toID == node.id }) { edge in
                     let from = store.snapshot?.nodes.first { $0.id == edge.fromID }?.title ?? edge.fromID
                     let to = store.snapshot?.nodes.first { $0.id == edge.toID }?.title ?? edge.toID
