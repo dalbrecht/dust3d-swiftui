@@ -4,6 +4,7 @@ import Foundation
 public enum DocumentError: Error, Equatable, Sendable {
     case invalidArchive
     case invalidXML
+    case invalidReferenceImage
     case limitExceeded
     case missingNode(String)
     case invalidNode
@@ -52,6 +53,9 @@ public struct NodeUpdate: Sendable {
 
 /// Atomic node and graph commands. Unknown archive data remains untouched.
 public enum DocumentCommand: Sendable {
+    /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
+    /// Full raster decoding/validation belongs at the platform import boundary.
+    case setReferenceImagePNG(Data?)
     case setNode(id: String, position: NodePosition, radius: Double)
     case setNodes([NodeUpdate])
     case addNode(id: String, partID: String, componentID: String?, position: NodePosition, radius: Double)
@@ -177,6 +181,12 @@ public struct Dust3DDocument: Sendable {
         return Data(bytes[(payloadOffset + item.range.lowerBound)..<(payloadOffset + item.range.upperBound)])
     }
 
+    /// Qt-compatible reference image bytes, if canvas.png is an asset. Opaque input bytes are not decoded here.
+    public var referenceImagePNG: Data? {
+        guard items.contains(where: { $0.name == "canvas.png" && $0.type == "asset" }) else { return nil }
+        return asset(named: "canvas.png")
+    }
+
     /// Read supported numeric fields of a node, or throw for a missing/invalid node.
     public func node(id: String) throws -> EditableNode {
         let xml = try Self.xml(modelXML, root: "canvas")
@@ -210,7 +220,7 @@ public struct Dust3DDocument: Sendable {
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
         switch command {
-        case .setNode, .setNodes: contents = DocumentContents(nodes: [], edges: [])
+        case .setNode, .setNodes, .setReferenceImagePNG: contents = DocumentContents(nodes: [], edges: [])
         default: contents = try editorContents()
         }
         let model = try Self.xml(modelXML, root: "canvas")
@@ -239,6 +249,7 @@ public struct Dust3DDocument: Sendable {
         }
         func edgeElements() -> [XMLElement] { root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] }
         switch command {
+        case .setReferenceImagePNG(let png): return try replacingReferenceImage(png)
         case .addNode(let id, let partID, let componentID, let position, let radius):
             guard !id.isEmpty, !partID.isEmpty, !contents.nodes.contains(where: { $0.id == id }),
                 contents.nodes.count < 10_000,
@@ -390,8 +401,34 @@ public struct Dust3DDocument: Sendable {
         return next
     }
 
-    // Commands only replace model XML. Normalize supported numeric spellings and XML
-    // serialization when detecting net-zero transactions; retain all unknown data.
+    // Normalize known serialization differences for net-zero transactions, while comparing every asset and header field.
+    func hasSameContents(as other: Dust3DDocument) throws -> Bool {
+        func canonicalHeader(_ data: Data) throws -> Data {
+            let header = try Self.xml(data, root: "ds3")
+            header.isStandalone = false
+            for child in header.rootElement()?.children ?? [] {
+                guard let element = child as? XMLElement else { continue }
+                element.removeAttribute(forName: "offset")
+                element.removeAttribute(forName: "size")
+            }
+            return header.xmlData(options: [.nodePreserveAll])
+        }
+        guard items.count == other.items.count,
+            try canonicalHeader(header) == canonicalHeader(other.header)
+        else { return false }
+        for (index, item) in items.enumerated() where index != modelIndex {
+            let counterpart = other.items[index]
+            guard
+                bytes[(payloadOffset + item.range.lowerBound)..<(payloadOffset + item.range.upperBound)]
+                    == other.bytes[
+                        (other.payloadOffset + counterpart.range.lowerBound)..<(other.payloadOffset
+                            + counterpart.range.upperBound)]
+            else { return false }
+        }
+        return try hasSameModel(as: other)
+    }
+
+    /// Model-only transactions cannot alter assets; avoid traversing opaque payloads on interactive graph edits.
     func hasSameModel(as other: Dust3DDocument) throws -> Bool {
         func canonical(_ data: Data) throws -> Data {
             let model = try Self.xml(data, root: "canvas")
@@ -428,31 +465,77 @@ public struct Dust3DDocument: Sendable {
 
     private func replacingModel(_ model: Data) throws -> Dust3DDocument {
         guard model.count <= 16 * 1024 * 1024 else { throw DocumentError.limitExceeded }
-        let old = items[modelIndex].range
-        let delta = model.count - old.count
+        return try replacingItem(at: modelIndex, with: model)
+    }
+
+    private func replacingReferenceImage(_ png: Data?) throws -> Dust3DDocument {
+        if let png {
+            guard png.count <= 32 * 1024 * 1024 else { throw DocumentError.limitExceeded }
+            guard png.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) else {
+                throw DocumentError.invalidReferenceImage
+            }
+        }
+        if let index = items.firstIndex(where: { $0.name == "canvas.png" }) {
+            guard items[index].type == "asset" else { throw DocumentError.conflictingAsset("canvas.png") }
+            if png == referenceImagePNG { return self }
+            return try replacingItem(at: index, with: png)
+        }
+        guard let png else { return self }
+        guard items.count < 10_000, bytes.count - payloadOffset <= 256 * 1024 * 1024 - png.count else {
+            throw DocumentError.limitExceeded
+        }
+        let xml = try Self.xml(header, root: "ds3")
+        let asset = XMLElement(name: "asset")
+        for (name, value) in [
+            ("name", "canvas.png"), ("offset", String(bytes.count - payloadOffset)), ("size", String(png.count)),
+        ] {
+            let attribute = XMLNode(kind: .attribute)
+            attribute.name = name
+            attribute.stringValue = value
+            asset.addAttribute(attribute)
+        }
+        xml.rootElement()?.addChild(asset)
+        var payload = Data(bytes[payloadOffset...])
+        payload.append(png)
+        return try rebuildingArchive(xml, payload: payload)
+    }
+
+    /// Replace or remove one item, preserving all unrelated payload bytes, including gaps and trailing data.
+    private func replacingItem(at itemIndex: Int, with replacement: Data?) throws -> Dust3DDocument {
+        let old = items[itemIndex].range
+        let data = replacement ?? Data()
+        let nextPayloadCount = bytes.count - payloadOffset - old.count + data.count
+        guard nextPayloadCount <= 256 * 1024 * 1024 else { throw DocumentError.limitExceeded }
+        let delta = data.count - old.count
         let xml = try Self.xml(header, root: "ds3")
         let elements = (xml.rootElement()?.children ?? []).compactMap { $0 as? XMLElement }
         for (index, item) in items.enumerated() {
-            if index == modelIndex {
-                elements[index].attribute(forName: "size")?.stringValue = String(model.count)
+            if index == itemIndex {
+                if replacement != nil {
+                    elements[index].attribute(forName: "size")?.stringValue = String(data.count)
+                } else {
+                    elements[index].detach()
+                }
             } else if item.range.lowerBound >= old.upperBound {
                 elements[index].attribute(forName: "offset")?.stringValue = String(item.range.lowerBound + delta)
             } else if item.range.isEmpty && old.contains(item.range.lowerBound) {
-                // An empty asset has no overlapping bytes, but its anchor must stay in bounds after shrinkage.
+                // Empty items have no overlapping bytes, but their anchors must remain in bounds after shrinkage.
                 elements[index].attribute(forName: "offset")?.stringValue = String(
-                    min(item.range.lowerBound, old.lowerBound + model.count))
+                    min(item.range.lowerBound, old.lowerBound + data.count))
             }
         }
-        let header = xml.xmlData(options: [.nodePreserveAll])
-        // Fixed-width decimal offset makes rebuilding independent of digit growth.
-        let start = Data([0xd3, 0x3d]) + Data("DUST3D 1.0 xml ".utf8)
-        let offset = start.count + 12 + header.count
-        var result = start + Data(String(format: "%010d\r\n", offset).utf8) + header
         var payload = Data(bytes[payloadOffset...])
-        payload.replaceSubrange(old, with: model)
-        guard result.count <= 256 * 1024 * 1024 - payload.count else { throw DocumentError.limitExceeded }
-        result.append(payload)
-        return try Dust3DDocument(data: result)
+        payload.replaceSubrange(old, with: data)
+        return try rebuildingArchive(xml, payload: payload)
+    }
+
+    private func rebuildingArchive(_ xml: XMLDocument, payload: Data) throws -> Dust3DDocument {
+        let header = xml.xmlData(options: [.nodePreserveAll])
+        guard header.count <= 1024 * 1024 else { throw DocumentError.limitExceeded }
+        let start = Data([0xD3, 0x3D]) + Data("DUST3D 1.0 xml ".utf8)
+        let offset = start.count + 12 + header.count
+        guard offset <= 256 * 1024 * 1024 - payload.count else { throw DocumentError.limitExceeded }
+        return try Dust3DDocument(data: start + Data(String(format: "%010d\r\n", offset).utf8) + header + payload)
     }
 
     /// Copy selected graph objects and their linked-profile dependencies into a bounded fragment.

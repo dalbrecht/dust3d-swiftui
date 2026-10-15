@@ -214,6 +214,7 @@ final class EditorStore {
             switch document {
             case .invalidArchive: return "This file is not a supported Dust3D 1.0 archive."
             case .invalidXML: return "The document contains invalid or unsupported XML."
+            case .invalidReferenceImage: return "The reference image must contain PNG data."
             case .limitExceeded: return "The document or edit exceeds supported size or undo-history limits."
             case .missingNode(let id): return "Node \(id) is not present in this document."
             case .invalidNode: return "The document contains invalid node, part, or edge data."

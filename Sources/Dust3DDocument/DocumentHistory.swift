@@ -4,7 +4,8 @@ public struct DocumentHistory: Sendable {
     private var undoStack: [Dust3DDocument] = []
     private var redoStack: [Dust3DDocument] = []
     private var transactionStart: Dust3DDocument?
-    private var transactionChangesTopology = false
+    private var transactionRequiresModelComparison = false
+    private var transactionChangesAssets = false
     private var transactionNodes: Set<String> = []
     private var saved: Dust3DDocument
     private let maximumEntries: Int
@@ -34,8 +35,8 @@ public struct DocumentHistory: Sendable {
         } else {
             switch command {
             case .setNode(let id, _, _): transactionNodes.insert(id)
-            case .setNodes: transactionChangesTopology = true
-            default: transactionChangesTopology = true
+            case .setReferenceImagePNG, .pasteNodes: transactionChangesAssets = true
+            default: transactionRequiresModelComparison = true
             }
         }
         document = next
@@ -50,9 +51,11 @@ public struct DocumentHistory: Sendable {
     public mutating func endTransaction() throws {
         guard let start = transactionStart else { throw DocumentError.noTransaction }
         let unchanged =
-            try transactionChangesTopology
-            ? start.hasSameModel(as: document)
-            : transactionNodes.allSatisfy { try start.node(id: $0) == document.node(id: $0) }
+            try transactionChangesAssets
+            ? start.hasSameContents(as: document)
+            : transactionRequiresModelComparison
+                ? start.hasSameModel(as: document)
+                : transactionNodes.allSatisfy { try start.node(id: $0) == document.node(id: $0) }
         if unchanged {
             document = start
         } else {
@@ -61,7 +64,8 @@ public struct DocumentHistory: Sendable {
         }
         transactionStart = nil
         transactionNodes.removeAll()
-        transactionChangesTopology = false
+        transactionRequiresModelComparison = false
+        transactionChangesAssets = false
     }
 
     public mutating func cancelTransaction() {
@@ -69,7 +73,8 @@ public struct DocumentHistory: Sendable {
         document = start
         transactionStart = nil
         transactionNodes.removeAll()
-        transactionChangesTopology = false
+        transactionRequiresModelComparison = false
+        transactionChangesAssets = false
     }
 
     @discardableResult public mutating func undo() -> Bool {
