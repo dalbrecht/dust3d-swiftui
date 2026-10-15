@@ -90,12 +90,9 @@ final class EditorStore {
         }
     }
 
-    func pasteNodes(from pasteboard: EditorPasteboard) {
-        guard !isWorking, !stopped, snapshot != nil else { return }
-        do {
-            let data = try pasteboard.read()
-            perform { try await $0.paste(data: data) }
-        } catch { errorMessage = Self.message(error) }
+    /// The system PasteButton delivers data asynchronously; the session validates it away from the UI actor.
+    func pasteNodes(data: Data) {
+        perform { try await $0.paste(data: data) }
     }
 
     func deleteSelection() { perform { try await $0.deleteSelection() } }
@@ -229,7 +226,6 @@ final class EditorStore {
         }
         if let pasteboard = error as? PasteboardError {
             switch pasteboard {
-            case .noNodes: return "The clipboard does not contain Dust3D nodes."
             case .writeFailed: return "The clipboard could not be written. No nodes were removed."
             }
         }

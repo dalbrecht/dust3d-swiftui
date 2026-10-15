@@ -21,11 +21,13 @@ struct EditorClipboardCommands: Commands {
             Button("Copy") { route(#selector(NSText.copy(_:))) { store?.copyNodes(to: pasteboard) } }
                 .keyboardShortcut("c")
                 .disabled(textView.map { $0.selectedRange().length == 0 } ?? (store?.canCopyNodes != true))
-            Button("Paste") { route(#selector(NSText.paste(_:))) { store?.pasteNodes(from: pasteboard) } }
-                .keyboardShortcut("v")
-                .disabled(
-                    textView.map { !$0.isEditable }
-                        ?? (store?.isWorking != false || store?.snapshot == nil || !pasteboard.hasNodes))
+            if let textView {
+                Button("Paste") { NSApp.sendAction(#selector(NSText.paste(_:)), to: textView, from: nil) }
+                    .keyboardShortcut("v")
+                    .disabled(!textView.isEditable)
+            } else {
+                NodeClipboardPasteButton(store: store).keyboardShortcut("v")
+            }
             Divider()
             Button("Select All") { route(#selector(NSText.selectAll(_:))) { store?.selectAll() } }
                 .keyboardShortcut("a")
@@ -49,8 +51,7 @@ struct NodeClipboardMenu: View {
             Button("Cut Editable Nodes") { store.copyNodes(cut: true, to: pasteboard) }
                 .disabled(!store.canCutNodes)
                 .help("Copies editable selected nodes and embedded assets, then removes those nodes in one undo step.")
-            Button("Paste Nodes") { store.pasteNodes(from: pasteboard) }
-                .disabled(store.isWorking || store.snapshot == nil || !pasteboard.hasNodes)
+            NodeClipboardPasteButton(store: store).accessibilityLabel("Paste Nodes")
         }
         .accessibilityLabel("Node clipboard")
     }
