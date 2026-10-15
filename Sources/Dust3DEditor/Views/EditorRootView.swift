@@ -76,6 +76,8 @@ struct EditorRootView: View {
                         .controlSize(.small)
                         .disabled(store.isWorking || store.snapshot == nil)
                         .padding(.horizontal, 12).padding(.bottom, 8)
+                        ReferenceImageControls(store: store)
+                            .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
                         NodeCanvas(store: store)
                     }

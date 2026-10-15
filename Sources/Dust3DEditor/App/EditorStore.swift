@@ -1,3 +1,4 @@
+import CoreGraphics
 import Dust3DDocument
 import Dust3DEditorModel
 import Dust3DKit
@@ -18,11 +19,20 @@ final class EditorStore {
     var plane = EditingPlane.front
     var isWireframe = false
     var cameraReset = 0
+    private(set) var referenceImage: CGImage?
+    private(set) var referenceImageError: String?
+    private(set) var isLoadingReferenceImage = false
+    var showsReferenceImage = true
+    var referenceImageOpacity = 0.5
+    var hasReferenceImage: Bool { snapshot?.document.hasReferenceImage == true }
     var onDocumentChanged: ((Data) -> Void)?
     private let session = EditorSession()
     private let preview = EditorPreviewService()
+    private let referenceImages = ReferenceImageService()
     private var operation: Task<Void, Never>?
     private var generation: Task<Void, Never>?
+    private var referenceGeneration: Task<Void, Never>?
+    private var referenceRequestID = UUID()
     private var stopped = false
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
@@ -37,9 +47,11 @@ final class EditorStore {
             let next = try await session.open(data: data)
             guard !Task.isCancelled, !stopped else { return }
             snapshot = next
+            referenceImage = nil
             fit()
             previewState.clear()
             generate(next)
+            refreshReferenceImage(next, forceFit: true)
         } catch {
             if !Task.isCancelled { errorMessage = Self.message(error) }
         }
@@ -95,7 +107,7 @@ final class EditorStore {
 
     /// The system PasteButton delivers data asynchronously; the session validates it away from the UI actor.
     func pasteNodes(data: Data) {
-        perform { try await $0.paste(data: data) }
+        perform(reloadReferenceImage: true) { try await $0.paste(data: data) }
     }
 
     func deleteSelection() { perform { try await $0.deleteSelection() } }
@@ -139,11 +151,24 @@ final class EditorStore {
 
     private static func identifier() -> String { "{\(UUID().uuidString.lowercased())}" }
 
-    func undo() { perform { try await $0.undo() } }
-    func redo() { perform { try await $0.redo() } }
+    func undo() { perform(reloadReferenceImage: true) { try await $0.undo() } }
+    func redo() { perform(reloadReferenceImage: true) { try await $0.redo() } }
+
+    func importReferenceImage(from url: URL) {
+        let service = referenceImages
+        perform(reloadReferenceImage: true, regenerateMesh: false) { session in
+            let png = try await service.importImage(url: url)
+            return try await session.apply([.setReferenceImagePNG(png)])
+        }
+    }
+
+    func removeReferenceImage() {
+        perform(reloadReferenceImage: true, regenerateMesh: false) { try await $0.apply([.setReferenceImagePNG(nil)]) }
+    }
 
     func fit() {
-        bounds = CanvasBounds(nodes: snapshot?.nodes ?? [])
+        let aspect = showsReferenceImage ? referenceImage.map { Double($0.width) / Double($0.height) } : nil
+        bounds = CanvasBounds(nodes: snapshot?.nodes ?? [], referenceImageAspectRatio: aspect)
         cameraReset += 1
     }
 
@@ -151,12 +176,14 @@ final class EditorStore {
         stopped = true
         operation?.cancel()
         generation?.cancel()
+        referenceGeneration?.cancel()
         previewState.clear()
         onDocumentChanged = nil
     }
 
     private func perform(
-        commits: Bool = true, _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
+        commits: Bool = true, reloadReferenceImage: Bool = false, regenerateMesh: Bool = true,
+        _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
         guard !isWorking, !stopped else { return }
         isWorking = true
@@ -172,7 +199,8 @@ final class EditorStore {
                 errorMessage = nil
                 if commits && changed {
                     onDocumentChanged?(next.document.encoded())
-                    generate(next)
+                    if regenerateMesh { generate(next) }
+                    if reloadReferenceImage { refreshReferenceImage(next) }
                 }
             } catch {
                 if !Task.isCancelled { errorMessage = Self.message(error) }
@@ -193,7 +221,8 @@ final class EditorStore {
             do {
                 try await Task.sleep(for: .milliseconds(150))
                 let result = try await preview.generate(snapshot.document.encoded())
-                guard !Task.isCancelled, !stopped, self.snapshot?.documentRevision == snapshot.documentRevision else {
+                // Asset-only edits can advance document revision without changing geometry; request identity wins.
+                guard !Task.isCancelled, !stopped else {
                     return
                 }
                 previewState.succeed(result, requestID: requestID)
@@ -209,7 +238,42 @@ final class EditorStore {
         generate(snapshot)
     }
 
+    private func refreshReferenceImage(_ snapshot: EditorSnapshot, forceFit: Bool = false) {
+        referenceGeneration?.cancel()
+        let requestID = UUID()
+        referenceRequestID = requestID
+        referenceImageError = nil
+        isLoadingReferenceImage = snapshot.document.hasReferenceImage
+        if !snapshot.document.hasReferenceImage { referenceImage = nil }
+        referenceGeneration = Task {
+            do {
+                let result = try await referenceImages.preview(document: snapshot.document)
+                guard !Task.isCancelled, !stopped, referenceRequestID == requestID else { return }
+                referenceImage = result.image
+                isLoadingReferenceImage = false
+                if result.changed || forceFit { fit() }
+            } catch {
+                guard !Task.isCancelled, !stopped, referenceRequestID == requestID else { return }
+                referenceImage = nil
+                referenceImageError = Self.message(error)
+                isLoadingReferenceImage = false
+                fit()
+            }
+        }
+    }
+
     static func message(_ error: Error) -> String {
+        if let image = error as? ReferenceImageError {
+            switch image {
+            case .invalidImage:
+                return "The reference image could not be decoded. Its existing archive bytes remain preserved."
+            case .unsupportedFormat: return "Choose a PNG, JPEG, BMP, GIF or TIFF reference image."
+            case .imageTooLarge:
+                return "Reference images are limited to 32 MiB, 8192 pixels per side and 16 megapixels."
+            case .conversionFailed: return "The reference image could not be converted to PNG."
+            case .fileReadFailed(let cause): return "The reference image could not be read: \(cause)"
+            }
+        }
         if let document = error as? DocumentError {
             switch document {
             case .invalidArchive: return "This file is not a supported Dust3D 1.0 archive."

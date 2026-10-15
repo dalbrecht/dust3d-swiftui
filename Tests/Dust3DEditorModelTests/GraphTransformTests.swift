@@ -19,10 +19,10 @@ final class GraphTransformTests: XCTestCase {
     func testEveryTransformUsesEditableCentroidAndExactUndo() throws {
         let original = try document()
         let expected: [SelectionTransform: NodePosition] = [
-            .frontClockwise: .init(x: -1, y: 3, z: 0),
-            .frontCounterclockwise: .init(x: 3, y: 1, z: 0),
-            .sideClockwise: .init(x: 0, y: 5, z: 1),
-            .sideCounterclockwise: .init(x: 0, y: -1, z: 5),
+            .frontClockwise: .init(x: 3, y: 1, z: 0),
+            .frontCounterclockwise: .init(x: -1, y: 3, z: 0),
+            .sideClockwise: .init(x: 0, y: -1, z: 5),
+            .sideCounterclockwise: .init(x: 0, y: 5, z: 1),
             .flipX: .init(x: 2, y: 0, z: 0),
             .flipY: .init(x: 0, y: 4, z: 0),
             .flipZ: .init(x: 0, y: 0, z: 6),
@@ -144,7 +144,7 @@ final class GraphTransformTests: XCTestCase {
         _ = try await session.open(data: original.encoded())
         _ = try await session.selectAll()
         let transformed = try await session.transformSelection(.frontClockwise)
-        XCTAssertEqual(try transformed.document.node(id: "a").position, .init(x: -1, y: 3, z: 0))
+        XCTAssertEqual(try transformed.document.node(id: "a").position, .init(x: 3, y: 1, z: 0))
         let reversed = try await session.reverseSelectedEdges()
         XCTAssertEqual(reversed.edges[0].fromID, "b")
     }

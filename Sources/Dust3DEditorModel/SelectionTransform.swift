@@ -13,13 +13,13 @@ public enum SelectionTransform: String, CaseIterable, Sendable {
 
     func position(_ position: NodePosition, around center: NodePosition) -> NodePosition {
         switch self {
-        case .frontClockwise:
-            .init(x: center.x + (position.y - center.y), y: center.y - (position.x - center.x), z: position.z)
         case .frontCounterclockwise:
+            .init(x: center.x + (position.y - center.y), y: center.y - (position.x - center.x), z: position.z)
+        case .frontClockwise:
             .init(x: center.x - (position.y - center.y), y: center.y + (position.x - center.x), z: position.z)
-        case .sideClockwise:
-            .init(x: position.x, y: center.y - (position.z - center.z), z: center.z + (position.y - center.y))
         case .sideCounterclockwise:
+            .init(x: position.x, y: center.y - (position.z - center.z), z: center.z + (position.y - center.y))
+        case .sideClockwise:
             .init(x: position.x, y: center.y + (position.z - center.z), z: center.z - (position.y - center.y))
         case .flipX: .init(x: 2 * center.x - position.x, y: position.y, z: position.z)
         case .flipY: .init(x: position.x, y: 2 * center.y - position.y, z: position.z)

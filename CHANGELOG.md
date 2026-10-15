@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Import/render bounded native reference images with undoable removal, per-window opacity/visibility and lossless existing asset handling; align the canvas and clockwise transforms with Qt’s positive-Y-down image coordinates.
+
 - Add lossless, undoable Qt-compatible reference-image asset commands, bounded PNG bytes and asset-aware transaction change detection.
 
 - Make inspector Reset replace invalid or empty formatter drafts even when the underlying numeric values have not changed.

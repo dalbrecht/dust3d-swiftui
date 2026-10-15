@@ -32,22 +32,30 @@ public struct CanvasBounds: Sendable {
     let minimum: NodePosition
     let maximum: NodePosition
 
-    public init(nodes: [DocumentNode]) {
+    /// Fit visible nodes and, when present, an image-height-normalized reference rectangle.
+    public init(nodes: [DocumentNode], referenceImageAspectRatio: Double? = nil) {
         let visible = nodes.filter(\.isVisible)
+        let aspect = referenceImageAspectRatio.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+        let imageMaximum = NodePosition(x: aspect ?? 1, y: 1, z: aspect ?? 1)
         if visible.isEmpty {
             minimum = NodePosition(x: 0, y: 0, z: 0)
-            maximum = NodePosition(x: 1, y: 1, z: 1)
+            maximum = imageMaximum
         } else {
-            minimum = NodePosition(
+            let lower = NodePosition(
                 x: visible.map { $0.value.position.x - $0.value.radius }.min() ?? 0,
                 y: visible.map { $0.value.position.y - $0.value.radius }.min() ?? 0,
                 z: visible.map { $0.value.position.z - $0.value.radius }.min() ?? 0)
-            maximum = NodePosition(
+            let upper = NodePosition(
                 x: visible.map { $0.value.position.x + $0.value.radius }.max() ?? 1,
                 y: visible.map { $0.value.position.y + $0.value.radius }.max() ?? 1,
                 z: visible.map { $0.value.position.z + $0.value.radius }.max() ?? 1)
+            minimum = aspect == nil ? lower : .init(x: min(lower.x, 0), y: min(lower.y, 0), z: min(lower.z, 0))
+            maximum =
+                aspect == nil
+                ? upper : .init(x: max(upper.x, imageMaximum.x), y: max(upper.y, 1), z: max(upper.z, imageMaximum.z))
         }
     }
+
 }
 
 public struct CanvasProjection: Sendable {
@@ -72,7 +80,7 @@ public struct CanvasProjection: Sendable {
     public func point(for position: NodePosition) -> CanvasPoint {
         CanvasPoint(
             x: width / 2 + ((plane == .front ? position.x : position.z) - center.x) * scale,
-            y: height / 2 - (position.y - center.y) * scale)
+            y: height / 2 + (position.y - center.y) * scale)
     }
 
     /// Select visible node centers, including centers on the rectangle boundary.
@@ -120,7 +128,7 @@ public struct CanvasProjection: Sendable {
     {
         NodePosition(
             x: position.x + (plane == .front && !locks.contains(.x) ? delta.x / scale : 0),
-            y: position.y - (locks.contains(.y) ? 0 : delta.y / scale),
+            y: position.y + (locks.contains(.y) ? 0 : delta.y / scale),
             z: position.z + (plane == .side && !locks.contains(.z) ? delta.x / scale : 0))
     }
 }
