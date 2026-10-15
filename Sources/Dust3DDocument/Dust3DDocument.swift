@@ -183,8 +183,16 @@ public struct Dust3DDocument: Sendable {
 
     /// Qt-compatible reference image bytes, if canvas.png is an asset. Opaque input bytes are not decoded here.
     public var referenceImagePNG: Data? {
-        guard items.contains(where: { $0.name == "canvas.png" && $0.type == "asset" }) else { return nil }
+        guard hasReferenceImage else { return nil }
         return asset(named: "canvas.png")
+    }
+
+    /// Inspect the reference-image slot without copying its potentially large payload.
+    public var hasReferenceImage: Bool { referenceImageByteCount != nil }
+
+    /// Encoded reference-image length, without materializing its bytes; nil for an absent/non-asset slot.
+    public var referenceImageByteCount: Int? {
+        items.first { $0.name == "canvas.png" && $0.type == "asset" }?.range.count
     }
 
     /// Read supported numeric fields of a node, or throw for a missing/invalid node.

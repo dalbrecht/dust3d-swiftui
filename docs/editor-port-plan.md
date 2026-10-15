@@ -105,7 +105,7 @@ Dependencies: M1. Suggested PRs: editor scene/shared rendering; selection/pickin
 - Implement drawing/connection, selection, move/scale/radius, delete, clipboard with UUID remapping, constraints and keyboard commands. Debounce preview generation, retain last valid mesh with explicit stale/error state (implemented; see [verification](preview-resilience-verification.md)).
 - Done: create a capsule and multi-part sword, edit both, undo/redo, save/reopen in Qt; two windows do not share selections or undo; gestures remain responsive while generating.
 
-Reference-image archive commands and asset-aware undo are implemented; [foundation verification](reference-image-foundation-verification.md) records preservation and bounds. Platform import/decoding, image-height coordinate alignment and rendered reference images remain M2 work.
+Reference-image archive commands and asset-aware undo are implemented; [foundation verification](reference-image-foundation-verification.md) records preservation and bounds. Platform import/decoding, image-height coordinate alignment and rendered reference images are implemented; see [native verification](reference-image-ui-verification.md). Cropping/composition, origin tools and the broader M2 acceptance checks remain.
 
 ### M3 — Complete procedural modeling
 
@@ -211,8 +211,8 @@ The separate viewer and editor apps consume the exact pinned external core packa
 The editor now supports node selection/movement/radius editing, interaction locks,
 multiselection/marquee/scaling/transforms, topology creation/deletion/splitting/joining,
 edge picking/reversal/inspection, native clipboard editing, undo/redo, open/save and
-resilient mesh previews. Reference-image archive editing is implemented; its platform
-import and canvas alignment remain pending. Verification records linked above state
+resilient mesh previews. Reference-image archive editing, bounded platform import and Qt-aligned canvas
+rendering are implemented; crop/composition and origin tools remain pending. Verification records linked above state
 actual test/native coverage and limits. The M1/M2 acceptance gates still include Qt GUI
 interoperability, recovery/failure cases and broader accessibility/performance checks;
 M3–M8 feature parity is not claimed.

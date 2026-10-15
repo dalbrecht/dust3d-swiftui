@@ -13,6 +13,17 @@ struct NodeCanvas: View {
                 width: geometry.size.width, height: geometry.size.height)
             let nodes = store.snapshot?.nodes ?? []
             ZStack {
+                if store.showsReferenceImage, let image = store.referenceImage {
+                    let aspect = Double(image.width) / Double(image.height)
+                    let center = projection.point(for: .init(x: aspect / 2, y: 0.5, z: aspect / 2))
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .frame(width: aspect * projection.scale, height: projection.scale)
+                        .position(x: center.x, y: center.y)
+                        .opacity(store.referenceImageOpacity)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
                 MarqueeSurface(enabled: !store.isWorking) { rectangle, additive in
                     let ids = projection.nodeIDs(in: rectangle, nodes: nodes)
                     store.select(additive ? ids.union(store.snapshot?.selectedIDs ?? []) : ids)
@@ -60,7 +71,7 @@ struct NodeCanvas: View {
                                 to: projection.moving(node.value.position, by: translation, locks: store.locks))
                         })
                 }
-                if nodes.isEmpty {
+                if nodes.isEmpty && store.referenceImage == nil {
                     ContentUnavailableView(
                         "Open a model to edit its nodes", systemImage: "point.3.connected.trianglepath.dotted")
                 }
