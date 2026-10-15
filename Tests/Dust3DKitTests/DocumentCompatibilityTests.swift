@@ -258,4 +258,37 @@ final class DocumentCompatibilityTests: XCTestCase {
         XCTAssertEqual(mesh.triangleCount, try MeshLoader.load(data: original.encoded()).triangleCount)
     }
 
+    @MainActor func testClipboardActorPartitionsReadonlyCapsuleCopyForPinnedEngine() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url))
+        let model = try XMLDocument(data: original.modelXML)
+        let attribute = XMLNode(kind: .attribute)
+        attribute.name = "locked"
+        attribute.stringValue = "true"
+        model.rootElement()?.elements(forName: "parts").first?.elements(forName: "part").first?.addAttribute(attribute)
+        let xml = model.xmlData(options: [.nodePreserveAll])
+        let header = "<ds3><model name='model.xml' offset='0' size='\(xml.count)'/></ds3>"
+        let prefix = "DUST3D 1.0 xml "
+        let data =
+            Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8) + xml
+        let source = EditorSession()
+        let opened = try await source.open(data: data)
+        _ = try await source.select(Set([opened.nodes[0].id, opened.nodes[2].id]))
+        let payload = try await source.copyPayload(identifier: "readonly-capsule")
+        let target = EditorSession()
+        _ = try await target.open(data: Dust3DDocument.emptyArchive())
+        let pasted = try await target.paste(data: payload)
+        XCTAssertEqual(pasted.selectedIDs.count, 2)
+        XCTAssertTrue(pasted.nodes.allSatisfy { !$0.isEditable })
+        let mesh = try MeshLoader.load(data: pasted.document.encoded())
+        XCTAssertEqual(mesh.nodeCount, 2)
+        XCTAssertEqual(mesh.partCount, 2)
+        XCTAssertGreaterThan(mesh.triangleCount, 0)
+        let restored = try await target.undo()
+        XCTAssertEqual(restored.document.encoded(), Dust3DDocument.emptyArchive())
+        let redone = try await target.redo()
+        XCTAssertEqual(redone.document.encoded(), pasted.document.encoded())
+    }
+
 }

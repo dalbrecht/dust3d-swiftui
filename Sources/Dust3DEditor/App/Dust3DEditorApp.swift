@@ -6,10 +6,12 @@ import SwiftUI
 struct Dust3DEditorApp: App {
     @NSApplicationDelegateAdaptor(EditorAppDelegate.self) private var appDelegate
     @FocusedValue(\.editorStore) private var store
+    @State private var pasteboard = EditorPasteboard()
 
     var body: some Scene {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
             EditorRootView(file: file.$document)
+                .environment(pasteboard)
                 .id(file.document.identity)
         }
         .defaultSize(width: 1300, height: 820)
@@ -22,6 +24,7 @@ struct Dust3DEditorApp: App {
                     .keyboardShortcut("z", modifiers: [.command, .shift])
                     .disabled(store?.canRedo != true)
             }
+            EditorClipboardCommands(pasteboard: pasteboard)
             CommandMenu("Canvas") {
                 Button("Select All Nodes") { store?.selectAll() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
@@ -69,9 +72,16 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+private struct EditorTextEditingKey: FocusedValueKey { typealias Value = Bool }
+
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 
 extension FocusedValues {
+    var editorTextEditing: Bool? {
+        get { self[EditorTextEditingKey.self] }
+        set { self[EditorTextEditingKey.self] = newValue }
+    }
+
     var editorStore: EditorStore? {
         get { self[EditorStoreKey.self] }
         set { self[EditorStoreKey.self] = newValue }

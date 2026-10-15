@@ -20,7 +20,9 @@ public struct PartSplitRequirement: Sendable {
 
 /// XML mutation stays outside pure editor state. Caller publishes only the fully validated archive.
 enum PartSplitting {
-    static func requirements(model: XMLDocument, contents: DocumentContents, partIDs: Set<String>) throws
+    static func requirements(
+        model: XMLDocument, contents: DocumentContents, partIDs: Set<String>, allowReadOnly: Bool = false
+    ) throws
         -> [PartSplitRequirement]
     {
         let groups = try connectedGroups(contents: contents, partIDs: partIDs)
@@ -38,7 +40,7 @@ enum PartSplitting {
             guard let id = part.attribute(forName: "id")?.stringValue, let selectedGroups = groups[id],
                 selectedGroups.count > 1
             else { continue }
-            guard !readOnlyParts.contains(id) else {
+            guard allowReadOnly || !readOnlyParts.contains(id) else {
                 throw DocumentError.invalidNode
             }
             let references = referencesByPart[id] ?? []
@@ -78,10 +80,13 @@ enum PartSplitting {
         return result
     }
 
-    static func apply(id: String, identities: [PartSplitIdentity], model: XMLDocument, contents: DocumentContents)
+    static func apply(
+        id: String, identities: [PartSplitIdentity], model: XMLDocument, contents: DocumentContents,
+        allowReadOnly: Bool = false
+    )
         throws -> Bool
     {
-        let plan = try requirements(model: model, contents: contents, partIDs: [id]).first
+        let plan = try requirements(model: model, contents: contents, partIDs: [id], allowReadOnly: allowReadOnly).first
         guard identities.count == (plan?.additionalPartCount ?? 0) else { throw DocumentError.invalidNode }
         guard let plan else { return false }
         guard identities.allSatisfy({ $0.componentIDs.count == plan.componentsPerPart }) else {
