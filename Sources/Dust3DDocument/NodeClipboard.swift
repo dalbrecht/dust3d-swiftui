@@ -98,7 +98,7 @@ enum NodeClipboardMutation {
         else { throw DocumentError.invalidNode }
         let nodes = root.elements(forName: "nodes").first?.elements(forName: "node") ?? []
         let parts = root.elements(forName: "parts").first?.elements(forName: "part") ?? []
-        let knownParts = try CutFaceLinks.index(parts.compactMap { $0.attribute(forName: "id")?.stringValue })
+        let knownParts = CutFaceLinks.index(parts.compactMap { $0.attribute(forName: "id")?.stringValue })
         var includedNodes = selected
         var includedParts = Set(contents.nodes.filter { selected.contains($0.id) }.compactMap(\.partID))
         let nodesByPart = Dictionary(grouping: nodes, by: { $0.attribute(forName: "partId")?.stringValue ?? "" })
@@ -185,7 +185,7 @@ enum NodeClipboardMutation {
             PartSplitting.componentElements(model).count + PartSplitting.componentElements(fragment).count <= 10_000
         else { throw DocumentError.limitExceeded }
         let addedNodes = Dictionary(uniqueKeysWithValues: added.nodes.map { ($0.id, $0.value) })
-        let addedParts = try CutFaceLinks.index(
+        let addedParts = CutFaceLinks.index(
             sourceRoot.elements(forName: "parts").first?.elements(forName: "part").compactMap {
                 $0.attribute(forName: "id")?.stringValue
             } ?? [])

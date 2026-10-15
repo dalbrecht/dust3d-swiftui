@@ -413,23 +413,43 @@ final class NodeClipboardTests: XCTestCase {
         XCTAssertThrowsError(
             try NodeClipboard(document: aliased, selectedNodeIDs: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]))
     }
-    func testUnbracedProfileReferenceFollowsItsBracedPartAndRequiresUUIDReplacement() throws {
-        let xml =
-            "<canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1' cutFace='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'/><node id='b' partId='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' x='1' y='0' z='0' radius='.1'/></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/><part id='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}'/></parts></canvas>"
-        let clipboard = try archive(xml).copyingNodes(["a"])
-        XCTAssertEqual(try clipboard.document.editorContents().nodes.map(\.id), ["a", "b"])
-        let map = identities(clipboard)
-        let pasted = try archive("<canvas/>").applying(
-            .pasteNodes(clipboard: clipboard, identities: map, offset: .init(x: 0, y: 0, z: 0)))
-        let root = try XMLDocument(data: pasted.modelXML).rootElement()
-        XCTAssertEqual(
-            root?.elements(forName: "nodes").first?.elements(forName: "node").first?.attribute(forName: "cutFace")?
-                .stringValue, map["{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"])
-        var invalid = map
-        invalid["{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"] = "not-a-profile-uuid"
-        XCTAssertThrowsError(
-            try archive("<canvas/>").applying(
-                .pasteNodes(clipboard: clipboard, identities: invalid, offset: .init(x: 0, y: 0, z: 0))))
+
+    func testProfileReferencesRequireExactPartSpelling() throws {
+        let braced = "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"
+        let bare = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        for (partID, mismatched) in [(braced, bare), (bare, braced)] {
+            let xml =
+                "<canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1' cutFace='\(mismatched)'/><node id='b' partId='\(partID)' x='1' y='0' z='0' radius='.1'/></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/><part id='\(partID)'/></parts></canvas>"
+            let source = try archive(xml)
+            for selected: Set<String> in [["a"], ["a", "b"]] {
+                let clipboard = try source.copyingNodes(selected)
+                XCTAssertEqual(Set(try clipboard.document.editorContents().nodes.map(\.id)), selected)
+                var fresh = identities(clipboard)
+                if clipboard.identifiers.contains(partID) { fresh[partID] = "{99999999-9999-4999-8999-bbbbbbbbbbbb}" }
+                let pasted = try archive("<canvas/>").applying(
+                    .pasteNodes(clipboard: clipboard, identities: fresh, offset: .init(x: 0, y: 0, z: 0)))
+                let root = try XMLDocument(data: pasted.modelXML).rootElement()
+                XCTAssertEqual(
+                    root?.elements(forName: "nodes").first?.elements(forName: "node").first?.attribute(
+                        forName: "cutFace")?.stringValue, mismatched)
+            }
+            let exact = try archive(
+                xml.replacingOccurrences(of: "cutFace='\(mismatched)'", with: "cutFace='\(partID)'"))
+            let clipboard = try exact.copyingNodes(["a"])
+            XCTAssertEqual(try clipboard.document.editorContents().nodes.map(\.id), ["a", "b"])
+            var map = identities(clipboard)
+            map[partID] = "{99999999-9999-4999-8999-bbbbbbbbbbbb}"
+            let pasted = try archive("<canvas/>").applying(
+                .pasteNodes(clipboard: clipboard, identities: map, offset: .init(x: 0, y: 0, z: 0)))
+            let root = try XMLDocument(data: pasted.modelXML).rootElement()
+            XCTAssertEqual(
+                root?.elements(forName: "nodes").first?.elements(forName: "node").first?.attribute(forName: "cutFace")?
+                    .stringValue, map[partID])
+            map[partID] = "not-a-profile-uuid"
+            XCTAssertThrowsError(
+                try archive("<canvas/>").applying(
+                    .pasteNodes(clipboard: clipboard, identities: map, offset: .init(x: 0, y: 0, z: 0))))
+        }
     }
 
     func testImportedFragmentRequiresEdgePartAndRejectsThreeDistinctIncidentEdges() throws {

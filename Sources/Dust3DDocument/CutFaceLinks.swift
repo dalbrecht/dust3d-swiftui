@@ -19,17 +19,13 @@ enum CutFaceLinks {
         return "{\(text)}"
     }
 
-    static func index(_ ids: [String]) throws -> [String: String] {
-        var result: [String: String] = [:]
-        for id in ids {
-            guard let canonical = canonicalID(id) else { continue }
-            guard result.updateValue(id, forKey: canonical) == nil else { throw DocumentError.invalidNode }
-        }
-        return result
+    /// The generator classifies UUID shape, then looks up the original string verbatim.
+    static func index(_ ids: [String]) -> Set<String> {
+        Set(ids.filter { canonicalID($0) != nil })
     }
 
-    static func target(_ value: String?, in parts: [String: String]) -> String? {
-        guard let value, let canonical = canonicalID(value) else { return nil }
-        return parts[canonical]
+    static func target(_ value: String?, in parts: Set<String>) -> String? {
+        guard let value, parts.contains(value) else { return nil }
+        return value
     }
 }

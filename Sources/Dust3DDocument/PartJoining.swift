@@ -22,7 +22,7 @@ enum PartJoining {
         guard let root = model.rootElement(), let parts = root.elements(forName: "parts").first else {
             throw DocumentError.invalidXML
         }
-        let profileParts = try CutFaceLinks.index(
+        let profileParts = CutFaceLinks.index(
             parts.elements(forName: "part").compactMap { $0.attribute(forName: "id")?.stringValue })
         let nodeElements = root.elements(forName: "nodes").first?.elements(forName: "node") ?? []
         let edges: XMLElement
@@ -134,7 +134,7 @@ enum PartJoining {
 
     static func validateProfileLinks(parts: [XMLElement], nodes: [XMLElement]) throws {
         let ids = Set(parts.compactMap { $0.attribute(forName: "id")?.stringValue })
-        let profileParts = try CutFaceLinks.index(Array(ids))
+        let profileParts = CutFaceLinks.index(Array(ids))
         var links: [String: [String]] = [:]
         for part in parts {
             if let id = part.attribute(forName: "id")?.stringValue,

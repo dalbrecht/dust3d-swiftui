@@ -204,4 +204,29 @@ final class PartJoiningTests: XCTestCase {
         XCTAssertEqual(node?.attribute(forName: "cutFace")?.stringValue, "Quad")
     }
 
+    func testJoiningKeepsUnresolvedProfileSpellingUnchanged() throws {
+        let source = try document()
+        let model = try XMLDocument(data: source.modelXML)
+        let root = try XCTUnwrap(model.rootElement())
+        let elements =
+            (root.elements(forName: "parts").first?.elements(forName: "part") ?? [])
+            + (root.elements(forName: "nodes").first?.elements(forName: "node") ?? [])
+        for element in elements {
+            if let attribute = element.attribute(forName: "cutFace"),
+                attribute.stringValue == "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"
+            {
+                attribute.stringValue = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+            }
+        }
+        let original = try archive(model.xmlString(options: [.nodePreserveAll]))
+        let joined = try original.applying(.joinNodes(id: "join", from: "a", to: "c"))
+        let result = try XMLDocument(data: joined.modelXML).rootElement()
+        XCTAssertEqual(
+            result?.elements(forName: "parts").first?.elements(forName: "part").last?.attribute(forName: "cutFace")?
+                .stringValue, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+        XCTAssertEqual(
+            result?.elements(forName: "nodes").first?.elements(forName: "node").last?.attribute(forName: "cutFace")?
+                .stringValue, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    }
+
 }
