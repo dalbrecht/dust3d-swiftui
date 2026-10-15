@@ -28,3 +28,5 @@ Command-Option-X/Y/Z/R toggles the corresponding lock. Locks constrain new
 coordinate/radius edits and the drag preview; they do not block undo/redo or
 node creation/deletion. Locking an inspector field resets its unapplied draft.
 Settings belong to the current window and are not saved in the `.ds3` archive.
+
+Multi-node selection is transient and per window. Use sidebar Command/Shift selection, canvas Command-click, or Canvas → Select All Nodes (Command-Shift-A). Drag a selected node to move its editable group, or enter relative offsets in the group inspector. Group deletion removes incident edges; movement and deletion each take one undo step. Read-only nodes remain unchanged. See [selection verification](../../docs/selection-verification.md). Marquee, scaling and clipboard are still pending.

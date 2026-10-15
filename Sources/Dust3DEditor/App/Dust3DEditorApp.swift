@@ -23,6 +23,12 @@ struct Dust3DEditorApp: App {
                     .disabled(store?.canRedo != true)
             }
             CommandMenu("Canvas") {
+                Button("Select All Nodes") { store?.selectAll() }
+                    .keyboardShortcut("a", modifiers: [.command, .shift])
+                    .disabled(store?.snapshot == nil || store?.isWorking != false)
+                Button("Clear Node Selection") { store?.select(nil) }
+                    .disabled(store?.snapshot == nil || store?.isWorking != false)
+                Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
                     Toggle(
                         "Lock \(constraint.rawValue)",

@@ -14,7 +14,9 @@ struct NodeInspector: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Node inspector").font(.headline)
-            if let node = store.snapshot?.selectedNode {
+            if (store.snapshot?.selectedIDs.count ?? 0) > 1 {
+                GroupInspector(store: store)
+            } else if let node = store.snapshot?.selectedNode {
                 let targets = store.snapshot?.connectionTargets ?? []
                 Text(node.title).font(.title3)
                 Text(node.id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
@@ -77,5 +79,33 @@ struct NodeInspector: View {
         y = node.position.y
         z = node.position.z
         radius = node.radius
+    }
+}
+
+private struct GroupInspector: View {
+    let store: EditorStore
+    @State private var x = 0.0
+    @State private var y = 0.0
+    @State private var z = 0.0
+
+    var body: some View {
+        let selected = store.snapshot?.selectedNodes ?? []
+        let editable = selected.filter(\.isEditable).count
+        VStack(alignment: .leading, spacing: 12) {
+            Text("\(selected.count) selected").font(.title3)
+            Text("\(editable) editable · \(selected.count - editable) read-only").font(.caption)
+            Text("Move by document units").font(.headline)
+            Form {
+                TextField("Δ X", value: $x, format: .number).disabled(store.locks.contains(.x))
+                TextField("Δ Y", value: $y, format: .number).disabled(store.locks.contains(.y))
+                TextField("Δ Z", value: $z, format: .number).disabled(store.locks.contains(.z))
+            }
+            Button("Move Selection") { store.moveSelection(by: .init(x: x, y: y, z: z)) }
+                .buttonStyle(.borderedProminent)
+            Button("Delete Selected Nodes", role: .destructive) { store.deleteSelection() }
+            Text("Read-only nodes stay fixed. Each move or deletion is one undo step.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .disabled(store.isWorking || editable == 0)
     }
 }

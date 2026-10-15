@@ -20,15 +20,18 @@ public struct EditorSnapshot: Sendable {
     public let nodes: [DocumentNode]
     public let edges: [DocumentEdge]
     public let selectedID: String?
+    public let selectedIDs: Set<String>
     public let canUndo: Bool
     public let canRedo: Bool
     public let locks: Set<EditingConstraint>
     public let documentRevision: Int
 
+    public var selectedNodes: [DocumentNode] { nodes.filter { selectedIDs.contains($0.id) } }
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
     /// Editable same-part nodes that are not already joined to the current selection.
     public var connectionTargets: [DocumentNode] {
-        guard let selected = selectedNode, selected.isEditable, let partID = selected.partID else { return [] }
+        guard selectedIDs.count == 1, let selected = selectedNode, selected.isEditable, let partID = selected.partID
+        else { return [] }
         let neighbors = Set(
             edges.compactMap { edge -> String? in
                 if edge.fromID == selected.id { return edge.toID }
@@ -47,6 +50,7 @@ public struct EditorState: Sendable {
     private var history: DocumentHistory
     private var contents: DocumentContents
     private var selectedID: String?
+    private var selectedIDs: Set<String> = []
     private var locks: Set<EditingConstraint> = []
     private var revision = 0
 
@@ -60,14 +64,66 @@ public struct EditorState: Sendable {
     public var snapshot: EditorSnapshot {
         EditorSnapshot(
             document: history.document, nodes: contents.nodes, edges: contents.edges,
-            selectedID: selectedID, canUndo: history.canUndo, canRedo: history.canRedo, locks: locks,
+            selectedID: selectedID, selectedIDs: selectedIDs, canUndo: history.canUndo, canRedo: history.canRedo,
+            locks: locks,
             documentRevision: revision)
     }
 
-    /// Select a node or clear selection; throws missingNode without changing state.
+    /// Select a single node or clear the transient selection.
     public mutating func select(_ id: String?) throws {
-        if let id, !contents.nodes.contains(where: { $0.id == id }) { throw DocumentError.missingNode(id) }
-        selectedID = id
+        try select(id.map { Set([$0]) } ?? [])
+    }
+
+    /// Replace selection atomically; primary selection follows document order.
+    public mutating func select(_ ids: Set<String>) throws {
+        let existing = Set(contents.nodes.map(\.id))
+        if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingNode(missing) }
+        selectedIDs = ids
+        selectedID = contents.nodes.first { ids.contains($0.id) }?.id
+    }
+
+    /// Toggle a node without modifying document data or history.
+    public mutating func toggleSelection(_ id: String) throws {
+        var next = selectedIDs
+        if next.contains(id) { next.remove(id) } else { next.insert(id) }
+        try select(next)
+    }
+
+    /// Include all nodes, including read-only nodes for inspection.
+    public mutating func selectAll() {
+        selectedIDs = Set(contents.nodes.map(\.id))
+        selectedID = contents.nodes.first?.id
+    }
+
+    /// Translate editable selected nodes as one atomic undo step. Read-only nodes stay fixed.
+    public mutating func moveSelection(by delta: NodePosition) throws {
+        guard [delta.x, delta.y, delta.z].allSatisfy(\.isFinite) else { throw DocumentError.invalidNode }
+        let updates = snapshot.selectedNodes.filter(\.isEditable).map { node in
+            let position = node.value.position
+            return NodeUpdate(
+                id: node.id,
+                value: .init(
+                    position: .init(x: position.x + delta.x, y: position.y + delta.y, z: position.z + delta.z),
+                    radius: node.value.radius))
+        }
+        try apply([.setNodes(updates)])
+    }
+
+    /// Drag an anchor, retaining its group if selected; otherwise select only the anchor.
+    public mutating func move(id: String, to position: NodePosition) throws {
+        guard let node = contents.nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
+        guard node.isEditable else { throw EditorError.readOnlyNode }
+        var next = self
+        if !selectedIDs.contains(id) { try next.select(id) }
+        let original = node.value.position
+        try next.moveSelection(
+            by: .init(x: position.x - original.x, y: position.y - original.y, z: position.z - original.z))
+        self = next
+    }
+
+    /// Delete editable selected nodes and their incident edges in one undo step.
+    public mutating func deleteSelection() throws {
+        try apply([.removeNodes(snapshot.selectedNodes.filter(\.isEditable).map(\.id))])
     }
 
     /// Change an interaction lock without dirtying the document or changing history.
@@ -80,7 +136,7 @@ public struct EditorState: Sendable {
         var next = history
         try next.apply(constrainedNode(id: id, value: .init(position: position, radius: radius), nodes: contents.nodes))
         try publish(next)
-        selectedID = id
+        try select(id)
     }
 
     /// Commit graph operations as one undo step. Failed batches preserve document and selection.
@@ -93,6 +149,14 @@ public struct EditorState: Sendable {
             case .setNode(let id, let position, let radius):
                 let nodes = try next.document.editorContents().nodes
                 try next.apply(constrainedNode(id: id, value: .init(position: position, radius: radius), nodes: nodes))
+            case .setNodes(let updates):
+                let nodes = Dictionary(
+                    uniqueKeysWithValues: try next.document.editorContents().nodes.map { ($0.id, $0) })
+                let constrained = try updates.map { update -> NodeUpdate in
+                    let value = try constrainedValue(id: update.id, value: update.value, nodes: nodes)
+                    return NodeUpdate(id: update.id, value: value)
+                }
+                try next.apply(.setNodes(constrained))
             default: try next.apply(command)
             }
         }
@@ -101,7 +165,7 @@ public struct EditorState: Sendable {
             throw DocumentError.missingNode(id)
         }
         try publish(next)
-        if let id { selectedID = id }
+        if let id { try select(id) }
     }
 
     /// Restore the previous archive, if available, retaining transient selection.
@@ -117,12 +181,18 @@ public struct EditorState: Sendable {
     }
 
     private func constrainedNode(id: String, value: EditableNode, nodes: [DocumentNode]) throws -> DocumentCommand {
-        guard let node = nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
+        let value = try constrainedValue(
+            id: id, value: value, nodes: Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) }))
+        return .setNode(id: id, position: value.position, radius: value.radius)
+    }
+
+    private func constrainedValue(id: String, value: EditableNode, nodes: [String: DocumentNode]) throws -> EditableNode
+    {
+        guard let node = nodes[id] else { throw DocumentError.missingNode(id) }
         guard node.isEditable else { throw EditorError.readOnlyNode }
         guard value.isValid else { throw DocumentError.invalidNode }
         let original = node.value
-        return .setNode(
-            id: id,
+        return EditableNode(
             position: .init(
                 x: locks.contains(.x) ? original.position.x : value.position.x,
                 y: locks.contains(.y) ? original.position.y : value.position.y,
@@ -134,7 +204,8 @@ public struct EditorState: Sendable {
         guard next.document.encoded() != history.document.encoded() else { return }
         let nextContents = try next.document.editorContents()
         contents = nextContents
-        if let id = selectedID, !contents.nodes.contains(where: { $0.id == id }) { selectedID = nil }
+        selectedIDs.formIntersection(contents.nodes.map(\.id))
+        selectedID = contents.nodes.first { selectedIDs.contains($0.id) }?.id
         history = next
         revision += 1
     }

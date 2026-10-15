@@ -38,12 +38,24 @@ public struct EditableNode: Equatable, Sendable {
 
 }
 
+/// One geometry replacement in a bulk update. Identity and unrelated XML stay unchanged.
+public struct NodeUpdate: Sendable {
+    public let id: String
+    public let value: EditableNode
+    public init(id: String, value: EditableNode) {
+        self.id = id
+        self.value = value
+    }
+}
+
 /// Atomic node and graph commands. Unknown archive data remains untouched.
 public enum DocumentCommand: Sendable {
     case setNode(id: String, position: NodePosition, radius: Double)
+    case setNodes([NodeUpdate])
     case addNode(id: String, partID: String, componentID: String?, position: NodePosition, radius: Double)
     case addEdge(id: String, from: String, to: String)
     case removeNode(id: String)
+    case removeNodes([String])
     case removeEdge(id: String)
 }
 
@@ -183,10 +195,9 @@ public struct Dust3DDocument: Sendable {
 
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
-        if case .setNode = command {
-            contents = DocumentContents(nodes: [], edges: [])
-        } else {
-            contents = try editorContents()
+        switch command {
+        case .setNode, .setNodes: contents = DocumentContents(nodes: [], edges: [])
+        default: contents = try editorContents()
         }
         let model = try Self.xml(modelXML, root: "canvas")
         guard let root = model.rootElement() else { throw DocumentError.invalidXML }
@@ -263,10 +274,20 @@ public struct Dust3DDocument: Sendable {
             else { throw DocumentError.invalidNode }
             container("edges").addChild(element("edge", [("id", id), ("partId", partID), ("from", from), ("to", to)]))
         case .removeNode(let id):
-            _ = try editable(id)
-            try Self.findNode(id, in: model).detach()
+            return try applying(.removeNodes([id]))
+        case .removeNodes(let ids):
+            if ids.isEmpty { return self }
+            let removed = Set(ids)
+            let nodes = Dictionary(uniqueKeysWithValues: contents.nodes.map { ($0.id, $0) })
+            guard removed.count == ids.count, ids.allSatisfy({ nodes[$0]?.isEditable == true }) else {
+                throw DocumentError.invalidNode
+            }
+            for node in try Self.nodes(model) where removed.contains(node.attribute(forName: "id")?.stringValue ?? "") {
+                node.detach()
+            }
             for edge in edgeElements()
-            where edge.attribute(forName: "from")?.stringValue == id || edge.attribute(forName: "to")?.stringValue == id
+            where removed.contains(edge.attribute(forName: "from")?.stringValue ?? "")
+                || removed.contains(edge.attribute(forName: "to")?.stringValue ?? "")
             {
                 edge.detach()
             }
@@ -276,15 +297,27 @@ public struct Dust3DDocument: Sendable {
             _ = try editable(edge.toID)
             edgeElements().first(where: { $0.attribute(forName: "id")?.stringValue == id })?.detach()
         case .setNode(let id, let position, let radius):
-            guard EditableNode(position: position, radius: radius).isValid
-            else {
-                throw DocumentError.invalidNode
+            return try applying(.setNodes([.init(id: id, value: .init(position: position, radius: radius))]))
+        case .setNodes(let updates):
+            guard Set(updates.map(\.id)).count == updates.count else { throw DocumentError.invalidNode }
+            let elements = Dictionary(
+                uniqueKeysWithValues: try Self.nodes(model).map {
+                    ($0.attribute(forName: "id")?.stringValue ?? "", $0)
+                })
+            var changed = false
+            for update in updates {
+                guard update.value.isValid else { throw DocumentError.invalidNode }
+                guard let node = elements[update.id] else { throw DocumentError.missingNode(update.id) }
+                if try Self.decodeNode(node) == update.value { continue }
+                changed = true
+                let position = update.value.position
+                for (key, value) in [
+                    ("x", position.x), ("y", position.y), ("z", position.z), ("radius", update.value.radius),
+                ] {
+                    node.attribute(forName: key)?.stringValue = String(value)
+                }
             }
-            if try node(id: id) == EditableNode(position: position, radius: radius) { return self }
-            let node = try Self.findNode(id, in: model)
-            for (key, value) in [("x", position.x), ("y", position.y), ("z", position.z), ("radius", radius)] {
-                node.attribute(forName: key)?.stringValue = String(value)
-            }
+            if !changed { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         }
         let next = try replacingModel(model.xmlData(options: [.nodePreserveAll]))

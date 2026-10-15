@@ -22,6 +22,17 @@ public actor EditorSession {
 
     public func select(_ id: String?) throws -> EditorSnapshot { try update { try $0.select(id) } }
 
+    public func select(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.select(ids) } }
+    public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
+    public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
+    public func moveSelection(by delta: NodePosition) throws -> EditorSnapshot {
+        try update { try $0.moveSelection(by: delta) }
+    }
+    public func move(id: String, to position: NodePosition) throws -> EditorSnapshot {
+        try update { try $0.move(id: id, to: position) }
+    }
+    public func deleteSelection() throws -> EditorSnapshot { try update { try $0.deleteSelection() } }
+
     public func edit(id: String, position: NodePosition, radius: Double) throws -> EditorSnapshot {
         try update { try $0.edit(id: id, position: position, radius: radius) }
     }

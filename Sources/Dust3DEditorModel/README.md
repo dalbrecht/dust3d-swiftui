@@ -21,3 +21,5 @@ selection. Undo restores document bytes; selection remains transient.
 Both `edit` and batched set-node commands honor them after validating the input.
 Undo/redo restores committed snapshots regardless of current locks. Creation,
 deletion, archive bytes and history are unaffected by changing a lock.
+
+Multi-node selection is transient and per window. Use sidebar Command/Shift selection, canvas Command-click, or Canvas → Select All Nodes (Command-Shift-A). Drag a selected node to move its editable group, or enter relative offsets in the group inspector. Group deletion removes incident edges; movement and deletion each take one undo step. Read-only nodes remain unchanged. See [selection verification](../../docs/selection-verification.md). Marquee, scaling and clipboard are still pending.

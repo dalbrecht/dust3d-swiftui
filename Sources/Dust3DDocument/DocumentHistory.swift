@@ -34,6 +34,7 @@ public struct DocumentHistory: Sendable {
         } else {
             switch command {
             case .setNode(let id, _, _): transactionNodes.insert(id)
+            case .setNodes: transactionChangesTopology = true
             default: transactionChangesTopology = true
             }
         }
