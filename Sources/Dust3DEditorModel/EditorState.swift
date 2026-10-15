@@ -29,6 +29,16 @@ public struct EditorSnapshot: Sendable {
 
     public var selectedNodes: [DocumentNode] { nodes.filter { selectedIDs.contains($0.id) } }
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
+    /// Copy can include read-only nodes, but every copied node must belong to a part.
+    public var canCopyNodes: Bool {
+        let selected = selectedNodes
+        return !selected.isEmpty && selected.allSatisfy { $0.partID != nil }
+    }
+    /// Cut copies/removes only editable selection; read-only nodes remain selected and unchanged.
+    public var canCutNodes: Bool {
+        let editable = selectedNodes.filter(\.isEditable)
+        return !editable.isEmpty && editable.allSatisfy { $0.partID != nil }
+    }
     /// Edges whose endpoints both belong to editable parts, independent of selection.
     public var editableEdges: [DocumentEdge] {
         let editable = Set(nodes.filter(\.isEditable).map(\.id))

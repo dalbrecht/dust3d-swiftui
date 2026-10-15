@@ -1,0 +1,34 @@
+# Native node clipboard verification
+
+`make ci` passes 153 tests, formatting, both native app builds, coverage gates and Qt-free checks. Measured line coverage is 1596/1670 (95.57%) for the document library, 704/710 (99.15%) for the editor model, 338/338 (100%) for pure editor state and 92/92 (100%) for undo history. This does not measure inherited C++ or thin AppKit/GPU UI coverage. The core revision and C++ sources/standards are unchanged.
+
+Transport tests prove deterministic byte round-trip, sliced-Data rebasing, bad magic/truncation/length handling, malformed JSON, unsupported versions, empty/duplicate/missing/overlong selection IDs, invalid Copy/Cut tokens and archive validation. A valid 10,000-node selection whose escaped metadata exceeds 2 MiB rejects before archive append. Raw archive bytes preserve assets without base64 expansion.
+
+Actor tests cover read-only Copy, editable-only Cut preparation, retained readonly selection after deletion, fresh identities, selection of explicit copied nodes rather than profile dependencies, axis-lock independence for construction, repeated/external/self placement and Open reset. Failed transport and derived-geometry paste retain document, selection, undo/redo and placement. Copy creates no history entry; paste and normalization take one exact undo/redo step.
+
+Document construction tests partition newly pasted readonly/disconnected groups while retaining part/component style and exact undo/redo. Existing-part keys, identity collisions (including conservative UUID aliases), incorrect component plans and excessive identity counts reject atomically. Ordinary readonly split protection remains active. Actor-to-pinned-engine integration copies disconnected readonly Capsule endpoints, pastes two valid readonly parts and verifies undo/redo with stable archive bytes.
+
+Native manual evidence used isolated `org.dust3d.editor.qa` and disposable documents; the user's main editor/viewer and unsaved work were left alone:
+
+- Command-A selects field text while editing. Command-C copied X's `0.5` into Y's draft; Command-X removed only field text, and Command-V restored it. The graph stayed at three nodes/80 triangles with no graph undo entry. Reset discarded the draft. Native selection notifications refresh Cut/Copy menu enablement, and replacing the pasteboard group retains Select All.
+- Clicking the canvas returned clipboard shortcuts to node editing. Native node Copy/Paste created fresh nodes with the expected 0.04 Y/Z displacement; one Undo restored the original graph.
+- Cutting the middle Capsule node produced two nodes and a 224-triangle preview. One Undo restored three nodes/80 triangles and exhausted undo; Redo restored the split. The source was restored and saved afterward.
+- A source fixture included an opaque four-byte asset and unknown asset-header metadata. Command-A selected all three nodes; Copy left the source unedited with no undo entry.
+- A separate untitled window pasted the complete chain at its original coordinates with three selected nodes and an 80-triangle preview. One Undo returned to an empty document; Redo restored the chain. Closing the saved target returned to the source's original three-node selection with Undo and Redo disabled, demonstrating per-window state/history.
+- Native Save As wrote the target archive. Independent XML/archive inspection confirmed three nodes, two consistently directed edges, one part/component, seven fresh semantic IDs disjoint from the source, unchanged coordinates/radii, original component color `#468bcc`, exact asset bytes `[0, 255, 10, 128]` and preserved asset metadata.
+- Reopening the target rendered 80 triangles with empty selection and disabled Undo/Redo. The isolated QA app was quit normally after verification.
+
+The clipboard contains all source assets because opaque fields can reference them; help and documentation disclose this. It uses a private native versioned type. Qt snapshot-text clipboard interchange remains a separate adapter task; `.ds3` save/open is the document interchange path. Incompatible same-name assets reject instead of silently changing references.
+
+Native write-failure handling is enforced by write-before-delete ordering; an actual NSPasteboard write failure was not injected. Negative transport/topology cases and readonly construction have automated coverage, rather than every case being repeated through the UI. No VoiceOver, oldest-supported-macOS, large-model GPU/performance or allocation-failure stress certification is claimed. This milestone does not implement empty-part cleanup, branching, reference images, edge picking or M3–M8 feature parity. Undo/redo retains the existing transient-selection contract; paste placement is transient and is not rewound by Undo.
+
+The automated-review responsiveness finding is addressed with system asynchronous PasteButton/Core Transferable loading; the store no longer synchronously materializes `NSPasteboard.data(forType:)`. The generated editor bundle exports its private type, and isolated editor/viewer packaging validates without replacing running bundles. Native re-verification pasted a retained 32 MiB asset payload into a fresh app session, generated the original 80-triangle chain, exercised one-step Undo/Redo and saved it. Independent comparison confirmed all 33,554,432 asset bytes and unknown metadata were preserved (SHA-256 `e09320c5b00b34bb704802136c599a95b3996332ba84d7c7f21112b6231b6bd0`). The inspector Paste Nodes control and text-field paste were also rechecked. This is a 32 MiB smoke test, not a 256 MiB latency or memory certification.
+
+The follow-up Copy/Cut finding is addressed by an immutable lazy `NSPasteboardItemDataProvider`. Only its type promise is published during Copy/Cut; bytes are supplied on demand. A native AppKit regression probe verifies provider retention after the writer returns and exact 32 MiB delivery. Run it on a macOS login session (pasteboard access is required):
+
+```sh
+xcrun swiftc -swift-version 6 -parse-as-library Sources/Dust3DEditor/Services/NodeClipboardDataProvider.swift script/tests/ClipboardDataProviderProbe.swift -o /tmp/dust3d-provider-probe
+/tmp/dust3d-provider-probe
+```
+
+The updated isolated app copied the 32 MiB fixture to a fresh window, pasted three nodes/80 triangles, cut them to an empty graph, and restored them in one Undo. Saving the restored graph preserved the same asset SHA-256 and unknown header metadata. This verifies lazy publication and consumption while the application is running; persistence of an unconsumed promise after process termination is not certified.

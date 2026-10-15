@@ -14,6 +14,7 @@ struct NodeInspector: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Node inspector").font(.headline)
+            NodeClipboardMenu(store: store)
             if (store.snapshot?.selectedIDs.count ?? 0) > 1 {
                 GroupInspector(store: store)
             } else if let node = store.snapshot?.selectedNode {
@@ -21,6 +22,7 @@ struct NodeInspector: View {
                 let editableEdges = Set(store.snapshot?.editableEdges.map(\.id) ?? [])
                 Text(node.title).font(.title3)
                 Text(node.id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    .focusedValue(\.editorTextEditing, true)
                 Form {
                     TextField("X", value: $x, format: .number).accessibilityIdentifier("node-x")
                         .disabled(store.locks.contains(.x))
@@ -31,6 +33,7 @@ struct NodeInspector: View {
                     TextField("Radius", value: $radius, format: .number).accessibilityIdentifier("node-radius")
                         .disabled(store.locks.contains(.radius))
                 }
+                .focusedValue(\.editorTextEditing, true)
                 .disabled(store.isWorking || !node.isEditable)
                 if !node.isEditable { Label("Locked or hidden part", systemImage: "lock").font(.caption) }
                 HStack {
@@ -109,6 +112,7 @@ private struct GroupInspector: View {
                 TextField("Δ Y", value: $y, format: .number).disabled(store.locks.contains(.y))
                 TextField("Δ Z", value: $z, format: .number).disabled(store.locks.contains(.z))
             }
+            .focusedValue(\.editorTextEditing, true)
             Button("Move Selection") { store.moveSelection(by: .init(x: x, y: y, z: z)) }
                 .buttonStyle(.borderedProminent)
             Divider()
@@ -119,6 +123,7 @@ private struct GroupInspector: View {
                 TextField("Radii ×", value: $radiusFactor, format: .number)
                     .disabled(store.locks.contains(.radius))
             }
+            .focusedValue(\.editorTextEditing, true)
             Button("Scale Selection") {
                 store.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor)
             }

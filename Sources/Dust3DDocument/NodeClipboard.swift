@@ -57,6 +57,18 @@ public struct NodeClipboard: Sendable {
         self.selectedNodeIDs = selectedNodeIDs
         self.identifiers = ids
     }
+    /// Discover construction-time partitions, including copied read-only parts, before allocating IDs.
+    /// - Returns: Split requirements keyed by original fragment part IDs; map them through paste identities.
+    /// - Throws: `DocumentError` for invalid topology or projected metadata/count limits.
+    /// Supply fresh identities through the paste command's `partitions` argument.
+    public func partSplitRequirements() throws -> [PartSplitRequirement] {
+        let model = try XMLDocument(data: document.modelXML, options: [.nodePreserveAll])
+        let contents = try document.editorContents()
+        return try PartSplitting.requirements(
+            model: model, contents: contents,
+            partIDs: Set(contents.nodes.compactMap(\.partID)), allowReadOnly: true)
+    }
+
 }
 
 /// Structural traversal deliberately excludes component-like unknown extension elements.

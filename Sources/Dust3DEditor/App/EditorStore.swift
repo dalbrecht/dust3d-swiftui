@@ -62,6 +62,39 @@ final class EditorStore {
     func reverseSelectedEdges() { perform { try await $0.reverseSelectedEdges() } }
     func reverseEdge(_ id: String) { perform { try await $0.apply([.reverseEdges([id])]) } }
 
+    var canCopyNodes: Bool { !isWorking && snapshot?.canCopyNodes == true }
+    var canCutNodes: Bool { !isWorking && snapshot?.canCutNodes == true }
+
+    /// Clipboard promise registration succeeds before a Cut can mutate the document.
+    func copyNodes(cut: Bool = false, to pasteboard: EditorPasteboard) {
+        guard cut ? canCutNodes : canCopyNodes, !stopped else { return }
+        isWorking = true
+        operation = Task {
+            defer { isWorking = false }
+            do {
+                let data = try await session.copyPayload(identifier: UUID().uuidString, onlyEditable: cut)
+                guard !Task.isCancelled, !stopped else { return }
+                try pasteboard.write(data)
+                if cut {
+                    let next = try await session.deleteSelection()
+                    guard !Task.isCancelled, !stopped else { return }
+                    snapshot = next
+                    fit()
+                    onDocumentChanged?(next.document.encoded())
+                    generate(next)
+                }
+                errorMessage = nil
+            } catch {
+                if !Task.isCancelled { errorMessage = Self.message(error) }
+            }
+        }
+    }
+
+    /// The system PasteButton delivers data asynchronously; the session validates it away from the UI actor.
+    func pasteNodes(data: Data) {
+        perform { try await $0.paste(data: data) }
+    }
+
     func deleteSelection() { perform { try await $0.deleteSelection() } }
 
     func edit(id: String, position: NodePosition, radius: Double) {
@@ -180,9 +213,20 @@ final class EditorStore {
             case .missingNode(let id): return "Node \(id) is not present in this document."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
             case .conflictingAsset(let name): return "Clipboard asset \(name) conflicts with this document."
-            case .cyclicProfile: return "Joining these parts would create a cyclic cut-face reference."
+            case .cyclicProfile: return "This edit would create a cyclic cut-face reference."
             case .transactionAlreadyOpen: return "An edit transaction is already in progress."
             case .noTransaction: return "No edit transaction is in progress."
+            }
+        }
+        if let clipboard = error as? ClipboardError {
+            switch clipboard {
+            case .invalidPayload: return "The clipboard contains invalid Dust3D node data."
+            case .unsupportedVersion: return "This clipboard data requires a newer Dust3D editor."
+            }
+        }
+        if let pasteboard = error as? PasteboardError {
+            switch pasteboard {
+            case .writeFailed: return "The clipboard could not be written. No nodes were removed."
             }
         }
         if let editor = error as? EditorError {

@@ -1,0 +1,23 @@
+import CoreTransferable
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// The system loads the representation asynchronously; only copied Data crosses into the editing session.
+struct NodeClipboardTransfer: Transferable, Sendable {
+    let data: Data
+    static let contentType = UTType(exportedAs: "org.dust3d.node-clipboard.v1", conformingTo: .data)
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(importedContentType: contentType) { data in NodeClipboardTransfer(data: data) }
+    }
+}
+
+struct NodeClipboardPasteButton: View {
+    let store: EditorStore?
+    var body: some View {
+        PasteButton(payloadType: NodeClipboardTransfer.self) { values in
+            guard let data = values.first?.data else { return }
+            store?.pasteNodes(data: data)
+        }
+        .disabled(store?.snapshot == nil || store?.isWorking != false)
+    }
+}

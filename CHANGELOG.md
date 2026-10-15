@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Add document-level node clipboard fragments, explicit identity remapping, linked-profile/asset preservation and atomic paste undo; native clipboard commands remain the next stage.
+- Add native node Cut/Copy/Paste and context-aware Select All, with versioned transport, fresh identities, normalized readonly/disconnected copies, one-step undo and lossless cross-window saves.
+
+- Add document-level node clipboard fragments, explicit identity remapping, linked-profile/asset preservation and atomic paste undo.
 
 - Join editable endpoints across parts with source settings, directed chain extension, cyclic-profile protection, lossless unrelated data and one-step undo/redo.
 

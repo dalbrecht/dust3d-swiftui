@@ -62,7 +62,9 @@ public enum DocumentCommand: Sendable {
     case removeEdge(id: String)
     case reverseEdges([String])
     case splitPart(id: String, identities: [PartSplitIdentity])
-    case pasteNodes(clipboard: NodeClipboard, identities: [String: String], offset: NodePosition)
+    case pasteNodes(
+        clipboard: NodeClipboard, identities: [String: String], offset: NodePosition,
+        partitions: [String: [PartSplitIdentity]] = [:])
 }
 
 /// Stable node metadata for editor presentation. Geometry and unknown XML remain in the archive.
@@ -327,11 +329,32 @@ public struct Dust3DDocument: Sendable {
                 edge.attribute(forName: "from")?.stringValue = to
                 edge.attribute(forName: "to")?.stringValue = from
             }
-        case .pasteNodes(let clipboard, let identities, let offset):
+        case .pasteNodes(let clipboard, let identities, let offset, let partitions):
             try NodeClipboardMutation.paste(
                 clipboard, identities: identities, offset: offset, into: model, contents: contents)
-            let result = try replacingModel(model.xmlData(options: [.nodePreserveAll])).mergingAssets(
+            var result = try replacingModel(model.xmlData(options: [.nodePreserveAll])).mergingAssets(
                 from: clipboard.document)
+            let contents = try result.editorContents()
+            let pastedParts = Set(
+                try clipboard.document.editorContents().nodes.compactMap(\.partID).compactMap { identities[$0] })
+            guard Set(partitions.keys).isSubset(of: pastedParts) else { throw DocumentError.invalidNode }
+            let identityCount = partitions.values.reduce(0) { total, plans in
+                total + plans.reduce(0) { $0 + 1 + $1.componentIDs.count }
+            }
+            guard identityCount <= 20_000 else { throw DocumentError.limitExceeded }
+            let fresh = partitions.values.flatMap { $0 }.flatMap { [$0.partID] + $0.componentIDs }
+            let keys = fresh.map { CutFaceLinks.canonicalID($0) ?? $0 }
+            let existing = Set(
+                NodeClipboardMutation.semanticElements(model).compactMap { $0.attribute(forName: "id")?.stringValue }
+                    .map { CutFaceLinks.canonicalID($0) ?? $0 })
+            guard Set(keys).count == keys.count, existing.isDisjoint(with: keys) else {
+                throw DocumentError.invalidNode
+            }
+            for id in partitions.keys.sorted() {
+                _ = try PartSplitting.apply(
+                    id: id, identities: partitions[id] ?? [], model: model, contents: contents, allowReadOnly: true)
+            }
+            if !partitions.isEmpty { result = try result.replacingModel(model.xmlData(options: [.nodePreserveAll])) }
             _ = try result.editorContents()
             return result
         case .splitPart(let id, let identities):

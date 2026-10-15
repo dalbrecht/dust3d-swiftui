@@ -15,7 +15,7 @@ fi
 MODE="${1:-run}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/script/build_paths.sh"
-APP_BUNDLE="$DUST3D_BUILD_ROOT/app/$APP_NAME.app"
+APP_BUNDLE="${DUST3D_APP_OUTPUT_DIR:-$DUST3D_BUILD_ROOT/app}/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_BINARY="$APP_CONTENTS/MacOS/$APP_NAME"
 cd "$ROOT_DIR"
@@ -40,6 +40,14 @@ cp "$BUILD_DIR/$APP_NAME" "$APP_BINARY"
 
 cp -R "$BUILD_DIR/Dust3DNative_Dust3DRendering.bundle" "$APP_CONTENTS/Resources/"
 chmod +x "$APP_BINARY"
+CLIPBOARD_TYPE_DECLARATION=""
+if [ "$APP_NAME" = "Dust3DEditor" ]; then
+    CLIPBOARD_TYPE_DECLARATION='<key>UTExportedTypeDeclarations</key><array><dict>
+<key>UTTypeIdentifier</key><string>org.dust3d.node-clipboard.v1</string>
+<key>UTTypeDescription</key><string>Dust3D Node Clipboard</string>
+<key>UTTypeConformsTo</key><array><string>public.data</string></array>
+</dict></array>'
+fi
 cat > "$APP_CONTENTS/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -65,6 +73,7 @@ cat > "$APP_CONTENTS/Info.plist" <<PLIST
 <key>UTTypeConformsTo</key><array><string>public.data</string></array>
 <key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>ds3</string></array></dict>
 </dict></array>
+$CLIPBOARD_TYPE_DECLARATION
 </dict></plist>
 PLIST
 # Strip copied Finder metadata before ad-hoc signing this local development bundle.
