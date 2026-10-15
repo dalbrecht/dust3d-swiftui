@@ -15,6 +15,11 @@ public actor EditorSession {
         return next.snapshot
     }
 
+    /// Update this window's transient interaction lock state.
+    public func setLock(_ constraint: EditingConstraint, isLocked: Bool) throws -> EditorSnapshot {
+        try update { $0.setLock(constraint, isLocked: isLocked) }
+    }
+
     public func select(_ id: String?) throws -> EditorSnapshot { try update { try $0.select(id) } }
 
     public func edit(id: String, position: NodePosition, radius: Double) throws -> EditorSnapshot {

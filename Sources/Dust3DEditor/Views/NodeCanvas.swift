@@ -29,7 +29,7 @@ struct NodeCanvas: View {
                 ForEach(nodes.filter(\.isVisible)) { node in
                     NodeHandle(
                         node: node, projection: projection,
-                        selected: store.snapshot?.selectedID == node.id,
+                        selected: store.snapshot?.selectedID == node.id, locks: store.locks,
                         enabled: !store.isWorking,
                         select: { store.select(node.id) },
                         move: { position in store.edit(id: node.id, position: position, radius: node.value.radius) })
@@ -49,13 +49,16 @@ private struct NodeHandle: View {
     let node: DocumentNode
     let projection: CanvasProjection
     let selected: Bool
+    let locks: Set<EditingConstraint>
     let enabled: Bool
     let select: () -> Void
     let move: (NodePosition) -> Void
     @GestureState private var translation = CGSize.zero
 
     var body: some View {
-        let point = projection.point(for: node.value.position)
+        let moved = projection.moving(
+            node.value.position, by: .init(x: translation.width, y: translation.height), locks: locks)
+        let point = projection.point(for: moved)
         ZStack {
             Circle().stroke(selected ? Color.accentColor : .secondary.opacity(0.4), lineWidth: selected ? 2 : 1)
                 .frame(
@@ -68,7 +71,7 @@ private struct NodeHandle: View {
             Color.clear.frame(width: 36, height: 36).contentShape(Circle())
         }
         .frame(width: 36, height: 36)
-        .position(x: point.x + translation.width, y: point.y + translation.height)
+        .position(x: point.x, y: point.y)
         .onTapGesture { if enabled { select() } }
         .gesture(
             DragGesture(minimumDistance: 3)
@@ -80,7 +83,7 @@ private struct NodeHandle: View {
                         move(
                             projection.moving(
                                 node.value.position,
-                                by: CanvasPoint(x: value.translation.width, y: value.translation.height)))
+                                by: CanvasPoint(x: value.translation.width, y: value.translation.height), locks: locks))
                     }
                 }
         )

@@ -1,6 +1,6 @@
 # Native editor implementation and repository plan
 
-Status: October 14, 2026. The viewer, pinned-core migration (#3), and lossless document/undo foundations (#5) have landed. A separate editor now implements selection, front/side movement, coordinate/radius edits, per-window undo/redo, and native open/save; see [implementation and validation](editor-app-verification.md). The next graph slice adds node/part creation, automatic chain extension, same-part edge connection/deletion, cascading node deletion and atomic topology undo/save. Full feature parity below remains pending. Estimates below are sequencing guidance, not a delivery commitment.
+Status: October 14, 2026. The viewer, pinned-core migration (#3), and lossless document/undo foundations (#5) have landed. A separate editor now implements selection, front/side movement, coordinate/radius edits, per-window undo/redo, and native open/save; see [implementation and validation](editor-app-verification.md). Graph topology editing landed in #9 after automated review and CI. Per-window X/Y/Z and radius interaction locks now form the next tested stage; these constrain new edits without entering archive or undo data. Full feature parity below remains pending. Estimates below are sequencing guidance, not a delivery commitment.
 
 ## Product boundary
 

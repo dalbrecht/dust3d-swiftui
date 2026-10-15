@@ -63,10 +63,12 @@ public struct CanvasProjection: Sendable {
     }
 
     /// Convert a screen gesture into model units while preserving the third axis.
-    public func moving(_ position: NodePosition, by delta: CanvasPoint) -> NodePosition {
+    public func moving(_ position: NodePosition, by delta: CanvasPoint, locks: Set<EditingConstraint> = [])
+        -> NodePosition
+    {
         NodePosition(
-            x: position.x + (plane == .front ? delta.x / scale : 0),
-            y: position.y - delta.y / scale,
-            z: position.z + (plane == .side ? delta.x / scale : 0))
+            x: position.x + (plane == .front && !locks.contains(.x) ? delta.x / scale : 0),
+            y: position.y - (locks.contains(.y) ? 0 : delta.y / scale),
+            z: position.z + (plane == .side && !locks.contains(.z) ? delta.x / scale : 0))
     }
 }
