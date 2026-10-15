@@ -76,4 +76,29 @@ final class JoiningAvailabilityTests: XCTestCase {
         XCTAssertEqual(result.selectedID, "c")
     }
 
+    @MainActor func testDeletionThenJoinNormalizesTheSurvivingPart() async throws {
+        var original = try document()
+        for (index, id) in ["q2", "q3"].enumerated() {
+            original = try original.applying(
+                .addNode(
+                    id: id, partID: "q", componentID: nil,
+                    position: .init(x: 4 + Double(index), y: 0, z: 0), radius: 0.1))
+        }
+        original = try original.applying(.addEdge(id: "tq2", from: "target", to: "q2"))
+            .applying(.addEdge(id: "q2q3", from: "q2", to: "q3"))
+            .applying(.addEdge(id: "q3t", from: "q3", to: "target"))
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let joined = try await session.apply([
+            .removeEdge(id: "q3t"), .joinNodes(id: "join", from: "c", to: "target"),
+        ])
+        XCTAssertEqual(Set(joined.nodes.compactMap(\.partID)), ["p"])
+        XCTAssertEqual(joined.edges.count, 5)
+        let restored = try await session.undo()
+        XCTAssertEqual(restored.document.encoded(), original.encoded())
+        XCTAssertFalse(restored.canUndo)
+        let redone = try await session.redo()
+        XCTAssertEqual(redone.document.encoded(), joined.document.encoded())
+    }
+
 }

@@ -31,6 +31,15 @@ enum GraphCommandPreparation {
                     affected.formUnion(
                         contents.nodes.filter { $0.id == edge.fromID || $0.id == edge.toID }.compactMap(\.partID))
                 }
+            case .joinNodes(_, let from, let to):
+                let nodes = try preview.editorContents().nodes
+                if let sourcePart = nodes.first(where: { $0.id == from })?.partID,
+                    let targetPart = nodes.first(where: { $0.id == to })?.partID,
+                    sourcePart != targetPart, affected.remove(targetPart) != nil
+                {
+                    // Joining consumes the target identity; normalize its surviving owner instead.
+                    affected.insert(sourcePart)
+                }
             default: break
             }
             preview = try preview.applying(command)
