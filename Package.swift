@@ -25,6 +25,7 @@ let package = Package(
             name: "Dust3DEditor",
             dependencies: ["Dust3DDocument", "Dust3DEditorModel", "Dust3DKit", "Dust3DRendering"],
             exclude: ["README.md"]),
+        .testTarget(name: "Dust3DEditorTests", dependencies: ["Dust3DEditor", "Dust3DDocument"]),
         .target(name: "Dust3DDocument", exclude: ["README.md"]),
         .testTarget(name: "Dust3DDocumentTests", dependencies: ["Dust3DDocument"]),
         .target(name: "Dust3DKit", dependencies: [.product(name: "Dust3DEngine", package: "dust3d-core")]),

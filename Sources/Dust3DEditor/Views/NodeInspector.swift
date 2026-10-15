@@ -4,10 +4,12 @@ import SwiftUI
 
 struct NodeInspector: View {
     let store: EditorStore
-    @State private var x = 0.0
-    @State private var y = 0.0
-    @State private var z = 0.0
-    @State private var radius = 0.0
+    @State private var draft: InspectorNodeDraft
+
+    init(store: EditorStore, draft: InspectorNodeDraft = InspectorNodeDraft()) {
+        self.store = store
+        _draft = State(initialValue: draft)
+    }
 
     var body: some View { ScrollView { content } }
 
@@ -26,23 +28,27 @@ struct NodeInspector: View {
                 Text(node.id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                     .focusedValue(\.editorTextEditing, true)
                 Form {
-                    TextField("X", value: $x, format: .number).accessibilityIdentifier("node-x")
+                    TextField("X", value: $draft.x, format: .number).accessibilityIdentifier("node-x")
                         .disabled(store.locks.contains(.x))
-                    TextField("Y", value: $y, format: .number).accessibilityIdentifier("node-y")
+                    TextField("Y", value: $draft.y, format: .number).accessibilityIdentifier("node-y")
                         .disabled(store.locks.contains(.y))
-                    TextField("Z", value: $z, format: .number).accessibilityIdentifier("node-z")
+                    TextField("Z", value: $draft.z, format: .number).accessibilityIdentifier("node-z")
                         .disabled(store.locks.contains(.z))
-                    TextField("Radius", value: $radius, format: .number).accessibilityIdentifier("node-radius")
+                    TextField("Radius", value: $draft.radius, format: .number).accessibilityIdentifier("node-radius")
                         .disabled(store.locks.contains(.radius))
                 }
+                .id(draft.resetID)
                 .focusedValue(\.editorTextEditing, true)
                 .disabled(store.isWorking || !node.isEditable)
                 if !node.isEditable { Label("Locked or hidden part", systemImage: "lock").font(.caption) }
                 HStack {
-                    Button("Reset") { reset(node.value) }
+                    Button("Reset") { draft.reset(node.value) }
                     Spacer()
-                    Button("Apply") { store.edit(id: node.id, position: .init(x: x, y: y, z: z), radius: radius) }
-                        .buttonStyle(.borderedProminent)
+                    Button("Apply") {
+                        store.edit(
+                            id: node.id, position: .init(x: draft.x, y: draft.y, z: draft.z), radius: draft.radius)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
                 .disabled(store.isWorking || !node.isEditable)
                 SelectionTransformMenu(store: store)
@@ -75,23 +81,17 @@ struct NodeInspector: View {
         }
         .padding(16)
         .onChange(of: store.snapshot?.selectedNode, initial: true) { _, node in
-            if let node { reset(node.value) }
+            if let node { draft.reset(node.value) }
         }
         .onChange(of: store.locks) { previous, current in
             guard let node = store.snapshot?.selectedNode else { return }
-            if current.contains(.x) && !previous.contains(.x) { x = node.value.position.x }
-            if current.contains(.y) && !previous.contains(.y) { y = node.value.position.y }
-            if current.contains(.z) && !previous.contains(.z) { z = node.value.position.z }
-            if current.contains(.radius) && !previous.contains(.radius) { radius = node.value.radius }
+            if current.contains(.x) && !previous.contains(.x) { draft.x = node.value.position.x }
+            if current.contains(.y) && !previous.contains(.y) { draft.y = node.value.position.y }
+            if current.contains(.z) && !previous.contains(.z) { draft.z = node.value.position.z }
+            if current.contains(.radius) && !previous.contains(.radius) { draft.radius = node.value.radius }
         }
     }
 
-    private func reset(_ node: EditableNode) {
-        x = node.position.x
-        y = node.position.y
-        z = node.position.z
-        radius = node.radius
-    }
 }
 
 private struct GroupInspector: View {
