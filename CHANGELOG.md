@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add lossless editor archive storage, validated node commands, bounded undo/redo transactions, atomic file persistence, and measured coverage gates.
+
 - Consume the Qt-free engine from a pinned external core revision and remove the duplicate Apple-side native adapter.
 
 - Add a Qt-free C++17 engine library and C bridge, with validated `.ds3` archive loading.
