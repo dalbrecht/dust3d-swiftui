@@ -1,0 +1,13 @@
+# Dust3DDocument
+
+Lossless `.ds3` archive values, graph commands, and bounded snapshot undo/redo. This SwiftPM library uses Foundation XML and has no UI or Qt dependency. Build and test from the repository root with `make ci`.
+
+Initialize `Dust3DDocument(data:)`, inspect `editorContents()` or `modelXML`, apply typed `DocumentCommand` values, and write `encoded()` atomically through the application's file service. Unchanged archives remain byte-identical; commands retain unrelated XML and binary assets. Invalid commands throw `DocumentError` without replacing the original value.
+
+Graph removals are low-level building blocks. Discover `partSplitRequirements(for:)` after a removal, inject fresh `PartSplitIdentity` values, and compose `.splitPart` with that removal in a `DocumentHistory` transaction. The editor's `EditorSession` automates this orchestration off the main actor. UUID generation is deliberately excluded from document/state commands. Requirements are recomputed when a split command runs, so stale or insufficient identity plans fail atomically.
+
+Splitting retains the largest connected group's existing identity (ties follow node order), copies part/component style and unknown metadata for additional groups, and preserves assets and unaffected hierarchy. New IDs must be unique, nonempty and at most 128 UTF-8 bytes; the app supplies standard UUIDs. Component references are copied in document order. Actual child components stay on original references to avoid duplicating geometry.
+
+Archive parsing caps archives at 256 MiB and model XML at 16 MiB, with bounded XML depth. Editor graph reads allow 10,000 nodes and 20,000 edges; splitting additionally caps total parts/components at 10,000, with operation-specific validation. Splitting rejects excessive part/component counts and copied metadata before allocation; its metadata-size estimate is conservative near the model limit. History defaults to 100 entries and 64 MiB. These limits do not bound CPU/memory inside inherited C++ geometry algorithms.
+
+See [splitting decision](../../docs/adr/0009-disconnected-part-splitting.md) and [verification](../../docs/part-splitting-verification.md). Cross-part merging, empty-part cleanup and full Qt parity remain pending.

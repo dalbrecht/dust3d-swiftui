@@ -196,7 +196,8 @@ public struct EditorState: Sendable {
         self = next
     }
 
-    /// Delete editable selected nodes and their incident edges in one undo step.
+    /// Low-level deletion without allocating identities. App callers use EditorSession.deleteSelection,
+    /// which composes explicit split commands with removal in the same undo transaction.
     public mutating func deleteSelection() throws {
         try apply([.removeNodes(snapshot.selectedNodes.filter(\.isEditable).map(\.id))])
     }

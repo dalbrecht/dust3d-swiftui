@@ -40,7 +40,14 @@ public actor EditorSession {
     public func move(id: String, to position: NodePosition) throws -> EditorSnapshot {
         try update { try $0.move(id: id, to: position) }
     }
-    public func deleteSelection() throws -> EditorSnapshot { try update { try $0.deleteSelection() } }
+    public func deleteSelection() throws -> EditorSnapshot {
+        try update { state in
+            let ids = state.snapshot.selectedNodes.filter(\.isEditable).map(\.id)
+            let commands = try GraphCommandPreparation.normalizingDeletions(
+                [.removeNodes(ids)], document: state.snapshot.document)
+            try state.apply(commands)
+        }
+    }
 
     public func edit(id: String, position: NodePosition, radius: Double) throws -> EditorSnapshot {
         try update { try $0.edit(id: id, position: position, radius: radius) }
@@ -48,7 +55,10 @@ public actor EditorSession {
 
     /// Atomically apply a graph transaction; cancellation is checked before it begins.
     public func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws -> EditorSnapshot {
-        try update { try $0.apply(commands, selecting: id) }
+        try update { state in
+            let prepared = try GraphCommandPreparation.normalizingDeletions(commands, document: state.snapshot.document)
+            try state.apply(prepared, selecting: id)
+        }
     }
 
     public func undo() throws -> EditorSnapshot { try update { try $0.undo() } }
