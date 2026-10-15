@@ -179,6 +179,7 @@ final class EditorStore {
             case .limitExceeded: return "The document or edit exceeds supported size or undo-history limits."
             case .missingNode(let id): return "Node \(id) is not present in this document."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
+            case .conflictingAsset(let name): return "Clipboard asset \(name) conflicts with this document."
             case .cyclicProfile: return "Joining these parts would create a cyclic cut-face reference."
             case .transactionAlreadyOpen: return "An edit transaction is already in progress."
             case .noTransaction: return "No edit transaction is in progress."

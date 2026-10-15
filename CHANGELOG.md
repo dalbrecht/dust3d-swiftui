@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add document-level node clipboard fragments, explicit identity remapping, linked-profile/asset preservation and atomic paste undo; native clipboard commands remain the next stage.
+
 - Join editable endpoints across parts with source settings, directed chain extension, cyclic-profile protection, lossless unrelated data and one-step undo/redo.
 
 - Split disconnected parts after editor node/edge removal, preserving style and unknown metadata, hierarchy placement and one-step undo while keeping generated models previewable.

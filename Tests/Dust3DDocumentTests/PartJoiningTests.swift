@@ -7,13 +7,13 @@ final class PartJoiningTests: XCTestCase {
         sourceForward: Bool = true, targetForward: Bool = true, children: Bool = false, locked: Bool = false
     ) throws -> Dust3DDocument {
         let xml = """
-            <canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/><node id='b' partId='p' x='1' y='0' z='0' radius='.1'/>
-            <node id='c' partId='q' x='2' y='0' z='0' radius='.1' future='node'/><node id='d' partId='q' x='3' y='0' z='0' radius='.1'/>
-            <node id='e' partId='r' x='4' y='0' z='0' radius='.1' cutFace='q'/></nodes>
-            <edges><edge id='ab' partId='p' from='\(sourceForward ? "a" : "b")' to='\(sourceForward ? "b" : "a")'/><edge id='cd' partId='q' from='\(targetForward ? "c" : "d")' to='\(targetForward ? "d" : "c")' future='edge'><future/></edge></edges>
-            <parts><part id='p' deformWidth='1.2' future='source'/><part id='q' locked='\(locked)' deformWidth='.8' future='consumed'/><part id='r' cutFace='q' future='unrelated'/></parts>
-            <components><component id='source' linkData='p' linkDataType='partId' color='#ff123456'/><component id='target' linkData='q' linkDataType='partId' future='style'>\(children ? "<component id='child' linkData='r' linkDataType='partId'/><future/>" : "")</component><component id='repeat' linkData='q' linkDataType='partId'/></components>
-            <future><component id='opaque' linkData='q' linkDataType='partId'/></future></canvas>
+            <canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1'/><node id='b' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='1' y='0' z='0' radius='.1'/>
+            <node id='c' partId='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' x='2' y='0' z='0' radius='.1' future='node'/><node id='d' partId='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' x='3' y='0' z='0' radius='.1'/>
+            <node id='e' partId='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' x='4' y='0' z='0' radius='.1' cutFace='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}'/></nodes>
+            <edges><edge id='ab' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' from='\(sourceForward ? "a" : "b")' to='\(sourceForward ? "b" : "a")'/><edge id='cd' partId='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' from='\(targetForward ? "c" : "d")' to='\(targetForward ? "d" : "c")' future='edge'><future/></edge></edges>
+            <parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' deformWidth='1.2' future='source'/><part id='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' locked='\(locked)' deformWidth='.8' future='consumed'/><part id='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' cutFace='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' future='unrelated'/></parts>
+            <components><component id='source' linkData='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' linkDataType='partId' color='#ff123456'/><component id='target' linkData='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' linkDataType='partId' future='style'>\(children ? "<component id='child' linkData='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' linkDataType='partId'/><future/>" : "")</component><component id='repeat' linkData='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' linkDataType='partId'/></components>
+            <future><component id='opaque' linkData='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' linkDataType='partId'/></future></canvas>
             """
         return try archive(xml)
     }
@@ -32,22 +32,31 @@ final class PartJoiningTests: XCTestCase {
                 let source = try document(sourceForward: sourceForward, targetForward: targetForward)
                 let joined = try source.applying(.joinNodes(id: "join", from: "a", to: "c"))
                 let contents = try joined.editorContents()
-                XCTAssertEqual(contents.nodes.map(\.partID), ["p", "p", "p", "p", "r"])
+                XCTAssertEqual(
+                    contents.nodes.map(\.partID),
+                    [
+                        "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}",
+                        "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}",
+                        "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}",
+                    ])
                 XCTAssertEqual(contents.edges.first { $0.id == "join" }?.fromID, sourceForward ? "c" : "a")
                 XCTAssertEqual(contents.edges.first { $0.id == "join" }?.toID, sourceForward ? "a" : "c")
                 XCTAssertEqual(contents.edges.first { $0.id == "cd" }?.fromID, sourceForward ? "d" : "c")
                 XCTAssertEqual(contents.edges.first { $0.id == "cd" }?.toID, sourceForward ? "c" : "d")
                 let xml = try XMLDocument(data: joined.modelXML)
-                XCTAssertTrue(try xml.nodes(forXPath: "/canvas/parts/part[@id='q']").isEmpty)
+                XCTAssertTrue(
+                    try xml.nodes(forXPath: "/canvas/parts/part[@id='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}']").isEmpty)
                 XCTAssertEqual(
-                    (try xml.nodes(forXPath: "/canvas/parts/part[@id='p']").first as? XMLElement)?.attribute(
-                        forName: "deformWidth")?.stringValue, "1.2")
+                    (try xml.nodes(forXPath: "/canvas/parts/part[@id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}']").first
+                        as? XMLElement)?.attribute(
+                            forName: "deformWidth")?.stringValue, "1.2")
                 XCTAssertEqual(
-                    (try xml.nodes(forXPath: "/canvas/parts/part[@id='r']").first as? XMLElement)?.attribute(
-                        forName: "cutFace")?.stringValue, "p")
+                    (try xml.nodes(forXPath: "/canvas/parts/part[@id='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}']").first
+                        as? XMLElement)?.attribute(
+                            forName: "cutFace")?.stringValue, "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}")
                 XCTAssertEqual(
                     (try xml.nodes(forXPath: "/canvas/nodes/node[@id='e']").first as? XMLElement)?.attribute(
-                        forName: "cutFace")?.stringValue, "p")
+                        forName: "cutFace")?.stringValue, "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}")
                 XCTAssertEqual(
                     (try xml.nodes(forXPath: "/canvas/nodes/node[@id='c']").first as? XMLElement)?.attribute(
                         forName: "future")?.stringValue, "node")
@@ -57,7 +66,7 @@ final class PartJoiningTests: XCTestCase {
                     ).count, 1)
                 XCTAssertEqual(
                     (try xml.nodes(forXPath: "/canvas/future/component").first as? XMLElement)?.attribute(
-                        forName: "linkData")?.stringValue, "q")
+                        forName: "linkData")?.stringValue, "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}")
                 XCTAssertEqual(try xml.nodes(forXPath: "/canvas/components/component").count, 1)
                 XCTAssertEqual(joined.asset(named: "opaque"), Data([0, 255]))
                 var history = DocumentHistory(document: source)
@@ -94,7 +103,9 @@ final class PartJoiningTests: XCTestCase {
         }
         XCTAssertThrowsError(try document(locked: true).applying(.joinNodes(id: "join", from: "a", to: "c")))
         let branched = try source.applying(
-            .addNode(id: "f", partID: "p", componentID: nil, position: .init(x: 0, y: 1, z: 0), radius: 0.1)
+            .addNode(
+                id: "f", partID: "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", componentID: nil,
+                position: .init(x: 0, y: 1, z: 0), radius: 0.1)
         ).applying(.addEdge(id: "af", from: "a", to: "f"))
         XCTAssertThrowsError(try branched.applying(.joinNodes(id: "join", from: "a", to: "c")))
         let disconnected = try source.applying(.removeEdge(id: "cd"))
@@ -110,7 +121,7 @@ final class PartJoiningTests: XCTestCase {
         for (index, id) in ["a", "b", "c"].enumerated() {
             source = try source.applying(
                 .addNode(
-                    id: id, partID: "p", componentID: index == 0 ? "comp" : nil,
+                    id: id, partID: "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", componentID: index == 0 ? "comp" : nil,
                     position: .init(x: Double(index), y: 0, z: 0), radius: 0.1))
         }
         source = try source.applying(.addEdge(id: "ab", from: "a", to: "b")).applying(
@@ -119,7 +130,9 @@ final class PartJoiningTests: XCTestCase {
         XCTAssertEqual(try loop.editorContents().edges.last?.fromID, "c")
         XCTAssertEqual(try loop.editorContents().edges.last?.toID, "a")
         source = try source.applying(
-            .addNode(id: "new", partID: "p", componentID: nil, position: .init(x: -1, y: 0, z: 0), radius: 0.1))
+            .addNode(
+                id: "new", partID: "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", componentID: nil,
+                position: .init(x: -1, y: 0, z: 0), radius: 0.1))
         let extended = try source.applying(.joinNodes(id: "newa", from: "a", to: "new"))
         XCTAssertEqual(try extended.editorContents().edges.last?.fromID, "new")
         XCTAssertEqual(try extended.editorContents().edges.last?.toID, "a")
@@ -127,8 +140,15 @@ final class PartJoiningTests: XCTestCase {
     func testProfileCyclesAndBranchingTargetsAreRejected() throws {
         let original = try document()
         for (path, target) in [
-            ("/canvas/parts/part[@id='p']", "q"), ("/canvas/parts/part[@id='p']", "r"),
-            ("/canvas/nodes/node[@id='a']", "q"),
+            (
+                "/canvas/parts/part[@id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}']",
+                "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"
+            ),
+            (
+                "/canvas/parts/part[@id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}']",
+                "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}"
+            ),
+            ("/canvas/nodes/node[@id='a']", "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"),
         ] {
             let xml = try XMLDocument(data: original.modelXML)
             let element = try XCTUnwrap(try xml.nodes(forXPath: path).first as? XMLElement)
@@ -141,12 +161,14 @@ final class PartJoiningTests: XCTestCase {
                 XCTAssertEqual($0 as? DocumentError, .cyclicProfile)
             }
         }
-        for partID in ["p", "q"] {
+        for partID in ["{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"] {
             var branched = original
             for id in ["f", "g"] {
                 branched = try branched.applying(
                     .addNode(id: id, partID: partID, componentID: nil, position: .init(x: 0, y: 1, z: 0), radius: 0.1)
-                ).applying(.addEdge(id: "edge-\(id)", from: partID == "p" ? "b" : "d", to: id))
+                ).applying(
+                    .addEdge(
+                        id: "edge-\(id)", from: partID == "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}" ? "b" : "d", to: id))
             }
             XCTAssertThrowsError(try branched.applying(.joinNodes(id: "join", from: "a", to: "c")))
         }
@@ -164,8 +186,47 @@ final class PartJoiningTests: XCTestCase {
         let result = try XMLDocument(data: joined.modelXML)
         XCTAssertEqual(result.rootElement()?.uri, "urn:future")
         let opaque = result.rootElement()?.elements(forName: "future").first?.elements(forName: "component").first
-        XCTAssertEqual(opaque?.attribute(forName: "linkData")?.stringValue, "q")
-        XCTAssertEqual(try joined.editorContents().nodes.filter { $0.partID == "p" }.count, 4)
+        XCTAssertEqual(opaque?.attribute(forName: "linkData")?.stringValue, "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}")
+        XCTAssertEqual(
+            try joined.editorContents().nodes.filter { $0.partID == "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}" }.count, 4)
+    }
+
+    func testJoiningDoesNotRewriteNamedPresetMatchingConsumedPartID() throws {
+        let original = try document()
+        let xml = String(decoding: original.modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}", with: "Quad")
+        let source = try archive(xml)
+        let joined = try source.applying(.joinNodes(id: "join", from: "a", to: "c"))
+        let root = try XMLDocument(data: joined.modelXML).rootElement()
+        let part = root?.elements(forName: "parts").first?.elements(forName: "part").last
+        XCTAssertEqual(part?.attribute(forName: "cutFace")?.stringValue, "Quad")
+        let node = root?.elements(forName: "nodes").first?.elements(forName: "node").last
+        XCTAssertEqual(node?.attribute(forName: "cutFace")?.stringValue, "Quad")
+    }
+
+    func testJoiningKeepsUnresolvedProfileSpellingUnchanged() throws {
+        let source = try document()
+        let model = try XMLDocument(data: source.modelXML)
+        let root = try XCTUnwrap(model.rootElement())
+        let elements =
+            (root.elements(forName: "parts").first?.elements(forName: "part") ?? [])
+            + (root.elements(forName: "nodes").first?.elements(forName: "node") ?? [])
+        for element in elements {
+            if let attribute = element.attribute(forName: "cutFace"),
+                attribute.stringValue == "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"
+            {
+                attribute.stringValue = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+            }
+        }
+        let original = try archive(model.xmlString(options: [.nodePreserveAll]))
+        let joined = try original.applying(.joinNodes(id: "join", from: "a", to: "c"))
+        let result = try XMLDocument(data: joined.modelXML).rootElement()
+        XCTAssertEqual(
+            result?.elements(forName: "parts").first?.elements(forName: "part").last?.attribute(forName: "cutFace")?
+                .stringValue, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+        XCTAssertEqual(
+            result?.elements(forName: "nodes").first?.elements(forName: "node").last?.attribute(forName: "cutFace")?
+                .stringValue, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
     }
 
 }
