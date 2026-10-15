@@ -7,6 +7,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case limitExceeded
     case missingNode(String)
     case invalidNode
+    case cyclicProfile
     case transactionAlreadyOpen
     case noTransaction
 }
@@ -54,6 +55,7 @@ public enum DocumentCommand: Sendable {
     case setNodes([NodeUpdate])
     case addNode(id: String, partID: String, componentID: String?, position: NodePosition, radius: Double)
     case addEdge(id: String, from: String, to: String)
+    case joinNodes(id: String, from: String, to: String)
     case removeNode(id: String)
     case removeNodes([String])
     case removeEdge(id: String)
@@ -281,6 +283,8 @@ public struct Dust3DDocument: Sendable {
                 })
             else { throw DocumentError.invalidNode }
             container("edges").addChild(element("edge", [("id", id), ("partId", partID), ("from", from), ("to", to)]))
+        case .joinNodes(let id, let from, let to):
+            try PartJoining.apply(id: id, from: from, to: to, model: model, contents: contents)
         case .removeNode(let id):
             return try applying(.removeNodes([id]))
         case .removeNodes(let ids):

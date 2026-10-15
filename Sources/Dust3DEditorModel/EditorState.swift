@@ -38,19 +38,52 @@ public struct EditorSnapshot: Sendable {
     public var reversibleEdges: [DocumentEdge] {
         editableEdges.filter { selectedIDs.contains($0.fromID) && selectedIDs.contains($0.toID) }
     }
-    /// Editable same-part nodes that are not already joined to the current selection.
+    /// Editable assigned nodes with room for another edge, matching Qt's endpoint rule.
+    public var connectableNodes: [DocumentNode] {
+        var degree: [String: Int] = [:]
+        for edge in edges {
+            degree[edge.fromID, default: 0] += 1
+            degree[edge.toID, default: 0] += 1
+        }
+        return nodes.filter { $0.isEditable && $0.partID != nil && (degree[$0.id] ?? 0) < 2 }
+    }
+    /// Empty selection creates a part; one editable endpoint extends it. Groups need an explicit New Part.
+    public var canAddNode: Bool {
+        guard selectedIDs.count <= 1 else { return false }
+        guard let selected = selectedNode else { return true }
+        return selected.isEditable && (selected.partID == nil || connectableNodes.contains { $0.id == selected.id })
+    }
+    /// Place a new node a quarter unit away from the existing neighbor, or along Y for a lone node.
+    public var nextNodePosition: NodePosition {
+        guard let selected = selectedNode else { return .init(x: 0.5, y: 0.5, z: 0.5) }
+        let position = selected.value.position
+        if let edge = edges.first(where: { $0.fromID == selected.id || $0.toID == selected.id }),
+            let neighbor = nodes.first(where: { $0.id == (edge.fromID == selected.id ? edge.toID : edge.fromID) })
+        {
+            let x = position.x - neighbor.value.position.x
+            let y = position.y - neighbor.value.position.y
+            let z = position.z - neighbor.value.position.z
+            let length = (x * x + y * y + z * z).squareRoot()
+            if length > 0 {
+                return .init(
+                    x: position.x + x / length * 0.25, y: position.y + y / length * 0.25,
+                    z: position.z + z / length * 0.25)
+            }
+        }
+        return .init(x: position.x, y: position.y + 0.25, z: position.z)
+    }
+    /// Available endpoint targets, including other parts. Duplicate/self links are excluded.
     public var connectionTargets: [DocumentNode] {
-        guard selectedIDs.count == 1, let selected = selectedNode, selected.isEditable, let partID = selected.partID
-        else { return [] }
+        guard selectedIDs.count == 1, let selected = selectedNode else { return [] }
+        let endpoints = connectableNodes
+        guard endpoints.contains(where: { $0.id == selected.id }) else { return [] }
         let neighbors = Set(
             edges.compactMap { edge -> String? in
                 if edge.fromID == selected.id { return edge.toID }
                 if edge.toID == selected.id { return edge.fromID }
                 return nil
             })
-        return nodes.filter {
-            $0.id != selected.id && $0.isEditable && $0.partID == partID && !neighbors.contains($0.id)
-        }
+        return endpoints.filter { $0.id != selected.id && !neighbors.contains($0.id) }
     }
 
 }

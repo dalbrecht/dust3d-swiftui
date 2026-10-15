@@ -11,10 +11,9 @@ be changed. The mesh preview uses the same Qt-free engine and Metal renderer as
 the standalone viewer.
 
 New documents start empty. Use the + menu to Add Node (extend the selected node
-in the same part) or New Part. Connect to… and Disconnect edit edges in the
+outward from a chain endpoint) or New Part. Connect to… and Disconnect edit edges in the
 selected node’s inspector. Delete Node removes its incident edges in one undo
-step. Part locks and visibility are enforced. Connecting different parts and
-duplicate/self edges is rejected. Full modeling inspectors remain later milestones. Unsupported mesh assets remain preserved
+step. Part locks and visibility are enforced. Connect accepts editable endpoints across parts, retaining the selected node’s part settings and consuming the target part’s leaf settings. Undo restores both parts. Interior nodes, duplicate/self edges, unsupported branches and cyclic linked profiles are rejected. Full modeling inspectors remain later milestones. Unsupported mesh assets remain preserved
 even when the preview cannot display them. The standalone viewer remains read-only.
 
 Development: `make ci`. No Qt dependency, hand-maintained Xcode project or extra
@@ -33,4 +32,6 @@ Multi-node selection is transient and per window. Use sidebar Command/Shift sele
 
 Canvas and inspector transform menus provide Front/Side quarter turns, X/Y/Z flips, and X/Z exchange. Rotations/flips honor movement locks; the explicit X/Z exchange ignores axis locks, matching Qt, and retains part read-only protection. Reverse Selected Edges acts on edges with both endpoints selected/editable. The single-node inspector shows directed edge menus with Reverse/Disconnect actions. See [transform verification](../../docs/graph-transform-verification.md).
 
-Disconnecting edges or deleting nodes now splits affected parts into connected groups in the same undo step, keeping generated pieces previewable and copying part/component metadata. The largest group keeps the original identity; other groups receive fresh UUIDs. Cross-part joining remains pending, so Connect targets still come from the same part. See [splitting verification](../../docs/part-splitting-verification.md).
+Disconnecting edges or deleting nodes now splits affected parts into connected groups in the same undo step, keeping generated pieces previewable and copying part/component metadata. The largest group keeps the original identity; other groups receive fresh UUIDs. Connect can rejoin editable endpoints across those parts. Add Node is disabled for interior/read-only nodes or multiple selection; New Part remains independently available. See [splitting verification](../../docs/part-splitting-verification.md).
+
+See [joining verification](../../docs/part-joining-verification.md) for source-settings semantics, namespace/metadata coverage and native save/reopen evidence.

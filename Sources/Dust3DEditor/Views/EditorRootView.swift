@@ -16,13 +16,13 @@ struct EditorRootView: View {
                     Text("Nodes").font(.headline)
                     Spacer()
                     Menu {
-                        Button("Add Node") { store.addNode() }
+                        Button("Add Node") { store.addNode() }.disabled(!store.canAddNode)
                         Button("New Part") { store.addNode(newPart: true) }
                     } label: {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("Create node or part")
-                    .disabled(store.isWorking)
+                    .disabled(store.isWorking || store.snapshot == nil)
                 }.padding(12)
                 Divider()
                 List(selection: Binding(get: { store.snapshot?.selectedIDs ?? [] }, set: { store.select($0) })) {

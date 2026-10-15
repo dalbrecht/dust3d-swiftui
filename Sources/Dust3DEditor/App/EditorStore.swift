@@ -68,20 +68,21 @@ final class EditorStore {
         perform { try await $0.edit(id: id, position: position, radius: radius) }
     }
 
+    var canAddNode: Bool { !isWorking && snapshot?.canAddNode == true }
+
     func addNode(newPart: Bool = false) {
-        let selected = newPart ? nil : snapshot?.selectedNode
+        guard let snapshot, newPart || canAddNode else { return }
+        let selected = newPart ? nil : snapshot.selectedNode
         let nodeID = Self.identifier()
         let partID = selected?.partID ?? Self.identifier()
-        let position =
-            selected.map { NodePosition(x: $0.value.position.x, y: $0.value.position.y + 0.25, z: $0.value.position.z) }
-            ?? NodePosition(x: 0.5, y: 0.5, z: 0.5)
+        let position = newPart ? NodePosition(x: 0.5, y: 0.5, z: 0.5) : snapshot.nextNodePosition
         var commands: [DocumentCommand] = [
             .addNode(
                 id: nodeID, partID: partID, componentID: selected?.partID == nil ? Self.identifier() : nil,
                 position: position, radius: selected?.value.radius ?? 0.1)
         ]
         if let selected, selected.partID != nil {
-            commands.append(.addEdge(id: Self.identifier(), from: selected.id, to: nodeID))
+            commands.append(.joinNodes(id: Self.identifier(), from: selected.id, to: nodeID))
         }
         let transaction = commands
         perform { try await $0.apply(transaction, selecting: nodeID) }
@@ -89,7 +90,7 @@ final class EditorStore {
 
     func connect(to id: String) {
         guard let selected = snapshot?.selectedID else { return }
-        let command = DocumentCommand.addEdge(id: Self.identifier(), from: selected, to: id)
+        let command = DocumentCommand.joinNodes(id: Self.identifier(), from: selected, to: id)
         perform { try await $0.apply([command]) }
     }
 
@@ -178,6 +179,7 @@ final class EditorStore {
             case .limitExceeded: return "The document or edit exceeds supported size or undo-history limits."
             case .missingNode(let id): return "Node \(id) is not present in this document."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
+            case .cyclicProfile: return "Joining these parts would create a cyclic cut-face reference."
             case .transactionAlreadyOpen: return "An edit transaction is already in progress."
             case .noTransaction: return "No edit transaction is in progress."
             }
