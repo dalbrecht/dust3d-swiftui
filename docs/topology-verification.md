@@ -17,7 +17,7 @@ native engine. A second engine regression confirms that preserving an empty
 part after deleting its last node does not break another part. The engine integration test exposed missing blank-document
 origins; explicit origins fix new-model generation.
 
-Measured executable-line coverage: document library 524/540 (97.04%), editor model
+Measured executable-line coverage: document library 527/540 (97.59%), editor model
 144/150 (96%), pure editor state 66/66 and undo history 91/91 (100%). Mesh library
 remains 66/67 (98.51%). SwiftUI/GPU and inherited C++ are outside these metrics.
 
