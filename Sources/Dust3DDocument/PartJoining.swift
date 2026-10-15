@@ -22,6 +22,8 @@ enum PartJoining {
         guard let root = model.rootElement(), let parts = root.elements(forName: "parts").first else {
             throw DocumentError.invalidXML
         }
+        let profileParts = try CutFaceLinks.index(
+            parts.elements(forName: "part").compactMap { $0.attribute(forName: "id")?.stringValue })
         let nodeElements = root.elements(forName: "nodes").first?.elements(forName: "node") ?? []
         let edges: XMLElement
         if let existing = root.elements(forName: "edges").first {
@@ -63,7 +65,10 @@ enum PartJoining {
                 part.detach()
             }
             for element in parts.elements(forName: "part") + nodeElements
-            where element.attribute(forName: "cutFace")?.stringValue == targetPart {
+            where CutFaceLinks.target(element.attribute(forName: "cutFace")?.stringValue, in: profileParts)
+                == targetPart
+            {
+                guard CutFaceLinks.canonicalID(sourcePart) != nil else { throw DocumentError.invalidNode }
                 set(element, "cutFace", sourcePart)
             }
         }
@@ -129,17 +134,18 @@ enum PartJoining {
 
     static func validateProfileLinks(parts: [XMLElement], nodes: [XMLElement]) throws {
         let ids = Set(parts.compactMap { $0.attribute(forName: "id")?.stringValue })
+        let profileParts = try CutFaceLinks.index(Array(ids))
         var links: [String: [String]] = [:]
         for part in parts {
             if let id = part.attribute(forName: "id")?.stringValue,
-                let target = part.attribute(forName: "cutFace")?.stringValue, ids.contains(target)
+                let target = CutFaceLinks.target(part.attribute(forName: "cutFace")?.stringValue, in: profileParts)
             {
                 links[id, default: []].append(target)
             }
         }
         for node in nodes {
             if let id = node.attribute(forName: "partId")?.stringValue,
-                let target = node.attribute(forName: "cutFace")?.stringValue, ids.contains(target)
+                let target = CutFaceLinks.target(node.attribute(forName: "cutFace")?.stringValue, in: profileParts)
             {
                 links[id, default: []].append(target)
             }

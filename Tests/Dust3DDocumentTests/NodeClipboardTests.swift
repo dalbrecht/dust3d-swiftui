@@ -8,7 +8,8 @@ final class NodeClipboardTests: XCTestCase {
         for (index, id) in ["a", "b", "c"].enumerated() {
             document = try document.applying(
                 .addNode(
-                    id: id, partID: "p", componentID: index == 0 ? "component" : nil,
+                    id: id, partID: "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}",
+                    componentID: index == 0 ? "component" : nil,
                     position: .init(x: Double(index), y: 0, z: 0), radius: 0.1))
         }
         return try document.applying(.addEdge(id: "ab", from: "a", to: "b"))
@@ -20,7 +21,7 @@ final class NodeClipboardTests: XCTestCase {
         XCTAssertEqual(clipboard.selectedNodeIDs, ["a", "b"])
         XCTAssertEqual(try clipboard.document.editorContents().nodes.map(\.id), ["a", "b"])
         XCTAssertEqual(try clipboard.document.editorContents().edges.map(\.id), ["ab"])
-        let identities = Dictionary(uniqueKeysWithValues: clipboard.identifiers.map { ($0, "new-\($0)") })
+        let identities = self.identities(clipboard)
         let pasted = try original.applying(
             .pasteNodes(
                 clipboard: clipboard, identities: identities,
@@ -57,19 +58,23 @@ final class NodeClipboardTests: XCTestCase {
         try archive(
             """
             <canvas originX='17' xmlns='urn:test'><nodes>
-            <node id='a' partId='p' x='0' y='0' z='0' radius='.1' future='p'/><node id='b' partId='p' x='1' y='0' z='0' radius='.2' cutFace='q'/>
-            <node id='c' partId='q' x='2' y='0' z='0' radius='.3' cutFace='r'><future from='a'/></node>
-            <node id='d' partId='r' x='3' y='0' z='0' radius='.4'/><node id='e' partId='other' x='4' y='0' z='0' radius='.5'/>
-            </nodes><edges><edge id='ab' partId='p' from='a' to='b' future='a'/></edges>
-            <parts><part id='p' cutFace='q' from='a' future='p'/><part id='q' deformWidth='.8'/><part id='r'/><part id='other'/></parts>
-            <components><component id='group' future='group'><component id='pc' linkData='p' linkDataType='partId' color='#123456'><future linkData='p'/><component id='unselected' linkData='other' linkDataType='partId'/></component><component id='qc' linkData='q' linkDataType='partId'/></component>
-            <component id='rc' linkData='r' linkDataType='partId'/><component id='repeat' linkData='p' linkDataType='partId'/>
-            <component id='outside' linkData='other' linkDataType='partId'><component id='nested' linkData='q' linkDataType='partId'/></component>
+            <node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1' future='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/><node id='b' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='1' y='0' z='0' radius='.2' cutFace='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}'/>
+            <node id='c' partId='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' x='2' y='0' z='0' radius='.3' cutFace='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}'><future from='a'/></node>
+            <node id='d' partId='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' x='3' y='0' z='0' radius='.4'/><node id='e' partId='other' x='4' y='0' z='0' radius='.5'/>
+            </nodes><edges><edge id='ab' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' from='a' to='b' future='a'/></edges>
+            <parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' cutFace='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' from='a' future='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/><part id='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' deformWidth='.8'/><part id='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}'/><part id='other'/></parts>
+            <components><component id='group' future='group'><component id='pc' linkData='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' linkDataType='partId' color='#123456'><future linkData='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/><component id='unselected' linkData='other' linkDataType='partId'/></component><component id='qc' linkData='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' linkDataType='partId'/></component>
+            <component id='rc' linkData='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' linkDataType='partId'/><component id='repeat' linkData='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' linkDataType='partId'/>
+            <component id='outside' linkData='other' linkDataType='partId'><component id='nested' linkData='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' linkDataType='partId'/></component>
             <component id='drop' linkData='other' linkDataType='partId'/></components><animations><animation id='not-copied'/></animations><future id='not-copied'/></canvas>
             """, asset: [0, 255], metadata: "future='asset'")
     }
     private func identities(_ clipboard: NodeClipboard) -> [String: String] {
-        Dictionary(uniqueKeysWithValues: clipboard.identifiers.map { ($0, "new-\($0)") })
+        Dictionary(
+            uniqueKeysWithValues: clipboard.identifiers.map { id in
+                let fresh = id.hasPrefix("{") ? "{99999999-9999-4999-8999-\(id.dropLast().suffix(12))}" : "new-\(id)"
+                return (id, fresh)
+            })
     }
     func testProfilesHierarchyNamespacesAndOpaqueMetadataAreRetained() throws {
         let source = try richSource()
@@ -97,16 +102,16 @@ final class NodeClipboardTests: XCTestCase {
             result.rootElement()?.elements(forName: "future").first?.attribute(forName: "keep")?.stringValue,
             "destination")
         let part = result.rootElement()?.elements(forName: "parts").first?.elements(forName: "part").first
-        XCTAssertEqual(part?.attribute(forName: "cutFace")?.stringValue, "new-q")
+        XCTAssertEqual(part?.attribute(forName: "cutFace")?.stringValue, "{99999999-9999-4999-8999-bbbbbbbbbbbb}")
         XCTAssertEqual(part?.attribute(forName: "from")?.stringValue, "a")
-        XCTAssertEqual(part?.attribute(forName: "future")?.stringValue, "p")
+        XCTAssertEqual(part?.attribute(forName: "future")?.stringValue, "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}")
         let node = result.rootElement()?.elements(forName: "nodes").first?.elements(forName: "node").first
-        XCTAssertEqual(node?.attribute(forName: "future")?.stringValue, "p")
+        XCTAssertEqual(node?.attribute(forName: "future")?.stringValue, "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}")
         let newGroup = result.rootElement()?.elements(forName: "components").first?.elements(forName: "component").first
         let component = newGroup?.elements(forName: "component").first
-        XCTAssertEqual(component?.attribute(forName: "linkData")?.stringValue, "new-p")
+        XCTAssertEqual(component?.attribute(forName: "linkData")?.stringValue, "{99999999-9999-4999-8999-aaaaaaaaaaaa}")
         let opaque = component?.children?.compactMap { $0 as? XMLElement }.first { $0.localName == "future" }
-        XCTAssertEqual(opaque?.attribute(forName: "linkData")?.stringValue, "p")
+        XCTAssertEqual(opaque?.attribute(forName: "linkData")?.stringValue, "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}")
         XCTAssertEqual(opaque?.uri, "urn:test")
         XCTAssertEqual(try pasted.editorContents().nodes.map(\.id), ["new-a", "new-c", "new-d"])
         XCTAssertEqual(try source.editorContents().nodes.count, 5)
@@ -171,45 +176,57 @@ final class NodeClipboardTests: XCTestCase {
         XCTAssertTrue(try clipboard.document.editorContents().edges.isEmpty)
         let pasted = try source.applying(
             .pasteNodes(clipboard: clipboard, identities: identities(clipboard), offset: .init(x: 0, y: 0, z: 0)))
-        XCTAssertEqual(try pasted.partSplitRequirements(for: ["new-p"]).first?.additionalPartCount, 1)
+        XCTAssertEqual(
+            try pasted.partSplitRequirements(for: ["{99999999-9999-4999-8999-aaaaaaaaaaaa}"]).first?
+                .additionalPartCount, 1)
         let rich = try richSource().copyingNodes(["a", "b"])
         let all = try source.applying(
             .pasteNodes(clipboard: rich, identities: identities(rich), offset: .init(x: 0, y: 0, z: 0)))
         let xml = try XMLDocument(data: all.modelXML)
         let edge = xml.rootElement()?.elements(forName: "edges").first?.elements(forName: "edge").last
-        XCTAssertEqual(edge?.attribute(forName: "partId")?.stringValue, "new-p")
+        XCTAssertEqual(edge?.attribute(forName: "partId")?.stringValue, "{99999999-9999-4999-8999-aaaaaaaaaaaa}")
         XCTAssertEqual(edge?.attribute(forName: "future")?.stringValue, "a")
     }
 
     func testImportedFragmentRejectsInvalidIdentityTopologyAndProfileData() throws {
         let valid =
-            "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/><node id='b' partId='p' x='1' y='0' z='0' radius='.1'/></nodes><edges><edge id='ab' partId='p' from='a' to='b'/></edges><parts><part id='p'/></parts><components><component id='component' linkData='p' linkDataType='partId'/></components></canvas>"
+            "<canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1'/><node id='b' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='1' y='0' z='0' radius='.1'/></nodes><edges><edge id='ab' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' from='a' to='b'/></edges><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/></parts><components><component id='component' linkData='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' linkDataType='partId'/></components></canvas>"
         let invalid = [
             valid.replacingOccurrences(of: "id='component'", with: "id='a'"),
             valid.replacingOccurrences(of: "id='component'", with: ""),
             valid.replacingOccurrences(of: "id='component'", with: "id='\(String(repeating: "x", count: 129))'"),
-            valid.replacingOccurrences(of: "linkData='p'", with: "linkData='missing'"),
-            valid.replacingOccurrences(of: "<part id='p'/>", with: "<part id='p' cutFace='p'/>"),
+            valid.replacingOccurrences(
+                of: "linkData='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'", with: "linkData='missing'"),
+            valid.replacingOccurrences(
+                of: "<part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/>",
+                with:
+                    "<part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' cutFace='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/>"
+            ),
             valid.replacingOccurrences(of: "to='b'", with: "to='a'"),
-            valid.replacingOccurrences(of: "<edge id='ab' partId='p'", with: "<edge id='ab' partId='wrong'"),
+            valid.replacingOccurrences(
+                of: "<edge id='ab' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'",
+                with: "<edge id='ab' partId='wrong'"),
             valid.replacingOccurrences(of: "</components>", with: "</components><components/>"),
             valid.replacingOccurrences(
                 of: "</edges>", with: "<edge id='ab2' from='a' to='b'/><edge id='ab3' from='a' to='b'/></edges>"),
-            valid.replacingOccurrences(of: "id='b' partId='p'", with: "id='b' partId='q'").replacingOccurrences(
-                of: "</parts>", with: "<part id='q'/></parts>"),
+            valid.replacingOccurrences(
+                of: "id='b' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'",
+                with: "id='b' partId='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}'"
+            ).replacingOccurrences(
+                of: "</parts>", with: "<part id='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}'/></parts>"),
         ]
         for xml in invalid { XCTAssertThrowsError(try NodeClipboard(document: archive(xml), selectedNodeIDs: ["a"])) }
     }
     func testProfileClosureRevisitsNodesOfPartThatWasInitiallyPartial() throws {
         let xml =
-            "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/><node id='b' partId='p' x='1' y='0' z='0' radius='.1' cutFace='r'/><node id='c' partId='q' x='2' y='0' z='0' radius='.1'/><node id='d' partId='r' x='3' y='0' z='0' radius='.1'/></nodes><parts><part id='p'/><part id='q' cutFace='p'/><part id='r'/></parts></canvas>"
+            "<canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1'/><node id='b' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='1' y='0' z='0' radius='.1' cutFace='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}'/><node id='c' partId='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' x='2' y='0' z='0' radius='.1'/><node id='d' partId='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' x='3' y='0' z='0' radius='.1'/></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/><part id='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' cutFace='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/><part id='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}'/></parts></canvas>"
         let clipboard = try archive(xml).copyingNodes(["a", "c"])
         XCTAssertEqual(try clipboard.document.editorContents().nodes.map(\.id), ["a", "b", "c", "d"])
         XCTAssertEqual(clipboard.selectedNodeIDs, ["a", "c"])
     }
     func testPastingIntoMissingContainersAndArchiveWithEmptyAsset() throws {
         let source = try archive(
-            "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes><parts><part id='p'/></parts></canvas>",
+            "<canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1'/></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/></parts></canvas>",
             asset: [])
         let clipboard = try source.copyingNodes(["a"])
         let destination = try archive("<canvas/>")
@@ -219,8 +236,12 @@ final class NodeClipboardTests: XCTestCase {
         XCTAssertEqual(try pasted.editorContents().nodes.map(\.id), ["new-a"])
     }
     func testPastedNodeAndPartCountsAreBounded() throws {
-        let nodes = (0..<10_000).map { "<node id='n\($0)' partId='p' x='0' y='0' z='0' radius='.1'/>" }.joined()
-        let large = try archive("<canvas><nodes>\(nodes)</nodes><parts><part id='p'/></parts></canvas>")
+        let nodes = (0..<10_000).map {
+            "<node id='n\($0)' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1'/>"
+        }.joined()
+        let large = try archive(
+            "<canvas><nodes>\(nodes)</nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/></parts></canvas>"
+        )
         let clipboard = try NodeClipboard(document: large, selectedNodeIDs: ["n0"])
         XCTAssertThrowsError(
             try source().applying(
@@ -229,7 +250,8 @@ final class NodeClipboardTests: XCTestCase {
         for container in ["parts", "components"] {
             let entries = (0..<10_000).map { index in
                 container == "parts"
-                    ? "<part id='p\(index)'/>" : "<component id='c\(index)' linkData='p0' linkDataType='partId'/>"
+                    ? "<part id='p\(index)'/>"
+                    : "<component id='c\(index)' linkData='p0' linkDataType='partId'/>"
             }.joined()
             let parts = container == "parts" ? entries : "<part id='p0'/>"
             let components = container == "components" ? entries : ""
@@ -246,7 +268,7 @@ final class NodeClipboardTests: XCTestCase {
 
     func testNamedCutFaceIsNotRemappedAsAnUnrelatedNodeIdentity() throws {
         let source = try archive(
-            "<canvas><nodes><node id='Quad' partId='p' x='0' y='0' z='0' radius='.1' cutFace='Quad'/></nodes><parts><part id='p' cutFace='Quad'/></parts></canvas>"
+            "<canvas><nodes><node id='Quad' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1' cutFace='Quad'/></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' cutFace='Quad'/></parts></canvas>"
         )
         let clipboard = try source.copyingNodes(["Quad"])
         let pasted = try source.applying(
@@ -262,7 +284,7 @@ final class NodeClipboardTests: XCTestCase {
 
     func testInheritedNamespacesSurviveMovingObjectsIntoAnotherDocument() throws {
         let source = try archive(
-            "<canvas xmlns='urn:source' xmlns:ext='urn:extension'><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1' ext:flag='value'><ext:future/></node></nodes><parts><part id='p'/></parts><components><component id='component' linkData='p' linkDataType='partId'/></components></canvas>"
+            "<canvas xmlns='urn:source' xmlns:ext='urn:extension'><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1' ext:flag='value'><ext:future/></node></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/></parts><components><component id='component' linkData='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' linkDataType='partId'/></components></canvas>"
         )
         let clipboard = try source.copyingNodes(["a"])
         let destination = try archive("<canvas xmlns='urn:destination'><nodes/><parts/><components/></canvas>")
@@ -279,7 +301,7 @@ final class NodeClipboardTests: XCTestCase {
 
     func testInheritedAssetNamespaceBindingsArePreservedAndCompared() throws {
         let xml =
-            "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes><parts><part id='p'/></parts></canvas>"
+            "<canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1'/></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/></parts></canvas>"
         let source = try archive(
             xml, asset: [1, 2], metadata: "ext:flag='value'", headerNamespaces: "xmlns:ext='urn:source'")
         let clipboard = try source.copyingNodes(["a"])
@@ -304,7 +326,7 @@ final class NodeClipboardTests: XCTestCase {
 
     func testUnnamespacedGraphAdoptsCanvasNamespaceWithoutChangingOpaqueChildNamespace() throws {
         let source = try archive(
-            "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'><future/></node></nodes><parts><part id='p'/></parts></canvas>"
+            "<canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1'><future/></node></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/></parts></canvas>"
         )
         let clipboard = try source.copyingNodes(["a"])
         let destination = try archive("<canvas xmlns='urn:destination'/>")
@@ -323,7 +345,9 @@ final class NodeClipboardTests: XCTestCase {
         for endpoints in [("a", "b"), ("b", "a")] {
             let duplicate = xml.replacingOccurrences(
                 of: "</edges>",
-                with: "<edge id='duplicate' partId='p' from='\(endpoints.0)' to='\(endpoints.1)'/></edges>")
+                with:
+                    "<edge id='duplicate' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' from='\(endpoints.0)' to='\(endpoints.1)'/></edges>"
+            )
             XCTAssertThrowsError(try archive(duplicate).copyingNodes(["a", "b"])) {
                 XCTAssertEqual($0 as? DocumentError, .invalidNode)
             }
@@ -337,6 +361,75 @@ final class NodeClipboardTests: XCTestCase {
             clipboard: clipboard, identities: identities(clipboard), offset: .init(x: 0, y: 0.04, z: 0.04))
         let expected = try destination.applying(command).encoded()
         for _ in 0..<5 { XCTAssertEqual(try destination.applying(command).encoded(), expected) }
+    }
+
+    func testNamedCutFaceDoesNotCopyAnUnrelatedPartWithTheSameIdentity() throws {
+        for preset in ["Quad", "Pentagon", "Hexagon", "Triangle", "UserDefined", "futurePreset"] {
+            let source = try archive(
+                "<canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1' cutFace='\(preset)'/><node id='unrelated' partId='\(preset)' x='1' y='0' z='0' radius='.1'/></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' cutFace='\(preset)'/><part id='\(preset)'/></parts></canvas>"
+            )
+            let clipboard = try source.copyingNodes(["a"])
+            XCTAssertEqual(try clipboard.document.editorContents().nodes.map(\.id), ["a"])
+            let pasted = try archive("<canvas/>").applying(
+                .pasteNodes(clipboard: clipboard, identities: identities(clipboard), offset: .init(x: 0, y: 0, z: 0)))
+            let root = try XMLDocument(data: pasted.modelXML).rootElement()
+            XCTAssertEqual(
+                root?.elements(forName: "parts").first?.elements(forName: "part").first?.attribute(forName: "cutFace")?
+                    .stringValue, preset)
+        }
+    }
+    func testPasteRejectsDestinationWithDuplicateComponentContainers() throws {
+        let clipboard = try source().copyingNodes(["a"])
+        let destination = try archive(
+            "<canvas><components/><components><component id='new-component'/></components></canvas>")
+        var history = DocumentHistory(document: destination)
+        XCTAssertThrowsError(
+            try history.apply(
+                .pasteNodes(clipboard: clipboard, identities: identities(clipboard), offset: .init(x: 0, y: 0, z: 0)))
+        ) {
+            XCTAssertEqual($0 as? DocumentError, .invalidNode)
+        }
+        XCTAssertEqual(history.document.encoded(), destination.encoded())
+        XCTAssertFalse(history.canUndo)
+    }
+
+    func testUUIDAliasesCannotBypassClipboardIdentityCollisions() throws {
+        let clipboard = try source().copyingNodes(["a"])
+        let destination = try source()
+        var map = identities(clipboard)
+        map["a"] = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        XCTAssertThrowsError(
+            try destination.applying(
+                .pasteNodes(clipboard: clipboard, identities: map, offset: .init(x: 0, y: 0, z: 0))))
+        map = identities(clipboard)
+        map["a"] = "{12345678-1234-4234-8234-123456789abc}"
+        map["component"] = "12345678-1234-4234-8234-123456789abc"
+        XCTAssertThrowsError(
+            try destination.applying(
+                .pasteNodes(clipboard: clipboard, identities: map, offset: .init(x: 0, y: 0, z: 0))))
+        let aliased = try archive(
+            "<canvas><nodes><node id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1'/></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/></parts></canvas>"
+        )
+        XCTAssertThrowsError(
+            try NodeClipboard(document: aliased, selectedNodeIDs: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]))
+    }
+    func testUnbracedProfileReferenceFollowsItsBracedPartAndRequiresUUIDReplacement() throws {
+        let xml =
+            "<canvas><nodes><node id='a' partId='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' x='0' y='0' z='0' radius='.1' cutFace='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'/><node id='b' partId='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}' x='1' y='0' z='0' radius='.1'/></nodes><parts><part id='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}'/><part id='{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}'/></parts></canvas>"
+        let clipboard = try archive(xml).copyingNodes(["a"])
+        XCTAssertEqual(try clipboard.document.editorContents().nodes.map(\.id), ["a", "b"])
+        let map = identities(clipboard)
+        let pasted = try archive("<canvas/>").applying(
+            .pasteNodes(clipboard: clipboard, identities: map, offset: .init(x: 0, y: 0, z: 0)))
+        let root = try XMLDocument(data: pasted.modelXML).rootElement()
+        XCTAssertEqual(
+            root?.elements(forName: "nodes").first?.elements(forName: "node").first?.attribute(forName: "cutFace")?
+                .stringValue, map["{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"])
+        var invalid = map
+        invalid["{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"] = "not-a-profile-uuid"
+        XCTAssertThrowsError(
+            try archive("<canvas/>").applying(
+                .pasteNodes(clipboard: clipboard, identities: invalid, offset: .init(x: 0, y: 0, z: 0))))
     }
 
 }

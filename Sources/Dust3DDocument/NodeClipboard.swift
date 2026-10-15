@@ -19,7 +19,7 @@ public struct NodeClipboard: Sendable {
         }
         let elements = NodeClipboardMutation.semanticElements(model)
         let ids = elements.compactMap { $0.attribute(forName: "id")?.stringValue }
-        guard ids.count == elements.count, Set(ids).count == ids.count,
+        guard ids.count == elements.count, Set(ids.map { CutFaceLinks.canonicalID($0) ?? $0 }).count == ids.count,
             ids.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 128 }),
             model.rootElement()?.elements(forName: "parts").first?.elements(forName: "part").count ?? 0 <= 10_000,
             PartSplitting.componentElements(model).count <= 10_000
@@ -99,7 +99,7 @@ enum NodeClipboardMutation {
         else { throw DocumentError.invalidNode }
         let nodes = root.elements(forName: "nodes").first?.elements(forName: "node") ?? []
         let parts = root.elements(forName: "parts").first?.elements(forName: "part") ?? []
-        let knownParts = Set(parts.compactMap { $0.attribute(forName: "id")?.stringValue })
+        let knownParts = try CutFaceLinks.index(parts.compactMap { $0.attribute(forName: "id")?.stringValue })
         var includedNodes = selected
         var includedParts = Set(contents.nodes.filter { selected.contains($0.id) }.compactMap(\.partID))
         let nodesByPart = Dictionary(grouping: nodes, by: { $0.attribute(forName: "partId")?.stringValue ?? "" })
@@ -113,7 +113,8 @@ enum NodeClipboardMutation {
         var completeProfiles = Set<String>()
         // Each included node and part is queued once, including profiles reached after partial selection.
         while let element = pending.popLast() {
-            guard let target = element.attribute(forName: "cutFace")?.stringValue, knownParts.contains(target) else {
+            guard let target = CutFaceLinks.target(element.attribute(forName: "cutFace")?.stringValue, in: knownParts)
+            else {
                 continue
             }
             if includedParts.insert(target).inserted, let part = partsByID[target] { pending.append(part) }
@@ -167,12 +168,17 @@ enum NodeClipboardMutation {
         let fragment = try XMLDocument(data: clipboard.document.modelXML, options: [.nodePreserveAll])
         guard let root = model.rootElement(), let sourceRoot = fragment.rootElement(),
             Set(identities.keys) == Set(clipboard.identifiers),
-            Set(identities.values).count == identities.count,
+            Set(identities.values.map { CutFaceLinks.canonicalID($0) ?? $0 }).count == identities.count,
             identities.values.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 128 }),
             [offset.x, offset.y, offset.z].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 })
         else { throw DocumentError.invalidNode }
-        let existing = Set(semanticElements(model).compactMap { $0.attribute(forName: "id")?.stringValue })
-        guard existing.isDisjoint(with: identities.values) else { throw DocumentError.invalidNode }
+        guard root.elements(forName: "components").count <= 1 else { throw DocumentError.invalidNode }
+        let existingElements = semanticElements(model)
+        let existingIDs = existingElements.compactMap { $0.attribute(forName: "id")?.stringValue }
+        let existing = Set(existingIDs.map { CutFaceLinks.canonicalID($0) ?? $0 })
+        guard existingIDs.count == existingElements.count, existing.count == existingIDs.count,
+            existing.isDisjoint(with: identities.values.map { CutFaceLinks.canonicalID($0) ?? $0 })
+        else { throw DocumentError.invalidNode }
         let added = try clipboard.document.editorContents()
         guard contents.nodes.count + added.nodes.count <= 10_000, contents.edges.count + added.edges.count <= 20_000,
             (root.elements(forName: "parts").first?.elements(forName: "part").count ?? 0)
@@ -180,7 +186,7 @@ enum NodeClipboardMutation {
             PartSplitting.componentElements(model).count + PartSplitting.componentElements(fragment).count <= 10_000
         else { throw DocumentError.limitExceeded }
         let addedNodes = Dictionary(uniqueKeysWithValues: added.nodes.map { ($0.id, $0.value) })
-        let addedParts = Set(
+        let addedParts = try CutFaceLinks.index(
             sourceRoot.elements(forName: "parts").first?.elements(forName: "part").compactMap {
                 $0.attribute(forName: "id")?.stringValue
             } ?? [])
@@ -202,9 +208,11 @@ enum NodeClipboardMutation {
                 }
             }
             if name == "node" || name == "part",
-                let attribute = element.attribute(forName: "cutFace"), let value = attribute.stringValue,
-                addedParts.contains(value), let replacement = identities[value]
+                let attribute = element.attribute(forName: "cutFace"),
+                let target = CutFaceLinks.target(attribute.stringValue, in: addedParts),
+                let replacement = identities[target]
             {
+                guard CutFaceLinks.canonicalID(replacement) != nil else { throw DocumentError.invalidNode }
                 attribute.stringValue = replacement
             }
             if name == "component", element.attribute(forName: "linkDataType")?.stringValue == "partId",
