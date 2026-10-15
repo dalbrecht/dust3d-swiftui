@@ -1,12 +1,13 @@
 # Reference-image archive foundation verification
 
-Full `make ci` passes 176 tests, formatting, both native builds, coverage and Qt-free checks. Document coverage is 1679/1754 lines (95.72%); editor model 805/811 (99.26%); pure editor state 364/364 and undo history 92/92 (100%). Inherited C++ coverage is not measured.
+Full `make ci` passes 177 tests, formatting, both native builds, coverage and Qt-free checks. Document coverage is 1687/1762 lines (95.74%); editor model 805/811 (99.26%); pure editor state 364/364 and undo history 97/97 (100%). Inherited C++ coverage is not measured.
 
-Eleven new tests cover the archive boundary, editor session and pinned native engine:
+Twelve new tests cover the archive boundary, editor session and pinned native engine:
 
 - Existing `canvas.png` bytes and no-op byte identity; replacement/removal/addition and reopening.
 - Exact model and unrelated binary assets; unknown root/item attributes, namespace-qualified child metadata, item ordering, payload gaps and trailing bytes.
 - Zero-length asset reanchoring when its containing byte span is removed.
+- Model-only net-zero transforms with a 4 MiB image retain exact original bytes; mixed model/image transactions retain both edits and exact undo. Transaction scope selects the model-only path unless a command can alter assets.
 - Image-only transaction commit/undo/redo; net-zero replacement and add/remove restoring exact original archives and retaining redo; cancellation restoring the original.
 - Invalid PNG signature, encoded image size, undo byte budget, reserved-name collision, item-count and header-growth limits, without partial publication.
 - Editor-session image-only publication with unchanged graph and advancing document revision; rejected mixed image/node batch preserving archive and redo.

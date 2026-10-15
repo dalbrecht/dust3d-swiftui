@@ -425,6 +425,11 @@ public struct Dust3DDocument: Sendable {
                             + counterpart.range.upperBound)]
             else { return false }
         }
+        return try hasSameModel(as: other)
+    }
+
+    /// Model-only transactions cannot alter assets; avoid traversing opaque payloads on interactive graph edits.
+    func hasSameModel(as other: Dust3DDocument) throws -> Bool {
         func canonical(_ data: Data) throws -> Data {
             let model = try Self.xml(data, root: "canvas")
             model.isStandalone = false

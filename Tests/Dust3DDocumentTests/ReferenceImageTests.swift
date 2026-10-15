@@ -173,4 +173,27 @@ final class ReferenceImageTests: XCTestCase {
         XCTAssertFalse(history.canUndo)
         XCTAssertFalse(history.isDirty)
     }
+
+    func testModelOnlyAndMixedTransactionsWithLargeImageKeepCorrectHistory() throws {
+        let image = try png() + Data(repeating: 0, count: 4 * 1024 * 1024)
+        let original = try document(image: image).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        var history = DocumentHistory(document: original)
+        let moved = NodeUpdate(id: "a", value: .init(position: .init(x: 0.5, y: 0, z: 0), radius: 0.1))
+        let restored = NodeUpdate(id: "a", value: .init(position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        try history.beginTransaction()
+        try history.apply(.setNodes([moved]))
+        try history.apply(.setNodes([restored]))
+        try history.endTransaction()
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+        XCTAssertFalse(history.canUndo)
+        try history.beginTransaction()
+        try history.apply(.setNodes([moved]))
+        try history.apply(.setReferenceImagePNG(png()))
+        try history.endTransaction()
+        XCTAssertEqual(try history.document.node(id: "a").position.x, 0.5)
+        XCTAssertEqual(history.document.referenceImagePNG, try png())
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+    }
 }
