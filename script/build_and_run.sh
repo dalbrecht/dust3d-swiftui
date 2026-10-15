@@ -23,7 +23,7 @@ fi
 BUILD_DIR="$DUST3D_BINARY_DIR"
 mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources" "$ROOT_DIR/dist"
 cp "$BUILD_DIR/$APP_NAME" "$APP_BINARY"
-cp "$BUILD_DIR/libDust3DEngine.a" "$ROOT_DIR/dist/libDust3DEngine.a"
+
 cp -R "$BUILD_DIR/Dust3DNative_Dust3DViewer.bundle" "$APP_CONTENTS/Resources/"
 chmod +x "$APP_BINARY"
 cat > "$APP_CONTENTS/Info.plist" <<PLIST

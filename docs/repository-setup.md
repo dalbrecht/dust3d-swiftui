@@ -18,10 +18,10 @@ The core's `docs/upstream-maintenance.md` documents fetch, fast-forward tracking
 reviewed merge procedures. Both repositories pin the same coding-standards revision.
 The existing Apple fork remains suitable for proposing focused upstream fixes.
 
-The standalone viewer PR remains independent and still builds its in-tree engine.
-A dedicated dependency-migration PR will replace that copy with a pinned core
-dependency after document/API compatibility gates pass. The core setup is source
-infrastructure, not a promise of a stable binary ABI or complete editor features.
+The standalone viewer PR has merged. The dependency migration consumes the core
+SwiftPM source product at an exact revision and removes the Apple copy of the
+native C ABI. `Package.swift` and `Package.resolved` record the pin. See
+[ADR 0002](adr/0002-pinned-core-dependency.md). No stable binary ABI is promised.
 
 See the [updated implementation and testing plan](editor-port-plan.md). Initial
 headless tests cover a pure-C ABI consumer, null handles, rejected archives, early

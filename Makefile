@@ -1,5 +1,4 @@
 .PHONY: build test run format lint ci check-qt-free sync-standards
-CLANG_FORMAT ?= $(shell xcrun --find clang-format 2>/dev/null || command -v clang-format)
 
 build:
 	./script/swift.sh build
@@ -12,11 +11,9 @@ run:
 
 format:
 	xcrun swift-format format --in-place --recursive Sources Tests Package.swift
-	"$(CLANG_FORMAT)" -i native/Engine/*.cc native/Engine/*.h native/Engine/include/*.h
 
 lint:
 	xcrun swift-format lint --strict --recursive Sources Tests Package.swift
-	"$(CLANG_FORMAT)" --dry-run --Werror native/Engine/*.cc native/Engine/*.h native/Engine/include/*.h
 	@for script in script/*.sh; do bash -n "$$script"; done
 
 check-qt-free:

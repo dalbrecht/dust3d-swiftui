@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Consume the Qt-free engine from a pinned external core revision and remove the duplicate Apple-side native adapter.
+
 - Add a Qt-free C++17 engine library and C bridge, with validated `.ds3` archive loading.
 - Add a native SwiftUI/Metal macOS viewer with file opening, orbit/zoom, wireframe, and camera fitting.
 - Pin c65llc coding standards, assemble Codex instructions, and document native/C++ supplements and gaps.

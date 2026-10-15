@@ -1,4 +1,0 @@
-// Implementation-only C++ module. Swift imports the C ABI in Dust3DEngine.
-module Dust3DCore {
-    export *
-}

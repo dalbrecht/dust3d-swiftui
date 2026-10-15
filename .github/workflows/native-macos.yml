@@ -16,11 +16,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - name: Ensure C++ formatter is available
-        run: |
-          if ! xcrun --find clang-format >/dev/null 2>&1; then
-            brew install clang-format
-          fi
       - name: Verify native sources, build, tests, and linkage
         run: make ci
       - name: Stage and validate the local app bundle
