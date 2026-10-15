@@ -7,7 +7,7 @@ archive and selection; deletion clears invalid selection. Undo/redo restores
 complete archive snapshots, including the original bytes. Empty part/component
 metadata remains preserved when its last node is removed.
 
-`make ci` passes 57 tests, formatting, native builds and both-app Qt-link checks.
+`make ci` passes 58 tests, formatting, native builds and both-app Qt-link checks.
 New tests began red before API implementation. They cover create/connect/delete,
 incident-edge cleanup, exact undo archives, rejected duplicate/self/missing edges,
 invalid node inputs, atomic batches and cancellation, hidden/locked guards,
@@ -17,7 +17,7 @@ native engine. A second engine regression confirms that preserving an empty
 part after deleting its last node does not break another part. The engine integration test exposed missing blank-document
 origins; explicit origins fix new-model generation.
 
-Measured executable-line coverage: document library 562/573 (98.08%), editor model
+Measured executable-line coverage: document library 606/618 (98.06%), editor model
 144/150 (96%), pure editor state 66/66 and undo history 91/91 (100%). Mesh library
 remains 66/67 (98.51%). SwiftUI/GPU and inherited C++ are outside these metrics.
 
@@ -40,3 +40,7 @@ A net-zero add/remove transaction regression verifies exact original bytes and
 redo retention despite XML declaration/numeric formatting changes. Unknown XML
 metadata changes must remain undoable. Reading incident edges no longer creates
 an empty edge container as a side effect.
+
+Automated review identified missing-container net-zero transactions. Regressions
+now cover absent nodes/edges, empty containers, attributes, comments, namespaces
+and CDATA. Canonical comparison ignores only metadata-free empty graph containers.

@@ -293,6 +293,22 @@ public struct Dust3DDocument: Sendable {
         func canonical(_ data: Data) throws -> Data {
             let model = try Self.xml(data, root: "canvas")
             model.isStandalone = false
+            // Absent graph containers and empty containers represent the same graph.
+            // Attributes, namespaces, comments and non-whitespace content are metadata.
+            for name in ["nodes", "edges"] {
+                for container in model.rootElement()?.elements(forName: name) ?? [] {
+                    if container.attributes?.isEmpty ?? true, container.namespaces?.isEmpty ?? true,
+                        (container.children ?? []).allSatisfy({
+                            $0.kind == .text
+                                && $0.xmlString(options: [.nodePreserveAll]).trimmingCharacters(
+                                    in: .whitespacesAndNewlines
+                                ).isEmpty
+                        })
+                    {
+                        container.detach()
+                    }
+                }
+            }
             for node in try Self.nodes(model) {
                 for key in ["x", "y", "z", "radius"] {
                     if let attribute = node.attribute(forName: key),

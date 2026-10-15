@@ -148,4 +148,42 @@ final class TopologyTests: XCTestCase {
         XCTAssertEqual(replacement.document.encoded(), decoratedBytes)
     }
 
+    func testMissingContainersRemainNetZeroWithoutLosingMetadata() throws {
+        func document(_ xml: String) throws -> Dust3DDocument {
+            let model = Data(xml.utf8)
+            let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+            let prefix = "DUST3D 1.0 xml "
+            return try Dust3DDocument(
+                data: Data(
+                    (prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+                    + model)
+        }
+        let nodes =
+            "<nodes><node id='a' partId='p' x='0' y='0' z='0' radius='0.1'/><node id='b' partId='p' x='0' y='1' z='0' radius='0.1'/></nodes>"
+        let addNode = DocumentCommand.addNode(
+            id: "new", partID: "p", componentID: nil, position: .init(x: 0, y: 0, z: 0), radius: 0.1)
+        let addEdge = DocumentCommand.addEdge(id: "e", from: "a", to: "b")
+        for (graph, add, remove) in [
+            ("", addNode, DocumentCommand.removeNode(id: "new")),
+            (nodes, addEdge, DocumentCommand.removeEdge(id: "e")),
+            ("<nodes> \n </nodes>", addNode, DocumentCommand.removeNode(id: "new")),
+            ("<nodes xmlns:future='urn:metadata'/>", addNode, DocumentCommand.removeNode(id: "new")),
+            ("<nodes><![CDATA[ ]]></nodes>", addNode, DocumentCommand.removeNode(id: "new")),
+            ("<nodes custom='retain'><!-- keep --></nodes>", addNode, DocumentCommand.removeNode(id: "new")),
+            (nodes + "<edges custom='retain'><!-- keep --></edges>", addEdge, DocumentCommand.removeEdge(id: "e")),
+        ] {
+            let original = try document("<canvas>\(graph)<parts><part id='p'/></parts></canvas>")
+            var history = DocumentHistory(document: original)
+            try history.apply(add)
+            XCTAssertTrue(history.undo())
+            try history.beginTransaction()
+            try history.apply(add)
+            try history.apply(remove)
+            try history.endTransaction()
+            XCTAssertEqual(history.document.encoded(), original.encoded())
+            XCTAssertTrue(history.canRedo)
+            XCTAssertFalse(history.canUndo)
+        }
+    }
+
 }
