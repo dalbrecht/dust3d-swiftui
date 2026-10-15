@@ -27,6 +27,8 @@ public actor EditorSession {
     public func select(_ id: String?) throws -> EditorSnapshot { try update { try $0.select(id) } }
 
     public func select(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.select(ids) } }
+    /// Select one edge without dirtying the document or creating an undo entry.
+    public func selectEdge(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectEdge(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
     public func moveSelection(by delta: NodePosition) throws -> EditorSnapshot {
@@ -46,6 +48,13 @@ public actor EditorSession {
     }
     public func deleteSelection() throws -> EditorSnapshot {
         try update { state in
+            if let edge = state.snapshot.selectedEdge {
+                guard state.snapshot.canEditSelectedEdge else { throw EditorError.readOnlyNode }
+                let commands = try GraphCommandPreparation.normalizingDeletions(
+                    [.removeEdge(id: edge.id)], document: state.snapshot.document)
+                try state.apply(commands)
+                return
+            }
             let ids = state.snapshot.selectedNodes.filter(\.isEditable).map(\.id)
             let commands = try GraphCommandPreparation.normalizingDeletions(
                 [.removeNodes(ids)], document: state.snapshot.document)

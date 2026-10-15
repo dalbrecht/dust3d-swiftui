@@ -86,6 +86,34 @@ public struct CanvasProjection: Sendable {
             }.map(\.id))
     }
 
+    /// Pick the nearest visible segment within a finite, nonnegative screen-point tolerance.
+    /// Ties follow document edge order. Degenerate projections and missing/hidden endpoints are ignored.
+    public func edgeID(
+        near point: CanvasPoint, nodes: [DocumentNode], edges: [DocumentEdge], tolerance: Double = 8
+    ) -> String? {
+        guard [point.x, point.y, tolerance].allSatisfy(\.isFinite), tolerance >= 0 else { return nil }
+        let positions = Dictionary(
+            uniqueKeysWithValues: nodes.filter(\.isVisible).map { ($0.id, self.point(for: $0.value.position)) })
+        var nearest: String?
+        var minimumDistance = tolerance
+        for edge in edges {
+            guard let from = positions[edge.fromID], let to = positions[edge.toID] else { continue }
+            let x = to.x - from.x
+            let y = to.y - from.y
+            let lengthSquared = x * x + y * y
+            guard lengthSquared > 0, lengthSquared.isFinite else { continue }
+            let fraction = max(0, min(1, ((point.x - from.x) * x + (point.y - from.y) * y) / lengthSquared))
+            let distance =
+                ((point.x - from.x - fraction * x) * (point.x - from.x - fraction * x)
+                + (point.y - from.y - fraction * y) * (point.y - from.y - fraction * y)).squareRoot()
+            if distance <= tolerance && (nearest == nil || distance < minimumDistance) {
+                nearest = edge.id
+                minimumDistance = distance
+            }
+        }
+        return nearest
+    }
+
     /// Convert a screen gesture into model units while preserving the third axis.
     public func moving(_ position: NodePosition, by delta: CanvasPoint, locks: Set<EditingConstraint> = [])
         -> NodePosition
