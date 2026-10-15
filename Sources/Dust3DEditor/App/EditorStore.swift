@@ -202,9 +202,12 @@ final class EditorStore {
                 let next = try await action(session)
                 guard !Task.isCancelled, !stopped else { return }
                 let changed = next.documentRevision != snapshot?.documentRevision
-                let countChanged = next.nodes.count != snapshot?.nodes.count
+                // Visibility changes need fitting even when topology is unchanged; movements keep stable drag bounds.
+                let needsFit = !next.nodes.elementsEqual(snapshot?.nodes ?? []) {
+                    $0.id == $1.id && $0.isVisible == $1.isVisible
+                }
                 snapshot = next
-                if countChanged { fit() }
+                if needsFit { fit() }
                 errorMessage = nil
                 if commits && changed {
                     onDocumentChanged?(next.document.encoded())
