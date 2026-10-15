@@ -199,4 +199,41 @@ final class PartSplittingTests: XCTestCase {
         }
     }
 
+    func testExtensionComponentsAreIgnoredAndRetainedWithoutMutation() throws {
+        let original = try document(disconnected: true)
+        let root = try XMLDocument(data: original.modelXML)
+        let extensionElement = try XMLElement(
+            xmlString:
+                "<future><component linkData='p' linkDataType='partId'/><component id='extension' linkData='p' linkDataType='partId'/></future>"
+        )
+        root.rootElement()?.addChild(extensionElement)
+        root.rootElement()?.elements(forName: "components").first?.addChild(
+            try XMLElement(xmlString: "<future><component linkData='p' linkDataType='partId'/></future>"))
+        let source = try archive(root.xmlString(options: [.nodePreserveAll]))
+        let requirement = try XCTUnwrap(try source.partSplitRequirements(for: ["p"]).first)
+        XCTAssertEqual(requirement.componentsPerPart, 2)
+        let before = extensionElement.xmlString(options: [.nodePreserveAll])
+        let split = try source.applying(
+            .splitPart(id: "p", identities: [.init(partID: "new", componentIDs: ["newleaf", "newother"])]))
+        let result = try XMLDocument(data: split.modelXML)
+        XCTAssertEqual(
+            result.rootElement()?.elements(forName: "future").first?.xmlString(options: [.nodePreserveAll]), before)
+        XCTAssertEqual(
+            result.rootElement()?.elements(forName: "components").first?.elements(forName: "future").count, 1)
+        XCTAssertEqual(try split.editorContents().nodes.map(\.partID), ["p", "p", "new", "new", "q"])
+    }
+
+    func testOpaqueComponentTagsDoNotConsumeNativeCreationLimit() throws {
+        let opaque = (0..<10_000).map { "<component id='extension\($0)'/>" }.joined()
+        let source = try archive("<canvas><future>\(opaque)</future></canvas>")
+        let created = try source.applying(
+            .addNode(
+                id: "node", partID: "part", componentID: "component", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let model = try XMLDocument(data: created.modelXML)
+        XCTAssertEqual(
+            model.rootElement()?.elements(forName: "future").first?.elements(forName: "component").count, 10_000)
+        XCTAssertEqual(
+            model.rootElement()?.elements(forName: "components").first?.elements(forName: "component").count, 1)
+    }
+
 }

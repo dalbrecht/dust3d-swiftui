@@ -247,11 +247,11 @@ public struct Dust3DDocument: Sendable {
                     part.attribute(forName: "visible").map({ isTrue($0.stringValue) }) ?? true
                 else { throw DocumentError.invalidNode }
             } else {
-                let components = try model.nodes(forXPath: "//component")
+                let components = PartSplitting.componentElements(model)
                 guard components.count < 10_000 else { throw DocumentError.limitExceeded }
                 guard let componentID, !componentID.isEmpty,
                     !components.contains(where: {
-                        ($0 as? XMLElement)?.attribute(forName: "id")?.stringValue == componentID
+                        $0.attribute(forName: "id")?.stringValue == componentID
                     })
                 else { throw DocumentError.invalidNode }
                 parts.addChild(

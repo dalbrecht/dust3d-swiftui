@@ -112,4 +112,43 @@ final class DocumentCompatibilityTests: XCTestCase {
         }
     }
 
+    @MainActor func testSessionSplitsNamespacedArchivesWithoutInterpretingExtensionComponents() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url))
+        let edgeID = try XCTUnwrap(try original.editorContents().edges.first?.id)
+        for namespaced in [false, true] {
+            let model = try XMLDocument(data: original.modelXML)
+            if namespaced {
+                let namespace = XMLNode(kind: .namespace)
+                namespace.name = ""
+                namespace.stringValue = "urn:future"
+                model.rootElement()?.addNamespace(namespace)
+            }
+            model.rootElement()?.addChild(
+                try XMLElement(
+                    xmlString:
+                        "<future><component linkData='{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}' linkDataType='partId'/></future>"
+                ))
+            let xml = model.xmlData(options: [.nodePreserveAll])
+            let header = "<ds3><model name='model.xml' offset='0' size='\(xml.count)'/></ds3>"
+            let prefix = "DUST3D 1.0 xml "
+            let data =
+                Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+                + xml
+            let session = EditorSession()
+            _ = try await session.open(data: data)
+            let result = try await session.apply([.removeEdge(id: edgeID)])
+            XCTAssertEqual(Set(result.nodes.compactMap(\.partID)).count, 2)
+            let mesh = try MeshLoader.load(data: result.document.encoded())
+            XCTAssertEqual(mesh.partCount, 2)
+            XCTAssertGreaterThan(mesh.triangleCount, 0)
+            let retained = try XMLDocument(data: result.document.modelXML).rootElement()?.elements(forName: "future")
+                .first
+            XCTAssertEqual(retained?.elements(forName: "component").count, 1)
+            let restored = try await session.undo()
+            XCTAssertEqual(restored.document.encoded(), data)
+        }
+    }
+
 }

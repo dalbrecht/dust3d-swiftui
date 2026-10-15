@@ -25,7 +25,7 @@ enum PartSplitting {
     {
         let groups = try connectedGroups(contents: contents, partIDs: partIDs)
         let parts = model.rootElement()?.elements(forName: "parts").first?.elements(forName: "part") ?? []
-        let components = try componentElements(model)
+        let components = componentElements(model)
         let readOnlyParts = Set(contents.nodes.filter { !$0.isEditable }.compactMap(\.partID))
         let referencesByPart = Dictionary(
             grouping: components.filter {
@@ -102,14 +102,12 @@ enum PartSplitting {
         else {
             throw DocumentError.invalidXML
         }
-        let references = try componentElements(model).filter { referencesPart($0, id: id) }
+        let references = componentElements(model).filter { referencesPart($0, id: id) }
         var anchors = references
+        let nodes = model.rootElement()?.elements(forName: "nodes").first?.elements(forName: "node") ?? []
         let nodeElements = Dictionary(
-            uniqueKeysWithValues: try model.nodes(forXPath: "/canvas/nodes/node").compactMap {
-                value -> (String, XMLElement)? in
-                guard let element = value as? XMLElement, let nodeID = element.attribute(forName: "id")?.stringValue
-                else { return nil }
-                return (nodeID, element)
+            uniqueKeysWithValues: nodes.compactMap { element -> (String, XMLElement)? in
+                element.attribute(forName: "id")?.stringValue.map { ($0, element) }
             })
         let edges = model.rootElement()?.elements(forName: "edges").first?.elements(forName: "edge") ?? []
         let edgesByFrom = Dictionary(grouping: edges, by: { $0.attribute(forName: "from")?.stringValue ?? "" })
@@ -119,7 +117,8 @@ enum PartSplitting {
             parts.insertChild(copy, at: part.index + 1 + index)
             let members = Set(groups[index + 1])
             for nodeID in members {
-                if let node = nodeElements[nodeID] { set(node, name: "partId", value: identity.partID) }
+                guard let node = nodeElements[nodeID] else { throw DocumentError.invalidNode }
+                set(node, name: "partId", value: identity.partID)
                 for edge in edgesByFrom[nodeID] ?? [] { set(edge, name: "partId", value: identity.partID) }
             }
             for (referenceIndex, reference) in references.enumerated() {
@@ -153,8 +152,15 @@ enum PartSplitting {
         return copy
     }
 
-    private static func componentElements(_ model: XMLDocument) throws -> [XMLElement] {
-        try model.nodes(forXPath: "//component").compactMap { $0 as? XMLElement }
+    static func componentElements(_ model: XMLDocument) -> [XMLElement] {
+        let roots = model.rootElement()?.elements(forName: "components").first?.elements(forName: "component") ?? []
+        var pending = Array(roots.reversed())
+        var result: [XMLElement] = []
+        while let component = pending.popLast() {
+            result.append(component)
+            pending.append(contentsOf: component.elements(forName: "component").reversed())
+        }
+        return result
     }
 
     private static func referencesPart(_ component: XMLElement, id: String) -> Bool {
