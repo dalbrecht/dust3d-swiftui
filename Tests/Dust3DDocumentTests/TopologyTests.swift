@@ -1,0 +1,219 @@
+import Dust3DDocument
+import Foundation
+import XCTest
+
+final class TopologyTests: XCTestCase {
+    private func seed() throws -> Dust3DDocument {
+        try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+    }
+
+    func testCreateConnectDeleteAndUndoRestoreExactArchives() throws {
+        let empty = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+        var history = DocumentHistory(document: empty)
+        try history.apply(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let first = history.document.encoded()
+        try history.apply(
+            .addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 0, y: 1, z: 0), radius: 0.2))
+        try history.apply(.addEdge(id: "e", from: "a", to: "b"))
+        let connected = history.document.encoded()
+        XCTAssertEqual(try history.document.editorContents().edges.count, 1)
+        try history.apply(.removeNode(id: "a"))
+        XCTAssertTrue(try history.document.editorContents().edges.isEmpty)
+        XCTAssertEqual(try history.document.editorContents().nodes.map(\.id), ["b"])
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), connected)
+        try history.apply(.removeEdge(id: "e"))
+        XCTAssertTrue(try history.document.editorContents().edges.isEmpty)
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), connected)
+        XCTAssertTrue(history.redo())
+        XCTAssertTrue(history.undo())
+        XCTAssertTrue(history.undo())
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), first)
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), empty.encoded())
+    }
+
+    func testInvalidTopologyCommandsLeaveOriginalUntouched() throws {
+        let original = try seed()
+        let connected = try original.applying(
+            .addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 0, y: 1, z: 0), radius: 0.1)
+        )
+        .applying(.addEdge(id: "e", from: "a", to: "b"))
+        let commands: [DocumentCommand] = [
+            .addNode(id: "a", partID: "p", componentID: nil, position: .init(x: 0, y: 0, z: 0), radius: 1),
+            .addNode(id: "bad", partID: "missing", componentID: nil, position: .init(x: 0, y: 0, z: 0), radius: 1),
+            .addNode(id: "bad", partID: "p", componentID: nil, position: .init(x: .nan, y: 0, z: 0), radius: 1),
+            .addEdge(id: "e2", from: "a", to: "a"), .addEdge(id: "e2", from: "b", to: "a"),
+            .addEdge(id: "e", from: "a", to: "b"), .addEdge(id: "new", from: "a", to: "absent"),
+            .removeNode(id: "absent"), .removeEdge(id: "absent"),
+        ]
+        for command in commands { XCTAssertThrowsError(try connected.applying(command)) }
+        XCTAssertEqual(try connected.editorContents().nodes.count, 2)
+        XCTAssertEqual(try connected.editorContents().edges.count, 1)
+    }
+
+    func testTopologyInsideTransactionCommitsAndCancelsAtomically() throws {
+        var history = DocumentHistory(document: try seed())
+        let before = history.document.encoded()
+        try history.beginTransaction()
+        try history.apply(
+            .addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 0, y: 1, z: 0), radius: 0.1))
+        try history.apply(.addEdge(id: "e", from: "a", to: "b"))
+        try history.endTransaction()
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), before)
+        try history.beginTransaction()
+        try history.apply(.removeNode(id: "a"))
+        history.cancelTransaction()
+        XCTAssertEqual(history.document.encoded(), before)
+    }
+    func testUnknownFieldsAssetsAndPartLocksSurviveTopologyEdits() throws {
+        let xml =
+            "<canvas future='keep'><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='0.1' custom='preserve'/></nodes><parts><part id='p' locked='false' visible='true' future='retained'/></parts><components><component id='c' linkData='p' linkDataType='partId' future='retained'/></components><future><data>opaque</data></future></canvas>"
+        func archive(_ xml: String) -> Data {
+            let model = Data(xml.utf8)
+            let header =
+                "<ds3 custom='keep'><model name='model.xml' offset='0' size='\(model.count)'/><image name='opaque' offset='\(model.count)' size='4' future='keep'/></ds3>"
+            let prefix = "DUST3D 1.0 xml "
+            return Data(
+                (prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+                + model + Data([0, 255, 1, 128])
+        }
+        let original = try Dust3DDocument(data: archive(xml))
+        let added = try original.applying(
+            .addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 1, y: 0, z: 0), radius: 0.2))
+        let connected = try added.applying(.addEdge(id: "e", from: "a", to: "b"))
+        let edited = try connected.applying(.removeNode(id: "b"))
+        let reopened = try Dust3DDocument(data: edited.encoded())
+        XCTAssertEqual(reopened.asset(named: "opaque"), Data([0, 255, 1, 128]))
+        let output = String(decoding: reopened.modelXML, as: UTF8.self)
+        let parsed = try XMLDocument(data: reopened.modelXML)
+        XCTAssertEqual((try parsed.nodes(forXPath: "/canvas/nodes/node/@custom")).first?.stringValue, "preserve")
+        XCTAssertTrue(output.contains("<future><data>opaque</data></future>"))
+        XCTAssertEqual((try parsed.nodes(forXPath: "/canvas/parts/part/@future")).first?.stringValue, "retained")
+        for flag in ["locked='true' visible='true'", "locked='false' visible='false'"] {
+            let locked = try Dust3DDocument(
+                data: archive(xml.replacingOccurrences(of: "locked='false' visible='true'", with: flag)))
+            XCTAssertThrowsError(
+                try locked.applying(
+                    .addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 0, y: 0, z: 0), radius: 1)))
+            XCTAssertThrowsError(try locked.applying(.removeNode(id: "a")))
+        }
+    }
+
+    func testNetZeroTopologyTransactionPreservesOriginalBytesAndRedo() throws {
+        let model = Data(
+            "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='0.1'/></nodes><parts><part id='p'/></parts></canvas>"
+                .utf8)
+        let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+        let prefix = "DUST3D 1.0 xml "
+        let bytes =
+            Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+            + model
+        var history = DocumentHistory(document: try Dust3DDocument(data: bytes))
+        try history.apply(.setNode(id: "a", position: .init(x: 1, y: 0, z: 0), radius: 0.1))
+        XCTAssertTrue(history.undo())
+        try history.beginTransaction()
+        try history.apply(
+            .addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 0, y: 1, z: 0), radius: 0.1))
+        try history.apply(.removeNode(id: "b"))
+        try history.endTransaction()
+        XCTAssertEqual(history.document.encoded(), bytes)
+        XCTAssertTrue(history.canRedo)
+        XCTAssertFalse(history.canUndo)
+
+        // Equal geometry must not hide an intentional change to unknown metadata.
+        let decoratedModel = Data(
+            String(decoding: model, as: UTF8.self).replacingOccurrences(
+                of: "<node id=", with: "<node custom='preserve' id="
+            ).utf8)
+        let decoratedHeader = "<ds3><model name='model.xml' offset='0' size='\(decoratedModel.count)'/></ds3>"
+        let decoratedBytes =
+            Data(
+                (prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + decoratedHeader.utf8.count)
+                    + decoratedHeader).utf8) + decoratedModel
+        var replacement = DocumentHistory(document: try Dust3DDocument(data: decoratedBytes))
+        try replacement.beginTransaction()
+        try replacement.apply(.removeNode(id: "a"))
+        try replacement.apply(
+            .addNode(id: "a", partID: "p", componentID: nil, position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        try replacement.endTransaction()
+        XCTAssertTrue(replacement.canUndo)
+        XCTAssertNotEqual(replacement.document.encoded(), decoratedBytes)
+        XCTAssertTrue(replacement.undo())
+        XCTAssertEqual(replacement.document.encoded(), decoratedBytes)
+    }
+
+    func testMissingContainersRemainNetZeroWithoutLosingMetadata() throws {
+        func document(_ xml: String) throws -> Dust3DDocument {
+            let model = Data(xml.utf8)
+            let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+            let prefix = "DUST3D 1.0 xml "
+            return try Dust3DDocument(
+                data: Data(
+                    (prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+                    + model)
+        }
+        let nodes =
+            "<nodes><node id='a' partId='p' x='0' y='0' z='0' radius='0.1'/><node id='b' partId='p' x='0' y='1' z='0' radius='0.1'/></nodes>"
+        let addNode = DocumentCommand.addNode(
+            id: "new", partID: "p", componentID: nil, position: .init(x: 0, y: 0, z: 0), radius: 0.1)
+        let addEdge = DocumentCommand.addEdge(id: "e", from: "a", to: "b")
+        for (graph, add, remove) in [
+            ("", addNode, DocumentCommand.removeNode(id: "new")),
+            (nodes, addEdge, DocumentCommand.removeEdge(id: "e")),
+            ("<nodes> \n </nodes>", addNode, DocumentCommand.removeNode(id: "new")),
+            ("<nodes xmlns:future='urn:metadata'/>", addNode, DocumentCommand.removeNode(id: "new")),
+            ("<nodes><![CDATA[ ]]></nodes>", addNode, DocumentCommand.removeNode(id: "new")),
+            ("<nodes custom='retain'><!-- keep --></nodes>", addNode, DocumentCommand.removeNode(id: "new")),
+            (nodes + "<edges custom='retain'><!-- keep --></edges>", addEdge, DocumentCommand.removeEdge(id: "e")),
+        ] {
+            let original = try document("<canvas>\(graph)<parts><part id='p'/></parts></canvas>")
+            var history = DocumentHistory(document: original)
+            try history.apply(add)
+            XCTAssertTrue(history.undo())
+            try history.beginTransaction()
+            try history.apply(add)
+            try history.apply(remove)
+            try history.endTransaction()
+            XCTAssertEqual(history.document.encoded(), original.encoded())
+            XCTAssertTrue(history.canRedo)
+            XCTAssertFalse(history.canUndo)
+        }
+    }
+
+    func testNewPartCannotExceedComponentLimitButExistingPartCanGrow() throws {
+        let components = (0..<10_000).map {
+            "<component id='\(String(format: "{00000000-0000-4000-8000-%012d}", $0))'/>"
+        }.joined()
+        for namespace in ["", "xmlns='urn:dust3d'"] {
+            let model = Data(
+                "<canvas \(namespace)><nodes/><parts><part id='p'/></parts><components>\(components)</components></canvas>"
+                    .utf8)
+            let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+            let prefix = "DUST3D 1.0 xml "
+            let original = try Dust3DDocument(
+                data: Data(
+                    (prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+                    + model)
+            XCTAssertThrowsError(
+                try original.applying(
+                    .addNode(
+                        id: "a", partID: "new", componentID: "new-component", position: .init(x: 0, y: 0, z: 0),
+                        radius: 0.1
+                    ))
+            ) { error in
+                XCTAssertEqual(error as? DocumentError, .limitExceeded)
+            }
+            let extended = try original.applying(
+                .addNode(id: "a", partID: "p", componentID: nil, position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+            XCTAssertEqual(try extended.editorContents().nodes.count, 1)
+            XCTAssertEqual(original.modelXML, model)
+        }
+    }
+
+}

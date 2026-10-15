@@ -12,7 +12,18 @@ struct EditorRootView: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Nodes").font(.headline).padding(12)
+                HStack {
+                    Text("Nodes").font(.headline)
+                    Spacer()
+                    Menu {
+                        Button("Add Node") { store.addNode() }
+                        Button("New Part") { store.addNode(newPart: true) }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Create node or part")
+                    .disabled(store.isWorking)
+                }.padding(12)
                 Divider()
                 List(selection: Binding(get: { store.snapshot?.selectedID }, set: { store.select($0) })) {
                     ForEach(store.snapshot?.nodes ?? []) { node in

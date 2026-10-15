@@ -21,6 +21,11 @@ public actor EditorSession {
         try update { try $0.edit(id: id, position: position, radius: radius) }
     }
 
+    /// Atomically apply a graph transaction; cancellation is checked before it begins.
+    public func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws -> EditorSnapshot {
+        try update { try $0.apply(commands, selecting: id) }
+    }
+
     public func undo() throws -> EditorSnapshot { try update { try $0.undo() } }
     public func redo() throws -> EditorSnapshot { try update { try $0.redo() } }
 

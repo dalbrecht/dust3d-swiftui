@@ -33,15 +33,20 @@ public struct EditableNode: Equatable, Sendable {
     }
 }
 
-/// Initial command vocabulary. Graph topology and modeling constraints are later milestones.
+/// Atomic node and graph commands. Unknown archive data remains untouched.
 public enum DocumentCommand: Sendable {
     case setNode(id: String, position: NodePosition, radius: Double)
+    case addNode(id: String, partID: String, componentID: String?, position: NodePosition, radius: Double)
+    case addEdge(id: String, from: String, to: String)
+    case removeNode(id: String)
+    case removeEdge(id: String)
 }
 
 /// Stable node metadata for editor presentation. Geometry and unknown XML remain in the archive.
 public struct DocumentNode: Identifiable, Equatable, Sendable {
     public let id: String
     public let title: String
+    public let partID: String?
     public let value: EditableNode
     public let isVisible: Bool
     public let isEditable: Bool
@@ -168,7 +173,104 @@ public struct Dust3DDocument: Sendable {
 
     /// Apply one validated command to a new document value, preserving all unrelated archive data.
     public func applying(_ command: DocumentCommand) throws -> Dust3DDocument {
+        try applyingCommand(command)
+    }
+
+    private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
+        let contents: DocumentContents
+        if case .setNode = command {
+            contents = DocumentContents(nodes: [], edges: [])
+        } else {
+            contents = try editorContents()
+        }
+        let model = try Self.xml(modelXML, root: "canvas")
+        guard let root = model.rootElement() else { throw DocumentError.invalidXML }
+        func container(_ name: String) -> XMLElement {
+            if let existing = root.elements(forName: name).first { return existing }
+            let created = XMLElement(name: name)
+            root.addChild(created)
+            return created
+        }
+        func element(_ name: String, _ attributes: [(String, String)]) -> XMLElement {
+            let result = XMLElement(name: name)
+            for (key, value) in attributes {
+                let attribute = XMLNode(kind: .attribute)
+                attribute.name = key
+                attribute.stringValue = value
+                result.addAttribute(attribute)
+            }
+            return result
+        }
+        func editable(_ id: String) throws -> DocumentNode {
+            guard let node = contents.nodes.first(where: { $0.id == id }), node.isEditable else {
+                throw DocumentError.invalidNode
+            }
+            return node
+        }
+        func edgeElements() -> [XMLElement] { root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] }
         switch command {
+        case .addNode(let id, let partID, let componentID, let position, let radius):
+            guard !id.isEmpty, !partID.isEmpty, !contents.nodes.contains(where: { $0.id == id }),
+                contents.nodes.count < 10_000,
+                [position.x, position.y, position.z, radius].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }),
+                radius >= 0
+            else { throw DocumentError.invalidNode }
+            let parts = container("parts")
+            if let part = parts.elements(forName: "part").first(where: {
+                $0.attribute(forName: "id")?.stringValue == partID
+            }) {
+                func isTrue(_ value: String?) -> Bool { value == "true" || value == "True" || value == "1" }
+                guard !isTrue(part.attribute(forName: "locked")?.stringValue),
+                    part.attribute(forName: "visible").map({ isTrue($0.stringValue) }) ?? true
+                else { throw DocumentError.invalidNode }
+            } else {
+                let components = try model.nodes(forXPath: "//component")
+                guard components.count < 10_000 else { throw DocumentError.limitExceeded }
+                guard let componentID, !componentID.isEmpty,
+                    !components.contains(where: {
+                        ($0 as? XMLElement)?.attribute(forName: "id")?.stringValue == componentID
+                    })
+                else { throw DocumentError.invalidNode }
+                parts.addChild(
+                    element("part", [("id", partID), ("name", "Part"), ("visible", "true"), ("locked", "false")]))
+                container("components").addChild(
+                    element(
+                        "component",
+                        [
+                            ("id", componentID), ("name", "Part"), ("linkData", partID), ("linkDataType", "partId"),
+                            ("combineMode", "Normal"),
+                        ]))
+            }
+            container("nodes").addChild(
+                element(
+                    "node",
+                    [
+                        ("id", id), ("partId", partID), ("x", String(position.x)), ("y", String(position.y)),
+                        ("z", String(position.z)), ("radius", String(radius)),
+                    ]))
+        case .addEdge(let id, let from, let to):
+            let source = try editable(from)
+            let target = try editable(to)
+            guard !id.isEmpty, from != to, let partID = source.partID, target.partID == partID,
+                contents.edges.count < 20_000,
+                !contents.edges.contains(where: {
+                    $0.id == id || ($0.fromID == from && $0.toID == to) || ($0.fromID == to && $0.toID == from)
+                })
+            else { throw DocumentError.invalidNode }
+            container("edges").addChild(element("edge", [("id", id), ("partId", partID), ("from", from), ("to", to)]))
+        case .removeNode(let id):
+            _ = try editable(id)
+            try Self.findNode(id, in: model).detach()
+            for edge in edgeElements()
+            where edge.attribute(forName: "from")?.stringValue == id || edge.attribute(forName: "to")?.stringValue == id
+            {
+                edge.detach()
+            }
+        case .removeEdge(let id):
+            guard let edge = contents.edges.first(where: { $0.id == id }) else { throw DocumentError.invalidNode }
+            _ = try editable(edge.fromID)
+            _ = try editable(edge.toID)
+            edgeElements().first(where: { $0.attribute(forName: "id")?.stringValue == id })?.detach()
         case .setNode(let id, let position, let radius):
             guard [position.x, position.y, position.z, radius].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }),
                 radius >= 0
@@ -176,13 +278,51 @@ public struct Dust3DDocument: Sendable {
                 throw DocumentError.invalidNode
             }
             if try node(id: id) == EditableNode(position: position, radius: radius) { return self }
-            let model = try Self.xml(modelXML, root: "canvas")
             let node = try Self.findNode(id, in: model)
             for (key, value) in [("x", position.x), ("y", position.y), ("z", position.z), ("radius", radius)] {
                 node.attribute(forName: key)?.stringValue = String(value)
             }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         }
+        let next = try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        _ = try next.editorContents()
+        return next
+    }
+
+    // Commands only replace model XML. Normalize supported numeric spellings and XML
+    // serialization when detecting net-zero transactions; retain all unknown data.
+    func hasSameModel(as other: Dust3DDocument) throws -> Bool {
+        func canonical(_ data: Data) throws -> Data {
+            let model = try Self.xml(data, root: "canvas")
+            model.isStandalone = false
+            // Absent graph containers and empty containers represent the same graph.
+            // Attributes, namespaces, comments and non-whitespace content are metadata.
+            for name in ["nodes", "edges"] {
+                for container in model.rootElement()?.elements(forName: name) ?? [] {
+                    if container.attributes?.isEmpty ?? true, container.namespaces?.isEmpty ?? true,
+                        (container.children ?? []).allSatisfy({
+                            $0.kind == .text
+                                && $0.xmlString(options: [.nodePreserveAll]).trimmingCharacters(
+                                    in: .whitespacesAndNewlines
+                                ).isEmpty
+                        })
+                    {
+                        container.detach()
+                    }
+                }
+            }
+            for node in try Self.nodes(model) {
+                for key in ["x", "y", "z", "radius"] {
+                    if let attribute = node.attribute(forName: key),
+                        let number = attribute.stringValue.flatMap(Double.init), number.isFinite
+                    {
+                        attribute.stringValue = String(number == 0 ? 0 : number)
+                    }
+                }
+            }
+            return model.xmlData(options: [.nodePreserveAll])
+        }
+        return try canonical(modelXML) == canonical(other.modelXML)
     }
 
     private func replacingModel(_ model: Data) throws -> Dust3DDocument {
@@ -238,7 +378,7 @@ public struct Dust3DDocument: Sendable {
             let part = partID.flatMap { parts[$0] }
             let name = node.attribute(forName: "name")?.stringValue ?? ""
             return DocumentNode(
-                id: id, title: name.isEmpty ? "Node \(index + 1)" : name,
+                id: id, title: name.isEmpty ? "Node \(index + 1)" : name, partID: partID,
                 value: try Self.decodeNode(node), isVisible: part?.visible ?? true,
                 isEditable: part?.editable ?? true)
         }
@@ -258,7 +398,8 @@ public struct Dust3DDocument: Sendable {
 
     /// Construct a valid blank document for a native untitled document window.
     public static func emptyArchive() -> Data {
-        let model = Data("<canvas><nodes/><edges/><parts/><components/></canvas>".utf8)
+        let model = Data(
+            "<canvas originX='0.5' originY='0.5' originZ='0.5'><nodes/><edges/><parts/><components/></canvas>".utf8)
         let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
         let prefix = "DUST3D 1.0 xml "
         return Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)

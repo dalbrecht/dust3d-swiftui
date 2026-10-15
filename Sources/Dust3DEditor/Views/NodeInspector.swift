@@ -8,10 +8,13 @@ struct NodeInspector: View {
     @State private var z = 0.0
     @State private var radius = 0.0
 
-    var body: some View {
+    var body: some View { ScrollView { content } }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Node inspector").font(.headline)
             if let node = store.snapshot?.selectedNode {
+                let targets = store.snapshot?.connectionTargets ?? []
                 Text(node.title).font(.title3)
                 Text(node.id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 Form {
@@ -29,6 +32,21 @@ struct NodeInspector: View {
                         .buttonStyle(.borderedProminent)
                 }
                 .disabled(store.isWorking || !node.isEditable)
+                Divider()
+                Menu("Connect to…") {
+                    ForEach(targets) { target in
+                        Button(target.title) { store.connect(to: target.id) }
+                    }
+                }
+                .disabled(store.isWorking || !node.isEditable || targets.isEmpty)
+                ForEach((store.snapshot?.edges ?? []).filter { $0.fromID == node.id || $0.toID == node.id }) { edge in
+                    Button(
+                        "Disconnect \(store.snapshot?.nodes.first(where: { $0.id == (edge.fromID == node.id ? edge.toID : edge.fromID) })?.title ?? "node")"
+                    ) { store.deleteEdge(edge.id) }
+                    .disabled(store.isWorking || !node.isEditable)
+                }
+                Button("Delete Node", role: .destructive) { store.deleteNode() }
+                    .disabled(store.isWorking || !node.isEditable)
                 Text("Coordinates use document units. Dragging moves in the selected canvas plane.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {

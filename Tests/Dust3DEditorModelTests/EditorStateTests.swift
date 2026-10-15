@@ -4,7 +4,9 @@ import Foundation
 import XCTest
 
 final class EditorStateTests: XCTestCase {
-    private func document(locked: Bool = false, visible: Bool = true, edge: String? = nil) throws -> Dust3DDocument {
+    private func document(locked: Bool = false, visible: Bool = true, edge: String? = nil, unassigned: Bool = false)
+        throws -> Dust3DDocument
+    {
         let xml = """
             <canvas><nodes>
             <node id="a" partId="p" name="Tip" x="0" y="0" z="0.25" radius="0.1"/>
@@ -12,7 +14,7 @@ final class EditorStateTests: XCTestCase {
             </nodes><parts><part id="p" locked="\(locked)" visible="\(visible)"/></parts>
             <edges>\(edge ?? "<edge id='e' from='a' to='b'/>")</edges></canvas>
             """
-        let model = Data(xml.utf8)
+        let model = Data((unassigned ? xml.replacingOccurrences(of: " partId=\"p\"", with: "") : xml).utf8)
         let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
         let prefix = "DUST3D 1.0 xml "
         let bytes =
@@ -76,6 +78,7 @@ final class EditorStateTests: XCTestCase {
             XCTAssertThrowsError(try state.edit(id: "a", position: .init(x: 1, y: 2, z: 3), radius: 1))
             XCTAssertEqual(state.snapshot.document.encoded(), input.encoded())
             XCTAssertFalse(state.snapshot.canUndo)
+            XCTAssertThrowsError(try state.apply([.setNode(id: "a", position: .init(x: 1, y: 2, z: 3), radius: 1)]))
         }
     }
 
@@ -166,6 +169,62 @@ final class EditorStateTests: XCTestCase {
         }
         let retained = try await session.select("a")
         XCTAssertEqual(retained.document.encoded(), data)
+    }
+
+    func testTopologyBatchSelectionAndUndoAreAtomic() throws {
+        var state = try EditorState(document: document())
+        let original = state.snapshot.document.encoded()
+        try state.apply(
+            [
+                .addNode(id: "c", partID: "p", componentID: nil, position: .init(x: 1, y: 1, z: 1), radius: 0.1),
+                .addEdge(id: "f", from: "b", to: "c"),
+            ], selecting: "c")
+        XCTAssertEqual(state.snapshot.selectedID, "c")
+        XCTAssertEqual(state.snapshot.nodes.count, 3)
+        try state.undo()
+        XCTAssertEqual(state.snapshot.document.encoded(), original)
+        XCTAssertNil(state.snapshot.selectedID)
+        try state.redo()
+        try state.apply([.removeNode(id: "b")])
+        XCTAssertTrue(state.snapshot.edges.isEmpty)
+        XCTAssertEqual(state.snapshot.nodes.count, 2)
+        let before = state.snapshot.document.encoded()
+        XCTAssertThrowsError(try state.apply([.removeNode(id: "a")], selecting: "missing"))
+        XCTAssertEqual(state.snapshot.document.encoded(), before)
+        try state.apply([])
+        XCTAssertEqual(state.snapshot.document.encoded(), before)
+    }
+
+    @MainActor func testActorRoutesTopologyBatch() async throws {
+        let session = EditorSession()
+        _ = try await session.open(data: document().encoded())
+        let removed = try await session.apply([.removeEdge(id: "e")])
+        XCTAssertTrue(removed.edges.isEmpty)
+        let moved = try await session.apply([.setNode(id: "a", position: .init(x: 1, y: 2, z: 3), radius: 0.5)])
+        XCTAssertEqual(moved.nodes.first?.value.radius, 0.5)
+    }
+
+    func testConnectionTargetsExcludeNeighborsAndReadonlyOrOtherParts() throws {
+        var state = try EditorState(document: document())
+        XCTAssertTrue(state.snapshot.connectionTargets.isEmpty)
+        try state.select("a")
+        XCTAssertTrue(state.snapshot.connectionTargets.isEmpty)
+        try state.apply([
+            .addNode(id: "c", partID: "p", componentID: nil, position: .init(x: 0, y: 1, z: 0), radius: 0.1),
+            .addNode(id: "d", partID: "p", componentID: nil, position: .init(x: 0, y: 2, z: 0), radius: 0.1),
+            .addEdge(id: "other", from: "c", to: "d"),
+            .addNode(
+                id: "foreign", partID: "q", componentID: "component-q", position: .init(x: 0, y: 0, z: 0), radius: 0.1),
+        ])
+        XCTAssertEqual(state.snapshot.connectionTargets.map(\.id), ["c", "d"])
+        try state.select("b")
+        XCTAssertEqual(state.snapshot.connectionTargets.map(\.id), ["c", "d"])
+        var locked = try EditorState(document: document(locked: true))
+        try locked.select("a")
+        XCTAssertTrue(locked.snapshot.connectionTargets.isEmpty)
+        var unassigned = try EditorState(document: document(unassigned: true))
+        try unassigned.select("a")
+        XCTAssertTrue(unassigned.snapshot.connectionTargets.isEmpty)
     }
 
 }
