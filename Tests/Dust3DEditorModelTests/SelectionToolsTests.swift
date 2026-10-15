@@ -93,6 +93,28 @@ final class SelectionToolsTests: XCTestCase {
         XCTAssertEqual(state.snapshot.documentRevision, revision)
     }
 
+    func testLockedFieldsSkipProvisionalScaleOverflow() throws {
+        let original = try document()
+        var state = try EditorState(document: original)
+        try state.select(["a", "b"])
+        for lock in [EditingConstraint.x, .y, .z] { state.setLock(lock, isLocked: true) }
+        try state.scaleSelection(positionFactor: 1e308, radiusFactor: 2)
+        XCTAssertEqual(try state.snapshot.document.node(id: "b").position, try original.node(id: "b").position)
+        XCTAssertEqual(try state.snapshot.document.node(id: "b").radius, 0.4)
+        try state.undo()
+        for lock in [EditingConstraint.x, .y, .z] { state.setLock(lock, isLocked: false) }
+        state.setLock(.radius, isLocked: true)
+        try state.scaleSelection(positionFactor: 2, radiusFactor: 1e308)
+        XCTAssertEqual(try state.snapshot.document.node(id: "b").radius, 0.2)
+        XCTAssertEqual(try state.snapshot.document.node(id: "b").position, .init(x: 3, y: 6, z: 9))
+        try state.undo()
+        try state.edit(id: "b", position: .init(x: 2, y: 0, z: 0), radius: 0.2)
+        try state.select(["a", "b"])
+        state.setLock(.x, isLocked: true)
+        try state.scaleSelection(positionFactor: 1e308, radiusFactor: 1)
+        XCTAssertEqual(try state.snapshot.document.node(id: "b").position, .init(x: 2, y: 0, z: 0))
+    }
+
     func testMarqueeSelectsVisibleCentersInBothPlanesAndEitherDirection() throws {
         let nodes = try document().editorContents().nodes
         for plane in EditingPlane.allCases {

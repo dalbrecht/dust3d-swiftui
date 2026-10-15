@@ -131,10 +131,10 @@ public struct EditorState: Sendable {
                     position: positionFactor == 1
                         ? position
                         : .init(
-                            x: center.x + (position.x - center.x) * positionFactor,
-                            y: center.y + (position.y - center.y) * positionFactor,
-                            z: center.z + (position.z - center.z) * positionFactor),
-                    radius: node.value.radius * radiusFactor))
+                            x: locks.contains(.x) ? position.x : center.x + (position.x - center.x) * positionFactor,
+                            y: locks.contains(.y) ? position.y : center.y + (position.y - center.y) * positionFactor,
+                            z: locks.contains(.z) ? position.z : center.z + (position.z - center.z) * positionFactor),
+                    radius: locks.contains(.radius) ? node.value.radius : node.value.radius * radiusFactor))
         }
         try apply([.setNodes(updates)])
     }
