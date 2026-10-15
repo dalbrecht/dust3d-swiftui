@@ -432,4 +432,23 @@ final class NodeClipboardTests: XCTestCase {
                 .pasteNodes(clipboard: clipboard, identities: invalid, offset: .init(x: 0, y: 0, z: 0))))
     }
 
+    func testImportedFragmentRequiresEdgePartAndRejectsThreeDistinctIncidentEdges() throws {
+        let original = try source()
+        let model = try XMLDocument(data: original.modelXML)
+        model.rootElement()?.elements(forName: "edges").first?.elements(forName: "edge").first?.removeAttribute(
+            forName: "partId")
+        let missingPart = try archive(model.xmlString(options: [.nodePreserveAll]))
+        XCTAssertThrowsError(try NodeClipboard(document: missingPart, selectedNodeIDs: ["a", "b"])) {
+            XCTAssertEqual($0 as? DocumentError, .invalidNode)
+        }
+        XCTAssertThrowsError(try missingPart.copyingNodes(["a", "b"]))
+        let branched = try original.applying(
+            .addNode(
+                id: "d", partID: "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", componentID: nil,
+                position: .init(x: 1, y: 1, z: 0), radius: 0.1)
+        )
+        .applying(.addEdge(id: "bd", from: "b", to: "d"))
+        XCTAssertThrowsError(try branched.copyingNodes(["a", "b", "c", "d"]))
+    }
+
 }

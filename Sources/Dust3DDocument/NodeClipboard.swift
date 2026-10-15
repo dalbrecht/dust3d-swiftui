@@ -29,11 +29,10 @@ public struct NodeClipboard: Sendable {
         let nodesByID = Dictionary(uniqueKeysWithValues: contents.nodes.map { ($0.id, $0) })
         let edgeElements = model.rootElement()?.elements(forName: "edges").first?.elements(forName: "edge") ?? []
         for edge in edgeElements {
-            if let partID = edge.attribute(forName: "partId")?.stringValue,
-                let from = edge.attribute(forName: "from")?.stringValue
-            {
-                guard nodesByID[from]?.partID == partID else { throw DocumentError.invalidNode }
-            }
+            guard let partID = edge.attribute(forName: "partId")?.stringValue,
+                let from = edge.attribute(forName: "from")?.stringValue,
+                nodesByID[from]?.partID == partID
+            else { throw DocumentError.invalidNode }
         }
         var degree: [String: Int] = [:]
         var pairs = Set<Set<String>>()
