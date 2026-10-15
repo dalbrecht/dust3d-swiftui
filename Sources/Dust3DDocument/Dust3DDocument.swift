@@ -305,6 +305,7 @@ public struct Dust3DDocument: Sendable {
                     root.addAttribute(attribute)
                 }
             }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartName(let id, let name):
             guard name.utf8.count <= 1024,
                 name.unicodeScalars.allSatisfy({

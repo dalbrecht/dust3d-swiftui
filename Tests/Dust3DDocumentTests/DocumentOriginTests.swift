@@ -3,9 +3,9 @@ import Foundation
 import XCTest
 
 final class DocumentOriginTests: XCTestCase {
-    private func archive(origin: String) throws -> Dust3DDocument {
+    private func archive(origin: String, partID: String = "p") throws -> Dust3DDocument {
         let model = Data(
-            "<canvas \(origin) future='root'><nodes><node id='a' partId='p' x='0' y='.5' z='1' radius='.1' future='node'/></nodes><parts><part id='p'/></parts><components><component id='c' name='Keep' linkData='p' linkDataType='partId'/></components><future/></canvas>"
+            "<canvas \(origin) future='root'><nodes><node id='a' partId='\(partID)' x='0' y='.5' z='1' radius='.1' future='node'/></nodes><parts><part id='p'/></parts><components><component id='c' name='Keep' linkData='p' linkDataType='partId'/></components><future/></canvas>"
                 .utf8)
         let header =
             "<ds3 future='header'><model name='model.xml' offset='0' size='\(model.count)'/><asset name='opaque' offset='\(model.count)' size='4' future='asset'/></ds3>"
@@ -90,4 +90,20 @@ final class DocumentOriginTests: XCTestCase {
         XCTAssertFalse(history.canUndo)
         XCTAssertTrue(history.canRedo)
     }
+    func testOriginEditRemainsIndependentOfUnsupportedLegacyGraphMetadata() throws {
+        let original = try archive(origin: "originX='.5' originY='.5' originZ='1'", partID: "missing")
+        XCTAssertThrowsError(try original.editorContents())
+        var history = DocumentHistory(document: original)
+        try history.apply(.setOrigin(.init(x: 1, y: 2, z: 3)))
+        let edited = history.document
+        XCTAssertEqual(try edited.origin(), .init(x: 1, y: 2, z: 3))
+        XCTAssertEqual(try edited.node(id: "a"), try original.node(id: "a"))
+        XCTAssertEqual(edited.asset(named: "opaque"), original.asset(named: "opaque"))
+        XCTAssertThrowsError(try edited.editorContents(), "Origin editing must preserve, not repair, graph metadata")
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+        XCTAssertTrue(history.redo())
+        XCTAssertEqual(history.document.encoded(), edited.encoded())
+    }
+
 }

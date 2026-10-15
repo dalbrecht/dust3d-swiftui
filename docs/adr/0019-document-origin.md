@@ -9,3 +9,5 @@ Represent an available origin with the existing immutable `NodePosition`. `Dust3
 The pinned core interprets mesh coordinates as `(nodeX-originX, originY-nodeY, originZ-nodeZ)`. An origin edit therefore affects generated placement even though document-node coordinates do not change; native UI must regenerate the preview. Tests compare semantic mesh bounds with tolerance rather than incidental vertex order. The reader's supported bound matches existing node-coordinate limits; it does not certify arbitrary inherited engine resource behavior.
 
 This PR exposes no origin editing UI or global alignment. Native controls, interaction-lock routing, visual markers and any explicit settlement policy belong in the follow-up stage. No C++/core dependency change is required.
+
+Origin-only commands bypass editor graph validation, like other graph-independent archive operations. A readable legacy archive with unsupported graph references can change origin without repairing or discarding that graph metadata; editing/generation may still reject the graph independently.
