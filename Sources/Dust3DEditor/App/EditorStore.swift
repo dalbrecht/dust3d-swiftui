@@ -65,7 +65,7 @@ final class EditorStore {
     var canCopyNodes: Bool { !isWorking && snapshot?.canCopyNodes == true }
     var canCutNodes: Bool { !isWorking && snapshot?.canCutNodes == true }
 
-    /// Clipboard write completes before a Cut can mutate the document.
+    /// Clipboard promise registration succeeds before a Cut can mutate the document.
     func copyNodes(cut: Bool = false, to pasteboard: EditorPasteboard) {
         guard cut ? canCutNodes : canCopyNodes, !stopped else { return }
         isWorking = true

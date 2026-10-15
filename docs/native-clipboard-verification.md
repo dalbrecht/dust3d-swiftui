@@ -23,3 +23,12 @@ The clipboard contains all source assets because opaque fields can reference the
 Native write-failure handling is enforced by write-before-delete ordering; an actual NSPasteboard write failure was not injected. Negative transport/topology cases and readonly construction have automated coverage, rather than every case being repeated through the UI. No VoiceOver, oldest-supported-macOS, large-model GPU/performance or allocation-failure stress certification is claimed. This milestone does not implement empty-part cleanup, branching, reference images, edge picking or M3–M8 feature parity. Undo/redo retains the existing transient-selection contract; paste placement is transient and is not rewound by Undo.
 
 The automated-review responsiveness finding is addressed with system asynchronous PasteButton/Core Transferable loading; the store no longer synchronously materializes `NSPasteboard.data(forType:)`. The generated editor bundle exports its private type, and isolated editor/viewer packaging validates without replacing running bundles. Native re-verification pasted a retained 32 MiB asset payload into a fresh app session, generated the original 80-triangle chain, exercised one-step Undo/Redo and saved it. Independent comparison confirmed all 33,554,432 asset bytes and unknown metadata were preserved (SHA-256 `e09320c5b00b34bb704802136c599a95b3996332ba84d7c7f21112b6231b6bd0`). The inspector Paste Nodes control and text-field paste were also rechecked. This is a 32 MiB smoke test, not a 256 MiB latency or memory certification.
+
+The follow-up Copy/Cut finding is addressed by an immutable lazy `NSPasteboardItemDataProvider`. Only its type promise is published during Copy/Cut; bytes are supplied on demand. A native AppKit regression probe verifies provider retention after the writer returns and exact 32 MiB delivery. Run it on a macOS login session (pasteboard access is required):
+
+```sh
+xcrun swiftc -swift-version 6 -parse-as-library Sources/Dust3DEditor/Services/NodeClipboardDataProvider.swift script/tests/ClipboardDataProviderProbe.swift -o /tmp/dust3d-provider-probe
+/tmp/dust3d-provider-probe
+```
+
+The updated isolated app copied the 32 MiB fixture to a fresh window, pasted three nodes/80 triangles, cut them to an empty graph, and restored them in one Undo. Saving the restored graph preserved the same asset SHA-256 and unknown header metadata. This verifies lazy publication and consumption while the application is running; persistence of an unconsumed promise after process termination is not certified.

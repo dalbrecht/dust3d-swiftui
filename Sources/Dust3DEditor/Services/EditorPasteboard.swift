@@ -16,7 +16,10 @@ import Observation
 
     func write(_ data: Data) throws {
         let item = NSPasteboardItem()
-        guard item.setData(data, forType: Self.type) else { throw PasteboardError.writeFailed }
+        // Advertise the immutable snapshot now; AppKit requests its bytes only when a consumer needs them.
+        guard item.setDataProvider(NodeClipboardDataProvider(data: data), forTypes: [Self.type]) else {
+            throw PasteboardError.writeFailed
+        }
         pasteboard.clearContents()
         guard pasteboard.writeObjects([item]) else { throw PasteboardError.writeFailed }
     }
