@@ -26,7 +26,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
 
     init(mesh: Mesh, view: MTKView, device: MTLDevice) throws {
         let packagedResources = Bundle.main.resourceURL.flatMap {
-            Bundle(url: $0.appendingPathComponent("Dust3DNative_Dust3DViewer.bundle"))
+            Bundle(url: $0.appendingPathComponent("Dust3DNative_Dust3DRendering.bundle"))
         }
         guard let queue = device.makeCommandQueue(),
             let shaderURL = (packagedResources ?? Bundle.module).url(forResource: "Shaders", withExtension: "metal")

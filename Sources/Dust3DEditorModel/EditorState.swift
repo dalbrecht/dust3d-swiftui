@@ -1,0 +1,78 @@
+import Dust3DDocument
+
+/// Typed editing boundary failures; malformed archive and node errors use DocumentError.
+public enum EditorError: Error, Equatable, Sendable {
+    case notLoaded
+    case readOnlyNode
+}
+
+/// Immutable presentation snapshot crossing from the editing actor to its window.
+public struct EditorSnapshot: Sendable {
+    public let document: Dust3DDocument
+    public let nodes: [DocumentNode]
+    public let edges: [DocumentEdge]
+    public let selectedID: String?
+    public let canUndo: Bool
+    public let canRedo: Bool
+    public let documentRevision: Int
+
+    public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
+}
+
+/// One document's selection and undo state. Failed edits never publish partial state.
+public struct EditorState: Sendable {
+    private var history: DocumentHistory
+    private var contents: DocumentContents
+    private var selectedID: String?
+    private var revision = 0
+
+    /// Parse graph metadata. Throws DocumentError for invalid or oversized graphs.
+    public init(document: Dust3DDocument) throws {
+        contents = try document.editorContents()
+        history = DocumentHistory(document: document)
+    }
+
+    /// Current immutable document, graph, selection and history availability.
+    public var snapshot: EditorSnapshot {
+        EditorSnapshot(
+            document: history.document, nodes: contents.nodes, edges: contents.edges,
+            selectedID: selectedID, canUndo: history.canUndo, canRedo: history.canRedo,
+            documentRevision: revision)
+    }
+
+    /// Select a node or clear selection; throws missingNode without changing state.
+    public mutating func select(_ id: String?) throws {
+        if let id, !contents.nodes.contains(where: { $0.id == id }) { throw DocumentError.missingNode(id) }
+        selectedID = id
+    }
+
+    /// Commit one gesture or inspector edit as one undo step, respecting part locks/visibility.
+    public mutating func edit(id: String, position: NodePosition, radius: Double) throws {
+        guard let node = contents.nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
+        guard node.isEditable else { throw EditorError.readOnlyNode }
+        var next = history
+        try next.apply(.setNode(id: id, position: position, radius: radius))
+        try publish(next)
+        selectedID = id
+    }
+
+    /// Restore the previous archive, if available, retaining transient selection.
+    public mutating func undo() throws {
+        var next = history
+        if next.undo() { try publish(next) }
+    }
+
+    /// Reapply the next archive, if available, retaining transient selection.
+    public mutating func redo() throws {
+        var next = history
+        if next.redo() { try publish(next) }
+    }
+
+    private mutating func publish(_ next: DocumentHistory) throws {
+        guard next.document.encoded() != history.document.encoded() else { return }
+        let nextContents = try next.document.editorContents()
+        contents = nextContents
+        history = next
+        revision += 1
+    }
+}

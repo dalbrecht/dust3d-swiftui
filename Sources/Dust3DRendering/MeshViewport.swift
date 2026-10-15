@@ -2,13 +2,27 @@ import Dust3DKit
 import MetalKit
 import SwiftUI
 
-struct MeshViewport: NSViewRepresentable {
+/// Main-actor SwiftUI surface for a validated mesh and its interactive orbit camera.
+public struct MeshViewport: NSViewRepresentable {
     let mesh: Mesh
     let isWireframe: Bool
     let cameraReset: Int
     let onError: (String) -> Void
+    let meshRevision: Int
 
-    func makeNSView(context: Context) -> InteractiveMeshView {
+    /// Increment meshRevision to replace geometry; increment cameraReset to fit the view.
+    /// GPU setup errors are delivered through onError on the main actor.
+    public init(
+        mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0, onError: @escaping (String) -> Void
+    ) {
+        self.mesh = mesh
+        self.isWireframe = isWireframe
+        self.cameraReset = cameraReset
+        self.meshRevision = meshRevision
+        self.onError = onError
+    }
+
+    public func makeNSView(context: Context) -> InteractiveMeshView {
         let view = InteractiveMeshView()
         view.device = MTLCreateSystemDefaultDevice()
         view.colorPixelFormat = .bgra8Unorm
@@ -18,15 +32,16 @@ struct MeshViewport: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ view: InteractiveMeshView, context: Context) {
-        // A successful load creates a fresh vertex array; SwiftUI recreates this
-        // representable by mesh identity in ContentView.
-        if view.renderer == nil && !view.hasReportedError {
+    public func updateNSView(_ view: InteractiveMeshView, context: Context) {
+        // A revision replaces GPU geometry while retaining the existing orbit camera.
+        if (view.renderer == nil || view.meshRevision != meshRevision) && !view.hasReportedError {
             do {
                 guard let device = view.device else {
                     throw RendererError.unavailable("This Mac does not provide a Metal device.")
                 }
                 let renderer = try MeshRenderer(mesh: mesh, view: view, device: device)
+                if let camera = view.renderer?.camera { renderer.camera = camera }
+                view.meshRevision = meshRevision
                 view.renderer = renderer
                 view.delegate = renderer
             } catch {
@@ -46,20 +61,22 @@ struct MeshViewport: NSViewRepresentable {
 }
 
 @MainActor
-final class InteractiveMeshView: MTKView {
+/// AppKit event boundary owned by MeshViewport; geometry and camera remain renderer-owned.
+public final class InteractiveMeshView: MTKView {
     var renderer: MeshRenderer?
+    var meshRevision: Int?
     var hasReportedError = false
     var cameraReset = 0
     private var lastDragLocation: CGPoint?
 
-    override var acceptsFirstResponder: Bool { true }
+    public override var acceptsFirstResponder: Bool { true }
 
-    override func mouseDown(with event: NSEvent) {
+    public override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         lastDragLocation = event.locationInWindow
     }
 
-    override func mouseDragged(with event: NSEvent) {
+    public override func mouseDragged(with event: NSEvent) {
         let location = event.locationInWindow
         if let previous = lastDragLocation {
             renderer?.camera.orbit(
@@ -71,16 +88,16 @@ final class InteractiveMeshView: MTKView {
         needsDisplay = true
     }
 
-    override func mouseUp(with event: NSEvent) {
+    public override func mouseUp(with event: NSEvent) {
         lastDragLocation = nil
     }
 
-    override func scrollWheel(with event: NSEvent) {
+    public override func scrollWheel(with event: NSEvent) {
         renderer?.camera.zoom(delta: Float(event.scrollingDeltaY))
         needsDisplay = true
     }
 
-    override func keyDown(with event: NSEvent) {
+    public override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 123: renderer?.camera.orbit(horizontal: -10, vertical: 0)
         case 124: renderer?.camera.orbit(horizontal: 10, vertical: 0)

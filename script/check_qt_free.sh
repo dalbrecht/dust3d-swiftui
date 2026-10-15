@@ -7,9 +7,11 @@ if rg -n '#include\s*[<"]Q[A-Z]|\b(QObject|QString|QImage|QWidget)\b' Sources "$
     echo "Qt references found in native targets" >&2
     exit 1
 fi
-APP_BINARY="$DUST3D_BINARY_DIR/Dust3DViewer"
-if /usr/bin/otool -L "$APP_BINARY" | rg -i 'Qt(Core|Gui|Widgets|OpenGL|Svg|Multimedia)|/Qt[^/]*\.framework'; then
-    echo "Qt linked into native viewer" >&2
-    exit 1
-fi
-echo "Native sources and viewer linkage are Qt-free."
+for APP_NAME in Dust3DViewer Dust3DEditor; do
+    APP_BINARY="$DUST3D_BINARY_DIR/$APP_NAME"
+    if /usr/bin/otool -L "$APP_BINARY" | rg -i 'Qt(Core|Gui|Widgets|OpenGL|Svg|Multimedia)|/Qt[^/]*\.framework'; then
+        echo "Qt linked into $APP_NAME" >&2
+        exit 1
+    fi
+done
+echo "Native sources and both app linkages are Qt-free."

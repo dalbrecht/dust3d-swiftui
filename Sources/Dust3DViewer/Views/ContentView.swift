@@ -1,4 +1,5 @@
 import Dust3DKit
+import Dust3DRendering
 import SwiftUI
 import UniformTypeIdentifiers
 

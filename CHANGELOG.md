@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add a separate SwiftUI editor with per-window documents, node selection and front/side movement, coordinate/radius editing, undo/redo, native open/save, and asynchronous mesh preview.
+- Share the Metal renderer between viewer and editor; package and check Qt-free linkage for both apps.
+
 - Add lossless editor archive storage, validated node commands, bounded undo/redo transactions, atomic file persistence, and measured coverage gates.
 
 - Consume the Qt-free engine from a pinned external core revision and remove the duplicate Apple-side native adapter.
