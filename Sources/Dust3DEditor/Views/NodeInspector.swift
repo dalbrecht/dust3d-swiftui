@@ -8,6 +8,7 @@ struct NodeInspector: View {
     @State private var y = 0.0
     @State private var z = 0.0
     @State private var radius = 0.0
+    @State private var fieldResetID = UUID()
 
     var body: some View { ScrollView { content } }
 
@@ -35,6 +36,7 @@ struct NodeInspector: View {
                     TextField("Radius", value: $radius, format: .number).accessibilityIdentifier("node-radius")
                         .disabled(store.locks.contains(.radius))
                 }
+                .id(fieldResetID)
                 .focusedValue(\.editorTextEditing, true)
                 .disabled(store.isWorking || !node.isEditable)
                 if !node.isEditable { Label("Locked or hidden part", systemImage: "lock").font(.caption) }
@@ -91,6 +93,8 @@ struct NodeInspector: View {
         y = node.position.y
         z = node.position.z
         radius = node.radius
+        // A formatter can retain invalid text even when assigning the same numeric value.
+        fieldResetID = UUID()
     }
 }
 

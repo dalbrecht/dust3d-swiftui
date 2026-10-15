@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Make inspector Reset replace invalid or empty formatter drafts even when the underlying numeric values have not changed.
+
 - Add front/side edge picking, accessible edge sidebar selection, directed edge inspection, reversal and deletion with normalized splitting and undo/redo.
 
 - Retain the last valid editor mesh during generation updates/failures, with explicit stale status, retry and obsolete-result protection.
