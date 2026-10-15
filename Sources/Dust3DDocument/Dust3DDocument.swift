@@ -57,6 +57,7 @@ public enum DocumentCommand: Sendable {
     case removeNode(id: String)
     case removeNodes([String])
     case removeEdge(id: String)
+    case reverseEdges([String])
 }
 
 /// Stable node metadata for editor presentation. Geometry and unknown XML remain in the archive.
@@ -296,6 +297,23 @@ public struct Dust3DDocument: Sendable {
             _ = try editable(edge.fromID)
             _ = try editable(edge.toID)
             edgeElements().first(where: { $0.attribute(forName: "id")?.stringValue == id })?.detach()
+        case .reverseEdges(let ids):
+            if ids.isEmpty { return self }
+            let edges = Dictionary(uniqueKeysWithValues: contents.edges.map { ($0.id, $0) })
+            let editable = Set(contents.nodes.filter(\.isEditable).map(\.id))
+            guard Set(ids).count == ids.count,
+                ids.allSatisfy({ id in
+                    guard let edge = edges[id] else { return false }
+                    return editable.contains(edge.fromID) && editable.contains(edge.toID)
+                })
+            else { throw DocumentError.invalidNode }
+            let selected = Set(ids)
+            for edge in edgeElements() where selected.contains(edge.attribute(forName: "id")?.stringValue ?? "") {
+                let from = edge.attribute(forName: "from")?.stringValue
+                let to = edge.attribute(forName: "to")?.stringValue
+                edge.attribute(forName: "from")?.stringValue = to
+                edge.attribute(forName: "to")?.stringValue = from
+            }
         case .setNode(let id, let position, let radius):
             return try applying(.setNodes([.init(id: id, value: .init(position: position, radius: radius))]))
         case .setNodes(let updates):
