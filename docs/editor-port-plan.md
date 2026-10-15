@@ -105,6 +105,8 @@ Dependencies: M1. Suggested PRs: editor scene/shared rendering; selection/pickin
 - Implement drawing/connection, selection, move/scale/radius, delete, clipboard with UUID remapping, constraints and keyboard commands. Debounce preview generation, retain last valid mesh with explicit stale/error state (implemented; see [verification](preview-resilience-verification.md)).
 - Done: create a capsule and multi-part sword, edit both, undo/redo, save/reopen in Qt; two windows do not share selections or undo; gestures remain responsive while generating.
 
+Reference-image archive commands and asset-aware undo are implemented; [foundation verification](reference-image-foundation-verification.md) records preservation and bounds. Platform import/decoding, image-height coordinate alignment and rendered reference images remain M2 work.
+
 ### M3 — Complete procedural modeling
 
 Dependencies: M2. Suggested PRs grouped by component hierarchy, modifier families and generation scheduling.
@@ -205,10 +207,12 @@ All core dependency upgrades and upstream-sync PRs use the same tests. Keep fixt
 
 ## Editor foundation progress
 
-The viewer PR has landed. The external core SwiftPM package has landed, and a
-dedicated Apple dependency PR pins its source revision and removes the duplicated
-native adapter. The first editor foundation adds a byte-preserving archive value,
-unknown XML/asset retention during supported node edits, immutable commands,
-transactional undo/redo, savepoint snapshots and atomic file services. See
-[the foundation contract](editor-foundations.md) for implemented behavior and
-remaining M1 work. No editor UI or full modeling parity is claimed.
+The separate viewer and editor apps consume the exact pinned external core package.
+The editor now supports node selection/movement/radius editing, interaction locks,
+multiselection/marquee/scaling/transforms, topology creation/deletion/splitting/joining,
+edge picking/reversal/inspection, native clipboard editing, undo/redo, open/save and
+resilient mesh previews. Reference-image archive editing is implemented; its platform
+import and canvas alignment remain pending. Verification records linked above state
+actual test/native coverage and limits. The M1/M2 acceptance gates still include Qt GUI
+interoperability, recovery/failure cases and broader accessibility/performance checks;
+M3–M8 feature parity is not claimed.

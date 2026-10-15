@@ -5,6 +5,29 @@ import Foundation
 import XCTest
 
 final class DocumentCompatibilityTests: XCTestCase {
+    func testReferenceImageEditingRetainsPinnedEngineGeometryCompatibility() throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url))
+        let image = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
+        var history = DocumentHistory(document: original)
+        try history.beginTransaction()
+        try history.apply(.setReferenceImagePNG(image))
+        try history.endTransaction()
+        let next = history.document
+        let mesh = try MeshLoader.load(data: next.encoded())
+        XCTAssertEqual(mesh.nodeCount, 3)
+        XCTAssertEqual(mesh.partCount, 1)
+        XCTAssertEqual(mesh.triangleCount, 80)
+        XCTAssertEqual(next.referenceImagePNG, image)
+        XCTAssertEqual(next.modelXML, original.modelXML)
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+    }
+
     func testEditedArchiveIsReadableByPinnedNativeEngine() throws {
         let url = try XCTUnwrap(
             Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))

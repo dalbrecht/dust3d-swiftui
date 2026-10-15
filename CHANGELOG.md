@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add lossless, undoable Qt-compatible reference-image asset commands, bounded PNG bytes and asset-aware transaction change detection.
+
 - Make inspector Reset replace invalid or empty formatter drafts even when the underlying numeric values have not changed.
 
 - Add front/side edge picking, accessible edge sidebar selection, directed edge inspection, reversal and deletion with normalized splitting and undo/redo.
