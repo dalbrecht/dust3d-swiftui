@@ -4,9 +4,9 @@ import Foundation
 import XCTest
 
 final class GraphTransformTests: XCTestCase {
-    private func document() throws -> Dust3DDocument {
+    private func document(locked: Bool = true, visible: Bool = true) throws -> Dust3DDocument {
         let model = Data(
-            "<canvas future='keep'><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='0.1' future='retain'/><node id='b' partId='p' x='2' y='4' z='6' radius='0.2'/><node id='c' partId='q' x='4' y='6' z='8' radius='0.3'/></nodes><edges><edge id='e' from='a' to='b' partId='p' future='edge'><future/></edge><edge id='r' from='b' to='c'/></edges><parts><part id='p'/><part id='q' locked='true'/></parts></canvas>"
+            "<canvas future='keep'><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='0.1' future='retain'/><node id='b' partId='p' x='2' y='4' z='6' radius='0.2'/><node id='c' partId='q' x='4' y='6' z='8' radius='0.3'/></nodes><edges><edge id='e' from='a' to='b' partId='p' future='edge'><future/></edge><edge id='r' from='b' to='c'/></edges><parts><part id='p'/><part id='q' locked='\(locked)' visible='\(visible)'/></parts></canvas>"
                 .utf8)
         let header =
             "<ds3><model name='model.xml' offset='0' size='\(model.count)'/><image name='opaque' offset='\(model.count)' size='2'/></ds3>"
@@ -109,9 +109,30 @@ final class GraphTransformTests: XCTestCase {
         XCTAssertFalse(history.canUndo)
     }
 
+    func testEdgeAvailabilityRequiresBothEndpointsForLockedAndHiddenParts() throws {
+        for (locked, visible) in [(true, true), (false, false), (false, true)] {
+            let original = try document(locked: locked, visible: visible)
+            var state = try EditorState(document: original)
+            try state.select("b")
+            let expected = !locked && visible ? ["e", "r"] : ["e"]
+            XCTAssertEqual(state.snapshot.editableEdges.map(\.id), expected)
+            XCTAssertTrue(state.snapshot.reversibleEdges.isEmpty)
+            state.selectAll()
+            XCTAssertEqual(state.snapshot.reversibleEdges.map(\.id), expected)
+            if locked || !visible {
+                XCTAssertThrowsError(try state.apply([.reverseEdges(["r"])]))
+                XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            } else {
+                try state.apply([.reverseEdges(["r"])])
+                XCTAssertEqual(state.snapshot.edges[1].fromID, "c")
+            }
+        }
+    }
+
     @MainActor func testSelectionReversalAndActorTransforms() async throws {
         let original = try document()
         var state = try EditorState(document: original)
+        XCTAssertEqual(state.snapshot.editableEdges.map(\.id), ["e"])
         try state.reverseSelectedEdges()
         state.selectAll()
         XCTAssertEqual(state.snapshot.reversibleEdges.map(\.id), ["e"])

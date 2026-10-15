@@ -29,10 +29,14 @@ public struct EditorSnapshot: Sendable {
 
     public var selectedNodes: [DocumentNode] { nodes.filter { selectedIDs.contains($0.id) } }
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
-    /// Edges entirely inside the editable selected node set.
-    public var reversibleEdges: [DocumentEdge] {
-        let editable = Set(selectedNodes.filter(\.isEditable).map(\.id))
+    /// Edges whose endpoints both belong to editable parts, independent of selection.
+    public var editableEdges: [DocumentEdge] {
+        let editable = Set(nodes.filter(\.isEditable).map(\.id))
         return edges.filter { editable.contains($0.fromID) && editable.contains($0.toID) }
+    }
+    /// Editable edges entirely inside the selected node set.
+    public var reversibleEdges: [DocumentEdge] {
+        editableEdges.filter { selectedIDs.contains($0.fromID) && selectedIDs.contains($0.toID) }
     }
     /// Editable same-part nodes that are not already joined to the current selection.
     public var connectionTargets: [DocumentNode] {

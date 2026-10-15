@@ -18,6 +18,7 @@ struct NodeInspector: View {
                 GroupInspector(store: store)
             } else if let node = store.snapshot?.selectedNode {
                 let targets = store.snapshot?.connectionTargets ?? []
+                let editableEdges = Set(store.snapshot?.editableEdges.map(\.id) ?? [])
                 Text(node.title).font(.title3)
                 Text(node.id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 Form {
@@ -55,7 +56,7 @@ struct NodeInspector: View {
                         Button("Disconnect") { store.deleteEdge(edge.id) }
                     }
                     .accessibilityLabel("Edge from \(from) to \(to)")
-                    .disabled(store.isWorking || !node.isEditable)
+                    .disabled(store.isWorking || !editableEdges.contains(edge.id))
                 }
                 Button("Delete Node", role: .destructive) { store.deleteNode() }
                     .disabled(store.isWorking || !node.isEditable)
