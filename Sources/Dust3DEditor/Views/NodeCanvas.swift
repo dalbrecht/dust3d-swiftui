@@ -52,6 +52,19 @@ struct NodeCanvas: View {
                     }
                 }
                 .allowsHitTesting(false)
+                if let origin = store.snapshot?.origin {
+                    let point = projection.point(for: origin)
+                    Image(systemName: "scope")
+                        .font(.title3).foregroundStyle(.secondary)
+                        .overlay(alignment: .bottom) {
+                            Text("Origin").font(.caption2).fixedSize().offset(y: 14)
+                                .accessibilityHidden(true)
+                        }
+                        .position(x: point.x, y: point.y)
+                        .allowsHitTesting(false)
+                        .accessibilityLabel("Document origin")
+                        .accessibilityValue("X \(String(origin.x)), Y \(String(origin.y)), Z \(String(origin.z))")
+                }
                 ForEach(nodes.filter(\.isVisible)) { node in
                     NodeHandle(
                         node: node, projection: projection,
@@ -72,8 +85,12 @@ struct NodeCanvas: View {
                         })
                 }
                 if nodes.isEmpty && store.referenceImage == nil {
-                    ContentUnavailableView(
-                        "Open a model to edit its nodes", systemImage: "point.3.connected.trianglepath.dotted")
+                    VStack {
+                        Spacer()
+                        Text("Add a node from the Nodes menu or open a model.")
+                            .font(.callout).foregroundStyle(.secondary).padding(24)
+                    }
+                    .allowsHitTesting(false)
                 }
             }
             .coordinateSpace(name: "node-canvas")

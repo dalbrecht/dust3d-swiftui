@@ -32,30 +32,38 @@ public struct CanvasBounds: Sendable {
     let minimum: NodePosition
     let maximum: NodePosition
 
-    /// Fit visible nodes and, when present, an image-height-normalized reference rectangle.
-    public init(nodes: [DocumentNode], referenceImageAspectRatio: Double? = nil) {
+    /// Fit visible nodes, an optional reference rectangle and a complete supported origin.
+    /// Invalid origins are ignored; callers can preserve unsupported source metadata separately.
+    public init(nodes: [DocumentNode], referenceImageAspectRatio: Double? = nil, origin: NodePosition? = nil) {
         let visible = nodes.filter(\.isVisible)
         let aspect = referenceImageAspectRatio.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
         let imageMaximum = NodePosition(x: aspect ?? 1, y: 1, z: aspect ?? 1)
+        var lower: NodePosition
+        var upper: NodePosition
         if visible.isEmpty {
-            minimum = NodePosition(x: 0, y: 0, z: 0)
-            maximum = imageMaximum
+            lower = NodePosition(x: 0, y: 0, z: 0)
+            upper = imageMaximum
         } else {
-            let lower = NodePosition(
+            lower = NodePosition(
                 x: visible.map { $0.value.position.x - $0.value.radius }.min() ?? 0,
                 y: visible.map { $0.value.position.y - $0.value.radius }.min() ?? 0,
                 z: visible.map { $0.value.position.z - $0.value.radius }.min() ?? 0)
-            let upper = NodePosition(
+            upper = NodePosition(
                 x: visible.map { $0.value.position.x + $0.value.radius }.max() ?? 1,
                 y: visible.map { $0.value.position.y + $0.value.radius }.max() ?? 1,
                 z: visible.map { $0.value.position.z + $0.value.radius }.max() ?? 1)
-            minimum = aspect == nil ? lower : .init(x: min(lower.x, 0), y: min(lower.y, 0), z: min(lower.z, 0))
-            maximum =
-                aspect == nil
-                ? upper : .init(x: max(upper.x, imageMaximum.x), y: max(upper.y, 1), z: max(upper.z, imageMaximum.z))
+            if aspect != nil {
+                lower = .init(x: min(lower.x, 0), y: min(lower.y, 0), z: min(lower.z, 0))
+                upper = .init(x: max(upper.x, imageMaximum.x), y: max(upper.y, 1), z: max(upper.z, imageMaximum.z))
+            }
         }
+        if let origin, [origin.x, origin.y, origin.z].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }) {
+            lower = .init(x: min(lower.x, origin.x), y: min(lower.y, origin.y), z: min(lower.z, origin.z))
+            upper = .init(x: max(upper.x, origin.x), y: max(upper.y, origin.y), z: max(upper.z, origin.z))
+        }
+        minimum = lower
+        maximum = upper
     }
-
 }
 
 public struct CanvasProjection: Sendable {
