@@ -50,4 +50,23 @@ final class DocumentCompatibilityTests: XCTestCase {
         XCTAssertEqual(restored.nodeCount, 2)
     }
 
+    func testDeletingLastNodePreservesEmptyPartWithoutBreakingOtherParts() throws {
+        let first = "{11111111-1111-4111-8111-111111111111}"
+        let second = "{22222222-2222-4222-8222-222222222222}"
+        let empty = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+        let one = try empty.applying(
+            .addNode(
+                id: first, partID: "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}",
+                componentID: "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let two = try one.applying(
+            .addNode(
+                id: second, partID: "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}",
+                componentID: "{dddddddd-dddd-4ddd-8ddd-dddddddddddd}", position: .init(x: 1, y: 0, z: 0), radius: 0.1))
+        let deleted = try two.applying(.removeNode(id: first))
+        let mesh = try MeshLoader.load(data: deleted.encoded())
+        XCTAssertEqual(mesh.nodeCount, 1)
+        XCTAssertEqual(mesh.partCount, 2)
+        XCTAssertGreaterThan(mesh.triangleCount, 0)
+    }
+
 }
