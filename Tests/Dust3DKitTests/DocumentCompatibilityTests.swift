@@ -29,7 +29,7 @@ final class DocumentCompatibilityTests: XCTestCase {
         for node in try original.editorContents().nodes { XCTAssertEqual(try edited.node(id: node.id), node.value) }
     }
 
-    func testLocalAlignmentRemainsReadableByPinnedEngine() throws {
+    func testLocalAndOriginAlignmentRemainsReadableByPinnedEngine() throws {
         let url = try XCTUnwrap(
             Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
         var original = try Dust3DDocument(data: Data(contentsOf: url))
@@ -43,6 +43,7 @@ final class DocumentCompatibilityTests: XCTestCase {
         }
         for transform: SelectionTransform in [
             .frontAlignX, .frontAlignY, .frontAlignCenter, .sideAlignZ, .sideAlignY, .sideAlignCenter,
+            .originFrontX, .originFrontY, .originFrontCenter, .originSideZ, .originSideY, .originSideCenter,
         ] {
             var state = try EditorState(document: original)
             state.selectAll()

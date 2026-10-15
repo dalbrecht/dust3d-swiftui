@@ -13,6 +13,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case notLoaded
     case readOnlyNode
     case invalidScale
+    case unavailableOrigin
 }
 
 /// Immutable presentation snapshot crossing from the editing actor to its window.
@@ -21,6 +22,8 @@ public struct EditorSnapshot: Sendable {
     public let nodes: [DocumentNode]
     public let edges: [DocumentEdge]
     public let parts: [DocumentPart]
+    /// Complete supported canvas origin, independent of selection.
+    public let origin: NodePosition?
     public let selectedID: String?
     public let selectedIDs: Set<String>
     public let selectedEdgeID: String?
@@ -136,6 +139,7 @@ public struct EditorState: Sendable {
     public var snapshot: EditorSnapshot {
         EditorSnapshot(
             document: history.document, nodes: contents.nodes, edges: contents.edges, parts: contents.parts,
+            origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
             selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
@@ -239,10 +243,16 @@ public struct EditorState: Sendable {
         let nodes = snapshot.selectedNodes.filter(\.isEditable)
         guard !nodes.isEmpty else { return }
         let count = Double(nodes.count)
-        let center = NodePosition(
-            x: nodes.reduce(0) { $0 + $1.value.position.x } / count,
-            y: nodes.reduce(0) { $0 + $1.value.position.y } / count,
-            z: nodes.reduce(0) { $0 + $1.value.position.z } / count)
+        let center: NodePosition
+        if transform.usesOrigin {
+            guard let origin = contents.origin else { throw EditorError.unavailableOrigin }
+            center = origin
+        } else {
+            center = NodePosition(
+                x: nodes.reduce(0) { $0 + $1.value.position.x } / count,
+                y: nodes.reduce(0) { $0 + $1.value.position.y } / count,
+                z: nodes.reduce(0) { $0 + $1.value.position.z } / count)
+        }
         let updates = nodes.map { node in
             let original = node.value.position
             let proposed = transform.position(original, around: center)
@@ -313,6 +323,21 @@ public struct EditorState: Sendable {
         try next.beginTransaction()
         for command in commands {
             switch command {
+            case .setOrigin(let position):
+                guard [position.x, position.y, position.z].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }) else {
+                    throw DocumentError.invalidOrigin
+                }
+                if let origin = try next.document.origin() {
+                    try next.apply(
+                        .setOrigin(
+                            .init(
+                                x: locks.contains(.x) ? origin.x : position.x,
+                                y: locks.contains(.y) ? origin.y : position.y,
+                                z: locks.contains(.z) ? origin.z : position.z)))
+                } else {
+                    guard locks.isDisjoint(with: [.x, .y, .z]) else { throw EditorError.unavailableOrigin }
+                    try next.apply(command)
+                }
             case .setNode(let id, let position, let radius):
                 let nodes = try next.document.editorContents().nodes
                 try next.apply(constrainedNode(id: id, value: .init(position: position, radius: radius), nodes: nodes))

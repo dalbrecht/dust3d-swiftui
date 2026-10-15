@@ -16,6 +16,7 @@ struct NodeInspector: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Selection inspector").font(.headline)
+            OriginControls(store: store)
             NodeClipboardMenu(store: store)
             if let part = store.snapshot?.selectedPart {
                 PartInspector(store: store, part: part)
@@ -151,6 +152,7 @@ private struct SelectionTransformMenu: View {
         Menu("Transform Selected Nodes") {
             ForEach(SelectionTransform.allCases, id: \.self) { transform in
                 Button(transform.rawValue) { store.transformSelection(transform) }
+                    .disabled(transform.usesOrigin && store.snapshot?.origin == nil)
             }
         }
         .disabled(!store.canTransform)

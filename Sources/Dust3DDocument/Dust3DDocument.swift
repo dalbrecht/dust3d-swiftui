@@ -100,11 +100,14 @@ public struct DocumentContents: Sendable {
     public let nodes: [DocumentNode]
     public let edges: [DocumentEdge]
     public let parts: [DocumentPart]
+    /// Complete supported stored origin; nil preserves missing/unsupported source fields.
+    public let origin: NodePosition?
 
-    init(nodes: [DocumentNode], edges: [DocumentEdge], parts: [DocumentPart] = []) {
+    init(nodes: [DocumentNode], edges: [DocumentEdge], parts: [DocumentPart] = [], origin: NodePosition? = nil) {
         self.nodes = nodes
         self.edges = edges
         self.parts = parts
+        self.origin = origin
     }
 }
 
@@ -754,7 +757,8 @@ public struct Dust3DDocument: Sendable {
             return DocumentEdge(id: id, fromID: from, toID: to)
         }
         guard edges.count <= 20_000 else { throw DocumentError.limitExceeded }
-        return DocumentContents(nodes: nodes, edges: edges, parts: orderedParts)
+        return DocumentContents(
+            nodes: nodes, edges: edges, parts: orderedParts, origin: xml.rootElement().flatMap(Self.decodeOrigin))
     }
 
     /// Construct a valid blank document for a native untitled document window.
