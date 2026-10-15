@@ -1,4 +1,5 @@
 import AppKit
+import Dust3DEditorModel
 import SwiftUI
 
 @main
@@ -21,6 +22,27 @@ struct Dust3DEditorApp: App {
                     .keyboardShortcut("z", modifiers: [.command, .shift])
                     .disabled(store?.canRedo != true)
             }
+            CommandMenu("Canvas") {
+                ForEach(EditingConstraint.allCases, id: \.self) { constraint in
+                    Toggle(
+                        "Lock \(constraint.rawValue)",
+                        isOn: Binding(
+                            get: { store?.locks.contains(constraint) == true },
+                            set: { store?.setLock(constraint, isLocked: $0) })
+                    )
+                    .keyboardShortcut(shortcut(for: constraint), modifiers: [.command, .option])
+                    .disabled(store?.snapshot == nil || store?.isWorking != false)
+                }
+            }
+        }
+    }
+
+    private func shortcut(for constraint: EditingConstraint) -> KeyEquivalent {
+        switch constraint {
+        case .x: "x"
+        case .y: "y"
+        case .z: "z"
+        case .radius: "r"
         }
     }
 }

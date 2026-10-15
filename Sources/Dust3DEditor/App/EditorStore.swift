@@ -24,6 +24,7 @@ final class EditorStore {
     private var generation: Task<Void, Never>?
     private var stopped = false
 
+    var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
     var canUndo: Bool { !isWorking && snapshot?.canUndo == true }
     var canRedo: Bool { !isWorking && snapshot?.canRedo == true }
 
@@ -40,6 +41,10 @@ final class EditorStore {
         } catch {
             if !Task.isCancelled { errorMessage = Self.message(error) }
         }
+    }
+
+    func setLock(_ constraint: EditingConstraint, isLocked: Bool) {
+        perform(commits: false) { try await $0.setLock(constraint, isLocked: isLocked) }
     }
 
     func select(_ id: String?) { perform(commits: false) { try await $0.select(id) } }

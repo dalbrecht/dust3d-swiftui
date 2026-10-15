@@ -31,6 +31,11 @@ public struct EditableNode: Equatable, Sendable {
         self.position = position
         self.radius = radius
     }
+    /// Geometry values accepted by the document and native-engine boundaries.
+    public var isValid: Bool {
+        radius >= 0 && [position.x, position.y, position.z, radius].allSatisfy { $0.isFinite && abs($0) <= 1_000_000 }
+    }
+
 }
 
 /// Atomic node and graph commands. Unknown archive data remains untouched.
@@ -212,8 +217,7 @@ public struct Dust3DDocument: Sendable {
         case .addNode(let id, let partID, let componentID, let position, let radius):
             guard !id.isEmpty, !partID.isEmpty, !contents.nodes.contains(where: { $0.id == id }),
                 contents.nodes.count < 10_000,
-                [position.x, position.y, position.z, radius].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }),
-                radius >= 0
+                EditableNode(position: position, radius: radius).isValid
             else { throw DocumentError.invalidNode }
             let parts = container("parts")
             if let part = parts.elements(forName: "part").first(where: {
@@ -272,8 +276,7 @@ public struct Dust3DDocument: Sendable {
             _ = try editable(edge.toID)
             edgeElements().first(where: { $0.attribute(forName: "id")?.stringValue == id })?.detach()
         case .setNode(let id, let position, let radius):
-            guard [position.x, position.y, position.z, radius].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }),
-                radius >= 0
+            guard EditableNode(position: position, radius: radius).isValid
             else {
                 throw DocumentError.invalidNode
             }

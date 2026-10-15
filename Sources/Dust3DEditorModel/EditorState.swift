@@ -1,5 +1,13 @@
 import Dust3DDocument
 
+/// Per-window interaction constraints. These settings never enter the archive or undo history.
+public enum EditingConstraint: String, CaseIterable, Sendable {
+    case x = "X"
+    case y = "Y"
+    case z = "Z"
+    case radius = "Radius"
+}
+
 /// Typed editing boundary failures; malformed archive and node errors use DocumentError.
 public enum EditorError: Error, Equatable, Sendable {
     case notLoaded
@@ -14,6 +22,7 @@ public struct EditorSnapshot: Sendable {
     public let selectedID: String?
     public let canUndo: Bool
     public let canRedo: Bool
+    public let locks: Set<EditingConstraint>
     public let documentRevision: Int
 
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
@@ -38,6 +47,7 @@ public struct EditorState: Sendable {
     private var history: DocumentHistory
     private var contents: DocumentContents
     private var selectedID: String?
+    private var locks: Set<EditingConstraint> = []
     private var revision = 0
 
     /// Parse graph metadata. Throws DocumentError for invalid or oversized graphs.
@@ -50,7 +60,7 @@ public struct EditorState: Sendable {
     public var snapshot: EditorSnapshot {
         EditorSnapshot(
             document: history.document, nodes: contents.nodes, edges: contents.edges,
-            selectedID: selectedID, canUndo: history.canUndo, canRedo: history.canRedo,
+            selectedID: selectedID, canUndo: history.canUndo, canRedo: history.canRedo, locks: locks,
             documentRevision: revision)
     }
 
@@ -60,12 +70,15 @@ public struct EditorState: Sendable {
         selectedID = id
     }
 
+    /// Change an interaction lock without dirtying the document or changing history.
+    public mutating func setLock(_ constraint: EditingConstraint, isLocked: Bool) {
+        if isLocked { locks.insert(constraint) } else { locks.remove(constraint) }
+    }
+
     /// Commit one gesture or inspector edit as one undo step, respecting part locks/visibility.
     public mutating func edit(id: String, position: NodePosition, radius: Double) throws {
-        guard let node = contents.nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
-        guard node.isEditable else { throw EditorError.readOnlyNode }
         var next = history
-        try next.apply(.setNode(id: id, position: position, radius: radius))
+        try next.apply(constrainedNode(id: id, value: .init(position: position, radius: radius), nodes: contents.nodes))
         try publish(next)
         selectedID = id
     }
@@ -76,14 +89,12 @@ public struct EditorState: Sendable {
         var next = history
         try next.beginTransaction()
         for command in commands {
-            if case .setNode(let nodeID, _, _) = command {
-                guard let node = try next.document.editorContents().nodes.first(where: { $0.id == nodeID }),
-                    node.isEditable
-                else {
-                    throw EditorError.readOnlyNode
-                }
+            switch command {
+            case .setNode(let id, let position, let radius):
+                let nodes = try next.document.editorContents().nodes
+                try next.apply(constrainedNode(id: id, value: .init(position: position, radius: radius), nodes: nodes))
+            default: try next.apply(command)
             }
-            try next.apply(command)
         }
         try next.endTransaction()
         if let id, !(try next.document.editorContents().nodes.contains(where: { $0.id == id })) {
@@ -103,6 +114,20 @@ public struct EditorState: Sendable {
     public mutating func redo() throws {
         var next = history
         if next.redo() { try publish(next) }
+    }
+
+    private func constrainedNode(id: String, value: EditableNode, nodes: [DocumentNode]) throws -> DocumentCommand {
+        guard let node = nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
+        guard node.isEditable else { throw EditorError.readOnlyNode }
+        guard value.isValid else { throw DocumentError.invalidNode }
+        let original = node.value
+        return .setNode(
+            id: id,
+            position: .init(
+                x: locks.contains(.x) ? original.position.x : value.position.x,
+                y: locks.contains(.y) ? original.position.y : value.position.y,
+                z: locks.contains(.z) ? original.position.z : value.position.z),
+            radius: locks.contains(.radius) ? original.radius : value.radius)
     }
 
     private mutating func publish(_ next: DocumentHistory) throws {

@@ -58,6 +58,23 @@ struct EditorRootView: View {
                             .frame(width: 180)
                         }
                         .padding(12)
+                        HStack {
+                            Text("Locks").font(.caption).foregroundStyle(.secondary)
+                            ForEach(EditingConstraint.allCases, id: \.self) { constraint in
+                                Toggle(
+                                    constraint.rawValue,
+                                    isOn: Binding(
+                                        get: { store.locks.contains(constraint) },
+                                        set: { store.setLock(constraint, isLocked: $0) })
+                                )
+                                .toggleStyle(.button)
+                                .accessibilityLabel("Lock \(constraint.rawValue)")
+                                .accessibilityIdentifier("constraint-\(constraint.rawValue.lowercased())")
+                            }
+                        }
+                        .controlSize(.small)
+                        .disabled(store.isWorking || store.snapshot == nil)
+                        .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
                         NodeCanvas(store: store)
                     }

@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct NodeInspector: View {
@@ -19,9 +20,13 @@ struct NodeInspector: View {
                 Text(node.id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 Form {
                     TextField("X", value: $x, format: .number).accessibilityIdentifier("node-x")
+                        .disabled(store.locks.contains(.x))
                     TextField("Y", value: $y, format: .number).accessibilityIdentifier("node-y")
+                        .disabled(store.locks.contains(.y))
                     TextField("Z", value: $z, format: .number).accessibilityIdentifier("node-z")
+                        .disabled(store.locks.contains(.z))
                     TextField("Radius", value: $radius, format: .number).accessibilityIdentifier("node-radius")
+                        .disabled(store.locks.contains(.radius))
                 }
                 .disabled(store.isWorking || !node.isEditable)
                 if !node.isEditable { Label("Locked or hidden part", systemImage: "lock").font(.caption) }
@@ -57,6 +62,13 @@ struct NodeInspector: View {
         .padding(16)
         .onChange(of: store.snapshot?.selectedNode, initial: true) { _, node in
             if let node { reset(node.value) }
+        }
+        .onChange(of: store.locks) { previous, current in
+            guard let node = store.snapshot?.selectedNode else { return }
+            if current.contains(.x) && !previous.contains(.x) { x = node.value.position.x }
+            if current.contains(.y) && !previous.contains(.y) { y = node.value.position.y }
+            if current.contains(.z) && !previous.contains(.z) { z = node.value.position.z }
+            if current.contains(.radius) && !previous.contains(.radius) { radius = node.value.radius }
         }
     }
 

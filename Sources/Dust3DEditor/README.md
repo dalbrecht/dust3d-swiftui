@@ -22,3 +22,9 @@ Swift package is required beyond the existing pinned engine dependency.
 
 Quit the editor normally before using the run script again; it refuses to kill a
 running editor with potentially unsaved document edits. `--build-only` does not launch.
+
+Use the canvas Locks controls or Canvas menu to lock X, Y, Z or Radius.
+Command-Option-X/Y/Z/R toggles the corresponding lock. Locks constrain new
+coordinate/radius edits and the drag preview; they do not block undo/redo or
+node creation/deletion. Locking an inspector field resets its unapplied draft.
+Settings belong to the current window and are not saved in the `.ds3` archive.

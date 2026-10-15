@@ -16,3 +16,8 @@ root; tests cover command atomicity, undo, locks, projection and actor routing.
 `session.apply(commands, selecting:)` commits graph commands as one atomic undo
 step; a failed batch preserves document and selection. Deletion clears invalid
 selection. Undo restores document bytes; selection remains transient.
+
+`session.setLock(_:isLocked:)` changes transient per-window interaction settings.
+Both `edit` and batched set-node commands honor them after validating the input.
+Undo/redo restores committed snapshots regardless of current locks. Creation,
+deletion, archive bytes and history are unaffected by changing a lock.
