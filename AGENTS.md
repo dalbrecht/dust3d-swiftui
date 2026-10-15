@@ -158,3 +158,5 @@ UI changes MUST be validated against reference designs in `assets/designs/<route
 - Prefer semantic system colors, keyboard commands, accessible labels, and a small `NSViewRepresentable` boundary for Metal. This is a new viewer without a supplied reference design: inspect rendered UI; do not invent a pixel-diff baseline or block local completion on an unavailable reference.
 - Run `make ci` for native build, tests, formatting, and Qt-link checks. Report measured coverage and manual GPU checks honestly. Do not claim the inherited engine meets the standards repo's 100% core coverage target.
 - Canonical launch: `./script/build_and_run.sh`. Use `--verify` for process verification and `--build-only` to stage a bundle without opening it.
+
+- Native engine implementation now belongs to `dalbrecht/dust3d-core`. Update the exact SwiftPM revision and committed `Package.resolved` through reviewed dependency PRs; never maintain a second native adapter here. Inherited Qt/reference trees remain uncompiled by native targets.
