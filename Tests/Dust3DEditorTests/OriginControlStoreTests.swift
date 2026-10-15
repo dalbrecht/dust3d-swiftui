@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import Foundation
 import XCTest
 
@@ -90,6 +91,46 @@ final class OriginControlStoreTests: XCTestCase {
         try await settle(store)
         XCTAssertEqual(store.mesh?.triangleCount, 16)
         XCTAssertNil(store.previewState.errorMessage)
+    }
+
+    @MainActor
+    func testOriginChangesRefitCanvasWithoutResettingMeshCamera() async throws {
+        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(
+                id: "{11111111-1111-4111-8111-111111111111}", partID: "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}",
+                componentID: "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}", position: .init(x: 0.5, y: 0.5, z: 1),
+                radius: 0.1))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: original.encoded())
+        try await settle(store)
+        let camera = store.cameraReset
+        func assertOriginFits(file: StaticString = #filePath, line: UInt = #line) throws {
+            let origin = try XCTUnwrap(store.snapshot?.origin)
+            for plane in EditingPlane.allCases {
+                let point = CanvasProjection(bounds: store.bounds, plane: plane, width: 600, height: 400).point(
+                    for: origin)
+                XCTAssertTrue((0...600).contains(point.x), file: file, line: line)
+                XCTAssertTrue((0...400).contains(point.y), file: file, line: line)
+            }
+        }
+        store.setOrigin(x: "5", y: "-4", z: "7")
+        try await settle(store)
+        try assertOriginFits()
+        XCTAssertEqual(store.cameraReset, camera)
+        store.undo()
+        try await settle(store)
+        try assertOriginFits()
+        XCTAssertEqual(store.cameraReset, camera)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+        store.redo()
+        try await settle(store)
+        try assertOriginFits()
+        XCTAssertEqual(store.cameraReset, camera)
+        let saved = store.snapshot?.document.encoded()
+        store.fit()
+        XCTAssertEqual(store.cameraReset, camera + 1)
+        XCTAssertEqual(store.snapshot?.document.encoded(), saved)
     }
 
 }
