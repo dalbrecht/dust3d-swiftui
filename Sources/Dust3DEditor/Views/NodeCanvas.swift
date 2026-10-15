@@ -4,6 +4,7 @@ import SwiftUI
 
 struct NodeCanvas: View {
     let store: EditorStore
+    @State private var drag: SelectionDrag?
 
     var body: some View {
         GeometryReader { geometry in
@@ -15,7 +16,7 @@ struct NodeCanvas: View {
                 Canvas { context, _ in
                     let positions = Dictionary(
                         uniqueKeysWithValues: nodes.filter(\.isVisible).map {
-                            ($0.id, projection.point(for: $0.value.position))
+                            ($0.id, projection.point(for: previewPosition($0, projection: projection)))
                         })
                     for edge in store.snapshot?.edges ?? [] {
                         if let from = positions[edge.fromID], let to = positions[edge.toID] {
@@ -29,36 +30,59 @@ struct NodeCanvas: View {
                 ForEach(nodes.filter(\.isVisible)) { node in
                     NodeHandle(
                         node: node, projection: projection,
-                        selected: store.snapshot?.selectedID == node.id, locks: store.locks,
+                        position: previewPosition(node, projection: projection),
+                        selected: store.snapshot?.selectedIDs.contains(node.id) == true,
                         enabled: !store.isWorking,
                         select: { store.select(node.id) },
-                        move: { position in store.edit(id: node.id, position: position, radius: node.value.radius) })
+                        toggle: { store.toggleSelection(node.id) },
+                        drag: { translation in
+                            drag = SelectionDrag(
+                                anchorID: node.id, translation: translation, revision: store.snapshot?.documentRevision)
+                        },
+                        move: { translation in
+                            drag = nil
+                            store.move(
+                                id: node.id,
+                                to: projection.moving(node.value.position, by: translation, locks: store.locks))
+                        })
                 }
                 if nodes.isEmpty {
                     ContentUnavailableView(
                         "Open a model to edit its nodes", systemImage: "point.3.connected.trianglepath.dotted")
                 }
             }
+            .coordinateSpace(name: "node-canvas")
             .clipped()
+            .onChange(of: store.isWorking) { _, working in if working { drag = nil } }
         }
         .background(.background)
     }
+    private func previewPosition(_ node: DocumentNode, projection: CanvasProjection) -> NodePosition {
+        guard let drag, drag.revision == store.snapshot?.documentRevision, node.isEditable else {
+            return node.value.position
+        }
+        let ids = store.snapshot?.selectedIDs ?? []
+        let participates = ids.contains(drag.anchorID) ? ids.contains(node.id) : drag.anchorID == node.id
+        return participates
+            ? projection.moving(node.value.position, by: drag.translation, locks: store.locks)
+            : node.value.position
+    }
+
 }
 
 private struct NodeHandle: View {
     let node: DocumentNode
     let projection: CanvasProjection
+    let position: NodePosition
     let selected: Bool
-    let locks: Set<EditingConstraint>
     let enabled: Bool
     let select: () -> Void
-    let move: (NodePosition) -> Void
-    @GestureState private var translation = CGSize.zero
+    let toggle: () -> Void
+    let drag: (CanvasPoint) -> Void
+    let move: (CanvasPoint) -> Void
 
     var body: some View {
-        let moved = projection.moving(
-            node.value.position, by: .init(x: translation.width, y: translation.height), locks: locks)
-        let point = projection.point(for: moved)
+        let point = projection.point(for: position)
         ZStack {
             Circle().stroke(selected ? Color.accentColor : .secondary.opacity(0.4), lineWidth: selected ? 2 : 1)
                 .frame(
@@ -73,17 +97,17 @@ private struct NodeHandle: View {
         .frame(width: 36, height: 36)
         .position(x: point.x, y: point.y)
         .onTapGesture { if enabled { select() } }
+        .highPriorityGesture(TapGesture().modifiers(.command).onEnded { if enabled { toggle() } })
         .gesture(
-            DragGesture(minimumDistance: 3)
-                .updating($translation) { value, state, _ in
-                    if enabled && node.isEditable { state = value.translation }
+            DragGesture(minimumDistance: 3, coordinateSpace: .named("node-canvas"))
+                .onChanged { value in
+                    if enabled && node.isEditable {
+                        drag(.init(x: value.translation.width, y: value.translation.height))
+                    }
                 }
                 .onEnded { value in
                     if enabled && node.isEditable {
-                        move(
-                            projection.moving(
-                                node.value.position,
-                                by: CanvasPoint(x: value.translation.width, y: value.translation.height), locks: locks))
+                        move(.init(x: value.translation.width, y: value.translation.height))
                     }
                 }
         )
@@ -94,4 +118,10 @@ private struct NodeHandle: View {
         .accessibilityAction { select() }
         .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked or hidden part")")
     }
+}
+
+private struct SelectionDrag {
+    let anchorID: String
+    let translation: CanvasPoint
+    let revision: Int?
 }

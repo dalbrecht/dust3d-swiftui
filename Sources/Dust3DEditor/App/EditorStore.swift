@@ -49,6 +49,13 @@ final class EditorStore {
 
     func select(_ id: String?) { perform(commits: false) { try await $0.select(id) } }
 
+    func select(_ ids: Set<String>) { perform(commits: false) { try await $0.select(ids) } }
+    func toggleSelection(_ id: String) { perform(commits: false) { try await $0.toggleSelection(id) } }
+    func selectAll() { perform(commits: false) { try await $0.selectAll() } }
+    func move(id: String, to position: NodePosition) { perform { try await $0.move(id: id, to: position) } }
+    func moveSelection(by delta: NodePosition) { perform { try await $0.moveSelection(by: delta) } }
+    func deleteSelection() { perform { try await $0.deleteSelection() } }
+
     func edit(id: String, position: NodePosition, radius: Double) {
         perform { try await $0.edit(id: id, position: position, radius: radius) }
     }

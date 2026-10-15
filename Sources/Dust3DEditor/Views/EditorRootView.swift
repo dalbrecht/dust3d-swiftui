@@ -25,7 +25,7 @@ struct EditorRootView: View {
                     .disabled(store.isWorking)
                 }.padding(12)
                 Divider()
-                List(selection: Binding(get: { store.snapshot?.selectedID }, set: { store.select($0) })) {
+                List(selection: Binding(get: { store.snapshot?.selectedIDs ?? [] }, set: { store.select($0) })) {
                     ForEach(store.snapshot?.nodes ?? []) { node in
                         Label(node.title, systemImage: node.isEditable ? "circle.dotted" : "lock")
                             .tag(node.id)
@@ -90,7 +90,7 @@ struct EditorRootView: View {
                         ProgressView().controlSize(.small)
                         Text("Applying edit…")
                     } else {
-                        Text("Select a node · Drag to move · Apply coordinates or radius in the inspector")
+                        Text("Command-click to select nodes · Drag a selection to move")
                     }
                 }
                 .font(.caption).foregroundStyle(.secondary).padding(10)
