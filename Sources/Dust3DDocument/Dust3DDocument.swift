@@ -8,6 +8,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case missingNode(String)
     case invalidNode
     case cyclicProfile
+    case conflictingAsset(String)
     case transactionAlreadyOpen
     case noTransaction
 }
@@ -61,6 +62,7 @@ public enum DocumentCommand: Sendable {
     case removeEdge(id: String)
     case reverseEdges([String])
     case splitPart(id: String, identities: [PartSplitIdentity])
+    case pasteNodes(clipboard: NodeClipboard, identities: [String: String], offset: NodePosition)
 }
 
 /// Stable node metadata for editor presentation. Geometry and unknown XML remain in the archive.
@@ -325,6 +327,13 @@ public struct Dust3DDocument: Sendable {
                 edge.attribute(forName: "from")?.stringValue = to
                 edge.attribute(forName: "to")?.stringValue = from
             }
+        case .pasteNodes(let clipboard, let identities, let offset):
+            try NodeClipboardMutation.paste(
+                clipboard, identities: identities, offset: offset, into: model, contents: contents)
+            let result = try replacingModel(model.xmlData(options: [.nodePreserveAll])).mergingAssets(
+                from: clipboard.document)
+            _ = try result.editorContents()
+            return result
         case .splitPart(let id, let identities):
             if try !PartSplitting.apply(id: id, identities: identities, model: model, contents: contents) {
                 return self
@@ -394,7 +403,7 @@ public struct Dust3DDocument: Sendable {
         return try canonical(modelXML) == canonical(other.modelXML)
     }
 
-    private func replacingModel(_ model: Data) throws -> Dust3DDocument {
+    func replacingModel(_ model: Data) throws -> Dust3DDocument {
         guard model.count <= 16 * 1024 * 1024 else { throw DocumentError.limitExceeded }
         let old = items[modelIndex].range
         let delta = model.count - old.count
@@ -421,6 +430,58 @@ public struct Dust3DDocument: Sendable {
         guard result.count <= 256 * 1024 * 1024 - payload.count else { throw DocumentError.limitExceeded }
         result.append(payload)
         return try Dust3DDocument(data: result)
+    }
+
+    /// Copy selected graph objects and their linked-profile dependencies into a bounded fragment.
+    /// Unknown attached fields and all archive assets are retained; canvas-global objects are excluded.
+    public func copyingNodes(_ ids: Set<String>) throws -> NodeClipboard {
+        let model = try Self.xml(modelXML, root: "canvas")
+        try NodeClipboardMutation.extract(ids, model: model, contents: editorContents())
+        return try NodeClipboard(
+            document: replacingModel(model.xmlData(options: [.nodePreserveAll])), selectedNodeIDs: ids)
+    }
+
+    private func mergingAssets(from source: Dust3DDocument) throws -> Dust3DDocument {
+        let xml = try Self.xml(header, root: "ds3")
+        let sourceXML = try Self.xml(source.header, root: "ds3")
+        let destinationElements = (xml.rootElement()?.children ?? []).compactMap { $0 as? XMLElement }
+        let sourceElements = (sourceXML.rootElement()?.children ?? []).compactMap { $0 as? XMLElement }
+        let existingByName = Dictionary(uniqueKeysWithValues: items.enumerated().map { ($0.element.name, $0.offset) })
+        var payload = Data(bytes[payloadOffset...])
+        var changed = false
+        for (index, item) in source.items.enumerated() where index != source.modelIndex {
+            if let existingIndex = existingByName[item.name] {
+                let existing = items[existingIndex]
+                func metadata(_ element: XMLElement) -> String {
+                    let copy = element.copy() as? XMLElement
+                    copy?.removeAttribute(forName: "offset")
+                    return copy?.xmlString(options: [.nodePreserveAll]) ?? ""
+                }
+                guard existingIndex != modelIndex, existing.type == item.type,
+                    bytes[(payloadOffset + existing.range.lowerBound)..<(payloadOffset + existing.range.upperBound)]
+                        == source.bytes[
+                            (source.payloadOffset + item.range.lowerBound)..<(source.payloadOffset
+                                + item.range.upperBound)],
+                    metadata(destinationElements[existingIndex]) == metadata(sourceElements[index])
+                else { throw DocumentError.conflictingAsset(item.name) }
+                continue
+            }
+            guard payload.count <= 256 * 1024 * 1024 - item.range.count,
+                let copy = sourceElements[index].copy() as? XMLElement
+            else { throw DocumentError.limitExceeded }
+            copy.attribute(forName: "offset")?.stringValue = String(payload.count)
+            xml.rootElement()?.addChild(copy)
+            payload.append(
+                source.bytes[
+                    (source.payloadOffset + item.range.lowerBound)..<(source.payloadOffset + item.range.upperBound)])
+            changed = true
+        }
+        guard changed else { return self }
+        let header = xml.xmlData(options: [.nodePreserveAll])
+        let start = Data([0xd3, 0x3d]) + Data("DUST3D 1.0 xml ".utf8)
+        let offset = start.count + 12 + header.count
+        guard offset <= 256 * 1024 * 1024 - payload.count else { throw DocumentError.limitExceeded }
+        return try Dust3DDocument(data: start + Data(String(format: "%010d\r\n", offset).utf8) + header + payload)
     }
 
     /// Inspect the editable graph once, retaining source ordering and stable IDs.

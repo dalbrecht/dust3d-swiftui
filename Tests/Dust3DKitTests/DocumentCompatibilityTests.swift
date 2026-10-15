@@ -200,4 +200,26 @@ final class DocumentCompatibilityTests: XCTestCase {
         XCTAssertFalse(restored.canUndo)
     }
 
+    func testCopiedCapsulePastesIntoBlankArchiveWithPinnedEngine() throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url))
+        let contents = try original.editorContents()
+        for selection in [Set(contents.nodes.map(\.id)), Set(contents.nodes.prefix(2).map(\.id))] {
+            let clipboard = try original.copyingNodes(selection)
+            let identities = Dictionary(
+                uniqueKeysWithValues: clipboard.identifiers.map { ($0, "{\(UUID().uuidString.lowercased())}") })
+            let blank = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+            let pasted = try blank.applying(
+                .pasteNodes(clipboard: clipboard, identities: identities, offset: .init(x: 0, y: 0, z: 0)))
+            let mesh = try MeshLoader.load(data: pasted.encoded())
+            XCTAssertEqual(mesh.nodeCount, selection.count)
+            XCTAssertEqual(mesh.partCount, 1)
+            XCTAssertGreaterThan(mesh.triangleCount, 0)
+            if selection.count == contents.nodes.count {
+                XCTAssertEqual(mesh.triangleCount, try MeshLoader.load(data: original.encoded()).triangleCount)
+            }
+        }
+    }
+
 }

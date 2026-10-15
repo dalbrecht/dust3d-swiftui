@@ -127,7 +127,7 @@ enum PartJoining {
         guard visited.count == members.count else { throw DocumentError.invalidNode }
     }
 
-    private static func validateProfileLinks(parts: [XMLElement], nodes: [XMLElement]) throws {
+    static func validateProfileLinks(parts: [XMLElement], nodes: [XMLElement]) throws {
         let ids = Set(parts.compactMap { $0.attribute(forName: "id")?.stringValue })
         var links: [String: [String]] = [:]
         for part in parts {
