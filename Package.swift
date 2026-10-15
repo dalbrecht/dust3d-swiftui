@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "Dust3DKit", targets: ["Dust3DKit"]),
+        .library(name: "Dust3DDocument", targets: ["Dust3DDocument"]),
         .executable(name: "Dust3DViewer", targets: ["Dust3DViewer"]),
     ],
     dependencies: [
@@ -13,6 +14,8 @@ let package = Package(
             url: "https://github.com/dalbrecht/dust3d-core.git", revision: "685b68fb45405dabb4bb6f72c5b0e2598d4b9fdf")
     ],
     targets: [
+        .target(name: "Dust3DDocument"),
+        .testTarget(name: "Dust3DDocumentTests", dependencies: ["Dust3DDocument"]),
         .target(name: "Dust3DKit", dependencies: [.product(name: "Dust3DEngine", package: "dust3d-core")]),
         .executableTarget(
             name: "Dust3DViewer",
@@ -21,7 +24,7 @@ let package = Package(
         ),
         .testTarget(
             name: "Dust3DKitTests",
-            dependencies: ["Dust3DKit", .product(name: "Dust3DEngine", package: "dust3d-core")],
+            dependencies: ["Dust3DKit", "Dust3DDocument", .product(name: "Dust3DEngine", package: "dust3d-core")],
             resources: [.copy("Fixtures")]
         ),
     ],

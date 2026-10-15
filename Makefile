@@ -1,4 +1,4 @@
-.PHONY: build test run format lint ci check-qt-free sync-standards
+.PHONY: build test run format lint ci check-coverage check-qt-free sync-standards
 
 build:
 	./script/swift.sh build
@@ -19,7 +19,10 @@ lint:
 check-qt-free:
 	./script/check_qt_free.sh
 
-ci: lint build test check-qt-free
+check-coverage:
+	./script/check_coverage.sh
+
+ci: lint build test check-coverage check-qt-free
 
 sync-standards:
 	.standards/scripts/assemble-config.sh codex .standards/standards/shared/blocks .standards/standards/agents/codex/base-codex.md AGENTS.md lang-swift.md role-app.md

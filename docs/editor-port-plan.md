@@ -42,7 +42,7 @@ Two repos improve upstream merges, portable CI and release ownership, but introd
 2. Give the engine a standalone CMake build and headless contract tests in addition to its current SwiftPM build. Use explicit source/dependency lists. Demonstrate a clean build with no Apple or Qt frameworks.
 3. Version the C API: capability query, ABI version, sized structs, explicit ownership/destruction, error/status contracts, and document/mesh/asset handles. Keep STL, Qt types and exceptions private. Capture limits and cancellation semantics in public documentation.
 4. Maintain the history-preserving core repository and all dependency license notices. Keep upstream geometry changes separate from native-adapter changes where possible. Resolve inherited warning fixes through focused C++ PRs rather than whole-tree formatting.
-5. Start with an exact pinned source revision integrated by a documented submodule/build adapter. SwiftPM cannot assume a C/C++ target can import source files from outside its package; prove the layout on a clean clone, or build/link the standalone core through a generated local artifact. Do not use a moving branch or developer-specific search path.
+5. Source integration now uses the core SwiftPM product at an exact committed revision, with Package.resolved checked in. SwiftPM cannot assume a C/C++ target can import source files from outside its package; prove the layout on a clean clone, or build/link the standalone core through a generated local artifact. Do not use a moving branch or developer-specific search path.
 6. When the ABI stabilizes, publish checksummed static XCFramework releases for arm64 and x86_64 macOS with headers/module map, symbols and licenses. Consume a versioned SwiftPM binary target from the Apple repo. Support a documented local-source override for engine development. Test deployment-target and Swift toolchain compatibility, and package transitive C++ dependencies without symbol duplication.
 7. Run contract fixtures against every candidate core release, then update the Apple dependency in its own PR. Upgrade viewer and editor together only after both pass. Retain the last compatible engine release for rollback.
 
@@ -202,3 +202,13 @@ Expand in this order:
 9. **ABI/release compatibility:** compile a pure-C consumer, verify symbols/header layout and ownership against supported released clients, test clean installs, no Qt linkage, required license notices, and both Apple apps against each candidate engine release.
 
 All core dependency upgrades and upstream-sync PRs use the same tests. Keep fixture metadata (source, license, upstream revision, expected behavior, tolerance) next to fixtures. Review intentional baseline changes; do not automatically bless newly generated output. Core release readiness requires documented sanitizer, compatibility and ownership results, not just a successful build.
+
+## Editor foundation progress
+
+The viewer PR has landed. The external core SwiftPM package has landed, and a
+dedicated Apple dependency PR pins its source revision and removes the duplicated
+native adapter. The first editor foundation adds a byte-preserving archive value,
+unknown XML/asset retention during supported node edits, immutable commands,
+transactional undo/redo, savepoint snapshots and atomic file services. See
+[the foundation contract](editor-foundations.md) for implemented behavior and
+remaining M1 work. No editor UI or full modeling parity is claimed.
