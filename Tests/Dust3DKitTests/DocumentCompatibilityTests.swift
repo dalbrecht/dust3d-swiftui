@@ -5,6 +5,33 @@ import Foundation
 import XCTest
 
 final class DocumentCompatibilityTests: XCTestCase {
+    func testLocalAlignmentRemainsReadableByPinnedEngine() throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        var original = try Dust3DDocument(data: Data(contentsOf: url))
+        let nodes = try original.editorContents().nodes
+        for (index, node) in nodes.enumerated() {
+            let offset = Double(index - 1)
+            original = try original.applying(
+                .setNode(
+                    id: node.id, position: .init(x: 0.5 + offset * 0.2, y: 0.5 + offset * 0.3, z: 1 + offset * 0.2),
+                    radius: node.value.radius))
+        }
+        for transform: SelectionTransform in [
+            .frontAlignX, .frontAlignY, .frontAlignCenter, .sideAlignZ, .sideAlignY, .sideAlignCenter,
+        ] {
+            var state = try EditorState(document: original)
+            state.selectAll()
+            try state.transformSelection(transform)
+            let mesh = try MeshLoader.load(data: state.snapshot.document.encoded())
+            XCTAssertEqual(mesh.nodeCount, 3)
+            XCTAssertEqual(mesh.partCount, 1)
+            XCTAssertGreaterThan(mesh.triangleCount, 0)
+            try state.undo()
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+        }
+    }
+
     func testPartVisibilityAndDisablingMatchPinnedEngineGeneration() throws {
         let url = try XCTUnwrap(
             Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))

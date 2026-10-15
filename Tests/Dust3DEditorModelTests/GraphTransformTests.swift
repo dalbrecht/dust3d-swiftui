@@ -27,6 +27,12 @@ final class GraphTransformTests: XCTestCase {
             .flipY: .init(x: 0, y: 4, z: 0),
             .flipZ: .init(x: 0, y: 0, z: 6),
             .exchangeXZ: .init(x: 0, y: 0, z: 0),
+            .frontAlignX: .init(x: 1, y: 0, z: 0),
+            .frontAlignY: .init(x: 0, y: 2, z: 0),
+            .frontAlignCenter: .init(x: 1, y: 2, z: 0),
+            .sideAlignZ: .init(x: 0, y: 0, z: 3),
+            .sideAlignY: .init(x: 0, y: 2, z: 0),
+            .sideAlignCenter: .init(x: 0, y: 2, z: 3),
         ]
         XCTAssertEqual(expected.count, SelectionTransform.allCases.count)
         for transform in SelectionTransform.allCases {
@@ -148,4 +154,51 @@ final class GraphTransformTests: XCTestCase {
         let reversed = try await session.reverseSelectedEdges()
         XCTAssertEqual(reversed.edges[0].fromID, "b")
     }
+    @MainActor
+    func testLocalAlignmentUsesEditableMeanLocksAndOneUndoAcrossActor() async throws {
+        for (locked, visible, disabled) in [(true, true, false), (false, false, false), (false, true, true)] {
+            var original = try document(locked: locked, visible: visible)
+            if disabled { original = try original.applying(.setPartState(id: "q", property: .disabled, value: true)) }
+            let session = EditorSession()
+            _ = try await session.open(data: original.encoded())
+            _ = try await session.selectAll()
+            _ = try await session.setLock(.x, isLocked: true)
+            let aligned = try await session.transformSelection(.frontAlignCenter)
+            XCTAssertEqual(try aligned.document.node(id: "a").position, .init(x: 0, y: 2, z: 0))
+            XCTAssertEqual(try aligned.document.node(id: "b").position, .init(x: 2, y: 2, z: 6))
+            XCTAssertEqual(try aligned.document.node(id: "c"), try original.node(id: "c"))
+            let restored = try await session.undo()
+            XCTAssertEqual(restored.document.encoded(), original.encoded())
+            XCTAssertFalse(restored.canUndo)
+            let redone = try await session.redo()
+            XCTAssertEqual(redone.document.encoded(), aligned.document.encoded())
+            XCTAssertEqual(redone.selectedIDs, ["a", "b", "c"])
+        }
+    }
+
+    func testSingleEmptyReadonlyAndAlreadyAlignedSelectionsPreserveRedo() throws {
+        let original = try document()
+        let alignments: [SelectionTransform] = [
+            .frontAlignX, .frontAlignY, .frontAlignCenter, .sideAlignZ, .sideAlignY, .sideAlignCenter,
+        ]
+        var state = try EditorState(document: original)
+        try state.select("b")
+        try state.moveSelection(by: .init(x: 1, y: 0, z: 0))
+        try state.undo()
+        for ids: Set<String> in [[], ["a"], ["c"]] {
+            try state.select(ids)
+            for alignment in alignments { try state.transformSelection(alignment) }
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            XCTAssertFalse(state.snapshot.canUndo)
+            XCTAssertTrue(state.snapshot.canRedo)
+        }
+        try state.select(["a", "b"])
+        try state.transformSelection(.frontAlignX)
+        let aligned = state.snapshot.document.encoded()
+        try state.transformSelection(.frontAlignX)
+        XCTAssertEqual(state.snapshot.document.encoded(), aligned)
+        try state.undo()
+        XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+    }
+
 }
