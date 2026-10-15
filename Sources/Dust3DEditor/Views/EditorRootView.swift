@@ -124,7 +124,13 @@ struct EditorRootView: View {
                 Spacer()
             }.padding(12)
             Divider()
-            if let mesh = store.mesh {
+            if let error = store.previewError {
+                ContentUnavailableView {
+                    Label("Preview unavailable", systemImage: "cube.transparent")
+                } description: {
+                    Text(error)
+                }
+            } else if let mesh = store.mesh {
                 MeshViewport(
                     mesh: mesh, isWireframe: store.isWireframe, cameraReset: store.cameraReset,
                     meshRevision: store.previewRevision
@@ -140,11 +146,9 @@ struct EditorRootView: View {
                 Spacer()
             } else {
                 ContentUnavailableView {
-                    Label(
-                        store.previewError == nil ? "Mesh preview" : "Preview unavailable",
-                        systemImage: "cube.transparent")
+                    Label("Mesh preview", systemImage: "cube.transparent")
                 } description: {
-                    Text(store.previewError ?? "Open a .ds3 model to begin editing.")
+                    Text("Open a .ds3 model to begin editing.")
                 }
             }
         }
