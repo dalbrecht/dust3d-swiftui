@@ -33,6 +33,21 @@ final class DocumentTests: XCTestCase {
         }
     }
 
+    func testEmptyAssetInsideModelRetainsValidOffsetWhenModelShrinks() throws {
+        let xml =
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?><canvas><nodes><node id='\(nodeID)' x='00000000001000000' y='00000000001000000' z='00000000001000000' radius='00000000001000000'/></nodes></canvas>"
+        let model = Data(xml.utf8)
+        let items =
+            "<model name='model.xml' offset='0' size='\(model.count)'/><image name='empty' offset='\(model.count - 1)' size='0'/>"
+        let bytes = archive(items: items, payload: model)
+        let document = try Dust3DDocument(data: bytes)
+        XCTAssertEqual(document.encoded(), bytes)
+        let edited = try document.applying(.setNode(id: nodeID, position: .init(x: 0, y: 0, z: 0), radius: 0))
+        XCTAssertLessThan(edited.modelXML.count, model.count)
+        XCTAssertEqual(edited.asset(named: "empty"), Data())
+        XCTAssertEqual(try Dust3DDocument(data: edited.encoded()).asset(named: "empty"), Data())
+    }
+
     func testParserResourceLimitsAreEnforcedBeforeInterpretation() {
         XCTAssertThrowsError(try Dust3DDocument(data: Data(count: 256 * 1024 * 1024 + 1)))
         let large = Data(count: 16 * 1024 * 1024 + 1)

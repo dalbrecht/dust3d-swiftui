@@ -90,6 +90,7 @@ public struct Dust3DDocument: Sendable {
         let ordered = items.sorted { $0.range.lowerBound < $1.range.lowerBound }
         var end = 0
         for item in ordered {
+            if item.range.isEmpty { continue }
             guard item.range.lowerBound >= end else { throw DocumentError.invalidArchive }
             end = item.range.upperBound
         }
@@ -171,6 +172,10 @@ public struct Dust3DDocument: Sendable {
                 elements[index].attribute(forName: "size")?.stringValue = String(model.count)
             } else if item.range.lowerBound >= old.upperBound {
                 elements[index].attribute(forName: "offset")?.stringValue = String(item.range.lowerBound + delta)
+            } else if item.range.isEmpty && old.contains(item.range.lowerBound) {
+                // An empty asset has no overlapping bytes, but its anchor must stay in bounds after shrinkage.
+                elements[index].attribute(forName: "offset")?.stringValue = String(
+                    min(item.range.lowerBound, old.lowerBound + model.count))
             }
         }
         let header = xml.xmlData(options: [.nodePreserveAll])
