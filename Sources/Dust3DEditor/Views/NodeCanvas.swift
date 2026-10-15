@@ -13,6 +13,12 @@ struct NodeCanvas: View {
                 width: geometry.size.width, height: geometry.size.height)
             let nodes = store.snapshot?.nodes ?? []
             ZStack {
+                MarqueeSurface(enabled: !store.isWorking) { rectangle, additive in
+                    let ids = projection.nodeIDs(in: rectangle, nodes: nodes)
+                    store.select(additive ? ids.union(store.snapshot?.selectedIDs ?? []) : ids)
+                } clear: {
+                    store.select(nil)
+                }
                 Canvas { context, _ in
                     let positions = Dictionary(
                         uniqueKeysWithValues: nodes.filter(\.isVisible).map {
@@ -27,6 +33,7 @@ struct NodeCanvas: View {
                         }
                     }
                 }
+                .allowsHitTesting(false)
                 ForEach(nodes.filter(\.isVisible)) { node in
                     NodeHandle(
                         node: node, projection: projection,
@@ -124,4 +131,47 @@ private struct SelectionDrag {
     let anchorID: String
     let translation: CanvasPoint
     let revision: Int?
+}
+
+private struct MarqueeSurface: View {
+    let enabled: Bool
+    let select: (CanvasSelectionRectangle, Bool) -> Void
+    let clear: () -> Void
+    @GestureState private var rectangle: CanvasSelectionRectangle?
+
+    var body: some View {
+        Rectangle().fill(.clear).contentShape(Rectangle())
+            .overlay {
+                if let rectangle {
+                    let frame = CGRect(
+                        x: rectangle.minimum.x, y: rectangle.minimum.y,
+                        width: rectangle.maximum.x - rectangle.minimum.x,
+                        height: rectangle.maximum.y - rectangle.minimum.y)
+                    Path { $0.addRect(frame) }.fill(Color.accentColor.opacity(0.12))
+                    Path { $0.addRect(frame) }.stroke(
+                        Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                }
+            }
+            .onTapGesture { if enabled { clear() } }
+            .gesture(selectionGesture(additive: false))
+            .highPriorityGesture(selectionGesture(additive: true).modifiers(.shift))
+            .accessibilityLabel("Marquee selection canvas")
+            .help("Drag empty canvas to select node centers. Shift-drag adds to the selection.")
+    }
+
+    private func selectionGesture(additive: Bool) -> some Gesture {
+        DragGesture(minimumDistance: 3, coordinateSpace: .named("node-canvas"))
+            .updating($rectangle) { value, state, _ in
+                if enabled { state = bounds(value) }
+            }
+            .onEnded { value in
+                if enabled { select(bounds(value), additive) }
+            }
+    }
+
+    private func bounds(_ value: DragGesture.Value) -> CanvasSelectionRectangle {
+        .init(
+            from: .init(x: value.startLocation.x, y: value.startLocation.y),
+            to: .init(x: value.location.x, y: value.location.y))
+    }
 }

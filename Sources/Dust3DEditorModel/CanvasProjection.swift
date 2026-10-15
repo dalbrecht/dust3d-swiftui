@@ -14,6 +14,19 @@ public struct CanvasPoint: Equatable, Sendable {
     }
 }
 
+/// Direction-independent marquee bounds in canvas points. Invalid input selects nothing.
+public struct CanvasSelectionRectangle: Sendable {
+    public let minimum: CanvasPoint
+    public let maximum: CanvasPoint
+    public let isValid: Bool
+
+    public init(from start: CanvasPoint, to end: CanvasPoint) {
+        isValid = [start.x, start.y, end.x, end.y].allSatisfy(\.isFinite)
+        minimum = .init(x: min(start.x, end.x), y: min(start.y, end.y))
+        maximum = .init(x: max(start.x, end.x), y: max(start.y, end.y))
+    }
+}
+
 /// Fit bounds are held stable during an edit so dragging cannot move its own coordinate system.
 public struct CanvasBounds: Sendable {
     let minimum: NodePosition
@@ -60,6 +73,17 @@ public struct CanvasProjection: Sendable {
         CanvasPoint(
             x: width / 2 + ((plane == .front ? position.x : position.z) - center.x) * scale,
             y: height / 2 - (position.y - center.y) * scale)
+    }
+
+    /// Select visible node centers, including centers on the rectangle boundary.
+    public func nodeIDs(in rectangle: CanvasSelectionRectangle, nodes: [DocumentNode]) -> Set<String> {
+        guard rectangle.isValid else { return [] }
+        return Set(
+            nodes.filter { node in
+                let point = point(for: node.value.position)
+                return node.isVisible && point.x >= rectangle.minimum.x && point.x <= rectangle.maximum.x
+                    && point.y >= rectangle.minimum.y && point.y <= rectangle.maximum.y
+            }.map(\.id))
     }
 
     /// Convert a screen gesture into model units while preserving the third axis.

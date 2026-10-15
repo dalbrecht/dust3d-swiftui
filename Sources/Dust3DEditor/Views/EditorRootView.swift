@@ -90,7 +90,7 @@ struct EditorRootView: View {
                         ProgressView().controlSize(.small)
                         Text("Applying edit…")
                     } else {
-                        Text("Command-click to select nodes · Drag a selection to move")
+                        Text("Drag empty canvas to select · Shift-drag to add · Drag nodes to move")
                     }
                 }
                 .font(.caption).foregroundStyle(.secondary).padding(10)
