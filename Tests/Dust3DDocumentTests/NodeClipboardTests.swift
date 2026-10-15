@@ -38,13 +38,16 @@ final class NodeClipboardTests: XCTestCase {
         XCTAssertTrue(history.redo())
         XCTAssertEqual(history.document.encoded(), pasted.encoded())
     }
-    private func archive(_ xml: String, asset: [UInt8]? = nil, assetType: String = "image", metadata: String = "")
+    private func archive(
+        _ xml: String, asset: [UInt8]? = nil, assetType: String = "image", metadata: String = "",
+        headerNamespaces: String = ""
+    )
         throws -> Dust3DDocument
     {
         let model = Data(xml.utf8)
         let entry =
             asset.map { "<\(assetType) name='opaque' offset='\(model.count)' size='\($0.count)' \(metadata)/>" } ?? ""
-        let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/>\(entry)</ds3>"
+        let header = "<ds3 \(headerNamespaces)><model name='model.xml' offset='0' size='\(model.count)'/>\(entry)</ds3>"
         let prefix = "DUST3D 1.0 xml "
         return try Dust3DDocument(
             data: Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
@@ -102,7 +105,9 @@ final class NodeClipboardTests: XCTestCase {
         let newGroup = result.rootElement()?.elements(forName: "components").first?.elements(forName: "component").first
         let component = newGroup?.elements(forName: "component").first
         XCTAssertEqual(component?.attribute(forName: "linkData")?.stringValue, "new-p")
-        XCTAssertEqual(component?.elements(forName: "future").first?.attribute(forName: "linkData")?.stringValue, "p")
+        let opaque = component?.children?.compactMap { $0 as? XMLElement }.first { $0.localName == "future" }
+        XCTAssertEqual(opaque?.attribute(forName: "linkData")?.stringValue, "p")
+        XCTAssertEqual(opaque?.uri, "urn:test")
         XCTAssertEqual(try pasted.editorContents().nodes.map(\.id), ["new-a", "new-c", "new-d"])
         XCTAssertEqual(try source.editorContents().nodes.count, 5)
     }
@@ -253,6 +258,85 @@ final class NodeClipboardTests: XCTestCase {
         XCTAssertEqual(
             root?.elements(forName: "nodes").first?.elements(forName: "node").last?.attribute(forName: "cutFace")?
                 .stringValue, "Quad")
+    }
+
+    func testInheritedNamespacesSurviveMovingObjectsIntoAnotherDocument() throws {
+        let source = try archive(
+            "<canvas xmlns='urn:source' xmlns:ext='urn:extension'><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1' ext:flag='value'><ext:future/></node></nodes><parts><part id='p'/></parts><components><component id='component' linkData='p' linkDataType='partId'/></components></canvas>"
+        )
+        let clipboard = try source.copyingNodes(["a"])
+        let destination = try archive("<canvas xmlns='urn:destination'><nodes/><parts/><components/></canvas>")
+        let pasted = try destination.applying(
+            .pasteNodes(clipboard: clipboard, identities: identities(clipboard), offset: .init(x: 0, y: 0, z: 0)))
+        let root = try XMLDocument(data: pasted.modelXML).rootElement()
+        XCTAssertEqual(try pasted.editorContents().nodes.map(\.id), ["new-a"])
+        XCTAssertEqual(root?.uri, "urn:destination")
+        let node = root?.elements(forName: "nodes").first?.elements(forName: "node").first
+        XCTAssertEqual(node?.uri, "urn:destination")
+        XCTAssertEqual(node?.attribute(forName: "ext:flag")?.uri, "urn:extension")
+        XCTAssertEqual((node?.children?.first as? XMLElement)?.uri, "urn:extension")
+    }
+
+    func testInheritedAssetNamespaceBindingsArePreservedAndCompared() throws {
+        let xml =
+            "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes><parts><part id='p'/></parts></canvas>"
+        let source = try archive(
+            xml, asset: [1, 2], metadata: "ext:flag='value'", headerNamespaces: "xmlns:ext='urn:source'")
+        let clipboard = try source.copyingNodes(["a"])
+        let command = DocumentCommand.pasteNodes(
+            clipboard: clipboard, identities: identities(clipboard), offset: .init(x: 0, y: 0, z: 0))
+        let pasted = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(command)
+        let bytes = pasted.encoded()
+        let lineEnd = try XCTUnwrap(bytes.firstIndex(of: 10))
+        let offset = try XCTUnwrap(
+            Int(
+                String(decoding: bytes[..<lineEnd], as: UTF8.self).split(whereSeparator: { $0.isWhitespace }).last ?? ""
+            ))
+        let header = try XMLDocument(data: Data(bytes[(lineEnd + 1)..<offset]))
+        XCTAssertEqual(
+            header.rootElement()?.elements(forName: "image").first?.attribute(forName: "ext:flag")?.uri, "urn:source")
+        let conflict = try archive(
+            "<canvas/>", asset: [1, 2], metadata: "ext:flag='value'", headerNamespaces: "xmlns:ext='urn:other'")
+        XCTAssertThrowsError(try conflict.applying(command)) {
+            XCTAssertEqual($0 as? DocumentError, .conflictingAsset("opaque"))
+        }
+    }
+
+    func testUnnamespacedGraphAdoptsCanvasNamespaceWithoutChangingOpaqueChildNamespace() throws {
+        let source = try archive(
+            "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'><future/></node></nodes><parts><part id='p'/></parts></canvas>"
+        )
+        let clipboard = try source.copyingNodes(["a"])
+        let destination = try archive("<canvas xmlns='urn:destination'/>")
+        let pasted = try destination.applying(
+            .pasteNodes(clipboard: clipboard, identities: identities(clipboard), offset: .init(x: 0, y: 0, z: 0)))
+        XCTAssertEqual(try pasted.editorContents().nodes.map(\.id), ["new-a"])
+        let root = try XMLDocument(data: pasted.modelXML).rootElement()
+        let node = root?.elements(forName: "nodes").first?.elements(forName: "node").first
+        XCTAssertEqual(node?.uri, "urn:destination")
+        XCTAssertEqual((node?.children?.first as? XMLElement)?.uri ?? "", "")
+    }
+
+    func testImportedFragmentRejectsParallelEdgesInEitherDirection() throws {
+        let original = try source()
+        let xml = String(decoding: original.modelXML, as: UTF8.self)
+        for endpoints in [("a", "b"), ("b", "a")] {
+            let duplicate = xml.replacingOccurrences(
+                of: "</edges>",
+                with: "<edge id='duplicate' partId='p' from='\(endpoints.0)' to='\(endpoints.1)'/></edges>")
+            XCTAssertThrowsError(try archive(duplicate).copyingNodes(["a", "b"])) {
+                XCTAssertEqual($0 as? DocumentError, .invalidNode)
+            }
+        }
+    }
+
+    func testNamespacedPasteWithExplicitIdentitiesIsDeterministic() throws {
+        let clipboard = try richSource().copyingNodes(["a", "b"])
+        let destination = try source()
+        let command = DocumentCommand.pasteNodes(
+            clipboard: clipboard, identities: identities(clipboard), offset: .init(x: 0, y: 0.04, z: 0.04))
+        let expected = try destination.applying(command).encoded()
+        for _ in 0..<5 { XCTAssertEqual(try destination.applying(command).encoded(), expected) }
     }
 
 }

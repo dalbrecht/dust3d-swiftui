@@ -403,7 +403,7 @@ public struct Dust3DDocument: Sendable {
         return try canonical(modelXML) == canonical(other.modelXML)
     }
 
-    func replacingModel(_ model: Data) throws -> Dust3DDocument {
+    private func replacingModel(_ model: Data) throws -> Dust3DDocument {
         guard model.count <= 16 * 1024 * 1024 else { throw DocumentError.limitExceeded }
         let old = items[modelIndex].range
         let delta = model.count - old.count
@@ -453,6 +453,7 @@ public struct Dust3DDocument: Sendable {
             if let existingIndex = existingByName[item.name] {
                 let existing = items[existingIndex]
                 func metadata(_ element: XMLElement) -> String {
+                    NodeClipboardMutation.preserveNamespaces(element)
                     let copy = element.copy() as? XMLElement
                     copy?.removeAttribute(forName: "offset")
                     return copy?.xmlString(options: [.nodePreserveAll]) ?? ""
@@ -466,6 +467,7 @@ public struct Dust3DDocument: Sendable {
                 else { throw DocumentError.conflictingAsset(item.name) }
                 continue
             }
+            NodeClipboardMutation.preserveNamespaces(sourceElements[index])
             guard payload.count <= 256 * 1024 * 1024 - item.range.count,
                 let copy = sourceElements[index].copy() as? XMLElement
             else { throw DocumentError.limitExceeded }

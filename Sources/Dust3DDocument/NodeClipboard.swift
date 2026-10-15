@@ -36,8 +36,11 @@ public struct NodeClipboard: Sendable {
             }
         }
         var degree: [String: Int] = [:]
+        var pairs = Set<Set<String>>()
         for edge in contents.edges {
-            guard edge.fromID != edge.toID, nodesByID[edge.fromID]?.partID == nodesByID[edge.toID]?.partID else {
+            guard edge.fromID != edge.toID, nodesByID[edge.fromID]?.partID == nodesByID[edge.toID]?.partID,
+                pairs.insert([edge.fromID, edge.toID]).inserted
+            else {
                 throw DocumentError.invalidNode
             }
             degree[edge.fromID, default: 0] += 1
@@ -64,6 +67,29 @@ enum NodeClipboardMutation {
         return ["nodes", "edges", "parts"].flatMap { name in
             root.elements(forName: name).first?.elements(forName: String(name.dropLast())) ?? []
         } + PartSplitting.componentElements(model)
+    }
+
+    /// Detached subtrees must carry bindings inherited from their former ancestors.
+    static func preserveNamespaces(_ element: XMLElement) {
+        var bindings: [String: String] = [:]
+        var ancestor: XMLNode? = element
+        while let current = ancestor {
+            if let current = current as? XMLElement {
+                for namespace in current.namespaces ?? [] {
+                    let prefix = namespace.name ?? ""
+                    if bindings[prefix] == nil { bindings[prefix] = namespace.stringValue ?? "" }
+                }
+            }
+            ancestor = current.parent
+        }
+        if bindings[""] == nil { bindings[""] = "" }
+        let local = Set((element.namespaces ?? []).map { $0.name ?? "" })
+        for (prefix, uri) in bindings.sorted(by: { $0.key < $1.key }) where !local.contains(prefix) {
+            let namespace = XMLNode(kind: .namespace)
+            namespace.name = prefix
+            namespace.stringValue = uri
+            element.addNamespace(namespace)
+        }
     }
 
     static func extract(_ selected: Set<String>, model: XMLDocument, contents: DocumentContents) throws {
@@ -198,9 +224,27 @@ enum NodeClipboardMutation {
                 }
             }
         }
-        for (containerName, elementName) in [
-            ("nodes", "node"), ("edges", "edge"), ("parts", "part"), ("components", "component"),
-        ] {
+        let transfers = [("nodes", "node"), ("edges", "edge"), ("parts", "part"), ("components", "component")].map {
+            container, element in
+            (container, sourceRoot.elements(forName: container).first?.elements(forName: element) ?? [])
+        }
+        let incoming = semanticElements(fragment)
+        let semanticObjects = Set(incoming.map { ObjectIdentifier($0) })
+        for element in incoming {
+            preserveNamespaces(element)
+            for child in (element.children ?? []).compactMap({ $0 as? XMLElement })
+            where !semanticObjects.contains(ObjectIdentifier(child)) { preserveNamespaces(child) }
+        }
+        // Native graph objects join the destination canvas namespace; opaque extensions keep theirs.
+        for element in incoming {
+            element.removeNamespace(forPrefix: "")
+            let namespace = XMLNode(kind: .namespace)
+            namespace.name = ""
+            namespace.stringValue = root.uri ?? ""
+            element.addNamespace(namespace)
+            element.uri = root.uri
+        }
+        for (containerName, children) in transfers {
             let container: XMLElement
             if let existing = root.elements(forName: containerName).first {
                 container = existing
@@ -208,7 +252,8 @@ enum NodeClipboardMutation {
                 container = XMLElement(name: containerName)
                 root.addChild(container)
             }
-            for child in sourceRoot.elements(forName: containerName).first?.elements(forName: elementName) ?? [] {
+            for child in children {
+                preserveNamespaces(child)
                 child.detach()
                 container.addChild(child)
             }

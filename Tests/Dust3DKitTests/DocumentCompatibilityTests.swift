@@ -222,4 +222,40 @@ final class DocumentCompatibilityTests: XCTestCase {
         }
     }
 
+    func testClipboardAdaptsGraphNamespacesForPinnedEngine() throws {
+        func archive(_ xml: XMLDocument) throws -> Dust3DDocument {
+            let model = xml.xmlData(options: [.nodePreserveAll])
+            let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+            let prefix = "DUST3D 1.0 xml "
+            return try Dust3DDocument(
+                data: Data(
+                    (prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+                    + model)
+        }
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url))
+        let model = try XMLDocument(data: original.modelXML)
+        let namespace = XMLNode(kind: .namespace)
+        namespace.name = ""
+        namespace.stringValue = "urn:source"
+        model.rootElement()?.addNamespace(namespace)
+        let source = try archive(model)
+        let clipboard = try source.copyingNodes(Set(try source.editorContents().nodes.map(\.id)))
+        let blank = try XMLDocument(data: Dust3DDocument(data: Dust3DDocument.emptyArchive()).modelXML)
+        let destinationNamespace = XMLNode(kind: .namespace)
+        destinationNamespace.name = ""
+        destinationNamespace.stringValue = "urn:destination"
+        blank.rootElement()?.addNamespace(destinationNamespace)
+        let destination = try archive(blank)
+        let identities = Dictionary(
+            uniqueKeysWithValues: clipboard.identifiers.map { ($0, "{\(UUID().uuidString.lowercased())}") })
+        let pasted = try destination.applying(
+            .pasteNodes(clipboard: clipboard, identities: identities, offset: .init(x: 0, y: 0, z: 0)))
+        let mesh = try MeshLoader.load(data: pasted.encoded())
+        XCTAssertEqual(mesh.nodeCount, 3)
+        XCTAssertEqual(mesh.partCount, 1)
+        XCTAssertEqual(mesh.triangleCount, try MeshLoader.load(data: original.encoded()).triangleCount)
+    }
+
 }
