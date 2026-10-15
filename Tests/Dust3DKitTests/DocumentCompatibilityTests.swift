@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import Dust3DKit
 import Foundation
 import XCTest
@@ -83,6 +84,32 @@ final class DocumentCompatibilityTests: XCTestCase {
         XCTAssertEqual(mesh.nodeCount, 1)
         XCTAssertEqual(mesh.partCount, 2)
         XCTAssertGreaterThan(mesh.triangleCount, 0)
+    }
+
+    @MainActor func testSessionDisconnectionAndMiddleDeletionGenerateSplitMeshes() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let data = try Data(contentsOf: url)
+        let original = try Dust3DDocument(data: data)
+        let contents = try original.editorContents()
+        let edgeID = try XCTUnwrap(contents.edges.first?.id)
+        let middleID = "{22222222-2222-4222-8222-222222222222}"
+        for removeNode in [false, true] {
+            let session = EditorSession()
+            _ = try await session.open(data: data)
+            _ = try await session.select(middleID)
+            let result = try await (removeNode ? session.deleteSelection() : session.apply([.removeEdge(id: edgeID)]))
+            let mesh = try MeshLoader.load(data: result.document.encoded())
+            XCTAssertEqual(mesh.partCount, 2)
+            XCTAssertEqual(mesh.nodeCount, removeNode ? 2 : 3)
+            XCTAssertGreaterThan(mesh.triangleCount, 0)
+            let undone = try await session.undo()
+            XCTAssertEqual(undone.document.encoded(), data)
+            XCTAssertFalse(undone.canUndo)
+            let redone = try await session.redo()
+            XCTAssertEqual(redone.document.encoded(), result.document.encoded())
+            XCTAssertEqual(try MeshLoader.load(data: redone.document.encoded()).triangleCount, mesh.triangleCount)
+        }
     }
 
 }

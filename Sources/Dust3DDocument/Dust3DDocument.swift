@@ -58,6 +58,7 @@ public enum DocumentCommand: Sendable {
     case removeNodes([String])
     case removeEdge(id: String)
     case reverseEdges([String])
+    case splitPart(id: String, identities: [PartSplitIdentity])
 }
 
 /// Stable node metadata for editor presentation. Geometry and unknown XML remain in the archive.
@@ -194,6 +195,12 @@ public struct Dust3DDocument: Sendable {
         try applyingCommand(command)
     }
 
+    /// Discover bounded identity requirements for splitting only the requested parts.
+    public func partSplitRequirements(for partIDs: Set<String>) throws -> [PartSplitRequirement] {
+        try PartSplitting.requirements(
+            model: Self.xml(modelXML, root: "canvas"), contents: editorContents(), partIDs: partIDs)
+    }
+
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
         switch command {
@@ -313,6 +320,10 @@ public struct Dust3DDocument: Sendable {
                 let to = edge.attribute(forName: "to")?.stringValue
                 edge.attribute(forName: "from")?.stringValue = to
                 edge.attribute(forName: "to")?.stringValue = from
+            }
+        case .splitPart(let id, let identities):
+            if try !PartSplitting.apply(id: id, identities: identities, model: model, contents: contents) {
+                return self
             }
         case .setNode(let id, let position, let radius):
             return try applying(.setNodes([.init(id: id, value: .init(position: position, radius: radius))]))
