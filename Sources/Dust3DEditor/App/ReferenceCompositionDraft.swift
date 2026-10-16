@@ -96,6 +96,11 @@ enum ReferenceProfile: String, CaseIterable, Sendable {
         sourceEpoch += 1
     }
 
+    func reportImportFailure(_ error: Error) {
+        guard !stopped else { return }
+        errorMessage = EditorStore.message(error)
+    }
+
     func reportFailure(_ error: Error) {
         guard !stopped else { return }
         fail(error)

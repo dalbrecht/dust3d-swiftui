@@ -83,7 +83,7 @@ import UniformTypeIdentifiers
             switch result {
             case .success(let url): draft.importSource(url: url, profile: importingProfile)
             case .failure(let error):
-                if (error as? CocoaError)?.code != .userCancelled { draft.reportFailure(error) }
+                if (error as? CocoaError)?.code != .userCancelled { draft.reportImportFailure(error) }
             }
         }
         .onAppear {

@@ -121,6 +121,27 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         }
     }
 
+    @MainActor func testPickerFailurePreservesApplicableDraftAndCannotValidateInvalidCrop() async throws {
+        let input = try source()
+        let draft = ReferenceCompositionDraft(service: ImmediateCompositionService(source: input))
+        draft.useExisting(input.image)
+        try await settle(draft)
+        let png = try XCTUnwrap(draft.result?.png)
+        let epoch = draft.sourceEpoch
+        draft.reportImportFailure(ReferenceImageError.fileReadFailed("provider item unavailable"))
+        XCTAssertEqual(draft.result?.png, png)
+        XCTAssertTrue(draft.canApply)
+        XCTAssertEqual(draft.sourceEpoch, epoch)
+        XCTAssertTrue(draft.errorMessage?.contains("provider item unavailable") == true)
+        draft.setCrop(profile: .front, values: ["bad", "0", "4", "2"])
+        draft.reportImportFailure(ReferenceImageError.fileReadFailed("provider unavailable again"))
+        XCTAssertNil(draft.result)
+        XCTAssertFalse(draft.canApply)
+        draft.stop()
+        draft.reportImportFailure(ReferenceImageError.invalidImage)
+        XCTAssertNil(draft.errorMessage)
+    }
+
     @MainActor func testObsoletePreviewCannotReplaceNewerDraft() async throws {
         let input = try source()
         let service = HeldPreviewCompositionService()
