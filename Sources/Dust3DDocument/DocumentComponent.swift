@@ -9,6 +9,8 @@ public struct DocumentComponent: Identifiable, Equatable, Sendable {
     public let childIDs: [String]
     public let linkDataType: String?
     public let linkData: String?
+    /// A supported unlinked group, including an empty group. Unknown links remain opaque.
+    public var isGroup: Bool { (linkDataType ?? "").isEmpty && (linkData ?? "").isEmpty }
     public var partID: String? { linkDataType == "partId" ? linkData : nil }
 }
 

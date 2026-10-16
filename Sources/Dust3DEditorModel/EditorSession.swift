@@ -32,6 +32,18 @@ public actor EditorSession {
     /// Select one edge without dirtying the document or creating an undo entry.
     public func selectEdge(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectEdge(id) } }
     /// Inspect a part without changing document bytes or undo history.
+    /// Wrap explicit sibling identities in a fresh group and inspect that group in one atomic publication.
+    /// - Parameter ids: Nonempty sibling identities; source order is retained independent of Set iteration.
+    /// - Returns: One undoable snapshot with a fresh UUID component selected.
+    /// - Throws: Load/cancellation, hierarchy, identity or bounded-archive errors without partial state.
+    public func groupComponents(_ ids: Set<String>) throws -> EditorSnapshot {
+        try update { state in
+            let groupID = Self.identifier()
+            try state.apply([.groupComponents(ids: ids.sorted(), groupID: groupID)])
+            try state.selectComponent(groupID)
+        }
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }

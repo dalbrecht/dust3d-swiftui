@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add atomic component grouping, ungrouping and cycle-safe reparenting document/session APIs, preserving subtrees, assets and exact undo/redo.
+
 - Add undoable component sibling ordering (Up, Down, Top and Bottom), with boundary availability, lossless archive preservation and mesh regeneration.
 
 - Add an ordered, collapsible component sidebar and name inspector with independent selection, linked-part inspection, undo/redo and lossless saving.
