@@ -104,3 +104,5 @@ let updated = try await session.applyReferenceComposition(
 ```
 
 Use `origin: nil` to retain the document origin. The atomic command throws `EditorError.staleReferenceComposition` if document identity/revision or constraint epoch changed. All PNG/origin validation completes before publication; no-ops preserve redo. `ReferenceCropProjection` maps preview points into bounded half-open crops without platform UI imports. See [verification](../../docs/reference-composition-workflow-verification.md).
+
+`ComponentTree(document:)` caches immutable preorder rows, display-only fallback titles and depth, or the original hierarchy failure description without blocking graph editing. `visibleRows(collapsing:)` filters descendants in linear time. `EditorSession.selectComponent(_:)` selects a component exclusively and transiently; snapshots expose `selectedComponent` and `componentTree`. Publication prunes deleted component selection, and Undo does not revive it. Component-name edits use the existing atomic session apply/history path.

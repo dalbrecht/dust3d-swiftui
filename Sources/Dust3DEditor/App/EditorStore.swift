@@ -115,6 +115,10 @@ final class EditorStore {
 
     func select(_ ids: Set<String>) { perform(commits: false) { try await $0.select(ids) } }
     func selectEdge(_ id: String?) { perform(commits: false) { try await $0.selectEdge(id) } }
+    func selectComponent(_ id: String?) { perform(commits: false) { try await $0.selectComponent(id) } }
+    func renameComponent(_ id: String, name: String) {
+        perform(regenerateMesh: false) { try await $0.apply([.setComponentName(id: id, name: name)]) }
+    }
     func selectPart(_ id: String?) { perform(commits: false) { try await $0.selectPart(id) } }
     func setOrigin(x: String, y: String, z: String) {
         guard !isWorking, !stopped else { return }
