@@ -23,7 +23,11 @@ enum ReferenceImageCodec {
     }
 
     static func importPNG(_ data: Data) throws -> Data {
-        let image = try decode(data, pngOnly: false)
+        try encodePNG(decode(data, pngOnly: false))
+    }
+
+    static func encodePNG(_ image: CGImage) throws -> Data {
+        try validateDimensions(width: image.width, height: image.height)
         let output = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(output, UTType.png.identifier as CFString, 1, nil)
         else {

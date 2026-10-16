@@ -221,3 +221,5 @@ interoperability, recovery/failure cases and broader accessibility/performance c
 M3–M8 feature parity is not claimed.
 
 Descendant rotation implementation and limits are recorded in [verification](descendant-rotation-verification.md) and [ADR 0026](adr/0026-descendant-rotation.md). This does not close the remaining M2 acceptance gates.
+
+Reference-image crop/layout and raster primitives have a [foundation verification record](reference-composition-foundation-verification.md). The composition sheet, transient draft orchestration and atomic Apply/Cancel remain pending in #56; this foundation does not complete cropping/composition acceptance.

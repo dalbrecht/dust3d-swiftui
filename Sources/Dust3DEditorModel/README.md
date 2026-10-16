@@ -84,3 +84,13 @@ let copy = try await session.copyRepresentations(identifier: copyToken)
 ```
 
 Text-paste errors are atomic; successful identical text advances per-window placement until Open. `copy.native` retains assets/selection metadata; `copy.snapshotXML` is the Qt text fallback.
+
+Reference-image composition layout is pure and does not edit a document:
+
+```swift
+let size = try ReferencePixelSize(width: 1200, height: 800)
+let crop = try ReferenceImageCrop(size: size, x: 100, y: 0, width: 600, height: 800)
+let layout = try ReferenceCompositionLayout(front: crop, side: nil)
+```
+
+Pixel sizes/crops and projected output are bounded; invalid values throw `ReferenceCompositionError`. Layout returns placements and a proposed image-relative origin. It applies neither pixels nor origin to an archive. See [foundation verification](../../docs/reference-composition-foundation-verification.md); composition UI/commit orchestration remains #56.
