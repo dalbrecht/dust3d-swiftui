@@ -6,17 +6,37 @@ import UniformTypeIdentifiers
 struct EditorFileDocument: FileDocument {
     static var readableContentTypes: [UTType] { [UTType(importedAs: "org.dust3d.document")] }
     let identity = UUID()
-    var data: Data
+    private let saveState: EditorSaveState
+    private var saveVersion: UUID
+    var data: Data { didSet { saveVersion = saveState.publish() } }
 
-    init() { data = Dust3DDocument.emptyArchive() }
+    init() { self.init(validatedData: Dust3DDocument.emptyArchive()) }
+
+    init(data: Data) throws {
+        _ = try Dust3DDocument(data: data)
+        self.init(validatedData: data)
+    }
+
+    private init(validatedData: Data) {
+        let version = UUID()
+        saveState = EditorSaveState(version: version)
+        saveVersion = version
+        data = validatedData
+    }
+
+    func setEditing(_ isEditing: Bool) { saveState.setEditing(isEditing) }
+
+    func dataForSaving() throws -> Data {
+        try saveState.validate(saveVersion)
+        return data
+    }
 
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents else { throw CocoaError(.fileReadCorruptFile) }
-        _ = try Dust3DDocument(data: data)
-        self.data = data
+        try self.init(data: data)
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: data)
+        FileWrapper(regularFileWithContents: try dataForSaving())
     }
 }

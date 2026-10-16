@@ -91,3 +91,6 @@ If a composition sheet cannot be controlled through accessibility, run its insta
 ```
 
 This requests cancellation of only the most recently opened composition draft in running instances with that bundle identity and login session. It does not launch an editor window, save, close documents or accept file paths. It refuses to cancel during Apply and never falls back to an older sheet. The request uses a local distributed notification; shell sandbox restrictions can block delivery, and the printed request message is not an acknowledgement. Verify that the sheet closed before continuing. Run the executable inside the same app bundle as the target editor; the plain SwiftPM binary lacks a bundle identity.
+
+
+Native save serialization rejects an in-progress edit or an obsolete value snapshot with retry guidance. Wait for Applying edit to finish, then save again. The toolbar is unavailable during primary edits; the standard File menu, Save As, Duplicate, Rename, Move To, versions and sharing remain native. No save token is encoded into `.ds3`. See [save snapshot verification](../../docs/native-save-snapshot-verification.md) for concurrency guarantees and remaining filesystem acceptance.
