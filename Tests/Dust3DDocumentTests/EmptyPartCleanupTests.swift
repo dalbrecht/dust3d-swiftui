@@ -53,6 +53,24 @@ final class EmptyPartCleanupTests: XCTestCase {
         XCTAssertEqual(history.document.encoded(), cleaned.encoded())
     }
 
+    func testStandaloneEmptyTemplatePreservesMissingNodeContainerAndIncompleteReferences() throws {
+        let model = Data(
+            "<canvas><parts><part id='empty'/><part id='other'/></parts><components><component id='incomplete' linkDataType='partId'/><component id='future' linkDataType='futureId' linkData='empty'/></components></canvas>"
+                .utf8)
+        let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+        let prefix = "DUST3D 1.0 xml "
+        let data =
+            Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+            + model
+        let original = try Dust3DDocument(data: data)
+        let cleaned = try original.applying(.pruneEmptyParts(["empty"]))
+        XCTAssertEqual(try cleaned.editorContents().parts.map(\.id), ["other"])
+        let xml = try XMLDocument(data: cleaned.modelXML)
+        XCTAssertTrue(try xml.nodes(forXPath: "/canvas/nodes").isEmpty)
+        XCTAssertEqual(try xml.nodes(forXPath: "//component/@id").compactMap(\.stringValue), ["incomplete", "future"])
+        XCTAssertEqual(try xml.nodes(forXPath: "//component[@id='future']/@linkData").first?.stringValue, "empty")
+    }
+
     func testInvalidNonemptyDuplicateMissingAndReadonlyTargetsRejectAtomically() throws {
         let original = try document()
         for targets in [[profile], ["missing"], ["template", "template"]] {
