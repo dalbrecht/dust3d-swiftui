@@ -73,8 +73,14 @@ struct ReferenceImagePreview: Sendable {
     let changed: Bool
 }
 
+/// Asynchronous raster boundary, injectable so completion ordering can be verified deterministically.
+protocol ReferenceImageServing: Sendable {
+    func importImage(url: URL) async throws -> Data
+    func preview(document: Dust3DDocument) async throws -> ReferenceImagePreview
+}
+
 /// One window's off-main raster decoding/cache. Model-only edits do not call this service.
-actor ReferenceImageService {
+actor ReferenceImageService: ReferenceImageServing {
     private var cachedPNG: Data?
     private var cachedImage: CGImage?
 

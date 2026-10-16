@@ -1,0 +1,9 @@
+# Reference-image completion race verification
+
+Hosted Native macOS CI run 38931164683 failed `OriginDragStoreTests.testTransientPreviewCancelCommitUndoAndWindowIsolation` at cameraReset: 2 versus expected 1. A delayed no-image `forceFit` completion was the cause, rather than a reason to weaken the assertion or blindly rerun CI.
+
+An injected controlled reference-image actor reproduced the same failure deterministically. The tests first failed against the missing injectable boundary, then failed with camera 2/1 and 4/3 after empty resolution, and with missing removal/Undo refits when the restored image was a cache hit. After the fix, they verify fresh/replacement empty documents, accurate pending resolution, stable camera and active origin draft, unchanged committed archive/history, immediate displayed-image removal and cached Undo refitting while an obsolete empty request is still held. No timing-dependent extra sleep is used to induce the race; continuations control service completion.
+
+Full `make ci` passes 248 XCTest tests, formatting, native builds, coverage and Qt-free app linkage. Swift library coverage: mesh 66/67; document 1904/1981; model 963/969; pure editor state 424/424 and undo 97/97 (100%). The app/framework boundary has focused controller tests; no complete UI/App coverage percentage or inherited C++ coverage is claimed.
+
+The loading indicator remains tied to a real reference asset, while internal pending state now represents all service work. Existing import/decode/failure/remove/Undo tests remain green. Final native QA in the reused app imported/rendered the synthetic PNG alongside the 80-triangle mesh, removed it, restored it with Undo, then undid import and saved a byte-identical original archive. The timing race itself is verified by the controlled actor tests; no manual timing claim substitutes for them. See [ADR 0025](adr/0025-reference-image-completion.md).

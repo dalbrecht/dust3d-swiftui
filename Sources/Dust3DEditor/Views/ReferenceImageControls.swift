@@ -38,7 +38,7 @@ struct ReferenceImageControls: View {
                     .accessibilityLabel("Reference image opacity")
                 }
             }
-            if store.isLoadingReferenceImage {
+            if store.hasReferenceImage && store.isLoadingReferenceImage {
                 ProgressView("Loading reference image…").controlSize(.small)
             }
             if let error = store.referenceImageError {
