@@ -154,9 +154,9 @@ final class EditorStore {
         operation = Task {
             defer { isWorking = false }
             do {
-                let data = try await session.copyPayload(identifier: UUID().uuidString, onlyEditable: cut)
+                let data = try await session.copyRepresentations(identifier: UUID().uuidString, onlyEditable: cut)
                 guard !Task.isCancelled, !stopped else { return }
-                try pasteboard.write(data)
+                try pasteboard.write(data.native, snapshotXML: data.snapshotXML)
                 if cut {
                     let next = try await session.deleteSelection()
                     guard !Task.isCancelled, !stopped else { return }
@@ -175,6 +175,10 @@ final class EditorStore {
     /// The system PasteButton delivers data asynchronously; the session validates it away from the UI actor.
     func pasteNodes(data: Data) {
         perform(reloadReferenceImage: true) { try await $0.paste(data: data) }
+    }
+
+    func pasteQtNodes(snapshotXML: Data) {
+        perform(reloadReferenceImage: true) { try await $0.paste(snapshotXML: snapshotXML) }
     }
 
     func deleteSelection() { perform { try await $0.deleteSelection() } }

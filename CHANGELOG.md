@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Accept bounded Qt snapshot XML on node Paste and publish a Qt text fallback alongside richer native clipboard data; native transfers retain embedded assets and selection metadata.
+
 - Add explicit Front/Side descendant rotation around a selected fixed node, with origin-based parent selection, axis/part locks and lossless one-step undo/redo.
 
 - Prevent delayed empty reference-image completions from resetting the camera or cancelling origin drafts; fit image removal and cached Undo correctly.

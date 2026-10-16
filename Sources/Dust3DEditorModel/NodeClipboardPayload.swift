@@ -32,6 +32,18 @@ public struct NodeClipboardPayload: Sendable {
         self.identifier = identifier
     }
 
+    /// Import Qt snapshot-text clipboard data. All contained nodes become explicitly selected.
+    /// - Parameters:
+    ///   - snapshotXML: Bounded UTF-8 canvas XML without embedded assets.
+    ///   - identifier: Caller-supplied copy token for per-window repeated-paste placement.
+    /// - Throws: Typed clipboard/document errors for invalid tokens, XML or unsupported graph data.
+    /// - Note: Qt text cannot distinguish linked-profile dependency nodes from explicit selection.
+    public init(snapshotXML: Data, identifier: String) throws {
+        let document = try Dust3DDocument(snapshotXML: snapshotXML)
+        let selected = Set(try document.editorContents().nodes.map(\.id))
+        try self.init(fragment: NodeClipboard(document: document, selectedNodeIDs: selected), identifier: identifier)
+    }
+
     /// Decode bounded metadata and validate its embedded archive and selection.
     /// - Parameter data: Native clipboard bytes; slices are rebased before indexing.
     /// - Throws: `ClipboardError` for malformed/unsupported transport, or `DocumentError` for invalid graph/archive data.
