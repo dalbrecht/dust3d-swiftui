@@ -7,6 +7,7 @@ struct ReferenceCompositionSource: Sendable {
     let image: CGImage
     let crop: ReferenceImageCrop
     let isMirrored: Bool
+    var displayedCrop: ReferenceImageCrop { isMirrored ? crop.mirroredHorizontally : crop }
 
     init(image: CGImage, crop: ReferenceImageCrop, isMirrored: Bool = false) throws {
         guard image.width == crop.size.width, image.height == crop.size.height else {

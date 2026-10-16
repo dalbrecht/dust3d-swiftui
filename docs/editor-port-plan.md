@@ -223,3 +223,5 @@ M3–M8 feature parity is not claimed.
 Descendant rotation implementation and limits are recorded in [verification](descendant-rotation-verification.md) and [ADR 0026](adr/0026-descendant-rotation.md). This does not close the remaining M2 acceptance gates.
 
 Reference-image crop/layout and raster primitives have a [foundation verification record](reference-composition-foundation-verification.md). The composition sheet, transient draft orchestration and atomic Apply/Cancel remain pending in #56; this foundation does not complete cropping/composition acceptance.
+
+The composition sheet, transient async drafts, pointer/numeric selection and stale-guarded atomic image/origin Apply now have [automated tests and partial native evidence](reference-composition-workflow-verification.md). Final-build native Apply/save/Undo, rendered inspection and the app-owned composition recovery command are verified. Held-gesture/VoiceOver and Qt differential acceptance remain pending; #56 stays open. This does not complete M2 or Qt GUI parity.

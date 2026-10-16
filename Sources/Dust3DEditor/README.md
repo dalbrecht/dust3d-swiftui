@@ -55,7 +55,7 @@ The SwiftPM `Dust3DEditorTests` target hosts native views in an offscreen AppKit
 
 Use **Reference Image → Import Reference Image…** for PNG/JPEG/BMP/GIF/TIFF. ImageIO reads/converts off the UI actor and applies orientation; animated/multipage inputs use their first frame. Inputs and encoded PNG output are limited to 32 MiB, dimensions to 8192 per side and pixel count to 16,777,216. Import and Remove are undoable; Show and Opacity affect only this window. Existing canvas.png bytes are decoded for display without rewriting them, and malformed/oversized assets show an error while remaining saveable/removable.
 
-The canvas now uses Qt's image-height-normalized, positive-Y-down coordinates, with the complete reference at X/Z 0…width/height and Y 0…1. Fit includes visible nodes and the image; front/side clockwise transforms follow screen direction. This corrects the prototype's earlier Y-up canvas without changing stored coordinates. Import a precomposed turnaround image; cropping, multiple-image composition and origin tools are still pending. See [the decision](../../docs/adr/0016-native-reference-images.md).
+The canvas now uses Qt's image-height-normalized, positive-Y-down coordinates, with the complete reference at X/Z 0…width/height and Y 0…1. Fit includes visible nodes and the image; front/side clockwise transforms follow screen direction. This corrects the prototype's earlier Y-up canvas without changing stored coordinates. Import a precomposed turnaround image; the native composer adds independent Front/Side cropping and composition; final workflow acceptance is recorded below. Origin tools have separate verification records. See [the decision](../../docs/adr/0016-native-reference-images.md).
 
 The Parts sidebar includes hidden, locked, disabled and empty parts. Select one to rename its legacy part name, toggle canvas visibility, lock geometry edits, disable its mesh contribution or select its nodes. Component names stay independent. Metadata changes are undoable; selection is transient. Controls remain available to restore inactive parts. See [native verification](../../docs/part-controls-verification.md).
 
@@ -77,4 +77,17 @@ Rotate Around Selected Node provides four Front/Side quarter turns with exactly 
 
 Qt clipboard text uses bounded UTF-8 canvas XML. Native Copy offers richer native data first and a graph-only text fallback; plain text cannot transfer embedded asset bytes or distinguish selected nodes from profile dependencies. Paste validates and remaps the graph in one undo step. See [verification and pending native/Qt acceptance](../../docs/qt-clipboard-verification.md).
 
-The reference composition raster foundation crops orientation-normalized images, centers Front/Side profiles on a white 512-pixel-high canvas, and encodes bounded PNG off the UI thread. It is not yet exposed as an editing workflow; source/crop drafts, Apply/Cancel and native acceptance remain #56. See [foundation verification](../../docs/reference-composition-foundation-verification.md).
+The reference composition raster foundation crops orientation-normalized images, centers Front/Side profiles on a white 512-pixel-high canvas, and encodes bounded PNG off the UI thread. The editing workflow below adds transient sources/crops and atomic Apply/Cancel; broader parity acceptance remains #56. See [foundation verification](../../docs/reference-composition-foundation-verification.md).
+
+Choose Reference Image → Compose Reference Image to import Front/Side sources, edit X/Y/Width/Height in pixels or drag a new crop rectangle, mirror Side, swap profiles and inspect the white turnaround preview. Use Full Image resets the crop, including invalid field drafts. Original source pixels remain transient. Use Existing Image as Front treats the stored flattened canvas as one source.
+
+Cancel discards drafts. Apply replaces canvas.png, optionally sets the image-relative origin with axis locks, and creates one undo step. The composer rejects a document or lock change made since opening; reopen it rather than overwriting newer state. Invalid input, active crop gestures and pending previews disable Apply. See [workflow verification and remaining native acceptance](../../docs/reference-composition-workflow-verification.md).
+
+
+If a composition sheet cannot be controlled through accessibility, run its installed bundle executable with `--cancel-reference-composition`, for example:
+
+```sh
+/path/to/Dust3DEditor.app/Contents/MacOS/Dust3DEditor --cancel-reference-composition
+```
+
+This requests cancellation of only the most recently opened composition draft in running instances with that bundle identity and login session. It does not launch an editor window, save, close documents or accept file paths. It refuses to cancel during Apply and never falls back to an older sheet. The request uses a local distributed notification; shell sandbox restrictions can block delivery, and the printed request message is not an acknowledgement. Verify that the sheet closed before continuing. Run the executable inside the same app bundle as the target editor; the plain SwiftPM binary lacks a bundle identity.

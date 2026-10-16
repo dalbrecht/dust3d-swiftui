@@ -94,3 +94,13 @@ let layout = try ReferenceCompositionLayout(front: crop, side: nil)
 ```
 
 Pixel sizes/crops and projected output are bounded; invalid values throw `ReferenceCompositionError`. Layout returns placements and a proposed image-relative origin. It applies neither pixels nor origin to an archive. See [foundation verification](../../docs/reference-composition-foundation-verification.md); composition UI/commit orchestration remains #56.
+
+Capture a composition target before asynchronous import/rendering, then commit prepared platform-validated PNG bytes through the session:
+
+```swift
+let target = ReferenceCompositionTarget(snapshot: snapshot)
+let updated = try await session.applyReferenceComposition(
+    png: png, origin: layout.origin, target: target)
+```
+
+Use `origin: nil` to retain the document origin. The atomic command throws `EditorError.staleReferenceComposition` if document identity/revision or constraint epoch changed. All PNG/origin validation completes before publication; no-ops preserve redo. `ReferenceCropProjection` maps preview points into bounded half-open crops without platform UI imports. See [verification](../../docs/reference-composition-workflow-verification.md).

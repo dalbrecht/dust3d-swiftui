@@ -24,6 +24,45 @@ final class ReferenceImageCompletionTests: XCTestCase {
     }
 
     @MainActor
+    func testCompositionCannotReuseCachedImageWhileReplacementDecodeIsPending() async throws {
+        let originalPNG = try png()
+        let oldImage = try ReferenceImageCodec.decodePNG(originalPNG)
+        let context = try XCTUnwrap(
+            CGContext(
+                data: nil, width: 2, height: 1, bitsPerComponent: 8, bytesPerRow: 8,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        let newImage = try XCTUnwrap(context.makeImage())
+        let replacementPNG = try ReferenceImageCodec.encodePNG(newImage)
+        let images = ReplacementReferenceImages(original: oldImage, replacementPNG: replacementPNG)
+        let store = EditorStore(referenceImages: images)
+        defer {
+            store.stop()
+            Task { await images.release(newImage) }
+        }
+        XCTAssertNil(store.referenceImageForComposition)
+        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .setReferenceImagePNG(originalPNG))
+        await store.load(data: original.encoded())
+        try await settle(store)
+        XCTAssertTrue(store.referenceImageForComposition === oldImage)
+        store.importReferenceImage(from: URL(fileURLWithPath: "/replacement.png"))
+        try await settle(store, includingImage: false)
+        for _ in 0..<300 {
+            if await images.isWaiting { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let isWaiting = await images.isWaiting
+        XCTAssertTrue(isWaiting)
+        XCTAssertTrue(store.isLoadingReferenceImage)
+        XCTAssertEqual(store.snapshot?.document.referenceImagePNG, replacementPNG)
+        XCTAssertTrue(store.referenceImage === oldImage)
+        XCTAssertNil(store.referenceImageForComposition)
+        await images.release(newImage)
+        try await settle(store)
+        XCTAssertTrue(store.referenceImageForComposition === newImage)
+    }
+
+    @MainActor
     func testDelayedAbsentImageCompletionDoesNotResetCameraAfterOriginEdit() async throws {
         for hadPreviousImage in [false, true] {
             let png = try png()
@@ -118,6 +157,29 @@ private actor ControlledReferenceImages: ReferenceImageServing {
 
     func release() {
         pending?.resume(returning: .init(image: nil, changed: cachedImage != nil))
+        pending = nil
+    }
+}
+
+private actor ReplacementReferenceImages: ReferenceImageServing {
+    let original: CGImage
+    let replacementPNG: Data
+    private var requests = 0
+    private var pending: CheckedContinuation<ReferenceImagePreview, Never>?
+    var isWaiting: Bool { pending != nil }
+
+    init(original: CGImage, replacementPNG: Data) {
+        self.original = original
+        self.replacementPNG = replacementPNG
+    }
+    func importImage(url: URL) -> Data { replacementPNG }
+    func preview(document: Dust3DDocument) async -> ReferenceImagePreview {
+        requests += 1
+        if requests == 1 { return .init(image: original, changed: true) }
+        return await withCheckedContinuation { pending = $0 }
+    }
+    func release(_ image: CGImage) {
+        pending?.resume(returning: .init(image: image, changed: true))
         pending = nil
     }
 }

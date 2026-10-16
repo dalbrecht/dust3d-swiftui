@@ -47,6 +47,19 @@ public actor EditorSession {
     public func scaleSelection(positionFactor: Double, radiusFactor: Double) throws -> EditorSnapshot {
         try update { try $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
     }
+    /// Commit prepared reference composition output to its captured target in one undo step.
+    /// - Parameters:
+    ///   - png: Platform-validated bounded PNG data.
+    ///   - origin: Optional proposed origin; native axis locks apply.
+    ///   - target: Document and constraint epochs captured when the draft opened.
+    /// - Returns: Committed snapshot, or unchanged history for identical output.
+    /// - Throws: Load, cancellation, stale-draft or document validation errors atomically.
+    public func applyReferenceComposition(
+        png: Data, origin: NodePosition?, target: ReferenceCompositionTarget
+    ) throws -> EditorSnapshot {
+        try update { try $0.applyReferenceComposition(png: png, origin: origin, target: target) }
+    }
+
     /// Rotate connected descendants around the selected pivot without changing selection or radii.
     /// - Parameter rotation: Explicit Front/Side quarter-turn direction.
     /// - Returns: One undoable snapshot, or unchanged history for a no-op.

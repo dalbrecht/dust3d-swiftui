@@ -1,8 +1,8 @@
 import AppKit
 import Dust3DEditorModel
+import OSLog
 import SwiftUI
 
-@main
 struct Dust3DEditorApp: App {
     @NSApplicationDelegateAdaptor(EditorAppDelegate.self) private var appDelegate
     @FocusedValue(\.editorStore) private var store
@@ -87,8 +87,19 @@ struct Dust3DEditorApp: App {
 @MainActor
 final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(cancelReferenceComposition(_:)),
+            name: EditorCompositionRecovery.notification, object: Bundle.main.bundleIdentifier)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc nonisolated private func cancelReferenceComposition(_ notification: Notification) {
+        Task { @MainActor in
+            let cancelled = EditorCompositionRecovery.shared.cancelLatest()
+            Logger(subsystem: Bundle.main.bundleIdentifier ?? "org.dust3d.editor", category: "recovery")
+                .info("operation=cancelReferenceComposition cancelled=\(cancelled)")
+        }
     }
 }
 
