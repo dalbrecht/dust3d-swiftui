@@ -24,7 +24,7 @@ struct NodeCanvas: View {
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
-                MarqueeSurface(enabled: !store.isWorking) { rectangle, additive in
+                MarqueeSurface(enabled: !store.isWorking && !store.isMovingOrigin) { rectangle, additive in
                     let ids = projection.nodeIDs(in: rectangle, nodes: nodes)
                     store.select(additive ? ids.union(store.snapshot?.selectedIDs ?? []) : ids)
                 } tap: { point in
@@ -52,25 +52,12 @@ struct NodeCanvas: View {
                     }
                 }
                 .allowsHitTesting(false)
-                if let origin = store.snapshot?.origin {
-                    let point = projection.point(for: origin)
-                    Image(systemName: "scope")
-                        .font(.title3).foregroundStyle(.secondary)
-                        .overlay(alignment: .bottom) {
-                            Text("Origin").font(.caption2).fixedSize().offset(y: 14)
-                                .accessibilityHidden(true)
-                        }
-                        .position(x: point.x, y: point.y)
-                        .allowsHitTesting(false)
-                        .accessibilityLabel("Document origin")
-                        .accessibilityValue("X \(String(origin.x)), Y \(String(origin.y)), Z \(String(origin.z))")
-                }
                 ForEach(nodes.filter(\.isVisible)) { node in
                     NodeHandle(
                         node: node, projection: projection,
                         position: previewPosition(node, projection: projection),
                         selected: store.snapshot?.selectedIDs.contains(node.id) == true,
-                        enabled: !store.isWorking,
+                        enabled: !store.isWorking && !store.isMovingOrigin,
                         select: { store.select(node.id) },
                         toggle: { store.toggleSelection(node.id) },
                         drag: { translation in
@@ -82,7 +69,12 @@ struct NodeCanvas: View {
                             store.move(
                                 id: node.id,
                                 to: projection.moving(node.value.position, by: translation, locks: store.locks))
-                        })
+                        }
+                    )
+                    .allowsHitTesting(!store.isMovingOrigin)
+                }
+                if let origin = store.originDragPosition ?? store.snapshot?.origin {
+                    OriginHandle(store: store, origin: origin, projection: projection)
                 }
                 if nodes.isEmpty && store.referenceImage == nil {
                     VStack {
@@ -95,6 +87,8 @@ struct NodeCanvas: View {
             }
             .coordinateSpace(name: "node-canvas")
             .clipped()
+            .onChange(of: store.isMovingOrigin) { _, _ in drag = nil }
+            .onChange(of: geometry.size) { _, _ in store.cancelOriginDrag() }
             .onChange(of: store.isWorking) { _, working in if working { drag = nil } }
         }
         .background(.background)

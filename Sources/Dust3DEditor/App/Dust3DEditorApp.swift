@@ -26,6 +26,15 @@ struct Dust3DEditorApp: App {
             }
             EditorClipboardCommands(pasteboard: pasteboard)
             CommandMenu("Canvas") {
+                Toggle(
+                    "Move Origin",
+                    isOn: Binding(get: { store?.isMovingOrigin == true }, set: { store?.setMovingOrigin($0) })
+                )
+                .disabled(store?.isWorking != false || store?.snapshot?.origin == nil)
+                Button("Cancel Origin Move") { store?.cancelOriginDrag() }
+                    .keyboardShortcut(.escape, modifiers: [])
+                    .disabled(store?.isMovingOrigin != true)
+                Divider()
                 Button("Select All Nodes") { store?.selectAll() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
                     .disabled(store?.snapshot == nil || store?.isWorking != false)

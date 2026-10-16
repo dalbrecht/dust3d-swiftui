@@ -54,3 +54,11 @@ Transform Selected Nodes includes explicit Front X/Y and Side Z/Y local-center a
 Snapshots include the supported stored `origin`. Session `.apply([.setOrigin(position)])` validates before applying X/Y/Z locks; initializing an unavailable origin requires unlocked position axes. Global `SelectionTransform` cases (`usesOrigin == true`) align to the stored target and throw `unavailableOrigin` atomically when it is missing/unsupported. Zero/negative stored origins are valid explicit targets; no implicit Qt settlement occurs. Each origin edit/alignment is one undo step, independent of selection.
 
 `CanvasBounds(nodes:referenceImageAspectRatio:origin:)` optionally fits a supported finite origin within ±1,000,000 together with visible node radii and the reference rectangle. Invalid origins are ignored; no document/history mutation occurs. Omit origin to retain the previous bounds behavior.
+
+`OriginDrag(snapshot:projection:)` captures a supported origin, fixed projection and document/constraint epochs. `position(by:)` previews total screen-point translation without changing state. `session.commitOriginDrag(_:translation:)` rejects stale, invalid or oversized input atomically and commits one origin command; no-op gestures preserve history. `EditorSnapshot.documentIdentity` changes on Open, and `constraintRevision` invalidates gestures across lock cycles even when values return to their baseline. Each session/window owns its own identity.
+
+```swift
+let drag = try OriginDrag(snapshot: snapshot, projection: projection)
+let preview = drag.position(by: CanvasPoint(x: 40, y: 20))
+let committed = try await session.commitOriginDrag(drag, translation: CanvasPoint(x: 40, y: 20))
+```

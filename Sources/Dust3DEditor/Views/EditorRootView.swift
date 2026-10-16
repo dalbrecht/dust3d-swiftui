@@ -77,6 +77,14 @@ struct EditorRootView: View {
                         .controlSize(.small)
                         .disabled(store.isWorking || store.snapshot == nil)
                         .padding(.horizontal, 12).padding(.bottom, 8)
+                        Toggle(
+                            "Move Origin",
+                            isOn: Binding(get: { store.isMovingOrigin }, set: { store.setMovingOrigin($0) })
+                        )
+                        .toggleStyle(.button)
+                        .disabled(store.isWorking || store.snapshot?.origin == nil)
+                        .help("Drag the origin marker; Escape cancels. Node picking resumes when this mode is off.")
+                        .padding(.horizontal, 12).padding(.bottom, 8)
                         ReferenceImageControls(store: store)
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
@@ -94,7 +102,10 @@ struct EditorRootView: View {
                         ProgressView().controlSize(.small)
                         Text("Applying edit…")
                     } else {
-                        Text("Drag empty canvas to select · Shift-drag to add · Drag nodes to move")
+                        Text(
+                            store.isMovingOrigin
+                                ? "Drag the origin marker · Escape cancels · Axis locks apply"
+                                : "Drag empty canvas to select · Shift-drag to add · Drag nodes to move")
                     }
                 }
                 .font(.caption).foregroundStyle(.secondary).padding(10)
@@ -146,6 +157,7 @@ struct EditorRootView: View {
             store.onDocumentChanged = { file.data = $0 }
             await store.load(data: file.data)
         }
+        .onExitCommand { store.cancelOriginDrag() }
         .onDisappear { store.stop() }
     }
 

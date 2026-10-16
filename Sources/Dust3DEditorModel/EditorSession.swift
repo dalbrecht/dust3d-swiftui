@@ -76,6 +76,20 @@ public actor EditorSession {
         }
     }
 
+    /// Commit a projected origin gesture only while its document, revision and locks still match.
+    /// - Parameters:
+    ///   - drag: Immutable baseline captured at gesture start, including its fixed projection.
+    ///   - translation: Total screen-point displacement from that start.
+    /// - Returns: One undoable origin edit, or the unchanged snapshot for a no-op.
+    /// - Throws: `EditorError.staleOriginDrag`, load/cancellation errors, or invalid-origin errors atomically.
+    public func commitOriginDrag(_ drag: OriginDrag, translation: CanvasPoint) throws -> EditorSnapshot {
+        try update { state in
+            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleOriginDrag }
+            guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidOrigin }
+            try state.apply([.setOrigin(drag.position(by: translation))])
+        }
+    }
+
     /// Copy without dirtying the archive/history; Cut callers can restrict copying to editable nodes.
     /// - Parameter onlyEditable: Exclude read-only selected nodes when preparing a Cut.
     /// - Returns: A validated fragment including profile dependencies and all embedded assets.
