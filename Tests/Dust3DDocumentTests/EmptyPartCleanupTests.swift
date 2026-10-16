@@ -56,7 +56,7 @@ final class EmptyPartCleanupTests: XCTestCase {
 
     func testFormattingWhitespaceDoesNotRetainLeafButMeaningfulTextAndCommentsSurvive() throws {
         let model = Data(
-            "<canvas><parts><part id='empty'/></parts><components><component id='leaf' xml:space='preserve' linkDataType='partId' linkData='empty'>\n  \t</component><component id='text' linkDataType='partId' linkData='empty'> meaningful text </component><component id='comment' linkDataType='partId' linkData='empty'><!--keep--></component></components></canvas>"
+            "<canvas><parts><part id='empty'/></parts><components><component id='leaf' xml:space='preserve' linkDataType='partId' linkData='empty'>\n  \t</component><component id='text' linkDataType='partId' linkData='empty'> meaningful text </component><component id='comment' linkDataType='partId' linkData='empty'><!--keep--></component><component id='unicode' linkDataType='partId' linkData='empty'>\u{00A0}</component></components></canvas>"
                 .utf8)
         let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
         let prefix = "DUST3D 1.0 xml "
@@ -73,10 +73,12 @@ final class EmptyPartCleanupTests: XCTestCase {
         XCTAssertGreaterThan(leaf.childCount, 0)
         try EmptyPartCleanup.apply(["empty"], model: xml, contents: original.editorContents())
         XCTAssertTrue(try xml.nodes(forXPath: "//component[@id='leaf']").isEmpty)
-        XCTAssertEqual(try xml.nodes(forXPath: "//component/@id").compactMap(\.stringValue), ["text", "comment"])
+        XCTAssertEqual(
+            try xml.nodes(forXPath: "//component/@id").compactMap(\.stringValue), ["text", "comment", "unicode"])
         XCTAssertEqual(
             try xml.nodes(forXPath: "//component[@id='text']/text()").first?.stringValue, " meaningful text ")
         XCTAssertEqual(try xml.nodes(forXPath: "//component[@id='comment']/comment()").first?.stringValue, "keep")
+        XCTAssertEqual(try xml.nodes(forXPath: "//component[@id='unicode']/text()").first?.stringValue, "\u{00A0}")
         XCTAssertTrue(try xml.nodes(forXPath: "//component/@linkData").isEmpty)
     }
 

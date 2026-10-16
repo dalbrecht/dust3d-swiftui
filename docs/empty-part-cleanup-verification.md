@@ -1,12 +1,12 @@
 # Empty-part cleanup verification
 
-Full `make ci` passes 245 XCTest tests, strict formatting, native builds, coverage and Qt-free linkage for both apps. Swift coverage: mesh 66/67; document 1901/1978; editor model 963/969; pure editor state 424/424 and undo 97/97 (100%). Inherited C++ coverage is not measured here.
+Full `make ci` passes 245 XCTest tests, strict formatting, native builds, coverage and Qt-free linkage for both apps. Swift coverage: mesh 66/67; document 1903/1980; editor model 963/969; pure editor state 424/424 and undo 97/97 (100%). Inherited C++ coverage is not measured here.
 
 TDD first rejected the absent cleanup command. Session regressions then reproduced leftover part/selection after final-node deletion and failure to treat cleanup as part of the original transaction. Eleven new tests cover:
 
 - Explicit target validation: missing, duplicate, nonempty, locked, hidden and disabled parts; byte-preserving empty target list.
-- Missing node containers and incomplete/unknown component references remain untouched; the new XML cleanup boundary measures 46/48 lines (95.83%).
-- Review regression: ignore whitespace-only text in a preserved DOM while retaining meaningful text/comments; the former child-count check failed this regression. The real Qt-formatted Sword deletion transaction also retains no phantom component and undoes exactly. On this macOS parser that Sword check already passed before the fix, so the explicit DOM case makes whitespace retention deterministic across Foundation versions.
+- Missing node containers and incomplete/unknown component references remain untouched; the new XML cleanup boundary measures 48/50 lines (96.00%).
+- Review regression: ignore whitespace-only text in a preserved DOM while retaining meaningful text/comments and Unicode spaces; the broad Unicode-whitespace trim also failed a nonbreaking-space preservation assertion before being restricted to XML whitespace; the former child-count check failed this regression. The real Qt-formatted Sword deletion transaction also retains no phantom component and undoes exactly. On this macOS parser that Sword check already passed before the fix, so the explicit DOM case makes whitespace retention deterministic across Foundation versions.
 - Nested/unknown component content and ordering, known linked-profile repair, named presets/non-UUID references, unknown attributes and opaque assets.
 - Direct node removal and Cut/session selection deletion, unrelated empty/template preservation, remove-then-add batches, explicit cleanup earlier in a batch, atomic failure, part/node selection pruning, exact one-step Undo/Redo and save/reopen.
 - Pinned-core generation of the remaining 16-triangle part after deleting its companion, and default geometry after deleting a linked profile. Low-level document node removal intentionally still preserves an empty part until explicit cleanup; its older compatibility test remains valid.

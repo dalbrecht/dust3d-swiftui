@@ -14,12 +14,14 @@ enum EmptyPartCleanup {
         for part in parts where selected.contains(part.attribute(forName: "id")?.stringValue ?? "") {
             part.detach()
         }
+        // XML formatting whitespace excludes meaningful Unicode spaces in preserved metadata.
+        let formattingWhitespace = CharacterSet(charactersIn: " \t\r\n")
         for component in PartSplitting.componentElements(model)
         where component.attribute(forName: "linkDataType")?.stringValue == "partId"
             && selected.contains(component.attribute(forName: "linkData")?.stringValue ?? "")
         {
             let hasMeaningfulChildren = (component.children ?? []).contains {
-                $0.kind != .text || $0.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                $0.kind != .text || $0.stringValue?.trimmingCharacters(in: formattingWhitespace).isEmpty == false
             }
             if !hasMeaningfulChildren {
                 component.detach()
