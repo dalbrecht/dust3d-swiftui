@@ -95,6 +95,14 @@ public struct ReferenceImageCrop: Equatable, Sendable {
     }
 }
 
+/// Qt major versions differ in the pixel dimensions of smooth scaled profiles.
+public enum ReferenceCompositionRounding: Sendable {
+    /// Qt 6, recommended by this repository: nearest integer, with a native minimum width of one.
+    case qt6
+    /// Qt 5 smooth transforms round the positive scaled extent upward.
+    case qt5Smooth
+}
+
 /// Qt-shaped white turnaround canvas, with 512-pixel profile height and independently centered halves.
 public struct ReferenceCompositionLayout: Equatable, Sendable {
     /// Placement of a cropped source scaled to the composition height.
@@ -112,13 +120,24 @@ public struct ReferenceCompositionLayout: Equatable, Sendable {
     /// - Parameters:
     ///   - front: Optional Front crop, placed in the left half.
     ///   - side: Optional Side crop, placed in the right half.
+    ///   - rounding: Explicit Qt dimension policy; defaults to the recommended Qt 6 baseline.
     /// - Throws: Typed composition errors for empty input or output wider than 8192 pixels.
-    /// - Note: Widths round to the nearest pixel, with a minimum of one for extremely thin crops.
+    /// - Note: The default rounds to the nearest pixel, with a minimum of one for extremely thin crops.
     /// See the model README for an example.
-    public init(front: ReferenceImageCrop?, side: ReferenceImageCrop?) throws {
+    public init(
+        front: ReferenceImageCrop?, side: ReferenceImageCrop?, rounding: ReferenceCompositionRounding = .qt6
+    ) throws {
         guard front != nil || side != nil else { throw ReferenceCompositionError.emptyComposition }
-        let frontWidth = front.map { max(1, ($0.width * 512 + $0.height / 2) / $0.height) }
-        let sideWidth = side.map { max(1, ($0.width * 512 + $0.height / 2) / $0.height) }
+        func scaledWidth(_ crop: ReferenceImageCrop) -> Int {
+            let adjustment: Int
+            switch rounding {
+            case .qt6: adjustment = crop.height / 2
+            case .qt5Smooth: adjustment = crop.height - 1
+            }
+            return max(1, (crop.width * 512 + adjustment) / crop.height)
+        }
+        let frontWidth = front.map(scaledWidth)
+        let sideWidth = side.map(scaledWidth)
         let canvasWidth = max(1024, max(frontWidth ?? 0, sideWidth ?? 0) * 2)
         guard canvasWidth <= 8192 else { throw ReferenceCompositionError.outputTooLarge }
         let half = canvasWidth / 2
