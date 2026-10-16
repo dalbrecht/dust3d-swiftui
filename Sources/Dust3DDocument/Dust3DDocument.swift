@@ -9,6 +9,9 @@ public enum DocumentError: Error, Equatable, Sendable {
     case limitExceeded
     case missingNode(String)
     case missingPart(String)
+    case invalidComponent
+    case invalidComponentName
+    case missingComponent(String)
     case invalidPartName
     case invalidNode
     case cyclicProfile
@@ -60,6 +63,8 @@ public enum DocumentCommand: Sendable {
     case setOrigin(NodePosition)
     /// Rename the legacy part name, preserving component names. Empty input restores the default label.
     case setPartName(id: String, name: String)
+    /// Rename one component independently of its linked part; empty input removes its name.
+    case setComponentName(id: String, name: String)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
@@ -242,6 +247,14 @@ public struct Dust3DDocument: Sendable {
         return NodePosition(x: numbers[0], y: numbers[1], z: numbers[2])
     }
 
+    /// Read components in XML preorder without changing the archive.
+    /// - Returns: Ordered identities, parent/child links, names and uninterpreted source link attributes.
+    /// - Throws: `invalidComponent` for ambiguous identities/containers or unsupported component tags; `limitExceeded` above 10,000 components.
+    /// - Example: `try document.components().filter { $0.parentID == nil }` lists root components.
+    public func components() throws -> [DocumentComponent] {
+        try ComponentHierarchy.read(Self.xml(modelXML, root: "canvas"))
+    }
+
     /// Read supported numeric fields of a node, or throw for a missing/invalid node.
     public func node(id: String) throws -> EditableNode {
         let xml = try Self.xml(modelXML, root: "canvas")
@@ -322,6 +335,8 @@ public struct Dust3DDocument: Sendable {
                 }
             }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentName(let id, let name):
+            guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }
         case .setPartName(let id, let name):
             guard name.utf8.count <= 1024,
                 name.unicodeScalars.allSatisfy({

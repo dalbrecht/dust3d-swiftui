@@ -418,6 +418,10 @@ final class EditorStore {
             case .limitExceeded: return "The document or edit exceeds supported size or undo-history limits."
             case .missingNode(let id): return "Node \(id) is not present in this document."
             case .missingPart(let id): return "Part \(id) is not present in this document."
+            case .invalidComponent:
+                return "The document contains unsupported component tags or ambiguous identities/containers."
+            case .invalidComponentName: return "Use a single-line component name of at most 1024 UTF-8 bytes."
+            case .missingComponent(let id): return "Component \(id) is not present in this document."
             case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
             case .conflictingAsset(let name): return "Clipboard asset \(name) conflicts with this document."
