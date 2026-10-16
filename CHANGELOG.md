@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Prevent delayed empty reference-image completions from resetting the camera or cancelling origin drafts; fit image removal and cached Undo correctly.
+
+- Clean up parts emptied by graph deletion in the same undo step, preserving unrelated templates, nested content and assets and repairing deleted profile references.
+
 - Add explicit model-bounds origin centering with axis locks, validated radius bounds and lossless one-step undo/redo.
 
 - Add explicit Front/Side origin dragging with axis locks, cancellable previews, stale-document guards and one-step lossless undo/redo.

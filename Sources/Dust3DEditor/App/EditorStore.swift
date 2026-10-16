@@ -31,12 +31,16 @@ final class EditorStore {
     var onDocumentChanged: ((Data) -> Void)?
     private let session = EditorSession()
     private let preview = EditorPreviewService()
-    private let referenceImages = ReferenceImageService()
+    private let referenceImages: any ReferenceImageServing
     private var operation: Task<Void, Never>?
     private var generation: Task<Void, Never>?
     private var referenceGeneration: Task<Void, Never>?
     private var referenceRequestID = UUID()
     private var stopped = false
+
+    init(referenceImages: any ReferenceImageServing = ReferenceImageService()) {
+        self.referenceImages = referenceImages
+    }
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
     var canUndo: Bool { !isWorking && snapshot?.canUndo == true }
@@ -322,21 +326,26 @@ final class EditorStore {
         let requestID = UUID()
         referenceRequestID = requestID
         referenceImageError = nil
-        isLoadingReferenceImage = snapshot.document.hasReferenceImage
-        if !snapshot.document.hasReferenceImage { referenceImage = nil }
+        isLoadingReferenceImage = true
+        let hadImage = referenceImage != nil
+        if !snapshot.document.hasReferenceImage {
+            referenceImage = nil
+            if hadImage { fit() }
+        }
         referenceGeneration = Task {
             do {
                 let result = try await referenceImages.preview(document: snapshot.document)
                 guard !Task.isCancelled, !stopped, referenceRequestID == requestID else { return }
                 referenceImage = result.image
                 isLoadingReferenceImage = false
-                if result.changed || forceFit { fit() }
+                // Empty results only clear the cache; Load/removal already fitted their visible content.
+                if result.image != nil && (result.changed || forceFit || !hadImage) { fit() }
             } catch {
                 guard !Task.isCancelled, !stopped, referenceRequestID == requestID else { return }
                 referenceImage = nil
                 referenceImageError = Self.message(error)
                 isLoadingReferenceImage = false
-                fit()
+                if hadImage { fit() }
             }
         }
     }

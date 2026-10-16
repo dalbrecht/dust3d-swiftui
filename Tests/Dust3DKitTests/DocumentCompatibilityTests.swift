@@ -181,6 +181,85 @@ final class DocumentCompatibilityTests: XCTestCase {
         XCTAssertGreaterThan(mesh.triangleCount, 0)
     }
 
+    func testQtFormattedSwordDeletionDoesNotLeavePhantomLeafComponent() async throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "Sword", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url))
+        let contents = try original.editorContents()
+        let part = try XCTUnwrap(contents.parts.first { $0.name == "blade" })
+        let xml = try XMLDocument(data: original.modelXML, options: [.nodePreserveAll])
+        let references = try xml.nodes(forXPath: "//component").compactMap { $0 as? XMLElement }.filter {
+            $0.attribute(forName: "linkDataType")?.stringValue == "partId"
+                && $0.attribute(forName: "linkData")?.stringValue == part.id
+        }
+        let removedComponents = Set(references.compactMap { $0.attribute(forName: "id")?.stringValue })
+        XCTAssertFalse(removedComponents.isEmpty)
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let result = try await session.apply([.removeNodes(contents.nodes.filter { $0.partID == part.id }.map(\.id))])
+        let cleaned = try XMLDocument(data: result.document.modelXML)
+        let remaining = Set(try cleaned.nodes(forXPath: "//component/@id").compactMap(\.stringValue))
+        XCTAssertTrue(remaining.isDisjoint(with: removedComponents))
+        XCTAssertEqual(remaining.count, try xml.nodes(forXPath: "//component").count - removedComponents.count)
+        let restored = try await session.undo()
+        XCTAssertEqual(restored.document.encoded(), original.encoded())
+    }
+
+    func testDeletingLinkedEmptyProfileRestoresDefaultPinnedCoreShape() async throws {
+        let profile = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
+        let owner = "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"
+        let profileNode = "{11111111-1111-4111-8111-111111111111}"
+        let ownerNode = "{22222222-2222-4222-8222-222222222222}"
+        let model = Data(
+            "<canvas originX='.5' originY='.5' originZ='1'><nodes><node id='\(profileNode)' partId='\(profile)' x='.5' y='.5' z='1' radius='.1'/><node id='\(ownerNode)' partId='\(owner)' x='.5' y='.5' z='1' radius='.1' cutFace='\(profile)'/></nodes><parts><part id='\(profile)'/><part id='\(owner)' cutFace='\(profile)'/></parts><components><component id='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' linkDataType='partId' linkData='\(profile)'/><component id='{dddddddd-dddd-4ddd-8ddd-dddddddddddd}' linkDataType='partId' linkData='\(owner)'/></components></canvas>"
+                .utf8)
+        let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+        let prefix = "DUST3D 1.0 xml "
+        let data =
+            Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+            + model
+        let session = EditorSession()
+        _ = try await session.open(data: data)
+        let result = try await session.apply([.removeNode(id: profileNode)])
+        XCTAssertEqual(result.parts.map(\.id), [owner])
+        let mesh = try MeshLoader.load(data: result.document.encoded())
+        XCTAssertEqual(mesh.partCount, 1)
+        XCTAssertEqual(mesh.triangleCount, 16)
+        let restored = try await session.undo()
+        XCTAssertEqual(restored.document.encoded(), data)
+    }
+
+    func testSessionFinalNodeDeletionPrunesOwnerAndKeepsRemainingMeshReadable() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let capsule = try Dust3DDocument(data: Data(contentsOf: url))
+        let otherPart = "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}"
+        let original = try capsule.applying(
+            .addNode(
+                id: "{99999999-9999-4999-8999-999999999999}", partID: otherPart,
+                componentID: "{dddddddd-dddd-4ddd-8ddd-dddddddddddd}", position: .init(x: 2, y: 0.5, z: 1), radius: 0.1)
+        )
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let result = try await session.apply([.removeNodes(try capsule.editorContents().nodes.map(\.id))])
+        XCTAssertEqual(result.parts.map(\.id), [otherPart])
+        XCTAssertEqual(result.nodes.count, 1)
+        let mesh = try MeshLoader.load(data: result.document.encoded())
+        XCTAssertEqual(mesh.nodeCount, 1)
+        XCTAssertEqual(mesh.partCount, 1)
+        XCTAssertEqual(mesh.triangleCount, 16)
+        let reopened = try Dust3DDocument(data: result.document.encoded())
+        XCTAssertEqual(try reopened.editorContents().parts, result.parts)
+        let restored = try await session.undo()
+        XCTAssertEqual(restored.document.encoded(), original.encoded())
+        XCTAssertFalse(restored.canUndo)
+        let redone = try await session.redo()
+        XCTAssertEqual(redone.document.encoded(), result.document.encoded())
+        _ = try await session.selectAll()
+        let empty = try await session.deleteSelection()
+        XCTAssertTrue(empty.parts.isEmpty)
+        XCTAssertFalse(empty.hasEnabledGeometry)
+    }
+
     @MainActor func testSessionDisconnectionAndMiddleDeletionGenerateSplitMeshes() async throws {
         let url = try XCTUnwrap(
             Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))

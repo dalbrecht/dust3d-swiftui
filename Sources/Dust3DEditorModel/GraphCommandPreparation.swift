@@ -44,6 +44,11 @@ enum GraphCommandPreparation {
             }
             preview = try preview.applying(command)
         }
+        let contents = try preview.editorContents()
+        // A caller can explicitly clean up or consume a part earlier in the same transaction.
+        affected.formIntersection(contents.parts.map(\.id))
+        let occupied = Set(contents.nodes.compactMap(\.partID))
+        let emptied = contents.parts.filter { affected.contains($0.id) && !occupied.contains($0.id) }.map(\.id)
         let requirements = try preview.partSplitRequirements(for: affected)
         let splits: [DocumentCommand] = requirements.map { requirement in
             let identities = (0..<requirement.additionalPartCount).map { _ in
@@ -52,7 +57,7 @@ enum GraphCommandPreparation {
             }
             return .splitPart(id: requirement.partID, identities: identities)
         }
-        return commands + splits
+        return commands + splits + (emptied.isEmpty ? [] : [.pruneEmptyParts(emptied)])
     }
 
     private static func identifier() -> String { "{\(UUID().uuidString.lowercased())}" }

@@ -72,6 +72,8 @@ public enum DocumentCommand: Sendable {
     case joinNodes(id: String, from: String, to: String)
     case removeNode(id: String)
     case removeNodes([String])
+    /// Remove explicitly empty editable parts and their references; retain nested content and all assets.
+    case pruneEmptyParts([String])
     case removeEdge(id: String)
     case reverseEdges([String])
     case splitPart(id: String, identities: [PartSplitIdentity])
@@ -417,6 +419,9 @@ public struct Dust3DDocument: Sendable {
             {
                 edge.detach()
             }
+        case .pruneEmptyParts(let ids):
+            if ids.isEmpty { return self }
+            try EmptyPartCleanup.apply(ids, model: model, contents: contents)
         case .removeEdge(let id):
             guard let edge = contents.edges.first(where: { $0.id == id }) else { throw DocumentError.invalidNode }
             _ = try editable(edge.fromID)
