@@ -1,6 +1,6 @@
 # ADR 0029: Transient reference composition workflow
 
-Status: Accepted; final-build native acceptance pending
+Status: Accepted; native Apply/save/Undo and recovery verified
 
 ## Decision
 
@@ -18,6 +18,13 @@ The sheet waits for the controller's publication result before dismissing. Failu
 
 ## Presentation and acceptance
 
-Use one identifiable sheet presentation containing its nonoptional target. A separate Boolean plus optional target produced an empty first sheet during native QA; item-based presentation removes that intermediate state. A regression covers presentation/target identity, and native QA confirmed the first presentation has content. Keep labels persistent and content scrollable with an always-reachable action footer.
+Use one identifiable sheet presentation containing its nonoptional target. A separate Boolean plus optional target produced an empty first sheet during native QA; item-based presentation removes that intermediate state. A regression covers presentation/target identity, and native QA confirmed the first presentation has content. Keep labels persistent, align each crop column, and keep content scrollable with an always-reachable action footer. Explicitly contain the scrolling content as one accessibility navigation group; this resolved the control-helper traversal failure on the QA host without hiding its controls.
 
-The earlier native build passed imports, numeric edits, mirror/swap, physical rectangle selection and byte-identical Cancel/save. The final label/scroll/active-gesture build still needs native Apply/Undo and rendered inspection because the app-control connection closed. Do not infer that acceptance from unit tests or claim Qt GUI parity. See [verification](../reference-composition-workflow-verification.md) and #56. No C++ code, core pin, dependency, lockfile or CI configuration change.
+The earlier native build passed imports, numeric edits, mirror/swap, physical rectangle selection and byte-identical Cancel/save. The final grouped-scroll build passed rendered inspection, Apply/save and byte-identical Undo; flattened-source recovery preserved its document and history. Held-gesture/VoiceOver and actual Qt GUI acceptance remain pending. Do not infer that acceptance from unit tests or claim Qt GUI parity. See [verification](../reference-composition-workflow-verification.md) and #56. No C++ code, core pin, dependency, lockfile or CI configuration change.
+
+
+## Recovery channel (#59)
+
+The native accessibility helper repeatedly crashed during sheet traversal while the editor remained running. Provide an explicit `--cancel-reference-composition` entry-point mode. It posts one fixed distributed-notification name scoped by the executable's bundle identity, with no user information, document paths or arbitrary command payload. Normal application arguments continue to SwiftUI. The receiver dispatches to the main actor and requests cancellation of only the most recently registered composer. That composer refuses while Apply is active; refusal never cancels another window. Normal disappearance unregisters the handler. This deliberately discards an unapplied composition draft, never the document or its undo history.
+
+A sender prints only that it requested cancellation, not that delivery succeeded; sandboxed shells can prevent notification delivery. The native boundary needs an actual receiver/visible-window check. Pure tests cover exact command parsing, newest-only routing, busy refusal, handler replacement and idempotent unregistration. No dependency, URL scheme, document format or additional native engine entry point is introduced.

@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
     let store: EditorStore
     let target: ReferenceCompositionTarget
     @Environment(\.dismiss) private var dismiss
+    @State private var recoveryIdentity = UUID()
     @State private var draft = ReferenceCompositionDraft()
     @State private var importingProfile = ReferenceProfile.front
     @State private var isImporting = false
@@ -59,6 +60,7 @@ import UniformTypeIdentifiers
                     Toggle("Set document origin to profile centers (axis locks apply)", isOn: $setsOrigin)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .contain)
             }
             HStack {
                 Text("Apply replaces canvas.png in one undo step.").font(.caption).foregroundStyle(.secondary)
@@ -80,7 +82,16 @@ import UniformTypeIdentifiers
                 if (error as? CocoaError)?.code != .userCancelled { draft.reportFailure(error) }
             }
         }
+        .onAppear {
+            EditorCompositionRecovery.shared.register(recoveryIdentity) {
+                guard !isApplying else { return false }
+                draft.stop()
+                dismiss()
+                return true
+            }
+        }
         .onDisappear {
+            EditorCompositionRecovery.shared.unregister(recoveryIdentity)
             draft.stop()
             applyTask?.cancel()
         }
@@ -142,6 +153,7 @@ import UniformTypeIdentifiers
                                     .accessibilityLabel(
                                         "\(profile.rawValue) crop \(["X", "Y", "Width", "Height"][index])")
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                     Button("Use Full Image") { draft.useFullImage(profile) }
