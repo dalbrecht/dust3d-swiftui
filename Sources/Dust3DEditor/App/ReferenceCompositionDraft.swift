@@ -34,7 +34,9 @@ enum ReferenceProfile: String, CaseIterable, Sendable {
 
     func importSource(url: URL, profile: ReferenceProfile) {
         guard !stopped else { return }
+        let retainedResult = result
         invalidate()
+        result = retainedResult
         isWorking = true
         errorMessage = nil
         let request = requestID

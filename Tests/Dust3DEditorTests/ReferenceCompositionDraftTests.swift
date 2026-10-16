@@ -96,6 +96,31 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         XCTAssertEqual(draft.front?.crop, displayed)
     }
 
+    @MainActor func testFailedReplacementOrSecondProfileImportRetainsApplicablePreview() async throws {
+        let input = try source()
+        for profile in ReferenceProfile.allCases {
+            let draft = ReferenceCompositionDraft(service: ImmediateCompositionService(source: input))
+            defer { draft.stop() }
+            draft.useExisting(input.image)
+            try await settle(draft)
+            let png = try XCTUnwrap(draft.result?.png)
+            draft.importSource(url: URL(fileURLWithPath: "/invalid"), profile: profile)
+            XCTAssertFalse(draft.canApply)
+            XCTAssertEqual(draft.result?.png, png)
+            try await settle(draft)
+            XCTAssertEqual(draft.result?.png, png)
+            XCTAssertTrue(draft.canApply)
+            XCTAssertEqual(draft.front?.crop, input.crop)
+            XCTAssertNil(draft.side)
+            XCTAssertTrue(draft.errorMessage?.contains("fixture read failure") == true)
+            draft.setCrop(profile: .front, values: ["bad", "0", "4", "2"])
+            draft.importSource(url: URL(fileURLWithPath: "/invalid"), profile: profile)
+            try await settle(draft)
+            XCTAssertNil(draft.result)
+            XCTAssertFalse(draft.canApply)
+        }
+    }
+
     @MainActor func testObsoletePreviewCannotReplaceNewerDraft() async throws {
         let input = try source()
         let service = HeldPreviewCompositionService()
