@@ -31,6 +31,8 @@ struct Dust3DEditorApp: App {
                     isOn: Binding(get: { store?.isMovingOrigin == true }, set: { store?.setMovingOrigin($0) })
                 )
                 .disabled(store?.isWorking != false || store?.snapshot?.origin == nil)
+                Button("Center Origin on Model") { store?.centerOriginOnModel() }
+                    .disabled(store?.snapshot == nil || store?.isWorking != false)
                 Button("Cancel Origin Move") { store?.cancelOriginDrag() }
                     .keyboardShortcut(.escape, modifiers: [])
                     .disabled(store?.isMovingOrigin != true)

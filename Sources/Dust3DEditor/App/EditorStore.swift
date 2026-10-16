@@ -114,6 +114,9 @@ final class EditorStore {
         }
         perform { try await $0.apply([.setOrigin(.init(x: x, y: y, z: z))]) }
     }
+    func centerOriginOnModel() {
+        perform { try await $0.centerOriginOnModel() }
+    }
     func renamePart(_ id: String, name: String) {
         perform(regenerateMesh: false) { try await $0.apply([.setPartName(id: id, name: name)]) }
     }

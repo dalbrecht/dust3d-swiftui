@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add explicit model-bounds origin centering with axis locks, validated radius bounds and lossless one-step undo/redo.
+
 - Add explicit Front/Side origin dragging with axis locks, cancellable previews, stale-document guards and one-step lossless undo/redo.
 
 - Show an accessible, noninteractive origin marker in both canvas views and fit outlying origins without resetting the 3D camera.

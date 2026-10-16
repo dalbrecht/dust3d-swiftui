@@ -318,6 +318,14 @@ public struct EditorState: Sendable {
         if isLocked { locks.insert(constraint) } else { locks.remove(constraint) }
     }
 
+    /// Center the origin on every node's radius bounds in one undo step, respecting axis locks.
+    /// Empty models target zero. Unavailable origins require unlocked position axes.
+    /// Throws geometry/origin validation errors atomically; nodes, selection and assets stay unchanged.
+    public mutating func centerOriginOnModel() throws {
+        let position = try OriginSettlement.center(of: contents.nodes.map(\.value))
+        try apply([.setOrigin(position)])
+    }
+
     /// Commit one gesture or inspector edit as one undo step, respecting part locks/visibility.
     public mutating func edit(id: String, position: NodePosition, radius: Double) throws {
         var next = history
