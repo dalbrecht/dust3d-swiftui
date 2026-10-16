@@ -40,6 +40,10 @@ struct OriginControls: View {
                     Spacer()
                     Button("Apply Origin") { store.setOrigin(x: x, y: y, z: z) }
                 }
+                Button("Center Origin on Model") { store.centerOriginOnModel() }
+                    .help(
+                        "Center all node radius bounds, including hidden or disabled parts. Axis locks apply. Empty models target zero."
+                    )
                 Text(
                     "Changes mesh placement without moving document nodes. Axis locks apply; each change is one undo step. Coordinates must be finite and within ±1,000,000. Zero is valid; no automatic settlement is performed."
                 )

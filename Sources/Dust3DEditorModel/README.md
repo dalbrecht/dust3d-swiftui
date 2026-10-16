@@ -62,3 +62,5 @@ let drag = try OriginDrag(snapshot: snapshot, projection: projection)
 let preview = drag.position(by: CanvasPoint(x: 40, y: 20))
 let committed = try await session.commitOriginDrag(drag, translation: CanvasPoint(x: 40, y: 20))
 ```
+
+`OriginSettlement.center(of: [EditableNode])` validates all geometry and computes the radius-bound union center (zero for empty input), independent of part flags or selection. Invalid geometry throws `DocumentError.invalidNode`. `state.centerOriginOnModel()` and `session.centerOriginOnModel()` apply that target through the existing locked origin command/history, preserving no-op redo and exact undo bytes. Example: `let centered = try await session.centerOriginOnModel()`.

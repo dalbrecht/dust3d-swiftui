@@ -33,6 +33,12 @@ public actor EditorSession {
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
+    /// Explicitly center origin on all node radius bounds, honoring axis locks in one history transaction.
+    /// - Returns: The committed snapshot, or unchanged history for an already-centered origin.
+    /// - Throws: Load, cancellation, geometry or unavailable-origin errors without partial publication.
+    public func centerOriginOnModel() throws -> EditorSnapshot {
+        try update { try $0.centerOriginOnModel() }
+    }
     public func moveSelection(by delta: NodePosition) throws -> EditorSnapshot {
         try update { try $0.moveSelection(by: delta) }
     }
