@@ -128,18 +128,43 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         try await settle(draft)
         let png = try XCTUnwrap(draft.result?.png)
         let epoch = draft.sourceEpoch
-        draft.reportImportFailure(ReferenceImageError.fileReadFailed("provider item unavailable"))
+        draft.reportRejectedInput(ReferenceImageError.fileReadFailed("provider item unavailable"))
         XCTAssertEqual(draft.result?.png, png)
         XCTAssertTrue(draft.canApply)
         XCTAssertEqual(draft.sourceEpoch, epoch)
         XCTAssertTrue(draft.errorMessage?.contains("provider item unavailable") == true)
         draft.setCrop(profile: .front, values: ["bad", "0", "4", "2"])
-        draft.reportImportFailure(ReferenceImageError.fileReadFailed("provider unavailable again"))
+        draft.reportRejectedInput(ReferenceImageError.fileReadFailed("provider unavailable again"))
         XCTAssertNil(draft.result)
         XCTAssertFalse(draft.canApply)
         draft.stop()
-        draft.reportImportFailure(ReferenceImageError.invalidImage)
+        draft.reportRejectedInput(ReferenceImageError.invalidImage)
         XCTAssertNil(draft.errorMessage)
+    }
+
+    @MainActor func testEmptyPixelCropDragRetainsApplicablePreviewAndOriginalCrop() async throws {
+        let input = try source()
+        let draft = ReferenceCompositionDraft(service: ImmediateCompositionService(source: input))
+        defer { draft.stop() }
+        draft.useExisting(input.image)
+        try await settle(draft)
+        let png = try XCTUnwrap(draft.result?.png)
+        let projection = try ReferenceCropProjection(size: input.crop.size, width: 400, height: 180)
+        let gesture = UUID()
+        draft.setCropping(gesture, isActive: true)
+        do {
+            let crop = try projection.crop(from: .init(x: 30, y: 50), to: .init(x: 36, y: 56))
+            draft.setPointerCrop(crop, profile: .front, expectedSource: input)
+            XCTFail("A greater-than-three-point drag within one pixel must be rejected")
+        } catch {
+            draft.reportRejectedInput(error)
+        }
+        XCTAssertFalse(draft.canApply)
+        draft.setCropping(gesture, isActive: false)
+        XCTAssertTrue(draft.canApply)
+        XCTAssertEqual(draft.result?.png, png)
+        XCTAssertEqual(draft.front?.crop, input.crop)
+        XCTAssertNotNil(draft.errorMessage)
     }
 
     @MainActor func testObsoletePreviewCannotReplaceNewerDraft() async throws {

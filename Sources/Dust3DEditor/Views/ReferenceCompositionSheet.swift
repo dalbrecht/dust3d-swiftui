@@ -83,7 +83,7 @@ import UniformTypeIdentifiers
             switch result {
             case .success(let url): draft.importSource(url: url, profile: importingProfile)
             case .failure(let error):
-                if (error as? CocoaError)?.code != .userCancelled { draft.reportImportFailure(error) }
+                if (error as? CocoaError)?.code != .userCancelled { draft.reportRejectedInput(error) }
             }
         }
         .onAppear {
@@ -142,7 +142,7 @@ import UniformTypeIdentifiers
                     ReferenceCropPreview(source: source) { crop in
                         draft.setPointerCrop(crop, profile: profile, expectedSource: source)
                     } failure: {
-                        draft.reportFailure($0)
+                        draft.reportRejectedInput($0)
                     } activity: { identifier, isActive in
                         draft.setCropping(identifier, isActive: isActive)
                     }
