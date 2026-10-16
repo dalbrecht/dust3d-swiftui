@@ -43,3 +43,7 @@ let nodes = try document.editorContents().nodes
 ```
 
 The initializer preserves exact model XML and unknown fields, validates editable data, and throws typed document errors for malformed/oversized input. Use `init(data:)` for full asset-bearing archives.
+
+`try document.components()` reads immutable component values in XML preorder. `parentID` and ordered `childIDs` describe the actual nested hierarchy; `linkDataType`/`linkData` preserve unknown source links and `partID` interprets only `partId`. Absent/empty/duplicate identities, duplicate containers, unsupported child tags carrying IDs or more than 10,000 components reject this explicit query. Ordinary archive saving continues preserving opaque hierarchy XML.
+
+Example: `let roots = try document.components().filter { $0.parentID == nil }`. Apply `.setComponentName(id:name:)` to rename independently of the linked legacy part. Input is trimmed, bounded to 1024 UTF-8 bytes and rejects controls/newlines with `invalidComponentName`; missing IDs throw `missingComponent`, malformed hierarchies throw `invalidComponent`. Empty names remove the attribute, no-ops retain original bytes, and existing history/session transactions retain exact undo/redo. See [ADR 0031](../../docs/adr/0031-component-hierarchy-foundation.md). Tree UI and structural edits follow separately.
