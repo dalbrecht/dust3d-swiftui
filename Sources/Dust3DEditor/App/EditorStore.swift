@@ -225,6 +225,21 @@ final class EditorStore {
     func undo() { perform(reloadReferenceImage: true) { try await $0.undo() } }
     func redo() { perform(reloadReferenceImage: true) { try await $0.redo() } }
 
+    /// The sheet waits for publication before dismissing; validation errors keep its draft available.
+    func applyReferenceComposition(
+        _ result: ReferenceCompositionResult, target: ReferenceCompositionTarget, setsOrigin: Bool
+    ) async -> Bool {
+        await withCheckedContinuation { continuation in
+            perform(
+                reloadReferenceImage: true, regenerateMesh: setsOrigin,
+                completion: { continuation.resume(returning: $0) }
+            ) { session in
+                try await session.applyReferenceComposition(
+                    png: result.png, origin: setsOrigin ? result.layout.origin : nil, target: target)
+            }
+        }
+    }
+
     func importReferenceImage(from url: URL) {
         let service = referenceImages
         perform(reloadReferenceImage: true, regenerateMesh: false) { session in
@@ -261,13 +276,21 @@ final class EditorStore {
 
     private func perform(
         commits: Bool = true, reloadReferenceImage: Bool = false, regenerateMesh: Bool = true,
+        completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
-        guard !isWorking, !stopped else { return }
+        guard !isWorking, !stopped else {
+            completion?(false)
+            return
+        }
         cancelOriginDrag()
         isWorking = true
         operation = Task {
-            defer { isWorking = false }
+            var succeeded = false
+            defer {
+                isWorking = false
+                completion?(succeeded)
+            }
             do {
                 let next = try await action(session)
                 guard !Task.isCancelled, !stopped else { return }
@@ -291,6 +314,7 @@ final class EditorStore {
                     if regenerateMesh { generate(next) }
                     if reloadReferenceImage { refreshReferenceImage(next) }
                 }
+                succeeded = true
             } catch {
                 if !Task.isCancelled { errorMessage = Self.message(error) }
             }
@@ -368,6 +392,15 @@ final class EditorStore {
             case .fileReadFailed(let cause): return "The reference image could not be read: \(cause)"
             }
         }
+        if let composition = error as? ReferenceCompositionError {
+            switch composition {
+            case .invalidDimensions: return "Use positive source dimensions within the reference-image limits."
+            case .invalidCrop: return "Enter a nonempty crop fully inside the source image."
+            case .emptyComposition: return "Import a Front or Side image before applying."
+            case .outputTooLarge:
+                return "This crop would produce a turnaround wider than 8192 pixels. Use a taller or narrower crop."
+            }
+        }
         if let document = error as? DocumentError {
             switch document {
             case .invalidArchive: return "This file is not a supported Dust3D 1.0 archive."
@@ -400,6 +433,8 @@ final class EditorStore {
             switch editor {
             case .notLoaded: return "Open a document before editing."
             case .readOnlyNode: return "This node belongs to a locked, hidden or disabled part."
+            case .staleReferenceComposition:
+                return "The document or locks changed. Reopen the reference image composer."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
             case .unavailableOrigin:
                 return

@@ -40,6 +40,21 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         XCTAssertEqual(try pixel(decoded, x: 896, y: 256), [0, 255, 0, 255])
         XCTAssertEqual(try pixel(decoded, x: 1536, y: 256), [255, 255, 255, 255])
     }
+    func testServiceImportsNormalizedPixelsAndComposesOnItsActor() async throws {
+        let image = try stripes()
+        let png = try ReferenceImageCodec.encodePNG(image)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("composition-\(UUID().uuidString).png")
+        try png.write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        let service = ReferenceCompositionService()
+        let imported = try await service.importSource(url: url)
+        XCTAssertEqual(imported.crop, .init(size: try .init(width: 2, height: 2)))
+        XCTAssertFalse(imported.isMirrored)
+        let result = try await service.compose(front: imported, side: imported)
+        XCTAssertEqual(result.layout.width, 1024)
+        XCTAssertEqual(try ReferenceImageCodec.decodePNG(result.png).height, 512)
+    }
+
     func testSideMirrorAndSourceSizeMismatch() throws {
         let image = try stripes()
         let crop = ReferenceImageCrop(size: try ReferencePixelSize(width: 2, height: 2))

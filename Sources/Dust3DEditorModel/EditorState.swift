@@ -16,6 +16,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case invalidScale
     case invalidPivotSelection
     case unavailableOrigin
+    case staleReferenceComposition
     case staleOriginDrag
 }
 
@@ -251,6 +252,23 @@ public struct EditorState: Sendable {
                     radius: locks.contains(.radius) ? node.value.radius : node.value.radius * radiusFactor))
         }
         try apply([.setNodes(updates)])
+    }
+
+    /// Apply a prepared PNG and optional proposed origin as one undo transaction.
+    /// - Parameters:
+    ///   - png: Bounded PNG bytes prepared by the platform raster boundary.
+    ///   - origin: Optional image-relative origin; native axis locks apply. Nil retains the stored origin.
+    ///   - target: Captured document and constraint epochs; stale drafts cannot overwrite later edits.
+    /// - Throws: Typed stale-draft or document validation errors atomically.
+    public mutating func applyReferenceComposition(
+        png: Data, origin: NodePosition?, target: ReferenceCompositionTarget
+    ) throws {
+        guard target.documentIdentity == documentIdentity, target.documentRevision == revision,
+            target.constraintRevision == constraintRevision
+        else { throw EditorError.staleReferenceComposition }
+        var commands: [DocumentCommand] = [.setReferenceImagePNG(png)]
+        if let origin { commands.append(.setOrigin(origin)) }
+        try apply(commands)
     }
 
     /// Rotate editable connected descendants around the single selected pivot in one undo step.

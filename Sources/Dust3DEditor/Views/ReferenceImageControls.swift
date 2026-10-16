@@ -1,3 +1,4 @@
+import Dust3DEditorModel
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
@@ -5,11 +6,17 @@ import UniformTypeIdentifiers
 struct ReferenceImageControls: View {
     let store: EditorStore
     @State private var isImporting = false
+    @State private var composition: ReferenceCompositionPresentation?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Menu("Reference Image", systemImage: "photo") {
+                    Button("Compose Reference Image…") {
+                        guard let snapshot = store.snapshot else { return }
+                        composition = ReferenceCompositionPresentation(snapshot: snapshot)
+                    }
+                    .disabled(store.isWorking || store.snapshot == nil)
                     Button("Import Reference Image…") { isImporting = true }
                         .disabled(store.isWorking || store.snapshot == nil)
                     Button("Remove Reference Image", role: .destructive) { store.removeReferenceImage() }
@@ -49,6 +56,9 @@ struct ReferenceImageControls: View {
         .help(
             "PNG, JPEG, BMP, GIF or TIFF. Uses the first frame. Maximum 32 MiB, 8192 pixels per side and 16 megapixels. Display settings stay in this window."
         )
+        .sheet(item: $composition) { presentation in
+            ReferenceCompositionSheet(store: store, target: presentation.target)
+        }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.png, .jpeg, .bmp, .gif, .tiff]) { result in
             switch result {
             case .success(let url): store.importReferenceImage(from: url)
@@ -57,4 +67,11 @@ struct ReferenceImageControls: View {
             }
         }
     }
+}
+
+/// Target and visibility share one value so first presentation cannot render before its target exists.
+struct ReferenceCompositionPresentation: Identifiable {
+    let id = UUID()
+    let target: ReferenceCompositionTarget
+    init(snapshot: EditorSnapshot) { target = ReferenceCompositionTarget(snapshot: snapshot) }
 }
