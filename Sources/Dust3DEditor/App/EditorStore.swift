@@ -137,6 +137,8 @@ final class EditorStore {
         perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
     }
     var canTransform: Bool { !isWorking && snapshot?.selectedNodes.contains(where: \.isEditable) == true }
+    var canRotateDescendants: Bool { !isWorking && snapshot?.canRotateDescendants == true }
+    func rotateDescendants(_ rotation: DescendantRotation) { perform { try await $0.rotateDescendants(rotation) } }
     func transformSelection(_ transform: SelectionTransform) { perform { try await $0.transformSelection(transform) } }
     func reverseSelectedEdges() { perform { try await $0.reverseSelectedEdges() } }
     func reverseEdge(_ id: String) { perform { try await $0.apply([.reverseEdges([id])]) } }
@@ -398,6 +400,7 @@ final class EditorStore {
             case .unavailableOrigin:
                 return
                     "Set a complete supported document origin first. Unlock position axes to initialize an unavailable origin."
+            case .invalidPivotSelection: return "Select exactly one node as the rotation pivot."
             case .invalidScale: return "Enter a finite, positive scale factor. Use 1 to keep the current size."
             }
         }

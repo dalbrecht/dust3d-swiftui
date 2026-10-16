@@ -55,6 +55,7 @@ struct NodeInspector: View {
                 }
                 .disabled(store.isWorking || !node.isEditable)
                 SelectionTransformMenu(store: store)
+                DescendantRotationMenu(store: store)
                 Divider()
                 Menu("Connect to…") {
                     ForEach(targets) { target in

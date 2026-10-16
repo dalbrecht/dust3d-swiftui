@@ -49,6 +49,7 @@ struct Dust3DEditorApp: App {
                     }
                 }
                 .disabled(store?.canTransform != true)
+                DescendantRotationMenu(store: store)
                 Button("Reverse Edges Between Selected Nodes") { store?.reverseSelectedEdges() }
                     .disabled(store?.isWorking != false || store?.snapshot?.reversibleEdges.isEmpty != false)
                 Button("Reverse Selected Edge") {
