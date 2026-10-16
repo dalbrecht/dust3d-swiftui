@@ -187,6 +187,17 @@ public struct Dust3DDocument: Sendable {
         self.modelIndex = modelIndex
     }
 
+    /// Wrap a Qt canvas snapshot in an asset-free archive using the existing bounded XML validator.
+    /// - Parameter snapshotXML: UTF-8 canvas XML, at most 16 MiB; unknown fields are retained verbatim.
+    /// - Throws: Typed document errors for malformed XML, excessive depth/size or invalid editable graph data.
+    /// - Note: Plain XML cannot carry embedded archive assets. Use the archive initializer for lossless asset transfer.
+    /// See the document README for clipboard integration examples.
+    public init(snapshotXML: Data) throws {
+        guard snapshotXML.count <= 16 * 1024 * 1024 else { throw DocumentError.limitExceeded }
+        self = try Dust3DDocument(data: Self.emptyArchive()).replacingModel(Data(snapshotXML))
+        _ = try editorContents()
+    }
+
     /// Original or edited model XML; unknown elements and attributes are retained.
     public var modelXML: Data {
         let range = items[modelIndex].range

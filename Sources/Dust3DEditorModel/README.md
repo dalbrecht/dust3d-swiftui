@@ -75,3 +75,12 @@ try await session.rotateDescendants(.frontClockwise)
 ```
 
 `rotateDescendants(_:)` returns after applying the atomic transaction; it throws typed editor/document errors for invalid pivot selection, unavailable origin, read-only pivots or invalid geometry. Inspect `snapshot.canRotateDescendants` for UI availability.
+
+Qt clipboard text uses bounded UTF-8 canvas XML. Native Copy offers richer native data first and a graph-only text fallback; plain text cannot transfer embedded asset bytes or distinguish selected nodes from profile dependencies. Paste validates and remaps the graph in one undo step. See [verification and pending native/Qt acceptance](../../docs/qt-clipboard-verification.md).
+
+```swift
+let snapshot = try await session.paste(snapshotXML: xmlData)
+let copy = try await session.copyRepresentations(identifier: copyToken)
+```
+
+Text-paste errors are atomic; successful identical text advances per-window placement until Open. `copy.native` retains assets/selection metadata; `copy.snapshotXML` is the Qt text fallback.

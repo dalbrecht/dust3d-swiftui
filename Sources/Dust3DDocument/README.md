@@ -34,3 +34,12 @@ Callers must fully decode, validate pixel/resource limits and convert imported i
 `editorContents().origin` publishes that same supported-value query alongside graph/part metadata without another archive parse.
 
 `.pruneEmptyParts(ids)` explicitly removes requested empty editable parts, their leaf component references and known cut-face links to deleted profiles. Surviving nested/unknown component content remains as groups; matching references are processed bottom-up; every asset is retained. Missing/duplicate/nonempty/readonly targets throw `DocumentError.invalidNode` atomically; empty input preserves original bytes. Low-level node removal still retains empty owners until this command is applied. Use `EditorSession` for deletion plus splitting/cleanup in one undo transaction. Example: `let cleaned = try emptied.applying(.pruneEmptyParts([partID]))`. See [decision](../../docs/adr/0024-empty-part-cleanup.md).
+
+Qt clipboard text uses bounded UTF-8 canvas XML. Native Copy offers richer native data first and a graph-only text fallback; plain text cannot transfer embedded asset bytes or distinguish selected nodes from profile dependencies. Paste validates and remaps the graph in one undo step. See [verification and pending native/Qt acceptance](../../docs/qt-clipboard-verification.md).
+
+```swift
+let document = try Dust3DDocument(snapshotXML: xmlData)
+let nodes = try document.editorContents().nodes
+```
+
+The initializer preserves exact model XML and unknown fields, validates editable data, and throws typed document errors for malformed/oversized input. Use `init(data:)` for full asset-bearing archives.

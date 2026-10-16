@@ -6,6 +6,7 @@ public actor EditorSession {
     private var state: EditorState?
     private var lastPasteIdentifier: String?
     private var pasteOrdinal = 0
+    private var lastQtTransfer: (snapshot: Data, identifier: String)?
 
     public init() {}
 
@@ -16,6 +17,7 @@ public actor EditorSession {
         state = next
         lastPasteIdentifier = nil
         pasteOrdinal = 0
+        lastQtTransfer = nil
         return next.snapshot
     }
 
@@ -126,6 +128,39 @@ public actor EditorSession {
         try NodeClipboardPayload(fragment: copySelection(onlyEditable: onlyEditable), identifier: identifier).encoded()
     }
 
+    /// Produce rich native bytes and an asset-free Qt text fallback off the UI actor.
+    /// - Parameters:
+    ///   - identifier: Fresh Copy/Cut token.
+    ///   - onlyEditable: Limit Cut to editable selected nodes.
+    /// - Returns: Native transport plus exact UTF-8 canvas XML. Only native bytes carry assets/selection metadata.
+    /// - Throws: Copy and transport validation errors without mutating the document.
+    public func copyRepresentations(identifier: String, onlyEditable: Bool = false) throws -> (
+        native: Data, snapshotXML: Data
+    ) {
+        let payload = try NodeClipboardPayload(
+            fragment: copySelection(onlyEditable: onlyEditable), identifier: identifier)
+        return (try payload.encoded(), payload.fragment.document.modelXML)
+    }
+
+    /// Paste Qt canvas XML through the same graph transaction as native transfers.
+    /// - Parameter snapshotXML: Bounded asset-free Qt text; all imported nodes become selected.
+    /// - Returns: A snapshot with one undo step; identical successful text advances per-window placement.
+    /// - Throws: Typed validation/load errors atomically; failed text does not advance placement bookkeeping.
+    public func paste(snapshotXML: Data) throws -> EditorSnapshot {
+        try Task.checkCancellation()
+        guard state != nil else { throw EditorError.notLoaded }
+        let identifier: String
+        if let previous = lastQtTransfer, previous.snapshot == snapshotXML {
+            identifier = previous.identifier
+        } else {
+            identifier = Self.identifier()
+        }
+        let payload = try NodeClipboardPayload(snapshotXML: snapshotXML, identifier: identifier)
+        let next = try paste(payload: payload)
+        lastQtTransfer = (Data(snapshotXML), identifier)
+        return next
+    }
+
     /// Paste fresh graph identities and normalize copied groups in one undo transaction.
     /// Successive pastes move by 0.04 on Y/Z; placement bookkeeping is transient and resets on Open.
     /// - Parameter data: Bytes produced by `copyPayload(identifier:onlyEditable:)`.
@@ -133,8 +168,12 @@ public actor EditorSession {
     /// - Throws: Load, transport, archive or graph validation errors atomically; failed pastes do not advance placement.
     public func paste(data: Data) throws -> EditorSnapshot {
         try Task.checkCancellation()
+        guard state != nil else { throw EditorError.notLoaded }
+        return try paste(payload: NodeClipboardPayload(data: data))
+    }
+
+    private func paste(payload: NodeClipboardPayload) throws -> EditorSnapshot {
         guard let state else { throw EditorError.notLoaded }
-        let payload = try NodeClipboardPayload(data: data)
         let fragment = payload.fragment
         let sourceNodes = Set(try fragment.document.editorContents().nodes.map(\.id))
         let overlaps = !sourceNodes.isDisjoint(with: state.snapshot.nodes.map(\.id))

@@ -47,10 +47,14 @@ struct NodeClipboardMenu: View {
         Menu("Clipboard") {
             Button("Copy Nodes") { store.copyNodes(to: pasteboard) }
                 .disabled(!store.canCopyNodes)
-                .help("Copies selected nodes, linked profiles and embedded document assets.")
+                .help(
+                    "Native copies include nodes, linked profiles and assets. The Qt text fallback contains graph XML only."
+                )
             Button("Cut Editable Nodes") { store.copyNodes(cut: true, to: pasteboard) }
                 .disabled(!store.canCutNodes)
-                .help("Copies editable selected nodes and embedded assets, then removes those nodes in one undo step.")
+                .help(
+                    "Copies editable nodes and assets before deleting in one undo step. Qt text transfers graph XML only."
+                )
             NodeClipboardPasteButton(store: store).accessibilityLabel("Paste Nodes")
         }
         .accessibilityLabel("Node clipboard")
