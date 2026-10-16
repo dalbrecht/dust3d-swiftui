@@ -14,6 +14,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case notLoaded
     case readOnlyNode
     case invalidScale
+    case invalidPivotSelection
     case unavailableOrigin
     case staleOriginDrag
 }
@@ -38,6 +39,11 @@ public struct EditorSnapshot: Sendable {
     public let documentRevision: Int
     /// Monotonic interaction epoch, including lock toggles that later restore the same values.
     public let constraintRevision: Int
+
+    /// Descendant rotation needs a single editable pivot and an explicit supported origin.
+    public var canRotateDescendants: Bool {
+        selectedIDs.count == 1 && selectedNode?.isEditable == true && origin != nil
+    }
 
     public var selectedNodes: [DocumentNode] { nodes.filter { selectedIDs.contains($0.id) } }
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
@@ -243,6 +249,24 @@ public struct EditorState: Sendable {
                             y: locks.contains(.y) ? position.y : center.y + (position.y - center.y) * positionFactor,
                             z: locks.contains(.z) ? position.z : center.z + (position.z - center.z) * positionFactor),
                     radius: locks.contains(.radius) ? node.value.radius : node.value.radius * radiusFactor))
+        }
+        try apply([.setNodes(updates)])
+    }
+
+    /// Rotate editable connected descendants around the single selected pivot in one undo step.
+    /// The neighbor nearest the stored origin is the parent; endpoints rotate their whole connected chain.
+    /// Axis/part locks apply. Throws typed selection/origin/readonly or geometry errors atomically.
+    public mutating func rotateDescendants(_ rotation: DescendantRotation) throws {
+        guard selectedIDs.count == 1, let pivot = snapshot.selectedNode else { throw EditorError.invalidPivotSelection }
+        guard pivot.isEditable else { throw EditorError.readOnlyNode }
+        guard let origin = contents.origin else { throw EditorError.unavailableOrigin }
+        let ids = rotation.descendantIDs(pivot: pivot, origin: origin, nodes: contents.nodes, edges: contents.edges)
+        let updates = contents.nodes.filter { ids.contains($0.id) && $0.id != pivot.id && $0.isEditable }.map { node in
+            NodeUpdate(
+                id: node.id,
+                value: .init(
+                    position: rotation.transform.position(node.value.position, around: pivot.value.position),
+                    radius: node.value.radius))
         }
         try apply([.setNodes(updates)])
     }

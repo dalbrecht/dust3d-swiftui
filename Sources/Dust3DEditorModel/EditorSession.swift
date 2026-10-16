@@ -45,6 +45,13 @@ public actor EditorSession {
     public func scaleSelection(positionFactor: Double, radiusFactor: Double) throws -> EditorSnapshot {
         try update { try $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
     }
+    /// Rotate connected descendants around the selected pivot without changing selection or radii.
+    /// - Parameter rotation: Explicit Front/Side quarter-turn direction.
+    /// - Returns: One undoable snapshot, or unchanged history for a no-op.
+    /// - Throws: Load, cancellation, selection/origin/readonly or geometry validation errors atomically.
+    public func rotateDescendants(_ rotation: DescendantRotation) throws -> EditorSnapshot {
+        try update { try $0.rotateDescendants(rotation) }
+    }
     public func transformSelection(_ transform: SelectionTransform) throws -> EditorSnapshot {
         try update { try $0.transformSelection(transform) }
     }

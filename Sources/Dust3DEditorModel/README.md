@@ -66,3 +66,12 @@ let committed = try await session.commitOriginDrag(drag, translation: CanvasPoin
 `OriginSettlement.center(of: [EditableNode])` validates all geometry and computes the radius-bound union center (zero for empty input), independent of part flags or selection. Invalid geometry throws `DocumentError.invalidNode`. `state.centerOriginOnModel()` and `session.centerOriginOnModel()` apply that target through the existing locked origin command/history, preserving no-op redo and exact undo bytes. Example: `let centered = try await session.centerOriginOnModel()`.
 
 Session graph deletion now appends cleanup for affected owners still empty after the entire batch. Unrelated pre-existing empty/template parts stay intact, and remove-then-add batches retain their owner. Cut uses the same deletion path. Cleanup, profile repair and disconnected-part splitting share one undo transaction, with deleted selection pruned without revival. See [verification](../../docs/empty-part-cleanup-verification.md).
+
+Rotate Around Selected Node provides four Front/Side quarter turns with exactly one editable pivot and a supported stored origin. The pivot stays fixed; traversal starts away from its neighbor nearest the origin in 3D. Axis/part locks apply, and each effective action is one lossless undo step. See [verification](../../docs/descendant-rotation-verification.md) for cycle/tie semantics and intentional Qt differences.
+
+```swift
+try await session.select(pivotID)
+try await session.rotateDescendants(.frontClockwise)
+```
+
+`rotateDescendants(_:)` returns after applying the atomic transaction; it throws typed editor/document errors for invalid pivot selection, unavailable origin, read-only pivots or invalid geometry. Inspect `snapshot.canRotateDescendants` for UI availability.

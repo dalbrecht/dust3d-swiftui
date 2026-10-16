@@ -212,10 +212,12 @@ All core dependency upgrades and upstream-sync PRs use the same tests. Keep fixt
 The separate viewer and editor apps consume the exact pinned external core package.
 The editor now supports node selection/movement/radius editing, interaction locks,
 multiselection/marquee/scaling/transforms, topology creation/deletion/splitting/joining,
-edge picking/reversal/inspection, native clipboard editing, undo/redo, open/save and
+edge picking/reversal/inspection, explicit descendant-pivot rotation, native clipboard editing, undo/redo, open/save and
 resilient mesh previews. Reference-image archive editing, bounded platform import and Qt-aligned canvas
 rendering, part-state controls, local/global alignment and origin editing/markers are implemented;
 crop/composition and physical origin-gesture QA remain pending; native model-bounds origin centering is explicit (ADR 0023). Verification records linked above state
 actual test/native coverage and limits. The M1/M2 acceptance gates still include Qt GUI
 interoperability, recovery/failure cases and broader accessibility/performance checks;
 M3–M8 feature parity is not claimed.
+
+Descendant rotation implementation and limits are recorded in [verification](descendant-rotation-verification.md) and [ADR 0026](adr/0026-descendant-rotation.md). This does not close the remaining M2 acceptance gates.
