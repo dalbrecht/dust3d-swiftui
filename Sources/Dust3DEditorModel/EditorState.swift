@@ -53,6 +53,10 @@ public struct EditorSnapshot: Sendable {
     /// A single edge is selected independently of nodes, without changing document history.
     public var selectedEdge: DocumentEdge? { edges.first { $0.id == selectedEdgeID } }
     /// A selected part remains inspectable even when hidden, locked or disabled.
+    /// Non-no-op sibling-order commands for the current component selection.
+    public var availableComponentOrderMoves: [ComponentOrderMove] {
+        selectedComponentID.map { componentTree.orderMoves(for: $0) } ?? []
+    }
     public var selectedComponent: DocumentComponent? {
         componentTree.rows.first { $0.id == selectedComponentID }?.component
     }

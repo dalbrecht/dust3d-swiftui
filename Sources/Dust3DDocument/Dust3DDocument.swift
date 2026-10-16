@@ -65,6 +65,8 @@ public enum DocumentCommand: Sendable {
     case setPartName(id: String, name: String)
     /// Rename one component independently of its linked part; empty input removes its name.
     case setComponentName(id: String, name: String)
+    /// Move a component within its current siblings, preserving its entire subtree and all assets.
+    case reorderComponent(id: String, direction: ComponentOrderMove)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
@@ -288,7 +290,7 @@ public struct Dust3DDocument: Sendable {
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
         switch command {
-        case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName:
+        case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName, .reorderComponent:
             contents = DocumentContents(nodes: [], edges: [])
         default: contents = try editorContents()
         }
@@ -335,6 +337,9 @@ public struct Dust3DDocument: Sendable {
                     root.addAttribute(attribute)
                 }
             }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .reorderComponent(let id, let direction):
+            guard try ComponentReordering.apply(model, id: id, direction: direction) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }

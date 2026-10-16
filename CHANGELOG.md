@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add undoable component sibling ordering (Up, Down, Top and Bottom), with boundary availability, lossless archive preservation and mesh regeneration.
+
 - Add an ordered, collapsible component sidebar and name inspector with independent selection, linked-part inspection, undo/redo and lossless saving.
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
