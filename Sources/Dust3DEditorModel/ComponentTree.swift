@@ -36,6 +36,16 @@ public struct ComponentTree: Sendable {
         }
     }
 
+    /// Available non-no-op sibling moves in upstream menu order.
+    /// - Parameter id: Existing component identity; unknown identities return no moves.
+    /// - Returns: Moves that change its final sibling index, independent of transient collapse state.
+    public func orderMoves(for id: String) -> [ComponentOrderMove] {
+        guard let row = rows.first(where: { $0.id == id }) else { return [] }
+        let siblings = rows.filter { $0.component.parentID == row.component.parentID }
+        let index = siblings.prefix { $0.id != id }.count
+        return ComponentOrderMove.allCases.filter { $0.destinationIndex(from: index, count: siblings.count) != nil }
+    }
+
     /// Filter descendants of collapsed groups in linear time; collapse state is local to its window.
     /// - Parameter identities: Component IDs whose own row remains visible while descendants are hidden.
     /// - Returns: Visible rows in unchanged XML preorder. Unknown IDs and leaf IDs have no effect.

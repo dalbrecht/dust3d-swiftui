@@ -20,6 +20,7 @@ struct ComponentInspector: View {
                 Spacer()
                 Button("Apply Name") { store.renameComponent(component.id, name: name) }
             }
+            ComponentOrderMenu(store: store)
             if let parent = component.parentID {
                 Text("Parent: \(parent)").font(.caption).textSelection(.enabled)
                     .focusedValue(\.editorTextEditing, true)

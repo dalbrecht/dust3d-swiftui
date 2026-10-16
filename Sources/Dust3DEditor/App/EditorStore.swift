@@ -116,6 +116,13 @@ final class EditorStore {
     func select(_ ids: Set<String>) { perform(commits: false) { try await $0.select(ids) } }
     func selectEdge(_ id: String?) { perform(commits: false) { try await $0.selectEdge(id) } }
     func selectComponent(_ id: String?) { perform(commits: false) { try await $0.selectComponent(id) } }
+    func canReorderComponent(_ direction: ComponentOrderMove) -> Bool {
+        !isWorking && !stopped && snapshot?.availableComponentOrderMoves.contains(direction) == true
+    }
+    func reorderComponent(_ direction: ComponentOrderMove) {
+        guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
+        perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
+    }
     func renameComponent(_ id: String, name: String) {
         perform(regenerateMesh: false) { try await $0.apply([.setComponentName(id: id, name: name)]) }
     }
