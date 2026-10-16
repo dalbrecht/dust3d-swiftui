@@ -1,6 +1,7 @@
-import Dust3DDocument
 import Foundation
 import XCTest
+
+@testable import Dust3DDocument
 
 final class EmptyPartCleanupTests: XCTestCase {
     private let profile = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
@@ -51,6 +52,32 @@ final class EmptyPartCleanupTests: XCTestCase {
         XCTAssertFalse(history.canUndo)
         XCTAssertTrue(history.redo())
         XCTAssertEqual(history.document.encoded(), cleaned.encoded())
+    }
+
+    func testFormattingWhitespaceDoesNotRetainLeafButMeaningfulTextAndCommentsSurvive() throws {
+        let model = Data(
+            "<canvas><parts><part id='empty'/></parts><components><component id='leaf' xml:space='preserve' linkDataType='partId' linkData='empty'>\n  \t</component><component id='text' linkDataType='partId' linkData='empty'> meaningful text </component><component id='comment' linkDataType='partId' linkData='empty'><!--keep--></component></components></canvas>"
+                .utf8)
+        let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+        let prefix = "DUST3D 1.0 xml "
+        let data =
+            Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+            + model
+        let original = try Dust3DDocument(data: data)
+        let xml = try XMLDocument(data: original.modelXML, options: [.nodePreserveAll])
+        let leaf = try XCTUnwrap(try xml.nodes(forXPath: "//component[@id='leaf']").first as? XMLElement)
+        // Foundation versions differ in blank-text parsing; exercise a preserved-whitespace DOM explicitly.
+        let whitespace = XMLNode(kind: .text)
+        whitespace.stringValue = "\n  \t"
+        leaf.addChild(whitespace)
+        XCTAssertGreaterThan(leaf.childCount, 0)
+        try EmptyPartCleanup.apply(["empty"], model: xml, contents: original.editorContents())
+        XCTAssertTrue(try xml.nodes(forXPath: "//component[@id='leaf']").isEmpty)
+        XCTAssertEqual(try xml.nodes(forXPath: "//component/@id").compactMap(\.stringValue), ["text", "comment"])
+        XCTAssertEqual(
+            try xml.nodes(forXPath: "//component[@id='text']/text()").first?.stringValue, " meaningful text ")
+        XCTAssertEqual(try xml.nodes(forXPath: "//component[@id='comment']/comment()").first?.stringValue, "keep")
+        XCTAssertTrue(try xml.nodes(forXPath: "//component/@linkData").isEmpty)
     }
 
     func testStandaloneEmptyTemplatePreservesMissingNodeContainerAndIncompleteReferences() throws {

@@ -18,10 +18,13 @@ enum EmptyPartCleanup {
         where component.attribute(forName: "linkDataType")?.stringValue == "partId"
             && selected.contains(component.attribute(forName: "linkData")?.stringValue ?? "")
         {
-            if (component.children ?? []).isEmpty {
+            let hasMeaningfulChildren = (component.children ?? []).contains {
+                $0.kind != .text || $0.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            }
+            if !hasMeaningfulChildren {
                 component.detach()
             } else {
-                // A reference can also own nested geometry or unknown content; retain it as a group.
+                // A reference can own nested geometry or meaningful unknown content; retain it as a group.
                 component.removeAttribute(forName: "linkData")
                 component.removeAttribute(forName: "linkDataType")
             }

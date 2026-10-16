@@ -181,6 +181,29 @@ final class DocumentCompatibilityTests: XCTestCase {
         XCTAssertGreaterThan(mesh.triangleCount, 0)
     }
 
+    func testQtFormattedSwordDeletionDoesNotLeavePhantomLeafComponent() async throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "Sword", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: url))
+        let contents = try original.editorContents()
+        let part = try XCTUnwrap(contents.parts.first { $0.name == "blade" })
+        let xml = try XMLDocument(data: original.modelXML, options: [.nodePreserveAll])
+        let references = try xml.nodes(forXPath: "//component").compactMap { $0 as? XMLElement }.filter {
+            $0.attribute(forName: "linkDataType")?.stringValue == "partId"
+                && $0.attribute(forName: "linkData")?.stringValue == part.id
+        }
+        let removedComponents = Set(references.compactMap { $0.attribute(forName: "id")?.stringValue })
+        XCTAssertFalse(removedComponents.isEmpty)
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let result = try await session.apply([.removeNodes(contents.nodes.filter { $0.partID == part.id }.map(\.id))])
+        let cleaned = try XMLDocument(data: result.document.modelXML)
+        let remaining = Set(try cleaned.nodes(forXPath: "//component/@id").compactMap(\.stringValue))
+        XCTAssertTrue(remaining.isDisjoint(with: removedComponents))
+        XCTAssertEqual(remaining.count, try xml.nodes(forXPath: "//component").count - removedComponents.count)
+        let restored = try await session.undo()
+        XCTAssertEqual(restored.document.encoded(), original.encoded())
+    }
+
     func testDeletingLinkedEmptyProfileRestoresDefaultPinnedCoreShape() async throws {
         let profile = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
         let owner = "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"
