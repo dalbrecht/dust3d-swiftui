@@ -64,3 +64,5 @@ let committed = try await session.commitOriginDrag(drag, translation: CanvasPoin
 ```
 
 `OriginSettlement.center(of: [EditableNode])` validates all geometry and computes the radius-bound union center (zero for empty input), independent of part flags or selection. Invalid geometry throws `DocumentError.invalidNode`. `state.centerOriginOnModel()` and `session.centerOriginOnModel()` apply that target through the existing locked origin command/history, preserving no-op redo and exact undo bytes. Example: `let centered = try await session.centerOriginOnModel()`.
+
+Session graph deletion now appends cleanup for affected owners still empty after the entire batch. Unrelated pre-existing empty/template parts stay intact, and remove-then-add batches retain their owner. Cut uses the same deletion path. Cleanup, profile repair and disconnected-part splitting share one undo transaction, with deleted selection pruned without revival. See [verification](../../docs/empty-part-cleanup-verification.md).
