@@ -1,0 +1,9 @@
+# Reference composition foundation verification
+
+Full `make ci` passes 270 XCTest tests, formatting, native builds, coverage thresholds and Qt-free linkage. Swift line counts: mesh 66/67; document 1909/1986; editor model 1139/1145; pure editor state 453/453; undo 97/97. New crop/layout code is 72/72 lines and 26/26 regions (100%). The raster boundary is 42/43 lines (97.67%), with native allocation/conversion failure paths remaining unexercised; no artificial allocation-failure hooks were added.
+
+TDD first failed on absent crop/layout types, then on the raster boundary/source types. Four pure tests cover invalid dimensions and pixel products, contained full/edge crops, negative/zero/overflowing input, mirrored crop involution, clamped/reversed pointer endpoints, empty selection, Front/Side/both layouts, profile swap, origin coordinates, odd-width rounding, thin crops and projected output limits.
+
+Two raster tests use a synthetic 2×2 RGBA image, without environment-dependent screenshots. They verify top-left row cropping, separate profile placement, white unused half, horizontal Side mirroring, encoded PNG dimensions/pixels, empty-composition failure and source/crop size mismatch. Pixel assertions inspect solid interior regions rather than depending on CoreGraphics/Qt interpolation equality. Existing codec tests continue covering import formats, orientation normalization and byte/dimension limits.
+
+This foundation has no visible app change and does not modify archives or claim crop-sheet acceptance. No design snapshot baseline is generated. Qt behavior was compared to inherited application/sources/turnaround_image_editor_dialog.cc; actual Qt GUI/raster differential checks remain pending. See [ADR 0028](adr/0028-reference-composition-foundation.md) and #56 for the remaining UI, transaction and native QA work. Inherited C++ coverage is not measured by these Swift tests.
