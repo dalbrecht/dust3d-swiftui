@@ -54,6 +54,22 @@ final class EmptyPartCleanupTests: XCTestCase {
         XCTAssertEqual(history.document.encoded(), cleaned.encoded())
     }
 
+    func testNestedReferencesToRemovedPartsAreClassifiedAfterChildrenWithoutCollectingUnrelatedGroups() throws {
+        let model = Data(
+            "<canvas><parts><part id='empty'/></parts><components><component id='outer' linkDataType='partId' linkData='empty'><component id='inner' linkDataType='partId' linkData='empty'><component id='leaf' linkDataType='partId' linkData='empty'/></component></component><component id='unrelated-group' future='keep'><component id='removed-child' linkDataType='partId' linkData='empty'/></component></components></canvas>"
+                .utf8)
+        let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+        let prefix = "DUST3D 1.0 xml "
+        let data =
+            Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+            + model
+        let cleaned = try Dust3DDocument(data: data).applying(.pruneEmptyParts(["empty"]))
+        let xml = try XMLDocument(data: cleaned.modelXML)
+        XCTAssertEqual(try xml.nodes(forXPath: "//component/@id").compactMap(\.stringValue), ["unrelated-group"])
+        XCTAssertEqual(try xml.nodes(forXPath: "//component/@future").first?.stringValue, "keep")
+        XCTAssertTrue(try xml.nodes(forXPath: "//component/@linkData").isEmpty)
+    }
+
     func testFormattingWhitespaceDoesNotRetainLeafButMeaningfulTextAndCommentsSurvive() throws {
         let model = Data(
             "<canvas><parts><part id='empty'/></parts><components><component id='leaf' xml:space='preserve' linkDataType='partId' linkData='empty'>\n  \t</component><component id='text' linkDataType='partId' linkData='empty'> meaningful text </component><component id='comment' linkDataType='partId' linkData='empty'><!--keep--></component><component id='unicode' linkDataType='partId' linkData='empty'>\u{00A0}</component></components></canvas>"

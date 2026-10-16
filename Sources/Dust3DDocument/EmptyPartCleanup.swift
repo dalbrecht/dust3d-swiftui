@@ -16,7 +16,8 @@ enum EmptyPartCleanup {
         }
         // XML formatting whitespace excludes meaningful Unicode spaces in preserved metadata.
         let formattingWhitespace = CharacterSet(charactersIn: " \t\r\n")
-        for component in PartSplitting.componentElements(model)
+        // Classify owners after their descendants, so removed child references cannot leave phantom groups.
+        for component in PartSplitting.componentElements(model).reversed()
         where component.attribute(forName: "linkDataType")?.stringValue == "partId"
             && selected.contains(component.attribute(forName: "linkData")?.stringValue ?? "")
         {
