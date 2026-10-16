@@ -288,7 +288,8 @@ public struct Dust3DDocument: Sendable {
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
         switch command {
-        case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin: contents = DocumentContents(nodes: [], edges: [])
+        case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName:
+            contents = DocumentContents(nodes: [], edges: [])
         default: contents = try editorContents()
         }
         let model = try Self.xml(modelXML, root: "canvas")
@@ -337,6 +338,7 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartName(let id, let name):
             guard name.utf8.count <= 1024,
                 name.unicodeScalars.allSatisfy({

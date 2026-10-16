@@ -54,7 +54,7 @@ enum ComponentHierarchy {
     static func rename(_ model: XMLDocument, id: String, name: String) throws -> Bool {
         guard name.utf8.count <= 1024,
             name.unicodeScalars.allSatisfy({
-                $0.value >= 0x20 && $0.value != 0xFFFE && $0.value != 0xFFFF
+                $0.value != 0xFFFE && $0.value != 0xFFFF && !CharacterSet.controlCharacters.contains($0)
                     && !CharacterSet.newlines.contains($0)
             })
         else { throw DocumentError.invalidComponentName }

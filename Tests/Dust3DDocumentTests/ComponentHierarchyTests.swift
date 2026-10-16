@@ -5,10 +5,11 @@ import XCTest
 final class ComponentHierarchyTests: XCTestCase {
     private func document(
         _ components: String =
-            "<component id='group' name='Assembly' future='kept'><future/><component id='leaf' name='Body' linkDataType='partId' linkData='p'/><component id='opaque' linkDataType='futureKind' linkData='payload'/></component><component id='last'/>"
+            "<component id='group' name='Assembly' future='kept'><future/><component id='leaf' name='Body' linkDataType='partId' linkData='p'/><component id='opaque' linkDataType='futureKind' linkData='payload'/></component><component id='last'/>",
+        nodes: String = ""
     ) throws -> Dust3DDocument {
         let model = Data(
-            "<canvas future='root'><nodes/><parts><part id='p' name='Legacy'/></parts><components>\(components)</components></canvas>"
+            "<canvas future='root'><nodes>\(nodes)</nodes><parts><part id='p' name='Legacy'/></parts><components>\(components)</components></canvas>"
                 .utf8)
         let header =
             "<ds3 future='archive'><model name='model.xml' offset='0' size='\(model.count)'/><asset name='opaque.bin' offset='\(model.count)' size='4'/></ds3>"
@@ -16,6 +17,20 @@ final class ComponentHierarchyTests: XCTestCase {
         return try Dust3DDocument(
             data: Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
                 + model + Data([0, 255, 10, 128]))
+    }
+
+    func testComponentRenamePreservesIndependentlyUnsupportedGraph() throws {
+        let original = try document(nodes: "<node id='broken' future='preserved'/>")
+        XCTAssertThrowsError(try original.editorContents())
+        XCTAssertEqual(try original.components().first?.id, "group")
+        let renamed = try original.applying(.setComponentName(id: "group", name: "Changed"))
+        XCTAssertEqual(try renamed.components().first?.name, "Changed")
+        XCTAssertThrowsError(try renamed.editorContents())
+        XCTAssertEqual(renamed.asset(named: "opaque.bin"), original.asset(named: "opaque.bin"))
+        let xml = try XMLDocument(data: renamed.modelXML)
+        XCTAssertEqual(
+            (try xml.nodes(forXPath: "//node[@id='broken']").first as? XMLElement)?.attribute(forName: "future")?
+                .stringValue, "preserved")
     }
 
     func testComponentsExposePreorderParentageChildOrderAndOpaqueLinksWithoutChangingBytes() throws {
@@ -69,7 +84,10 @@ final class ComponentHierarchyTests: XCTestCase {
     func testInvalidNamesAndAmbiguousHierarchyRejectWithoutMutation() throws {
         let original = try document()
         XCTAssertNoThrow(try original.applying(.setComponentName(id: "leaf", name: String(repeating: "é", count: 512))))
-        for name in [String(repeating: "é", count: 513), "bad\0name", "bad\nname", "bad\u{2028}name", "bad\u{FFFF}"] {
+        for name in [
+            String(repeating: "é", count: 513), "bad\0name", "bad\u{007F}name", "bad\u{009F}name", "bad\nname",
+            "bad\u{2028}name", "bad\u{FFFF}",
+        ] {
             XCTAssertThrowsError(try original.applying(.setComponentName(id: "leaf", name: name))) {
                 XCTAssertEqual($0 as? DocumentError, .invalidComponentName)
             }
