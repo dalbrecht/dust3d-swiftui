@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add explicit Front/Side origin dragging with axis locks, cancellable previews, stale-document guards and one-step lossless undo/redo.
+
 - Show an accessible, noninteractive origin marker in both canvas views and fit outlying origins without resetting the 3D camera.
 
 - Add native document-origin coordinate controls and Front/Side alignment to the stored origin, with axis locks, unavailable-origin recovery, preview regeneration and lossless undo/redo.

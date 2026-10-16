@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Foundation
 
 /// Per-window interaction constraints. These settings never enter the archive or undo history.
 public enum EditingConstraint: String, CaseIterable, Sendable {
@@ -14,10 +15,13 @@ public enum EditorError: Error, Equatable, Sendable {
     case readOnlyNode
     case invalidScale
     case unavailableOrigin
+    case staleOriginDrag
 }
 
 /// Immutable presentation snapshot crossing from the editing actor to its window.
 public struct EditorSnapshot: Sendable {
+    /// Identity of this open document; revisions alone cannot distinguish replacements.
+    public let documentIdentity: UUID
     public let document: Dust3DDocument
     public let nodes: [DocumentNode]
     public let edges: [DocumentEdge]
@@ -32,6 +36,8 @@ public struct EditorSnapshot: Sendable {
     public let canRedo: Bool
     public let locks: Set<EditingConstraint>
     public let documentRevision: Int
+    /// Monotonic interaction epoch, including lock toggles that later restore the same values.
+    public let constraintRevision: Int
 
     public var selectedNodes: [DocumentNode] { nodes.filter { selectedIDs.contains($0.id) } }
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
@@ -120,6 +126,7 @@ public struct EditorSnapshot: Sendable {
 
 /// One document's selection and undo state. Failed edits never publish partial state.
 public struct EditorState: Sendable {
+    private let documentIdentity = UUID()
     private var history: DocumentHistory
     private var contents: DocumentContents
     private var selectedID: String?
@@ -128,6 +135,7 @@ public struct EditorState: Sendable {
     private var selectedPartID: String?
     private var locks: Set<EditingConstraint> = []
     private var revision = 0
+    private var constraintRevision = 0
 
     /// Parse graph metadata. Throws DocumentError for invalid or oversized graphs.
     public init(document: Dust3DDocument) throws {
@@ -138,13 +146,14 @@ public struct EditorState: Sendable {
     /// Current immutable document, graph, selection and history availability.
     public var snapshot: EditorSnapshot {
         EditorSnapshot(
-            document: history.document, nodes: contents.nodes, edges: contents.edges, parts: contents.parts,
+            documentIdentity: documentIdentity, document: history.document, nodes: contents.nodes,
+            edges: contents.edges, parts: contents.parts,
             origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
             selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
-            documentRevision: revision)
+            documentRevision: revision, constraintRevision: constraintRevision)
     }
 
     /// Select a single node or clear the transient selection.
@@ -305,6 +314,7 @@ public struct EditorState: Sendable {
 
     /// Change an interaction lock without dirtying the document or changing history.
     public mutating func setLock(_ constraint: EditingConstraint, isLocked: Bool) {
+        constraintRevision += 1
         if isLocked { locks.insert(constraint) } else { locks.remove(constraint) }
     }
 

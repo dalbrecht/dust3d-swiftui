@@ -16,7 +16,10 @@ final class EditorStore {
     var errorMessage: String?
     var renderError: String?
     var bounds = CanvasBounds(nodes: [])
-    var plane = EditingPlane.front
+    var plane = EditingPlane.front { didSet { if plane != oldValue { cancelOriginDrag() } } }
+    private(set) var isMovingOrigin = false
+    private(set) var originDragPosition: NodePosition?
+    private var originDrag: OriginDrag?
     var isWireframe = false
     var cameraReset = 0
     private(set) var referenceImage: CGImage?
@@ -40,6 +43,7 @@ final class EditorStore {
     var canRedo: Bool { !isWorking && snapshot?.canRedo == true }
 
     func load(data: Data) async {
+        cancelOriginDrag()
         stopped = false
         isWorking = true
         defer { isWorking = false }
@@ -55,6 +59,42 @@ final class EditorStore {
         } catch {
             if !Task.isCancelled { errorMessage = Self.message(error) }
         }
+    }
+
+    func setMovingOrigin(_ enabled: Bool) {
+        cancelOriginDrag()
+        isMovingOrigin = enabled && !isWorking && !stopped && snapshot?.origin != nil
+    }
+
+    func cancelOriginDrag() {
+        isMovingOrigin = false
+        originDrag = nil
+        originDragPosition = nil
+    }
+
+    func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+        guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+        do {
+            let baseline = try originDrag ?? OriginDrag(snapshot: snapshot, projection: projection)
+            guard baseline.isCurrent(in: snapshot) else {
+                cancelOriginDrag()
+                return
+            }
+            let position = baseline.position(by: translation)
+            guard [translation.x, translation.y, position.x, position.y, position.z].allSatisfy(\.isFinite),
+                [position.x, position.y, position.z].allSatisfy({ abs($0) <= 1_000_000 })
+            else { throw DocumentError.invalidOrigin }
+            originDrag = baseline
+            originDragPosition = position
+        } catch {
+            cancelOriginDrag()
+            errorMessage = Self.message(error)
+        }
+    }
+
+    func finishOriginDrag(translation: CanvasPoint) {
+        guard isMovingOrigin, let baseline = originDrag else { return }
+        perform { try await $0.commitOriginDrag(baseline, translation: translation) }
     }
 
     func setLock(_ constraint: EditingConstraint, isLocked: Bool) {
@@ -100,6 +140,7 @@ final class EditorStore {
     /// Clipboard promise registration succeeds before a Cut can mutate the document.
     func copyNodes(cut: Bool = false, to pasteboard: EditorPasteboard) {
         guard cut ? canCutNodes : canCopyNodes, !stopped else { return }
+        cancelOriginDrag()
         isWorking = true
         operation = Task {
             defer { isWorking = false }
@@ -184,16 +225,19 @@ final class EditorStore {
     }
 
     func fit() {
+        cancelOriginDrag()
         fitCanvas()
         cameraReset += 1
     }
 
     private func fitCanvas() {
+        cancelOriginDrag()
         let aspect = showsReferenceImage ? referenceImage.map { Double($0.width) / Double($0.height) } : nil
         bounds = CanvasBounds(nodes: snapshot?.nodes ?? [], referenceImageAspectRatio: aspect, origin: snapshot?.origin)
     }
 
     func stop() {
+        cancelOriginDrag()
         stopped = true
         operation?.cancel()
         generation?.cancel()
@@ -207,6 +251,7 @@ final class EditorStore {
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
         guard !isWorking, !stopped else { return }
+        cancelOriginDrag()
         isWorking = true
         operation = Task {
             defer { isWorking = false }
@@ -337,6 +382,7 @@ final class EditorStore {
             switch editor {
             case .notLoaded: return "Open a document before editing."
             case .readOnlyNode: return "This node belongs to a locked, hidden or disabled part."
+            case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
             case .unavailableOrigin:
                 return
                     "Set a complete supported document origin first. Unlock position axes to initialize an unavailable origin."
