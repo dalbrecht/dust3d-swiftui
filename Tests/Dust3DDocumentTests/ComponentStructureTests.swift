@@ -118,6 +118,24 @@ final class ComponentStructureTests: XCTestCase {
         XCTAssertEqual(try ungrouped.components().map(\.linkDataType), ["", nil, "future"])
     }
 
+    func testGroupingAndUngroupingDoNotWriteIntoPartLinkedOrOpaqueParents() throws {
+        for (kind, data) in [("partId", "p"), ("future", "opaque")] {
+            let original = try document(
+                "<component id='parent' linkDataType='\(kind)' linkData='\(data)'><component id='child'/><component id='group'><component id='inner'/></component></component>"
+            )
+            XCTAssertThrowsError(try original.applying(.groupComponents(ids: ["child"], groupID: "g"))) {
+                XCTAssertEqual($0 as? DocumentError, .invalidComponentStructure)
+            }
+            XCTAssertThrowsError(try original.applying(.ungroupComponent(id: "group"))) {
+                XCTAssertEqual($0 as? DocumentError, .invalidComponentStructure)
+            }
+            let repaired = try original.applying(.reparentComponent(id: "child", parentID: nil))
+            XCTAssertNil(try repaired.components().first { $0.id == "child" }?.parentID)
+            XCTAssertEqual(try repaired.components().first { $0.id == "parent" }?.linkData, data)
+            XCTAssertEqual(try repaired.components().first { $0.id == "parent" }?.childIDs, ["group"])
+        }
+    }
+
     func testNetZeroStructuralTransactionsAndNoOpsRetainExactBytesAndRedo() throws {
         let original = try document()
         var history = DocumentHistory(document: original)

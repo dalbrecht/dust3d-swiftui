@@ -18,6 +18,10 @@ enum ComponentStructure {
             }
             entries = Dictionary(uniqueKeysWithValues: ordered.map { ($0.component.id, $0) })
         }
+        func validateParent(_ id: String?) throws {
+            guard let id else { return }
+            guard try entry(id).component.isGroup else { throw DocumentError.invalidComponentStructure }
+        }
         func entry(_ id: String) throws -> Entry {
             guard let value = entries[id] else { throw DocumentError.missingComponent(id) }
             return value
@@ -40,6 +44,7 @@ enum ComponentStructure {
         guard let first = members.first, members.allSatisfy({ $0.component.parentID == first.component.parentID }),
             let parent = first.element.parent as? XMLElement
         else { throw DocumentError.invalidComponentStructure }
+        try context.validateParent(first.component.parentID)
         let group = XMLElement(name: "component")
         let attribute = XMLNode(kind: .attribute)
         attribute.name = "id"
@@ -69,6 +74,7 @@ enum ComponentStructure {
         let component = selected.component
         guard component.isGroup else { throw DocumentError.invalidComponentStructure }
         guard !component.childIDs.isEmpty else { return false }
+        try context.validateParent(component.parentID)
         let element = selected.element
         guard let parent = element.parent as? XMLElement else { throw DocumentError.invalidComponentStructure }
         let promoted = element.children ?? []
