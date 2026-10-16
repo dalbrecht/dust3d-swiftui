@@ -28,6 +28,10 @@ final class EditorStore {
     var showsReferenceImage = true
     var referenceImageOpacity = 0.5
     var hasReferenceImage: Bool { snapshot?.document.hasReferenceImage == true }
+    var referenceImageForComposition: CGImage? {
+        guard hasReferenceImage, !isLoadingReferenceImage, referenceImageError == nil else { return nil }
+        return referenceImage
+    }
     var onDocumentChanged: ((Data) -> Void)?
     private let session = EditorSession()
     private let preview = EditorPreviewService()

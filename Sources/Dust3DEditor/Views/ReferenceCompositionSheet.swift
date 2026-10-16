@@ -36,11 +36,15 @@ import UniformTypeIdentifiers
                     HStack {
                         Button("Swap Front and Side") { draft.swapProfiles() }
                             .disabled(draft.front == nil && draft.side == nil)
-                        if let image = store.referenceImage {
-                            Button("Use Existing Image as Front") { draft.useExisting(image) }
-                                .help(
-                                    "The stored image is flattened. Its original Front/Side sources and crops cannot be recovered."
-                                )
+                        if store.hasReferenceImage {
+                            Button("Use Existing Image as Front") {
+                                guard let image = store.referenceImageForComposition else { return }
+                                draft.useExisting(image)
+                            }
+                            .disabled(store.referenceImageForComposition == nil)
+                            .help(
+                                "The stored image is flattened. Its original Front/Side sources and crops cannot be recovered."
+                            )
                         }
                     }
                     GroupBox("Composed preview") {
