@@ -8,7 +8,7 @@ import Observation
 @MainActor @Observable
 final class EditorStore {
     private(set) var snapshot: EditorSnapshot?
-    private(set) var isWorking = false
+    private(set) var isWorking = false { didSet { onEditingChanged?(isWorking) } }
     private(set) var previewState = MeshPreviewState<Mesh>()
     var mesh: Mesh? { previewState.value }
     var previewRevision: Int { previewState.revision }
@@ -33,6 +33,7 @@ final class EditorStore {
         return referenceImage
     }
     var onDocumentChanged: ((Data) -> Void)?
+    var onEditingChanged: ((Bool) -> Void)?
     private let session = EditorSession()
     private let preview = EditorPreviewService()
     private let referenceImages: any ReferenceImageServing
@@ -47,6 +48,7 @@ final class EditorStore {
     }
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
+    var canSave: Bool { snapshot != nil && !isWorking && !stopped }
     var canUndo: Bool { !isWorking && snapshot?.canUndo == true }
     var canRedo: Bool { !isWorking && snapshot?.canRedo == true }
 
@@ -276,6 +278,8 @@ final class EditorStore {
         referenceGeneration?.cancel()
         previewState.clear()
         onDocumentChanged = nil
+        onEditingChanged?(false)
+        onEditingChanged = nil
     }
 
     private func perform(

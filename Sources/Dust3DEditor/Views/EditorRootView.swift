@@ -127,7 +127,7 @@ struct EditorRootView: View {
                     NSApp.sendAction(#selector(NSDocument.save(_:)), to: nil, from: nil)
                 } label: {
                     Label("Save", systemImage: "square.and.arrow.down")
-                }
+                }.disabled(!store.canSave)
                 Divider()
                 Button {
                     store.undo()
@@ -155,6 +155,7 @@ struct EditorRootView: View {
         .focusedSceneValue(\.editorStore, store)
         .task(id: file.identity) {
             store.onDocumentChanged = { file.data = $0 }
+            store.onEditingChanged = { file.setEditing($0) }
             await store.load(data: file.data)
         }
         .onExitCommand { store.cancelOriginDrag() }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reject native save payloads while edits are applying or their document snapshot has been superseded, preserving the native File menu and providing retry guidance.
+
 - Add a bounded composition recovery command that cancels only the newest unapplied draft when accessibility control is unavailable, preserving documents and in-flight Apply operations.
 
 - Add a native Front/Side reference-image composer with crop previews, numeric and pointer crop selection, mirror/swap, cancellable drafts and one-step undoable image/origin Apply guarded against stale documents.
