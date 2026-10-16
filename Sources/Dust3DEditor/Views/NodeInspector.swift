@@ -18,7 +18,9 @@ struct NodeInspector: View {
             Text("Selection inspector").font(.headline)
             OriginControls(store: store)
             NodeClipboardMenu(store: store)
-            if let part = store.snapshot?.selectedPart {
+            if let component = store.snapshot?.selectedComponent {
+                ComponentInspector(store: store, component: component)
+            } else if let part = store.snapshot?.selectedPart {
                 PartInspector(store: store, part: part)
             } else if let edge = store.snapshot?.selectedEdge {
                 EdgeInspector(store: store, edge: edge)
@@ -79,7 +81,7 @@ struct NodeInspector: View {
                 Text("Coordinates use document units. Dragging moves in the selected canvas plane.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                Text("Select a node, edge or part.").foregroundStyle(.secondary)
+                Text("Select a node, edge, part or component.").foregroundStyle(.secondary)
             }
             Spacer()
         }

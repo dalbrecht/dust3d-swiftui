@@ -28,6 +28,8 @@ public struct EditorSnapshot: Sendable {
     public let nodes: [DocumentNode]
     public let edges: [DocumentEdge]
     public let parts: [DocumentPart]
+    public let componentTree: ComponentTree
+    public let selectedComponentID: String?
     /// Complete supported canvas origin, independent of selection.
     public let origin: NodePosition?
     public let selectedID: String?
@@ -51,6 +53,9 @@ public struct EditorSnapshot: Sendable {
     /// A single edge is selected independently of nodes, without changing document history.
     public var selectedEdge: DocumentEdge? { edges.first { $0.id == selectedEdgeID } }
     /// A selected part remains inspectable even when hidden, locked or disabled.
+    public var selectedComponent: DocumentComponent? {
+        componentTree.rows.first { $0.id == selectedComponentID }?.component
+    }
     public var selectedPart: DocumentPart? { parts.first { $0.id == selectedPartID } }
     /// Visibility is an editing option; only disabled parts suppress generated geometry.
     public var hasEnabledGeometry: Bool {
@@ -92,7 +97,9 @@ public struct EditorSnapshot: Sendable {
     }
     /// Empty selection creates a part; one editable endpoint extends it. Groups need an explicit New Part.
     public var canAddNode: Bool {
-        guard selectedPartID == nil, selectedEdgeID == nil, selectedIDs.count <= 1 else { return false }
+        guard selectedComponentID == nil, selectedPartID == nil, selectedEdgeID == nil, selectedIDs.count <= 1 else {
+            return false
+        }
         guard let selected = selectedNode else { return true }
         return selected.isEditable && (selected.partID == nil || connectableNodes.contains { $0.id == selected.id })
     }
@@ -136,6 +143,8 @@ public struct EditorState: Sendable {
     private let documentIdentity = UUID()
     private var history: DocumentHistory
     private var contents: DocumentContents
+    private var componentTree: ComponentTree
+    private var selectedComponentID: String?
     private var selectedID: String?
     private var selectedIDs: Set<String> = []
     private var selectedEdgeID: String?
@@ -147,6 +156,7 @@ public struct EditorState: Sendable {
     /// Parse graph metadata. Throws DocumentError for invalid or oversized graphs.
     public init(document: Dust3DDocument) throws {
         contents = try document.editorContents()
+        componentTree = ComponentTree(document: document)
         history = DocumentHistory(document: document)
     }
 
@@ -155,6 +165,7 @@ public struct EditorState: Sendable {
         EditorSnapshot(
             documentIdentity: documentIdentity, document: history.document, nodes: contents.nodes,
             edges: contents.edges, parts: contents.parts,
+            componentTree: componentTree, selectedComponentID: selectedComponentID,
             origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
             selectedPartID: selectedPartID,
@@ -176,6 +187,7 @@ public struct EditorState: Sendable {
         selectedID = contents.nodes.first { ids.contains($0.id) }?.id
         selectedEdgeID = nil
         selectedPartID = nil
+        selectedComponentID = nil
     }
 
     /// Inspect an existing edge or clear selection. Invalid IDs throw DocumentError.invalidNode atomically.
@@ -183,6 +195,7 @@ public struct EditorState: Sendable {
         if let id, !contents.edges.contains(where: { $0.id == id }) { throw DocumentError.invalidNode }
         selectedEdgeID = id
         selectedPartID = nil
+        selectedComponentID = nil
         selectedID = nil
         selectedIDs = []
     }
@@ -191,6 +204,21 @@ public struct EditorState: Sendable {
     public mutating func selectPart(_ id: String?) throws {
         if let id, !contents.parts.contains(where: { $0.id == id }) { throw DocumentError.missingPart(id) }
         selectedPartID = id
+        selectedComponentID = nil
+        selectedEdgeID = nil
+        selectedID = nil
+        selectedIDs = []
+    }
+
+    /// Inspect a component without changing archive bytes or undo history.
+    /// - Parameter id: Existing component ID, or nil to clear all selections.
+    /// - Throws: `DocumentError.missingComponent` for absent or uninterpretable identities, atomically.
+    public mutating func selectComponent(_ id: String?) throws {
+        if let id, !componentTree.rows.contains(where: { $0.id == id }) {
+            throw DocumentError.missingComponent(id)
+        }
+        selectedComponentID = id
+        selectedPartID = nil
         selectedEdgeID = nil
         selectedID = nil
         selectedIDs = []
@@ -207,6 +235,7 @@ public struct EditorState: Sendable {
     public mutating func selectAll() {
         selectedEdgeID = nil
         selectedPartID = nil
+        selectedComponentID = nil
         selectedIDs = Set(contents.nodes.map(\.id))
         selectedID = contents.nodes.first?.id
     }
@@ -455,7 +484,12 @@ public struct EditorState: Sendable {
     private mutating func publish(_ next: DocumentHistory) throws {
         guard next.document.encoded() != history.document.encoded() else { return }
         let nextContents = try next.document.editorContents()
+        let nextTree = ComponentTree(document: next.document)
         contents = nextContents
+        componentTree = nextTree
+        if let selectedComponentID, !nextTree.rows.contains(where: { $0.id == selectedComponentID }) {
+            self.selectedComponentID = nil
+        }
         selectedIDs.formIntersection(contents.nodes.map(\.id))
         selectedID = contents.nodes.first { selectedIDs.contains($0.id) }?.id
         if let selectedEdgeID, !contents.edges.contains(where: { $0.id == selectedEdgeID }) {

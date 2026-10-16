@@ -34,6 +34,7 @@ struct EditorRootView: View {
                 }
                 .listStyle(.sidebar)
                 .disabled(store.isWorking)
+                ComponentSidebar(store: store)
                 PartSidebar(store: store)
                 EdgeSidebar(store: store)
             }

@@ -36,7 +36,7 @@ struct PartSidebar: View {
                     }
                 }.padding(.horizontal, 12).padding(.bottom, 12)
             }
-            .frame(maxHeight: 180)
+            .frame(maxHeight: 120)
             .disabled(store.isWorking)
         }
     }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an ordered, collapsible component sidebar and name inspector with independent selection, linked-part inspection, undo/redo and lossless saving.
+
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
 
 - Reject native save payloads while edits are applying or their document snapshot has been superseded, preserving the native File menu and providing retry guidance.
