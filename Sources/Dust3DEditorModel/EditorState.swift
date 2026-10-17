@@ -29,7 +29,31 @@ public struct EditorSnapshot: Sendable {
     public let edges: [DocumentEdge]
     public let parts: [DocumentPart]
     public let componentTree: ComponentTree
-    public let selectedComponentID: String?
+    /// All selected component identities, independent of graph selection and history.
+    public let selectedComponentIDs: Set<String>
+    /// A single component is inspectable only when the selection is unambiguous.
+    public var selectedComponentID: String? { selectedComponentIDs.count == 1 ? selectedComponentIDs.first : nil }
+
+    /// Selected rows in document order, including selected descendants hidden by a collapsed parent.
+    public var selectedComponentRows: [ComponentTreeRow] {
+        componentTree.rows.filter { selectedComponentIDs.contains($0.id) }
+    }
+
+    /// Grouping is available for nonempty siblings whose existing parent can accept edits.
+    public var canGroupComponents: Bool {
+        let selected = selectedComponentRows
+        guard let first = selected.first,
+            selected.allSatisfy({ $0.component.parentID == first.component.parentID })
+        else { return false }
+        guard let parent = first.component.parentID else { return true }
+        return componentTree.rows.first { $0.id == parent }?.component.isGroup == true
+    }
+    /// Only a single supported group with retained child XML can be ungrouped.
+    public var canUngroupComponent: Bool {
+        guard let component = selectedComponent, component.isGroup, component.hasChildXML else { return false }
+        guard let parent = component.parentID else { return true }
+        return componentTree.rows.first { $0.id == parent }?.component.isGroup == true
+    }
     /// Complete supported canvas origin, independent of selection.
     public let origin: NodePosition?
     public let selectedID: String?
@@ -101,7 +125,7 @@ public struct EditorSnapshot: Sendable {
     }
     /// Empty selection creates a part; one editable endpoint extends it. Groups need an explicit New Part.
     public var canAddNode: Bool {
-        guard selectedComponentID == nil, selectedPartID == nil, selectedEdgeID == nil, selectedIDs.count <= 1 else {
+        guard selectedComponentIDs.isEmpty, selectedPartID == nil, selectedEdgeID == nil, selectedIDs.count <= 1 else {
             return false
         }
         guard let selected = selectedNode else { return true }
@@ -148,7 +172,7 @@ public struct EditorState: Sendable {
     private var history: DocumentHistory
     private var contents: DocumentContents
     private var componentTree: ComponentTree
-    private var selectedComponentID: String?
+    private var selectedComponentIDs: Set<String> = []
     private var selectedID: String?
     private var selectedIDs: Set<String> = []
     private var selectedEdgeID: String?
@@ -169,7 +193,7 @@ public struct EditorState: Sendable {
         EditorSnapshot(
             documentIdentity: documentIdentity, document: history.document, nodes: contents.nodes,
             edges: contents.edges, parts: contents.parts,
-            componentTree: componentTree, selectedComponentID: selectedComponentID,
+            componentTree: componentTree, selectedComponentIDs: selectedComponentIDs,
             origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
             selectedPartID: selectedPartID,
@@ -191,7 +215,7 @@ public struct EditorState: Sendable {
         selectedID = contents.nodes.first { ids.contains($0.id) }?.id
         selectedEdgeID = nil
         selectedPartID = nil
-        selectedComponentID = nil
+        selectedComponentIDs = []
     }
 
     /// Inspect an existing edge or clear selection. Invalid IDs throw DocumentError.invalidNode atomically.
@@ -199,7 +223,7 @@ public struct EditorState: Sendable {
         if let id, !contents.edges.contains(where: { $0.id == id }) { throw DocumentError.invalidNode }
         selectedEdgeID = id
         selectedPartID = nil
-        selectedComponentID = nil
+        selectedComponentIDs = []
         selectedID = nil
         selectedIDs = []
     }
@@ -208,7 +232,7 @@ public struct EditorState: Sendable {
     public mutating func selectPart(_ id: String?) throws {
         if let id, !contents.parts.contains(where: { $0.id == id }) { throw DocumentError.missingPart(id) }
         selectedPartID = id
-        selectedComponentID = nil
+        selectedComponentIDs = []
         selectedEdgeID = nil
         selectedID = nil
         selectedIDs = []
@@ -218,10 +242,16 @@ public struct EditorState: Sendable {
     /// - Parameter id: Existing component ID, or nil to clear all selections.
     /// - Throws: `DocumentError.missingComponent` for absent or uninterpretable identities, atomically.
     public mutating func selectComponent(_ id: String?) throws {
-        if let id, !componentTree.rows.contains(where: { $0.id == id }) {
-            throw DocumentError.missingComponent(id)
-        }
-        selectedComponentID = id
+        try selectComponents(id.map { [$0] } ?? [])
+    }
+
+    /// Replace component selection atomically without modifying document bytes, revision or history.
+    /// - Parameter ids: Existing component identities; empty clears every selection category.
+    /// - Throws: `DocumentError.missingComponent` before publication for any missing identity.
+    public mutating func selectComponents(_ ids: Set<String>) throws {
+        let existing = Set(componentTree.rows.map(\.id))
+        if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingComponent(missing) }
+        selectedComponentIDs = ids
         selectedPartID = nil
         selectedEdgeID = nil
         selectedID = nil
@@ -239,7 +269,7 @@ public struct EditorState: Sendable {
     public mutating func selectAll() {
         selectedEdgeID = nil
         selectedPartID = nil
-        selectedComponentID = nil
+        selectedComponentIDs = []
         selectedIDs = Set(contents.nodes.map(\.id))
         selectedID = contents.nodes.first?.id
     }
@@ -491,9 +521,7 @@ public struct EditorState: Sendable {
         let nextTree = ComponentTree(document: next.document)
         contents = nextContents
         componentTree = nextTree
-        if let selectedComponentID, !nextTree.rows.contains(where: { $0.id == selectedComponentID }) {
-            self.selectedComponentID = nil
-        }
+        selectedComponentIDs.formIntersection(nextTree.rows.map(\.id))
         selectedIDs.formIntersection(contents.nodes.map(\.id))
         selectedID = contents.nodes.first { selectedIDs.contains($0.id) }?.id
         if let selectedEdgeID, !contents.edges.contains(where: { $0.id == selectedEdgeID }) {

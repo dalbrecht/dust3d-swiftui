@@ -116,6 +116,22 @@ final class EditorStore {
     func select(_ ids: Set<String>) { perform(commits: false) { try await $0.select(ids) } }
     func selectEdge(_ id: String?) { perform(commits: false) { try await $0.selectEdge(id) } }
     func selectComponent(_ id: String?) { perform(commits: false) { try await $0.selectComponent(id) } }
+    func selectComponents(_ ids: Set<String>) { perform(commits: false) { try await $0.selectComponents(ids) } }
+    func selectOnlyComponent(_ id: String) {
+        guard snapshot?.selectedComponentIDs.contains(id) == true else { return }
+        selectComponent(id)
+    }
+    func clearComponentSelection() { selectComponents([]) }
+    var canGroupComponents: Bool { !isWorking && !stopped && snapshot?.canGroupComponents == true }
+    var canUngroupComponent: Bool { !isWorking && !stopped && snapshot?.canUngroupComponent == true }
+    func groupSelectedComponents() {
+        guard canGroupComponents, let ids = snapshot?.selectedComponentIDs else { return }
+        perform { try await $0.groupComponents(ids) }
+    }
+    func ungroupSelectedComponent() {
+        guard canUngroupComponent, let id = snapshot?.selectedComponentID else { return }
+        perform { try await $0.apply([.ungroupComponent(id: id)]) }
+    }
     func canReorderComponent(_ direction: ComponentOrderMove) -> Bool {
         !isWorking && !stopped && snapshot?.availableComponentOrderMoves.contains(direction) == true
     }

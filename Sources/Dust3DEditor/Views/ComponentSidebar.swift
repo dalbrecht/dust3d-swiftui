@@ -13,20 +13,44 @@ struct ComponentSidebar: View {
                     Text("Components").font(.headline)
                     Spacer()
                     Menu {
+                        Menu("Select Only…") {
+                            ForEach(store.snapshot?.selectedComponentRows ?? []) { row in
+                                Button(row.title) { store.selectOnlyComponent(row.id) }
+                                    .accessibilityLabel("Select only \(row.title)")
+                                    .help(row.id)
+                            }
+                        }
+                        .disabled(store.snapshot?.selectedComponentIDs.count ?? 0 < 2)
+                        Button("Clear Component Selection") { store.clearComponentSelection() }
+                            .disabled(store.snapshot?.selectedComponentIDs.isEmpty != false)
+                        Divider()
+                        Button("Group Selected Components") { store.groupSelectedComponents() }
+                            .disabled(!store.canGroupComponents)
+                        Button("Ungroup Selected Component") { store.ungroupSelectedComponent() }
+                            .disabled(!store.canUngroupComponent)
+                        Divider()
                         Button("Collapse Selected Group") {
                             if let id = store.snapshot?.selectedComponentID { collapsedIDs.insert(id) }
                         }
-                        .disabled(store.snapshot?.selectedComponentID.map { collapsedIDs.contains($0) } != false)
+                        .disabled(
+                            store.snapshot?.selectedComponent?.childIDs.isEmpty != false
+                                || store.snapshot?.selectedComponentID.map { collapsedIDs.contains($0) } != false)
                         Button("Expand Selected Group") {
                             if let id = store.snapshot?.selectedComponentID { collapsedIDs.remove(id) }
                         }
-                        .disabled(store.snapshot?.selectedComponentID.map { collapsedIDs.contains($0) } != true)
+                        .disabled(
+                            store.snapshot?.selectedComponent?.childIDs.isEmpty != false
+                                || store.snapshot?.selectedComponentID.map { collapsedIDs.contains($0) } != true)
                     } label: {
                         Image(systemName: "ellipsis")
                     }
                     .accessibilityLabel("Component tree actions")
-                    .disabled(store.isWorking || store.snapshot?.selectedComponent?.childIDs.isEmpty != false)
+                    .disabled(store.isWorking)
                 }.padding(12)
+                if let count = store.snapshot?.selectedComponentIDs.count, count > 1 {
+                    Text("\(count) components selected")
+                        .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
+                }
                 if let failure = tree.failureDescription {
                     Label(
                         "Hierarchy unavailable: \(failure). Source data is preserved.",
@@ -36,7 +60,7 @@ struct ComponentSidebar: View {
                 } else {
                     List(
                         selection: Binding(
-                            get: { store.snapshot?.selectedComponentID }, set: { store.selectComponent($0) })
+                            get: { store.snapshot?.selectedComponentIDs ?? [] }, set: { store.selectComponents($0) })
                     ) {
                         ForEach(tree.visibleRows(collapsing: collapsedIDs)) { row in
                             HStack(spacing: 4) {
