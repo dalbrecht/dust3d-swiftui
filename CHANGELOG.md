@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Render viewer and editor previews with unique vertices and UInt32 Metal index buffers, preserving expanded SDK compatibility, camera revisions, empty results and stale-failure behavior.
+- Render viewer and editor previews with unique vertices and UInt32 Metal index buffers, reject payloads beyond device buffer limits, and preserve expanded SDK compatibility, camera revisions, empty results and stale-failure behavior.
 
 - Add copied, Sendable indexed mesh loading with explicit native payload budgets and preserved failure diagnostics, backed by the reviewed core indexed-buffer API.
 

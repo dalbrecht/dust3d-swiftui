@@ -57,6 +57,26 @@ final class RenderGeometryTests: XCTestCase {
             try RenderGeometry(mesh: .expanded(Mesh(vertices: source, nodeCount: 3, partCount: 1, warning: ""))))
     }
 
+    func testDeviceLimitsRejectOversizedVertexAndIndexBuffersBeforeAllocation() throws {
+        let vertices = [vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]
+        let expanded = try RenderGeometry(
+            mesh: .expanded(Mesh(vertices: vertices, nodeCount: 3, partCount: 1, warning: "")))
+        let vertexBytes = 3 * MemoryLayout<RenderGeometry.Vertex>.stride
+        XCTAssertNoThrow(try expanded.validateBufferLengths(maximumBufferLength: vertexBytes))
+        for limit in [-1, 0, vertexBytes - 1] {
+            XCTAssertThrowsError(try expanded.validateBufferLengths(maximumBufferLength: limit))
+        }
+        let triangle: [UInt32] = [0, 1, 2]
+        let indices = Array(repeating: triangle, count: 100).flatMap { $0 }
+        let indexed = try RenderGeometry(
+            mesh: .indexed(
+                IndexedMesh(
+                    vertices: vertices, indices: indices, nodeCount: 3, partCount: 1, warning: "")))
+        let indexBytes = indices.count * MemoryLayout<UInt32>.stride
+        XCTAssertThrowsError(try indexed.validateBufferLengths(maximumBufferLength: indexBytes - 1))
+        XCTAssertNoThrow(try indexed.validateBufferLengths(maximumBufferLength: indexBytes))
+    }
+
     private func vertex(_ x: Float, _ y: Float, _ z: Float) -> MeshVertex {
         MeshVertex(position: SIMD3(x, y, z), normal: SIMD3(0, 0, 1), color: SIMD4(0.2, 0.4, 0.8, 1))
     }

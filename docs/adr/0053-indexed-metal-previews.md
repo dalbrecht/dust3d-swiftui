@@ -17,7 +17,9 @@ Keep the public expanded viewport initializer and SDK loader compatible. An
 internal tagged input selects expanded or indexed drawing. Pure `RenderGeometry`
 validates triangle shape, index ranges and finite attributes/bounds, and prepares
 the existing normalized float4 position/normal/color layout. Metal uploads UInt32
-indices without changing triangle order or shader vertex indexing.
+indices without changing triangle order or shader vertex indexing. Validate
+vertex/index byte lengths against `MTLDevice.maxBufferLength` before allocation;
+the native payload budget does not account for GPU vertex alignment or device limits.
 
 Extract production draw encoding from drawable acquisition so tests can render
 the same pipeline, depth state, uniforms and wireframe mode into offscreen targets.

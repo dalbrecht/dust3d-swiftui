@@ -20,7 +20,8 @@ This does not measure Metal draw or native input coverage.
 Both apps supply `IndexedMesh`: the renderer uploads unique vertices plus a UInt32
 index buffer and uses indexed triangle draws. The existing `MeshViewport(mesh: Mesh, ...)`
 initializer keeps expanded callers compatible. Pure `RenderGeometry` validates
-triangle buffers and normalizes bounds before GPU allocation. `MeshRenderer.encode`
+triangle buffers and normalizes bounds, then checks actual GPU-layout byte lengths
+against the device buffer limit before GPU allocation. `MeshRenderer.encode`
 is shared by drawable presentation and offscreen GPU verification.
 
 `IndexedMetalRenderingTests` compares solid/wireframe indexed output with expanded

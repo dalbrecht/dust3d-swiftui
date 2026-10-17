@@ -32,6 +32,14 @@ struct RenderGeometry {
     let vertices: [Vertex]
     let indices: [UInt32]?
 
+    /// Metal's per-buffer limit differs from the core's combined exported-payload budget.
+    func validateBufferLengths(maximumBufferLength: Int) throws {
+        guard maximumBufferLength >= 0,
+            vertices.count <= maximumBufferLength / MemoryLayout<Vertex>.stride,
+            indices.map({ $0.count <= maximumBufferLength / MemoryLayout<UInt32>.stride }) ?? true
+        else { throw RendererError.unavailable("The mesh exceeds this Metal device's buffer size limit.") }
+    }
+
     init(mesh: RenderMesh) throws {
         let source = mesh.vertices
         let indices = mesh.indices

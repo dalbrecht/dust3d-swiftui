@@ -25,6 +25,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
         colorPixelFormat: MTLPixelFormat = .bgra8Unorm, depthPixelFormat: MTLPixelFormat = .depth32Float
     ) throws {
         let geometry = try RenderGeometry(mesh: mesh)
+        try geometry.validateBufferLengths(maximumBufferLength: device.maxBufferLength)
         let packagedResources = Bundle.main.resourceURL.flatMap {
             Bundle(url: $0.appendingPathComponent("Dust3DNative_Dust3DRendering.bundle"))
         }

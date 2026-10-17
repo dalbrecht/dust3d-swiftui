@@ -15,7 +15,9 @@ history/save paths keep their existing semantics.
 
 Failing-first tests rejected the absent indexed file-service and pure rendering
 APIs. Pure preparation tests cover normalized bounds, preserved indices/attributes,
-expanded triangle order, small bounds, invalid buffers and unrepresentable bounds.
+expanded triangle order, small bounds, invalid buffers and unrepresentable bounds. A further failing-first device-limit regression
+covers exact/insufficient vertex and index limits before allocation, accounting
+for the GPU layout stride rather than assuming the native payload budget applies.
 
 An offscreen test constructs real native single-node geometry, runs both expanded and
 indexed production Metal passes, copies pixels back after GPU completion, and
@@ -31,7 +33,7 @@ and requires increased vertex sharing after smoothing. The focused regression pa
 
 Existing editor tests exercise real modifiers/stitching/wrapping, exact history,
 successful-empty clearing and stale output on genuine failures with indexed
-preview values. Full `make ci` passes: 464 tests, formatting, builds, coverage, Qt-link checks
+preview values. Full `make ci` passes: 465 tests, formatting, builds, coverage, Qt-link checks
 and isolated bundle rebuild. Mesh library coverage is 140/142 lines; document
 2812/2896, model 1462/1468, pure editor state 529/529, undo 97/97 and orbit 33/33.
 The local solid and wireframe PNGs were visually inspected; no app was launched. Native pointer/keyboard/VoiceOver acceptance and large-model memory profiling
