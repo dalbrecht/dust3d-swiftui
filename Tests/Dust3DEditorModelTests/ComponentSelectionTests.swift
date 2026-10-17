@@ -16,6 +16,7 @@ final class ComponentSelectionTests: XCTestCase {
         var state = try EditorState(document: original)
         try state.selectComponents(["b", "a"])
         XCTAssertEqual(state.snapshot.selectedComponentIDs, ["a", "b"])
+        XCTAssertEqual(state.snapshot.selectedComponentRows.map(\.id), ["a", "b"])
         XCTAssertNil(state.snapshot.selectedComponentID)
         XCTAssertNil(state.snapshot.selectedComponent)
         XCTAssertTrue(state.snapshot.availableComponentOrderMoves.isEmpty)

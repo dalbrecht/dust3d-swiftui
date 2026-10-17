@@ -117,6 +117,11 @@ final class EditorStore {
     func selectEdge(_ id: String?) { perform(commits: false) { try await $0.selectEdge(id) } }
     func selectComponent(_ id: String?) { perform(commits: false) { try await $0.selectComponent(id) } }
     func selectComponents(_ ids: Set<String>) { perform(commits: false) { try await $0.selectComponents(ids) } }
+    func selectOnlyComponent(_ id: String) {
+        guard snapshot?.selectedComponentIDs.contains(id) == true else { return }
+        selectComponent(id)
+    }
+    func clearComponentSelection() { selectComponents([]) }
     var canGroupComponents: Bool { !isWorking && !stopped && snapshot?.canGroupComponents == true }
     var canUngroupComponent: Bool { !isWorking && !stopped && snapshot?.canUngroupComponent == true }
     func groupSelectedComponents() {

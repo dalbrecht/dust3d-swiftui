@@ -13,6 +13,17 @@ struct ComponentSidebar: View {
                     Text("Components").font(.headline)
                     Spacer()
                     Menu {
+                        Menu("Select Only…") {
+                            ForEach(store.snapshot?.selectedComponentRows ?? []) { row in
+                                Button(row.title) { store.selectOnlyComponent(row.id) }
+                                    .accessibilityLabel("Select only \(row.title)")
+                                    .help(row.id)
+                            }
+                        }
+                        .disabled(store.snapshot?.selectedComponentIDs.count ?? 0 < 2)
+                        Button("Clear Component Selection") { store.clearComponentSelection() }
+                            .disabled(store.snapshot?.selectedComponentIDs.isEmpty != false)
+                        Divider()
                         Button("Group Selected Components") { store.groupSelectedComponents() }
                             .disabled(!store.canGroupComponents)
                         Button("Ungroup Selected Component") { store.ungroupSelectedComponent() }

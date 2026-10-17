@@ -34,9 +34,14 @@ public struct EditorSnapshot: Sendable {
     /// A single component is inspectable only when the selection is unambiguous.
     public var selectedComponentID: String? { selectedComponentIDs.count == 1 ? selectedComponentIDs.first : nil }
 
+    /// Selected rows in document order, including selected descendants hidden by a collapsed parent.
+    public var selectedComponentRows: [ComponentTreeRow] {
+        componentTree.rows.filter { selectedComponentIDs.contains($0.id) }
+    }
+
     /// Grouping is available for nonempty siblings whose existing parent can accept edits.
     public var canGroupComponents: Bool {
-        let selected = componentTree.rows.filter { selectedComponentIDs.contains($0.id) }
+        let selected = selectedComponentRows
         guard let first = selected.first,
             selected.allSatisfy({ $0.component.parentID == first.component.parentID })
         else { return false }
