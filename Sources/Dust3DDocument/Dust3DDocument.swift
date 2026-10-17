@@ -102,6 +102,10 @@ public enum DocumentCommand: Sendable {
     /// Set a finite half-turn rotation in -1...1 that does not overflow or underflow in the engine Float; zero restores the absent default.
     /// Throws `invalidPartCutRotation` or `missingPart`. Example: `.setPartCutRotation(id: id, rotation: 0.25)`.
     case setPartCutRotation(id: String, rotation: Double)
+    /// Change a procedural role without moving nodes, unlocking parts or rewriting unrelated metadata.
+    /// Throws `missingPart` for an absent identity. Unsupported source roles survive until explicit replacement.
+    /// Example: `.setPartTarget(id: id, target: .cutFace)`.
+    case setPartTarget(id: String, target: PartTarget)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
@@ -418,6 +422,9 @@ public struct Dust3DDocument: Sendable {
                 attribute.stringValue = value
                 part.addAttribute(attribute)
             }
+        case .setPartTarget(let id, let target):
+            guard try PartTargetMetadata.set(model, parts: contents.parts, id: id, target: target) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartCutFace(let id, let selection):
             guard try PartCutFace.setSelection(model, parts: contents.parts, id: id, selection: selection) else {
                 return self
@@ -847,7 +854,7 @@ public struct Dust3DDocument: Sendable {
                 isDisabled: isTrue(part.attribute(forName: "disabled")?.stringValue),
                 modifiers: PartModifiers.values(part), deformationScales: PartDeformation.scales(part),
                 isDeformationUnified: PartDeformation.unified(part), cutFace: PartCutFace.selection(part),
-                cutRotation: PartCutFace.rotation(part))
+                cutRotation: PartCutFace.rotation(part), target: PartTargetMetadata.value(part))
             parts[id] = value
             orderedParts.append(value)
         }

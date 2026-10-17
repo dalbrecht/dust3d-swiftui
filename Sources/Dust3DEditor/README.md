@@ -147,3 +147,11 @@ to 1 (1 = 180°); Apply/Return commits it and Reset Draft discards unapplied tex
 The UI QA command exports preset, unsupported, unresolved/resolved profile and
 empty/populated chooser states. Native input and Qt differential checks remain
 separate acceptance requirements.
+
+Part role offers Model, Cross-section profile, Stitching line and Stitching loop
+as one-step undoable choices. The role does not unlock, hide or move nodes.
+Profile-only documents clear the joined mesh without a generation error while
+retaining editable graph overlays. Stitching roles provide inputs for component
+stitching; parameter controls and broader stitching acceptance remain separate
+work. Unsupported source roles (including ImportedModel) remain explicit until
+replacement; this does not implement embedded GLB import.

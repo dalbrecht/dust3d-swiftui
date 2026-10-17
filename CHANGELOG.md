@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add lossless procedural part roles and native role controls; profile-only documents keep editable nodes with an intentionally empty mesh preview.
+
 - Add native cut-face presets, searchable linked-profile selection and half-turn rotation drafts with preserved unsupported/unresolved source metadata.
 
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.

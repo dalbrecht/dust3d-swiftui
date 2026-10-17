@@ -125,3 +125,9 @@ Dependency cycles are still validated atomically when applying the command.
 current linked profile. It includes a nil, read-only source placeholder only for
 unsupported metadata, so supported profiles never offer an inert unsupported
 action. The UI disables that placeholder while keeping explicit replacements.
+
+`hasEnabledGeometry` excludes disabled parts and CutFace-only profiles from
+joined preview contributions. Profile nodes remain editable overlays and can be
+used as linked cross-sections. Stitching inputs remain eligible for generation;
+component configuration determines whether they produce a stitched surface.
+Unsupported roles retain generation diagnostics instead of silently disappearing.

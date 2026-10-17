@@ -205,7 +205,7 @@ struct EditorRootView: View {
                     Label("Mesh preview", systemImage: "cube.transparent")
                 } description: {
                     if store.snapshot?.nodes.isEmpty == false, store.snapshot?.hasEnabledGeometry == false {
-                        Text("Enable a part to generate the mesh.")
+                        Text("Enable a model or stitching part to generate the mesh.")
                     } else {
                         Text("Open a .ds3 model to begin editing.")
                     }
