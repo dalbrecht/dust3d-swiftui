@@ -344,3 +344,15 @@ values. See [verification](swift-uv-metadata-verification.md) and ADR 0060.
 Ordinary/cached preview behavior remains unchanged. Missing mappings, root/broken
 chart semantics, texture-aware indexed sharing, pixel baking/PBR/transparency,
 image decoding/import/export and full M3/M4/Qt acceptance remain incomplete.
+
+
+## Copied baked output SDK (Apple #123, in progress)
+
+The exact reviewed core pin now includes owned CPU baking. Dust3DKit exposes typed
+decoded RGBA8 inputs, copied maps and triangle-aligned tangent frames, with expanded
+geometry preserving texture/material seams. MeshBakingService runs work on a
+background actor and pins cooperative cancellation through loading/copying. See
+[ADR 0061](adr/0061-copied-baked-mesh-sdk.md). Full local gates, automated review and
+CI remain required before landing. Asset decoding, editor scheduling and cached
+bake invalidation, seam-aware indexing, PBR/transparency/AO, textured export and
+broader M3/M4 acceptance remain subsequent stages; current preview UI is unchanged.
