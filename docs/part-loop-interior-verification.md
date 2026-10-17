@@ -63,3 +63,11 @@ lines: mesh 73/74, document 2678/2762, editor model 1428/1434, pure editor state
 529/529 and undo 97/97. Generated-empty placeholder output from the final gate
 was inspected in light/dark modes with semantic primary text for readability.
 These totals do not measure native UI/Metal or inherited C++ coverage.
+
+
+Subsequent core-pin correction: reviewed core PR #15 bounds inverse-cosine input.
+Previously rejected .225 openings and straight profiles now have finite-output
+coverage. Genuine generation-failure coverage uses a negative legacy wrap offset
+that removes the complete surface, preserving status 3 and stale-preview behavior.
+See [current controller verification](wrapping-controller-verification.md). Core
+#14 separately tracks collapsed/zero-area geometry; no topology parity claim.

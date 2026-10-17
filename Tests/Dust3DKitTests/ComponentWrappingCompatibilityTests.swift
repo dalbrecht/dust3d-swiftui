@@ -70,15 +70,12 @@ final class ComponentWrappingCompatibilityTests: XCTestCase {
             }
         }
     }
-    func testLowDensityMidpointOpeningsPreserveOriginalCoreFailure() throws {
-        // Core #13 tracks the inherited remeshing failure; do not accept nonfinite output.
+    func testLowDensityMidpointOpeningsGenerateFiniteGeometryAfterAngleRepair() throws {
+        // Reviewed core #15 repairs the numerical failure; topology quality remains core #14.
         let source = try document("Cloth")
         for property in [ComponentWrappingScalarProperty.openTop, .openBottom] {
             let changed = try source.applying(.setComponentWrapScalar(id: groupID, property: property, value: 0.225))
-            XCTAssertThrowsError(try MeshLoader.load(data: changed.encoded())) {
-                XCTAssertEqual(($0 as? MeshLoadingError)?.status, 3)
-                XCTAssertEqual(($0 as? MeshLoadingError)?.message, "The engine produced nonfinite geometry.")
-            }
+            _ = try mesh(changed)
             let denser = try changed.applying(.setComponentWrapFaces(id: groupID, faces: 256))
             _ = try mesh(denser)
         }

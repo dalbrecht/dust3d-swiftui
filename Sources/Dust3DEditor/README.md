@@ -187,3 +187,12 @@ mesh marked stale with the original diagnostic. Undo/redo can transition between
 filled and empty previews, and obsolete empty completions cannot erase newer
 output. A loaded empty preview explains the current document state instead of
 prompting the user to open an already open file.
+
+Wrapping controller methods dispatch typed mode, keep-children, scalar and whole
+face-count commands through the existing actor session and serialized preview
+service. Drafts reject nonfinite/out-of-range values before publication; semantic
+no-ops preserve redo. Native wrapping inspector controls follow separately.
+The core angle repair permits finite previews for previously rejected midpoint
+openings and straight profiles. Genuine generation errors retain the previous
+mesh as stale with the original diagnostic. See ADR 0050 and
+`docs/wrapping-controller-verification.md`; topology cleanup remains core #14.

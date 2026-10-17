@@ -45,3 +45,11 @@ org.dust3d.editor.combine-qa. Finite normals and changed positions do not prove
 closed-surface manifoldness or agreed Qt differential tolerances. Fill-loop,
 hollow/wrap modifiers, broader M3 and M4–M8 remain incomplete. Full parity is not
 claimed.
+
+
+Subsequent core-pin correction: reviewed core PR #15 bounds inverse-cosine input.
+Previously rejected .225 openings and straight profiles now have finite-output
+coverage. Genuine generation-failure coverage uses a negative legacy wrap offset
+that removes the complete surface, preserving status 3 and stale-preview behavior.
+See [current controller verification](wrapping-controller-verification.md). Core
+#14 separately tracks collapsed/zero-area geometry; no topology parity claim.

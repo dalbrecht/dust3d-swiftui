@@ -50,3 +50,11 @@ with `invalidNode`, then passed after all four wrapping commands joined the
 existing component-only path. It verifies unchanged opaque node XML/assets and
 exact undo/redo without claiming the opaque graph is editable or renderable.
 The full gate passed again after this correction.
+
+
+Subsequent core-pin correction: reviewed core PR #15 bounds inverse-cosine input.
+Previously rejected .225 openings and straight profiles now have finite-output
+coverage. Genuine generation-failure coverage uses a negative legacy wrap offset
+that removes the complete surface, preserving status 3 and stale-preview behavior.
+See [current controller verification](wrapping-controller-verification.md). Core
+#14 separately tracks collapsed/zero-area geometry; no topology parity claim.

@@ -255,6 +255,9 @@ now preserve source spellings, unknown metadata, opaque content and exact histor
 See [foundation verification](component-wrapping-foundation-verification.md) and
 ADR 0049. The reviewed core pin includes complete wrapping numeric validation and
 portable stitching contracts. Native wrapping controls, binding and material
-features remain pending. Core issue #13 tracks nonfinite top/bottom opening output
-at 64 faces and .225 opening; positive denser configurations and explicit failure
-diagnostics are tested. M3 acceptance remains incomplete.
+features remain pending. Core issue #13 is repaired by reviewed core PR #15; the exact Apple pin and
+[controller verification](wrapping-controller-verification.md) cover finite
+midpoint openings and straight profiles, validated drafts, real previews and
+exact history/save publication (ADR 0050, Apple #100). Genuine failure diagnostics
+remain separately tested. Core #14 tracks collapsed faces/topology; native
+wrapping controls remain pending. M3 acceptance remains incomplete.

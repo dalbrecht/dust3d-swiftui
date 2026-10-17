@@ -145,6 +145,28 @@ final class EditorStore {
         guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
     }
+    func setComponentWrapMode(_ id: String, mode: ComponentWrapMode) {
+        perform { try await $0.apply([.setComponentWrapMode(id: id, mode: mode)]) }
+    }
+    func setComponentWrapKeepChildren(_ id: String, value: Bool) {
+        perform { try await $0.apply([.setComponentWrapKeepChildren(id: id, value: value)]) }
+    }
+    func setComponentWrapScalar(_ id: String, property: ComponentWrappingScalarProperty, value: String) {
+        guard !isWorking, !stopped else { return }
+        guard let number = EngineScalar.parse(value, in: property.bounds) else {
+            errorMessage = Self.message(DocumentError.invalidComponentWrapping)
+            return
+        }
+        perform { try await $0.apply([.setComponentWrapScalar(id: id, property: property, value: number)]) }
+    }
+    func setComponentWrapFaces(_ id: String, faces: String) {
+        guard !isWorking, !stopped else { return }
+        guard let number = Int(faces), (64...20000).contains(number) else {
+            errorMessage = Self.message(DocumentError.invalidComponentWrapping)
+            return
+        }
+        perform { try await $0.apply([.setComponentWrapFaces(id: id, faces: number)]) }
+    }
     func setComponentStitchingClosure(_ id: String, property: ComponentStitchingClosureProperty, value: Bool) {
         perform { try await $0.apply([.setComponentStitchingClosure(id: id, property: property, value: value)]) }
     }
