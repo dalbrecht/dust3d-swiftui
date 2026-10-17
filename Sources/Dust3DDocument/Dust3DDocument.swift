@@ -14,6 +14,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidComponentSmoothing
     case invalidComponentName
     case missingComponent(String)
+    case invalidPartDeformation
     case invalidPartName
     case invalidNode
     case cyclicProfile
@@ -84,6 +85,13 @@ public enum DocumentCommand: Sendable {
     /// Change one procedural part flag, preserving all other metadata, source graph and assets.
     /// Part locks constrain node editing; modifier metadata remains editable as in the inherited app.
     case setPartModifier(id: String, property: PartModifierProperty, value: Bool)
+    /// Set a finite, non-subnormal width/thickness scale in 0...2; one restores the absent default.
+    /// Throws `invalidPartDeformation` for invalid scales or `missingPart` for absent identities.
+    /// Example: `.setPartDeformationScale(id: id, property: .width, value: 0.995)`.
+    case setPartDeformationScale(id: String, property: PartDeformationProperty, value: Double)
+    /// Toggle maximum-radius deformation without changing scale values, nodes or unrelated metadata.
+    /// Throws `missingPart` for absent identities. Example: `.setPartDeformationUnified(id: id, value: true)`.
+    case setPartDeformationUnified(id: String, value: Bool)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
@@ -400,6 +408,15 @@ public struct Dust3DDocument: Sendable {
                 attribute.stringValue = value
                 part.addAttribute(attribute)
             }
+        case .setPartDeformationScale(let id, let property, let value):
+            guard try PartDeformation.setScale(model, parts: contents.parts, id: id, property: property, value: value)
+            else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setPartDeformationUnified(let id, let value):
+            guard try PartDeformation.setUnified(model, parts: contents.parts, id: id, value: value) else {
+                return self
+            }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartModifier(let id, let property, let value):
             guard try PartModifiers.set(model, parts: contents.parts, id: id, property: property, value: value) else {
                 return self
@@ -808,7 +825,8 @@ public struct Dust3DDocument: Sendable {
                 id: id, name: part.attribute(forName: "name")?.stringValue ?? "", index: index,
                 isVisible: visible, isLocked: isTrue(part.attribute(forName: "locked")?.stringValue),
                 isDisabled: isTrue(part.attribute(forName: "disabled")?.stringValue),
-                modifiers: PartModifiers.values(part))
+                modifiers: PartModifiers.values(part), deformationScales: PartDeformation.scales(part),
+                isDeformationUnified: PartDeformation.unified(part))
             parts[id] = value
             orderedParts.append(value)
         }

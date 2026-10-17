@@ -84,3 +84,14 @@ rounded ends, interpolation and hard joins; interpolation defaults on.
 `.setPartModifier(id: id, property: .roundedEnds, value: true)` changes one flag
 without changing source graph, unrelated properties or assets. Missing parts
 throw `DocumentError.missingPart`; semantic no-ops retain exact bytes and redo.
+
+`part.deformationScale(.width)` and `.thickness` read finite 0...2 cross-section
+scales (one when absent), or nil for unsupported/ambiguous metadata.
+`part.isDeformationUnified` reads the known flag (false when absent) or nil.
+`.setPartDeformationScale(id: id, property: .width, value: 0.995)` preserves fine
+nondefault values; `.setPartDeformationUnified(id: id, value: true)` toggles
+maximum-node-radius deformation independently. One/false restore absent defaults
+on actual changes. Nonzero subnormal doubles are unsupported by the core parser and are rejected.
+Underflowed source literals remain preserved as unavailable until replaced.
+Invalid scales throw `DocumentError.invalidPartDeformation`;
+missing parts throw `missingPart`. Semantic no-ops retain source bytes and redo.
