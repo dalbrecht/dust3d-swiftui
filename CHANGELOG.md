@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
+
 - Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
 
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.

@@ -59,7 +59,7 @@ final class PartModifierRenderingTests: XCTestCase {
         }.joined(separator: " ")
         let name = unsupported ? "QA Unsupported Flags" : "QA Known Flags"
         let model = Data(
-            "<canvas originX='.5' originY='.5' originZ='.5'><nodes><node id='{11111111-1111-4111-8111-111111111111}' partId='\(partID)' x='.5' y='.5' z='.5' radius='.1'/></nodes><edges/><parts><part id='\(partID)' name='\(name)' future='preserved' \(flags)/></parts><components><component id='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' linkDataType='partId' linkData='\(partID)' color='#3366cc'/></components></canvas>"
+            "<canvas originX='.5' originY='.5' originZ='.5'><nodes><node id='{11111111-1111-4111-8111-111111111111}' partId='\(partID)' x='.5' y='.5' z='.5' radius='.1'/></nodes><edges/><parts><part id='\(partID)' name='\(name)' future='preserved' deformWidth='\(unsupported ? "future" : "0.995")' deformThickness='\(unsupported ? "future" : "1.25")' deformUnified='\(unsupported ? "future" : "true")' \(flags)/></parts><components><component id='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' linkDataType='partId' linkData='\(partID)' color='#3366cc'/></components></canvas>"
                 .utf8)
         let header =
             "<ds3><model name='model.xml' offset='0' size='\(model.count)'/><asset name='opaque.bin' offset='\(model.count)' size='4'/></ds3>"
@@ -101,7 +101,11 @@ final class PartModifierRenderingTests: XCTestCase {
             try await settle(store)
             store.selectPart(partID)
             try await settle(store)
-            XCTAssertNil(store.previewState.errorMessage)
+            if unsupported {
+                XCTAssertNotNil(store.previewState.errorMessage)
+            } else {
+                XCTAssertNil(store.previewState.errorMessage)
+            }
             let part = try XCTUnwrap(store.snapshot?.selectedPart)
             for scheme in [ColorScheme.light, .dark] {
                 let data = try InspectorRenderer.png(
@@ -127,6 +131,27 @@ final class PartModifierRenderingTests: XCTestCase {
         try save(data, name: "part-modifier-section", directory: outputDirectory())
         XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
         XCTAssertFalse(store.canUndo)
+    }
+    @MainActor func testDeformationControlsRenderWithoutChangingSourceOrHistory() async throws {
+        for unsupported in [false, true] {
+            let original = try document(unsupported: unsupported)
+            let store = EditorStore()
+            defer { store.stop() }
+            await store.load(data: original.encoded())
+            try await settle(store)
+            let part = try XCTUnwrap(store.snapshot?.parts.first)
+            for scheme in [ColorScheme.light, .dark] {
+                let data = try InspectorRenderer.png(
+                    PartDeformationControls(store: store, part: part), width: 250, scheme: scheme)
+                try save(
+                    data,
+                    name:
+                        "part-deformation-\(unsupported ? "unsupported" : "known")-\(scheme == .dark ? "dark" : "light")",
+                    directory: outputDirectory())
+                XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+                XCTAssertFalse(store.canUndo)
+            }
+        }
     }
     @MainActor func testInvalidRenderWidthsRejectBeforeWindowCreation() {
         for width in [CGFloat.zero, -1, .infinity, 1001] {

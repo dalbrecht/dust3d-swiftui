@@ -128,3 +128,11 @@ window renders native controls without desktop input or a product-app launch.
 The tests also verify that rendering does not mutate document bytes or history.
 Inspect the emitted PNGs for layout and clipping. Native interaction, menus,
 keyboard, Save/Undo/Redo and GPU acceptance remain separate checks.
+
+The part inspector also exposes Width scale and Thickness scale (0 through 2).
+Apply or Return commits one scale change; Reset Draft discards unapplied text.
+Unified deformation uses a toggle, or an explicit On/Off replacement menu for
+unsupported metadata. Opening or rendering the inspector never repairs source
+values silently. An unsupported numeric value can prevent core preview generation;
+the original diagnostic and source bytes remain available until explicit repair.
+The UI QA command also exports known/unsupported deformation sections.
