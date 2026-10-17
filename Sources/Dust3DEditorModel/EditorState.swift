@@ -17,6 +17,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case invalidPivotSelection
     case unavailableOrigin
     case staleReferenceComposition
+    case staleComponentMove
     case staleOriginDrag
 }
 
@@ -256,6 +257,16 @@ public struct EditorState: Sendable {
         selectedEdgeID = nil
         selectedID = nil
         selectedIDs = []
+    }
+
+    /// Move the captured selected subtree to an explicit parent in one undo step.
+    /// - Parameters:
+    ///   - parent: Root or a supported group identity, revalidated by the document command.
+    ///   - target: Window/document epoch and selected component captured before choosing a destination.
+    /// - Throws: `EditorError.staleComponentMove` or typed hierarchy/limit errors without partial publication.
+    public mutating func reparentComponent(to parent: ComponentParent, target: ComponentReparentTarget) throws {
+        guard target.isCurrent(in: snapshot) else { throw EditorError.staleComponentMove }
+        try apply([.reparentComponent(id: target.componentID, parentID: parent.componentID)])
     }
 
     /// Toggle a node without modifying document data or history.

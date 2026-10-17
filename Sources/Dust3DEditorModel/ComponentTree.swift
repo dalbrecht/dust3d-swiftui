@@ -46,6 +46,37 @@ public struct ComponentTree: Sendable {
         return ComponentOrderMove.allCases.filter { $0.destinationIndex(from: index, count: siblings.count) != nil }
     }
 
+    /// Eligible non-no-op parent destinations, excluding the complete source subtree and unsupported links.
+    /// - Parameters:
+    ///   - id: Source component identity; missing identities produce no choices.
+    ///   - query: Optional case-insensitive title/identity filter; surrounding whitespace is ignored.
+    /// - Returns: Root first when applicable, followed by supported groups in document order.
+    public func parentOptions(for id: String, matching query: String = "") -> [ComponentParentOption] {
+        guard let source = rows.first(where: { $0.id == id }) else { return [] }
+        var options: [ComponentParentOption] = []
+        if source.component.parentID != nil { options.append(.init(id: .root, title: "Document Root")) }
+        var isWithinSource = false
+        for row in rows {
+            if row.id == id {
+                isWithinSource = true
+                continue
+            }
+            if isWithinSource {
+                if row.depth > source.depth { continue }
+                isWithinSource = false
+            }
+            if row.component.isGroup, row.id != source.component.parentID {
+                options.append(.init(id: .component(row.id), title: row.title))
+            }
+        }
+        let filter = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !filter.isEmpty else { return options }
+        return options.filter {
+            $0.title.range(of: filter, options: .caseInsensitive) != nil
+                || $0.id.componentID?.range(of: filter, options: .caseInsensitive) != nil
+        }
+    }
+
     /// Filter descendants of collapsed groups in linear time; collapse state is local to its window.
     /// - Parameter identities: Component IDs whose own row remains visible while descendants are hidden.
     /// - Returns: Visible rows in unchanged XML preorder. Unknown IDs and leaf IDs have no effect.

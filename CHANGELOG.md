@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add searchable component parent selection with explicit root/group destinations, stale-draft protection, Cancel/Reset, lossless saving and exact undo/redo.
+
 - Refresh rebuilt app bundle timestamps so macOS can recognize updated icons and metadata at the same path.
 
 - Add distinct temporary Editor and Viewer app icons for launch and Dock identification.
