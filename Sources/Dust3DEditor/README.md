@@ -102,3 +102,8 @@ Select a component and use Reorder Component in its inspector to move it Up/Down
 Cmd-click component rows to select multiple components. The Component tree actions menu also provides Select Only… for each selected component and Clear Component Selection, so reducing a selection does not depend on pointer modifiers. Use Component tree actions → Group Selected Components to wrap selected siblings in source order. Select one nonempty group and use Ungroup Selected Component to promote its retained child XML; its own settings are removed, and Undo restores them exactly. The single-component inspector and reorder menu require exactly one selected component. See [verification](../../docs/component-grouping-verification.md). Reparent controls follow separately.
 
 Select one component and choose Move to Parent… in its inspector. Search names or IDs, select Document Root or an eligible group, then Move. Source descendants and the current parent are excluded. Cancel leaves the archive alone; Reset clears a stale choice after an edit. Moving appends the complete subtree in one undo step and regenerates the preview. See [verification](../../docs/component-reparent-verification.md).
+
+Select one component to edit its Combine mode: Normal, Inversion or Uncombined.
+Order affects boolean results. Each choice regenerates the preview as one undo
+step, retaining the camera and selection. An unsupported source mode stays
+explicitly unavailable until you choose a supported value.

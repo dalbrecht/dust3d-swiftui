@@ -232,3 +232,9 @@ The shared mesh camera now fits portrait previews, including separated parts;
 [verification](aspect-camera-verification.md) records the projection regression,
 100% pure-camera coverage and native rendered checks. This resolves #73 without
 changing core geometry or claiming broader Metal coverage.
+
+Component Normal/Inversion/Uncombined editing now has a typed lossless command,
+atomic history, real pinned-core preview tests and a native inspector picker
+([ADR 0038](adr/0038-component-combine-modes.md),
+[verification](component-combination-verification.md)). Native acceptance evidence and
+Qt differential boolean/modifier corpus remain pending; M3 is not complete.

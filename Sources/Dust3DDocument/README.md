@@ -63,3 +63,10 @@ Grouping accepts nonempty unique siblings, uses their source order and inserts a
 Ungroup intentionally removes the group's own identity and settings while promoting all child XML at its position. Assets and unrelated fields survive; Undo restores the removed group metadata exactly. Groups with no parsed XML children and same-parent moves are exact no-ops retaining redo. Grouping/ungrouping nonconsecutive siblings is not an inverse ordering operation: use Undo for exact restoration. Part-linked/opaque components can be moved/wrapped intact but are not valid destinations, parents receiving grouped/promoted children, or ungroup targets. Moving a subtree out of such an unsupported parent remains available. See [ADR 0034](../../docs/adr/0034-component-structure-foundation.md). Native structural controls follow separately.
 
 Structural detachment preserves inherited default, prefix and QName-value namespace bindings. Mixed default namespaces remain visible to component hierarchy/order queries. Namespace expansion is bounded per structural operation to 100,000 added bindings and 16 MiB of prefix/URI payload plus per-binding overhead; excess expansion throws `limitExceeded` before publication. Unknown extension IDs are not reinterpreted as graph identities.
+
+`DocumentComponent.combineMode` reports a known effective mode (including legacy
+component `inverse`), or nil for an unknown source mode.
+`document.applying(.setComponentCombineMode(id: id, mode: .normal))` explicitly
+changes one mode and clears legacy component inversion; semantic no-ops retain
+archive bytes and redo. Missing/ambiguous component identities throw typed
+`DocumentError` failures. Unknown unrelated XML and assets remain intact.

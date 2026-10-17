@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add component Normal/Inversion/Uncombined editing with regenerated previews, legacy inversion handling, lossless save and exact undo/redo.
+
 - Fit mesh previews to narrow viewports so separated parts remain visible after opening or fitting a model.
 
 - Add searchable component parent selection with explicit root/group destinations, stale-draft protection, Cancel/Reset, lossless saving and exact undo/redo.
