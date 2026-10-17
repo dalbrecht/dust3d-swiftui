@@ -16,6 +16,7 @@ MODE="${1:-run}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/script/build_paths.sh"
 APP_BUNDLE="${DUST3D_APP_OUTPUT_DIR:-$DUST3D_BUILD_ROOT/app}/$APP_NAME.app"
+ARCHIVE_OUTPUT_DIR="${DUST3D_ARCHIVE_OUTPUT_DIR:-$ROOT_DIR/dist}"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_BINARY="$APP_CONTENTS/MacOS/$APP_NAME"
 cd "$ROOT_DIR"
@@ -35,7 +36,7 @@ elif [ "$MODE" != "--build-only" ]; then
 fi
 ./script/swift.sh build --product "$APP_NAME"
 BUILD_DIR="$DUST3D_BINARY_DIR"
-mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources" "$ROOT_DIR/dist"
+mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources" "$ARCHIVE_OUTPUT_DIR"
 cp "$BUILD_DIR/$APP_NAME" "$APP_BINARY"
 cp "$ROOT_DIR/assets/app-icons/$APP_NAME.icns" "$APP_CONTENTS/Resources/$APP_NAME.icns"
 
@@ -85,7 +86,7 @@ codesign --verify --deep --strict "$APP_BUNDLE"
 # Launch Services detects rebuilt bundle metadata through the application directory timestamp.
 /usr/bin/touch "$APP_BUNDLE"
 # A ZIP keeps File Provider Finder metadata outside the app's sealed resources.
-ditto -c -k --keepParent "$APP_BUNDLE" "$ROOT_DIR/dist/$APP_NAME.zip"
+ditto -c -k --keepParent "$APP_BUNDLE" "$ARCHIVE_OUTPUT_DIR/$APP_NAME.zip"
 
 case "$MODE" in
     --build-only) echo "$APP_BUNDLE" ;;

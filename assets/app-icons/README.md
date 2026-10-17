@@ -13,6 +13,10 @@ services or change document associations.
 
 Run `./script/check_app_bundle_rebuild.sh` to rebuild isolated temporary Editor and
 Viewer bundles and verify current directory timestamps and strict signatures.
+The canonical `make ci` gate includes this check. Both app and ZIP outputs are
+isolated; the test verifies existing default archives stay byte-identical with
+unchanged modification times. Local packaging can override the ZIP directory with
+`DUST3D_ARCHIVE_OUTPUT_DIR`; it defaults to `dist/`.
 See Apple's [application registration guidance](https://developer.apple.com/library/archive/documentation/Carbon/Conceptual/LaunchServicesConcepts/LSCConcepts/LSCConcepts.html).
 
 Regenerate with macOS AppKit and the built-in `iconutil` (no new dependencies):
