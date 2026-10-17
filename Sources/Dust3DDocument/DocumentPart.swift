@@ -15,6 +15,17 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     public let isVisible: Bool
     public let isLocked: Bool
     public let isDisabled: Bool
+    /// Known unified-deformation flag, false by default, or nil for unsupported source metadata.
+    /// Unified deformation uses the part's maximum node radius on each nondefault scale direction.
+    public let isDeformationUnified: Bool?
+    private let deformationScales: [PartDeformationProperty: Double]
+
+    /// Read a supported cross-section scale without changing the source archive.
+    /// - Parameter property: The width or thickness direction.
+    /// - Returns: A finite scale from zero to two, one when absent, or nil for unsupported/ambiguous metadata.
+    /// - Example: `part.deformationScale(.width)` reads the width factor.
+    public func deformationScale(_ property: PartDeformationProperty) -> Double? { deformationScales[property] }
+
     private let modifiers: [PartModifierProperty: Bool]
 
     /// Read one modifier without changing its source representation.
@@ -28,7 +39,8 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
 
     init(
         id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool,
-        modifiers: [PartModifierProperty: Bool]
+        modifiers: [PartModifierProperty: Bool], deformationScales: [PartDeformationProperty: Double],
+        isDeformationUnified: Bool?
     ) {
         self.id = id
         self.name = name
@@ -36,6 +48,8 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
         self.isVisible = isVisible
         self.isLocked = isLocked
         self.isDisabled = isDisabled
+        self.deformationScales = deformationScales
+        self.isDeformationUnified = isDeformationUnified
         self.modifiers = modifiers
     }
 }
