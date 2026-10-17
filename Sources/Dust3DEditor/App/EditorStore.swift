@@ -217,6 +217,16 @@ final class EditorStore {
         }
         perform { try await $0.apply([.setPartCutRotation(id: id, rotation: value)]) }
     }
+    func setPartMaterial(_ id: String, property: PartMaterialProperty, value: String) {
+        guard !isWorking, !stopped else { return }
+        guard let scalar = EngineScalar.parse(value, in: property.bounds) else {
+            errorMessage = "Enter a value from 0 to \(Int(property.bounds.upperBound)) that the material can represent."
+            return
+        }
+        perform(regenerateMesh: false) {
+            try await $0.apply([.setPartMaterial(id: id, property: property, value: scalar)])
+        }
+    }
     func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
         guard !isWorking, !stopped else { return }
         guard let scale = EngineScalar.parse(value, in: 0...2) else {
@@ -591,6 +601,7 @@ final class EditorStore {
                 return "Choose a preset or an existing profile part with an engine-compatible identity."
             case .invalidPartCutRotation:
                 return "Enter a cut rotation from -1 to 1 that the modeling engine can represent."
+            case .invalidPartMaterial: return "Enter a material value within its supported range."
             case .invalidPartDeformation: return "Enter a scale from 0 to 2 that the modeling engine can represent."
             case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
