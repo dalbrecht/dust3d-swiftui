@@ -132,6 +132,12 @@ final class EditorStore {
         guard canUngroupComponent, let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.ungroupComponent(id: id)]) }
     }
+    func reparentComponent(
+        to parent: ComponentParent, target: ComponentReparentTarget,
+        completion: (@MainActor (Bool) -> Void)? = nil
+    ) {
+        perform(completion: completion) { try await $0.reparentComponent(to: parent, target: target) }
+    }
     func canReorderComponent(_ direction: ComponentOrderMove) -> Bool {
         !isWorking && !stopped && snapshot?.availableComponentOrderMoves.contains(direction) == true
     }
@@ -476,6 +482,7 @@ final class EditorStore {
             case .readOnlyNode: return "This node belongs to a locked, hidden or disabled part."
             case .staleReferenceComposition:
                 return "The document or locks changed. Reopen the reference image composer."
+            case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
             case .unavailableOrigin:
                 return

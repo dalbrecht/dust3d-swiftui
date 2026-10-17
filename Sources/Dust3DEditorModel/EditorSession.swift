@@ -55,6 +55,16 @@ public actor EditorSession {
     public func selectComponents(_ ids: Set<String>) throws -> EditorSnapshot {
         try update { try $0.selectComponents(ids) }
     }
+    /// Move a captured selected subtree to an explicit root/group destination atomically.
+    /// - Parameters:
+    ///   - parent: Requested destination; hierarchy and cycles are revalidated before publication.
+    ///   - target: Captured selected component and document epoch.
+    /// - Returns: One undoable document snapshot with the moved subtree still selected.
+    /// - Throws: Load, cancellation, stale-target or typed document errors without partial state.
+    public func reparentComponent(to parent: ComponentParent, target: ComponentReparentTarget) throws -> EditorSnapshot
+    {
+        try update { try $0.reparentComponent(to: parent, target: target) }
+    }
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }

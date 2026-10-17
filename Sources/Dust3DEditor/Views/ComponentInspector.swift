@@ -10,6 +10,7 @@ struct ComponentInspector: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Component inspector").font(.title3)
             Text(component.id).font(.caption).textSelection(.enabled)
+                .id(component.id)
                 .focusedValue(\.editorTextEditing, true)
             TextField("Component name", text: $name)
                 .accessibilityIdentifier("component-name")
@@ -21,8 +22,11 @@ struct ComponentInspector: View {
                 Button("Apply Name") { store.renameComponent(component.id, name: name) }
             }
             ComponentOrderMenu(store: store)
+            ComponentReparentControls(store: store, componentID: component.id)
             if let parent = component.parentID {
                 Text("Parent: \(parent)").font(.caption).textSelection(.enabled)
+                    // Recreate the native selectable text when its identity changes; AppKit otherwise retains its old AX text.
+                    .id(parent)
                     .focusedValue(\.editorTextEditing, true)
             }
             Text("\(component.childIDs.count) child components").font(.caption).foregroundStyle(.secondary)
