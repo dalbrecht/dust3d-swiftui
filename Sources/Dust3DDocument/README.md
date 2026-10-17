@@ -91,7 +91,23 @@ scales (one when absent), or nil for unsupported/ambiguous metadata.
 `.setPartDeformationScale(id: id, property: .width, value: 0.995)` preserves fine
 nondefault values; `.setPartDeformationUnified(id: id, value: true)` toggles
 maximum-node-radius deformation independently. One/false restore absent defaults
-on actual changes. Nonzero subnormal doubles are unsupported by the core parser and are rejected.
+on actual changes. Nonzero subnormal doubles are rejected by the parser. Nonzero values must also
+stay nonzero and finite in the engine Float; explicit zero remains supported.
 Underflowed source literals remain preserved as unavailable until replaced.
 Invalid scales throw `DocumentError.invalidPartDeformation`;
 missing parts throw `missingPart`. Semantic no-ops retain source bytes and redo.
+
+`part.cutFace` reads a `CutFaceSelection` preset or exact linked-part identity,
+Quad when absent/empty, or nil for unsupported metadata. An imported linked ID
+can remain unresolved without rewriting the source. `part.cutRotation` reads
+finite normalized half-turns retained by the engine Float in -1...1 (zero when absent/empty),
+or nil for unsupported metadata; 0.25 means 45 degrees.
+`.setPartCutFace(id: id, selection: .preset(.triangle))` or `.linkedPart(profileID)`
+changes only the part's cross-section, requiring an existing engine-compatible
+profile identity and rejecting newly introduced part/node dependency cycles.
+Unrelated imported cycles do not block presets or independent links. Reapplying
+an unchanged unresolved imported profile is a byte-preserving no-op. Invalid identities
+throw `invalidPartCutFace`, missing owner/target throws `missingPart`, and cycles
+throw `cyclicProfile`. `.setPartCutRotation(id: id, rotation: 0.005)` retains fine
+rotations; invalid input throws `invalidPartCutRotation`. Exact zero removes the
+attribute on actual edits. No-ops retain original bytes/spellings and redo.

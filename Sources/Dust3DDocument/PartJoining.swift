@@ -134,6 +134,40 @@ enum PartJoining {
 
     static func validateProfileLinks(parts: [XMLElement], nodes: [XMLElement]) throws {
         let ids = Set(parts.compactMap { $0.attribute(forName: "id")?.stringValue })
+        let links = profileDependencies(parts: parts, nodes: nodes)
+        var state: [String: Int] = [:]
+        for id in ids {
+            var pending = [(id, false)]
+            while let (current, finishing) = pending.popLast() {
+                if finishing {
+                    state[current] = 2
+                    continue
+                }
+                if state[current] == 2 { continue }
+                guard state[current] != 1 else { throw DocumentError.cyclicProfile }
+                state[current] = 1
+                pending.append((current, true))
+                pending.append(contentsOf: (links[current] ?? []).map { ($0, false) })
+            }
+        }
+    }
+
+    static func validateProfileLink(from source: String, to target: String, parts: [XMLElement], nodes: [XMLElement])
+        throws
+    {
+        let links = profileDependencies(parts: parts, nodes: nodes)
+        var pending = [target]
+        var visited: Set<String> = []
+        // Only a path back to the edited source makes this new dependency cyclic; retain unrelated imported cycles.
+        while let current = pending.popLast() {
+            guard current != source else { throw DocumentError.cyclicProfile }
+            guard visited.insert(current).inserted else { continue }
+            pending.append(contentsOf: links[current] ?? [])
+        }
+    }
+
+    private static func profileDependencies(parts: [XMLElement], nodes: [XMLElement]) -> [String: [String]] {
+        let ids = Set(parts.compactMap { $0.attribute(forName: "id")?.stringValue })
         let profileParts = CutFaceLinks.index(Array(ids))
         var links: [String: [String]] = [:]
         for part in parts {
@@ -150,21 +184,7 @@ enum PartJoining {
                 links[id, default: []].append(target)
             }
         }
-        var state: [String: Int] = [:]
-        for id in ids {
-            var pending = [(id, false)]
-            while let (current, finishing) = pending.popLast() {
-                if finishing {
-                    state[current] = 2
-                    continue
-                }
-                if state[current] == 2 { continue }
-                guard state[current] != 1 else { throw DocumentError.cyclicProfile }
-                state[current] = 1
-                pending.append((current, true))
-                pending.append(contentsOf: (links[current] ?? []).map { ($0, false) })
-            }
-        }
+        return links
     }
 
     private static func set(_ element: XMLElement, _ name: String, _ value: String) {

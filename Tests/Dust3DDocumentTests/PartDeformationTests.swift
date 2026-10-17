@@ -84,9 +84,39 @@ final class PartDeformationTests: XCTestCase {
             XCTAssertNotEqual(changed.encoded(), source.encoded())
             XCTAssertEqual(try changed.editorContents().parts.first?.deformationScale(.width), 0)
         }
-        for text in ["0e-999", "0x0p-9999", String(Double.leastNormalMagnitude)] {
+        for text in ["0e-999", "0x0p-9999", String(Double(Float.leastNonzeroMagnitude))] {
             let source = try document("deformWidth='\(text)'")
             XCTAssertEqual(try source.editorContents().parts.first?.deformationScale(.width), Double(text))
+        }
+    }
+
+    func testScalesThatBecomeZeroInTheEngineRejectAtomically() throws {
+        let source = try document()
+        for property in PartDeformationProperty.allCases {
+            for value in [1e-50, Double.leastNormalMagnitude] {
+                XCTAssertThrowsError(
+                    try source.applying(.setPartDeformationScale(id: "p", property: property, value: value))
+                ) {
+                    XCTAssertEqual($0 as? DocumentError, .invalidPartDeformation)
+                }
+            }
+            XCTAssertNil(
+                try document("\(property.rawValue)='1e-50'").editorContents().parts.first?.deformationScale(property))
+        }
+    }
+
+    func testLegacyCommaScalesPreserveSourceAndRedoOnSemanticNoOp() throws {
+        for property in PartDeformationProperty.allCases {
+            let source = try document("\(property.rawValue)='0,995'")
+            XCTAssertEqual(try source.editorContents().parts.first?.deformationScale(property), 0.995)
+            var history = DocumentHistory(document: source)
+            try history.apply(.setPartDeformationScale(id: "p", property: property, value: 0.5))
+            let changed = history.document.encoded()
+            XCTAssertTrue(history.undo())
+            try history.apply(.setPartDeformationScale(id: "p", property: property, value: 0.995))
+            XCTAssertEqual(history.document.encoded(), source.encoded())
+            XCTAssertTrue(history.redo())
+            XCTAssertEqual(history.document.encoded(), changed)
         }
     }
 

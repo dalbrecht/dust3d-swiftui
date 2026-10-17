@@ -8,15 +8,16 @@ metadata and separate typed scale/unified commands. Scale bounds are finite
 silently clamping. Nonzero subnormal doubles are rejected because the core parser
 reports underflow. Imported literals that Swift rounds to zero despite a nonzero
 significand remain unavailable until explicitly replaced; do not preserve them as
-semantic zero no-ops. Explicit zero and the minimum normal double remain valid.
+semantic zero no-ops. Nonzero values must also remain nonzero and finite after conversion to the
+engine Float. Explicit zero and the smallest nonzero Float remain valid.
 Defaults are one and unified false. Unified deformation uses
 the maximum node radius for nondefault scale directions; it does not make width
 and thickness equal or rewrite node radii.
 
 Absent scales read as one. Empty, nonfinite, out-of-range or unsupported source
 scale values remain nil and preserved until explicitly replaced. Explicit empty
-scale metadata differs between Qt import (zero) and core generation (one), so do
-not silently resolve it. Known unified boolean spellings follow the inherited
+scale metadata differs between the inherited Qt numeric parser (which rejects
+empty text) and core generation (which uses one), so do not silently resolve it. Known unified boolean spellings follow the inherited
 parser; unsupported spellings remain nil. Each command changes only its chosen
 attribute, preserving other scales/flags, per-node deformation, graph and assets.
 

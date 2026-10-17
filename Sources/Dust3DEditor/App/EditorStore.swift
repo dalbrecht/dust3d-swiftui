@@ -145,9 +145,20 @@ final class EditorStore {
         guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
     }
+    func setPartCutFace(_ id: String, selection: CutFaceSelection) {
+        perform { try await $0.apply([.setPartCutFace(id: id, selection: selection)]) }
+    }
+    func setPartCutRotation(_ id: String, rotation: String) {
+        guard !isWorking, !stopped else { return }
+        guard let value = EngineScalar.parse(rotation, in: -1...1) else {
+            errorMessage = Self.message(DocumentError.invalidPartCutRotation)
+            return
+        }
+        perform { try await $0.apply([.setPartCutRotation(id: id, rotation: value)]) }
+    }
     func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
         guard !isWorking, !stopped else { return }
-        guard let scale = Double(value), scale.isFinite, !scale.isSubnormal, (0...2).contains(scale) else {
+        guard let scale = EngineScalar.parse(value, in: 0...2) else {
             errorMessage = Self.message(DocumentError.invalidPartDeformation)
             return
         }
@@ -483,6 +494,10 @@ final class EditorStore {
             case .invalidComponentSmoothing: return "Enter a finite smoothing cutoff from 0 to 180 degrees."
             case .invalidComponentName: return "Use a single-line component name of at most 1024 UTF-8 bytes."
             case .missingComponent(let id): return "Component \(id) is not present in this document."
+            case .invalidPartCutFace:
+                return "Choose a preset or an existing profile part with an engine-compatible identity."
+            case .invalidPartCutRotation:
+                return "Enter a cut rotation from -1 to 1 that the modeling engine can represent."
             case .invalidPartDeformation: return "Enter a scale from 0 to 2 that the modeling engine can represent."
             case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."
             case .invalidNode: return "The document contains invalid node, part, or edge data."

@@ -44,8 +44,10 @@ coverage or inherited core coverage claim is made.
 Automated review found that Swift accepts subnormal doubles the core rejects with
 `ERANGE`. Failing-first tests verify rejection before document publication and
 preserve imported decimal/hex literals that underflow to zero as unavailable
-metadata until explicitly replaced. Positive checks retain exponent-spelled zero
-and the minimum normal double; real-core endpoint checks include the latter.
+metadata until explicitly replaced. Initial positive checks retained exponent-spelled zero and the minimum normal
+double. The later cut-face review established that the latter becomes engine
+Float zero; shared validation now rejects it and uses the smallest nonzero Float
+for the positive document/core boundary checks.
 The corrected full `make ci` passes 370 tests with zero failures and all build,
 formatting, Qt-free linkage, coverage and isolated bundle-rebuild checks. Document
 line coverage is now 2433/2517; other measured module totals above are unchanged.

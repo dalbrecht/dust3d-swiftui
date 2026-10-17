@@ -15,6 +15,11 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     public let isVisible: Bool
     public let isLocked: Bool
     public let isDisabled: Bool
+    /// Known cross-section selection (Quad when absent/empty), or nil for unsupported source metadata.
+    /// Linked selections retain the exact source identity, including an unresolved imported target.
+    public let cutFace: CutFaceSelection?
+    /// Known finite rotation retained by the engine Float in half-turns (-1...1), zero by default, or nil when unsupported.
+    public let cutRotation: Double?
     /// Known unified-deformation flag, false by default, or nil for unsupported source metadata.
     /// Unified deformation uses the part's maximum node radius on each nondefault scale direction.
     public let isDeformationUnified: Bool?
@@ -22,7 +27,7 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
 
     /// Read a supported cross-section scale without changing the source archive.
     /// - Parameter property: The width or thickness direction.
-    /// - Returns: A finite, non-subnormal scale from zero to two, one when absent, or nil for unsupported/ambiguous metadata.
+    /// - Returns: A finite scale from zero to two retained by the engine Float, one when absent, or nil for unsupported/ambiguous metadata.
     /// - Example: `part.deformationScale(.width)` reads the width factor.
     public func deformationScale(_ property: PartDeformationProperty) -> Double? { deformationScales[property] }
 
@@ -40,8 +45,10 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     init(
         id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool,
         modifiers: [PartModifierProperty: Bool], deformationScales: [PartDeformationProperty: Double],
-        isDeformationUnified: Bool?
+        isDeformationUnified: Bool?, cutFace: CutFaceSelection?, cutRotation: Double?
     ) {
+        self.cutFace = cutFace
+        self.cutRotation = cutRotation
         self.id = id
         self.name = name
         self.title = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Part \(index + 1)" : name

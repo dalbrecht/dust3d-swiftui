@@ -14,6 +14,8 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidComponentSmoothing
     case invalidComponentName
     case missingComponent(String)
+    case invalidPartCutFace
+    case invalidPartCutRotation
     case invalidPartDeformation
     case invalidPartName
     case invalidNode
@@ -85,13 +87,21 @@ public enum DocumentCommand: Sendable {
     /// Change one procedural part flag, preserving all other metadata, source graph and assets.
     /// Part locks constrain node editing; modifier metadata remains editable as in the inherited app.
     case setPartModifier(id: String, property: PartModifierProperty, value: Bool)
-    /// Set a finite, non-subnormal width/thickness scale in 0...2; one restores the absent default.
+    /// Set a finite width/thickness scale in 0...2 that does not overflow or underflow in the engine Float; one restores the absent default.
     /// Throws `invalidPartDeformation` for invalid scales or `missingPart` for absent identities.
     /// Example: `.setPartDeformationScale(id: id, property: .width, value: 0.995)`.
     case setPartDeformationScale(id: String, property: PartDeformationProperty, value: Double)
     /// Toggle maximum-radius deformation without changing scale values, nodes or unrelated metadata.
     /// Throws `missingPart` for absent identities. Example: `.setPartDeformationUnified(id: id, value: true)`.
     case setPartDeformationUnified(id: String, value: Bool)
+    /// Select a preset or link to a profile; newly changed targets must exist.
+    /// Throws `missingPart`, `invalidPartCutFace` or `cyclicProfile` for invalid changes.
+    /// Reapplying an unchanged unresolved imported link preserves bytes and redo.
+    /// Example: `.setPartCutFace(id: id, selection: .preset(.triangle))`.
+    case setPartCutFace(id: String, selection: CutFaceSelection)
+    /// Set a finite half-turn rotation in -1...1 that does not overflow or underflow in the engine Float; zero restores the absent default.
+    /// Throws `invalidPartCutRotation` or `missingPart`. Example: `.setPartCutRotation(id: id, rotation: 0.25)`.
+    case setPartCutRotation(id: String, rotation: Double)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
@@ -408,6 +418,16 @@ public struct Dust3DDocument: Sendable {
                 attribute.stringValue = value
                 part.addAttribute(attribute)
             }
+        case .setPartCutFace(let id, let selection):
+            guard try PartCutFace.setSelection(model, parts: contents.parts, id: id, selection: selection) else {
+                return self
+            }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setPartCutRotation(let id, let rotation):
+            guard try PartCutFace.setRotation(model, parts: contents.parts, id: id, rotation: rotation) else {
+                return self
+            }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartDeformationScale(let id, let property, let value):
             guard try PartDeformation.setScale(model, parts: contents.parts, id: id, property: property, value: value)
             else { return self }
@@ -826,7 +846,8 @@ public struct Dust3DDocument: Sendable {
                 isVisible: visible, isLocked: isTrue(part.attribute(forName: "locked")?.stringValue),
                 isDisabled: isTrue(part.attribute(forName: "disabled")?.stringValue),
                 modifiers: PartModifiers.values(part), deformationScales: PartDeformation.scales(part),
-                isDeformationUnified: PartDeformation.unified(part))
+                isDeformationUnified: PartDeformation.unified(part), cutFace: PartCutFace.selection(part),
+                cutRotation: PartCutFace.rotation(part))
             parts[id] = value
             orderedParts.append(value)
         }
