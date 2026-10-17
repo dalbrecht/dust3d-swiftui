@@ -51,8 +51,10 @@ final class PartLoopInteriorStoreTests: XCTestCase {
             XCTAssertEqual(($0 as? MeshLoadingError)?.status, 5)
             XCTAssertFalse(($0 as? MeshLoadingError)?.message.isEmpty ?? true)
         }
-        let degenerate = try StitchingFixture.document(loop: false, degenerateStraight: true)
-        XCTAssertThrowsError(try MeshLoader.loadIfPresent(data: degenerate.encoded())) {
+        let straight = try StitchingFixture.document(loop: false, degenerateStraight: true)
+        XCTAssertNotNil(try MeshLoader.loadIfPresent(data: straight.encoded()))
+        let failed = try WrappingFixture.document(mode: "Cloth", attributes: "wrapFaces='64' wrapOffset='-1'")
+        XCTAssertThrowsError(try MeshLoader.loadIfPresent(data: failed.encoded())) {
             XCTAssertEqual(($0 as? MeshLoadingError)?.status, 3)
             XCTAssertFalse(($0 as? MeshLoadingError)?.message.isEmpty ?? true)
         }
@@ -61,14 +63,13 @@ final class PartLoopInteriorStoreTests: XCTestCase {
         }
     }
     @MainActor func testGenuineGenerationFailureRetainsPreviousMeshAndDiagnosticAsStale() async throws {
-        let original = try StitchingFixture.document(
-            loop: false, attributes: "sideClosed='false'", degenerateStraight: true)
+        let original = try WrappingFixture.document(attributes: "wrapFaces='64' wrapOffset='-1'")
         let store = EditorStore()
         defer { store.stop() }
         await store.load(data: original.encoded())
         try await settle(store)
         let baseline = try XCTUnwrap(store.mesh)
-        store.setComponentStitchingClosure(StitchingFixture.groupID, property: .side, value: true)
+        store.setComponentWrapMode(WrappingFixture.groupID, mode: .cloth)
         try await settle(store)
         XCTAssertNotNil(store.previewState.errorMessage)
         XCTAssertTrue(store.previewState.isStale)

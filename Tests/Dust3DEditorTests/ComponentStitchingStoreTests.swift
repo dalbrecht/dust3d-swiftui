@@ -21,13 +21,10 @@ final class ComponentStitchingStoreTests: XCTestCase {
         }
         XCTFail("Stitching edit or generation did not settle")
     }
-    func testClosingStraightRailsIntoZeroAreaProfilesRejectsWithOriginalCoreDiagnostic() throws {
+    func testStraightClosedProfilesGenerateFiniteOutputAfterAngleRepair() throws {
         // Side closure joins each spline's own endpoints, not neighboring rails.
         let document = try StitchingFixture.document(loop: false, degenerateStraight: true)
-        XCTAssertThrowsError(try MeshLoader.load(data: document.encoded())) {
-            XCTAssertEqual(($0 as? MeshLoadingError)?.status, 3)
-            XCTAssertFalse(($0 as? MeshLoadingError)?.message.isEmpty ?? true)
-        }
+        assertFinite(try MeshLoader.load(data: document.encoded()))
     }
     func testConfiguredLineClosuresAndSegmentCountsChangeFiniteGeneratedGeometry() throws {
         let original = try StitchingFixture.document(loop: false)
