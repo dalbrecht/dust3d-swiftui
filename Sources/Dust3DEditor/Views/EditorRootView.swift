@@ -203,6 +203,10 @@ struct EditorRootView: View {
             } else {
                 MeshPreviewPlaceholder(message: store.snapshot?.previewEmptyDescription)
             }
+            if let issue = store.previewCacheStatistics?.cacheIssue {
+                Divider()
+                PreviewCacheNotice(message: issue.message)
+            }
         }
     }
 }

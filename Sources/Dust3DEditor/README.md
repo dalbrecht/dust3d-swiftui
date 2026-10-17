@@ -209,3 +209,14 @@ Generated previews use copied indexed meshes and UInt32 Metal triangle buffers.
 Preview request identities, stale-failure retention, successful-empty clearing,
 camera revision handling, document saving and undo history keep their existing
 contracts. See [indexed rendering verification](../../docs/indexed-metal-verification.md).
+
+
+Editor previews now use a bounded core session scoped to the open document. Retry
+and unchanged components can reuse generated geometry; opening/replacing, clearing
+or stopping a document releases its scope. Debouncing, stale-last-valid output
+and successful-empty behavior remain intact. A cache-only failure shows its
+original diagnostic below the preview while editing, undo and saving continue.
+Cache state is transient and is never saved in the archive. See
+[the lifecycle decision](../../docs/adr/0055-scoped-editor-preview-caches.md).
+
+[Verification and remaining limits](../../docs/editor-preview-session-verification.md).
