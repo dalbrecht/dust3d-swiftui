@@ -27,6 +27,12 @@ final class ComponentWrappingCompatibilityTests: XCTestCase {
             for axis in 0..<3 { XCTAssertTrue(vertex.position[axis].isFinite) }
             XCTAssertEqual(simd_length(vertex.normal), 1, accuracy: 0.0001)
         }
+        for index in stride(from: 0, to: mesh.vertices.count, by: 3) {
+            let first = SIMD3<Double>(mesh.vertices[index].position)
+            let second = SIMD3<Double>(mesh.vertices[index + 1].position)
+            let third = SIMD3<Double>(mesh.vertices[index + 2].position)
+            XCTAssertGreaterThan(simd_length_squared(simd_cross(second - first, third - first)), 0)
+        }
         return mesh
     }
     func testModesFacesKeepChildrenAndHistoryChangeRealFiniteGeometry() throws {
@@ -79,6 +85,21 @@ final class ComponentWrappingCompatibilityTests: XCTestCase {
             let denser = try changed.applying(.setComponentWrapFaces(id: groupID, faces: 256))
             _ = try mesh(denser)
         }
+    }
+    func testUnrepresentableExportFailsWithItsCauseInsteadOfBecomingSuccessfulEmpty() throws {
+        let source = try document()
+        var xml = String(decoding: source.modelXML, as: UTF8.self)
+        for axis in ["X", "Y", "Z"] {
+            xml = xml.replacingOccurrences(of: "origin\(axis)='.5'", with: "origin\(axis)='0'")
+        }
+        for axis in ["x", "y", "z"] { xml = xml.replacingOccurrences(of: " \(axis)='.5'", with: " \(axis)='1000000'") }
+        xml = xml.replacingOccurrences(of: "radius='.2'", with: "radius='.001'")
+        let far = try Dust3DDocument(snapshotXML: Data(xml.utf8))
+        XCTAssertThrowsError(try MeshLoader.loadIfPresent(data: far.encoded())) {
+            XCTAssertEqual(($0 as? MeshLoadingError)?.status, 3)
+            XCTAssertTrue(($0 as? MeshLoadingError)?.message.contains("precision") == true)
+        }
+        XCTAssertNotNil(try MeshLoader.loadIfPresent(data: source.encoded()))
     }
     func testNewCorePinRejectsPreviouslyUncheckedWrappingNumbers() throws {
         let source = try document("Skin")

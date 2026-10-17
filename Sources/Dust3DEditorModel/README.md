@@ -138,3 +138,9 @@ preview revision. Obsolete, duplicate and cleared requests cannot erase current
 output. Genuine failures still retain the last successful value as stale.
 `EditorSnapshot.previewEmptyDescription` supplies distinct messages for an empty
 graph, excluded contributors or a loaded document with successful empty output.
+
+`ComponentWrappingPresentation` derives group-only active controls and ordered
+field captions/ranges from immutable component metadata without framework imports
+or side effects. None/unknown modes have no parameter fields; Skin has shared
+geometry fields and Cloth has all seven. `ComponentWrappingField` provides stable
+property identities for the SwiftUI inspector and is covered by pure tests.
