@@ -254,10 +254,11 @@ Typed group-only mode, keep-children, face-count and seven geometry-scalar comma
 now preserve source spellings, unknown metadata, opaque content and exact history.
 See [foundation verification](component-wrapping-foundation-verification.md) and
 ADR 0049. The reviewed core pin includes complete wrapping numeric validation and
-portable stitching contracts. Native wrapping controls, binding and material
-features remain pending. Core issue #13 is repaired by reviewed core PR #15; the exact Apple pin and
+portable stitching contracts. Binding and material wrapping features remain pending. Core issue #13 is repaired by reviewed core PR #15; the exact Apple pin and
 [controller verification](wrapping-controller-verification.md) cover finite
 midpoint openings and straight profiles, validated drafts, real previews and
 exact history/save publication (ADR 0050, Apple #100). Genuine failure diagnostics
-remain separately tested. Core #14 tracks collapsed faces/topology; native
-wrapping controls remain pending. M3 acceptance remains incomplete.
+remain separately tested. Core #14 is repaired at exported float precision by reviewed core PR #16.
+Native geometry controls and pure presentation now have [offscreen verification](native-wrapping-verification.md)
+(ADR 0051, Apple #102); native interaction, binding/material controls and broader
+Qt differential/topology acceptance remain pending. M3 acceptance remains incomplete.

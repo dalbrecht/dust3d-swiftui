@@ -196,3 +196,11 @@ The core angle repair permits finite previews for previously rejected midpoint
 openings and straight profiles. Genuine generation errors retain the previous
 mesh as stale with the original diagnostic. See ADR 0050 and
 `docs/wrapping-controller-verification.md`; topology cleanup remains core #14.
+
+In the component inspector, select an unlinked group and choose Wrapping → Skin
+or Cloth. Keep children controls source-part visibility; Faces accepts whole
+counts from 64 to 20000. Numeric drafts show their range and commit with Apply or
+Return; Reset Draft discards typed changes. Unsupported source values remain
+preserved until explicitly replaced. Skin shows offset/smoothness; Cloth adds
+drape, length, openings and thickness. Native interaction/GPU acceptance remains
+pending; see `docs/native-wrapping-verification.md` for offscreen evidence and limits.
