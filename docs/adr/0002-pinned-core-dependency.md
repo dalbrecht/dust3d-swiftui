@@ -3,9 +3,10 @@
 Status: Implemented for review.
 
 The viewer uses the `Dust3DEngine` SwiftPM product from
-`https://github.com/dalbrecht/dust3d-core.git`, pinned to
-`685b68fb45405dabb4bb6f72c5b0e2598d4b9fdf` in `Package.swift` and
-`Package.resolved`. Source consumption avoids introducing an unproven stable
+`https://github.com/dalbrecht/dust3d-core.git`, pinned to an exact commit in
+`Package.swift` and `Package.resolved`. Those files are the authoritative current
+revision and must advance together through reviewed dependency PRs. Source
+consumption avoids introducing an unproven stable
 binary ABI or a developer-specific CMake search path. The core's SwiftPM package
 and CMake build share the same implementation and explicit target boundaries.
 
