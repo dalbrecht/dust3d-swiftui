@@ -136,3 +136,14 @@ unsupported metadata. Opening or rendering the inspector never repairs source
 values silently. An unsupported numeric value can prevent core preview generation;
 the original diagnostic and source bytes remain available until explicit repair.
 The UI QA command also exports known/unsupported deformation sections.
+
+Cross-section profile offers Quad, Pentagon, Hexagon and Triangle presets.
+Expand Link profile to search other parts by name or exact ID; choosing a row
+links immediately in one undo step. Duplicate names are distinguished by IDs,
+with full details in help/accessibility labels. Cyclic dependencies are rejected.
+Existing unresolved links remain visible until replaced, and unsupported source
+metadata is not rewritten on read. Rotation is measured in half-turns from −1
+to 1 (1 = 180°); Apply/Return commits it and Reset Draft discards unapplied text.
+The UI QA command exports preset, unsupported, unresolved/resolved profile and
+empty/populated chooser states. Native input and Qt differential checks remain
+separate acceptance requirements.

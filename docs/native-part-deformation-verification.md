@@ -32,5 +32,5 @@ Inactive offscreen rendering does not establish keyboard/pointer operation,
 selection/draft transitions, VoiceOver, native Save/Undo/Redo menus or Metal/GPU
 rendering. Those checks remain pending without human input; no app launch or
 new application identity was required. Reuse org.dust3d.editor.combine-qa for
-future native checks. Cut-face controls, other M3 modifiers and differential
+future native checks. Cut-face controls now have [separate offscreen verification](native-part-cut-face-verification.md). Other M3 modifiers and differential
 Qt acceptance remain pending. This is not a full modeling parity claim.

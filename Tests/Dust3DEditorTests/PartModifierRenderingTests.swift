@@ -52,14 +52,16 @@ import XCTest
 
 final class PartModifierRenderingTests: XCTestCase {
     private let partID = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
-    private func document(unsupported: Bool) throws -> Dust3DDocument {
+    private func document(unsupported: Bool, cutFace: String? = nil) throws -> Dust3DDocument {
         let flags = PartModifierProperty.allCases.map { property in
             let enabled = property == .subdivision || property == .roundedEnds || property == .hardJoin
             return "\(property.rawValue)='\(unsupported ? "future" : enabled ? "true" : "false")'"
         }.joined(separator: " ")
+        let cutAttributes =
+            "cutFace='\(cutFace ?? (unsupported ? "future" : "Triangle"))' cutRotation='\(unsupported ? "future" : "0.005")'"
         let name = unsupported ? "QA Unsupported Flags" : "QA Known Flags"
         let model = Data(
-            "<canvas originX='.5' originY='.5' originZ='.5'><nodes><node id='{11111111-1111-4111-8111-111111111111}' partId='\(partID)' x='.5' y='.5' z='.5' radius='.1'/></nodes><edges/><parts><part id='\(partID)' name='\(name)' future='preserved' deformWidth='\(unsupported ? "future" : "0.995")' deformThickness='\(unsupported ? "future" : "1.25")' deformUnified='\(unsupported ? "future" : "true")' \(flags)/></parts><components><component id='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' linkDataType='partId' linkData='\(partID)' color='#3366cc'/></components></canvas>"
+            "<canvas originX='.5' originY='.5' originZ='.5'><nodes><node id='{11111111-1111-4111-8111-111111111111}' partId='\(partID)' x='.5' y='.5' z='.5' radius='.1'/></nodes><edges/><parts><part id='\(partID)' name='\(name)' future='preserved' \(cutAttributes) deformWidth='\(unsupported ? "future" : "0.995")' deformThickness='\(unsupported ? "future" : "1.25")' deformUnified='\(unsupported ? "future" : "true")' \(flags)/></parts><components><component id='{cccccccc-cccc-4ccc-8ccc-cccccccccccc}' linkDataType='partId' linkData='\(partID)' color='#3366cc'/></components></canvas>"
                 .utf8)
         let header =
             "<ds3><model name='model.xml' offset='0' size='\(model.count)'/><asset name='opaque.bin' offset='\(model.count)' size='4'/></ds3>"
@@ -148,6 +150,75 @@ final class PartModifierRenderingTests: XCTestCase {
                     name:
                         "part-deformation-\(unsupported ? "unsupported" : "known")-\(scheme == .dark ? "dark" : "light")",
                     directory: outputDirectory())
+                XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+                XCTAssertFalse(store.canUndo)
+            }
+        }
+    }
+    @MainActor func testCutFaceControlsRenderPresetsUnsupportedAndUnresolvedProfilesWithoutEdits() async throws {
+        for unsupported in [false, true] {
+            for profile in [nil, "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"] as [String?] {
+                let original = try document(unsupported: unsupported, cutFace: profile)
+                let store = EditorStore()
+                defer { store.stop() }
+                await store.load(data: original.encoded())
+                try await settle(store)
+                let part = try XCTUnwrap(store.snapshot?.parts.first)
+                for scheme in [ColorScheme.light, .dark] {
+                    let data = try InspectorRenderer.png(
+                        PartCutFaceControls(store: store, part: part), width: 250, scheme: scheme)
+                    try save(
+                        data,
+                        name:
+                            "part-cut-face-\(profile == nil ? "preset" : "unresolved")-\(unsupported ? "unsupported" : "known")-\(scheme == .dark ? "dark" : "light")",
+                        directory: outputDirectory())
+                    XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+                    XCTAssertFalse(store.canUndo)
+                }
+            }
+        }
+    }
+    @MainActor func testProfileChooserAndResolvedLinkRenderWithoutPublishingAnEdit() async throws {
+        for hasProfiles in [false, true] {
+            var original = try document(unsupported: false)
+            if hasProfiles {
+                for (index, id) in ["{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}", "{dddddddd-dddd-4ddd-8ddd-dddddddddddd}"]
+                    .enumerated()
+                {
+                    original = try original.applying(
+                        .addNode(
+                            id: index == 0
+                                ? "{22222222-2222-4222-8222-222222222222}" : "{33333333-3333-4333-8333-333333333333}",
+                            partID: id,
+                            componentID: index == 0
+                                ? "{eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee}" : "{ffffffff-ffff-4fff-8fff-ffffffffffff}",
+                            position: .init(x: Double(index + 2), y: 0.5, z: 0.5), radius: 0.1))
+                    original = try original.applying(
+                        .setPartName(
+                            id: id,
+                            name: "Long duplicate profile name with Unicode 曲線"))
+                }
+                original = try original.applying(
+                    .setPartCutFace(
+                        id: partID,
+                        selection: .linkedPart("{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}")))
+            }
+            let store = EditorStore()
+            defer { store.stop() }
+            await store.load(data: original.encoded())
+            try await settle(store)
+            let part = try XCTUnwrap(store.snapshot?.parts.first(where: { $0.id == partID }))
+            for scheme in [ColorScheme.light, .dark] {
+                let suffix = "\(hasProfiles ? "populated" : "empty")-\(scheme == .dark ? "dark" : "light")"
+                try save(
+                    InspectorRenderer.png(PartProfileChooser(store: store, part: part), width: 250, scheme: scheme),
+                    name: "part-profile-chooser-" + suffix, directory: outputDirectory())
+                if hasProfiles {
+                    try save(
+                        InspectorRenderer.png(
+                            PartCutFaceControls(store: store, part: part), width: 250, scheme: scheme),
+                        name: "part-profile-resolved-" + suffix, directory: outputDirectory())
+                }
                 XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
                 XCTAssertFalse(store.canUndo)
             }

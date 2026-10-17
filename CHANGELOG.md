@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add native cut-face presets, searchable linked-profile selection and half-turn rotation drafts with preserved unsupported/unresolved source metadata.
+
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
 - Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
