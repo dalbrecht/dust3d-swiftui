@@ -49,3 +49,18 @@ uses that tested projection. Fresh full-gate results follow the initial record.
 The review fix passes fresh full `make ci`: 396 tests, zero failures, formatting,
 builds, Qt-free and bundle checks. Measured document lines are 2532/2616 and
 editor model 1409/1415; pure editor state remains 523/523 and undo 97/97.
+
+A fresh review found that the menu still offered an inert unsupported option
+for known profiles. Three new regression tests first failed without the menu
+projection. `PartCutFaceOptions` now supplies presets and the exact current
+linked value, adding nil only for an unsupported source. The view disables that
+read-only placeholder. Tests cover every preset, exact/unresolved linked IDs,
+unique choices and explicit replacement options. Fresh full-gate results follow.
+
+The menu fix passes fresh full `make ci`: 399 tests, zero failures, formatting,
+builds, Qt-free and bundle checks. Editor model lines are 1416/1422; document
+2532/2616, pure state 523/523 and undo 97/97 remain unchanged. Re-rendered
+known, unsupported and unresolved controls in light/dark appearances under
+/private/tmp/dust3d-cut-face-menu-review-qa were inspected: source placeholders
+remain readable and supported profiles display their chosen value. Native menu
+interaction remains pending rather than inferred from static render output.

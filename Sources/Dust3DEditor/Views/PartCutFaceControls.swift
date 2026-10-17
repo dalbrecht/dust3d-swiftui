@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct PartCutFaceControls: View {
@@ -16,12 +17,8 @@ struct PartCutFaceControls: View {
                     set: { if let value = $0 { store.setPartCutFace(part.id, selection: value) } }
                 )
             ) {
-                Text("Unsupported source value").tag(nil as CutFaceSelection?)
-                ForEach(CutFacePreset.allCases, id: \.self) { preset in
-                    Text(preset.rawValue).tag(Optional(CutFaceSelection.preset(preset)))
-                }
-                if case .linkedPart(let id) = part.cutFace {
-                    Text("Linked profile").tag(Optional(CutFaceSelection.linkedPart(id)))
+                ForEach(PartCutFaceOptions.selections(current: part.cutFace), id: \.self) { selection in
+                    Text(title(selection)).tag(selection).disabled(selection == nil)
                 }
             }
             .labelsHidden().pickerStyle(.menu)
@@ -58,6 +55,14 @@ struct PartCutFaceControls: View {
         }
         .onChange(of: part.id, initial: true) { _, _ in resetRotation() }
         .onChange(of: part.cutRotation) { _, _ in resetRotation() }
+    }
+
+    private func title(_ selection: CutFaceSelection?) -> String {
+        switch selection {
+        case .preset(let preset): return preset.rawValue
+        case .linkedPart: return "Linked profile"
+        case nil: return "Unsupported source value"
+        }
     }
 
     private func resetRotation() { rotation = part.cutRotation.map { String($0) } ?? "" }

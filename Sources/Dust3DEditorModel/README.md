@@ -120,3 +120,8 @@ projection for linked-profile choices. It excludes the owner and legacy IDs
 that the engine cannot interpret as profile links, while matching title/ID
 substrings case-insensitively. Duplicate names retain distinct exact identities.
 Dependency cycles are still validated atomically when applying the command.
+
+`PartCutFaceOptions.selections(current:)` supplies preset choices and the exact
+current linked profile. It includes a nil, read-only source placeholder only for
+unsupported metadata, so supported profiles never offer an inert unsupported
+action. The UI disables that placeholder while keeping explicit replacements.

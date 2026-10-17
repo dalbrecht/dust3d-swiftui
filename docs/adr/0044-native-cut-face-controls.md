@@ -24,3 +24,7 @@ state/history preservation use the hidden-window QA exporter established in ADR
 The document model exposes the command's existing identity classification so
 the UI does not duplicate or tighten inherited UUID-shape rules. Candidate
 filtering lives in the pure editor model and preserves source spellings.
+
+The pure menu projection includes an unsupported placeholder only for unknown
+source metadata. The placeholder is disabled; supported profiles offer only
+presets and the current linked identity, without an enabled no-op choice.
