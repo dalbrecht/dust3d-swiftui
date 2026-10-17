@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update the pinned core to fix rounded crossing mesh generation and preserve thin solids near weld boundaries.
+
 - Add validated component normal smoothing cutoff editing with Apply/Reset, regenerated normals, lossless saving and exact undo/redo.
 
 - Add component Normal/Inversion/Uncombined editing with regenerated previews, legacy inversion handling, lossless save and exact undo/redo.

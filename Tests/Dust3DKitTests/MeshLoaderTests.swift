@@ -34,6 +34,21 @@ final class MeshLoaderTests: XCTestCase {
         XCTAssertGreaterThan(mesh.triangleCount, 100)
     }
 
+    func testRoundedCrossingGeneratesCompleteFiniteMesh() throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "RoundedCrossing", withExtension: "ds3", subdirectory: "Fixtures"))
+        let mesh = try MeshLoader.load(data: Data(contentsOf: url))
+        XCTAssertEqual(mesh.nodeCount, 5)
+        XCTAssertEqual(mesh.partCount, 2)
+        XCTAssertGreaterThan(mesh.triangleCount, 0)
+        XCTAssertTrue(mesh.warning.isEmpty)
+        for vertex in mesh.vertices {
+            XCTAssertTrue(vertex.position.x.isFinite && vertex.position.y.isFinite && vertex.position.z.isFinite)
+            XCTAssertEqual(simd_length(vertex.normal), 1, accuracy: 0.001)
+            XCTAssertTrue(vertex.color.x.isFinite && vertex.color.y.isFinite && vertex.color.z.isFinite)
+        }
+    }
+
     func testInvalidContainersReturnTypedErrors() throws {
         for data in [Data(), Data("not a document".utf8), Data(try fixture().prefix(60))] {
             XCTAssertThrowsError(try MeshLoader.load(data: data)) { error in
