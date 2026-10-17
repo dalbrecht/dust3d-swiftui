@@ -32,18 +32,20 @@ public enum MeshLoader {
     /// - Throws: `MeshLoadingError` for malformed/unsupported documents, generation failures or a no-geometry result.
     /// Use `loadIfPresent(data:)` when successful emptiness should return nil.
     public static func load(data: Data) throws -> Mesh {
-        try withNativeMesh(data: data) { handle in
-            let count = Int(dust3d_mesh_vertex_count(handle))
-            guard let source = dust3d_mesh_vertices(handle), count > 0 else {
-                throw MeshLoadingError(status: 3, message: "The engine returned an empty mesh.")
-            }
-            return Mesh(
-                vertices: UnsafeBufferPointer(start: source, count: count).map(copyVertex),
-                nodeCount: Int(dust3d_mesh_node_count(handle)),
-                partCount: Int(dust3d_mesh_part_count(handle)),
-                warning: String(cString: dust3d_mesh_warning(handle))
-            )
+        try withNativeMesh(data: data) { try copyNativeMesh($0) }
+    }
+
+    static func copyNativeMesh(_ handle: OpaquePointer) throws -> Mesh {
+        let count = Int(dust3d_mesh_vertex_count(handle))
+        guard let source = dust3d_mesh_vertices(handle), count > 0 else {
+            throw MeshLoadingError(status: 3, message: "The engine returned an empty mesh.")
         }
+        return Mesh(
+            vertices: UnsafeBufferPointer(start: source, count: count).map(copyVertex),
+            nodeCount: Int(dust3d_mesh_node_count(handle)),
+            partCount: Int(dust3d_mesh_part_count(handle)),
+            warning: String(cString: dust3d_mesh_warning(handle))
+        )
     }
 
     /// Generate independently owned indexed geometry, copying every native buffer into Swift.

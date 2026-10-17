@@ -119,8 +119,28 @@ The default native metadata quota is 64 MiB (maximum 256 MiB), separate from
 indexed geometry and excluding Swift copies/workspace/allocator overhead.
 
 This API uses exact reviewed core revision
-`9577f8a44966841cf1c946adc726b12ef17e24c5`. It does not activate textured editor
+`2703a17ce4c1f8d21a30b23580b45520ef49c87b`. It does not activate textured editor
 preview. Existing indexed sharing excludes UV/material seams; metadata corners
 follow triangle index order rather than unique vertex order. See
 [verification and limits](docs/swift-uv-metadata-verification.md) and
 [ADR 0060](docs/adr/0060-copied-swift-uv-metadata.md). Build/test with `make ci`.
+
+
+### Optional copied baked mesh SDK
+
+`try await MeshBakingService().load(data: archive, images: decodedImages)` performs
+CPU baking on a background actor and returns copied Sendable geometry, UVs,
+tangent frames and RGBA8 maps. `MeshBakeImage` accepts decoded straight-alpha bytes
+with explicit dimensions/row stride; this stage does not decode archive assets.
+`MeshBakeOptions` controls dimensions and independent native UV/bake quotas.
+
+Expanded vertices preserve texture/material seams. Existing geometry-only indexed
+sharing is not reused. All buffers belong to Swift before the native owner is
+released. Task cancellation reaches a lifetime-pinned native token without actor
+re-entry; inherited generation observes phase boundaries. `MeshLoader.loadBaked`
+is a synchronous lower-level alternative for callers already off the main actor.
+
+The default apps retain their current preview behavior. PBR/transparency/AO and
+textured export still require renderer integration and acceptance evidence. See
+[ADR 0061](docs/adr/0061-copied-baked-mesh-sdk.md) and
+[verification](docs/swift-baked-mesh-verification.md). Run `make ci` before publication.
