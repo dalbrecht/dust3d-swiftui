@@ -48,6 +48,13 @@ public actor EditorSession {
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }
     }
+    /// Replace window-local component selection without creating an undo entry.
+    /// - Parameter ids: Existing component identities, or empty to clear selection.
+    /// - Returns: The unchanged document with its new exclusive component selection.
+    /// - Throws: Load, cancellation or missing-component errors atomically.
+    public func selectComponents(_ ids: Set<String>) throws -> EditorSnapshot {
+        try update { try $0.selectComponents(ids) }
+    }
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
