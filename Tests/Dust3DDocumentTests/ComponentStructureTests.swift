@@ -251,6 +251,35 @@ final class ComponentStructureTests: XCTestCase {
         }
     }
 
+    func testUngroupPromotesExtensionOnlyCommentAndTextChildCollections() throws {
+        let extensionOnly = try document(
+            "<component id='group' xmlns:ext='urn:extension' xmlns:q='urn:qualified'><ext:payload futureType='q:Thing'/></component>"
+        )
+        XCTAssertTrue(try extensionOnly.components().first?.childIDs.isEmpty == true)
+        XCTAssertTrue(try extensionOnly.components().first?.hasChildXML == true)
+        XCTAssertFalse(try document("<component id='empty'/>").components().first?.hasChildXML == true)
+        let changed = try extensionOnly.applying(.ungroupComponent(id: "group"))
+        XCTAssertTrue(try changed.components().isEmpty)
+        let container = try XCTUnwrap(
+            XMLDocument(data: changed.modelXML).rootElement()?.elements(forName: "components").first)
+        let payload = try XCTUnwrap((container.children ?? []).compactMap { $0 as? XMLElement }.first)
+        XCTAssertEqual(payload.uri, "urn:extension")
+        XCTAssertEqual(payload.attribute(forName: "futureType")?.stringValue, "q:Thing")
+        XCTAssertEqual(payload.namespaces?.first { $0.name == "q" }?.stringValue, "urn:qualified")
+        for content in ["<!--payload-->", "opaque text"] {
+            let original = try document("<component id='group'>\(content)</component>")
+            let promoted = try original.applying(.ungroupComponent(id: "group"))
+            XCTAssertTrue(try promoted.components().isEmpty)
+            let root = try XCTUnwrap(
+                XMLDocument(data: promoted.modelXML).rootElement()?.elements(forName: "components").first)
+            XCTAssertEqual((root.children ?? []).map { $0.xmlString(options: [.nodePreserveAll]) }.joined(), content)
+            var history = DocumentHistory(document: original)
+            try history.apply(.ungroupComponent(id: "group"))
+            XCTAssertTrue(history.undo())
+            XCTAssertEqual(history.document.encoded(), original.encoded())
+        }
+    }
+
     func testNetZeroStructuralTransactionsAndNoOpsRetainExactBytesAndRedo() throws {
         let original = try document()
         var history = DocumentHistory(document: original)

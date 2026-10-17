@@ -102,11 +102,11 @@ enum ComponentStructure {
         let selected = try context.entry(id)
         let component = selected.component
         guard component.isGroup else { throw DocumentError.invalidComponentStructure }
-        guard !component.childIDs.isEmpty else { return false }
-        try context.validateParent(component.parentID)
         let element = selected.element
-        guard let parent = element.parent as? XMLElement else { throw DocumentError.invalidComponentStructure }
         let promoted = element.children ?? []
+        guard !promoted.isEmpty else { return false }
+        try context.validateParent(component.parentID)
+        guard let parent = element.parent as? XMLElement else { throw DocumentError.invalidComponentStructure }
         let original = parent.children ?? []
         var namespaceBudget = NamespaceBudget()
         for child in promoted {
