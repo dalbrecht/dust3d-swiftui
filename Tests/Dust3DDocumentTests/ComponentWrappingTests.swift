@@ -3,9 +3,9 @@ import Foundation
 import XCTest
 
 final class ComponentWrappingTests: XCTestCase {
-    private func document(_ attributes: String = "") throws -> Dust3DDocument {
+    private func document(_ attributes: String = "", opaqueGraph: Bool = false) throws -> Dust3DDocument {
         let model = Data(
-            "<canvas future='canvas'><nodes><node id='n' partId='p' x='.5' y='.5' z='.5' radius='.2'/></nodes><edges/><parts><part id='p' locked='true'/></parts><components><component id='g' future='keep' \(attributes)><!--keep--><future value='opaque'/><component id='c' linkDataType='partId' linkData='p'/></component></components></canvas>"
+            "<canvas future='canvas'><nodes><node id='n' partId='\(opaqueGraph ? "missing" : "p")' x='.5' y='.5' z='.5' radius='.2'/></nodes><edges/><parts><part id='p' locked='true'/></parts><components><component id='g' future='keep' \(attributes)><!--keep--><future value='opaque'/><component id='c' linkDataType='partId' linkData='p'/></component></components></canvas>"
                 .utf8)
         let header =
             "<ds3><model name='model.xml' offset='0' size='\(model.count)'/><asset name='opaque.bin' offset='\(model.count)' size='4'/></ds3>"
@@ -171,6 +171,30 @@ final class ComponentWrappingTests: XCTestCase {
         XCTAssertEqual(
             try source.applying(.setComponentWrapKeepChildren(id: "g", value: false)).encoded(), source.encoded())
         XCTAssertEqual(try source.applying(.setComponentWrapFaces(id: "g", faces: 1600)).encoded(), source.encoded())
+    }
+
+    func testWrappingCommandsDoNotDecodeOrRewriteOpaqueGraphData() throws {
+        let source = try document(opaqueGraph: true)
+        XCTAssertThrowsError(try source.editorContents())
+        for command in [
+            DocumentCommand.setComponentWrapMode(id: "g", mode: .cloth),
+            .setComponentWrapKeepChildren(id: "g", value: true), .setComponentWrapFaces(id: "g", faces: 64),
+            .setComponentWrapScalar(id: "g", property: .offset, value: 0.01),
+        ] {
+            var history = DocumentHistory(document: source)
+            try history.apply(command)
+            let changed = history.document
+            XCTAssertNotEqual(changed.encoded(), source.encoded())
+            let originalNodes = try XMLDocument(data: source.modelXML).nodes(forXPath: "/canvas/nodes").map(\.xmlString)
+            let changedNodes = try XMLDocument(data: changed.modelXML).nodes(forXPath: "/canvas/nodes").map(\.xmlString)
+            XCTAssertEqual(changedNodes, originalNodes)
+            XCTAssertEqual(changed.asset(named: "opaque.bin"), source.asset(named: "opaque.bin"))
+            XCTAssertThrowsError(try changed.editorContents())
+            XCTAssertTrue(history.undo())
+            XCTAssertEqual(history.document.encoded(), source.encoded())
+            XCTAssertTrue(history.redo())
+            XCTAssertEqual(history.document.encoded(), changed.encoded())
+        }
     }
 
 }

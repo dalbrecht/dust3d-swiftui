@@ -358,7 +358,8 @@ public struct Dust3DDocument: Sendable {
         let contents: DocumentContents
         switch command {
         case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName, .setComponentCombineMode,
-            .setComponentSmoothCutoffDegrees,
+            .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
+            .setComponentWrapKeepChildren, .setComponentWrapFaces,
             .reorderComponent,
             .groupComponents, .ungroupComponent, .reparentComponent:
             contents = DocumentContents(nodes: [], edges: [])

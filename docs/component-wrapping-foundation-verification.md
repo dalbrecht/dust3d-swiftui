@@ -37,9 +37,16 @@ No native view changes in this stage. Pointer/keyboard/GPU/VoiceOver acceptance
 remains pending while the user is unavailable. No manufactured pixel baselines
 or inherited full-core coverage claims.
 
-Full local `make ci` passed on 2026-10-17: 442 tests, formatting, native build,
+Full local `make ci` passed on 2026-10-17: 443 tests, formatting, native build,
 coverage gates, both Qt-free app linkages and isolated bundle-rebuild regression.
-Measured line coverage: mesh library 73/74; document library 2811/2895 (all 133
+Measured line coverage: mesh library 73/74; document library 2812/2896 (all 134
 new document lines covered relative to the prior 2678/2762); editor model
 1428/1434; pure state 529/529; undo domain 97/97; orbit camera 33/33. These Swift
 measurements do not establish inherited C++ engine coverage.
+
+Automated review found that wrapping-only commands initially decoded the node
+graph unnecessarily. A regression with a node referencing a missing part failed
+with `invalidNode`, then passed after all four wrapping commands joined the
+existing component-only path. It verifies unchanged opaque node XML/assets and
+exact undo/redo without claiming the opaque graph is editable or renderable.
+The full gate passed again after this correction.
