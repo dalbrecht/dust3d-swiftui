@@ -8,7 +8,8 @@ metadata and separate typed scale/unified commands. Scale bounds are finite
 silently clamping. Nonzero subnormal doubles are rejected because the core parser
 reports underflow. Imported literals that Swift rounds to zero despite a nonzero
 significand remain unavailable until explicitly replaced; do not preserve them as
-semantic zero no-ops. Explicit zero and the minimum normal double remain valid.
+semantic zero no-ops. Nonzero values must also remain nonzero and finite after conversion to the
+engine Float. Explicit zero and the smallest nonzero Float remain valid.
 Defaults are one and unified false. Unified deformation uses
 the maximum node radius for nondefault scale directions; it does not make width
 and thickness equal or rewrite node radii.

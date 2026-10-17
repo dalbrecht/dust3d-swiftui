@@ -19,7 +19,9 @@ Absent/empty cut face means Quad. Unsupported text (including a bare UserDefined
 marker without a linked identity) stays unavailable until explicitly replaced.
 Rotation uses inherited normalized half-turns in -1...1; one equals 180 degrees.
 Absent/empty rotation means zero. Reject invalid ranges, nonfinite and subnormal
-new values, preserving unsupported source values. Extract EngineScalar from the
+new values, preserving unsupported source values. Also reject a nonzero Double
+that becomes zero or nonfinite in the generator Float; finite output alone does
+not prove that the requested parameter was applied. Extract EngineScalar from the
 previous deformation implementation with package visibility so document and
 controller inputs share the tested source underflow policy and inherited
 comma-decimal compatibility without adding
@@ -27,7 +29,9 @@ dependencies or framework imports to the helper.
 
 Write every nondefault rotation, including values smaller than the inherited
 writer's 0.01 omission threshold. Remove Quad/zero defaults on actual changes;
-semantic no-ops retain original spelling, bytes and redo. Preserve node overrides,
+semantic no-ops retain original spelling, bytes and redo, including an unchanged
+imported profile identity whose target is currently absent. New links still
+require an existing target. Preserve node overrides,
 part metadata, graph, assets, locks and camera/selection. Each controller edit is
 one atomic history transaction with regenerated preview. Invalid input or newly
 introduced profile cycles publish no partial state.

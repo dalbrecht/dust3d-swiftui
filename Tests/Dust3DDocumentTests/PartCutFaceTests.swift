@@ -99,6 +99,35 @@ final class PartCutFaceTests: XCTestCase {
             XCTAssertEqual(history.document.encoded(), changed.encoded())
         }
     }
+    func testUnresolvedImportedProfileNoOpPreservesBytesAndRedo() throws {
+        let missing = "{ffffffff-ffff-4fff-8fff-ffffffffffff}"
+        let source = try document("cutFace='\(missing)'")
+        XCTAssertEqual(try source.editorContents().parts.first?.cutFace, .linkedPart(missing))
+        var history = DocumentHistory(document: source)
+        try history.apply(.setPartCutFace(id: owner, selection: .preset(.triangle)))
+        let changed = history.document.encoded()
+        XCTAssertTrue(history.undo())
+        try history.apply(.setPartCutFace(id: owner, selection: .linkedPart(missing)))
+        XCTAssertEqual(history.document.encoded(), source.encoded())
+        XCTAssertTrue(history.redo())
+        XCTAssertEqual(history.document.encoded(), changed)
+    }
+
+    func testRotationsThatBecomeZeroInTheEngineRejectAtomically() throws {
+        let source = try document("cutRotation='0.25'")
+        for rotation in [1e-50, -1e-50, Double.leastNormalMagnitude] {
+            XCTAssertThrowsError(try source.applying(.setPartCutRotation(id: owner, rotation: rotation))) {
+                XCTAssertEqual($0 as? DocumentError, .invalidPartCutRotation)
+            }
+        }
+        XCTAssertNil(try document("cutRotation='1e-50'").editorContents().parts.first?.cutRotation)
+        let smallest = Double(Float.leastNonzeroMagnitude)
+        let changed = try source.applying(.setPartCutRotation(id: owner, rotation: smallest))
+        let value = try XCTUnwrap(changed.editorContents().parts.first?.cutRotation)
+        XCTAssertEqual(value, smallest)
+        XCTAssertEqual(Float(value), Float.leastNonzeroMagnitude)
+    }
+
     func testLegacyCommaRotationPreservesSourceAndRedoOnSemanticNoOp() throws {
         let source = try document("cutRotation='0,5'")
         XCTAssertEqual(try source.editorContents().parts.first?.cutRotation, 0.5)

@@ -16,7 +16,7 @@ public enum CutFacePreset: String, CaseIterable, Hashable, Sendable {
 public enum CutFaceSelection: Hashable, Sendable {
     /// Use a built-in cross-section template.
     case preset(CutFacePreset)
-    /// Read the profile from an existing part, without normalizing or rewriting its identity.
+    /// Use an exact profile identity; imported unresolved identities remain inspectable.
     case linkedPart(String)
 }
 
@@ -39,6 +39,7 @@ enum PartCutFace {
         throws -> Bool
     {
         let (current, element) = try part(model, parts: parts, id: id)
+        guard current.cutFace != selection else { return false }
         let text: String?
         switch selection {
         case .preset(let preset): text = preset == .quad ? nil : preset.rawValue
@@ -47,7 +48,6 @@ enum PartCutFace {
             guard parts.contains(where: { $0.id == target }) else { throw DocumentError.missingPart(target) }
             text = target
         }
-        guard current.cutFace != selection else { return false }
         replaceAttribute(element, name: "cutFace", value: text)
         if case .linkedPart(let target) = selection {
             let root = model.rootElement()

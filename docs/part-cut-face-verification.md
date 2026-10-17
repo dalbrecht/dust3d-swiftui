@@ -17,7 +17,7 @@ Four controller tests first failed for missing actions. They use a real three-no
 part plus an independently serialized two-node profile marked target CutFace.
 Every preset regenerates finite unit-normal geometry; non-Quad presets and linked
 profiles change geometry relative to the Quad fallback baseline. A 0.25 half-turn
-rotation changes Triangle geometry. Endpoint -1/1 and the minimum normal double
+rotation changes Triangle geometry. Endpoint -1/1 and the smallest nonzero Float
 also generate finite/unit-normal meshes. Invalid controller input publishes no
 change. Successful edits retain camera/selection, publish once, ignore no-ops and
 restore exact archive and mesh output through Undo/Redo.
@@ -67,3 +67,15 @@ failures against exact pin `7d37f08299dffb6e1c9d848bea3ee974169449b9`, including
 formatting, native builds, coverage, Qt-free linkage and isolated signed bundle
 rebuild checks. Final document line coverage is 2528/2612; other measured module
 totals above are unchanged.
+
+A further failing-first regression preserves no-ops for an unresolved imported
+profile before target validation, including exact bytes and redo. Newly changed
+links still require an existing target. Float-conversion tests now reject normal
+Double values such as 1e-50 that become engine zero, through document APIs and
+controllers for both rotation and deformation. Source values remain unavailable
+and preserved. The smallest nonzero Float is retained by the document and actual
+mesh boundary tests remain finite; earlier minimum-normal-Double finite-output
+checks were insufficient to prove parameter retention. The corrected full `make ci` passes 388 tests with zero failures, formatting,
+native builds, coverage, Qt-free linkage and isolated signed bundle-rebuild checks.
+Document line coverage is now 2531/2615; other measured module totals above are
+unchanged.

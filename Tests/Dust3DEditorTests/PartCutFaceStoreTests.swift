@@ -128,7 +128,7 @@ final class PartCutFaceStoreTests: XCTestCase {
     @MainActor func testRotationChangesGeometryAndRestoresExactHistory() async throws {
         let original = try document().applying(.setPartCutFace(id: owner, selection: .preset(.triangle)))
         try await assertHistory(original: original) { $0.setPartCutRotation(owner, rotation: "0.25") }
-        for rotation in [-1.0, Double.leastNormalMagnitude, 1.0] {
+        for rotation in [-1.0, Double(Float.leastNonzeroMagnitude), 1.0] {
             let changed = try original.applying(.setPartCutRotation(id: owner, rotation: rotation))
             assertFinite(try MeshLoader.load(data: changed.encoded()))
         }
@@ -142,7 +142,10 @@ final class PartCutFaceStoreTests: XCTestCase {
         await store.load(data: original.encoded())
         try await settle(store)
         let revision = store.previewRevision
-        for text in ["", "nan", "inf", "5e-324", "1e-999", "-1e-999", "0x1p-9999", "-1.001", "1.001"] {
+        for text in [
+            "", "nan", "inf", "5e-324", "1e-50", "2.2250738585072014e-308", "1e-999", "-1e-999", "0x1p-9999", "-1.001",
+            "1.001",
+        ] {
             store.setPartCutRotation(owner, rotation: text)
             try await settle(store)
             XCTAssertTrue(store.errorMessage?.contains("-1 to 1") == true)

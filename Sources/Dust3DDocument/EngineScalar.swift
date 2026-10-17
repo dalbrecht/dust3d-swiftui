@@ -1,7 +1,10 @@
 /// Numeric archive compatibility shared by bounded procedural properties.
 package enum EngineScalar {
     package static func isValid(_ value: Double, in bounds: ClosedRange<Double>) -> Bool {
-        value.isFinite && !value.isSubnormal && bounds.contains(value)
+        guard value.isFinite, !value.isSubnormal, bounds.contains(value) else { return false }
+        let engineValue = Float(value)
+        // The generator stores these properties as Float; a nonzero edit must not silently become zero.
+        return engineValue.isFinite && (value == 0 || engineValue != 0)
     }
 
     package static func parse(_ text: String, in bounds: ClosedRange<Double>) -> Double? {
