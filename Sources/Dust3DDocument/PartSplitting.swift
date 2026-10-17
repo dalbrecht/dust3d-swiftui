@@ -158,12 +158,13 @@ enum PartSplitting {
     }
 
     static func componentElements(_ model: XMLDocument) -> [XMLElement] {
-        let roots = model.rootElement()?.elements(forName: "components").first?.elements(forName: "component") ?? []
+        let roots = DocumentXML.childElements(
+            DocumentXML.childElements(model.rootElement(), named: "components").first, named: "component")
         var pending = Array(roots.reversed())
         var result: [XMLElement] = []
         while let component = pending.popLast() {
             result.append(component)
-            pending.append(contentsOf: component.elements(forName: "component").reversed())
+            pending.append(contentsOf: DocumentXML.childElements(component, named: "component").reversed())
         }
         return result
     }

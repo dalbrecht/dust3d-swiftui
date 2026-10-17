@@ -6,10 +6,10 @@ final class ComponentStructureTests: XCTestCase {
     private func document(
         _ components: String =
             "<component id='a' future='A'><component id='leaf' linkDataType='partId' linkData='p' future='leaf'/><future data='retained'/></component><!--between--><component id='b' future='B'/><component id='c' linkDataType='future' linkData='opaque'/>",
-        nodes: String = "<node id='n' partId='p' x='1' y='2' z='3' radius='.1'/>"
+        nodes: String = "<node id='n' partId='p' x='1' y='2' z='3' radius='.1'/>", edges: String = ""
     ) throws -> Dust3DDocument {
         let model = Data(
-            "<canvas future='root'><nodes>\(nodes)</nodes><parts><part id='p' locked='true' visible='false' disabled='true'/></parts><components>\(components)</components></canvas>"
+            "<canvas future='root'><nodes>\(nodes)</nodes><edges>\(edges)</edges><parts><part id='p' locked='true' visible='false' disabled='true'/></parts><components>\(components)</components></canvas>"
                 .utf8)
         let header =
             "<ds3 future='archive'><model name='model.xml' offset='0' size='\(model.count)'/><asset name='opaque.bin' offset='\(model.count)' size='4' future='asset'/></ds3>"
@@ -133,6 +133,121 @@ final class ComponentStructureTests: XCTestCase {
             XCTAssertNil(try repaired.components().first { $0.id == "child" }?.parentID)
             XCTAssertEqual(try repaired.components().first { $0.id == "parent" }?.linkData, data)
             XCTAssertEqual(try repaired.components().first { $0.id == "parent" }?.childIDs, ["group"])
+        }
+    }
+
+    func testFreshGroupIdentityRejectsEverySemanticCategoryAndUUIDAlias() throws {
+        let original = try document(edges: "<edge id='e' from='n' to='n'/>")
+        for id in ["n", "e", "p", "a"] {
+            XCTAssertThrowsError(try original.applying(.groupComponents(ids: ["b"], groupID: id))) {
+                XCTAssertEqual($0 as? DocumentError, .invalidComponentStructure)
+            }
+        }
+        let identifiers = [
+            "{11111111-1111-4111-8111-111111111111}", "{22222222-2222-4222-8222-222222222222}",
+            "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}",
+        ]
+        for useBraces in [true, false] {
+            let source = identifiers.map { useBraces ? $0 : String($0.dropFirst().dropLast()) }
+            let value = try Dust3DDocument(
+                snapshotXML: Data(
+                    "<canvas><nodes><node id='\(source[0])' partId='\(source[2])' x='0' y='0' z='0' radius='.1'/></nodes><edges><edge id='\(source[1])' from='\(source[0])' to='\(source[0])'/></edges><parts><part id='\(source[2])'/></parts><components><component id='\(source[3])' linkDataType='partId' linkData='\(source[2])'/></components></canvas>"
+                        .utf8))
+            for id in identifiers.flatMap({ [$0, String($0.dropFirst().dropLast())] }) {
+                XCTAssertThrowsError(try value.applying(.groupComponents(ids: [source[3]], groupID: id))) {
+                    XCTAssertEqual($0 as? DocumentError, .invalidComponentStructure)
+                }
+            }
+            XCTAssertNoThrow(try value.applying(.groupComponents(ids: [source[3]], groupID: "fresh")))
+        }
+        let opaque = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><components><component id='a'/></components><future id='g'/></canvas>".utf8))
+        XCTAssertNoThrow(try opaque.applying(.groupComponents(ids: ["a"], groupID: "g")))
+    }
+
+    func testUngroupRetainsInheritedExtensionAndQNameNamespaceBindings() throws {
+        let original = try document(
+            "<component id='group' xmlns:ext='urn:extension' xmlns:q='urn:qualified'><component id='child' ext:flag='child' futureType='q:Thing'><ext:future/></component><ext:opaque ext:flag='direct'/></component>"
+        )
+        let changed = try original.applying(.ungroupComponent(id: "group"))
+        let container = try XCTUnwrap(
+            XMLDocument(data: changed.modelXML).rootElement()?.elements(forName: "components").first)
+        let child = try XCTUnwrap(container.elements(forName: "component").first)
+        XCTAssertEqual(child.attribute(forName: "ext:flag")?.uri, "urn:extension")
+        XCTAssertEqual(child.elements(forName: "ext:future").first?.uri, "urn:extension")
+        XCTAssertEqual(child.attribute(forName: "futureType")?.stringValue, "q:Thing")
+        XCTAssertEqual(child.namespaces?.first { $0.name == "q" }?.stringValue, "urn:qualified")
+        XCTAssertEqual(container.elements(forName: "ext:opaque").first?.uri, "urn:extension")
+        var history = DocumentHistory(document: original)
+        try history.apply(.ungroupComponent(id: "group"))
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+    }
+
+    func testReparentRetainsOldDefaultExtensionAndQNameNamespacesAcrossConflictingDestination() throws {
+        let original = try document(
+            "<component id='source' xmlns='urn:source' xmlns:ext='urn:extension' xmlns:q='urn:qualified'><component id='moving' ext:flag='source' futureType='q:Thing'><ext:future/></component></component><component id='destination' xmlns='urn:destination' xmlns:ext='urn:other' xmlns:q='urn:other-qualified'><component id='resident'/></component>"
+        )
+        let wrapped = try original.applying(.groupComponents(ids: ["moving"], groupID: "wrapped"))
+        let wrappedContainer = try XCTUnwrap(
+            XMLDocument(data: wrapped.modelXML).rootElement()?.elements(forName: "components").first)
+        let source = try XCTUnwrap(
+            wrappedContainer.elements(forName: "component").first {
+                $0.attribute(forName: "id")?.stringValue == "source"
+            })
+        let wrapper = try XCTUnwrap(source.elements(forName: "component").first)
+        XCTAssertEqual(wrapper.uri, "urn:source")
+        XCTAssertEqual(wrapper.elements(forName: "component").first?.uri, "urn:source")
+        let changed = try original.applying(.reparentComponent(id: "moving", parentID: "destination"))
+        let xml = try XMLDocument(data: changed.modelXML)
+        let container = try XCTUnwrap(xml.rootElement()?.elements(forName: "components").first)
+        let destination = try XCTUnwrap(
+            container.elements(forName: "component").first { $0.attribute(forName: "id")?.stringValue == "destination" }
+        )
+        let moving = try XCTUnwrap(
+            (destination.children ?? []).compactMap { $0 as? XMLElement }.first {
+                $0.attribute(forName: "id")?.stringValue == "moving"
+            })
+        XCTAssertEqual(try changed.components().first { $0.id == "moving" }?.parentID, "destination")
+        XCTAssertEqual(try changed.components().first { $0.id == "destination" }?.childIDs, ["resident", "moving"])
+        XCTAssertEqual(destination.uri, "urn:destination")
+        XCTAssertEqual(moving.uri, "urn:source")
+        XCTAssertEqual(moving.attribute(forName: "ext:flag")?.uri, "urn:extension")
+        XCTAssertEqual(moving.elements(forName: "ext:future").first?.uri, "urn:extension")
+        XCTAssertEqual(moving.attribute(forName: "futureType")?.stringValue, "q:Thing")
+        XCTAssertEqual(moving.namespaces?.first { $0.name == "q" }?.stringValue, "urn:qualified")
+        let reordered = try changed.applying(.reorderComponent(id: "moving", direction: .up))
+        XCTAssertEqual(try reordered.components().first { $0.id == "destination" }?.childIDs, ["moving", "resident"])
+    }
+
+    func testUnnamespacedSubtreeRemainsUnnamespacedInANamespacedDestination() throws {
+        let original = try document("<component id='plain'/><component id='destination' xmlns='urn:destination'/>")
+        let changed = try original.applying(.reparentComponent(id: "plain", parentID: "destination"))
+        let container = try XCTUnwrap(
+            XMLDocument(data: changed.modelXML).rootElement()?.elements(forName: "components").first)
+        let destination = try XCTUnwrap(
+            container.elements(forName: "component").first { $0.attribute(forName: "id")?.stringValue == "destination" }
+        )
+        let plain = try XCTUnwrap(
+            (destination.children ?? []).compactMap { $0 as? XMLElement }.first { $0.name == "component" })
+        XCTAssertTrue((plain.uri ?? "").isEmpty)
+        XCTAssertEqual(try changed.components().first { $0.id == "plain" }?.parentID, "destination")
+        XCTAssertEqual(
+            try changed.applying(.reparentComponent(id: "plain", parentID: "destination")).encoded(), changed.encoded())
+    }
+
+    func testInheritedNamespaceExpansionRejectsBeforeStructuralPublication() throws {
+        let manyBindings = (0..<501).map { "xmlns:q\($0)='urn:namespace:\($0)'" }.joined(separator: " ")
+        let longBinding = "xmlns:q='urn:" + String(repeating: "x", count: 1024 * 1024) + "'"
+        for (bindings, childCount) in [(manyBindings, 200), (longBinding, 20)] {
+            let children = (0..<childCount).map { "<component id='c\($0)'/>" }.joined()
+            let original = try document("<component id='group' \(bindings)>\(children)</component>")
+            let bytes = original.encoded()
+            XCTAssertThrowsError(try original.applying(.ungroupComponent(id: "group"))) {
+                XCTAssertEqual($0 as? DocumentError, .limitExceeded)
+            }
+            XCTAssertEqual(original.encoded(), bytes)
         }
     }
 

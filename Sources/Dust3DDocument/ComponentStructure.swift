@@ -2,6 +2,28 @@ import Foundation
 
 /// Structural edits operate on a validated XML copy; only the caller's fully encoded result is published.
 enum ComponentStructure {
+    private struct NamespaceBudget {
+        private var remainingBindings = 100_000
+        private var remainingBytes = 16 * 1024 * 1024
+
+        mutating func preserve(_ element: XMLElement, movingTo destination: XMLElement) throws {
+            let bindings = DocumentXML.namespaceBindingsToPreserve(element, movingTo: destination)
+            guard bindings.count <= remainingBindings else { throw DocumentError.limitExceeded }
+            var available = remainingBytes
+            for binding in bindings {
+                guard available >= 16, binding.prefix.utf8.count <= available - 16 else {
+                    throw DocumentError.limitExceeded
+                }
+                available -= 16 + binding.prefix.utf8.count
+                guard binding.uri.utf8.count <= available else { throw DocumentError.limitExceeded }
+                available -= binding.uri.utf8.count
+            }
+            remainingBindings -= bindings.count
+            remainingBytes = available
+            DocumentXML.installNamespaces(bindings, on: element)
+        }
+    }
+
     private struct Entry {
         let component: DocumentComponent
         let element: XMLElement
@@ -36,8 +58,15 @@ enum ComponentStructure {
             groupID.unicodeScalars.allSatisfy({
                 !CharacterSet.controlCharacters.contains($0) && !CharacterSet.whitespacesAndNewlines.contains($0)
                     && $0.value != 0xFFFE && $0.value != 0xFFFF
-            }), context.entries[groupID] == nil
+            })
         else { throw DocumentError.invalidComponentStructure }
+        let existing = Set(
+            DocumentXML.semanticElements(model).compactMap {
+                $0.attribute(forName: "id")?.stringValue
+            }.map { CutFaceLinks.canonicalID($0) ?? $0 })
+        guard !existing.contains(CutFaceLinks.canonicalID(groupID) ?? groupID) else {
+            throw DocumentError.invalidComponentStructure
+        }
         guard context.ordered.count < 10_000 else { throw DocumentError.limitExceeded }
         for id in ids { _ = try context.entry(id) }
         let members = context.ordered.filter { identities.contains($0.component.id) }
@@ -79,7 +108,11 @@ enum ComponentStructure {
         guard let parent = element.parent as? XMLElement else { throw DocumentError.invalidComponentStructure }
         let promoted = element.children ?? []
         let original = parent.children ?? []
-        for child in promoted { child.detach() }
+        var namespaceBudget = NamespaceBudget()
+        for child in promoted {
+            if let element = child as? XMLElement { try namespaceBudget.preserve(element, movingTo: parent) }
+            child.detach()
+        }
         for child in original { child.detach() }
         for child in original {
             if child === element {
@@ -107,12 +140,14 @@ enum ComponentStructure {
             }
             destination = target.element
         } else {
-            guard let root = model.rootElement()?.elements(forName: "components").first else {
+            guard let root = DocumentXML.childElements(model.rootElement(), named: "components").first else {
                 throw DocumentError.invalidComponentStructure
             }
             destination = root
         }
         let element = selected.element
+        var namespaceBudget = NamespaceBudget()
+        try namespaceBudget.preserve(element, movingTo: destination)
         element.detach()
         destination.addChild(element)
         return true

@@ -34,7 +34,7 @@ enum ComponentReordering {
                 $0.attribute(forName: "id")?.stringValue == id
             }), let parent = element.parent as? XMLElement
         else { throw DocumentError.missingComponent(id) }
-        let siblings = parent.elements(forName: "component")
+        let siblings = DocumentXML.childElements(parent, named: "component")
         guard let index = siblings.firstIndex(where: { $0 === element }) else {
             throw DocumentError.invalidComponent
         }
