@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add optional copied, Sendable mesh source hints through cached generation, preserving complete weights, opaque identities, explicit unknown/ambiguous kinds and independent payload budgets with strict boundary validation.
+
 - Reuse bounded document-scoped core caches for editor previews, isolate replacement/stop cleanup, preserve stale and successful-empty behavior, and display cache-only diagnostics without blocking edits or save.
 
 - Add an actor-owned generation-session SDK with bounded retained caches, copied indexed results, explicit cache diagnostics and reset, backed by the reviewed core session API; existing stateless app loading remains compatible.

@@ -302,3 +302,14 @@ cache-only diagnostics. See ADR 0055. Existing encoded documents are immutable
 Data handoffs; no new encoding/performance claim is made. Source provenance,
 controlled memory/performance budgets, broader scheduling acceptance and the Qt
 differential corpus remain pending. M3 and full editor parity remain incomplete.
+
+
+## Swift source-hint SDK stage (#112)
+
+The SDK now pins reviewed cached-source core APIs and exposes independent Sendable
+identity/corner/influence values through `generateSourcedIndexed`, with strict UTF-8
+and count/range validation, unchanged ordinary loading, cache reuse, separate
+budgets and cooperative cancellation. See [ADR 0056](adr/0056-copied-swift-source-hints.md)
+and [verification](swift-source-hints-verification.md). Editor preview metadata and
+source-based picking follow after review; M3 and broader differential acceptance
+remain incomplete.

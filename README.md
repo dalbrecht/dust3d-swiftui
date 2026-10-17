@@ -23,8 +23,15 @@ reuse. `generateIndexed(data:)` returns copied optional geometry and cache stats
 `statistics()` and `reset()` inspect or clear retained state. Cache zero disables
 retention, while indexed-output zero retains its 256 MiB default. Cache-only
 issues remain distinct from primary errors. See [the ownership decision](docs/adr/0054-actor-owned-generation-sessions.md).
-The apps adopt this SDK separately after review. See
+The editor uses document-scoped sessions; the viewer remains stateless. See
 [session verification and limits](docs/swift-generation-session-verification.md).
+
+`generateSourcedIndexed(data:)` optionally adds copied source identities, corner ranges
+and complete weights while preserving cache reuse. Unknown/ambiguous/future kinds
+are explicit; identities are strictly decoded without normalization. Corner ordinal
+matches triangle-index position, not unique vertex index. Source/index/cache budgets
+remain separate. The editor's metadata/picking adoption follows separately. See
+[source hint contract and verification](docs/swift-source-hints-verification.md).
 
 Dust3D is a cross-platform 3D modeling software that makes it easy to create 3D models for video games, 3D printing, and more. It features built-in rigging, procedural animation and UV unwrapping, with export to GLB and FBX formats.
 
