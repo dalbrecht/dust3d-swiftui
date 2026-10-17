@@ -44,3 +44,8 @@ edited archives. Select the second incoming part for the hard-join fixture.
 Inspect the rendered inspector, keyboard interaction and readable explanatory
 text. Broader Qt differential checks, interacting modifier families and VoiceOver
 remain M3 acceptance work; full modifier parity is not claimed.
+
+The native inspector stage now has [offscreen rendering and acceptance evidence](native-part-modifiers-verification.md)
+for known/unsupported flags in both appearances, with actual native interaction
+still pending. The foundation's historical test counts above remain its original
+verification record; the native stage reruns the full current gate.
