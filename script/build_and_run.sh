@@ -37,6 +37,7 @@ fi
 BUILD_DIR="$DUST3D_BINARY_DIR"
 mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources" "$ROOT_DIR/dist"
 cp "$BUILD_DIR/$APP_NAME" "$APP_BINARY"
+cp "$ROOT_DIR/assets/app-icons/$APP_NAME.icns" "$APP_CONTENTS/Resources/$APP_NAME.icns"
 
 cp -R "$BUILD_DIR/Dust3DNative_Dust3DRendering.bundle" "$APP_CONTENTS/Resources/"
 chmod +x "$APP_BINARY"
@@ -55,6 +56,7 @@ cat > "$APP_CONTENTS/Info.plist" <<PLIST
 <key>CFBundleExecutable</key><string>$APP_NAME</string>
 <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
 <key>CFBundleName</key><string>$DISPLAY_NAME</string>
+<key>CFBundleIconFile</key><string>$APP_NAME.icns</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>0.1.0</string>
 <key>CFBundleVersion</key><string>1</string>

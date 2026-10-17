@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add distinct temporary Editor and Viewer app icons for launch and Dock identification.
+
 - Add component multi-selection and native Group/Ungroup actions with lossless saving, exact undo/redo and mesh preview regeneration.
 
 - Add atomic component grouping, ungrouping and cycle-safe reparenting document/session APIs, preserving subtrees, assets and exact undo/redo.
