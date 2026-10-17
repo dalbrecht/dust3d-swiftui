@@ -152,3 +152,18 @@ Missing owners throw `DocumentError.missingPart`. Node locks/visibility/disabled
 flags, source graph, role, opaque metadata and assets survive. Example:
 `.setPartFillLoopInterior(id: part.id, value: true)`. The engine consumes the flag
 only for isolated closed stitching loops, not loops already bordering a surface.
+
+### Group wrapping
+
+`component.wrapping` exposes known Skin/Cloth/disabled modes, keep-children,
+64...20000 face counts and bounded geometry scalars. Nil values preserve
+unsupported source text; absent/empty values use inherited mode defaults.
+`.setComponentWrapMode(id:mode:)`, `.setComponentWrapKeepChildren(id:value:)`,
+`.setComponentWrapFaces(id:faces:)` and `.setComponentWrapScalar(id:property:value:)`
+reject non-group owners and invalid edits with typed errors. For example:
+`.setComponentWrapScalar(id: group.id, property: .offset, value: 0.01)`.
+Mode changes retain explicit parameters. Semantic no-ops retain archive bytes
+and redo; edits remain compatible with exact history and actor-session batches.
+Existing higher face counts, binding, patterns and wrinkle metadata stay intact.
+Core issue #13 tracks nonfinite low-density opening output; this document
+foundation does not claim complete wrapping geometry or native UI acceptance.

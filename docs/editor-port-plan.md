@@ -246,3 +246,15 @@ commands, real-core normal/geometry tests and explicit native Apply/Reset contro
 [verification](component-smoothing-verification.md)). Native rendering, invalid
 input recovery, reopen and exact Save/Undo/Redo checks pass. Qt differential and
 interacting modifier acceptance remain pending; M3 is not complete.
+
+
+### Wrapping foundation checkpoint (Apple #98)
+
+Typed group-only mode, keep-children, face-count and seven geometry-scalar commands
+now preserve source spellings, unknown metadata, opaque content and exact history.
+See [foundation verification](component-wrapping-foundation-verification.md) and
+ADR 0049. The reviewed core pin includes complete wrapping numeric validation and
+portable stitching contracts. Native wrapping controls, binding and material
+features remain pending. Core issue #13 tracks nonfinite top/bottom opening output
+at 64 faces and .225 opening; positive denser configurations and explicit failure
+diagnostics are tested. M3 acceptance remains incomplete.

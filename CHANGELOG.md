@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add lossless group wrapping commands with mode-dependent defaults, bounded geometry parameters, exact undo/redo and a reviewed core numeric-validation pin. Native controls follow separately; low-density opening generation remains tracked in core issue #13.
+
 - Clear successful empty mesh previews without retaining removed geometry, while preserving stale output and diagnostics for genuine generation failures.
 
 - Add lossless isolated stitching-loop interior fill editing with native role-specific controls and exact undo/redo.

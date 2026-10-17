@@ -520,6 +520,8 @@ final class EditorStore {
                 return "The document contains unsupported component tags or ambiguous identities/containers."
             case .invalidComponentStructure:
                 return "Choose unique sibling components and an unlinked group destination without creating a cycle."
+            case .invalidComponentWrapping:
+                return "Choose a group and wrapping values within the supported editing ranges."
             case .invalidComponentTargetSegments: return "Enter a whole target segment count from 0 to 100."
             case .invalidComponentStitchingScalar:
                 return "Enter a depth from 0 to 2 or sharpness from 0 to 1 that the modeling engine can represent."
