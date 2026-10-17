@@ -333,3 +333,14 @@ metadata and exact history while updating actual procedural RGB previews. See
 [verification](component-color-verification.md) and ADR 0059. Alpha remains stored
 with an opaque preview. Full transparency/PBR, UV/baking/image material/import
 work and broader native/Qt acceptance are not complete.
+
+
+### Copied Swift UV metadata stage (#121)
+
+The exact reviewed core pin now includes numeric packer safety, portable atlas
+construction and the owned C metadata boundary. An opt-in SDK copies and validates
+triangle-aligned UV/chart/gradient/component metadata into immutable Sendable
+values. See [verification](swift-uv-metadata-verification.md) and ADR 0060.
+Ordinary/cached preview behavior remains unchanged. Missing mappings, root/broken
+chart semantics, texture-aware indexed sharing, pixel baking/PBR/transparency,
+image decoding/import/export and full M3/M4/Qt acceptance remain incomplete.

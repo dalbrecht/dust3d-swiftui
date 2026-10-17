@@ -106,3 +106,21 @@ Dust3D is licensed under the MIT License - see the [LICENSE](https://github.com/
 ## Native product roadmap
 
 The native viewer is a standalone read-only app. The editor is a separate SwiftUI app sharing the pinned Qt-free engine and Metal renderer. The initial graph-editing slice is implemented; full modeling parity remains planned. See the [full editor implementation and repository restructuring plan](docs/editor-port-plan.md), including the proposed split into Apple UI and portable core repositories.
+
+
+### Optional copied UV metadata SDK
+
+`try MeshLoader.loadWithUvMetadata(data: archive)` returns immutable Sendable
+indexed geometry and triangle-aligned UV/chart/gradient metadata. Supply
+`MeshUvImageDescriptor` values for referenced image dimensions; pixels are not
+decoded or baked. Unsupported source colors and missing image dimensions return
+original diagnostics. Unknown mappings and component aliases remain explicit.
+The default native metadata quota is 64 MiB (maximum 256 MiB), separate from
+indexed geometry and excluding Swift copies/workspace/allocator overhead.
+
+This API uses exact reviewed core revision
+`9577f8a44966841cf1c946adc726b12ef17e24c5`. It does not activate textured editor
+preview. Existing indexed sharing excludes UV/material seams; metadata corners
+follow triangle index order rather than unique vertex order. See
+[verification and limits](docs/swift-uv-metadata-verification.md) and
+[ADR 0060](docs/adr/0060-copied-swift-uv-metadata.md). Build/test with `make ci`.
