@@ -76,6 +76,20 @@ final class PartDeformationTests: XCTestCase {
         }
     }
 
+    func testUnderflowedSourceValuesRemainUnavailableUntilExplicitlyReplaced() throws {
+        for text in ["5e-324", "1e-310", "1e-999", "0x1p-9999"] {
+            let source = try document("deformWidth='\(text)'")
+            XCTAssertNil(try source.editorContents().parts.first?.deformationScale(.width), text)
+            let changed = try source.applying(.setPartDeformationScale(id: "p", property: .width, value: 0))
+            XCTAssertNotEqual(changed.encoded(), source.encoded())
+            XCTAssertEqual(try changed.editorContents().parts.first?.deformationScale(.width), 0)
+        }
+        for text in ["0e-999", "0x0p-9999", String(Double.leastNormalMagnitude)] {
+            let source = try document("deformWidth='\(text)'")
+            XCTAssertEqual(try source.editorContents().parts.first?.deformationScale(.width), Double(text))
+        }
+    }
+
     func testUnifiedEditsPreserveUnsupportedScalesAndExactHistory() throws {
         for value in [false, true] {
             let source = try document("deformWidth='future' deformThickness='1.005' deformUnified='future'")
@@ -108,7 +122,10 @@ final class PartDeformationTests: XCTestCase {
 
     func testInvalidScalesMissingPartsAndAmbiguousIdentitiesRejectAtomically() throws {
         let source = try document()
-        for value in [-0.001, 2.001, Double.nan, .infinity, -.infinity] {
+        for value in [
+            -0.001, 2.001, Double.nan, .infinity, -.infinity, Double.leastNonzeroMagnitude,
+            Double.leastNormalMagnitude / 2,
+        ] {
             XCTAssertThrowsError(try source.applying(.setPartDeformationScale(id: "p", property: .width, value: value)))
             {
                 XCTAssertEqual($0 as? DocumentError, .invalidPartDeformation)

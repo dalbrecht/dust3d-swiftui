@@ -5,7 +5,11 @@ Status: Implemented for review. Tracks #81 and M3 #62.
 Expose width and thickness through `PartDeformationProperty`, immutable optional
 metadata and separate typed scale/unified commands. Scale bounds are finite
 0...2, matching the inherited Qt part setters; reject invalid edits rather than
-silently clamping. Defaults are one and unified false. Unified deformation uses
+silently clamping. Nonzero subnormal doubles are rejected because the core parser
+reports underflow. Imported literals that Swift rounds to zero despite a nonzero
+significand remain unavailable until explicitly replaced; do not preserve them as
+semantic zero no-ops. Explicit zero and the minimum normal double remain valid.
+Defaults are one and unified false. Unified deformation uses
 the maximum node radius for nondefault scale directions; it does not make width
 and thickness equal or rewrite node radii.
 

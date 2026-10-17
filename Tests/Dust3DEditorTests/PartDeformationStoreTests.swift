@@ -27,7 +27,7 @@ final class PartDeformationStoreTests: XCTestCase {
     func testBoundaryScalesGenerateFiniteMeshes() throws {
         let baseline = try document()
         for property in PartDeformationProperty.allCases {
-            for value in [0.0, 2.0] {
+            for value in [0.0, Double.leastNormalMagnitude, 2.0] {
                 let changed = try baseline.applying(
                     .setPartDeformationScale(id: part, property: property, value: value))
                 let mesh = try MeshLoader.load(data: changed.encoded())
@@ -101,7 +101,7 @@ final class PartDeformationStoreTests: XCTestCase {
         try await settle(store)
         let baseline = try XCTUnwrap(store.mesh)
         let revision = store.previewRevision
-        for text in ["", "nan", "inf", "-0.001", "2.001", "future"] {
+        for text in ["", "nan", "inf", "-0.001", "2.001", "future", "5e-324", "1e-310"] {
             store.setPartDeformationScale(part, property: .width, value: text)
             try await settle(store)
             XCTAssertTrue(store.errorMessage?.contains("0 to 2") == true)

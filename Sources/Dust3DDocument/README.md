@@ -91,5 +91,7 @@ scales (one when absent), or nil for unsupported/ambiguous metadata.
 `.setPartDeformationScale(id: id, property: .width, value: 0.995)` preserves fine
 nondefault values; `.setPartDeformationUnified(id: id, value: true)` toggles
 maximum-node-radius deformation independently. One/false restore absent defaults
-on actual changes. Invalid scales throw `DocumentError.invalidPartDeformation`;
+on actual changes. Nonzero subnormal doubles are unsupported by the core parser and are rejected.
+Underflowed source literals remain preserved as unavailable until replaced.
+Invalid scales throw `DocumentError.invalidPartDeformation`;
 missing parts throw `missingPart`. Semantic no-ops retain source bytes and redo.

@@ -22,7 +22,7 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
 
     /// Read a supported cross-section scale without changing the source archive.
     /// - Parameter property: The width or thickness direction.
-    /// - Returns: A finite scale from zero to two, one when absent, or nil for unsupported/ambiguous metadata.
+    /// - Returns: A finite, non-subnormal scale from zero to two, one when absent, or nil for unsupported/ambiguous metadata.
     /// - Example: `part.deformationScale(.width)` reads the width factor.
     public func deformationScale(_ property: PartDeformationProperty) -> Double? { deformationScales[property] }
 

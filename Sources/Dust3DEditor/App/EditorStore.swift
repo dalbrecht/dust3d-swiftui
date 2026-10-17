@@ -147,7 +147,7 @@ final class EditorStore {
     }
     func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
         guard !isWorking, !stopped else { return }
-        guard let scale = Double(value), scale.isFinite, (0...2).contains(scale) else {
+        guard let scale = Double(value), scale.isFinite, !scale.isSubnormal, (0...2).contains(scale) else {
             errorMessage = Self.message(DocumentError.invalidPartDeformation)
             return
         }
@@ -483,7 +483,7 @@ final class EditorStore {
             case .invalidComponentSmoothing: return "Enter a finite smoothing cutoff from 0 to 180 degrees."
             case .invalidComponentName: return "Use a single-line component name of at most 1024 UTF-8 bytes."
             case .missingComponent(let id): return "Component \(id) is not present in this document."
-            case .invalidPartDeformation: return "Enter a finite part deformation scale from 0 to 2."
+            case .invalidPartDeformation: return "Enter a scale from 0 to 2 that the modeling engine can represent."
             case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
             case .conflictingAsset(let name): return "Clipboard asset \(name) conflicts with this document."

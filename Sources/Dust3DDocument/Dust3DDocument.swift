@@ -85,7 +85,7 @@ public enum DocumentCommand: Sendable {
     /// Change one procedural part flag, preserving all other metadata, source graph and assets.
     /// Part locks constrain node editing; modifier metadata remains editable as in the inherited app.
     case setPartModifier(id: String, property: PartModifierProperty, value: Bool)
-    /// Set a finite width/thickness scale in 0...2; one restores the absent default.
+    /// Set a finite, non-subnormal width/thickness scale in 0...2; one restores the absent default.
     /// Throws `invalidPartDeformation` for invalid scales or `missingPart` for absent identities.
     /// Example: `.setPartDeformationScale(id: id, property: .width, value: 0.995)`.
     case setPartDeformationScale(id: String, property: PartDeformationProperty, value: Double)

@@ -38,3 +38,14 @@ for manual actions. Reuse the existing QA app path and identity when available.
 Qt numerical/render differential acceptance, per-node deformation editing and
 other M3 modifier families remain pending. No full modeling parity, native UI
 coverage or inherited core coverage claim is made.
+
+## Parser-underflow review regression
+
+Automated review found that Swift accepts subnormal doubles the core rejects with
+`ERANGE`. Failing-first tests verify rejection before document publication and
+preserve imported decimal/hex literals that underflow to zero as unavailable
+metadata until explicitly replaced. Positive checks retain exponent-spelled zero
+and the minimum normal double; real-core endpoint checks include the latter.
+The corrected full `make ci` passes 370 tests with zero failures and all build,
+formatting, Qt-free linkage, coverage and isolated bundle-rebuild checks. Document
+line coverage is now 2433/2517; other measured module totals above are unchanged.
