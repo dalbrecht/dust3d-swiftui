@@ -5,7 +5,7 @@ import XCTest
 
 @MainActor
 final class PartMaterialStoreTests: XCTestCase {
-    func testAppliedMaterialDraftsPreserveSelectionCameraHistoryAndPreviewGeometry() async throws {
+    func testAppliedMaterialDraftsPreserveHistoryWithoutRegeneratingGeometry() async throws {
         let source = try StitchingFixture.document(loop: true, isolatedLoop: true)
         let part = StitchingFixture.identity(199)
         for property in PartMaterialProperty.allCases {
@@ -19,6 +19,7 @@ final class PartMaterialStoreTests: XCTestCase {
             try await settle(store)
             let mesh = try XCTUnwrap(store.mesh)
             let camera = store.cameraReset
+            let initialPreviewRevision = store.previewRevision
             store.setPartMaterial(part, property: property, value: property == .emissive ? "2" : "0,5")
             try await settle(store)
             XCTAssertNil(store.errorMessage)
@@ -27,6 +28,7 @@ final class PartMaterialStoreTests: XCTestCase {
                 property == .emissive ? 2 : 0.5)
             XCTAssertEqual(store.snapshot?.selectedPartID, part)
             XCTAssertEqual(store.cameraReset, camera)
+            XCTAssertEqual(store.previewRevision, initialPreviewRevision)
             XCTAssertEqual(store.mesh?.vertices.map(\.position), mesh.vertices.map(\.position))
             XCTAssertEqual(publications, 1)
             let changed = try XCTUnwrap(store.snapshot?.document.encoded())

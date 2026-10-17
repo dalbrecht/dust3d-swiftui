@@ -223,7 +223,9 @@ final class EditorStore {
             errorMessage = "Enter a value from 0 to \(Int(property.bounds.upperBound)) that the material can represent."
             return
         }
-        perform { try await $0.apply([.setPartMaterial(id: id, property: property, value: scalar)]) }
+        perform(regenerateMesh: false) {
+            try await $0.apply([.setPartMaterial(id: id, property: property, value: scalar)])
+        }
     }
     func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
         guard !isWorking, !stopped else { return }

@@ -23,11 +23,11 @@ No visible window or QA app identity is created; no pixel baseline is committed.
 ## Full gate and coverage
 
 `make ci` passes: 520 tests, two existing no-Metal-device skips, zero failures
-(81.528 seconds). Formatting, native build, enforced module coverage, Qt-free
+(78.121 seconds). Formatting, native build, enforced module coverage, Qt-free
 linkage and isolated signed bundle rebuild/archive checks pass. New material
 logic is 32/32 lines (100%); material controls 97/101 (96.04%), with native action
-closures left for interaction checks. Whole existing EditorStore is 664/775
-(85.68%); the shared 95% application target is not claimed for the entire store.
+closures left for interaction checks. Whole existing EditorStore is 668/779
+(85.75%); the shared 95% application target is not claimed for the entire store.
 
 ## Limits
 
@@ -63,3 +63,12 @@ static state/error feedback); custom control chrome (would conflict with the
 native inspector). No actionable visual findings remain in inspected section
 renders. Verdict: Approve for this scope; live keyboard, pointer hit areas,
 VoiceOver and whole-window layout remain unverified.
+
+## Automated review regression
+
+The reviewer identified unnecessary mesh regeneration after a genuine material
+edit. A regression first failed once for each property because the preview revision
+changed. Routing through the existing `regenerateMesh: false` metadata path keeps
+current geometry/source hints while still publishing the document and undo step.
+The regression checks the initial preview revision after each actual change, not
+only after no-ops. Undo/redo still use the existing general history refresh path.

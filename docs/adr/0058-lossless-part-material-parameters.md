@@ -21,7 +21,7 @@ A genuine default edit removes that attribute only. Reject invalid values before
 committing any document/history change, using a typed document error.
 
 Route one explicit Apply through existing document commands/session history and
-controller publication. Numeric drafts are transient; Escape/Reset Draft restores
+controller publication without regenerating unchanged preview geometry. Numeric drafts are transient; Escape/Reset Draft restores
 the current source value. Unknown metadata requires an explicit replacement.
 Offer material controls for Model parts, matching the reference inspector. Keep
 stored values for every role; changing roles must not erase material metadata.
