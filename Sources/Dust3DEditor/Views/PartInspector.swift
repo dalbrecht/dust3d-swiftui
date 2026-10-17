@@ -36,6 +36,7 @@ struct PartInspector: View {
             PartModifierControls(store: store, part: part)
             PartDeformationControls(store: store, part: part)
             PartCutFaceControls(store: store, part: part)
+            if part.target == .model { PartMaterialControls(store: store, part: part) }
             Text("Part names are independent of component names.").font(.caption).foregroundStyle(.secondary)
         }
         .disabled(store.isWorking)

@@ -20,6 +20,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidPartCutFace
     case invalidPartCutRotation
     case invalidPartDeformation
+    case invalidPartMaterial
     case invalidPartName
     case invalidNode
     case cyclicProfile
@@ -123,6 +124,11 @@ public enum DocumentCommand: Sendable {
     /// Reapplying an unchanged unresolved imported link preserves bytes and redo.
     /// Example: `.setPartCutFace(id: id, selection: .preset(.triangle))`.
     case setPartCutFace(id: String, selection: CutFaceSelection)
+    /// Set one existing material scalar within its reference editor range.
+    /// Throws `invalidPartMaterial` for invalid values or `missingPart` for an absent identity.
+    /// Semantic no-ops preserve original bytes; defaults remove the field on a genuine change.
+    /// Example: `.setPartMaterial(id: id, property: .metallic, value: 0.5)`.
+    case setPartMaterial(id: String, property: PartMaterialProperty, value: Double)
     /// Set a finite half-turn rotation in -1...1 that does not overflow or underflow in the engine Float; zero restores the absent default.
     /// Throws `invalidPartCutRotation` or `missingPart`. Example: `.setPartCutRotation(id: id, rotation: 0.25)`.
     case setPartCutRotation(id: String, rotation: Double)
@@ -489,6 +495,10 @@ public struct Dust3DDocument: Sendable {
             guard try PartCutFace.setRotation(model, parts: contents.parts, id: id, rotation: rotation) else {
                 return self
             }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setPartMaterial(let id, let property, let value):
+            guard try PartMaterial.set(model, parts: contents.parts, id: id, property: property, value: value)
+            else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartDeformationScale(let id, let property, let value):
             guard try PartDeformation.setScale(model, parts: contents.parts, id: id, property: property, value: value)
@@ -910,7 +920,7 @@ public struct Dust3DDocument: Sendable {
                 modifiers: PartModifiers.values(part), deformationScales: PartDeformation.scales(part),
                 isDeformationUnified: PartDeformation.unified(part), cutFace: PartCutFace.selection(part),
                 cutRotation: PartCutFace.rotation(part), target: PartTargetMetadata.value(part),
-                isLoopInteriorFilled: PartLoopInterior.value(part))
+                isLoopInteriorFilled: PartLoopInterior.value(part), materials: PartMaterial.values(part))
             parts[id] = value
             orderedParts.append(value)
         }

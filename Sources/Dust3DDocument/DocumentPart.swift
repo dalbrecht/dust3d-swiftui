@@ -28,6 +28,14 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     /// Known unified-deformation flag, false by default, or nil for unsupported source metadata.
     /// Unified deformation uses the part's maximum node radius on each nondefault scale direction.
     public let isDeformationUnified: Bool?
+    private let materials: [PartMaterialProperty: Double]
+
+    /// Read a finite supported material value without normalizing source metadata.
+    /// - Parameter property: The existing metallic, roughness or glow field.
+    /// - Returns: The source/default value in the reference UI range, or nil for unsupported metadata.
+    /// - Example: `part.materialValue(.roughness)` reads surface roughness.
+    public func materialValue(_ property: PartMaterialProperty) -> Double? { materials[property] }
+
     private let deformationScales: [PartDeformationProperty: Double]
 
     /// Read a supported cross-section scale without changing the source archive.
@@ -55,8 +63,9 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
         id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool,
         modifiers: [PartModifierProperty: Bool], deformationScales: [PartDeformationProperty: Double],
         isDeformationUnified: Bool?, cutFace: CutFaceSelection?, cutRotation: Double?, target: PartTarget?,
-        isLoopInteriorFilled: Bool?
+        isLoopInteriorFilled: Bool?, materials: [PartMaterialProperty: Double]
     ) {
+        self.materials = materials
         self.isLoopInteriorFilled = isLoopInteriorFilled
         self.target = target
         self.cutFace = cutFace

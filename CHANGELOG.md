@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add lossless Metallic, Roughness and Glow editing for Model parts, with bounded drafts, exact undo/redo and preserved unsupported metadata; current previews do not yet display these effects.
+
 - Pair editor preview geometry with current source hints, discard obsolete metadata, and fall back to ordinary previews with a preserved diagnostic when optional source details fail.
 
 - Add optional copied, Sendable mesh source hints through cached generation, preserving complete weights, opaque identities, explicit unknown/ambiguous kinds and independent payload budgets with strict boundary validation.

@@ -167,3 +167,14 @@ and redo; edits remain compatible with exact history and actor-session batches.
 Existing higher face counts, binding, patterns and wrinkle metadata stay intact.
 Core issue #13 tracks nonfinite low-density opening output; this document
 foundation does not claim complete wrapping geometry or native UI acceptance.
+
+## Part material parameters
+
+Read `part.materialValue(.metallic)` (or `.roughness`/`.emissive`); nil means
+unsupported source metadata. Apply `.setPartMaterial(id: id, property: .roughness,
+value: 0.5)` through document/history commands. Metallic and roughness accept
+0–1, emissive 0–2, matching the reference editor. Invalid values throw
+`DocumentError.invalidPartMaterial`; missing identities throw `missingPart`.
+Semantic no-ops retain exact bytes/redo; real default edits remove only that
+attribute. Unknown XML/assets and exact undo/save preservation remain intact.
+See [verification](../../docs/part-material-verification.md).

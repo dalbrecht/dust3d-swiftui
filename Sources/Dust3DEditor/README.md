@@ -220,3 +220,9 @@ Cache state is transient and is never saved in the archive. See
 [the lifecycle decision](../../docs/adr/0055-scoped-editor-preview-caches.md).
 
 [Verification and remaining limits](../../docs/editor-preview-session-verification.md).
+
+Model part inspectors expose Metallic, Roughness and Glow drafts. Return or Apply
+commits one undo step; Escape or Reset Draft restores the current document value without
+editing. Unsupported source values remain until explicit replacement. These
+values are saved, but the current preview does not display their material effects.
+See [material parameter verification](../../docs/part-material-verification.md).

@@ -315,3 +315,12 @@ budgets and cooperative cancellation. See [ADR 0056](adr/0056-copied-swift-sourc
 and [verification](swift-source-hints-verification.md). Editor preview metadata and
 source-based picking follow after review; M3 and broader differential acceptance
 remain incomplete.
+
+
+### Part material parameter stage (#116)
+
+Lossless part metallic/roughness/emissive commands and native Model-part drafts
+now preserve reference UI ranges, unsupported metadata and exact undo/save. See
+[verification](part-material-verification.md) and ADR 0058. The current preview
+does not display these effects. This independent archive/UI stage does not waive
+remaining M3 acceptance or complete M4 UV, baking, PBR, color/image or import work.
