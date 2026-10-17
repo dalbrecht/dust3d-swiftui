@@ -6,7 +6,7 @@ import simd
 @testable import Dust3DEditor
 
 final class ComponentStitchingStoreTests: XCTestCase {
-    private func assertFinite(_ mesh: Mesh) {
+    private func assertFinite(_ mesh: IndexedMesh) {
         XCTAssertGreaterThan(mesh.triangleCount, 0)
         XCTAssertTrue(
             mesh.vertices.allSatisfy {
@@ -24,36 +24,36 @@ final class ComponentStitchingStoreTests: XCTestCase {
     func testStraightClosedProfilesGenerateFiniteOutputAfterAngleRepair() throws {
         // Side closure joins each spline's own endpoints, not neighboring rails.
         let document = try StitchingFixture.document(loop: false, degenerateStraight: true)
-        assertFinite(try MeshLoader.load(data: document.encoded()))
+        assertFinite(try MeshLoader.loadIndexed(data: document.encoded()))
     }
     func testConfiguredLineClosuresAndSegmentCountsChangeFiniteGeneratedGeometry() throws {
         let original = try StitchingFixture.document(loop: false)
-        let baseline = try MeshLoader.load(data: original.encoded())
+        let baseline = try MeshLoader.loadIndexed(data: original.encoded())
         assertFinite(baseline)
         for property in ComponentStitchingClosureProperty.allCases {
             let changed = try original.applying(
                 .setComponentStitchingClosure(
                     id: StitchingFixture.groupID,
                     property: property, value: property != .side))
-            let mesh = try MeshLoader.load(data: changed.encoded())
+            let mesh = try MeshLoader.loadIndexed(data: changed.encoded())
             assertFinite(mesh)
             XCTAssertNotEqual(mesh.vertices.map(\.position), baseline.vertices.map(\.position), property.rawValue)
         }
         let changed = try original.applying(.setComponentTargetSegments(id: StitchingFixture.groupID, segments: 12))
-        let mesh = try MeshLoader.load(data: changed.encoded())
+        let mesh = try MeshLoader.loadIndexed(data: changed.encoded())
         assertFinite(mesh)
         XCTAssertNotEqual(mesh.vertices.map(\.position), baseline.vertices.map(\.position))
     }
     func testConfiguredLoopCapDepthAndSharpnessChangeFiniteGeneratedGeometry() throws {
         let original = try StitchingFixture.document(loop: true, attributes: "backClosed='true'")
-        let baseline = try MeshLoader.load(data: original.encoded())
+        let baseline = try MeshLoader.loadIndexed(data: original.encoded())
         assertFinite(baseline)
         for property in ComponentStitchingScalarProperty.allCases {
             let changed = try original.applying(
                 .setComponentStitchingScalar(
                     id: StitchingFixture.groupID,
                     property: property, value: property == .depthRatio ? 0.5 : 0.8))
-            let mesh = try MeshLoader.load(data: changed.encoded())
+            let mesh = try MeshLoader.loadIndexed(data: changed.encoded())
             assertFinite(mesh)
             XCTAssertNotEqual(mesh.vertices.map(\.position), baseline.vertices.map(\.position), property.rawValue)
         }
@@ -62,7 +62,7 @@ final class ComponentStitchingStoreTests: XCTestCase {
         let line = try StitchingFixture.document(loop: false)
         for segments in [0, 1, 100] {
             assertFinite(
-                try MeshLoader.load(
+                try MeshLoader.loadIndexed(
                     data: line.applying(
                         .setComponentTargetSegments(id: StitchingFixture.groupID, segments: segments)
                     ).encoded()))
@@ -71,7 +71,7 @@ final class ComponentStitchingStoreTests: XCTestCase {
         for property in ComponentStitchingScalarProperty.allCases {
             for value in [property.bounds.lowerBound, property.bounds.upperBound] {
                 assertFinite(
-                    try MeshLoader.load(
+                    try MeshLoader.loadIndexed(
                         data: loop.applying(
                             .setComponentStitchingScalar(id: StitchingFixture.groupID, property: property, value: value)
                         ).encoded()))

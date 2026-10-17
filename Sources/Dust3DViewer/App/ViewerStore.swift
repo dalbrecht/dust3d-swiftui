@@ -5,7 +5,7 @@ import Observation
 @MainActor
 @Observable
 final class ViewerStore {
-    private(set) var mesh: Mesh?
+    private(set) var mesh: IndexedMesh?
     private(set) var documentName = "Dust3D Viewer"
     private(set) var isLoading = false
     private(set) var meshRevision = 0
@@ -22,7 +22,7 @@ final class ViewerStore {
         errorMessage = nil
         loadTask = Task { [weak self, service] in
             do {
-                let loaded = try await service.load(url: url)
+                let loaded = try await service.loadIndexed(url: url)
                 guard let self, self.revision == requestedRevision else { return }
                 mesh = loaded
                 meshRevision += 1

@@ -272,3 +272,13 @@ known planar attributes/area, fixture bounds, concurrent ownership and error
 semantics are tested; see [verification](swift-indexed-mesh-verification.md) and
 ADR 0052. Renderer adoption, source IDs, cache/scheduling improvements and broader
 Qt differential acceptance remain pending. M3 is not complete.
+
+
+### Indexed renderer checkpoint (Apple #106)
+
+Both native apps use copied indexed previews and UInt32 Metal draw buffers, while
+expanded SDK and viewport callers remain compatible. Pure buffer preparation and
+the production offscreen GPU pass have semantic/solid/wireframe verification;
+see [verification](indexed-metal-verification.md) and ADR 0053. Source IDs, bounded
+caches, incremental scheduling, materials and broader differential acceptance
+remain pending. M3 is not complete.

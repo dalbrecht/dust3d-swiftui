@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Render viewer and editor previews with unique vertices and UInt32 Metal index buffers, preserving expanded SDK compatibility, camera revisions, empty results and stale-failure behavior.
+
 - Add copied, Sendable indexed mesh loading with explicit native payload budgets and preserved failure diagnostics, backed by the reviewed core indexed-buffer API.
 
 - Add native group wrapping mode, keep-children, face-count and mode-specific geometry controls with explicit unsupported-value replacement, and adopt reviewed positive-area mesh export validation.

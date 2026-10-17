@@ -16,3 +16,14 @@ Resizing preserves orbit and relative zoom; Fit resets both. Both depth planes f
 the fitted distance to preserve depth precision for very narrow viewports. `Dust3DRenderingTests` covers the
 pure camera at 100% line coverage, including a real disjoint-sphere core mesh.
 This does not measure Metal draw or native input coverage.
+
+Both apps supply `IndexedMesh`: the renderer uploads unique vertices plus a UInt32
+index buffer and uses indexed triangle draws. The existing `MeshViewport(mesh: Mesh, ...)`
+initializer keeps expanded callers compatible. Pure `RenderGeometry` validates
+triangle buffers and normalizes bounds before GPU allocation. `MeshRenderer.encode`
+is shared by drawable presentation and offscreen GPU verification.
+
+`IndexedMetalRenderingTests` compares solid/wireframe indexed output with expanded
+output on the same device. It explicitly skips when no Metal device exists.
+Set `DUST3D_METAL_QA_OUTPUT_DIR` to write optional local evidence PNGs; these are not
+committed visual baselines. Interactive window/input verification remains separate.

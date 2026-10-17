@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Main-actor SwiftUI surface for a validated mesh and its interactive orbit camera.
 public struct MeshViewport: NSViewRepresentable {
-    let mesh: Mesh
+    let mesh: RenderMesh
     let isWireframe: Bool
     let cameraReset: Int
     let onError: (String) -> Void
@@ -15,7 +15,25 @@ public struct MeshViewport: NSViewRepresentable {
     public init(
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0, onError: @escaping (String) -> Void
     ) {
-        self.mesh = mesh
+        self.mesh = .expanded(mesh)
+        self.isWireframe = isWireframe
+        self.cameraReset = cameraReset
+        self.meshRevision = meshRevision
+        self.onError = onError
+    }
+
+    /// Display copied indexed geometry; revision and camera-reset semantics match the expanded initializer.
+    /// - Parameters:
+    ///   - mesh: Immutable vertices and UInt32 triangle indices.
+    ///   - isWireframe: Whether to draw triangle edges.
+    ///   - cameraReset: Increment to fit the model again.
+    ///   - meshRevision: Increment to replace GPU geometry while retaining orbit and zoom.
+    ///   - onError: Receives GPU setup diagnostics on the main actor.
+    public init(
+        mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
+        onError: @escaping (String) -> Void
+    ) {
+        self.mesh = .indexed(mesh)
         self.isWireframe = isWireframe
         self.cameraReset = cameraReset
         self.meshRevision = meshRevision
@@ -39,7 +57,9 @@ public struct MeshViewport: NSViewRepresentable {
                 guard let device = view.device else {
                     throw RendererError.unavailable("This Mac does not provide a Metal device.")
                 }
-                let renderer = try MeshRenderer(mesh: mesh, view: view, device: device)
+                let renderer = try MeshRenderer(
+                    mesh: mesh, device: device, colorPixelFormat: view.colorPixelFormat,
+                    depthPixelFormat: view.depthStencilPixelFormat)
                 if let camera = view.renderer?.camera { renderer.camera = camera }
                 view.meshRevision = meshRevision
                 view.renderer = renderer

@@ -204,3 +204,8 @@ Return; Reset Draft discards typed changes. Unsupported source values remain
 preserved until explicitly replaced. Skin shows offset/smoothness; Cloth adds
 drape, length, openings and thickness. Native interaction/GPU acceptance remains
 pending; see `docs/native-wrapping-verification.md` for offscreen evidence and limits.
+
+Generated previews use copied indexed meshes and UInt32 Metal triangle buffers.
+Preview request identities, stale-failure retention, successful-empty clearing,
+camera revision handling, document saving and undo history keep their existing
+contracts. See [indexed rendering verification](../../docs/indexed-metal-verification.md).
