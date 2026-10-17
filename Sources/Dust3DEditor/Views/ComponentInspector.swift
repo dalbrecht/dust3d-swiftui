@@ -21,6 +21,23 @@ struct ComponentInspector: View {
                 Spacer()
                 Button("Apply Name") { store.renameComponent(component.id, name: name) }
             }
+            Picker(
+                "Combine mode",
+                selection: Binding<ComponentCombineMode?>(
+                    get: { component.combineMode },
+                    set: { if let mode = $0 { store.setComponentCombineMode(component.id, mode: mode) } })
+            ) {
+                if component.combineMode == nil {
+                    Text("Unsupported source mode").tag(nil as ComponentCombineMode?)
+                }
+                ForEach(ComponentCombineMode.allCases, id: \.self) { mode in
+                    Text(mode.rawValue).tag(Optional(mode))
+                }
+            }
+            .accessibilityIdentifier("component-combine-mode")
+            .help(
+                "Normal unions, Inversion subtracts, and Uncombined retains separate geometry. Order matters. One undo step."
+            )
             ComponentOrderMenu(store: store)
             ComponentReparentControls(store: store, componentID: component.id)
             if let parent = component.parentID {

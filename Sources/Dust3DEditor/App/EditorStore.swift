@@ -145,6 +145,9 @@ final class EditorStore {
         guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
     }
+    func setComponentCombineMode(_ id: String, mode: ComponentCombineMode) {
+        perform { try await $0.apply([.setComponentCombineMode(id: id, mode: mode)]) }
+    }
     func renameComponent(_ id: String, name: String) {
         perform(regenerateMesh: false) { try await $0.apply([.setComponentName(id: id, name: name)]) }
     }
