@@ -56,17 +56,29 @@ public enum MeshLoader {
     ///   successful no-geometry, or an insufficient payload budget. Native diagnostics are preserved.
     /// - Example: `let mesh = try MeshLoader.loadIndexed(data: archive)`.
     public static func loadIndexed(data: Data, maximumPayloadBytes: Int = 0) throws -> IndexedMesh {
+        try validateIndexedPayloadBudget(maximumPayloadBytes)
+        // Release the expanded native source before allocating the Swift copies.
+        let handle = try withNativeMesh(data: data) { source in
+            try makeNativeIndexedMesh(from: source, maximumPayloadBytes: maximumPayloadBytes)
+        }
+        return try copyAndDestroyIndexedMesh(handle)
+    }
+
+    static func validateIndexedPayloadBudget(_ maximumPayloadBytes: Int) throws {
         guard maximumPayloadBytes >= 0 else {
             throw MeshLoadingError(status: 1, message: "The maximum payload budget must be zero or positive.")
         }
-        // Release the expanded native source before allocating the Swift copies.
-        let handle = try withNativeMesh(data: data) { source in
-            var error = Dust3DError()
-            guard let indexed = dust3d_mesh_create_indexed(source, maximumPayloadBytes, &error) else {
-                throw loadingError(error)
-            }
-            return indexed
+    }
+
+    static func makeNativeIndexedMesh(from source: OpaquePointer, maximumPayloadBytes: Int) throws -> OpaquePointer {
+        var error = Dust3DError()
+        guard let indexed = dust3d_mesh_create_indexed(source, maximumPayloadBytes, &error) else {
+            throw loadingError(error)
         }
+        return indexed
+    }
+
+    static func copyAndDestroyIndexedMesh(_ handle: OpaquePointer) throws -> IndexedMesh {
         defer { dust3d_indexed_mesh_destroy(handle) }
         let vertexCount = Int(dust3d_indexed_mesh_vertex_count(handle))
         let indexCount = Int(dust3d_indexed_mesh_index_count(handle))
@@ -111,7 +123,7 @@ public enum MeshLoader {
         return try operation(handle)
     }
 
-    private static func loadingError(_ error: Dust3DError) -> MeshLoadingError {
+    static func loadingError(_ error: Dust3DError) -> MeshLoadingError {
         var error = error
         let message = withUnsafeBytes(of: &error.message) { bytes in
             String(decoding: bytes.prefix(while: { $0 != 0 }), as: UTF8.self)

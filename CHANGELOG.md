@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an actor-owned generation-session SDK with bounded retained caches, copied indexed results, explicit cache diagnostics and reset, backed by the reviewed core session API; existing stateless app loading remains compatible.
+
 - Render viewer and editor previews with unique vertices and UInt32 Metal index buffers, reject payloads beyond device buffer limits, and preserve expanded SDK compatibility, camera revisions, empty results and stale-failure behavior.
 
 - Add copied, Sendable indexed mesh loading with explicit native payload budgets and preserved failure diagnostics, backed by the reviewed core indexed-buffer API.

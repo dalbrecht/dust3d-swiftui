@@ -282,3 +282,13 @@ the production offscreen GPU pass have semantic/solid/wireframe verification;
 see [verification](indexed-metal-verification.md) and ADR 0053. Source IDs, bounded
 caches, incremental scheduling, materials and broader differential acceptance
 remain pending. M3 is not complete.
+
+
+### Swift session ownership checkpoint (Apple #108)
+
+Dust3DKit now exposes an optional actor-owned core session with copied indexed
+output, explicit cache outcomes/diagnostics, reset and cancellation boundaries,
+pinned to reviewed core PR #24. See ADR 0054. Editor preview actor adoption and
+background encoding/coalescing follow separately; both app loading paths remain
+compatible. Source provenance, controlled performance budgets and the broader Qt
+differential corpus are still pending. This does not complete M3 or editor parity.
