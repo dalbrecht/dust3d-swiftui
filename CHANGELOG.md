@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add typed, undoable part subdivision, chamfer, rounded ends, extra rings and hard-join commands with lossless saving and regenerated previews; native inspector controls follow separately.
+
 - Update the pinned core to fix rounded crossing mesh generation and preserve thin solids near weld boundaries.
 
 - Add validated component normal smoothing cutoff editing with Apply/Reset, regenerated normals, lossless saving and exact undo/redo.

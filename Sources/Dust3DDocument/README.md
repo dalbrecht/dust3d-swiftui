@@ -77,3 +77,10 @@ zero when missing/empty, or nil for unsupported source values.
 changing geometry; zero removes the attribute on an actual edit. Invalid input
 throws `DocumentError.invalidComponentSmoothing`; unknown unrelated data and
 semantic no-op bytes remain intact.
+
+`part.modifierValue(.subdivision)` reads a supported procedural flag, or nil for
+unsupported source metadata. `PartModifierProperty` includes subdivision, chamfer,
+rounded ends, interpolation and hard joins; interpolation defaults on.
+`.setPartModifier(id: id, property: .roundedEnds, value: true)` changes one flag
+without changing source graph, unrelated properties or assets. Missing parts
+throw `DocumentError.missingPart`; semantic no-ops retain exact bytes and redo.
