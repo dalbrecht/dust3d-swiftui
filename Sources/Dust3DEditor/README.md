@@ -171,3 +171,19 @@ and stitching controls with known/unsupported source values in light/dark modes.
 The hidden-window renderer is shared by the part and component test suites.
 These artifacts validate layout and byte/history preservation; native input,
 VoiceOver, Save/Undo/Redo menu and GPU acceptance remain separate checks.
+
+Stitching-loop parts expose Fill isolated loop interior. Known flags use a
+toggle; unsupported source text stays explicit until On/Off replacement. Each
+choice is one undo step. The inherited algorithm fills only closed loops not
+already bordering a stitched surface: connected loops can retain the same mesh
+while their metadata changes. Other part roles preserve the flag without
+showing this control. The QA exporter covers on/off/unsupported loop controls
+and the actual part inspector in light/dark appearances.
+
+Clearing the only isolated loop fill now clears the preview successfully. The
+reviewed core distinguishes successful no-geometry from a generation failure;
+only that result clears retained geometry. Genuine failures keep the previous
+mesh marked stale with the original diagnostic. Undo/redo can transition between
+filled and empty previews, and obsolete empty completions cannot erase newer
+output. A loaded empty preview explains the current document state instead of
+prompting the user to open an already open file.

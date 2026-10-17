@@ -11,12 +11,26 @@ public struct MeshLoadingError: LocalizedError, Sendable {
 
 /// Loads immutable meshes. The C bridge serializes access to inherited engine globals.
 public enum MeshLoader {
+    /// Generate optional preview geometry, distinguishing a successful empty result from failure.
+    /// - Parameter data: Complete `.ds3` archive bytes.
+    /// - Returns: Copied nonempty geometry, or nil only when the core explicitly reports successful no-geometry.
+    /// - Throws: `MeshLoadingError` for all other failures, preserving the original status and diagnostic.
+    /// - Example: `let mesh = try MeshLoader.loadIfPresent(data: archive)`.
+    public static func loadIfPresent(data: Data) throws -> Mesh? {
+        do {
+            return try load(data: data)
+        } catch let error as MeshLoadingError where error.status == DUST3D_STATUS_NO_GEOMETRY.rawValue {
+            return nil
+        }
+    }
+
     public static let maximumFileSize = 256 * 1024 * 1024
 
     /// Generate a mesh from a complete Dust3D archive.
     /// - Parameter data: The bytes of an existing `.ds3` document.
     /// - Returns: Copied geometry, counts, and compatibility warnings.
-    /// - Throws: `MeshLoadingError` for malformed or unsupported documents.
+    /// - Throws: `MeshLoadingError` for malformed/unsupported documents, generation failures or a no-geometry result.
+    /// Use `loadIfPresent(data:)` when successful emptiness should return nil.
     public static func load(data: Data) throws -> Mesh {
         var error = Dust3DError()
         let handle = data.withUnsafeBytes { bytes in

@@ -131,3 +131,10 @@ joined preview contributions. Profile nodes remain editable overlays and can be
 used as linked cross-sections. Stitching inputs remain eligible for generation;
 component configuration determines whether they produce a stitched surface.
 Unsupported roles retain generation diagnostics instead of silently disappearing.
+
+`MeshPreviewState.succeedEmpty(requestID:)` accepts an empty result only for the
+active generation request, clears retained geometry/error state and advances the
+preview revision. Obsolete, duplicate and cleared requests cannot erase current
+output. Genuine failures still retain the last successful value as stale.
+`EditorSnapshot.previewEmptyDescription` supplies distinct messages for an empty
+graph, excluded contributors or a loaded document with successful empty output.

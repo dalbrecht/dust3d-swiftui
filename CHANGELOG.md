@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Clear successful empty mesh previews without retaining removed geometry, while preserving stale output and diagnostics for genuine generation failures.
+
+- Add lossless isolated stitching-loop interior fill editing with native role-specific controls and exact undo/redo.
+
 - Add lossless component stitching closures, segment counts and loop-cap parameters, native group controls, and configured line/loop geometry tests.
 
 - Add lossless procedural part roles and native role controls; profile-only documents keep editable nodes with an intentionally empty mesh preview.
