@@ -10,6 +10,13 @@ retain their original status/diagnostic; `load(data:)` keeps its strict nonempty
 contract for existing callers. The editor uses request-checked empty completion
 to clear removed geometry while retaining stale output on genuine failures.
 
+`MeshLoader.loadIndexed(data:maximumPayloadBytes:)` provides immutable, Sendable
+vertices and UInt32 triangle indices with copied metadata. Its optional companion
+returns nil only for successful no-geometry. The budget covers native exported
+payloads, excluding generator workspace and Swift copies; zero uses 256 MiB.
+See [indexed mesh verification](docs/swift-indexed-mesh-verification.md).
+The apps continue using expanded meshes until the separate renderer migration.
+
 Dust3D is a cross-platform 3D modeling software that makes it easy to create 3D models for video games, 3D printing, and more. It features built-in rigging, procedural animation and UV unwrapping, with export to GLB and FBX formats.
 
 For more information, visit [dust3d.org](https://dust3d.org/).
