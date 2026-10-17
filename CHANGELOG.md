@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Pair editor preview geometry with current source hints, discard obsolete metadata, and fall back to ordinary previews with a preserved diagnostic when optional source details fail.
+
 - Add optional copied, Sendable mesh source hints through cached generation, preserving complete weights, opaque identities, explicit unknown/ambiguous kinds and independent payload budgets with strict boundary validation.
 
 - Reuse bounded document-scoped core caches for editor previews, isolate replacement/stop cleanup, preserve stale and successful-empty behavior, and display cache-only diagnostics without blocking edits or save.

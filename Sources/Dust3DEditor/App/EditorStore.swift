@@ -10,8 +10,12 @@ import os
 final class EditorStore {
     private(set) var snapshot: EditorSnapshot?
     private(set) var isWorking = false { didSet { onEditingChanged?(isWorking) } }
-    private(set) var previewState = MeshPreviewState<IndexedMesh>()
-    var mesh: IndexedMesh? { previewState.value }
+    private(set) var previewState = MeshPreviewState<EditorPreviewOutput>()
+    var mesh: IndexedMesh? { previewState.value?.mesh }
+    var previewSourceHints: MeshSourceHints? {
+        guard !previewState.isStale, !isWorking, !stopped else { return nil }
+        return previewState.value?.sourceHints
+    }
     var previewRevision: Int { previewState.revision }
     var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
@@ -39,6 +43,7 @@ final class EditorStore {
     private let preview: any EditorPreviewServing
     private var previewScopeID = UUID()
     private(set) var previewCacheStatistics: MeshGenerationStatistics?
+    private(set) var previewSourceIssue: MeshLoadingError?
     private static let previewLogger = Logger(subsystem: "org.dust3d.editor", category: "PreviewCache")
     private let referenceImages: any ReferenceImageServing
     private var operation: Task<Void, Never>?
@@ -458,6 +463,7 @@ final class EditorStore {
         generation?.cancel()
         previewState.clear()
         previewCacheStatistics = nil
+        previewSourceIssue = nil
         let previousScope = previewScopeID
         previewScopeID = UUID()
         Task { [preview] in
@@ -479,6 +485,7 @@ final class EditorStore {
             return
         }
         previewCacheStatistics = nil
+        previewSourceIssue = nil
         let scopeID = previewScopeID
         let requestID = UUID()
         previewState.begin(requestID: requestID)
@@ -491,8 +498,9 @@ final class EditorStore {
                     return
                 }
                 previewCacheStatistics = result.statistics
-                if let mesh = result.mesh {
-                    previewState.succeed(mesh, requestID: requestID)
+                previewSourceIssue = result.sourceIssue
+                if let output = result.output {
+                    previewState.succeed(output, requestID: requestID)
                 } else {
                     previewState.succeedEmpty(requestID: requestID)
                 }

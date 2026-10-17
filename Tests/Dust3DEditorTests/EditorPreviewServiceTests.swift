@@ -62,7 +62,7 @@ final class EditorPreviewServiceTests: XCTestCase {
 
     func testConcurrentScopesKeepNativeJobsSerial() async throws {
         let data = try archive()
-        let result = try await MeshGenerationSession().generateIndexed(data: data)
+        let result = try await MeshGenerationSession().generateSourcedIndexed(data: data)
         let worker = YieldingMeshGenerator(result: result)
         let service = EditorPreviewService(makeSession: { _ in worker })
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -79,7 +79,7 @@ final class EditorPreviewServiceTests: XCTestCase {
 
     func testInFlightCancellationIsRelayedToTheQueuedOperation() async throws {
         let data = try archive()
-        let result = try await MeshGenerationSession().generateIndexed(data: data)
+        let result = try await MeshGenerationSession().generateSourcedIndexed(data: data)
         let worker = SuspendedMeshGenerator(result: result)
         let service = EditorPreviewService(makeSession: { _ in worker })
         let operation = Task { try await service.generate(data, scopeID: UUID()) }
@@ -116,31 +116,41 @@ final class EditorPreviewServiceTests: XCTestCase {
 }
 
 private actor YieldingMeshGenerator: EditorMeshGenerating {
-    let result: MeshGenerationResult
+    let result: SourcedMeshGenerationResult
     private var activeJobs = 0
     private(set) var maximumConcurrentJobs = 0
 
-    init(result: MeshGenerationResult) { self.result = result }
-    func generateIndexed(data: Data, maximumPayloadBytes: Int) async throws -> MeshGenerationResult {
+    init(result: SourcedMeshGenerationResult) { self.result = result }
+    func generateSourcedIndexed(data: Data, maximumPayloadBytes: Int, maximumSourcePayloadBytes: Int) async throws
+        -> SourcedMeshGenerationResult
+    {
         activeJobs += 1
         maximumConcurrentJobs = max(maximumConcurrentJobs, activeJobs)
         for _ in 0..<20 { await Task.yield() }
         activeJobs -= 1
         return result
     }
+    func generateIndexed(data: Data, maximumPayloadBytes: Int) async throws -> MeshGenerationResult {
+        throw UnexpectedPreviewBackendCall.fallback
+    }
     func reset() async throws {}
 }
 
 private actor SuspendedMeshGenerator: EditorMeshGenerating {
-    let result: MeshGenerationResult
-    private var continuation: CheckedContinuation<MeshGenerationResult, Never>?
+    let result: SourcedMeshGenerationResult
+    private var continuation: CheckedContinuation<SourcedMeshGenerationResult, Never>?
     private(set) var hasStarted = false
-    init(result: MeshGenerationResult) { self.result = result }
-    func generateIndexed(data: Data, maximumPayloadBytes: Int) async throws -> MeshGenerationResult {
+    init(result: SourcedMeshGenerationResult) { self.result = result }
+    func generateSourcedIndexed(data: Data, maximumPayloadBytes: Int, maximumSourcePayloadBytes: Int) async throws
+        -> SourcedMeshGenerationResult
+    {
         await withCheckedContinuation { continuation in
             self.continuation = continuation
             hasStarted = true
         }
+    }
+    func generateIndexed(data: Data, maximumPayloadBytes: Int) async throws -> MeshGenerationResult {
+        throw UnexpectedPreviewBackendCall.fallback
     }
     func reset() async throws {}
     func finish() {
@@ -148,3 +158,5 @@ private actor SuspendedMeshGenerator: EditorMeshGenerating {
         continuation = nil
     }
 }
+
+private enum UnexpectedPreviewBackendCall: Error { case fallback }
