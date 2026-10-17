@@ -1,12 +1,12 @@
 {
-  "originHash" : "47ac292643e4a8a49b4757c30c46d5aa2fa741ce391575ef7a0b49120c8ba887",
+  "originHash" : "d3399656b1aca93a2c9e65d8c705ec479dc3688f5e7b5e30112d75d9bd06ad8b",
   "pins" : [
     {
       "identity" : "dust3d-core",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/dalbrecht/dust3d-core.git",
       "state" : {
-        "revision" : "17e04d55427578418460b270886846301eaa2a5d"
+        "revision" : "9577f8a44966841cf1c946adc726b12ef17e24c5"
       }
     }
   ],

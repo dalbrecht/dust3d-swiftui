@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add opt-in copied Swift UV atlas metadata with explicit missing/ambiguous source states, bounded image dimension inputs and an exact reviewed core pin; pixel baking and textured rendering remain pending.
+
 - Add explicit component color drafts with native color selection, alpha-first hex support, actual RGB preview updates, preserved unsupported metadata and exact undo/save; alpha is saved while previews remain opaque.
 
 - Add lossless Metallic, Roughness and Glow editing for Model parts, with bounded drafts, exact undo/redo and preserved unsupported metadata; current previews do not yet display these effects.

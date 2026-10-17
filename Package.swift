@@ -13,7 +13,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/dalbrecht/dust3d-core.git", revision: "17e04d55427578418460b270886846301eaa2a5d")
+            url: "https://github.com/dalbrecht/dust3d-core.git", revision: "9577f8a44966841cf1c946adc726b12ef17e24c5")
     ],
     targets: [
         .target(name: "Dust3DEditorModel", dependencies: ["Dust3DDocument"], exclude: ["README.md"]),
