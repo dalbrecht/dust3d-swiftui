@@ -11,6 +11,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case missingPart(String)
     case invalidComponent
     case invalidComponentStructure
+    case invalidComponentWrapping
     case invalidComponentTargetSegments
     case invalidComponentStitchingScalar
     case invalidComponentSmoothing
@@ -78,6 +79,18 @@ public enum DocumentCommand: Sendable {
     /// Set finite normal smoothing cutoff within 0–180 degrees; zero removes the source attribute.
     /// A semantic no-op retains original spellings/bytes; invalid values throw `invalidComponentSmoothing`.
     case setComponentSmoothCutoffDegrees(id: String, degrees: Double)
+    /// Set a group wrapping mode without resetting explicit parameters. Throws missingComponent/invalidComponentWrapping.
+    /// Example: `.setComponentWrapMode(id: groupID, mode: .cloth)`.
+    case setComponentWrapMode(id: String, mode: ComponentWrapMode)
+    /// Set a group wrapping scalar within its property bounds. Throws invalidComponentWrapping/missingComponent.
+    /// Example: `.setComponentWrapScalar(id: groupID, property: .offset, value: 0.01)`.
+    case setComponentWrapScalar(id: String, property: ComponentWrappingScalarProperty, value: Double)
+    /// Set whether wrapping retains its children. Throws missingComponent/invalidComponentWrapping for non-groups.
+    /// Example: `.setComponentWrapKeepChildren(id: groupID, value: true)`.
+    case setComponentWrapKeepChildren(id: String, value: Bool)
+    /// Set a whole face count in 64...20000. Throws invalidComponentWrapping/missingComponent.
+    /// Example: `.setComponentWrapFaces(id: groupID, faces: 1200)`.
+    case setComponentWrapFaces(id: String, faces: Int)
     /// Set one stitching closure flag; false restores the absent default. Throws `missingComponent`.
     /// Example: `.setComponentStitchingClosure(id: id, property: .front, value: true)`.
     case setComponentStitchingClosure(id: String, property: ComponentStitchingClosureProperty, value: Bool)
@@ -345,7 +358,8 @@ public struct Dust3DDocument: Sendable {
         let contents: DocumentContents
         switch command {
         case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName, .setComponentCombineMode,
-            .setComponentSmoothCutoffDegrees,
+            .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
+            .setComponentWrapKeepChildren, .setComponentWrapFaces,
             .reorderComponent,
             .groupComponents, .ungroupComponent, .reparentComponent:
             contents = DocumentContents(nodes: [], edges: [])
@@ -437,6 +451,18 @@ public struct Dust3DDocument: Sendable {
                 attribute.stringValue = value
                 part.addAttribute(attribute)
             }
+        case .setComponentWrapMode(let id, let mode):
+            guard try ComponentWrapping.setMode(model, id: id, mode: mode) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentWrapScalar(let id, let property, let value):
+            guard try ComponentWrapping.setScalar(model, id: id, property: property, value: value) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentWrapKeepChildren(let id, let value):
+            guard try ComponentWrapping.setKeep(model, id: id, value: value) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentWrapFaces(let id, let faces):
+            guard try ComponentWrapping.setFaces(model, id: id, faces: faces) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentStitchingClosure(let id, let property, let value):
             guard try ComponentStitching.setClosure(model, id: id, property: property, value: value) else {
                 return self
