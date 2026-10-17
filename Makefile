@@ -1,4 +1,4 @@
-.PHONY: build test run run-editor format lint ci check-coverage check-qt-free sync-standards
+.PHONY: build test run run-editor format lint ci check-coverage check-qt-free check-app-bundle-rebuild sync-standards
 
 build:
 	./script/swift.sh build
@@ -25,7 +25,10 @@ check-qt-free:
 check-coverage:
 	./script/check_coverage.sh
 
-ci: lint build test check-coverage check-qt-free
+check-app-bundle-rebuild:
+	./script/check_app_bundle_rebuild.sh
+
+ci: lint build test check-coverage check-qt-free check-app-bundle-rebuild
 
 sync-standards:
 	.standards/scripts/assemble-config.sh codex .standards/standards/shared/blocks .standards/standards/agents/codex/base-codex.md AGENTS.md lang-swift.md role-app.md
