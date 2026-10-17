@@ -90,6 +90,21 @@ final class PartDeformationTests: XCTestCase {
         }
     }
 
+    func testLegacyCommaScalesPreserveSourceAndRedoOnSemanticNoOp() throws {
+        for property in PartDeformationProperty.allCases {
+            let source = try document("\(property.rawValue)='0,995'")
+            XCTAssertEqual(try source.editorContents().parts.first?.deformationScale(property), 0.995)
+            var history = DocumentHistory(document: source)
+            try history.apply(.setPartDeformationScale(id: "p", property: property, value: 0.5))
+            let changed = history.document.encoded()
+            XCTAssertTrue(history.undo())
+            try history.apply(.setPartDeformationScale(id: "p", property: property, value: 0.995))
+            XCTAssertEqual(history.document.encoded(), source.encoded())
+            XCTAssertTrue(history.redo())
+            XCTAssertEqual(history.document.encoded(), changed)
+        }
+    }
+
     func testUnifiedEditsPreserveUnsupportedScalesAndExactHistory() throws {
         for value in [false, true] {
             let source = try document("deformWidth='future' deformThickness='1.005' deformUnified='future'")

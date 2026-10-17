@@ -99,6 +99,20 @@ final class PartCutFaceTests: XCTestCase {
             XCTAssertEqual(history.document.encoded(), changed.encoded())
         }
     }
+    func testLegacyCommaRotationPreservesSourceAndRedoOnSemanticNoOp() throws {
+        let source = try document("cutRotation='0,5'")
+        XCTAssertEqual(try source.editorContents().parts.first?.cutRotation, 0.5)
+        var history = DocumentHistory(document: source)
+        try history.apply(.setPartCutRotation(id: owner, rotation: 0.25))
+        let changed = history.document.encoded()
+        XCTAssertTrue(history.undo())
+        try history.apply(.setPartCutRotation(id: owner, rotation: 0.5))
+        XCTAssertEqual(history.document.encoded(), source.encoded())
+        XCTAssertTrue(history.redo())
+        XCTAssertEqual(history.document.encoded(), changed)
+        XCTAssertEqual(try document("cutRotation='-0,005'").editorContents().parts.first?.cutRotation, -0.005)
+    }
+
     func testSemanticNoOpsPreserveOriginalSpellingsBytesAndRedo() throws {
         let source = try document("cutFace='Quad' cutRotation='1e0'")
         for pair in [

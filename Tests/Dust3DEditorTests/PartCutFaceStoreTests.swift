@@ -9,7 +9,7 @@ import simd
 final class PartCutFaceStoreTests: XCTestCase {
     private let owner = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
     private let profile = "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"
-    private func document() throws -> Dust3DDocument {
+    private func document(rotationText: String? = nil) throws -> Dust3DDocument {
         var document = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
         let nodes = [
             "{11111111-1111-4111-8111-111111111111}", "{22222222-2222-4222-8222-222222222222}",
@@ -35,7 +35,9 @@ final class PartCutFaceStoreTests: XCTestCase {
         document = try document.applying(
             .addEdge(id: "{88888888-8888-4888-8888-888888888888}", from: profileNodes[0], to: profileNodes[1]))
         let model = try XMLDocument(data: document.modelXML)
-        for (id, name, text) in [(owner, "cutFace", "future"), (profile, "target", "CutFace")] {
+        var attributes = [(owner, "cutFace", "future"), (profile, "target", "CutFace")]
+        if let rotationText { attributes.append((owner, "cutRotation", rotationText)) }
+        for (id, name, text) in attributes {
             let element = try XCTUnwrap(try model.nodes(forXPath: "//part[@id='\(id)']").first as? XMLElement)
             let attribute = XMLNode(kind: .attribute)
             attribute.name = name
@@ -102,6 +104,17 @@ final class PartCutFaceStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.document.encoded(), bytes)
         XCTAssertEqual(store.mesh?.vertices.map(\.position), changed.vertices.map(\.position))
     }
+    func testLegacyCommaRotationMatchesActualCoreOutput() throws {
+        let comma = try document(rotationText: "0,5")
+        let dot = try document(rotationText: "0.5")
+        XCTAssertEqual(try comma.editorContents().parts.first?.cutRotation, 0.5)
+        let commaMesh = try MeshLoader.load(data: comma.encoded())
+        let dotMesh = try MeshLoader.load(data: dot.encoded())
+        assertFinite(commaMesh)
+        XCTAssertEqual(commaMesh.vertices.map(\.position), dotMesh.vertices.map(\.position))
+        XCTAssertEqual(commaMesh.vertices.map(\.normal), dotMesh.vertices.map(\.normal))
+    }
+
     @MainActor func testAllPresetsRegenerateAndRestoreExactHistory() async throws {
         for preset in CutFacePreset.allCases {
             try await assertHistory(original: document(), expectDifferent: preset != .quad) {
@@ -137,6 +150,12 @@ final class PartCutFaceStoreTests: XCTestCase {
             XCTAssertEqual(store.previewRevision, revision)
             XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
         }
+        store.setPartCutRotation(owner, rotation: "0,25")
+        try await settle(store)
+        XCTAssertNil(store.errorMessage)
+        XCTAssertEqual(publications, 0)
+        XCTAssertEqual(store.previewRevision, revision)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
         store.setPartCutRotation(owner, rotation: "0e-999")
         try await settle(store)
         XCTAssertNil(store.errorMessage)

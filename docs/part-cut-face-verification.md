@@ -48,7 +48,22 @@ Controllers now share the package-scoped underflow-aware scalar parser, includin
 for deformation. Exponent-spelled true zero remains valid and undoable. Targeted
 link validation rejects paths back to the edited owner while terminating safely
 on pre-existing cycles elsewhere. Existing part-joining validation remains global
-and its regression tests still pass. The corrected full `make ci` passes 382 tests with zero failures, formatting,
+and its regression tests still pass. That correction passed full `make ci` with
+382 tests and zero failures, formatting,
 native builds, coverage, Qt-free linkage and isolated bundle-rebuild checks.
-Document line coverage is now 2525/2609; other measured module totals above are
+Document line coverage at that stage was 2525/2609; other measured module totals above are
 unchanged.
+
+A second review regression covers inherited comma-decimal values such as 0,5.
+The shared parser normalizes comma to dot while preserving original source bytes
+on semantic no-ops, including redo. Tests cover rotation and deformation metadata,
+controller input and actual core mesh/normal equivalence to dot-decimal rotation.
+The new actual-core integration test initially failed against the old pin: its
+C boundary rejected comma decimals before the inherited parser could accept them.
+[Core PR 6](https://github.com/dalbrecht/dust3d-core/pull/6) supplies a failing-first
+portable contract and boundary fix. It merged after clean automated review and
+all six hosted jobs passed. Final full `make ci` now passes 385 tests with zero
+failures against exact pin `7d37f08299dffb6e1c9d848bea3ee974169449b9`, including
+formatting, native builds, coverage, Qt-free linkage and isolated signed bundle
+rebuild checks. Final document line coverage is 2528/2612; other measured module
+totals above are unchanged.

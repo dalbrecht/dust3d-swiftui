@@ -21,16 +21,21 @@ Rotation uses inherited normalized half-turns in -1...1; one equals 180 degrees.
 Absent/empty rotation means zero. Reject invalid ranges, nonfinite and subnormal
 new values, preserving unsupported source values. Extract EngineScalar from the
 previous deformation implementation with package visibility so document and
-controller inputs share the tested source underflow policy without adding
+controller inputs share the tested source underflow policy and inherited
+comma-decimal compatibility without adding
 dependencies or framework imports to the helper.
 
 Write every nondefault rotation, including values smaller than the inherited
 writer's 0.01 omission threshold. Remove Quad/zero defaults on actual changes;
 semantic no-ops retain original spelling, bytes and redo. Preserve node overrides,
 part metadata, graph, assets, locks and camera/selection. Each controller edit is
-one atomic history transaction with regenerated preview. Invalid input or newly introduced
-profile cycles publish no partial state.
+one atomic history transaction with regenerated preview. Invalid input or newly
+introduced profile cycles publish no partial state.
 
 This stage has no native inspector controls. Rendered interaction, native
 Save/Undo/Redo, keyboard/VoiceOver and Qt differential acceptance remain explicit
-follow-ups. No C ABI, core pin or dependencies change.
+follow-ups. No C ABI or new package dependency is introduced. Comma-decimal
+compatibility uses the native boundary fix in [core PR 6](https://github.com/dalbrecht/dust3d-core/pull/6),
+merged after clean automated review and all six hosted jobs. The coordinated
+exact pin is `7d37f08299dffb6e1c9d848bea3ee974169449b9` in both SwiftPM files. The
+Apple repository keeps a single engine implementation in the maintained core.
