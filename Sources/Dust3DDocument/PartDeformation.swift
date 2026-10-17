@@ -16,7 +16,7 @@ enum PartDeformation {
                 values[property] = 1
                 continue
             }
-            if let value = parsedScale(text) { values[property] = value }
+            if let value = EngineScalar.parse(text, in: 0...2) { values[property] = value }
             // Empty scales differ between Qt import and core generation; preserve ambiguous metadata.
         }
         return values
@@ -29,28 +29,10 @@ enum PartDeformation {
         return nil
     }
 
-    private static func isValid(_ value: Double) -> Bool {
-        value.isFinite && !value.isSubnormal && (0...2).contains(value)
-    }
-
-    private static func parsedScale(_ text: String) -> Double? {
-        guard let value = Double(text), isValid(value) else { return nil }
-        if value == 0 {
-            // Swift rounds tiny literals to zero; the inherited strtod parser rejects their nonzero significands.
-            let normalized = text.lowercased()
-            let separator: Character = normalized.contains("0x") ? "p" : "e"
-            let significand = normalized.split(separator: separator, maxSplits: 1).first ?? ""
-            guard !significand.utf8.contains(where: { (49...57).contains($0) || (97...102).contains($0) }) else {
-                return nil
-            }
-        }
-        return value
-    }
-
     static func setScale(
         _ model: XMLDocument, parts: [DocumentPart], id: String, property: PartDeformationProperty, value: Double
     ) throws -> Bool {
-        guard isValid(value) else { throw DocumentError.invalidPartDeformation }
+        guard EngineScalar.isValid(value, in: 0...2) else { throw DocumentError.invalidPartDeformation }
         let (current, element) = try part(model, parts: parts, id: id)
         guard current.deformationScale(property) != value else { return false }
         // Qt omits values within 0.01 of one; retain explicit nondefaults to avoid losing fine edits.

@@ -1,0 +1,33 @@
+# ADR 0042: Part cut-face and rotation foundations
+
+Status: Implemented for review. Tracks #83 and M3 #62.
+
+Model built-in Quad/Pentagon/Hexagon/Triangle presets and linked profile parts
+with typed immutable metadata and separate document/controller commands. Preserve
+exact source profile identities: inherited UUID-shaped classification and exact
+archive lookup are already shared by CutFaceLinks and profile transfer/cleanup.
+Do not normalize IDs through Foundation UUID. A new link must target an existing
+part with an engine-compatible identity; reuse part/node dependency cycle checks
+after the isolated XML mutation, before publishing. Imported unresolved links can
+still be inspected/preserved. Any existing part can supply a profile, as in the
+inherited setter; do not implicitly change its target, nodes or other settings.
+The engine's existing fallback for insufficient profile points is unchanged.
+
+Absent/empty cut face means Quad. Unsupported text (including a bare UserDefined
+marker without a linked identity) stays unavailable until explicitly replaced.
+Rotation uses inherited normalized half-turns in -1...1; one equals 180 degrees.
+Absent/empty rotation means zero. Reject invalid ranges, nonfinite and subnormal
+new values, preserving unsupported source values. Extract EngineScalar from the
+previous deformation implementation so both properties share the tested source
+underflow policy without adding dependencies or framework imports to the helper.
+
+Write every nondefault rotation, including values smaller than the inherited
+writer's 0.01 omission threshold. Remove Quad/zero defaults on actual changes;
+semantic no-ops retain original spelling, bytes and redo. Preserve node overrides,
+part metadata, graph, assets, locks and camera/selection. Each controller edit is
+one atomic history transaction with regenerated preview. Invalid input or profile
+cycles publish no partial state.
+
+This stage has no native inspector controls. Rendered interaction, native
+Save/Undo/Redo, keyboard/VoiceOver and Qt differential acceptance remain explicit
+follow-ups. No C ABI, core pin or dependencies change.

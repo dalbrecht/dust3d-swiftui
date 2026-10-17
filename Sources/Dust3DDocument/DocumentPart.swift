@@ -15,6 +15,11 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     public let isVisible: Bool
     public let isLocked: Bool
     public let isDisabled: Bool
+    /// Known cross-section selection (Quad when absent/empty), or nil for unsupported source metadata.
+    /// Linked selections retain the exact source identity, including an unresolved imported target.
+    public let cutFace: CutFaceSelection?
+    /// Known finite, non-subnormal rotation in half-turns (-1...1), zero by default, or nil when unsupported.
+    public let cutRotation: Double?
     /// Known unified-deformation flag, false by default, or nil for unsupported source metadata.
     /// Unified deformation uses the part's maximum node radius on each nondefault scale direction.
     public let isDeformationUnified: Bool?
@@ -40,8 +45,10 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     init(
         id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool,
         modifiers: [PartModifierProperty: Bool], deformationScales: [PartDeformationProperty: Double],
-        isDeformationUnified: Bool?
+        isDeformationUnified: Bool?, cutFace: CutFaceSelection?, cutRotation: Double?
     ) {
+        self.cutFace = cutFace
+        self.cutRotation = cutRotation
         self.id = id
         self.name = name
         self.title = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Part \(index + 1)" : name

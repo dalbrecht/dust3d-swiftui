@@ -95,3 +95,16 @@ on actual changes. Nonzero subnormal doubles are unsupported by the core parser 
 Underflowed source literals remain preserved as unavailable until replaced.
 Invalid scales throw `DocumentError.invalidPartDeformation`;
 missing parts throw `missingPart`. Semantic no-ops retain source bytes and redo.
+
+`part.cutFace` reads a `CutFaceSelection` preset or exact linked-part identity,
+Quad when absent/empty, or nil for unsupported metadata. An imported linked ID
+can remain unresolved without rewriting the source. `part.cutRotation` reads
+finite, non-subnormal normalized half-turns in -1...1 (zero when absent/empty),
+or nil for unsupported metadata; 0.25 means 45 degrees.
+`.setPartCutFace(id: id, selection: .preset(.triangle))` or `.linkedPart(profileID)`
+changes only the part's cross-section, requiring an existing engine-compatible
+profile identity and rejecting part/node dependency cycles. Invalid identities
+throw `invalidPartCutFace`, missing owner/target throws `missingPart`, and cycles
+throw `cyclicProfile`. `.setPartCutRotation(id: id, rotation: 0.005)` retains fine
+rotations; invalid input throws `invalidPartCutRotation`. Exact zero removes the
+attribute on actual edits. No-ops retain original bytes/spellings and redo.
