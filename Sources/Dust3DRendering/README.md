@@ -10,3 +10,9 @@ change `cameraReset` to fit again. The viewer recreates its viewport on file ope
 
 Build with `make ci`; package with `script/build_and_run.sh --build-only` or
 `--editor --build-only`. GPU interaction remains a manual verification boundary.
+
+Camera fitting uses the narrower viewport axis around the normalized mesh bounds.
+Resizing preserves orbit and relative zoom; Fit resets both. The depth range grows
+with fitted distance for very narrow viewports. `Dust3DRenderingTests` covers the
+pure camera at 100% line coverage, including a real disjoint-sphere core mesh.
+This does not measure Metal draw or native input coverage.

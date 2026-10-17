@@ -20,18 +20,22 @@ struct OrbitCamera {
     }
 
     func transform(aspect: Float) -> simd_float4x4 {
+        // Geometry is normalized to a unit sphere; the narrower viewport axis must also contain that envelope.
+        let boundedAspect = aspect.isFinite ? max(aspect, 0.01) : 1
+        let viewingDistance = distance / min(boundedAspect, 1)
         let scale: Float = 1 / tan(.pi / 8)
         let near: Float = 0.01
-        let far: Float = 100
+        // Aspect fitting can move the camera beyond the original fixed far plane while the model stays unit-sized.
+        let far: Float = max(100, viewingDistance + 2)
         let projection = simd_float4x4(
             columns: (
-                SIMD4(scale / max(aspect, 0.01), 0, 0, 0),
+                SIMD4(scale / boundedAspect, 0, 0, 0),
                 SIMD4(0, scale, 0, 0),
                 SIMD4(0, 0, far / (near - far), -1),
                 SIMD4(0, 0, near * far / (near - far), 0)
             ))
         var view = matrix_identity_float4x4
-        view.columns.3.z = -distance
+        view.columns.3.z = -viewingDistance
         return projection * view * rotation
     }
 }

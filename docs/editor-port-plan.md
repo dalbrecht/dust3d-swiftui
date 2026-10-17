@@ -227,3 +227,8 @@ Reference-image crop/layout and raster primitives have a [foundation verificatio
 The composition sheet, transient async drafts, pointer/numeric selection and stale-guarded atomic image/origin Apply now have [automated tests and partial native evidence](reference-composition-workflow-verification.md). Final-build native Apply/save/Undo, rendered inspection and the app-owned composition recovery command are verified. Held-gesture/VoiceOver and Qt differential acceptance remain pending; #56 stays open. This does not complete M2 or Qt GUI parity.
 
 Native save serialization now guards outstanding edits and superseded snapshots with typed retry diagnostics while retaining the native File menu. [Save verification](native-save-snapshot-verification.md) records controlled publication/failure/cancellation tests, native import/Save rejection and independent Duplicate/Save As; exact native Undo/Save and Redo/Save archive comparisons pass. Broader M1 filesystem recovery acceptance remains pending.
+
+The shared mesh camera now fits portrait previews, including separated parts;
+[verification](aspect-camera-verification.md) records the projection regression,
+100% pure-camera coverage and native rendered checks. This resolves #73 without
+changing core geometry or claiming broader Metal coverage.

@@ -21,6 +21,8 @@ let package = Package(
         .target(
             name: "Dust3DRendering", dependencies: ["Dust3DKit"], exclude: ["README.md"],
             resources: [.copy("Shaders.metal")]),
+        .testTarget(
+            name: "Dust3DRenderingTests", dependencies: ["Dust3DRendering", "Dust3DKit", "Dust3DDocument"]),
         .executableTarget(
             name: "Dust3DEditor",
             dependencies: ["Dust3DDocument", "Dust3DEditorModel", "Dust3DKit", "Dust3DRendering"],
