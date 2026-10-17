@@ -144,3 +144,10 @@ field captions/ranges from immutable component metadata without framework import
 or side effects. None/unknown modes have no parameter fields; Skin has shared
 geometry fields and Cloth has all seven. `ComponentWrappingField` provides stable
 property identities for the SwiftUI inspector and is covered by pure tests.
+
+`ComponentColorDraft` owns immutable transient hex text and native-conversion
+issues. `editing(_:)` / `choosing(_:)` return replacement values without writing a
+document; constructing from current source resets a draft. `canApply` blocks empty
+or conversion-failed drafts, while nonempty invalid text reaches controller
+validation. Native platform color conversion stays in the app. Unsupported source
+summaries inspect bounded UTF-8 bytes and never change retained source data.

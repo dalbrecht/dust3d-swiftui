@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add explicit component color drafts with native color selection, alpha-first hex support, actual RGB preview updates, preserved unsupported metadata and exact undo/save; alpha is saved while previews remain opaque.
+
 - Add lossless Metallic, Roughness and Glow editing for Model parts, with bounded drafts, exact undo/redo and preserved unsupported metadata; current previews do not yet display these effects.
 
 - Pair editor preview geometry with current source hints, discard obsolete metadata, and fall back to ordinary previews with a preserved diagnostic when optional source details fail.

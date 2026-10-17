@@ -5,6 +5,8 @@ import Foundation
 public struct DocumentComponent: Identifiable, Equatable, Sendable {
     public let id: String
     public let name: String
+    /// Explicit source color, absent override, or unsupported original text.
+    public let color: ComponentColorValue
     /// Effective known mode, including legacy component inversion; nil preserves an unknown source mode.
     public let combineMode: ComponentCombineMode?
     /// Normal smoothing cutoff in 0–180 degrees, zero when absent; nil preserves unsupported source values.
@@ -53,6 +55,7 @@ enum ComponentHierarchy {
                 DocumentComponent(
                     id: id,
                     name: element.attribute(forName: "name")?.stringValue ?? "",
+                    color: ComponentColorValue.read(element),
                     combineMode: ComponentCombination.mode(element),
                     smoothCutoffDegrees: ComponentSmoothing.degrees(element),
                     wrapping: ComponentWrapping.read(element),

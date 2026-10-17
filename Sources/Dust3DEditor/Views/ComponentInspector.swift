@@ -38,6 +38,7 @@ struct ComponentInspector: View {
             .help(
                 "Normal unions, Inversion subtracts, and Uncombined retains separate geometry. Order matters. One undo step."
             )
+            ComponentColorControls(store: store, component: component)
             ComponentSmoothingControls(store: store, component: component)
             if component.isGroup {
                 ComponentWrappingControls(store: store, component: component)
