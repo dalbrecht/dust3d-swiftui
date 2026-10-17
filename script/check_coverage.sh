@@ -7,4 +7,5 @@ BINARY="$DUST3D_BINARY_DIR/Dust3DNativePackageTests.xctest/Contents/MacOS/Dust3D
 PROFILE="$DUST3D_BUILD_ROOT/build/debug/codecov/default.profdata"
 xcrun llvm-cov export "$BINARY" -instr-profile="$PROFILE" -summary-only \
     Sources/Dust3DKit/*.swift Sources/Dust3DDocument/*.swift Sources/Dust3DEditorModel/*.swift \
+    Sources/Dust3DRendering/OrbitCamera.swift \
     | python3 "$ROOT_DIR/script/check_coverage.py"

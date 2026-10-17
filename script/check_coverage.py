@@ -18,6 +18,7 @@ groups = [
     ("Editor model", list((root / "Sources/Dust3DEditorModel").glob("*.swift")), 95),
     ("Pure editor state", [root / "Sources/Dust3DEditorModel/EditorState.swift"], 100),
     ("Pure undo domain", [root / "Sources/Dust3DDocument/DocumentHistory.swift"], 100),
+    ("Pure orbit camera", [root / "Sources/Dust3DRendering/OrbitCamera.swift"], 100),
 ]
 for name, paths, minimum in groups:
     if not paths or any(path not in files for path in paths):
