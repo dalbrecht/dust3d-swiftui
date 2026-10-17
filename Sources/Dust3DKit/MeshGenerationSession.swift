@@ -67,6 +67,16 @@ public struct MeshGenerationResult: Sendable {
     public let statistics: MeshGenerationStatistics
 }
 
+/// Independent geometry, source hints, and cache diagnostics from one sourced generation.
+public struct SourcedMeshGenerationResult: Sendable {
+    /// Nil only for explicit successful no-geometry.
+    public let mesh: IndexedMesh?
+    /// Per-index-position hints; nil together with empty geometry.
+    public let sourceHints: MeshSourceHints?
+    /// Current cache outcome, independent of source and indexed payload budgets.
+    public let statistics: MeshGenerationStatistics
+}
+
 /// Owns one bounded native cache and copies every output buffer before releasing it.
 /// Calls run on this background actor; native generation also shares the core's global lock.
 /// Cancellation is cooperative before/after generation and does not interrupt C++ work.
@@ -76,6 +86,11 @@ public actor MeshGenerationSession {
     public static let defaultMaximumCachePayloadBytes = Int(DUST3D_DEFAULT_CACHE_PAYLOAD_BYTES)
     /// Core-defined largest supported retained payload limit (256 MiB).
     public static let maximumCachePayloadBytes = Int(DUST3D_MAX_CACHE_PAYLOAD_BYTES)
+
+    /// Core-defined default source export payload (64 MiB); zero selects this value.
+    public static let defaultSourcePayloadBytes = Int(DUST3D_DEFAULT_SOURCE_PAYLOAD_BYTES)
+    /// Largest supported native source export payload (256 MiB).
+    public static let maximumSourcePayloadBytes = Int(DUST3D_MAX_SOURCE_PAYLOAD_BYTES)
 
     // The opaque pointer never leaves a synchronous lock region. This system lock
     // keeps deinit safe without an unchecked Sendable declaration or a newer OS baseline.
@@ -132,6 +147,60 @@ public actor MeshGenerationSession {
         let statistics = try statistics()
         try Task.checkCancellation()
         return MeshGenerationResult(mesh: mesh, statistics: statistics)
+    }
+
+    /// Generate indexed geometry and copied source hints without losing component cache reuse.
+    /// - Parameters:
+    ///   - data: Complete borrowed `.ds3` archive bytes.
+    ///   - maximumPayloadBytes: Native indexed vertex/index budget; zero selects 256 MiB.
+    ///   - maximumSourcePayloadBytes: Native source logical payload; zero selects 64 MiB.
+    ///     Excludes geometry, spare capacity, allocator overhead, workspace and Swift copies.
+    /// - Returns: Independent geometry, hints and stats; both geometry/hints nil for successful emptiness.
+    /// - Throws: Cancellation or `MeshLoadingError`, including invalid UTF-8/source metadata,
+    ///   negative/unsupported budgets and original native primary failures. Cache-only issues stay in stats.
+    /// - Example: `let result = try await session.generateSourcedIndexed(data: archive)`.
+    public func generateSourcedIndexed(
+        data: Data, maximumPayloadBytes: Int = 0, maximumSourcePayloadBytes: Int = 0
+    ) throws -> SourcedMeshGenerationResult {
+        try Task.checkCancellation()
+        try MeshLoader.validateIndexedPayloadBudget(maximumPayloadBytes)
+        guard maximumSourcePayloadBytes >= 0 else {
+            throw MeshLoadingError(status: 1, message: "The source payload budget must be zero or positive.")
+        }
+        guard maximumSourcePayloadBytes <= Self.maximumSourcePayloadBytes else {
+            throw MeshLoadingError(status: 4, message: "The source payload budget exceeds 256 MiB.")
+        }
+        let sourceLimit = maximumSourcePayloadBytes == 0 ? Self.defaultSourcePayloadBytes : maximumSourcePayloadBytes
+        let copied: (mesh: IndexedMesh?, hints: MeshSourceHints?) = try handle.withLock { native in
+            var error = Dust3DError()
+            var options = Dust3DSourceOptions(
+                struct_size: MemoryLayout<Dust3DSourceOptions>.size, maximum_payload_bytes: maximumSourcePayloadBytes)
+            let owner = data.withUnsafeBytes { bytes in
+                dust3d_generation_session_load_sourced(
+                    native, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count, &options, &error)
+            }
+            guard let owner else {
+                if error.status == DUST3D_STATUS_NO_GEOMETRY { return (nil, nil) }
+                throw MeshLoader.loadingError(error)
+            }
+            let indexed: OpaquePointer
+            let hints: MeshSourceHints
+            do {
+                defer { dust3d_sourced_mesh_destroy(owner) }
+                try Task.checkCancellation()
+                guard let geometry = dust3d_sourced_mesh_geometry(owner) else {
+                    throw MeshLoadingError(status: 3, message: "The engine returned source hints without geometry.")
+                }
+                hints = try MeshSourceCopy.copy(owner, geometry: geometry, maximumPayloadBytes: sourceLimit)
+                try Task.checkCancellation()
+                indexed = try MeshLoader.makeNativeIndexedMesh(from: geometry, maximumPayloadBytes: maximumPayloadBytes)
+            }
+            // Drop expanded native geometry and source buffers before allocating Swift indexed copies.
+            return (try MeshLoader.copyAndDestroyIndexedMesh(indexed), hints)
+        }
+        let statistics = try statistics()
+        try Task.checkCancellation()
+        return SourcedMeshGenerationResult(mesh: copied.mesh, sourceHints: copied.hints, statistics: statistics)
     }
 
     /// Copy the last native statistics, including after a failed generation.
