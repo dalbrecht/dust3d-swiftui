@@ -61,6 +61,24 @@ final class OrbitCameraTests: XCTestCase {
         XCTAssertTrue(isInside(.zero, transform: camera.transform(aspect: 0.01)))
     }
 
+    func testExtremePortraitZoomRetainsDistinctFrontAndBackDepths() {
+        for zoom: Float in [0, -10_000] {
+            var camera = OrbitCamera()
+            camera.zoom(delta: zoom)
+            let transform = camera.transform(aspect: 0.01) * camera.rotation.inverse
+            let front = transform * SIMD4<Float>(0, 0, 1, 1)
+            let center = transform * SIMD4<Float>(0, 0, 0, 1)
+            let back = transform * SIMD4<Float>(0, 0, -1, 1)
+            let frontDepth = front.z / front.w
+            let centerDepth = center.z / center.w
+            let backDepth = back.z / back.w
+            XCTAssertGreaterThan(frontDepth, 0)
+            XCTAssertLessThan(backDepth, 1)
+            XCTAssertGreaterThan(centerDepth - frontDepth, 0.000001)
+            XCTAssertGreaterThan(backDepth - centerDepth, 0.000001)
+        }
+    }
+
     func testUnavailableOrNonfiniteViewportAspectsProduceFiniteProjection() {
         let camera = OrbitCamera()
         for aspect: Float in [0, -1, .nan, .infinity, -.infinity] {

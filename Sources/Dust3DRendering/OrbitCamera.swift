@@ -24,8 +24,8 @@ struct OrbitCamera {
         let boundedAspect = aspect.isFinite ? max(aspect, 0.01) : 1
         let viewingDistance = distance / min(boundedAspect, 1)
         let scale: Float = 1 / tan(.pi / 8)
-        let near: Float = 0.01
-        // Aspect fitting can move the camera beyond the original fixed far plane while the model stays unit-sized.
+        // Keep depth precision around the unit-sized model even when aspect fitting moves the camera far away.
+        let near: Float = max(0.01, viewingDistance - 2)
         let far: Float = max(100, viewingDistance + 2)
         let projection = simd_float4x4(
             columns: (

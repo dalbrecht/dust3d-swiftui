@@ -11,8 +11,10 @@ restored the same clipped projection.
 
 Scale viewing distance by the inverse of the smaller of aspect and one. Keep
 stored distance, yaw and pitch unchanged so resizing preserves relative zoom and
-orbit, and retain landscape behavior. Grow the far plane with viewing distance
-so extreme portrait sizes do not move the model beyond the depth range. Clamp
+orbit, and retain landscape behavior. Move both depth planes with viewing distance, leaving two units on either side
+of the model center (and a minimum near plane of 0.01), so extreme portrait sizes
+retain distinguishable float depth values and remain within the depth range.
+The far plane retains its existing minimum of 100. Clamp
 unavailable finite aspect ratios to 0.01 and use square projection for nonfinite
 ratios.
 
