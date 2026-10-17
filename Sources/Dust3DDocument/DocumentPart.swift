@@ -39,6 +39,10 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     /// - Example: `part.modifierValue(.interpolation)` reads extra-ring generation.
     public func modifierValue(_ property: PartModifierProperty) -> Bool? { modifiers[property] }
 
+    /// Whether the inherited engine can classify this exact identity as a linked cut-face target.
+    /// Legacy non-UUID identities remain preserved but cannot be offered as new profile links.
+    public var canBeCutFaceProfile: Bool { CutFaceLinks.canonicalID(id) != nil }
+
     public var isEditVisible: Bool { isVisible && !isDisabled }
     public var isEditable: Bool { isEditVisible && !isLocked }
 
