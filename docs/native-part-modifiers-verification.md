@@ -46,6 +46,6 @@ unknown-menu choice transitions, native Save/Undo/Redo via menus, VoiceOver and
 GPU rendering remain pending while the QA desktop is unavailable. Existing
 controller/archive tests do not replace those end-to-end checks. Reuse
 `/private/tmp/dust3d-combine-qa/Dust3DEditor.app` with
-`org.dust3d.editor.combine-qa` when available. Deformation and cut-face native
+`org.dust3d.editor.combine-qa` when available. Deformation controls now have [separate offscreen verification](native-part-deformation-verification.md). Cut-face native
 controls, Qt differential checks and the rest of M3 remain pending; full modeling
 parity and native UI coverage are not claimed.
