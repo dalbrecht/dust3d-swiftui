@@ -27,8 +27,13 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
     func testLateOldResultCannotReplaceNewDocumentCacheDiagnostics() async throws {
         let original = try StitchingFixture.document(loop: true, attributes: "", isolatedLoop: true)
         let bytes = original.encoded()
-        let normal = try await MeshGenerationSession().generateIndexed(data: bytes)
-        let degraded = try await MeshGenerationSession(maximumCachePayloadBytes: 1).generateIndexed(data: bytes)
+        let replacement = try StitchingFixture.document(
+            loop: true, attributes: "", isolatedLoop: true, includeUncombinedModel: false
+        ).encoded()
+        let normal = EditorPreviewResult(
+            sourced: try await MeshGenerationSession().generateSourcedIndexed(data: replacement))
+        let degraded = EditorPreviewResult(
+            sourced: try await MeshGenerationSession(maximumCachePayloadBytes: 1).generateSourcedIndexed(data: bytes))
         let preview = SuspendedPreviewService()
         let store = EditorStore(preview: preview)
         defer {
@@ -38,7 +43,7 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
         await store.load(data: bytes)
         try await waitForRequests(1, preview)
         let previousRequest = try XCTUnwrap(store.generation)
-        await store.load(data: bytes)
+        await store.load(data: replacement)
         try await waitForRequests(2, preview)
         let scopes = await preview.scopes
         XCTAssertNotEqual(scopes[0], scopes[1])
@@ -51,11 +56,15 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
         XCTAssertEqual(store.previewRevision, revision)
         XCTAssertNil(store.previewCacheStatistics?.cacheIssue)
         XCTAssertNotNil(store.mesh)
+        XCTAssertEqual(store.previewSourceHints, normal.output?.sourceHints)
+        XCTAssertEqual(store.previewSourceHints?.identities.count, 4)
+        XCTAssertEqual(store.mesh?.nodeCount, 4)
+        XCTAssertEqual(store.snapshot?.document.encoded(), replacement)
     }
 
     func testLateResultAfterStopCannotRestoreMeshOrStatistics() async throws {
         let bytes = try StitchingFixture.document(loop: true, attributes: "", isolatedLoop: true).encoded()
-        let normal = try await MeshGenerationSession().generateIndexed(data: bytes)
+        let normal = EditorPreviewResult(sourced: try await MeshGenerationSession().generateSourcedIndexed(data: bytes))
         let preview = SuspendedPreviewService()
         let store = EditorStore(preview: preview)
         defer {
@@ -69,6 +78,8 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
         await preview.finish(0, normal)
         await previousRequest.value
         XCTAssertNil(store.mesh)
+        XCTAssertNil(store.previewSourceHints)
+        XCTAssertNil(store.previewSourceIssue)
         XCTAssertNil(store.previewCacheStatistics)
         XCTAssertFalse(store.canSave)
     }
@@ -98,8 +109,9 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
 
     func testGenerationFailureKeepsLastMeshAndRetrySeparatesCacheIssue() async throws {
         let bytes = try StitchingFixture.document(loop: true, attributes: "", isolatedLoop: true).encoded()
-        let normal = try await MeshGenerationSession().generateIndexed(data: bytes)
-        let degraded = try await MeshGenerationSession(maximumCachePayloadBytes: 1).generateIndexed(data: bytes)
+        let normal = EditorPreviewResult(sourced: try await MeshGenerationSession().generateSourcedIndexed(data: bytes))
+        let degraded = EditorPreviewResult(
+            sourced: try await MeshGenerationSession(maximumCachePayloadBytes: 1).generateSourcedIndexed(data: bytes))
         let preview = SuspendedPreviewService()
         let store = EditorStore(preview: preview)
         defer {
@@ -117,6 +129,7 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
         try await settle(store)
         XCTAssertEqual(store.mesh?.vertices.map(\.position), positions)
         XCTAssertTrue(store.previewState.isStale)
+        XCTAssertNil(store.previewSourceHints)
         XCTAssertEqual(store.previewState.errorMessage, "Original preview generation cause")
         XCTAssertNil(store.previewCacheStatistics)
         XCTAssertTrue(store.canSave)
@@ -126,6 +139,7 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
         try await settle(store)
         XCTAssertNil(store.previewState.errorMessage)
         XCTAssertFalse(store.previewState.isStale)
+        XCTAssertNotNil(store.previewSourceHints)
         XCTAssertEqual(store.previewCacheStatistics?.cacheIssue?.status, 4)
         XCTAssertEqual(store.snapshot?.document.encoded(), bytes)
     }
@@ -150,18 +164,18 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
 private actor SuspendedPreviewService: EditorPreviewServing {
     private struct Pending {
         let scope: UUID
-        var continuation: CheckedContinuation<MeshGenerationResult, any Error>?
+        var continuation: CheckedContinuation<EditorPreviewResult, any Error>?
     }
     private var pending: [Pending] = []
     var scopes: [UUID] { pending.map(\.scope) }
 
-    func generate(_ data: Data, scopeID: UUID) async throws -> MeshGenerationResult {
+    func generate(_ data: Data, scopeID: UUID) async throws -> EditorPreviewResult {
         try await withCheckedThrowingContinuation { continuation in
             pending.append(Pending(scope: scopeID, continuation: continuation))
         }
     }
     func reset(scopeID: UUID) async throws {}
-    func finish(_ index: Int, _ result: MeshGenerationResult) {
+    func finish(_ index: Int, _ result: EditorPreviewResult) {
         pending[index].continuation?.resume(returning: result)
         pending[index].continuation = nil
     }
@@ -173,7 +187,7 @@ private actor SuspendedPreviewService: EditorPreviewServing {
         pending[index].continuation?.resume(throwing: Failure.generation)
         pending[index].continuation = nil
     }
-    func finishAll(_ result: MeshGenerationResult) {
+    func finishAll(_ result: EditorPreviewResult) {
         for index in pending.indices { finish(index, result) }
     }
 }

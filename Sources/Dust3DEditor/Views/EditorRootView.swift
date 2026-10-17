@@ -203,9 +203,13 @@ struct EditorRootView: View {
             } else {
                 MeshPreviewPlaceholder(message: store.snapshot?.previewEmptyDescription)
             }
+            if let issue = store.previewSourceIssue {
+                Divider()
+                PreviewDiagnosticNotice(kind: .source, message: issue.message)
+            }
             if let issue = store.previewCacheStatistics?.cacheIssue {
                 Divider()
-                PreviewCacheNotice(message: issue.message)
+                PreviewDiagnosticNotice(kind: .cache, message: issue.message)
             }
         }
     }

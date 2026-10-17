@@ -1,11 +1,23 @@
 import SwiftUI
 
-struct PreviewCacheNotice: View {
+enum PreviewDiagnosticKind: String, CaseIterable {
+    case cache
+    case source
+    var title: String {
+        switch self {
+        case .cache: "Preview cache unavailable"
+        case .source: "Preview details unavailable"
+        }
+    }
+}
+
+struct PreviewDiagnosticNotice: View {
+    let kind: PreviewDiagnosticKind
     let message: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Preview cache unavailable", systemImage: "info.circle")
+            Label(kind.title, systemImage: "info.circle")
                 .fontWeight(.medium)
             Text("Editing and saving remain available.")
             Text(message).textSelection(.enabled)
@@ -15,6 +27,6 @@ struct PreviewCacheNotice: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(8)
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("preview-cache-notice")
+        .accessibilityIdentifier("preview-\(kind.rawValue)-notice")
     }
 }
