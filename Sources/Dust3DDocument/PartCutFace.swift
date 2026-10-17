@@ -49,10 +49,13 @@ enum PartCutFace {
         }
         guard current.cutFace != selection else { return false }
         replaceAttribute(element, name: "cutFace", value: text)
-        let root = model.rootElement()
-        try PartJoining.validateProfileLinks(
-            parts: DocumentXML.childElements(DocumentXML.childElements(root, named: "parts").first, named: "part"),
-            nodes: DocumentXML.childElements(DocumentXML.childElements(root, named: "nodes").first, named: "node"))
+        if case .linkedPart(let target) = selection {
+            let root = model.rootElement()
+            try PartJoining.validateProfileLink(
+                from: id, to: target,
+                parts: DocumentXML.childElements(DocumentXML.childElements(root, named: "parts").first, named: "part"),
+                nodes: DocumentXML.childElements(DocumentXML.childElements(root, named: "nodes").first, named: "node"))
+        }
         return true
     }
 

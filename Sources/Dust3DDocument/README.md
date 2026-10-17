@@ -103,7 +103,8 @@ finite, non-subnormal normalized half-turns in -1...1 (zero when absent/empty),
 or nil for unsupported metadata; 0.25 means 45 degrees.
 `.setPartCutFace(id: id, selection: .preset(.triangle))` or `.linkedPart(profileID)`
 changes only the part's cross-section, requiring an existing engine-compatible
-profile identity and rejecting part/node dependency cycles. Invalid identities
+profile identity and rejecting newly introduced part/node dependency cycles.
+Unrelated imported cycles do not block presets or independent links. Invalid identities
 throw `invalidPartCutFace`, missing owner/target throws `missingPart`, and cycles
 throw `cyclicProfile`. `.setPartCutRotation(id: id, rotation: 0.005)` retains fine
 rotations; invalid input throws `invalidPartCutRotation`. Exact zero removes the

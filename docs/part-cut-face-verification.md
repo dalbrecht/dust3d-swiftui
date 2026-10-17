@@ -39,3 +39,16 @@ existing QA app identity when it is available. Per-node cut-face/rotation editin
 profile authoring controls, complex/ring profiles, modifier combinations and other
 M3 families remain pending. Tests prove these fixtures, not complete profile or
 modeling parity, native UI coverage or inherited C++ coverage.
+
+## Review regressions
+
+Failing-first tests reproduce underflowed controller text resetting a nonzero
+rotation and unrelated imported cycles blocking preset/independent-link edits.
+Controllers now share the package-scoped underflow-aware scalar parser, including
+for deformation. Exponent-spelled true zero remains valid and undoable. Targeted
+link validation rejects paths back to the edited owner while terminating safely
+on pre-existing cycles elsewhere. Existing part-joining validation remains global
+and its regression tests still pass. The corrected full `make ci` passes 382 tests with zero failures, formatting,
+native builds, coverage, Qt-free linkage and isolated bundle-rebuild checks.
+Document line coverage is now 2525/2609; other measured module totals above are
+unchanged.

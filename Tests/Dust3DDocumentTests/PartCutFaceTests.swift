@@ -7,11 +7,11 @@ final class PartCutFaceTests: XCTestCase {
     private let profile = "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}"
     private func document(
         _ attributes: String = "", profileAttributes: String = "", profileNodeAttributes: String = "",
-        profileID: String? = nil
+        profileID: String? = nil, extraParts: String = ""
     ) throws -> Dust3DDocument {
         let profileID = profileID ?? profile
         let model = Data(
-            "<canvas><nodes><node id='n' partId='\(owner)' x='.5' y='.5' z='.5' radius='.1' cutFace='future'/><node id='p' partId='\(profileID)' x='.7' y='.5' z='.5' radius='.1' \(profileNodeAttributes)/></nodes><edges/><parts><part id='\(owner)' future='keep' locked='true' disabled='true' visible='false' \(attributes)/><part id='\(profileID)' target='CutFace' \(profileAttributes)/><part id='legacy'/></parts><components><component id='c' linkDataType='partId' linkData='\(owner)'/></components></canvas>"
+            "<canvas><nodes><node id='n' partId='\(owner)' x='.5' y='.5' z='.5' radius='.1' cutFace='future'/><node id='p' partId='\(profileID)' x='.7' y='.5' z='.5' radius='.1' \(profileNodeAttributes)/></nodes><edges/><parts><part id='\(owner)' future='keep' locked='true' disabled='true' visible='false' \(attributes)/><part id='\(profileID)' target='CutFace' \(profileAttributes)/><part id='legacy'/>\(extraParts)</parts><components><component id='c' linkDataType='partId' linkData='\(owner)'/></components></canvas>"
                 .utf8)
         let header =
             "<ds3><model name='model.xml' offset='0' size='\(model.count)'/><asset name='opaque.bin' offset='\(model.count)' size='4'/></ds3>"
@@ -141,6 +141,35 @@ final class PartCutFaceTests: XCTestCase {
             }
         }
     }
+    func testUnrelatedImportedCyclesDoNotBlockPresetOrIndependentLinkedEdits() throws {
+        let first = "{dddddddd-dddd-4ddd-8ddd-dddddddddddd}"
+        let second = "{eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee}"
+        let cycle = "<part id='\(first)' cutFace='\(second)'/><part id='\(second)' cutFace='\(first)'/>"
+        for source in [
+            try document(extraParts: cycle), try document(profileAttributes: "cutFace='\(first)'", extraParts: cycle),
+        ] {
+            for selection in [CutFaceSelection.preset(.triangle), .linkedPart(profile)] {
+                var history = DocumentHistory(document: source)
+                try history.apply(.setPartCutFace(id: owner, selection: selection))
+                let changed = history.document
+                XCTAssertEqual(try changed.editorContents().parts.first?.cutFace, selection)
+                XCTAssertEqual(changed.asset(named: "opaque.bin"), source.asset(named: "opaque.bin"))
+                let xml = try XMLDocument(data: changed.modelXML)
+                XCTAssertEqual(
+                    (try xml.nodes(forXPath: "//part[@id='\(first)']").first as? XMLElement)?.attribute(
+                        forName: "cutFace")?
+                        .stringValue, second)
+                XCTAssertEqual(
+                    (try xml.nodes(forXPath: "//part[@id='\(second)']").first as? XMLElement)?.attribute(
+                        forName: "cutFace")?.stringValue, first)
+                XCTAssertTrue(history.undo())
+                XCTAssertEqual(history.document.encoded(), source.encoded())
+                XCTAssertTrue(history.redo())
+                XCTAssertEqual(history.document.encoded(), changed.encoded())
+            }
+        }
+    }
+
     func testPartAndNodeProfileCyclesRejectAtomically() throws {
         let selfSource = try document()
         XCTAssertThrowsError(try selfSource.applying(.setPartCutFace(id: owner, selection: .linkedPart(owner)))) {
