@@ -18,6 +18,14 @@ See [indexed mesh verification](docs/swift-indexed-mesh-verification.md).
 Both apps now upload unique vertices and UInt32 indices to Metal; expanded SDK
 and viewport callers remain supported. See [renderer verification](docs/indexed-metal-verification.md).
 
+`MeshGenerationSession` is an optional background actor for bounded core cache
+reuse. `generateIndexed(data:)` returns copied optional geometry and cache stats;
+`statistics()` and `reset()` inspect or clear retained state. Cache zero disables
+retention, while indexed-output zero retains its 256 MiB default. Cache-only
+issues remain distinct from primary errors. See [the ownership decision](docs/adr/0054-actor-owned-generation-sessions.md).
+The apps adopt this SDK separately after review. See
+[session verification and limits](docs/swift-generation-session-verification.md).
+
 Dust3D is a cross-platform 3D modeling software that makes it easy to create 3D models for video games, 3D printing, and more. It features built-in rigging, procedural animation and UV unwrapping, with export to GLB and FBX formats.
 
 For more information, visit [dust3d.org](https://dust3d.org/).
