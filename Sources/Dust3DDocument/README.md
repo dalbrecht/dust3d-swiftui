@@ -178,3 +178,14 @@ value: 0.5)` through document/history commands. Metallic and roughness accept
 Semantic no-ops retain exact bytes/redo; real default edits remove only that
 attribute. Unknown XML/assets and exact undo/save preservation remain intact.
 See [verification](../../docs/part-material-verification.md).
+
+## Component colors
+
+`component.color` distinguishes `.unset`, `.value(DocumentColor)` and
+`.unsupported(originalText)`. `DocumentColor(archiveValue:)` accepts strict
+`#RRGGBB` / `#AARRGGBB` (alpha first), or returns nil for unsupported input.
+Construct channel values with `DocumentColor(red:green:blue:alpha:)` using UInt8.
+Apply `.setComponentColor(id: id, color: color)`; nil removes only the explicit
+color. Missing identities throw `DocumentError.missingComponent`; semantic no-ops
+retain exact source spellings/bytes and redo. Untouched unsupported colors remain
+lossless. See [verification](../../docs/component-color-verification.md).

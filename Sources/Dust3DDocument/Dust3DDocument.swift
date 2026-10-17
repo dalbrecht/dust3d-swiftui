@@ -16,6 +16,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidComponentStitchingScalar
     case invalidComponentSmoothing
     case invalidComponentName
+    case invalidComponentColor
     case missingComponent(String)
     case invalidPartCutFace
     case invalidPartCutRotation
@@ -74,6 +75,11 @@ public enum DocumentCommand: Sendable {
     case setPartName(id: String, name: String)
     /// Rename one component independently of its linked part; empty input removes its name.
     case setComponentName(id: String, name: String)
+    /// Set or remove one explicit component color without changing descendants or unknown metadata.
+    /// - Parameters: `id` is the exact component identity; `color` is bounded channels or nil to remove.
+    /// Throws `missingComponent` for an absent identity; semantic no-ops retain original archive bytes.
+    /// Example: `.setComponentColor(id: id, color: DocumentColor(red: 255, green: 0, blue: 0))`.
+    case setComponentColor(id: String, color: DocumentColor?)
     /// Set one component combination mode, clearing legacy component inversion on a semantic change.
     /// Unknown unrelated XML/assets stay intact; semantic no-ops preserve original archive bytes.
     case setComponentCombineMode(id: String, mode: ComponentCombineMode)
@@ -432,6 +438,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentCombineMode(let id, let mode):
             guard try ComponentCombination.set(model, id: id, mode: mode) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentColor(let id, let color):
+            guard try ComponentColorValue.set(model, id: id, color: color) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }

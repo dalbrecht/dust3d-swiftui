@@ -241,6 +241,17 @@ final class EditorStore {
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
+    func setComponentColor(_ id: String, value: String) {
+        guard !isWorking, !stopped else { return }
+        guard let color = DocumentColor(archiveValue: value) else {
+            errorMessage = Self.message(DocumentError.invalidComponentColor)
+            return
+        }
+        perform { try await $0.apply([.setComponentColor(id: id, color: color)]) }
+    }
+    func removeComponentColor(_ id: String) {
+        perform { try await $0.apply([.setComponentColor(id: id, color: nil)]) }
+    }
     func setComponentSmoothCutoff(_ id: String, degrees: String) {
         guard !isWorking, !stopped else { return }
         guard let value = Double(degrees), value.isFinite, (0...180).contains(value) else {
@@ -595,6 +606,7 @@ final class EditorStore {
             case .invalidComponentStitchingScalar:
                 return "Enter a depth from 0 to 2 or sharpness from 0 to 1 that the modeling engine can represent."
             case .invalidComponentSmoothing: return "Enter a finite smoothing cutoff from 0 to 180 degrees."
+            case .invalidComponentColor: return "Enter #RRGGBB or #AARRGGBB, with alpha first."
             case .invalidComponentName: return "Use a single-line component name of at most 1024 UTF-8 bytes."
             case .missingComponent(let id): return "Component \(id) is not present in this document."
             case .invalidPartCutFace:

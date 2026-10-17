@@ -324,3 +324,12 @@ now preserve reference UI ranges, unsupported metadata and exact undo/save. See
 [verification](part-material-verification.md) and ADR 0058. The current preview
 does not display these effects. This independent archive/UI stage does not waive
 remaining M3 acceptance or complete M4 UV, baking, PBR, color/image or import work.
+
+
+### Component color stage (#118)
+
+Native component color drafts now preserve alpha-first source notation, unsupported
+metadata and exact history while updating actual procedural RGB previews. See
+[verification](component-color-verification.md) and ADR 0059. Alpha remains stored
+with an opaque preview. Full transparency/PBR, UV/baking/image material/import
+work and broader native/Qt acceptance are not complete.
