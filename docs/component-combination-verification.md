@@ -25,12 +25,30 @@ Measured lines: mesh 66/67, document 2267/2351, editor model 1394/1400,
 pure editor state 523/523, undo domain 97/97, orbit camera 33/33.
 No inherited C++ or Metal/native UI coverage threshold is claimed.
 
-## Pending native acceptance
+## Native acceptance
 
-The inspector picker is implemented and compiles, with an accessibility identifier,
-keyboard-native Picker semantics and explicit unsupported-source text. Its final
-rendered/menu/open-save-Undo/Redo acceptance remains pending. The existing QA
-editor has unsaved interactive edits, so its process/document/bundle were preserved.
-Do not treat controller tests as evidence that the native picker was exercised.
+Built and strictly signature-verified the reviewed app, then used the reusable QA
+bundle identity `org.dust3d.editor.combine-qa`. The original QA window with
+unsaved edits was left intact; native checks used separate copies of synthetic
+fixtures. Reuse this identity for later stages rather than creating a new app ID.
+
+Selected the second component in a two-part nested group. Its native Combine mode
+picker exposes Normal/Inversion/Uncombined with the expected accessibility label,
+identifier and help. Inversion changes the preview from 32 to 16 triangles;
+rendered inspection shows the remaining lit part and a readable inspector.
+Save writes the chosen component attribute. Native Undo restores Normal and 32
+triangles; Undo then Save is byte-identical to the original archive. Redo restores
+Inversion and 16 triangles; Redo then Save is byte-identical to the saved edited
+archive. Uncombined restores both rendered parts and 32 triangles, and saves.
+
+An independently serialized fixture contains `combineMode="Future"`, legacy
+`inverse="true"`, a future attribute and a four-byte opaque asset. Its picker
+shows “Unsupported source mode”. Explicit Normal clears legacy component inversion,
+regenerates 32 triangles and preserves the future attribute and asset on Save.
+Native Undo restores the unsupported display and 16 triangles; Undo then Save is
+byte-identical to the original unknown-mode fixture. All QA documents were saved
+before normal Quit, leaving the QA bundle available for reuse.
+
 Qt GUI boolean comparisons, overlapping/interacting modifier fixtures and broader
-VoiceOver checks remain M3 acceptance work.
+VoiceOver checks remain M3 acceptance work. These native checks do not prove full
+modifier parity or Metal coverage.

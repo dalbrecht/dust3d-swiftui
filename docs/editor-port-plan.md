@@ -236,5 +236,6 @@ changing core geometry or claiming broader Metal coverage.
 Component Normal/Inversion/Uncombined editing now has a typed lossless command,
 atomic history, real pinned-core preview tests and a native inspector picker
 ([ADR 0038](adr/0038-component-combine-modes.md),
-[verification](component-combination-verification.md)). Native acceptance evidence and
-Qt differential boolean/modifier corpus remain pending; M3 is not complete.
+[verification](component-combination-verification.md)). Native picker/rendering
+and exact Save/Undo/Redo checks pass, including unknown source mode restoration.
+Qt differential boolean/modifier corpus remains pending; M3 is not complete.
