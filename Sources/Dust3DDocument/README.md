@@ -70,3 +70,10 @@ component `inverse`), or nil for an unknown source mode.
 changes one mode and clears legacy component inversion; semantic no-ops retain
 archive bytes and redo. Missing/ambiguous component identities throw typed
 `DocumentError` failures. Unknown unrelated XML and assets remain intact.
+
+`DocumentComponent.smoothCutoffDegrees` reports a finite 0–180-degree cutoff,
+zero when missing/empty, or nil for unsupported source values.
+`.setComponentSmoothCutoffDegrees(id: id, degrees: 90)` changes normals without
+changing geometry; zero removes the attribute on an actual edit. Invalid input
+throws `DocumentError.invalidComponentSmoothing`; unknown unrelated data and
+semantic no-op bytes remain intact.

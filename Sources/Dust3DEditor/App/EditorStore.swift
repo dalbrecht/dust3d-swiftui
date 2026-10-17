@@ -145,6 +145,14 @@ final class EditorStore {
         guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
     }
+    func setComponentSmoothCutoff(_ id: String, degrees: String) {
+        guard !isWorking, !stopped else { return }
+        guard let value = Double(degrees), value.isFinite, (0...180).contains(value) else {
+            errorMessage = Self.message(DocumentError.invalidComponentSmoothing)
+            return
+        }
+        perform { try await $0.apply([.setComponentSmoothCutoffDegrees(id: id, degrees: value)]) }
+    }
     func setComponentCombineMode(_ id: String, mode: ComponentCombineMode) {
         perform { try await $0.apply([.setComponentCombineMode(id: id, mode: mode)]) }
     }
@@ -458,6 +466,7 @@ final class EditorStore {
                 return "The document contains unsupported component tags or ambiguous identities/containers."
             case .invalidComponentStructure:
                 return "Choose unique sibling components and an unlinked group destination without creating a cycle."
+            case .invalidComponentSmoothing: return "Enter a finite smoothing cutoff from 0 to 180 degrees."
             case .invalidComponentName: return "Use a single-line component name of at most 1024 UTF-8 bytes."
             case .missingComponent(let id): return "Component \(id) is not present in this document."
             case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."

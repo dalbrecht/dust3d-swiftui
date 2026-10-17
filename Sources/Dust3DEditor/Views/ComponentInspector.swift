@@ -38,6 +38,7 @@ struct ComponentInspector: View {
             .help(
                 "Normal unions, Inversion subtracts, and Uncombined retains separate geometry. Order matters. One undo step."
             )
+            ComponentSmoothingControls(store: store, component: component)
             ComponentOrderMenu(store: store)
             ComponentReparentControls(store: store, componentID: component.id)
             if let parent = component.parentID {

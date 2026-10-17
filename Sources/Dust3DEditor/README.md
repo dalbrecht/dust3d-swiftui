@@ -107,3 +107,9 @@ Select one component to edit its Combine mode: Normal, Inversion or Uncombined.
 Order affects boolean results. Each choice regenerates the preview as one undo
 step, retaining the camera and selection. An unsupported source mode stays
 explicitly unavailable until you choose a supported value.
+
+The component inspector accepts Smoothing cutoff from 0 to 180 degrees. Apply
+Cutoff (or Return) commits one undo step; Reset Cutoff discards unapplied text.
+Apply zero for sharp edges. Invalid text produces a range diagnostic without
+changing the document. Unsupported source cutoff values remain preserved until
+you explicitly apply a valid replacement.

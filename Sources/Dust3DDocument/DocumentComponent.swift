@@ -7,6 +7,8 @@ public struct DocumentComponent: Identifiable, Equatable, Sendable {
     public let name: String
     /// Effective known mode, including legacy component inversion; nil preserves an unknown source mode.
     public let combineMode: ComponentCombineMode?
+    /// Normal smoothing cutoff in 0–180 degrees, zero when absent; nil preserves unsupported source values.
+    public let smoothCutoffDegrees: Double?
     public let parentID: String?
     public let childIDs: [String]
     /// Actual child XML, including opaque elements, comments and text rather than only component identities.
@@ -48,6 +50,7 @@ enum ComponentHierarchy {
                     id: id,
                     name: element.attribute(forName: "name")?.stringValue ?? "",
                     combineMode: ComponentCombination.mode(element),
+                    smoothCutoffDegrees: ComponentSmoothing.degrees(element),
                     parentID: parent?.name == "component" ? parent?.attribute(forName: "id")?.stringValue : nil,
                     childIDs: DocumentXML.childElements(element, named: "component").compactMap {
                         $0.attribute(forName: "id")?.stringValue

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add validated component normal smoothing cutoff editing with Apply/Reset, regenerated normals, lossless saving and exact undo/redo.
+
 - Add component Normal/Inversion/Uncombined editing with regenerated previews, legacy inversion handling, lossless save and exact undo/redo.
 
 - Fit mesh previews to narrow viewports so separated parts remain visible after opening or fitting a model.

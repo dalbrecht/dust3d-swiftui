@@ -11,6 +11,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case missingPart(String)
     case invalidComponent
     case invalidComponentStructure
+    case invalidComponentSmoothing
     case invalidComponentName
     case missingComponent(String)
     case invalidPartName
@@ -69,6 +70,9 @@ public enum DocumentCommand: Sendable {
     /// Set one component combination mode, clearing legacy component inversion on a semantic change.
     /// Unknown unrelated XML/assets stay intact; semantic no-ops preserve original archive bytes.
     case setComponentCombineMode(id: String, mode: ComponentCombineMode)
+    /// Set finite normal smoothing cutoff within 0–180 degrees; zero removes the source attribute.
+    /// A semantic no-op retains original spellings/bytes; invalid values throw `invalidComponentSmoothing`.
+    case setComponentSmoothCutoffDegrees(id: String, degrees: Double)
     /// Move a component within its current siblings, preserving its entire subtree and all assets.
     case reorderComponent(id: String, direction: ComponentOrderMove)
     /// Wrap nonempty, unique siblings in a fresh unlinked group, retaining their source order.
@@ -301,6 +305,7 @@ public struct Dust3DDocument: Sendable {
         let contents: DocumentContents
         switch command {
         case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName, .setComponentCombineMode,
+            .setComponentSmoothCutoffDegrees,
             .reorderComponent,
             .groupComponents, .ungroupComponent, .reparentComponent:
             contents = DocumentContents(nodes: [], edges: [])
@@ -361,6 +366,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .reorderComponent(let id, let direction):
             guard try ComponentReordering.apply(model, id: id, direction: direction) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentSmoothCutoffDegrees(let id, let degrees):
+            guard try ComponentSmoothing.set(model, id: id, degrees: degrees) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentCombineMode(let id, let mode):
             guard try ComponentCombination.set(model, id: id, mode: mode) else { return self }
