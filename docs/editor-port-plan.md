@@ -239,3 +239,10 @@ atomic history, real pinned-core preview tests and a native inspector picker
 [verification](component-combination-verification.md)). Native picker/rendering
 and exact Save/Undo/Redo checks pass, including unknown source mode restoration.
 Qt differential boolean/modifier corpus remains pending; M3 is not complete.
+
+Component normal smoothing cutoff now has finite 0–180 validation, lossless
+commands, real-core normal/geometry tests and explicit native Apply/Reset controls
+([ADR 0039](adr/0039-component-smoothing-cutoff.md),
+[verification](component-smoothing-verification.md)). Native rendering, invalid
+input recovery, reopen and exact Save/Undo/Redo checks pass. Qt differential and
+interacting modifier acceptance remain pending; M3 is not complete.
