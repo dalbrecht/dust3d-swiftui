@@ -82,6 +82,8 @@ PLIST
 xattr -cr "$APP_BUNDLE"
 codesign --force --sign - "$APP_BUNDLE"
 codesign --verify --deep --strict "$APP_BUNDLE"
+# Launch Services detects rebuilt bundle metadata through the application directory timestamp.
+/usr/bin/touch "$APP_BUNDLE"
 # A ZIP keeps File Provider Finder metadata outside the app's sealed resources.
 ditto -c -k --keepParent "$APP_BUNDLE" "$ROOT_DIR/dist/$APP_NAME.zip"
 

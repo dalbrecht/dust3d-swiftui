@@ -6,7 +6,14 @@ until final artwork is designed. The `.icns` files are app resources, not snapsh
 baselines. They use the repository's MIT license.
 
 `script/build_and_run.sh` copies the appropriate icon into each bundle and declares
-`CFBundleIconFile` before ad-hoc signing. Rebuild through that script to see the icon.
+`CFBundleIconFile` before ad-hoc signing. After verification, it refreshes the app
+directory modification time so Launch Services can recognize rebuilt metadata at
+the same path. Rebuild through that script to see the icon. This does not reset
+services or change document associations.
+
+Run `./script/check_app_bundle_rebuild.sh` to rebuild isolated temporary Editor and
+Viewer bundles and verify current directory timestamps and strict signatures.
+See Apple's [application registration guidance](https://developer.apple.com/library/archive/documentation/Carbon/Conceptual/LaunchServicesConcepts/LSCConcepts/LSCConcepts.html).
 
 Regenerate with macOS AppKit and the built-in `iconutil` (no new dependencies):
 

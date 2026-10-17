@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refresh rebuilt app bundle timestamps so macOS can recognize updated icons and metadata at the same path.
+
 - Add distinct temporary Editor and Viewer app icons for launch and Dock identification.
 
 - Add component multi-selection and native Group/Ungroup actions with lossless saving, exact undo/redo and mesh preview regeneration.
