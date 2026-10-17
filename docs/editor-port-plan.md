@@ -292,3 +292,13 @@ pinned to reviewed core PR #24. See ADR 0054. Editor preview actor adoption and
 background encoding/coalescing follow separately; both app loading paths remain
 compatible. Source provenance, controlled performance budgets and the broader Qt
 differential corpus are still pending. This does not complete M3 or editor parity.
+
+
+### Editor preview session checkpoint (Apple #110)
+
+The editor now uses the reviewed session SDK with document-scoped ownership,
+obsolete-cleanup protection, retained request/cancellation semantics and separate
+cache-only diagnostics. See ADR 0055. Existing encoded documents are immutable
+Data handoffs; no new encoding/performance claim is made. Source provenance,
+controlled memory/performance budgets, broader scheduling acceptance and the Qt
+differential corpus remain pending. M3 and full editor parity remain incomplete.

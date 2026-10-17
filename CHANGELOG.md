@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reuse bounded document-scoped core caches for editor previews, isolate replacement/stop cleanup, preserve stale and successful-empty behavior, and display cache-only diagnostics without blocking edits or save.
+
 - Add an actor-owned generation-session SDK with bounded retained caches, copied indexed results, explicit cache diagnostics and reset, backed by the reviewed core session API; existing stateless app loading remains compatible.
 
 - Render viewer and editor previews with unique vertices and UInt32 Metal index buffers, reject payloads beyond device buffer limits, and preserve expanded SDK compatibility, camera revisions, empty results and stale-failure behavior.

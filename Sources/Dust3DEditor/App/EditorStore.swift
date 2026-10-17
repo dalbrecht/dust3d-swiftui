@@ -4,6 +4,7 @@ import Dust3DEditorModel
 import Dust3DKit
 import Foundation
 import Observation
+import os
 
 @MainActor @Observable
 final class EditorStore {
@@ -35,16 +36,24 @@ final class EditorStore {
     var onDocumentChanged: ((Data) -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
     private let session = EditorSession()
-    private let preview = EditorPreviewService()
+    private let preview: any EditorPreviewServing
+    private var previewScopeID = UUID()
+    private(set) var previewCacheStatistics: MeshGenerationStatistics?
+    private static let previewLogger = Logger(subsystem: "org.dust3d.editor", category: "PreviewCache")
     private let referenceImages: any ReferenceImageServing
     private var operation: Task<Void, Never>?
-    private var generation: Task<Void, Never>?
+    // Lifecycle callers can await a captured request's cooperative completion.
+    private(set) var generation: Task<Void, Never>?
     private var referenceGeneration: Task<Void, Never>?
     private var referenceRequestID = UUID()
     private var stopped = false
 
-    init(referenceImages: any ReferenceImageServing = ReferenceImageService()) {
+    init(
+        referenceImages: any ReferenceImageServing = ReferenceImageService(),
+        preview: any EditorPreviewServing = EditorPreviewService()
+    ) {
         self.referenceImages = referenceImages
+        self.preview = preview
     }
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
@@ -63,7 +72,7 @@ final class EditorStore {
             snapshot = next
             referenceImage = nil
             fit()
-            previewState.clear()
+            clearPreview()
             generate(next)
             refreshReferenceImage(next, forceFit: true)
         } catch {
@@ -392,7 +401,7 @@ final class EditorStore {
         operation?.cancel()
         generation?.cancel()
         referenceGeneration?.cancel()
-        previewState.clear()
+        clearPreview()
         onDocumentChanged = nil
         onEditingChanged?(false)
         onEditingChanged = nil
@@ -445,30 +454,50 @@ final class EditorStore {
         }
     }
 
+    private func clearPreview() {
+        generation?.cancel()
+        previewState.clear()
+        previewCacheStatistics = nil
+        let previousScope = previewScopeID
+        previewScopeID = UUID()
+        Task { [preview] in
+            do {
+                try await preview.reset(scopeID: previousScope)
+            } catch {
+                Self.previewLogger.error(
+                    "Preview cache reset for \(previousScope.uuidString, privacy: .public) failed: \(error.localizedDescription, privacy: .private)"
+                )
+            }
+        }
+    }
+
     private func generate(_ snapshot: EditorSnapshot) {
         generation?.cancel()
         renderError = nil
         guard snapshot.hasEnabledGeometry else {
-            previewState.clear()
+            clearPreview()
             return
         }
+        previewCacheStatistics = nil
+        let scopeID = previewScopeID
         let requestID = UUID()
         previewState.begin(requestID: requestID)
         generation = Task {
             do {
                 try await Task.sleep(for: .milliseconds(150))
-                let result = try await preview.generate(snapshot.document.encoded())
+                let result = try await preview.generate(snapshot.document.encoded(), scopeID: scopeID)
                 // Asset-only edits can advance document revision without changing geometry; request identity wins.
-                guard !Task.isCancelled, !stopped else {
+                guard !Task.isCancelled, !stopped, scopeID == previewScopeID else {
                     return
                 }
-                if let result {
-                    previewState.succeed(result, requestID: requestID)
+                previewCacheStatistics = result.statistics
+                if let mesh = result.mesh {
+                    previewState.succeed(mesh, requestID: requestID)
                 } else {
                     previewState.succeedEmpty(requestID: requestID)
                 }
             } catch {
-                guard !Task.isCancelled, !stopped else { return }
+                guard !Task.isCancelled, !stopped, scopeID == previewScopeID else { return }
                 previewState.fail(Self.message(error), requestID: requestID)
             }
         }
@@ -590,14 +619,5 @@ final class EditorStore {
             }
         }
         return error.localizedDescription
-    }
-}
-
-private actor EditorPreviewService {
-    func generate(_ data: Data) throws -> IndexedMesh? {
-        try Task.checkCancellation()
-        let mesh = try MeshLoader.loadIndexedIfPresent(data: data)
-        try Task.checkCancellation()
-        return mesh
     }
 }
