@@ -1,10 +1,10 @@
 /// Numeric archive compatibility shared by bounded procedural properties.
-enum EngineScalar {
-    static func isValid(_ value: Double, in bounds: ClosedRange<Double>) -> Bool {
+package enum EngineScalar {
+    package static func isValid(_ value: Double, in bounds: ClosedRange<Double>) -> Bool {
         value.isFinite && !value.isSubnormal && bounds.contains(value)
     }
 
-    static func parse(_ text: String, in bounds: ClosedRange<Double>) -> Double? {
+    package static func parse(_ text: String, in bounds: ClosedRange<Double>) -> Double? {
         guard let value = Double(text), isValid(value, in: bounds) else { return nil }
         if value == 0 {
             // Swift rounds tiny literals to zero; the inherited strtod parser rejects their nonzero significands.

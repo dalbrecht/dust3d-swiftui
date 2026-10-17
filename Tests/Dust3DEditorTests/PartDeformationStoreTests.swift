@@ -101,7 +101,7 @@ final class PartDeformationStoreTests: XCTestCase {
         try await settle(store)
         let baseline = try XCTUnwrap(store.mesh)
         let revision = store.previewRevision
-        for text in ["", "nan", "inf", "-0.001", "2.001", "future", "5e-324", "1e-310"] {
+        for text in ["", "nan", "inf", "-0.001", "2.001", "future", "5e-324", "1e-310", "1e-999", "0x1p-9999"] {
             store.setPartDeformationScale(part, property: .width, value: text)
             try await settle(store)
             XCTAssertTrue(store.errorMessage?.contains("0 to 2") == true)

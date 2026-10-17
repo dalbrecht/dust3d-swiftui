@@ -120,8 +120,8 @@ final class PartCutFaceStoreTests: XCTestCase {
             assertFinite(try MeshLoader.load(data: changed.encoded()))
         }
     }
-    @MainActor func testInvalidRotationDoesNotPublishOrRegenerate() async throws {
-        let original = try document()
+    @MainActor func testRotationInputRejectsUnderflowWithoutLosingExplicitZero() async throws {
+        let original = try document().applying(.setPartCutRotation(id: owner, rotation: 0.25))
         let store = EditorStore()
         defer { store.stop() }
         var publications = 0
@@ -129,7 +129,7 @@ final class PartCutFaceStoreTests: XCTestCase {
         await store.load(data: original.encoded())
         try await settle(store)
         let revision = store.previewRevision
-        for text in ["", "nan", "inf", "5e-324", "-1.001", "1.001"] {
+        for text in ["", "nan", "inf", "5e-324", "1e-999", "-1e-999", "0x1p-9999", "-1.001", "1.001"] {
             store.setPartCutRotation(owner, rotation: text)
             try await settle(store)
             XCTAssertTrue(store.errorMessage?.contains("-1 to 1") == true)
@@ -137,5 +137,13 @@ final class PartCutFaceStoreTests: XCTestCase {
             XCTAssertEqual(store.previewRevision, revision)
             XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
         }
+        store.setPartCutRotation(owner, rotation: "0e-999")
+        try await settle(store)
+        XCTAssertNil(store.errorMessage)
+        XCTAssertEqual(publications, 1)
+        XCTAssertEqual(store.snapshot?.parts.first?.cutRotation, 0)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
     }
 }

@@ -150,7 +150,7 @@ final class EditorStore {
     }
     func setPartCutRotation(_ id: String, rotation: String) {
         guard !isWorking, !stopped else { return }
-        guard let value = Double(rotation), value.isFinite, !value.isSubnormal, (-1...1).contains(value) else {
+        guard let value = EngineScalar.parse(rotation, in: -1...1) else {
             errorMessage = Self.message(DocumentError.invalidPartCutRotation)
             return
         }
@@ -158,7 +158,7 @@ final class EditorStore {
     }
     func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
         guard !isWorking, !stopped else { return }
-        guard let scale = Double(value), scale.isFinite, !scale.isSubnormal, (0...2).contains(scale) else {
+        guard let scale = EngineScalar.parse(value, in: 0...2) else {
             errorMessage = Self.message(DocumentError.invalidPartDeformation)
             return
         }
