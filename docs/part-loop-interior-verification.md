@@ -34,3 +34,32 @@ Native input, menu transitions, Save/Undo/Redo menus, VoiceOver, GPU rendering
 and Qt differential/manifold acceptance remain pending. Reuse
 org.dust3d.editor.combine-qa. Hollowing remains open in #96; wrapping, broader M3
 and M4–M8 are incomplete. Full feature parity is not claimed.
+
+## Review regression: the only filled loop
+
+Automated review identified that the earlier isolated fixture's unrelated model
+left the lone-loop empty case uncovered. The new lone-loop test first reproduced
+a retained stale mesh and generic generation failure after clearing fill. Core
+PR #8 adds an explicit successful-empty status, with all twelve portable Debug
+and sanitizer contracts and all six hosted Linux/macOS jobs passing after a
+clean review. The Apple manifest/lock now pin its reviewed merge revision.
+
+MeshLoader.loadIfPresent maps only NO_GEOMETRY to nil. Genuine malformed and
+nonfinite generation errors retain original statuses/messages. Request-checked
+succeedEmpty clears geometry without letting obsolete/duplicate completions
+erase newer output. The lone-loop regression verifies nil mesh, no error/stale
+state, retained selection/camera, exact undo/redo and restored filled geometry.
+A real generation failure still retains the previous mesh as stale. Pure tests
+cover request identity and loaded-empty descriptions. The production placeholder
+is rendered in light/dark modes without GPU setup.
+
+Fifteen focused integration/state/description tests and ten renderer tests pass.
+Fresh full-gate results follow this earlier 423-test record. Native input and GPU
+acceptance remain pending.
+
+The fresh full `make ci` passes 432 tests with zero failures, formatting, native
+builds, coverage, Qt-free linkage and isolated bundle-rebuild checks. Measured
+lines: mesh 73/74, document 2678/2762, editor model 1428/1434, pure editor state
+529/529 and undo 97/97. Generated-empty placeholder output from the final gate
+was inspected in light/dark modes with semantic primary text for readability.
+These totals do not measure native UI/Metal or inherited C++ coverage.

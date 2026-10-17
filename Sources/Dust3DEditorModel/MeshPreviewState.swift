@@ -29,6 +29,16 @@ public struct MeshPreviewState<Output: Sendable>: Sendable {
         finish()
     }
 
+    /// Accepts a successful empty result only for the active request, removing retained geometry.
+    /// - Parameter requestID: The identity supplied to `begin`; obsolete and duplicate results are ignored.
+    /// - Example: `preview.succeedEmpty(requestID: requestID)` after a no-geometry engine result.
+    public mutating func succeedEmpty(requestID: UUID) {
+        guard self.requestID == requestID else { return }
+        value = nil
+        revision += 1
+        finish()
+    }
+
     /// Records a failure for the active request without discarding the last successful output.
     public mutating func fail(_ message: String, requestID: UUID) {
         guard self.requestID == requestID else { return }

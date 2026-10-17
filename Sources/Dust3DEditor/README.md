@@ -179,3 +179,11 @@ already bordering a stitched surface: connected loops can retain the same mesh
 while their metadata changes. Other part roles preserve the flag without
 showing this control. The QA exporter covers on/off/unsupported loop controls
 and the actual part inspector in light/dark appearances.
+
+Clearing the only isolated loop fill now clears the preview successfully. The
+reviewed core distinguishes successful no-geometry from a generation failure;
+only that result clears retained geometry. Genuine failures keep the previous
+mesh marked stale with the original diagnostic. Undo/redo can transition between
+filled and empty previews, and obsolete empty completions cannot erase newer
+output. A loaded empty preview explains the current document state instead of
+prompting the user to open an already open file.

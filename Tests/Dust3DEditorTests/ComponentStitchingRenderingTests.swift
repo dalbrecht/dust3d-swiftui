@@ -1,4 +1,6 @@
 import AppKit
+import Dust3DDocument
+import Dust3DEditorModel
 import Foundation
 import SwiftUI
 import XCTest
@@ -84,6 +86,28 @@ final class ComponentStitchingRenderingTests: XCTestCase {
                     name: "loop-interior-" + suffix)
                 XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
                 XCTAssertFalse(store.canUndo)
+            }
+        }
+    }
+
+    @MainActor func testEmptyPreviewPlaceholderRendersDocumentStatesWithoutGPU() throws {
+        let empty = try EditorState(document: Dust3DDocument(data: Dust3DDocument.emptyArchive()))
+        let loop = try StitchingFixture.document(
+            loop: true, attributes: "", fillLoopInterior: "false", isolatedLoop: true,
+            includeUncombinedModel: false)
+        let generatedEmpty = try EditorState(document: loop)
+        let profile = try EditorState(
+            document: loop.applying(.setPartTarget(id: StitchingFixture.identity(100), target: .cutFace)))
+        let messages: [(String, String?)] = [
+            ("not-loaded", nil), ("new-document", empty.snapshot.previewEmptyDescription),
+            ("excluded", profile.snapshot.previewEmptyDescription),
+            ("generated-empty", generatedEmpty.snapshot.previewEmptyDescription),
+        ]
+        for (name, message) in messages {
+            for scheme in [ColorScheme.light, .dark] {
+                try save(
+                    InspectorRenderer.png(MeshPreviewPlaceholder(message: message), width: 400, scheme: scheme),
+                    name: "preview-placeholder-" + name + (scheme == .dark ? "-dark" : "-light"))
             }
         }
     }

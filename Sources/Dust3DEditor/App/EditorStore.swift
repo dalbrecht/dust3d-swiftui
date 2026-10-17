@@ -440,7 +440,11 @@ final class EditorStore {
                 guard !Task.isCancelled, !stopped else {
                     return
                 }
-                previewState.succeed(result, requestID: requestID)
+                if let result {
+                    previewState.succeed(result, requestID: requestID)
+                } else {
+                    previewState.succeedEmpty(requestID: requestID)
+                }
             } catch {
                 guard !Task.isCancelled, !stopped else { return }
                 previewState.fail(Self.message(error), requestID: requestID)
@@ -566,9 +570,9 @@ final class EditorStore {
 }
 
 private actor EditorPreviewService {
-    func generate(_ data: Data) throws -> Mesh {
+    func generate(_ data: Data) throws -> Mesh? {
         try Task.checkCancellation()
-        let mesh = try MeshLoader.load(data: data)
+        let mesh = try MeshLoader.loadIfPresent(data: data)
         try Task.checkCancellation()
         return mesh
     }

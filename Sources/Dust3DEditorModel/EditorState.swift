@@ -86,6 +86,15 @@ public struct EditorSnapshot: Sendable {
         componentTree.rows.first { $0.id == selectedComponentID }?.component
     }
     public var selectedPart: DocumentPart? { parts.first { $0.id == selectedPartID } }
+    /// Explanation for a loaded document whose preview currently has no geometry.
+    /// - Returns: A next-step description for an empty graph, excluded contributors or successful empty generation.
+    /// - Example: `snapshot.previewEmptyDescription` supplies the empty preview's message.
+    public var previewEmptyDescription: String {
+        if nodes.isEmpty { return "Add nodes to begin modeling." }
+        if !hasEnabledGeometry { return "Enable a model or stitching part to generate the mesh." }
+        return "The current document generates no mesh geometry."
+    }
+
     /// Visibility is an editing option. Disabled parts and cross-section-only profiles do not contribute joined geometry.
     public var hasEnabledGeometry: Bool {
         let excluded = Set(parts.filter { $0.isDisabled || $0.target == .cutFace }.map(\.id))

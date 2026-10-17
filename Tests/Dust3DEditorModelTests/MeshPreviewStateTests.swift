@@ -93,4 +93,48 @@ final class MeshPreviewStateTests: XCTestCase {
         XCTAssertFalse(state.isGenerating)
         XCTAssertEqual(state.revision, 1)
     }
+    func testCurrentSuccessfulEmptyCompletionClearsRetainedOutputAndAdvancesRevision() {
+        var state = MeshPreviewState<String>()
+        let first = UUID()
+        state.begin(requestID: first)
+        state.succeed("old filled loop", requestID: first)
+        let empty = UUID()
+        state.begin(requestID: empty)
+        XCTAssertTrue(state.isStale)
+        state.succeedEmpty(requestID: empty)
+        XCTAssertNil(state.value)
+        XCTAssertNil(state.errorMessage)
+        XCTAssertFalse(state.isGenerating)
+        XCTAssertFalse(state.isStale)
+        XCTAssertEqual(state.revision, 2)
+        state.succeed("late duplicate", requestID: empty)
+        state.fail("late error", requestID: empty)
+        state.succeedEmpty(requestID: empty)
+        XCTAssertNil(state.value)
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(state.revision, 2)
+    }
+
+    func testObsoleteOrClearedEmptyCompletionsCannotEraseCurrentOutput() {
+        var state = MeshPreviewState<String>()
+        let old = UUID()
+        let current = UUID()
+        state.begin(requestID: old)
+        state.begin(requestID: current)
+        state.succeedEmpty(requestID: old)
+        XCTAssertTrue(state.isGenerating)
+        XCTAssertEqual(state.revision, 0)
+        state.succeed("current", requestID: current)
+        state.succeedEmpty(requestID: old)
+        state.succeedEmpty(requestID: current)
+        XCTAssertEqual(state.value, "current")
+        XCTAssertEqual(state.revision, 1)
+        state.begin(requestID: old)
+        state.clear()
+        state.succeedEmpty(requestID: old)
+        XCTAssertNil(state.value)
+        XCTAssertFalse(state.isGenerating)
+        XCTAssertEqual(state.revision, 1)
+    }
+
 }

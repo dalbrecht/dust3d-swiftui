@@ -8,7 +8,8 @@ enum StitchingFixture {
 
     static func document(
         loop: Bool, attributes: String = "sideClosed='true'", unsupported: Bool = false,
-        degenerateStraight: Bool = false, fillLoopInterior: String = "true", isolatedLoop: Bool = false
+        degenerateStraight: Bool = false, fillLoopInterior: String = "true", isolatedLoop: Bool = false,
+        includeUncombinedModel: Bool = true
     ) throws
         -> Dust3DDocument
     {
@@ -48,7 +49,7 @@ enum StitchingFixture {
                 "<part id='\(part)' target='\(loop ? "StitchingLoop" : "StitchingLine")' fillLoopInterior='\(fillLoopInterior)' future='keep'/>"
             children += "<component id='\(component)' linkDataType='partId' linkData='\(part)'/>"
         }
-        if isolatedLoop {
+        if isolatedLoop && includeUncombinedModel {
             // A separate uncombined model keeps the scene nonempty when the isolated loop is unfilled.
             nodes += "<node id='\(identity(1999))' partId='\(identity(199))' x='2' y='2' z='2' radius='.05'/>"
             parts += "<part id='\(identity(199))' target='Model'/>"
