@@ -7,15 +7,19 @@ public struct DocumentComponent: Identifiable, Equatable, Sendable {
     public let name: String
     public let parentID: String?
     public let childIDs: [String]
+    /// Actual child XML, including opaque elements, comments and text rather than only component identities.
+    public let hasChildXML: Bool
     public let linkDataType: String?
     public let linkData: String?
+    /// A supported unlinked group, including an empty group. Unknown links remain opaque.
+    public var isGroup: Bool { (linkDataType ?? "").isEmpty && (linkData ?? "").isEmpty }
     public var partID: String? { linkDataType == "partId" ? linkData : nil }
 }
 
 /// Component interpretation is opt-in: opaque hierarchies remain preservable by unrelated edits.
 enum ComponentHierarchy {
     static func read(_ model: XMLDocument) throws -> [DocumentComponent] {
-        let containers = model.rootElement()?.elements(forName: "components") ?? []
+        let containers = DocumentXML.childElements(model.rootElement(), named: "components")
         guard containers.count <= 1 else { throw DocumentError.invalidComponent }
         let elements = PartSplitting.componentElements(model)
         guard elements.count <= 10_000 else { throw DocumentError.limitExceeded }
@@ -42,9 +46,10 @@ enum ComponentHierarchy {
                     id: id,
                     name: element.attribute(forName: "name")?.stringValue ?? "",
                     parentID: parent?.name == "component" ? parent?.attribute(forName: "id")?.stringValue : nil,
-                    childIDs: element.elements(forName: "component").compactMap {
+                    childIDs: DocumentXML.childElements(element, named: "component").compactMap {
                         $0.attribute(forName: "id")?.stringValue
                     },
+                    hasChildXML: !(element.children ?? []).isEmpty,
                     linkDataType: element.attribute(forName: "linkDataType")?.stringValue,
                     linkData: element.attribute(forName: "linkData")?.stringValue))
         }

@@ -10,6 +10,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case missingNode(String)
     case missingPart(String)
     case invalidComponent
+    case invalidComponentStructure
     case invalidComponentName
     case missingComponent(String)
     case invalidPartName
@@ -67,6 +68,12 @@ public enum DocumentCommand: Sendable {
     case setComponentName(id: String, name: String)
     /// Move a component within its current siblings, preserving its entire subtree and all assets.
     case reorderComponent(id: String, direction: ComponentOrderMove)
+    /// Wrap nonempty, unique siblings in a fresh unlinked group, retaining their source order.
+    case groupComponents(ids: [String], groupID: String)
+    /// Remove an unlinked nonempty group and its settings, promoting all child XML at its position.
+    case ungroupComponent(id: String)
+    /// Append one subtree to an unlinked group or to the document root; cycles reject atomically.
+    case reparentComponent(id: String, parentID: String?)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
@@ -290,7 +297,8 @@ public struct Dust3DDocument: Sendable {
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
         switch command {
-        case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName, .reorderComponent:
+        case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName, .reorderComponent,
+            .groupComponents, .ungroupComponent, .reparentComponent:
             contents = DocumentContents(nodes: [], edges: [])
         default: contents = try editorContents()
         }
@@ -337,6 +345,15 @@ public struct Dust3DDocument: Sendable {
                     root.addAttribute(attribute)
                 }
             }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .groupComponents(let ids, let groupID):
+            try ComponentStructure.group(model, ids: ids, groupID: groupID)
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .ungroupComponent(let id):
+            guard try ComponentStructure.ungroup(model, id: id) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .reparentComponent(let id, let parentID):
+            guard try ComponentStructure.reparent(model, id: id, parentID: parentID) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .reorderComponent(let id, let direction):
             guard try ComponentReordering.apply(model, id: id, direction: direction) else { return self }

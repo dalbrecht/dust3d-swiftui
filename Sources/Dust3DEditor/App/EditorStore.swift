@@ -431,6 +431,8 @@ final class EditorStore {
             case .missingPart(let id): return "Part \(id) is not present in this document."
             case .invalidComponent:
                 return "The document contains unsupported component tags or ambiguous identities/containers."
+            case .invalidComponentStructure:
+                return "Choose unique sibling components and an unlinked group destination without creating a cycle."
             case .invalidComponentName: return "Use a single-line component name of at most 1024 UTF-8 bytes."
             case .missingComponent(let id): return "Component \(id) is not present in this document."
             case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."

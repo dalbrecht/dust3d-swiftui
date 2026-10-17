@@ -73,35 +73,10 @@ public struct NodeClipboard: Sendable {
 
 /// Structural traversal deliberately excludes component-like unknown extension elements.
 enum NodeClipboardMutation {
-    static func semanticElements(_ model: XMLDocument) -> [XMLElement] {
-        guard let root = model.rootElement() else { return [] }
-        return ["nodes", "edges", "parts"].flatMap { name in
-            root.elements(forName: name).first?.elements(forName: String(name.dropLast())) ?? []
-        } + PartSplitting.componentElements(model)
-    }
+    static func semanticElements(_ model: XMLDocument) -> [XMLElement] { DocumentXML.semanticElements(model) }
 
     /// Detached subtrees must carry bindings inherited from their former ancestors.
-    static func preserveNamespaces(_ element: XMLElement) {
-        var bindings: [String: String] = [:]
-        var ancestor: XMLNode? = element
-        while let current = ancestor {
-            if let current = current as? XMLElement {
-                for namespace in current.namespaces ?? [] {
-                    let prefix = namespace.name ?? ""
-                    if bindings[prefix] == nil { bindings[prefix] = namespace.stringValue ?? "" }
-                }
-            }
-            ancestor = current.parent
-        }
-        if bindings[""] == nil { bindings[""] = "" }
-        let local = Set((element.namespaces ?? []).map { $0.name ?? "" })
-        for (prefix, uri) in bindings.sorted(by: { $0.key < $1.key }) where !local.contains(prefix) {
-            let namespace = XMLNode(kind: .namespace)
-            namespace.name = prefix
-            namespace.stringValue = uri
-            element.addNamespace(namespace)
-        }
-    }
+    static func preserveNamespaces(_ element: XMLElement) { DocumentXML.preserveNamespaces(element) }
 
     static func extract(_ selected: Set<String>, model: XMLDocument, contents: DocumentContents) throws {
         guard !selected.isEmpty, selected.isSubset(of: Set(contents.nodes.map(\.id))),
