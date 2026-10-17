@@ -23,6 +23,10 @@ the native payload budget does not account for GPU vertex alignment or device li
 
 Extract production draw encoding from drawable acquisition so tests can render
 the same pipeline, depth state, uniforms and wireframe mode into offscreen targets.
+Associate setup failures with their mesh revision so a later valid revision can
+recover without losing the previous camera. Suppress obsolete queued error
+callbacks after replacement.
+
 No window activation, synthetic events, new app identifier, dependency or shader
 format change is required.
 

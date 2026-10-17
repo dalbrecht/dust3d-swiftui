@@ -33,8 +33,15 @@ and requires increased vertex sharing after smoothing. The focused regression pa
 
 Existing editor tests exercise real modifiers/stitching/wrapping, exact history,
 successful-empty clearing and stale output on genuine failures with indexed
-preview values. Full `make ci` passes: 465 tests, formatting, builds, coverage, Qt-link checks
+preview values. Full `make ci` passes: 468 tests, formatting, builds, coverage, Qt-link checks
 and isolated bundle rebuild. Mesh library coverage is 140/142 lines; document
 2812/2896, model 1462/1468, pure editor state 529/529, undo 97/97 and orbit 33/33.
 The local solid and wireframe PNGs were visually inspected; no app was launched. Native pointer/keyboard/VoiceOver acceptance and large-model memory profiling
 remain pending. Source IDs, UVs and materials are not implemented by this stage.
+
+Automated review identified permanent viewport error suppression after a rejected
+buffer. Three recovery tests first failed with four assertions on that behavior.
+Failure suppression now belongs to one revision, later revisions retry, obsolete
+queued callbacks are ignored, and successful retries retain the previous camera.
+The no-device retry/callback tests run without GPU availability; the recovery and
+camera test explicitly skips only on hosts with no Metal device.

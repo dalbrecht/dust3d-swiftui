@@ -51,8 +51,12 @@ public struct MeshViewport: NSViewRepresentable {
     }
 
     public func updateNSView(_ view: InteractiveMeshView, context: Context) {
+        updateRenderer(in: view)
+    }
+
+    func updateRenderer(in view: InteractiveMeshView) {
         // A revision replaces GPU geometry while retaining the existing orbit camera.
-        if (view.renderer == nil || view.meshRevision != meshRevision) && !view.hasReportedError {
+        if (view.renderer == nil || view.meshRevision != meshRevision) && view.failedMeshRevision != meshRevision {
             do {
                 guard let device = view.device else {
                     throw RendererError.unavailable("This Mac does not provide a Metal device.")
@@ -62,12 +66,16 @@ public struct MeshViewport: NSViewRepresentable {
                     depthPixelFormat: view.depthStencilPixelFormat)
                 if let camera = view.renderer?.camera { renderer.camera = camera }
                 view.meshRevision = meshRevision
+                view.failedMeshRevision = nil
                 view.renderer = renderer
                 view.delegate = renderer
             } catch {
-                view.hasReportedError = true
+                view.failedMeshRevision = meshRevision
                 let message = error.localizedDescription
-                DispatchQueue.main.async { onError(message) }
+                DispatchQueue.main.async {
+                    guard view.failedMeshRevision == meshRevision else { return }
+                    onError(message)
+                }
                 return
             }
         }
@@ -85,7 +93,7 @@ public struct MeshViewport: NSViewRepresentable {
 public final class InteractiveMeshView: MTKView {
     var renderer: MeshRenderer?
     var meshRevision: Int?
-    var hasReportedError = false
+    var failedMeshRevision: Int?
     var cameraReset = 0
     private var lastDragLocation: CGPoint?
 
