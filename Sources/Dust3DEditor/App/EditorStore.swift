@@ -145,6 +145,9 @@ final class EditorStore {
         guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
     }
+    func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
+        perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
+    }
     func setComponentSmoothCutoff(_ id: String, degrees: String) {
         guard !isWorking, !stopped else { return }
         guard let value = Double(degrees), value.isFinite, (0...180).contains(value) else {

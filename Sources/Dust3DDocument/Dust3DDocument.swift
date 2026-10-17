@@ -81,6 +81,9 @@ public enum DocumentCommand: Sendable {
     case ungroupComponent(id: String)
     /// Append one subtree to an unlinked group or to the document root; cycles reject atomically.
     case reparentComponent(id: String, parentID: String?)
+    /// Change one procedural part flag, preserving all other metadata, source graph and assets.
+    /// Part locks constrain node editing; modifier metadata remains editable as in the inherited app.
+    case setPartModifier(id: String, property: PartModifierProperty, value: Bool)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
@@ -397,6 +400,11 @@ public struct Dust3DDocument: Sendable {
                 attribute.stringValue = value
                 part.addAttribute(attribute)
             }
+        case .setPartModifier(let id, let property, let value):
+            guard try PartModifiers.set(model, parts: contents.parts, id: id, property: property, value: value) else {
+                return self
+            }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartState(let id, let property, let value):
             guard let current = contents.parts.first(where: { $0.id == id }),
                 let part = root.elements(forName: "parts").first?.elements(forName: "part").first(where: {
@@ -799,7 +807,8 @@ public struct Dust3DDocument: Sendable {
             let value = DocumentPart(
                 id: id, name: part.attribute(forName: "name")?.stringValue ?? "", index: index,
                 isVisible: visible, isLocked: isTrue(part.attribute(forName: "locked")?.stringValue),
-                isDisabled: isTrue(part.attribute(forName: "disabled")?.stringValue))
+                isDisabled: isTrue(part.attribute(forName: "disabled")?.stringValue),
+                modifiers: PartModifiers.values(part))
             parts[id] = value
             orderedParts.append(value)
         }

@@ -15,15 +15,27 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     public let isVisible: Bool
     public let isLocked: Bool
     public let isDisabled: Bool
+    private let modifiers: [PartModifierProperty: Bool]
+
+    /// Read one modifier without changing its source representation.
+    /// - Parameter property: The supported procedural flag.
+    /// - Returns: The known source/default value, or nil for an unsupported or ambiguous source spelling.
+    /// - Example: `part.modifierValue(.interpolation)` reads extra-ring generation.
+    public func modifierValue(_ property: PartModifierProperty) -> Bool? { modifiers[property] }
+
     public var isEditVisible: Bool { isVisible && !isDisabled }
     public var isEditable: Bool { isEditVisible && !isLocked }
 
-    init(id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool) {
+    init(
+        id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool,
+        modifiers: [PartModifierProperty: Bool]
+    ) {
         self.id = id
         self.name = name
         self.title = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Part \(index + 1)" : name
         self.isVisible = isVisible
         self.isLocked = isLocked
         self.isDisabled = isDisabled
+        self.modifiers = modifiers
     }
 }
