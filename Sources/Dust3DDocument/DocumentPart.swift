@@ -12,6 +12,8 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     public let id: String
     public let name: String
     public let title: String
+    /// Supported procedural role, Model when absent/empty, or nil for unsupported source metadata.
+    public let target: PartTarget?
     public let isVisible: Bool
     public let isLocked: Bool
     public let isDisabled: Bool
@@ -49,8 +51,9 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     init(
         id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool,
         modifiers: [PartModifierProperty: Bool], deformationScales: [PartDeformationProperty: Double],
-        isDeformationUnified: Bool?, cutFace: CutFaceSelection?, cutRotation: Double?
+        isDeformationUnified: Bool?, cutFace: CutFaceSelection?, cutRotation: Double?, target: PartTarget?
     ) {
+        self.target = target
         self.cutFace = cutFace
         self.cutRotation = cutRotation
         self.id = id

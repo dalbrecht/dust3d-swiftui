@@ -86,10 +86,10 @@ public struct EditorSnapshot: Sendable {
         componentTree.rows.first { $0.id == selectedComponentID }?.component
     }
     public var selectedPart: DocumentPart? { parts.first { $0.id == selectedPartID } }
-    /// Visibility is an editing option; only disabled parts suppress generated geometry.
+    /// Visibility is an editing option. Disabled parts and cross-section-only profiles do not contribute joined geometry.
     public var hasEnabledGeometry: Bool {
-        let disabled = Set(parts.filter(\.isDisabled).map(\.id))
-        return nodes.contains { node in node.partID.map { !disabled.contains($0) } ?? true }
+        let excluded = Set(parts.filter { $0.isDisabled || $0.target == .cutFace }.map(\.id))
+        return nodes.contains { node in node.partID.map { !excluded.contains($0) } ?? true }
     }
     /// Both endpoints must be editable before the selected edge can be changed.
     public var canEditSelectedEdge: Bool {

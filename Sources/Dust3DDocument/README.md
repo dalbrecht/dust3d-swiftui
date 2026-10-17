@@ -116,3 +116,12 @@ attribute on actual edits. No-ops retain original bytes/spellings and redo.
 passes the inherited engine's profile-link classification. It reuses the same
 classification as the cut-face command; it does not normalize, rename or discard
 legacy IDs. UI candidate lists must exclude false values.
+
+`DocumentPart.target` reads Model, CutFace, StitchingLine or StitchingLoop.
+Absent/empty target metadata means Model; unknown values and ImportedModel
+remain nil and byte-preserved. `.setPartTarget(id:target:)` explicitly replaces
+the role, preserving nodes, flags, assets and unrelated metadata. Model removes
+the attribute only when a semantic change is needed; no-ops retain exact source
+spellings and redo. Missing owners throw `DocumentError.missingPart`. Example:
+`.setPartTarget(id: part.id, target: .cutFace)`. Imported model role creation
+requires the separate embedded-model pipeline and is not offered here.

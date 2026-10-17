@@ -145,6 +145,9 @@ final class EditorStore {
         guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
     }
+    func setPartTarget(_ id: String, target: PartTarget) {
+        perform { try await $0.apply([.setPartTarget(id: id, target: target)]) }
+    }
     func setPartCutFace(_ id: String, selection: CutFaceSelection) {
         perform { try await $0.apply([.setPartCutFace(id: id, selection: selection)]) }
     }
