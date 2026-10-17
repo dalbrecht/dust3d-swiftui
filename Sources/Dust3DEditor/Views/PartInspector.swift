@@ -31,6 +31,7 @@ struct PartInspector: View {
                 "Visibility hides editing overlays. Disabled parts are excluded from the mesh. These controls remain available to restore hidden, locked or disabled parts. Each change is one undo step."
             )
             .font(.caption).foregroundStyle(.secondary)
+            PartModifierControls(store: store, part: part)
             Text("Part names are independent of component names.").font(.caption).foregroundStyle(.secondary)
         }
         .disabled(store.isWorking)

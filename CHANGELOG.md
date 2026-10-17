@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
+
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
 
 - Add lossless part cut-face preset/profile and rotation commands, cycle-safe history and regenerated previews; native controls follow separately.

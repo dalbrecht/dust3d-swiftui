@@ -113,3 +113,18 @@ Cutoff (or Return) commits one undo step; Reset Cutoff discards unapplied text.
 Apply zero for sharp edges. Invalid text produces a range diagnostic without
 changing the document. Unsupported source cutoff values remain preserved until
 you explicitly apply a valid replacement.
+
+The part inspector now exposes Subdivided cross-section, Chamfered cross-section,
+Rounded ends, Extra rings and Hard joins. Each choice uses one undo step and
+regenerates the preview. Unsupported source values remain preserved until you
+choose On or Off in an explicitly labeled menu. Extra rings default on; hard
+joins affect intersections with other parts. Metadata controls do not unlock or
+move source nodes.
+
+Run `./script/render_editor_ui_qa.sh [output-directory]` from the repository to
+export the actual part inspector at its 250-point production width, with known
+and unsupported flags in light/dark appearances. A hidden test-owned AppKit
+window renders native controls without desktop input or a product-app launch.
+The tests also verify that rendering does not mutate document bytes or history.
+Inspect the emitted PNGs for layout and clipping. Native interaction, menus,
+keyboard, Save/Undo/Redo and GPU acceptance remain separate checks.
