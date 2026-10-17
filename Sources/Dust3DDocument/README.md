@@ -125,3 +125,21 @@ the attribute only when a semantic change is needed; no-ops retain exact source
 spellings and redo. Missing owners throw `DocumentError.missingPart`. Example:
 `.setPartTarget(id: part.id, target: .cutFace)`. Imported model role creation
 requires the separate embedded-model pipeline and is not offered here.
+
+`DocumentComponent.stitching` exposes optional closure flags, target segment
+count and loop-cap scalars. `.closureValue(.front/.back/.side)` defaults to false;
+`.scalarValue(.depthRatio)` defaults to 1 and `.sharpness` to 0; absent
+`targetSegments` means automatic (0). Unsupported values remain nil. Empty
+numeric metadata remains unsupported because inherited importer/generator
+interpretations differ or fail; it is not silently repaired. Segments accept
+whole integer spellings from 0 through 100. Scalars use the bounded, comma-aware
+engine-compatible numeric parser, rejecting nonzero values that become Float zero.
+
+Commands `.setComponentStitchingClosure(id:property:value:)`,
+`.setComponentTargetSegments(id:segments:)` and
+`.setComponentStitchingScalar(id:property:value:)` preserve every unrelated node,
+part, component, opaque field and asset. No-ops preserve bytes and redo; explicit
+defaults remove only a changed attribute. Missing owners throw `missingComponent`;
+invalid numbers throw `invalidComponentTargetSegments` or
+`invalidComponentStitchingScalar`. Example:
+`.setComponentStitchingScalar(id: group.id, property: .depthRatio, value: 0.5)`.

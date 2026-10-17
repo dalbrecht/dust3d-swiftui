@@ -155,3 +155,19 @@ retaining editable graph overlays. Stitching roles provide inputs for component
 stitching; parameter controls and broader stitching acceptance remain separate
 work. Unsupported source roles (including ImportedModel) remain explicit until
 replacement; this does not implement embedded GLB import.
+
+Group component inspectors expose stitching Front/Back/Side closed flags, Target
+segments (0–100, zero automatic), Loop cap depth (0–2) and sharpness (0–1).
+Each choice or numeric Apply/Return commits one undo step; Reset Draft discards
+unapplied text. Unsupported metadata stays explicit until replacement, and drafts
+reset on source/component/document identity changes. Line Side closed joins each
+spline's own endpoints: closing a straight line produces a zero-area profile and
+can fail generation. Use nondegenerate profiles. Loop caps use Back closed and
+depend on profile orientation. These settings operate on stitching children in
+the selected group.
+
+`script/render_editor_ui_qa.sh` now also exports actual-width component inspector
+and stitching controls with known/unsupported source values in light/dark modes.
+The hidden-window renderer is shared by the part and component test suites.
+These artifacts validate layout and byte/history preservation; native input,
+VoiceOver, Save/Undo/Redo menu and GPU acceptance remain separate checks.

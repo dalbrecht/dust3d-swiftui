@@ -145,6 +145,25 @@ final class EditorStore {
         guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
     }
+    func setComponentStitchingClosure(_ id: String, property: ComponentStitchingClosureProperty, value: Bool) {
+        perform { try await $0.apply([.setComponentStitchingClosure(id: id, property: property, value: value)]) }
+    }
+    func setComponentStitchingScalar(_ id: String, property: ComponentStitchingScalarProperty, value: String) {
+        guard !isWorking, !stopped else { return }
+        guard let number = EngineScalar.parse(value, in: property.bounds) else {
+            errorMessage = Self.message(DocumentError.invalidComponentStitchingScalar)
+            return
+        }
+        perform { try await $0.apply([.setComponentStitchingScalar(id: id, property: property, value: number)]) }
+    }
+    func setComponentTargetSegments(_ id: String, segments: String) {
+        guard !isWorking, !stopped else { return }
+        guard let number = Int(segments), (0...100).contains(number) else {
+            errorMessage = Self.message(DocumentError.invalidComponentTargetSegments)
+            return
+        }
+        perform { try await $0.apply([.setComponentTargetSegments(id: id, segments: number)]) }
+    }
     func setPartTarget(_ id: String, target: PartTarget) {
         perform { try await $0.apply([.setPartTarget(id: id, target: target)]) }
     }
@@ -494,6 +513,9 @@ final class EditorStore {
                 return "The document contains unsupported component tags or ambiguous identities/containers."
             case .invalidComponentStructure:
                 return "Choose unique sibling components and an unlinked group destination without creating a cycle."
+            case .invalidComponentTargetSegments: return "Enter a whole target segment count from 0 to 100."
+            case .invalidComponentStitchingScalar:
+                return "Enter a depth from 0 to 2 or sharpness from 0 to 1 that the modeling engine can represent."
             case .invalidComponentSmoothing: return "Enter a finite smoothing cutoff from 0 to 180 degrees."
             case .invalidComponentName: return "Use a single-line component name of at most 1024 UTF-8 bytes."
             case .missingComponent(let id): return "Component \(id) is not present in this document."

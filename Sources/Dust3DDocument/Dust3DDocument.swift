@@ -11,6 +11,8 @@ public enum DocumentError: Error, Equatable, Sendable {
     case missingPart(String)
     case invalidComponent
     case invalidComponentStructure
+    case invalidComponentTargetSegments
+    case invalidComponentStitchingScalar
     case invalidComponentSmoothing
     case invalidComponentName
     case missingComponent(String)
@@ -76,6 +78,15 @@ public enum DocumentCommand: Sendable {
     /// Set finite normal smoothing cutoff within 0–180 degrees; zero removes the source attribute.
     /// A semantic no-op retains original spellings/bytes; invalid values throw `invalidComponentSmoothing`.
     case setComponentSmoothCutoffDegrees(id: String, degrees: Double)
+    /// Set one stitching closure flag; false restores the absent default. Throws `missingComponent`.
+    /// Example: `.setComponentStitchingClosure(id: id, property: .front, value: true)`.
+    case setComponentStitchingClosure(id: String, property: ComponentStitchingClosureProperty, value: Bool)
+    /// Set a bounded loop-cap parameter. Throws `invalidComponentStitchingScalar` or `missingComponent`.
+    /// Example: `.setComponentStitchingScalar(id: id, property: .depthRatio, value: 0.5)`.
+    case setComponentStitchingScalar(id: String, property: ComponentStitchingScalarProperty, value: Double)
+    /// Set target segments in 0...100; zero means automatic. Throws `invalidComponentTargetSegments` or `missingComponent`.
+    /// Example: `.setComponentTargetSegments(id: id, segments: 12)`.
+    case setComponentTargetSegments(id: String, segments: Int)
     /// Move a component within its current siblings, preserving its entire subtree and all assets.
     case reorderComponent(id: String, direction: ComponentOrderMove)
     /// Wrap nonempty, unique siblings in a fresh unlinked group, retaining their source order.
@@ -422,6 +433,17 @@ public struct Dust3DDocument: Sendable {
                 attribute.stringValue = value
                 part.addAttribute(attribute)
             }
+        case .setComponentStitchingClosure(let id, let property, let value):
+            guard try ComponentStitching.setClosure(model, id: id, property: property, value: value) else {
+                return self
+            }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentStitchingScalar(let id, let property, let value):
+            guard try ComponentStitching.setScalar(model, id: id, property: property, value: value) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentTargetSegments(let id, let segments):
+            guard try ComponentStitching.setSegments(model, id: id, segments: segments) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartTarget(let id, let target):
             guard try PartTargetMetadata.set(model, parts: contents.parts, id: id, target: target) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))

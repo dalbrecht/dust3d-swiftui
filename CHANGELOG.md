@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add lossless component stitching closures, segment counts and loop-cap parameters, native group controls, and configured line/loop geometry tests.
+
 - Add lossless procedural part roles and native role controls; profile-only documents keep editable nodes with an intentionally empty mesh preview.
 
 - Add native cut-face presets, searchable linked-profile selection and half-turn rotation drafts with preserved unsupported/unresolved source metadata.
