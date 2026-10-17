@@ -114,3 +114,9 @@ Use `origin: nil` to retain the document origin. The atomic command throws `Edit
 `selectComponents(_:)` atomically selects existing component IDs without dirtying the document. `selectedComponentIDs` is exclusive of graph/part selection; `selectedComponentID` and its inspector exist only for a singleton. Snapshot grouping/ungrouping eligibility is pure; document commands still validate every edit. Missing selections are pruned on publication and are not revived by Undo.
 
 `ComponentTree.parentOptions(for:matching:)` provides ordered, cycle-safe presentation choices. Capture `ComponentReparentTarget(snapshot:)` for a singleton, then call `session.reparentComponent(to:target:)` with an explicit `ComponentParent.root` or `.component(id)`. Document epochs and selection are checked again on the actor; stale targets throw `EditorError.staleComponentMove` atomically.
+
+`PartProfileOptions.candidates(in:excluding:matching:)` is a pure, source-ordered
+projection for linked-profile choices. It excludes the owner and legacy IDs
+that the engine cannot interpret as profile links, while matching title/ID
+substrings case-insensitively. Duplicate names retain distinct exact identities.
+Dependency cycles are still validated atomically when applying the command.

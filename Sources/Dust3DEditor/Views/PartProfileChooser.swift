@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct PartProfileChooser: View {
@@ -7,11 +8,7 @@ struct PartProfileChooser: View {
     @State private var query = ""
 
     private var candidates: [DocumentPart] {
-        (store.snapshot?.parts ?? []).filter {
-            $0.id != part.id
-                && (query.isEmpty || $0.title.localizedCaseInsensitiveContains(query)
-                    || $0.id.localizedCaseInsensitiveContains(query))
-        }
+        PartProfileOptions.candidates(in: store.snapshot?.parts ?? [], excluding: part.id, matching: query)
     }
 
     var body: some View {

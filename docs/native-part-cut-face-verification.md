@@ -9,7 +9,7 @@ The new render test first failed because PartCutFaceControls did not exist.
 Known presets, unsupported source metadata, unresolved exact linked IDs and
 resolved links now render without rewriting archive bytes or creating history.
 Additional fixtures cover an empty chooser and duplicate long Unicode names
-with distinct IDs. The chooser excludes self and uses bounded lazy rows.
+with distinct IDs. The chooser excludes self and unlinkable legacy identities and uses bounded lazy rows.
 Cycle/missing-target rejection remains in the existing atomic command path.
 
 The final render command is `./script/render_editor_ui_qa.sh
@@ -33,3 +33,19 @@ These remain pending without desktop input. No new app identity or product
 launch is needed for the artifact exporter. Future native checks must reuse
 org.dust3d.editor.combine-qa. Target roles, other M3 modifier families and Qt
 differential profile acceptance remain incomplete; full parity is not claimed.
+
+## Automated review regression
+
+The first review identified that a legacy non-UUID part could be offered as an
+enabled profile choice even though the command always rejects it. Two regression
+tests first failed without the new compatibility projection. The document layer
+now exposes its existing profile-identity classification through
+`canBeCutFaceProfile`; the pure `PartProfileOptions` projection excludes such
+parts and self without rewriting them. Tests retain braced uppercase and
+unbraced exact IDs, duplicate Unicode titles, source ordering, case-insensitive
+name/ID searches, empty results and byte-identical legacy preservation. The UI
+uses that tested projection. Fresh full-gate results follow the initial record.
+
+The review fix passes fresh full `make ci`: 396 tests, zero failures, formatting,
+builds, Qt-free and bundle checks. Measured document lines are 2532/2616 and
+editor model 1409/1415; pure editor state remains 523/523 and undo 97/97.

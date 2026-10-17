@@ -111,3 +111,8 @@ throw `invalidPartCutFace`, missing owner/target throws `missingPart`, and cycle
 throw `cyclicProfile`. `.setPartCutRotation(id: id, rotation: 0.005)` retains fine
 rotations; invalid input throws `invalidPartCutRotation`. Exact zero removes the
 attribute on actual edits. No-ops retain original bytes/spellings and redo.
+
+`DocumentPart.canBeCutFaceProfile` reports whether the exact source identity
+passes the inherited engine's profile-link classification. It reuses the same
+classification as the cut-face command; it does not normalize, rename or discard
+legacy IDs. UI candidate lists must exclude false values.

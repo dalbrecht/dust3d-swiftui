@@ -7,7 +7,7 @@ linked-part chooser, and a half-turn rotation draft. The menu retains a current
 linked selection, including unresolved imported IDs, and an explicit unsupported
 source state. It does not normalize unknown metadata when presented.
 
-The chooser searches names and exact identities, excludes the inspected part,
+The chooser searches names and exact identities, excludes the inspected part and identities the engine cannot link,
 and uses lazy rows in a bounded scroll region rather than a menu containing up
 to 10,000 parts. A row is an immediate choice, so there is no deferred profile
 selection that could later apply to a different document. The current command
@@ -20,3 +20,7 @@ Rotation uses the existing parser and −1 through 1 range. Apply or Return is o
 command; Reset Draft only restores the source interpretation. Rendering and
 state/history preservation use the hidden-window QA exporter established in ADR
 0043. Native input, VoiceOver and GPU checks remain explicit acceptance gaps.
+
+The document model exposes the command's existing identity classification so
+the UI does not duplicate or tighten inherited UUID-shape rules. Candidate
+filtering lives in the pure editor model and preserves source spellings.
