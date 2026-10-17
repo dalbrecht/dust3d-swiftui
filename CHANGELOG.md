@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add copied, Sendable indexed mesh loading with explicit native payload budgets and preserved failure diagnostics, backed by the reviewed core indexed-buffer API.
+
 - Add native group wrapping mode, keep-children, face-count and mode-specific geometry controls with explicit unsupported-value replacement, and adopt reviewed positive-area mesh export validation.
 
 - Adopt the reviewed bounded-angle core fix for finite Cloth-opening and straight-profile previews, and connect lossless wrapping commands to the editor controller with validated drafts and exact history/save publication. Native controls follow separately.

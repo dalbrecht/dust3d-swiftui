@@ -262,3 +262,13 @@ remain separately tested. Core #14 is repaired at exported float precision by re
 Native geometry controls and pure presentation now have [offscreen verification](native-wrapping-verification.md)
 (ADR 0051, Apple #102); native interaction, binding/material controls and broader
 Qt differential/topology acceptance remain pending. M3 acceptance remains incomplete.
+
+
+### Indexed Swift boundary checkpoint (Apple #104)
+
+The reviewed core indexed-buffer API now has an exact dependency pin and copied,
+Sendable Swift values with strict and optional loading. Native buffer lifetime,
+known planar attributes/area, fixture bounds, concurrent ownership and error
+semantics are tested; see [verification](swift-indexed-mesh-verification.md) and
+ADR 0052. Renderer adoption, source IDs, cache/scheduling improvements and broader
+Qt differential acceptance remain pending. M3 is not complete.
