@@ -51,7 +51,7 @@ final class PartCutFaceStoreTests: XCTestCase {
             data: Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
                 + bytes)
     }
-    private func assertFinite(_ mesh: Mesh) {
+    private func assertFinite(_ mesh: IndexedMesh) {
         XCTAssertGreaterThan(mesh.triangleCount, 0)
         XCTAssertTrue(
             mesh.vertices.allSatisfy {
@@ -108,8 +108,8 @@ final class PartCutFaceStoreTests: XCTestCase {
         let comma = try document(rotationText: "0,5")
         let dot = try document(rotationText: "0.5")
         XCTAssertEqual(try comma.editorContents().parts.first?.cutRotation, 0.5)
-        let commaMesh = try MeshLoader.load(data: comma.encoded())
-        let dotMesh = try MeshLoader.load(data: dot.encoded())
+        let commaMesh = try MeshLoader.loadIndexed(data: comma.encoded())
+        let dotMesh = try MeshLoader.loadIndexed(data: dot.encoded())
         assertFinite(commaMesh)
         XCTAssertEqual(commaMesh.vertices.map(\.position), dotMesh.vertices.map(\.position))
         XCTAssertEqual(commaMesh.vertices.map(\.normal), dotMesh.vertices.map(\.normal))
@@ -130,7 +130,7 @@ final class PartCutFaceStoreTests: XCTestCase {
         try await assertHistory(original: original) { $0.setPartCutRotation(owner, rotation: "0.25") }
         for rotation in [-1.0, Double(Float.leastNonzeroMagnitude), 1.0] {
             let changed = try original.applying(.setPartCutRotation(id: owner, rotation: rotation))
-            assertFinite(try MeshLoader.load(data: changed.encoded()))
+            assertFinite(try MeshLoader.loadIndexed(data: changed.encoded()))
         }
     }
     @MainActor func testRotationInputRejectsUnderflowWithoutLosingExplicitZero() async throws {

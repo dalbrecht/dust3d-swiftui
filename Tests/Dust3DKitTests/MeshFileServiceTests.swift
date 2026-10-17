@@ -68,3 +68,20 @@ final class MeshFileServiceTests: XCTestCase {
         }
     }
 }
+
+extension MeshFileServiceTests {
+    func testIndexedFileLoadingCopiesIndicesAndPreservesFileErrors() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let mesh = try await MeshFileService().loadIndexed(url: url)
+        XCTAssertGreaterThan(mesh.triangleCount, 0)
+        XCTAssertLessThan(mesh.vertices.count, mesh.indices.count)
+        XCTAssertTrue(mesh.indices.allSatisfy { Int($0) < mesh.vertices.count })
+        do {
+            _ = try await MeshFileService().loadIndexed(url: url.appendingPathComponent("missing"))
+            XCTFail("A missing indexed source must fail")
+        } catch {
+            XCTAssertEqual((error as NSError).domain, NSCocoaErrorDomain)
+        }
+    }
+}

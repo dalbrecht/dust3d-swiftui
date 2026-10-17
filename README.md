@@ -15,7 +15,8 @@ vertices and UInt32 triangle indices with copied metadata. Its optional companio
 returns nil only for successful no-geometry. The budget covers native exported
 payloads, excluding generator workspace and Swift copies; zero uses 256 MiB.
 See [indexed mesh verification](docs/swift-indexed-mesh-verification.md).
-The apps continue using expanded meshes until the separate renderer migration.
+Both apps now upload unique vertices and UInt32 indices to Metal; expanded SDK
+and viewport callers remain supported. See [renderer verification](docs/indexed-metal-verification.md).
 
 Dust3D is a cross-platform 3D modeling software that makes it easy to create 3D models for video games, 3D printing, and more. It features built-in rigging, procedural animation and UV unwrapping, with export to GLB and FBX formats.
 

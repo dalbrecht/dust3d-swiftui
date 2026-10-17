@@ -8,6 +8,25 @@ public actor MeshFileService {
     /// - Parameter url: A local or security-scoped document URL.
     /// - Throws: File-system errors, cancellation, or `MeshLoadingError`.
     public func load(url: URL) throws -> Mesh {
+        let data = try read(url: url)
+        let mesh = try MeshLoader.load(data: data)
+        try Task.checkCancellation()
+        return mesh
+    }
+
+    /// Read a bounded `.ds3` file and copy indexed geometry off the UI actor.
+    /// - Parameter url: A local or security-scoped document URL.
+    /// - Returns: Immutable indexed geometry and copied source metadata.
+    /// - Throws: File-system errors, cancellation, or `MeshLoadingError` with native diagnostics.
+    /// - Example: `let mesh = try await MeshFileService().loadIndexed(url: file)`.
+    public func loadIndexed(url: URL) throws -> IndexedMesh {
+        let data = try read(url: url)
+        let mesh = try MeshLoader.loadIndexed(data: data)
+        try Task.checkCancellation()
+        return mesh
+    }
+
+    private func read(url: URL) throws -> Data {
         try Task.checkCancellation()
         let isScoped = url.startAccessingSecurityScopedResource()
         defer {
@@ -22,8 +41,6 @@ public actor MeshFileService {
         try file.seek(toOffset: 0)
         let data = try file.read(upToCount: MeshLoader.maximumFileSize + 1) ?? Data()
         try Task.checkCancellation()
-        let mesh = try MeshLoader.load(data: data)
-        try Task.checkCancellation()
-        return mesh
+        return data
     }
 }

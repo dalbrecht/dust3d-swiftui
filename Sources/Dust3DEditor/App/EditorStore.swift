@@ -9,8 +9,8 @@ import Observation
 final class EditorStore {
     private(set) var snapshot: EditorSnapshot?
     private(set) var isWorking = false { didSet { onEditingChanged?(isWorking) } }
-    private(set) var previewState = MeshPreviewState<Mesh>()
-    var mesh: Mesh? { previewState.value }
+    private(set) var previewState = MeshPreviewState<IndexedMesh>()
+    var mesh: IndexedMesh? { previewState.value }
     var previewRevision: Int { previewState.revision }
     var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
@@ -594,9 +594,9 @@ final class EditorStore {
 }
 
 private actor EditorPreviewService {
-    func generate(_ data: Data) throws -> Mesh? {
+    func generate(_ data: Data) throws -> IndexedMesh? {
         try Task.checkCancellation()
-        let mesh = try MeshLoader.loadIfPresent(data: data)
+        let mesh = try MeshLoader.loadIndexedIfPresent(data: data)
         try Task.checkCancellation()
         return mesh
     }

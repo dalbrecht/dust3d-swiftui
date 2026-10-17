@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Main-actor SwiftUI surface for a validated mesh and its interactive orbit camera.
 public struct MeshViewport: NSViewRepresentable {
-    let mesh: Mesh
+    let mesh: RenderMesh
     let isWireframe: Bool
     let cameraReset: Int
     let onError: (String) -> Void
@@ -15,7 +15,25 @@ public struct MeshViewport: NSViewRepresentable {
     public init(
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0, onError: @escaping (String) -> Void
     ) {
-        self.mesh = mesh
+        self.mesh = .expanded(mesh)
+        self.isWireframe = isWireframe
+        self.cameraReset = cameraReset
+        self.meshRevision = meshRevision
+        self.onError = onError
+    }
+
+    /// Display copied indexed geometry; revision and camera-reset semantics match the expanded initializer.
+    /// - Parameters:
+    ///   - mesh: Immutable vertices and UInt32 triangle indices.
+    ///   - isWireframe: Whether to draw triangle edges.
+    ///   - cameraReset: Increment to fit the model again.
+    ///   - meshRevision: Increment to replace GPU geometry while retaining orbit and zoom.
+    ///   - onError: Receives GPU setup diagnostics on the main actor.
+    public init(
+        mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
+        onError: @escaping (String) -> Void
+    ) {
+        self.mesh = .indexed(mesh)
         self.isWireframe = isWireframe
         self.cameraReset = cameraReset
         self.meshRevision = meshRevision
@@ -33,21 +51,31 @@ public struct MeshViewport: NSViewRepresentable {
     }
 
     public func updateNSView(_ view: InteractiveMeshView, context: Context) {
+        updateRenderer(in: view)
+    }
+
+    func updateRenderer(in view: InteractiveMeshView) {
         // A revision replaces GPU geometry while retaining the existing orbit camera.
-        if (view.renderer == nil || view.meshRevision != meshRevision) && !view.hasReportedError {
+        if (view.renderer == nil || view.meshRevision != meshRevision) && view.failedMeshRevision != meshRevision {
             do {
                 guard let device = view.device else {
                     throw RendererError.unavailable("This Mac does not provide a Metal device.")
                 }
-                let renderer = try MeshRenderer(mesh: mesh, view: view, device: device)
+                let renderer = try MeshRenderer(
+                    mesh: mesh, device: device, colorPixelFormat: view.colorPixelFormat,
+                    depthPixelFormat: view.depthStencilPixelFormat)
                 if let camera = view.renderer?.camera { renderer.camera = camera }
                 view.meshRevision = meshRevision
+                view.failedMeshRevision = nil
                 view.renderer = renderer
                 view.delegate = renderer
             } catch {
-                view.hasReportedError = true
+                view.failedMeshRevision = meshRevision
                 let message = error.localizedDescription
-                DispatchQueue.main.async { onError(message) }
+                DispatchQueue.main.async {
+                    guard view.failedMeshRevision == meshRevision else { return }
+                    onError(message)
+                }
                 return
             }
         }
@@ -65,7 +93,7 @@ public struct MeshViewport: NSViewRepresentable {
 public final class InteractiveMeshView: MTKView {
     var renderer: MeshRenderer?
     var meshRevision: Int?
-    var hasReportedError = false
+    var failedMeshRevision: Int?
     var cameraReset = 0
     private var lastDragLocation: CGPoint?
 

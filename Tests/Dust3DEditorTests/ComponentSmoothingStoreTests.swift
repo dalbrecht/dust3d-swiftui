@@ -37,7 +37,11 @@ final class ComponentSmoothingStoreTests: XCTestCase {
         XCTAssertNil(store.errorMessage)
         XCTAssertEqual(store.snapshot?.selectedComponentID, component)
         XCTAssertEqual(store.snapshot?.selectedComponent?.smoothCutoffDegrees, 180)
-        XCTAssertEqual(flat.vertices.map(\.position), smooth.vertices.map(\.position))
+        // Smoothing merges attribute-identical vertices; compare reconstructed triangle corners.
+        XCTAssertEqual(
+            flat.indices.map { flat.vertices[Int($0)].position },
+            smooth.indices.map { smooth.vertices[Int($0)].position })
+        XCTAssertLessThan(smooth.vertices.count, flat.vertices.count)
         XCTAssertNotEqual(flat.vertices.map(\.normal), smooth.vertices.map(\.normal))
         XCTAssertTrue(smooth.vertices.allSatisfy { abs(simd_length($0.normal) - 1) < 0.0001 })
         XCTAssertEqual(smooth.triangleCount, 16)

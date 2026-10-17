@@ -14,7 +14,7 @@ final class ComponentWrappingStoreTests: XCTestCase {
         }
         XCTFail("Wrapping edit or generation did not settle within 30 seconds")
     }
-    private func assertFinite(_ mesh: Mesh) {
+    private func assertFinite(_ mesh: IndexedMesh) {
         XCTAssertGreaterThan(mesh.triangleCount, 0)
         for vertex in mesh.vertices {
             for axis in 0..<3 { XCTAssertTrue(vertex.position[axis].isFinite) }

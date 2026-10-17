@@ -5,12 +5,6 @@ import simd
 
 @MainActor
 final class MeshRenderer: NSObject, MTKViewDelegate {
-    private struct GPUVertex {
-        let position: SIMD4<Float>
-        let normal: SIMD4<Float>
-        let color: SIMD4<Float>
-    }
-
     private struct Uniforms {
         var transform: simd_float4x4
         var rotation: simd_float4x4
@@ -21,10 +15,17 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
     private let depthState: MTLDepthStencilState
     private let buffer: MTLBuffer
     private let vertexCount: Int
+    private let indexBuffer: MTLBuffer?
+    private let indexCount: Int
     var camera = OrbitCamera()
     var isWireframe = false
 
-    init(mesh: Mesh, view: MTKView, device: MTLDevice) throws {
+    init(
+        mesh: RenderMesh, device: MTLDevice,
+        colorPixelFormat: MTLPixelFormat = .bgra8Unorm, depthPixelFormat: MTLPixelFormat = .depth32Float
+    ) throws {
+        let geometry = try RenderGeometry(mesh: mesh)
+        try geometry.validateBufferLengths(maximumBufferLength: device.maxBufferLength)
         let packagedResources = Bundle.main.resourceURL.flatMap {
             Bundle(url: $0.appendingPathComponent("Dust3DNative_Dust3DRendering.bundle"))
         }
@@ -36,8 +37,8 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = library.makeFunction(name: "meshVertex")
         descriptor.fragmentFunction = library.makeFunction(name: "meshFragment")
-        descriptor.colorAttachments[0].pixelFormat = view.colorPixelFormat
-        descriptor.depthAttachmentPixelFormat = view.depthStencilPixelFormat
+        descriptor.colorAttachments[0].pixelFormat = colorPixelFormat
+        descriptor.depthAttachmentPixelFormat = depthPixelFormat
         pipeline = try device.makeRenderPipelineState(descriptor: descriptor)
         let depthDescriptor = MTLDepthStencilDescriptor()
         depthDescriptor.depthCompareFunction = .less
@@ -45,18 +46,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
         guard let depthState = device.makeDepthStencilState(descriptor: depthDescriptor) else {
             throw RendererError.unavailable("Metal depth testing is unavailable.")
         }
-        let positions = mesh.vertices.map(\.position)
-        let minimum = positions.reduce(SIMD3<Float>(repeating: .infinity), simd_min)
-        let maximum = positions.reduce(SIMD3<Float>(repeating: -.infinity), simd_max)
-        let center = (minimum + maximum) * 0.5
-        let radius = max(simd_length(maximum - minimum) * 0.5, 0.001)
-        let vertices = mesh.vertices.map { vertex in
-            GPUVertex(
-                position: SIMD4((vertex.position - center) / radius, 1),
-                normal: SIMD4(vertex.normal, 0),
-                color: vertex.color
-            )
-        }
+        let vertices = geometry.vertices
         guard
             let buffer = vertices.withUnsafeBytes({ bytes in
                 bytes.baseAddress.flatMap {
@@ -64,6 +54,20 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
                 }
             })
         else { throw RendererError.unavailable("Metal could not allocate a vertex buffer.") }
+        if let indices = geometry.indices {
+            guard
+                let indexBuffer = indices.withUnsafeBytes({ bytes in
+                    bytes.baseAddress.flatMap {
+                        device.makeBuffer(bytes: $0, length: bytes.count, options: .storageModeShared)
+                    }
+                })
+            else { throw RendererError.unavailable("Metal could not allocate an index buffer.") }
+            self.indexBuffer = indexBuffer
+            indexCount = indices.count
+        } else {
+            indexBuffer = nil
+            indexCount = 0
+        }
         self.queue = queue
         self.depthState = depthState
         self.buffer = buffer
@@ -80,26 +84,35 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
         guard let drawable = view.currentDrawable, let pass = view.currentRenderPassDescriptor,
             let command = queue.makeCommandBuffer(), let encoder = command.makeRenderCommandEncoder(descriptor: pass)
         else { return }
+        encode(encoder: encoder, drawableSize: view.drawableSize)
+        encoder.endEncoding()
+        command.present(drawable)
+        command.commit()
+    }
+
+    /// Encodes the same production pass for either an MTKView drawable or an offscreen test target.
+    func encode(encoder: MTLRenderCommandEncoder, drawableSize: CGSize) {
         encoder.setRenderPipelineState(pipeline)
         encoder.setDepthStencilState(depthState)
         encoder.setCullMode(.none)
         encoder.setTriangleFillMode(isWireframe ? .lines : .fill)
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
         var uniforms = Uniforms(
-            transform: camera.transform(aspect: Float(view.drawableSize.width / max(view.drawableSize.height, 1))),
+            transform: camera.transform(aspect: Float(drawableSize.width / max(drawableSize.height, 1))),
             rotation: camera.rotation
         )
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
-        encoder.endEncoding()
-        command.present(drawable)
-        command.commit()
+        if let indexBuffer {
+            encoder.drawIndexedPrimitives(
+                type: .triangle, indexCount: indexCount, indexType: .uint32,
+                indexBuffer: indexBuffer, indexBufferOffset: 0)
+        } else {
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
+        }
     }
 }
 
-enum RendererError: LocalizedError {
-    case unavailable(String)
-
+extension RendererError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unavailable(let message): message
