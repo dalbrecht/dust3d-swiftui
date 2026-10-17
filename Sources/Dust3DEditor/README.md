@@ -171,3 +171,11 @@ and stitching controls with known/unsupported source values in light/dark modes.
 The hidden-window renderer is shared by the part and component test suites.
 These artifacts validate layout and byte/history preservation; native input,
 VoiceOver, Save/Undo/Redo menu and GPU acceptance remain separate checks.
+
+Stitching-loop parts expose Fill isolated loop interior. Known flags use a
+toggle; unsupported source text stays explicit until On/Off replacement. Each
+choice is one undo step. The inherited algorithm fills only closed loops not
+already bordering a stitched surface: connected loops can retain the same mesh
+while their metadata changes. Other part roles preserve the flag without
+showing this control. The QA exporter covers on/off/unsupported loop controls
+and the actual part inspector in light/dark appearances.

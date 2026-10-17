@@ -62,4 +62,30 @@ final class ComponentStitchingRenderingTests: XCTestCase {
             }
         }
     }
+    @MainActor func testLoopFillControlsAndActualPartInspectorRenderWithoutEdits() async throws {
+        for flag in ["true", "false", "future"] {
+            let original = try StitchingFixture.document(loop: true, attributes: "", fillLoopInterior: flag)
+            let store = EditorStore()
+            defer { store.stop() }
+            await store.load(data: original.encoded())
+            try await settle(store)
+            store.selectPart(StitchingFixture.identity(101))
+            try await settle(store)
+            let part = try XCTUnwrap(store.snapshot?.selectedPart)
+            XCTAssertEqual(part.target, .stitchingLoop)
+            for scheme in [ColorScheme.light, .dark] {
+                let suffix = "\(flag)-\(scheme == .dark ? "dark" : "light")"
+                try save(
+                    InspectorRenderer.png(PartInspector(store: store, part: part), width: 250, scheme: scheme),
+                    name: "loop-part-inspector-" + suffix)
+                try save(
+                    InspectorRenderer.png(
+                        PartLoopInteriorControls(store: store, part: part), width: 250, scheme: scheme),
+                    name: "loop-interior-" + suffix)
+                XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+                XCTAssertFalse(store.canUndo)
+            }
+        }
+    }
+
 }

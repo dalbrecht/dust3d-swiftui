@@ -164,6 +164,9 @@ final class EditorStore {
         }
         perform { try await $0.apply([.setComponentTargetSegments(id: id, segments: number)]) }
     }
+    func setPartFillLoopInterior(_ id: String, value: Bool) {
+        perform { try await $0.apply([.setPartFillLoopInterior(id: id, value: value)]) }
+    }
     func setPartTarget(_ id: String, target: PartTarget) {
         perform { try await $0.apply([.setPartTarget(id: id, target: target)]) }
     }

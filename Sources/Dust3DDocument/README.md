@@ -143,3 +143,12 @@ defaults remove only a changed attribute. Missing owners throw `missingComponent
 invalid numbers throw `invalidComponentTargetSegments` or
 `invalidComponentStitchingScalar`. Example:
 `.setComponentStitchingScalar(id: group.id, property: .depthRatio, value: 0.5)`.
+
+`DocumentPart.isLoopInteriorFilled` reads `fillLoopInterior`: absent/empty means
+false, supported true/false spellings stay known, and unknown text remains nil.
+`.setPartFillLoopInterior(id:value:)` explicitly changes only that attribute.
+False removes a changed attribute; no-ops preserve exact source spelling/redo.
+Missing owners throw `DocumentError.missingPart`. Node locks/visibility/disabled
+flags, source graph, role, opaque metadata and assets survive. Example:
+`.setPartFillLoopInterior(id: part.id, value: true)`. The engine consumes the flag
+only for isolated closed stitching loops, not loops already bordering a surface.

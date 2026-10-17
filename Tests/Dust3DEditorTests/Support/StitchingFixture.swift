@@ -8,7 +8,7 @@ enum StitchingFixture {
 
     static func document(
         loop: Bool, attributes: String = "sideClosed='true'", unsupported: Bool = false,
-        degenerateStraight: Bool = false
+        degenerateStraight: Bool = false, fillLoopInterior: String = "true", isolatedLoop: Bool = false
     ) throws
         -> Dust3DDocument
     {
@@ -16,7 +16,7 @@ enum StitchingFixture {
         var edges = ""
         var parts = ""
         var children = ""
-        let partCount = loop ? 2 : 3
+        let partCount = loop ? (isolatedLoop ? 1 : 2) : 3
         for partIndex in 0..<partCount {
             let part = identity(100 + partIndex)
             let component = identity(200 + partIndex)
@@ -45,8 +45,15 @@ enum StitchingFixture {
                     "<edge id='\(identity(2000 + partIndex * 10))' partId='\(part)' from='\(identity(1000 + partIndex * 10 + count - 1))' to='\(identity(1000 + partIndex * 10))'/>"
             }
             parts +=
-                "<part id='\(part)' target='\(loop ? "StitchingLoop" : "StitchingLine")' fillLoopInterior='true' future='keep'/>"
+                "<part id='\(part)' target='\(loop ? "StitchingLoop" : "StitchingLine")' fillLoopInterior='\(fillLoopInterior)' future='keep'/>"
             children += "<component id='\(component)' linkDataType='partId' linkData='\(part)'/>"
+        }
+        if isolatedLoop {
+            // A separate uncombined model keeps the scene nonempty when the isolated loop is unfilled.
+            nodes += "<node id='\(identity(1999))' partId='\(identity(199))' x='2' y='2' z='2' radius='.05'/>"
+            parts += "<part id='\(identity(199))' target='Model'/>"
+            children +=
+                "<component id='\(identity(299))' linkDataType='partId' linkData='\(identity(199))' combineMode='Uncombined'/>"
         }
         let settings =
             unsupported

@@ -21,6 +21,7 @@ struct PartInspector: View {
                 Button("Apply Name") { store.renamePart(part.id, name: name) }
             }
             PartTargetControls(store: store, part: part)
+            if part.target == .stitchingLoop { PartLoopInteriorControls(store: store, part: part) }
             Toggle("Visible in canvas", isOn: state(.visible, value: part.isVisible))
             Toggle("Locked", isOn: state(.locked, value: part.isLocked))
             Toggle("Disabled in mesh", isOn: state(.disabled, value: part.isDisabled))

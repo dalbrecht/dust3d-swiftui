@@ -113,6 +113,10 @@ public enum DocumentCommand: Sendable {
     /// Set a finite half-turn rotation in -1...1 that does not overflow or underflow in the engine Float; zero restores the absent default.
     /// Throws `invalidPartCutRotation` or `missingPart`. Example: `.setPartCutRotation(id: id, rotation: 0.25)`.
     case setPartCutRotation(id: String, rotation: Double)
+    /// Fill isolated closed stitching-loop interiors without changing graph nodes or other part metadata.
+    /// False restores the absent default; semantic no-ops retain source spelling and redo. Throws `missingPart`.
+    /// Example: `.setPartFillLoopInterior(id: id, value: true)`.
+    case setPartFillLoopInterior(id: String, value: Bool)
     /// Change a procedural role without moving nodes, unlocking parts or rewriting unrelated metadata.
     /// Throws `missingPart` for an absent identity. Unsupported source roles survive until explicit replacement.
     /// Example: `.setPartTarget(id: id, target: .cutFace)`.
@@ -443,6 +447,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentTargetSegments(let id, let segments):
             guard try ComponentStitching.setSegments(model, id: id, segments: segments) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setPartFillLoopInterior(let id, let value):
+            guard try PartLoopInterior.set(model, parts: contents.parts, id: id, value: value) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartTarget(let id, let target):
             guard try PartTargetMetadata.set(model, parts: contents.parts, id: id, target: target) else { return self }
@@ -876,7 +883,8 @@ public struct Dust3DDocument: Sendable {
                 isDisabled: isTrue(part.attribute(forName: "disabled")?.stringValue),
                 modifiers: PartModifiers.values(part), deformationScales: PartDeformation.scales(part),
                 isDeformationUnified: PartDeformation.unified(part), cutFace: PartCutFace.selection(part),
-                cutRotation: PartCutFace.rotation(part), target: PartTargetMetadata.value(part))
+                cutRotation: PartCutFace.rotation(part), target: PartTargetMetadata.value(part),
+                isLoopInteriorFilled: PartLoopInterior.value(part))
             parts[id] = value
             orderedParts.append(value)
         }
