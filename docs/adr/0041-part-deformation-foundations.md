@@ -15,8 +15,8 @@ and thickness equal or rewrite node radii.
 
 Absent scales read as one. Empty, nonfinite, out-of-range or unsupported source
 scale values remain nil and preserved until explicitly replaced. Explicit empty
-scale metadata differs between Qt import (zero) and core generation (one), so do
-not silently resolve it. Known unified boolean spellings follow the inherited
+scale metadata differs between the inherited Qt numeric parser (which rejects
+empty text) and core generation (which uses one), so do not silently resolve it. Known unified boolean spellings follow the inherited
 parser; unsupported spellings remain nil. Each command changes only its chosen
 attribute, preserving other scales/flags, per-node deformation, graph and assets.
 
