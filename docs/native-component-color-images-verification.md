@@ -13,6 +13,10 @@ Undo/Redo/save/reopen, rejected malformed retained pixels, selection away/back,
 replacement, explicit cancellation, superseding requests and late failure after
 stop. Controlled services intentionally ignore cancellation. Real production
 baking changes color pixels after import and reproduces them after reopen.
+The native screenshot exposed an obsolete untextured warning beside the textured
+object. Regression tests now select only applicable compatibility notices and
+preserve actual legacy-surface, unknown and fallback diagnostics. Viewer and
+Quick Look adoption of that notice policy remains tracked in #142.
 
 Inventory tests cover unused, ambiguous, wrong-kind, unsupported and
 Unicode-distinct resources. Pure presentation tests cover absent, missing,
@@ -21,9 +25,9 @@ sequences. Offscreen inspector tests render absent, empty, long unsupported,
 missing and retained states in light/dark at the established 250-point width;
 rendering never changes source bytes, history or publication counts.
 
-The full `make ci` passes 674 tests with zero failures in 105.133 seconds, plus
+The full `make ci` passes 676 tests with zero failures in 127.072 seconds, plus
 formatting, build, Qt-free linkage and packaged extension/rebuild checks.
-Measured line coverage: Document 3296/3384, Kit 1417/1437, EditorModel 1545/1551,
+Measured line coverage: Document 3303/3391, Kit 1417/1437, EditorModel 1558/1564,
 pure EditorState 534/534, Undo 97/97 and Orbit 33/33. These are Swift scopes,
 not a claim of 100% inherited C++ core coverage. Local artifacts live under the
 test output directory's `component-color-image/`.
@@ -56,8 +60,11 @@ packaging timestamps and saved archive digest are retained locally in
 `/private/tmp/dust3d-color-image-native-save-evidence.json`. These observations are
 working-tree evidence, not a claim that an older process executed the final PR
 commit. The corrected QA binary SHA-256 is
-`c6b4e34b6325782fcd156560e0c195b4df7b6853370906b500f52a323d009b5e`; packaging and later process-start evidence are retained in
-`/private/tmp/dust3d-color-image-final-qa-*`.
+`ee2c5a1fefacae8e421445975399b6862399df21e87b22c4748694a38150f53d`; packaging and later process-start evidence are retained in
+`/private/tmp/dust3d-color-image-warning-qa-build.json`, including a source-file
+manifest. A final fresh launch reopened the saved textured object and confirmed
+the obsolete image warning absent in both the accessibility tree and screenshot.
+The original archive was unchanged by this read-only rerun.
 
 ## Interface-polish review
 

@@ -9,6 +9,8 @@ public struct DocumentComponent: Identifiable, Equatable, Sendable {
     public let color: ComponentColorValue
     /// Exact color-image identity, missing override or unsupported original source text.
     public let colorImage: ComponentColorImageValue
+    /// Nonempty legacy wrapPattern/wrapWrinkles metadata whose surface rendering is not established by an image bake.
+    public let hasLegacySurfaceDetails: Bool
     /// Effective known mode, including legacy component inversion; nil preserves an unknown source mode.
     public let combineMode: ComponentCombineMode?
     /// Normal smoothing cutoff in 0–180 degrees, zero when absent; nil preserves unsupported source values.
@@ -59,6 +61,9 @@ enum ComponentHierarchy {
                     name: element.attribute(forName: "name")?.stringValue ?? "",
                     color: ComponentColorValue.read(element),
                     colorImage: ComponentColorImageValue.read(element),
+                    hasLegacySurfaceDetails: ["wrapPattern", "wrapWrinkles"].contains {
+                        !(element.attribute(forName: $0)?.stringValue ?? "").isEmpty
+                    },
                     combineMode: ComponentCombination.mode(element),
                     smoothCutoffDegrees: ComponentSmoothing.degrees(element),
                     wrapping: ComponentWrapping.read(element),

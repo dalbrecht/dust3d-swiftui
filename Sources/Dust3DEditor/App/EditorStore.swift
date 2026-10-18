@@ -20,6 +20,15 @@ final class EditorStore {
     var bakedMesh: MeshWithBakedTextures? {
         materialRenderError == nil && !materialState.isStale ? materialState.value : nil
     }
+    var previewCompatibilityWarning: String? {
+        let tree = snapshot?.componentTree
+        let legacyDetails = tree.flatMap { tree -> Bool? in
+            guard tree.failureDescription == nil else { return nil }
+            return tree.rows.contains { $0.component.hasLegacySurfaceDetails }
+        }
+        return MaterialPreviewWarning.message(
+            mesh?.warning ?? "", hasBakedMaterials: bakedMesh != nil, hasLegacySurfaceDetails: legacyDetails)
+    }
     var isBakingMaterials: Bool { materialState.isGenerating }
     var materialRenderError: String?
     var materialIssue: String? { materialRenderError ?? materialState.errorMessage }

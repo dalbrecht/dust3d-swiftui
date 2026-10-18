@@ -174,6 +174,7 @@ final class ComponentColorImageStoreTests: XCTestCase {
         XCTAssertNil(store.materialIssue)
         let after = try XCTUnwrap(store.bakedMesh?.textures.color.pixels)
         XCTAssertNotEqual(before, after)
+        XCTAssertNil(store.previewCompatibilityWarning)
         let encoded = try XCTUnwrap(store.snapshot?.document.encoded())
         let reopened = try Dust3DDocument(data: encoded)
         let asset = try XCTUnwrap(reopened.colorImageAssets().first)

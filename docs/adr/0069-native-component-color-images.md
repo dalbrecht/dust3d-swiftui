@@ -56,7 +56,12 @@ or stop invalidates it. A delayed service that ignores cancellation cannot publi
 assets or errors after invalidation. A visible Cancel button and Escape cancel
 preparation; native file pickers have their own Cancel action. The file picker
 captures its component target before opening, and component replacement dismisses
-its local presentation. Import/assignment/clear refresh material output without
+its local presentation. The editor hides only the pinned engine's obsolete image
+warning after current baked materials become available. Nonempty legacy
+wrapPattern/wrapWrinkles metadata retains a surface-detail notice; failed source
+interpretation and unknown/fallback warnings preserve the original diagnostic.
+Viewer/Quick Look notice adoption is tracked separately in #142.
+Import/assignment/clear refresh material output without
 regenerating geometry; undo/redo retain the established general regeneration path.
 
 Store operations also carry a publication epoch across replacement/stop, so an

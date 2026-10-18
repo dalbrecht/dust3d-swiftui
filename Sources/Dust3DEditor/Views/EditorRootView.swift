@@ -208,7 +208,7 @@ struct EditorRootView: View {
                 Text("\(mesh.triangleCount) triangles · Drag to orbit · Scroll to zoom")
                     .font(.caption).foregroundStyle(.secondary).padding(8)
                 if store.isGenerating { ProgressView("Updating preview…").controlSize(.small).padding(8) }
-                if !mesh.warning.isEmpty { Text(mesh.warning).font(.caption).padding(8) }
+                if let warning = store.previewCompatibilityWarning { Text(warning).font(.caption).padding(8) }
             } else if store.isGenerating {
                 Spacer()
                 ProgressView("Generating mesh…")
