@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add native component image import, retained-image selection and clearing with background pixel validation, cancellation, material refresh, shared-asset preservation and exact undo/save.
+
 - Add lossless component color-image assignment, removal and atomic PNG asset import commands with exact asset-aware history and shared bounded PNG envelope validation; native import controls remain pending.
 
 - Bound cumulative XML namespace expansion across clipboard and asset/header transfers, rejecting excessive growth with a typed limit error and preserving normal namespace meanings, assets and exact history.

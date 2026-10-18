@@ -240,3 +240,10 @@ obsolete work. Failures retain ordinary geometry with the original diagnostic
 and Retry Materials; baked output never changes document bytes or undo history.
 See [native material verification](../../docs/native-material-viewports-verification.md)
 for acceptance evidence and remaining transparency, AO and parity limits.
+
+Component inspectors import PNG/JPEG/BMP/GIF/TIFF color images, choose retained
+images and clear overrides. Preparation runs in the background and can be cancelled
+with Cancel or Escape. PNG bytes stay unchanged; other formats use their first
+encoded frame and convert to PNG. Each assignment is one undo step; clearing keeps
+shared and unused assets. Limits and native acceptance are documented in
+[native image workflow verification](../../docs/native-component-color-images-verification.md).

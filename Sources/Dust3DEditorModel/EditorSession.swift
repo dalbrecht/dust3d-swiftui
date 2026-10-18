@@ -55,6 +55,28 @@ public actor EditorSession {
     public func selectComponents(_ ids: Set<String>) throws -> EditorSnapshot {
         try update { try $0.selectComponents(ids) }
     }
+    /// Import validated PNG data and assign a fresh image identity to the captured component.
+    /// - Parameters: png is platform-validated encoded data; target captures document/revision/selection.
+    /// - Returns: One undoable snapshot with the component still selected.
+    /// - Throws: Cancellation, stale-target or typed document/resource errors without partial state.
+    public func importComponentColorImage(png: Data, target: ComponentColorImageTarget) throws -> EditorSnapshot {
+        try update { state in
+            try state.applyColorImage(
+                .importComponentColorImage(id: target.componentID, imageID: Self.identifier(), png: png), target: target
+            )
+        }
+    }
+
+    /// Assign a retained image or clear an override after asynchronous validation.
+    /// - Parameters: imageID is the retained identity or nil; target captures the intended component.
+    /// - Returns: One undoable snapshot, or unchanged history for a semantic no-op.
+    /// - Throws: Cancellation, stale-target or original reference errors atomically.
+    public func setComponentColorImage(imageID: String?, target: ComponentColorImageTarget) throws -> EditorSnapshot {
+        try update { state in
+            try state.applyColorImage(.setComponentColorImage(id: target.componentID, imageID: imageID), target: target)
+        }
+    }
+
     /// Move a captured selected subtree to an explicit root/group destination atomically.
     /// - Parameters:
     ///   - parent: Requested destination; hierarchy and cycles are revalidated before publication.

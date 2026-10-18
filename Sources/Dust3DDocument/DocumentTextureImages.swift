@@ -71,16 +71,14 @@ enum DocumentTextureImages {
         for asset in assets where asset.name.hasPrefix("images/") {
             // Match the reference reader's first path segment and filename stem.
             // These are archive keys only: no path is extracted to the filesystem.
-            let tail = asset.name.dropFirst("images/".count)
-            let filename = tail.split(separator: "/", omittingEmptySubsequences: false).first ?? ""
-            let stem = filename.split(separator: ".", omittingEmptySubsequences: false).first ?? ""
-            guard let identity = identityBytes(String(stem)) else { continue }
+            guard let identity = identityBytes(stem(asset.name)) else { continue }
             byIdentity[identity, default: []].append(asset)
         }
         return byIdentity
     }
 
-    private static func resolve(_ identity: [UInt8], in byIdentity: [[UInt8]: [DocumentTextureAssetMetadata]]) throws
+    private static func resolve(_ identity: [UInt8], in byIdentity: [[UInt8]: [DocumentTextureAssetMetadata]])
+        throws(TextureImageReferenceError)
         -> DocumentTextureImageReference
     {
         let canonical = "{" + String(decoding: identity, as: UTF8.self) + "}"
@@ -93,6 +91,43 @@ enum DocumentTextureImages {
         }
         return DocumentTextureImageReference(
             imageID: canonical, assetName: asset.name, encodedByteCount: asset.byteCount)
+    }
+
+    private static func stem(_ name: String) -> String {
+        let tail = name.dropFirst("images/".count)
+        let filename = tail.split(separator: "/", omittingEmptySubsequences: false).first ?? ""
+        return String(filename.split(separator: ".", omittingEmptySubsequences: false).first ?? "")
+    }
+
+    static func inventory(assets: [DocumentTextureAssetMetadata]) -> [DocumentColorImageAsset] {
+        let indexed = index(assets)
+        var seen: Set<[UInt8]> = []
+        var result: [DocumentColorImageAsset] = []
+        for asset in assets where asset.name.hasPrefix("images/") {
+            let source = stem(asset.name)
+            guard let identity = identityBytes(source) else {
+                result.append(
+                    DocumentColorImageAsset(
+                        id: [0] + Array(asset.name.utf8), imageID: nil,
+                        assetName: asset.name, encodedByteCount: asset.byteCount, issue: .invalidImageIdentity(source)))
+                continue
+            }
+            guard seen.insert(identity).inserted else { continue }
+            let canonical = "{" + String(decoding: identity, as: UTF8.self) + "}"
+            do {
+                let reference = try resolve(identity, in: indexed)
+                result.append(
+                    DocumentColorImageAsset(
+                        id: Array(canonical.utf8), imageID: canonical,
+                        assetName: reference.assetName, encodedByteCount: reference.encodedByteCount, issue: nil))
+            } catch {
+                result.append(
+                    DocumentColorImageAsset(
+                        id: Array(canonical.utf8), imageID: canonical,
+                        assetName: asset.name, encodedByteCount: asset.byteCount, issue: error))
+            }
+        }
+        return result
     }
 
     static func identityBytes(_ text: String) -> [UInt8]? {

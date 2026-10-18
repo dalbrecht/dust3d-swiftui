@@ -18,6 +18,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case unavailableOrigin
     case staleReferenceComposition
     case staleComponentMove
+    case staleColorImageTarget
     case staleOriginDrag
 }
 
@@ -30,6 +31,8 @@ public struct EditorSnapshot: Sendable {
     public let edges: [DocumentEdge]
     public let parts: [DocumentPart]
     public let componentTree: ComponentTree
+    /// Materialized off the UI actor, without copying image payloads.
+    public let colorImageAssets: [DocumentColorImageAsset]
     /// All selected component identities, independent of graph selection and history.
     public let selectedComponentIDs: Set<String>
     /// A single component is inspectable only when the selection is unambiguous.
@@ -203,7 +206,8 @@ public struct EditorState: Sendable {
         EditorSnapshot(
             documentIdentity: documentIdentity, document: history.document, nodes: contents.nodes,
             edges: contents.edges, parts: contents.parts,
-            componentTree: componentTree, selectedComponentIDs: selectedComponentIDs,
+            componentTree: componentTree, colorImageAssets: history.document.colorImageAssets(),
+            selectedComponentIDs: selectedComponentIDs,
             origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
             selectedPartID: selectedPartID,
@@ -266,6 +270,14 @@ public struct EditorState: Sendable {
         selectedEdgeID = nil
         selectedID = nil
         selectedIDs = []
+    }
+
+    /// Apply image commands only to the captured current document/revision/component.
+    /// - Parameters: command is the image mutation; target captures the intended singleton selection.
+    /// - Throws: `staleColorImageTarget` or original document/resource errors atomically.
+    mutating func applyColorImage(_ command: DocumentCommand, target: ComponentColorImageTarget) throws {
+        guard target.isCurrent(in: snapshot) else { throw EditorError.staleColorImageTarget }
+        try apply([command])
     }
 
     /// Move the captured selected subtree to an explicit parent in one undo step.
