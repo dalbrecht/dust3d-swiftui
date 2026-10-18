@@ -54,3 +54,17 @@ The process-replacement integration test establishes loaded-image lifetime behav
 a native app with unsaved documents is never deliberately overwritten to test it.
 Full VoiceOver, light-mode inspection, release signing and complete modeling
 acceptance remain outside this evidence. No inherited core coverage claim is made.
+
+## Automated review correction: resolve before identity capture
+
+Review found that generating metadata before SwiftPM resolution could embed an old
+core revision after a manifest dependency update. Two failing orchestration tests
+reproduced stale capture and ignored resolver failure. The wrapper now resolves
+with the configured scratch/cache paths before hashing sources and embedding the
+resolved core pin. Both regressions and the real package’s seven focused identity
+tests pass. The full corrected `make ci` passes 690 Swift tests in 119.779 seconds
+with zero failures and 11 build-support tests, plus formatting/build/coverage,
+Qt-free and signed canonical/QA package checks. Exact-head automated review and
+remote CI remain required. Earlier
+native captures above predate this build-order correction; the app reader and
+diagnostics presentation are unchanged.

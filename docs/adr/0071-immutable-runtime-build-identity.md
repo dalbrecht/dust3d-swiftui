@@ -5,8 +5,11 @@ Status: locally verified for #136; automated PR review and remote CI pending.
 ## Decision
 
 Embed bounded JSON in the executable's Mach-O `__TEXT,__dust3d_build` section.
-The canonical Swift wrapper generates a content-addressed linker input outside the
-source tree. It records the source Git revision, dirty flag, a SHA-256 digest of
+The canonical Swift wrapper first resolves dependencies with the same scratch/cache
+configuration as its build, then generates a content-addressed linker input outside
+the source tree. Resolution failure stops the primary build before identity capture.
+This ordering prevents a manifest update from embedding a stale Package.resolved
+core pin while SwiftPM selects a newer core for the executable. It records the source Git revision, dirty flag, a SHA-256 digest of
 tracked/unignored file identities and contents, and the exact core revision from
 Package.resolved. Distinct dirty source edits produce distinct linker input paths,
 so a shared dirty boolean cannot accidentally reuse an old link result. Symlinks
@@ -48,6 +51,9 @@ No core adapter or package revision changes are required.
 Tests cover metadata bounds/schema/fields, pure presentation and unavailable causes,
 exact process paths (including spaces and /tmp aliases), clean and distinct dirty
 build inputs, ignored/untracked/deleted files and missing Git/core metadata.
+Resolver-ordering regressions model an updated manifest with an old resolved pin
+and require the newly resolved core identity before linking; resolver failures
+retain the original cause and never produce metadata or invoke the build.
 A disposable macOS process uses the production reader, retains identity A after
 its executable is atomically replaced, and reports identity B after restart.
 The package rebuild gate checks the stable QA identity, signed bundle and absence
