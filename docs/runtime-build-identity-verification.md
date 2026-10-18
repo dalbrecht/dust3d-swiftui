@@ -125,3 +125,34 @@ The corrected full `make ci` passes 694 Swift tests with zero failures in 131.05
 seconds, 21 build-support tests and all build/formatting/coverage, Qt-free and
 signed canonical/QA package checks. Fresh exact-head review and remote CI remain
 required.
+
+## Automated review correction: stable source identity and log attachment
+
+Review identified source edits after capture and log consumption beginning after
+app launch. Two failing wrapper tests reproduced stale or unverifiable metadata
+after execution. The wrapper now remains alive, regenerates the identity and
+rejects mismatches or failed verification before packaging. A source-archive
+fallback test also exposed an empty-array Bash failure; unavailable metadata now
+uses ordinary positional arguments and remains explicitly unavailable.
+
+Log modes use a bounded consumer-readiness supervisor before invoking the launcher.
+Script-dispatch tests first reproduced launch-before-consumer failures and now
+retain the startup fixture event. Additional tests cover readiness timeout, early
+consumer exits, original launcher errors, scope validation and cleanup. A real
+macOS consumer emitted its initial complete line on stdout before any launch in
+this check; stdout/stderr were recorded separately. The full corrected `make ci`
+passes 694 Swift tests with zero failures in 145.714 seconds, 29 build-support
+tests and all build/formatting/coverage, Qt-free and signed package checks.
+
+A live supervisor check attached the real scoped macOS consumer, signalled
+readiness through a test launcher boundary, and then native app automation launched
+QA PID 31379 at 2026-10-18 13:28:15 local time. Its appStartup event was captured
+at 13:28:16.177. The unchanged, previously staged app honestly reported modified
+revision 88393777921c38728bc5d44e3076b8912753607b and the earlier digest; this is
+consumer/startup evidence, not an assertion that the app contained these script
+fixes. The production launch-command dispatch is covered by the isolated script
+tests. Logs and process evidence are retained in
+`/private/tmp/dust3d-pr149-live-startup-capture.log` and
+`/private/tmp/dust3d-pr149-live-startup-process.txt`. Stopping capture left the app
+running. This is consumer startup-output readiness, not a universal OS-service
+delivery attestation. Fresh exact-head review and remote CI remain required.

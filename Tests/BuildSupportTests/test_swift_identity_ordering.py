@@ -39,13 +39,18 @@ if arguments[:2] == ['swift', 'package'] and arguments[-1] == 'resolve':
     state.write_text(json.dumps({'resolved': True}))
 elif arguments[:2] == ['swift', 'build']:
     previous = json.loads(state.read_text()) if state.exists() else {'resolved': False}
-    previous['embedded'] = json.loads(pathlib.Path(arguments[-1]).read_text())
+    previous['embedded'] = json.loads(pathlib.Path(arguments[-1]).read_text()) if arguments[-1].endswith('.json') else None
     state.write_text(json.dumps(previous))
+    if os.environ.get('IDENTITY_TEST_MUTATE_SOURCE') == '1':
+        pathlib.Path('source.swift').write_text('let value = 2')
+    if os.environ.get('IDENTITY_TEST_CORRUPT_PIN') == '1':
+        pathlib.Path('Package.resolved').write_text('{}')
 else:
     print('Unexpected fake xcrun arguments: ' + repr(arguments), file=sys.stderr)
     sys.exit(21)
 ''')
         fake.chmod(0o755)
+        (self.root / 'source.swift').write_text('let value = 1')
         (self.root / 'Package.swift').write_text('// intended dust3d-core revision: ' + 'd' * 40)
         (self.root / 'Package.resolved').write_text(json.dumps({
             'pins': [{'identity': 'dust3d-core', 'state': {'revision': 'b' * 40}}]
@@ -78,3 +83,23 @@ else:
         self.assertIn('Resolver fixture failure', result.stderr)
         self.assertFalse(self.state.exists())
         self.assertFalse((self.build_root / 'identities').exists())
+
+    def test_should_reject_source_edits_after_identity_capture(self):
+        self.environment['IDENTITY_TEST_MUTATE_SOURCE'] = '1'
+        result = self.run_wrapper()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Source identity changed during SwiftPM execution', result.stderr)
+
+    def test_should_reject_unverifiable_identity_after_build_with_original_cause(self):
+        self.environment['IDENTITY_TEST_CORRUPT_PIN'] = '1'
+        result = self.run_wrapper()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Cannot verify build identity after SwiftPM execution', result.stderr)
+        self.assertIn('dust3d-core pin list', result.stderr)
+
+    def test_should_keep_identity_unavailable_when_initial_capture_cannot_run(self):
+        (self.root / '.git').rename(self.root / 'original-git')
+        result = self.run_wrapper()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIsNone(json.loads(self.state.read_text())['embedded'])
+        self.assertIn('Continuing without embedded build identity', result.stderr)

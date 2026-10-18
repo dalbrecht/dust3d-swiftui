@@ -25,13 +25,19 @@ launch bundle ID remain separate fields; capture time is not kernel process star
 or build time. Missing/invalid metadata remains unavailable with its original cause.
 Direct SwiftPM builds without the wrapper can run, but cannot claim known identity.
 Failure to generate optional provenance leaves the original diagnostic visible and
-continues the build without an identity section.
+continues the build without an identity section. After SwiftPM returns, the wrapper
+regenerates the content-addressed identity and rejects changed or unverifiable
+inputs before packaging can proceed. This before/after check is not an immutable
+source snapshot or compiler attestation.
 
 About windows expose selectable, accessible diagnostic rows in both apps. The
 window title, menu item and header use the distinct QA name selected from the
 captured launch bundle ID, without rereading mutable bundle metadata. Both
 `--logs` and `--telemetry` stream the owning app’s distinct subsystem so canonical
-and QA processes with the same executable basename do not mix their events. Preview-cache reset, recovery and startup loggers all derive their subsystem from
+and QA processes with the same executable basename do not mix their events. A
+small stdlib supervisor starts the consumer and waits for its first complete output
+line while it is alive before invoking the launcher. Readiness is bounded; early
+exit, timeout and launch errors are explicit, and cleanup owns only the consumer. Preview-cache reset, recovery and startup loggers all derive their subsystem from
 the same immutable captured identity. Startup logs carry source/core/digest/dirty fields and process ID without document paths.
 
 `--editor-qa` reuses org.dust3d.editor.combine-qa and separate default output/archive

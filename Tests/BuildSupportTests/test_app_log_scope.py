@@ -23,21 +23,37 @@ class AppLogScopeTests(unittest.TestCase):
             tools.mkdir()
             recording = temporary / 'log-arguments.json'
             open_stub = tools / 'open-app'
-            open_stub.write_text('#!/usr/bin/env bash\nexit 0\n')
+            open_stub.write_text('''#!/usr/bin/env python3
+import os,pathlib,sys
+if not pathlib.Path(os.environ['LOG_SCOPE_TEST_RECORDING']).exists():
+    print('Consumer was not attached before app launch', file=sys.stderr)
+    sys.exit(25)
+pathlib.Path(os.environ['LOG_SCOPE_TEST_LAUNCHED']).write_text('appStartup fixture')
+''')
             log_stub = tools / 'stream-log'
             log_stub.write_text('''#!/usr/bin/env python3
-import json,os,pathlib,sys
+import json,os,pathlib,sys,time
 pathlib.Path(os.environ['LOG_SCOPE_TEST_RECORDING']).write_text(json.dumps(sys.argv[1:]))
+print('stream-ready', flush=True)
+launch = pathlib.Path(os.environ['LOG_SCOPE_TEST_LAUNCHED'])
+deadline = time.monotonic() + 5
+while not launch.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+if not launch.exists(): sys.exit(29)
+print(launch.read_text(), flush=True)
 ''')
             for tool in [open_stub, log_stub]:
                 tool.chmod(0o755)
             # Only native side-effect executables are replaced; app/mode/predicate dispatch stays unchanged.
             script = (ROOT / 'script/build_and_run.sh').read_text()
             self.assertIn('/usr/bin/open', script)
-            self.assertIn('/usr/bin/log', script)
             script = script.replace('/usr/bin/open', shlex.quote(str(open_stub)))
-            script = script.replace('/usr/bin/log', shlex.quote(str(log_stub)))
             (scripts / 'build_and_run.sh').write_text(script)
+            supervisor = (ROOT / 'script/stream_app_logs.py').read_text()
+            self.assertIn("'/usr/bin/log'", supervisor)
+            supervisor = supervisor.replace("'/usr/bin/log'", repr(str(log_stub)))
+            supervisor = supervisor.replace("'/usr/bin/open'", repr(str(open_stub)))
+            (scripts / 'stream_app_logs.py').write_text(supervisor)
             shutil.copyfile(ROOT / 'script/build_paths.sh', scripts / 'build_paths.sh')
             (scripts / 'check_running_app.py').write_text('import sys\nsys.exit(0)\n')
             for name in ['package_file_preview_extensions.sh', 'check_file_preview_bundles.sh']:
@@ -65,10 +81,12 @@ printf '%s' 'fixture binary' > "$DUST3D_BINARY_DIR/Dust3DViewer"
                                DUST3D_BUILD_ROOT=str(temporary / 'cache'),
                                DUST3D_APP_OUTPUT_DIR=str(temporary / 'apps'),
                                DUST3D_ARCHIVE_OUTPUT_DIR=str(temporary / 'archives'),
-                               LOG_SCOPE_TEST_RECORDING=str(recording))
+                               LOG_SCOPE_TEST_RECORDING=str(recording),
+                               LOG_SCOPE_TEST_LAUNCHED=str(temporary / "launched"))
             result = subprocess.run(['bash', str(scripts / 'build_and_run.sh'), *app_arguments, '--logs'],
                                     cwd=source, env=environment, capture_output=True, text=True, timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('appStartup fixture', result.stdout)
             arguments = json.loads(recording.read_text())
             self.assertIn('--predicate', arguments)
             return arguments[arguments.index('--predicate') + 1]

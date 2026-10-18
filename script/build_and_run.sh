@@ -112,13 +112,8 @@ case "$MODE" in
     --build-only) echo "$APP_BUNDLE" ;;
     run) /usr/bin/open -n "$APP_BUNDLE" ;;
     --debug) lldb -- "$APP_BINARY" ;;
-    --logs)
-        /usr/bin/open -n "$APP_BUNDLE"
-        /usr/bin/log stream --info --style compact --predicate "subsystem == \"$BUNDLE_ID\""
-        ;;
-    --telemetry)
-        /usr/bin/open -n "$APP_BUNDLE"
-        /usr/bin/log stream --info --style compact --predicate "subsystem == \"$BUNDLE_ID\""
+    --logs|--telemetry)
+        python3 -B "$ROOT_DIR/script/stream_app_logs.py" --app-bundle "$APP_BUNDLE" --subsystem "$BUNDLE_ID"
         ;;
     --verify)
         /usr/bin/open -n "$APP_BUNDLE"

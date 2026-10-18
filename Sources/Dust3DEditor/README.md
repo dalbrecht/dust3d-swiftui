@@ -265,3 +265,8 @@ first so pending edits can be saved. Output overrides remain available for QA.
 QA About titles and diagnostics headers use “Dust3D Editor QA.” Both `--logs` and
 `--telemetry` capture the selected app’s logging subsystem, keeping canonical and
 QA events separate even though their executables share a basename.
+
+The wrapper verifies source identity again after SwiftPM finishes; rerun a build or
+test if inputs changed during execution. Log modes wait for the live consumer’s
+startup output before launching, with bounded readiness and explicit failures.
+Stopping capture leaves the editor running.
