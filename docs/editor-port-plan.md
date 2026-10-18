@@ -346,13 +346,26 @@ chart semantics, texture-aware indexed sharing, pixel baking/PBR/transparency,
 image decoding/import/export and full M3/M4/Qt acceptance remain incomplete.
 
 
-## Copied baked output SDK (Apple #123, in progress)
+## Copied baked output SDK (Apple #123, landed through #124)
 
 The exact reviewed core pin now includes owned CPU baking. Dust3DKit exposes typed
 decoded RGBA8 inputs, copied maps and triangle-aligned tangent frames, with expanded
 geometry preserving texture/material seams. MeshBakingService runs work on a
 background actor and pins cooperative cancellation through loading/copying. See
 [ADR 0061](adr/0061-copied-baked-mesh-sdk.md). Full local gates, automated review and
-CI remain required before landing. Asset decoding, editor scheduling and cached
+CI passed before landing #124. Asset decoding, editor scheduling and cached
 bake invalidation, seam-aware indexing, PBR/transparency/AO, textured export and
 broader M3/M4 acceptance remain subsequent stages; current preview UI is unchanged.
+
+
+## Retained archive texture decoding (Apple #125, in progress)
+
+The existing document parser resolves exact referenced assets without changing
+archive bytes. A shared Apple actor decodes PNG samples into straight RGBA8 with
+per-image/aggregate limits, preserves asset-specific causes, and feeds the actual
+native baker. Independent fixtures cover standard sample families, low/zero alpha
+and encoded orientation; full local gates pass (580 tests). Automated review and
+remote CI remain required before landing. See
+[ADR 0062](adr/0062-retained-color-image-decoding.md). Editor scheduling/cache
+invalidation, seam-aware textured indexing, renderer/PBR/transparency/AO and
+textured export acceptance remain subsequent stages. This does not complete M4.
