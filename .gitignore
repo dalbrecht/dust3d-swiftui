@@ -57,3 +57,6 @@ build/
 .swiftpm/
 .cache/
 .workspaces/
+
+# Python build-support test caches
+__pycache__/

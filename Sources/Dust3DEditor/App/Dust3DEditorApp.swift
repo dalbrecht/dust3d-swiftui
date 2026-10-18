@@ -1,12 +1,20 @@
 import AppKit
 import Dust3DEditorModel
+import Dust3DRendering
 import OSLog
 import SwiftUI
 
 struct Dust3DEditorApp: App {
+    @Environment(\.openWindow) private var openWindow
+    private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(EditorAppDelegate.self) private var appDelegate
     @FocusedValue(\.editorStore) private var store
     @State private var pasteboard = EditorPasteboard()
+
+    private var applicationName: String {
+        BuildIdentityPresentation.applicationName(
+            bundleIdentifier: buildIdentity.launchBundleIdentifier, fallback: "Dust3D Editor")
+    }
 
     var body: some Scene {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
@@ -16,6 +24,9 @@ struct Dust3DEditorApp: App {
         }
         .defaultSize(width: 1300, height: 820)
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About \(applicationName)…") { openWindow(id: "build-diagnostics") }
+            }
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") { store?.undo() }
                     .keyboardShortcut("z")
@@ -72,6 +83,10 @@ struct Dust3DEditorApp: App {
                 }
             }
         }
+        Window("About \(applicationName)", id: "build-diagnostics") {
+            BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
+        }
+        .defaultSize(width: 660, height: 520)
     }
 
     private func shortcut(for constraint: EditingConstraint) -> KeyEquivalent {
@@ -86,7 +101,10 @@ struct Dust3DEditorApp: App {
 
 @MainActor
 final class EditorAppDelegate: NSObject, NSApplicationDelegate {
+    private let buildIdentity = RuntimeBuildIdentity.current
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        buildIdentity.logStartup(fallbackSubsystem: "org.dust3d.editor")
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(cancelReferenceComposition(_:)),
             name: EditorCompositionRecovery.notification, object: Bundle.main.bundleIdentifier)
@@ -97,8 +115,11 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     @objc nonisolated private func cancelReferenceComposition(_ notification: Notification) {
         Task { @MainActor in
             let cancelled = EditorCompositionRecovery.shared.cancelLatest()
-            Logger(subsystem: Bundle.main.bundleIdentifier ?? "org.dust3d.editor", category: "recovery")
-                .info("operation=cancelReferenceComposition cancelled=\(cancelled)")
+            Logger(
+                subsystem: RuntimeBuildIdentity.current.loggingSubsystem(fallback: "org.dust3d.editor"),
+                category: "recovery"
+            )
+            .info("operation=cancelReferenceComposition cancelled=\(cancelled)")
         }
     }
 }

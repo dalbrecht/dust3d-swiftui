@@ -1,10 +1,18 @@
 import AppKit
+import Dust3DRendering
 import SwiftUI
 
 @main
 struct Dust3DViewerApp: App {
+    @Environment(\.openWindow) private var openWindow
+    private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
     @FocusedValue(\.openDocument) private var openDocument
+
+    private var applicationName: String {
+        BuildIdentityPresentation.applicationName(
+            bundleIdentifier: buildIdentity.launchBundleIdentifier, fallback: "Dust3D Viewer")
+    }
 
     var body: some Scene {
         WindowGroup("Dust3D Viewer") {
@@ -12,6 +20,9 @@ struct Dust3DViewerApp: App {
         }
         .defaultSize(width: 1000, height: 720)
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About \(applicationName)…") { openWindow(id: "build-diagnostics") }
+            }
             CommandGroup(replacing: .newItem) {
                 Button("Open…") {
                     openDocument?()
@@ -20,12 +31,19 @@ struct Dust3DViewerApp: App {
                 .disabled(openDocument == nil)
             }
         }
+        Window("About \(applicationName)", id: "build-diagnostics") {
+            BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
+        }
+        .defaultSize(width: 660, height: 520)
     }
 }
 
 @MainActor
 final class ViewerAppDelegate: NSObject, NSApplicationDelegate {
+    private let buildIdentity = RuntimeBuildIdentity.current
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        buildIdentity.logStartup(fallbackSubsystem: "org.dust3d.viewer")
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }

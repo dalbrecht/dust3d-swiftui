@@ -2,6 +2,7 @@ import CoreGraphics
 import Dust3DDocument
 import Dust3DEditorModel
 import Dust3DKit
+import Dust3DRendering
 import Foundation
 import Observation
 import os
@@ -72,7 +73,9 @@ final class EditorStore {
     private var previewScopeID = UUID()
     private(set) var previewCacheStatistics: MeshGenerationStatistics?
     private(set) var previewSourceIssue: MeshLoadingError?
-    private static let previewLogger = Logger(subsystem: "org.dust3d.editor", category: "PreviewCache")
+    private static let previewLogger = Logger(
+        subsystem: RuntimeBuildIdentity.current.loggingSubsystem(fallback: "org.dust3d.editor"),
+        category: "PreviewCache")
     private let colorImages: any ColorImageServing
     private(set) var colorImagePreparation: Task<Void, Never>?
     private(set) var isPreparingColorImage = false

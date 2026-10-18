@@ -10,8 +10,13 @@ with open(sys.argv[1], 'rb') as source:
     assert plistlib.load(source)['CFBundleIdentifier'] == 'org.dust3d.editor', 'Only the editor owns file preview providers'
 PY
 cd "$ROOT_DIR"
+# The entry point builds every product before its final running-app check; packaging never compiles.
 for EXTENSION_NAME in Dust3DQuickLookExtension Dust3DThumbnailExtension; do
-    ./script/swift.sh build --product "$EXTENSION_NAME"
+    test -f "$BINARY_DIR/$EXTENSION_NAME" || { echo "Missing prebuilt provider: $EXTENSION_NAME" >&2; exit 1; }
+done
+test -d "$BINARY_DIR/Dust3DNative_Dust3DRendering.bundle" || { echo "Missing prebuilt shader resources" >&2; exit 1; }
+for EXTENSION_NAME in Dust3DQuickLookExtension Dust3DThumbnailExtension; do
+    python3 -B "$ROOT_DIR/script/check_running_app.py" "$APP_BUNDLE/Contents/MacOS/Dust3DEditor"
     EXTENSION_BUNDLE="$APP_BUNDLE/Contents/PlugIns/$EXTENSION_NAME.appex"
     mkdir -p "$EXTENSION_BUNDLE/Contents/MacOS" "$EXTENSION_BUNDLE/Contents/Resources"
     cp "$BINARY_DIR/$EXTENSION_NAME" "$EXTENSION_BUNDLE/Contents/MacOS/$EXTENSION_NAME"

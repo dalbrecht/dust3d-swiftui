@@ -503,3 +503,13 @@ remain open; UI presence or passing unit tests alone do not close those gates.
 Cross-app representation-aware compatibility notices are tracked in #142; see
 [ADR 0070](adr/0070-shared-material-preview-notices.md). The remaining milestone
 epics must not be closed when only their first API or inspector stage lands.
+
+## Runtime provenance and QA packaging (#136, in progress)
+
+A local implementation embeds immutable source/core identity in each executable,
+exposes a startup capture in About diagnostics, and adds a repeatable packaging
+path for the existing combine-qa identity without competing preview providers.
+[ADR 0071](adr/0071-immutable-runtime-build-identity.md) records boundaries and tests.
+[Local validation and native diagnostics inspection](runtime-build-identity-verification.md)
+pass; reviewed delivery remains pending. Formal
+M3 native/Qt acceptance under #120 is not established by this instrumentation.
