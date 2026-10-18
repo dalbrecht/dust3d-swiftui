@@ -92,10 +92,24 @@ printf '%s' 'fixture binary' > "$DUST3D_BINARY_DIR/Dust3DViewer"
             return arguments[arguments.index('--predicate') + 1]
 
     def test_should_scope_qa_logs_to_the_qa_subsystem(self):
-        self.assertEqual(self.run_log_mode(['--editor-qa']), 'subsystem == "org.dust3d.editor.combine-qa"')
+        self.assert_scope(self.run_log_mode(['--editor-qa']), 'org.dust3d.editor.combine-qa', 'Dust3DEditor')
 
     def test_should_scope_canonical_logs_to_the_canonical_subsystem(self):
-        self.assertEqual(self.run_log_mode(['--editor']), 'subsystem == "org.dust3d.editor"')
+        self.assert_scope(self.run_log_mode(['--editor']), 'org.dust3d.editor', 'Dust3DEditor')
 
     def test_should_scope_viewer_logs_to_the_viewer_subsystem(self):
-        self.assertEqual(self.run_log_mode([]), 'subsystem == "org.dust3d.viewer"')
+        self.assert_scope(self.run_log_mode([]), 'org.dust3d.viewer', 'Dust3DViewer')
+
+    def assert_scope(self, predicate, subsystem, executable):
+        prefix = f'subsystem == "{subsystem}" AND processImagePath == '
+        self.assertTrue(predicate.startswith(prefix), predicate)
+        path = Path(json.loads(predicate[len(prefix):]))
+        self.assertTrue(path.is_absolute())
+        self.assertEqual(path.parts[-4:], (executable + '.app', 'Contents', 'MacOS', executable))
+
+    def test_should_distinguish_staged_copies_with_the_same_bundle_identifier(self):
+        first = self.run_log_mode(['--editor'])
+        second = self.run_log_mode(['--editor'])
+        self.assert_scope(first, 'org.dust3d.editor', 'Dust3DEditor')
+        self.assert_scope(second, 'org.dust3d.editor', 'Dust3DEditor')
+        self.assertNotEqual(first, second)

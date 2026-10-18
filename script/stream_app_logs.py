@@ -2,6 +2,7 @@
 """Attach an app-scoped live log consumer before launching the selected app."""
 import argparse
 import math
+import json
 import os
 from pathlib import Path
 import re
@@ -25,7 +26,7 @@ def _stop_consumer(consumer):
             consumer.wait(timeout=2)
 
 
-def stream_application_logs(app_bundle, subsystem, *, logger_command=None, launcher_command=None,
+def stream_application_logs(app_bundle, subsystem, executable_path, *, logger_command=None, launcher_command=None,
                             output=None, readiness_timeout=10):
     """Forward logs after a live consumer emits its first complete readiness line.
 
@@ -39,10 +40,13 @@ def stream_application_logs(app_bundle, subsystem, *, logger_command=None, launc
     bundle = Path(app_bundle).resolve()
     if not bundle.is_dir():
         raise LogStreamingError(f'App bundle is unavailable: {bundle}')
+    executable = Path(executable_path).resolve()
+    if executable.parent != bundle / 'Contents' / 'MacOS' or not executable.is_file():
+        raise LogStreamingError(f'App executable is unavailable or outside its bundle: {executable}')
     logger = list(logger_command if logger_command is not None else ['/usr/bin/log'])
     launcher = list(launcher_command if launcher_command is not None else ['/usr/bin/open'])
     destination = output if output is not None else sys.stdout.buffer
-    predicate = f'subsystem == "{subsystem}"'
+    predicate = f'subsystem == "{subsystem}" AND processImagePath == {json.dumps(str(executable))}'
     try:
         consumer = subprocess.Popen(
             [*logger, 'stream', '--info', '--style', 'compact', '--predicate', predicate],
@@ -95,9 +99,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--app-bundle', type=Path, required=True)
     parser.add_argument('--subsystem', required=True)
+    parser.add_argument('--executable', type=Path, required=True)
     arguments = parser.parse_args()
     try:
-        return stream_application_logs(arguments.app_bundle, arguments.subsystem)
+        return stream_application_logs(arguments.app_bundle, arguments.subsystem, arguments.executable)
     except KeyboardInterrupt:
         return 130
     except (LogStreamingError, OSError, subprocess.SubprocessError) as cause:

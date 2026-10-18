@@ -20,12 +20,15 @@ class AppLogStreamTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.app = self.root / 'Fixture.app'
         self.app.mkdir()
+        self.executable = self.app / 'Contents' / 'MacOS' / 'Fixture'
+        self.executable.parent.mkdir(parents=True)
+        self.executable.write_bytes(b'fixture')
         self.launched = self.root / 'launched'
         self.launch_command = [sys.executable, '-c', 'import pathlib,sys; pathlib.Path(sys.argv[1]).write_text("launched")', str(self.launched)]
 
     def stream(self, logger, launcher=None, subsystem='org.example.qa', timeout=2):
         return self.module.stream_application_logs(
-            self.app, subsystem, logger_command=[sys.executable, '-u', '-c', logger],
+            self.app, subsystem, self.executable, logger_command=[sys.executable, '-u', '-c', logger],
             launcher_command=launcher or self.launch_command, output=io.BytesIO(), readiness_timeout=timeout)
 
     def test_should_not_launch_when_the_consumer_never_becomes_ready(self):
@@ -51,4 +54,11 @@ class AppLogStreamTests(unittest.TestCase):
     def test_should_reject_invalid_scope_before_starting_processes(self):
         with self.assertRaisesRegex(self.module.LogStreamingError, 'subsystem'):
             self.stream('print("ready", flush=True)', subsystem='org.example" OR TRUEPREDICATE')
+        self.assertFalse(self.launched.exists())
+
+    def test_should_reject_an_executable_outside_the_selected_bundle(self):
+        self.executable = self.root / 'other-app-binary'
+        self.executable.write_bytes(b'other')
+        with self.assertRaisesRegex(self.module.LogStreamingError, 'outside its bundle'):
+            self.stream('print("ready", flush=True)')
         self.assertFalse(self.launched.exists())

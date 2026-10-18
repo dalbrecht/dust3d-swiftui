@@ -156,3 +156,23 @@ tests. Logs and process evidence are retained in
 `/private/tmp/dust3d-pr149-live-startup-process.txt`. Stopping capture left the app
 running. This is consumer startup-output readiness, not a universal OS-service
 delivery attestation. Fresh exact-head review and remote CI remain required.
+
+
+The next exact-head review identified that subsystem-only streams still mixed
+staged copies sharing a bundle identifier. Regression tests reproduced that
+collision before the fix. The supervisor now includes the resolved target
+`processImagePath` and validates its bundle containment before starting processes.
+Canonical, QA and viewer dispatch tests inspect both predicate fields; two
+canonical copies in separate directories produce different filters. Executable
+paths are encoded as predicate string literals rather than interpolated raw.
+The earlier live capture above predates this additional path filter and is not
+claimed as live verification of it.
+
+The corrected full `make ci` passes 694 Swift tests with zero failures in
+138.290 seconds, 31 build-support tests and all build, format, coverage, Qt-free
+and signed bundle checks. A real macOS log consumer accepted the path-scoped
+predicate with spaces and quotation marks in the executable path before an
+intentionally failing test launcher; no native app was launched. The consumer
+was cleaned up and its predicate output is recorded in
+`/private/tmp/dust3d-pr149-real-path-predicate.log`. Exact-head automated review
+and remote CI remain required.

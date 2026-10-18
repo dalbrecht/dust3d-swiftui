@@ -113,7 +113,7 @@ case "$MODE" in
     run) /usr/bin/open -n "$APP_BUNDLE" ;;
     --debug) lldb -- "$APP_BINARY" ;;
     --logs|--telemetry)
-        python3 -B "$ROOT_DIR/script/stream_app_logs.py" --app-bundle "$APP_BUNDLE" --subsystem "$BUNDLE_ID"
+        python3 -B "$ROOT_DIR/script/stream_app_logs.py" --app-bundle "$APP_BUNDLE" --subsystem "$BUNDLE_ID" --executable "$APP_BINARY"
         ;;
     --verify)
         /usr/bin/open -n "$APP_BUNDLE"

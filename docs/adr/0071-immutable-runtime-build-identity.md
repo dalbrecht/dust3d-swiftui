@@ -33,8 +33,10 @@ source snapshot or compiler attestation.
 About windows expose selectable, accessible diagnostic rows in both apps. The
 window title, menu item and header use the distinct QA name selected from the
 captured launch bundle ID, without rereading mutable bundle metadata. Both
-`--logs` and `--telemetry` stream the owning app’s distinct subsystem so canonical
-and QA processes with the same executable basename do not mix their events. A
+`--logs` and `--telemetry` filter by both the owning app’s distinct subsystem and resolved
+`processImagePath`. Different staged copies with the same bundle identifier
+therefore have separate streams, as do canonical and QA apps. The executable
+must exist inside the selected bundle’s `Contents/MacOS` directory. A
 small stdlib supervisor starts the consumer and waits for its first complete output
 line while it is alive before invoking the launcher. Readiness is bounded; early
 exit, timeout and launch errors are explicit, and cleanup owns only the consumer. Preview-cache reset, recovery and startup loggers all derive their subsystem from
