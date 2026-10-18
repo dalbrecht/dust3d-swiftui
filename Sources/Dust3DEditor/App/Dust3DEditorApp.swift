@@ -11,6 +11,11 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorStore) private var store
     @State private var pasteboard = EditorPasteboard()
 
+    private var applicationName: String {
+        BuildIdentityPresentation.applicationName(
+            bundleIdentifier: buildIdentity.launchBundleIdentifier, fallback: "Dust3D Editor")
+    }
+
     var body: some Scene {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
             EditorRootView(file: file.$document)
@@ -20,7 +25,7 @@ struct Dust3DEditorApp: App {
         .defaultSize(width: 1300, height: 820)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About Dust3D Editor…") { openWindow(id: "build-diagnostics") }
+                Button("About \(applicationName)…") { openWindow(id: "build-diagnostics") }
             }
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") { store?.undo() }
@@ -78,8 +83,8 @@ struct Dust3DEditorApp: App {
                 }
             }
         }
-        Window("About Dust3D Editor", id: "build-diagnostics") {
-            BuildDiagnosticsView(applicationName: "Dust3D Editor", identity: buildIdentity)
+        Window("About \(applicationName)", id: "build-diagnostics") {
+            BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
         }
         .defaultSize(width: 660, height: 520)
     }

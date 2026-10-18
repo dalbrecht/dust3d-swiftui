@@ -81,3 +81,21 @@ with the original running-target diagnostic. The corrected full `make ci` passes
 formatting/build/coverage, Qt-free linkage and signed canonical/QA package checks.
 Fresh exact-head review and remote CI remain required. This is a recheck
 at the mutation boundary, not a cross-process launch lock.
+
+## Automated review correction: QA names and log scope
+
+Review found canonical naming in the QA About UI and process-name-based log
+filtering that could mix canonical/QA events. The menu, title and header now select
+the QA name from the immutable captured bundle identity; unknown identities keep
+the caller’s fallback name. Both log modes filter the selected app’s distinct
+subsystem. Failing naming tests and real script-dispatch tests reproduced these
+issues before the fixes. Native side-effect executables are stubbed in the latter
+tests, so they never launch UI or start a system log stream. The full corrected
+`make ci` passes 692 Swift tests with zero failures in 104.027 seconds, 17
+build-support tests and all formatting/build/coverage, Qt-free and signed package
+checks. Native QA PID 21114, captured at 2026-10-18T16:25:31Z, shows “Dust3D Editor
+QA” in the menu, window title and diagnostics header, with all identity rows still
+accessible. Its pre-commit source capture reports modified revision
+88393777921c38728bc5d44e3076b8912753607b and digest
+1c4599bcd97b499671b17f0c865880f04fc0c20073688bc614f3258602bbe62c.
+Fresh exact-head review and remote CI remain required.

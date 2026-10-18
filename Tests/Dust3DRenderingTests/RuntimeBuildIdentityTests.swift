@@ -73,6 +73,26 @@ final class RuntimeBuildIdentityTests: XCTestCase {
         XCTAssertFalse(presentation.rows.contains { $0.label == "Source revision" })
     }
 
+    func testShouldDistinguishQAAndCanonicalApplicationNames() {
+        XCTAssertEqual(
+            BuildIdentityPresentation.applicationName(
+                bundleIdentifier: "org.dust3d.editor.combine-qa", fallback: "Dust3D Editor"), "Dust3D Editor QA")
+        XCTAssertEqual(
+            BuildIdentityPresentation.applicationName(bundleIdentifier: "org.dust3d.editor", fallback: "Dust3D Editor"),
+            "Dust3D Editor")
+        XCTAssertEqual(
+            BuildIdentityPresentation.applicationName(bundleIdentifier: "org.dust3d.viewer", fallback: "Dust3D Viewer"),
+            "Dust3D Viewer")
+    }
+
+    func testShouldRetainCallerNameWhenLaunchIdentityIsUnavailableOrUnknown() {
+        for identifier in [nil, "org.example.unknown"] {
+            XCTAssertEqual(
+                BuildIdentityPresentation.applicationName(bundleIdentifier: identifier, fallback: "Dust3D Editor"),
+                "Dust3D Editor")
+        }
+    }
+
     private func metadata(
         schemaVersion: Int = 1, sourceRevision: String = String(repeating: "a", count: 40),
         sourceDigest: String = String(repeating: "c", count: 64), isDirty: Bool = true

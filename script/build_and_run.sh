@@ -109,7 +109,7 @@ case "$MODE" in
     --debug) lldb -- "$APP_BINARY" ;;
     --logs)
         /usr/bin/open -n "$APP_BUNDLE"
-        /usr/bin/log stream --info --style compact --predicate "process == \"$APP_NAME\""
+        /usr/bin/log stream --info --style compact --predicate "subsystem == \"$BUNDLE_ID\""
         ;;
     --telemetry)
         /usr/bin/open -n "$APP_BUNDLE"

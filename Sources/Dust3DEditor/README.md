@@ -261,3 +261,7 @@ Use `./script/build_and_run.sh --editor-qa --build-only` for the existing
 and uses separate default app/archive directories. All packaging modes refuse to
 replace the exact target bundle while its executable is running; quit it normally
 first so pending edits can be saved. Output overrides remain available for QA.
+
+QA About titles and diagnostics headers use “Dust3D Editor QA.” Both `--logs` and
+`--telemetry` capture the selected app’s logging subsystem, keeping canonical and
+QA events separate even though their executables share a basename.

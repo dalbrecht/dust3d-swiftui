@@ -12,6 +12,15 @@ public struct BuildIdentityPresentation: Sendable {
     public let failureDescription: String?
     public let rows: [Row]
 
+    /// Select the packaged QA name from captured identity without rereading a mutable bundle.
+    /// - Parameters:
+    ///   - bundleIdentifier: Bundle identity captured when the process started.
+    ///   - fallback: The owning app's name for canonical or unidentified launches.
+    /// - Returns: The distinct QA name for its existing identity, otherwise the caller's name.
+    public static func applicationName(bundleIdentifier: String?, fallback: String) -> String {
+        bundleIdentifier == "org.dust3d.editor.combine-qa" ? "Dust3D Editor QA" : fallback
+    }
+
     /// Present one immutable startup capture without consulting filesystem or application state.
     /// - Parameter identity: The value captured from the loaded executable at startup.
     public init(identity: RuntimeBuildIdentity) {

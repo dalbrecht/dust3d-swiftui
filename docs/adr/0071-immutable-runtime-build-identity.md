@@ -27,7 +27,11 @@ Direct SwiftPM builds without the wrapper can run, but cannot claim known identi
 Failure to generate optional provenance leaves the original diagnostic visible and
 continues the build without an identity section.
 
-About windows expose selectable, accessible diagnostic rows in both apps. Startup
+About windows expose selectable, accessible diagnostic rows in both apps. The
+window title, menu item and header use the distinct QA name selected from the
+captured launch bundle ID, without rereading mutable bundle metadata. Both
+`--logs` and `--telemetry` stream the owning app’s distinct subsystem so canonical
+and QA processes with the same executable basename do not mix their events. Startup
 logs carry source/core/digest/dirty fields and process ID without document paths.
 
 `--editor-qa` reuses org.dust3d.editor.combine-qa and separate default output/archive

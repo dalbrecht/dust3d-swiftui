@@ -9,6 +9,11 @@ struct Dust3DViewerApp: App {
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
     @FocusedValue(\.openDocument) private var openDocument
 
+    private var applicationName: String {
+        BuildIdentityPresentation.applicationName(
+            bundleIdentifier: buildIdentity.launchBundleIdentifier, fallback: "Dust3D Viewer")
+    }
+
     var body: some Scene {
         WindowGroup("Dust3D Viewer") {
             ContentView()
@@ -16,7 +21,7 @@ struct Dust3DViewerApp: App {
         .defaultSize(width: 1000, height: 720)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About Dust3D Viewer…") { openWindow(id: "build-diagnostics") }
+                Button("About \(applicationName)…") { openWindow(id: "build-diagnostics") }
             }
             CommandGroup(replacing: .newItem) {
                 Button("Open…") {
@@ -26,8 +31,8 @@ struct Dust3DViewerApp: App {
                 .disabled(openDocument == nil)
             }
         }
-        Window("About Dust3D Viewer", id: "build-diagnostics") {
-            BuildDiagnosticsView(applicationName: "Dust3D Viewer", identity: buildIdentity)
+        Window("About \(applicationName)", id: "build-diagnostics") {
+            BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
         }
         .defaultSize(width: 660, height: 520)
     }
