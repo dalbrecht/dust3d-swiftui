@@ -34,3 +34,10 @@ rendering. Those checks remain pending without human input; no app launch or
 new application identity was required. Reuse org.dust3d.editor.combine-qa for
 future native checks. Cut-face controls now have [separate offscreen verification](native-part-cut-face-verification.md). Other M3 modifiers and differential
 Qt acceptance remain pending. This is not a full modeling parity claim.
+
+## October 18 native acceptance update
+
+The earlier offscreen evidence and historical test totals above are retained.
+[Native modeling acceptance](native-modifier-acceptance.md) now records actual
+inspector/Metal behavior, saved archive comparisons and the specific remaining
+#120 cases. Its scope does not establish full modeling parity.

@@ -447,3 +447,10 @@ background callback isolation and Retina bitmap sizing. Full local validation
 passes 627 tests. Automated PR review and remote CI remain required before merge;
 broader textured/empty/error/open-panel and install/upgrade acceptance must retain
 its explicit evidence rather than be inferred from an offscreen render.
+
+The native interaction pass now verifies known shape flags, intersecting hard joins,
+unsupported-source replacements, selection draft reset, profile search, width/thickness,
+unified deformation, Hexagon selection, Return-applied rotation, native history,
+exact saved archives and reopen against the actual Metal viewport. See
+[native modeling acceptance](native-modifier-acceptance.md) for the specific
+observations and remaining #120 cases; full M3 parity is still pending.
