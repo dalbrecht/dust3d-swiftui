@@ -472,3 +472,15 @@ background callback isolation and Retina bitmap sizing. Full local validation
 passes 627 tests. Automated PR review and remote CI remain required before merge;
 broader textured/empty/error/open-panel and install/upgrade acceptance must retain
 its explicit evidence rather than be inferred from an offscreen render.
+
+## Native component color-image workflow (Apple #140)
+
+The inspector now imports PNG/JPEG/BMP/GIF/TIFF, chooses unused or shared retained
+images and clears overrides without removing assets. Actual pixels are validated
+in the background before one lossless history step; selection/edit/replacement
+and cancellation invalidate obsolete requests. Material-only commands refresh
+bakes without rebuilding geometry. See [ADR 0069](adr/0069-native-component-color-images.md)
+and [verification](native-component-color-images-verification.md). Native import,
+retained selection, clear, history and save have current working-tree observations;
+the final accessibility rerun passes. Final-head review/remote CI remain required. Textured
+exports, wider material/reference parity and the remaining M4–M8 work are open.

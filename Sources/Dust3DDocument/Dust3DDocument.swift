@@ -309,6 +309,14 @@ public struct Dust3DDocument: Sendable {
         return Data(bytes[(payloadOffset + item.range.lowerBound)..<(payloadOffset + item.range.upperBound)])
     }
 
+    /// Inventory retained image metadata in source order, including unused and unsupported resources.
+    /// - Returns: Byte-stable grouped rows; pixel decoding remains a platform responsibility.
+    /// This copies metadata only and never changes archive bytes.
+    /// - Example: `document.colorImageAssets().filter(\.canAssign)` finds metadata-eligible images.
+    public func colorImageAssets() -> [DocumentColorImageAsset] {
+        DocumentTextureImages.inventory(assets: textureAssetMetadata())
+    }
+
     /// Resolve distinct component color-image references to retained archive assets.
     /// - Returns: Source-ordered, alias-deduplicated metadata without copying/decoding image payloads.
     /// - Throws: `TextureImageReferenceError` for invalid, missing, ambiguous or wrong-kind

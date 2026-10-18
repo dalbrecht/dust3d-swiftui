@@ -20,6 +20,15 @@ final class EditorStore {
     var bakedMesh: MeshWithBakedTextures? {
         materialRenderError == nil && !materialState.isStale ? materialState.value : nil
     }
+    var previewCompatibilityWarning: String? {
+        let tree = snapshot?.componentTree
+        let legacyDetails = tree.flatMap { tree -> Bool? in
+            guard tree.failureDescription == nil else { return nil }
+            return tree.rows.contains { $0.component.hasLegacySurfaceDetails }
+        }
+        return MaterialPreviewWarning.message(
+            mesh?.warning ?? "", hasBakedMaterials: bakedMesh != nil, hasLegacySurfaceDetails: legacyDetails)
+    }
     var isBakingMaterials: Bool { materialState.isGenerating }
     var materialRenderError: String?
     var materialIssue: String? { materialRenderError ?? materialState.errorMessage }
@@ -55,6 +64,11 @@ final class EditorStore {
     private(set) var previewCacheStatistics: MeshGenerationStatistics?
     private(set) var previewSourceIssue: MeshLoadingError?
     private static let previewLogger = Logger(subsystem: "org.dust3d.editor", category: "PreviewCache")
+    private let colorImages: any ColorImageServing
+    private(set) var colorImagePreparation: Task<Void, Never>?
+    private(set) var isPreparingColorImage = false
+    private var colorImageRequestID = UUID()
+    private var operationRequestID = UUID()
     private let referenceImages: any ReferenceImageServing
     private var operation: Task<Void, Never>?
     // Lifecycle callers can await a captured request's cooperative completion.
@@ -64,10 +78,12 @@ final class EditorStore {
     private var stopped = false
 
     init(
+        colorImages: any ColorImageServing = ColorImageService(),
         referenceImages: any ReferenceImageServing = ReferenceImageService(),
         preview: any EditorPreviewServing = EditorPreviewService(),
         materialBaker: any ArchiveTextureBaking = ArchiveTextureBakingService()
     ) {
+        self.colorImages = colorImages
         self.referenceImages = referenceImages
         self.preview = preview
         self.materialBaker = materialBaker
@@ -79,13 +95,17 @@ final class EditorStore {
     var canRedo: Bool { !isWorking && snapshot?.canRedo == true }
 
     func load(data: Data) async {
+        cancelColorImagePreparation()
+        operation?.cancel()
+        let requestID = UUID()
+        operationRequestID = requestID
         cancelOriginDrag()
         stopped = false
         isWorking = true
-        defer { isWorking = false }
+        defer { if operationRequestID == requestID { isWorking = false } }
         do {
             let next = try await session.open(data: data)
-            guard !Task.isCancelled, !stopped else { return }
+            guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
             snapshot = next
             referenceImage = nil
             fit()
@@ -93,7 +113,77 @@ final class EditorStore {
             generate(next)
             refreshReferenceImage(next, forceFit: true)
         } catch {
-            if !Task.isCancelled { errorMessage = Self.message(error) }
+            if !Task.isCancelled, operationRequestID == requestID { errorMessage = Self.message(error) }
+        }
+    }
+
+    func cancelColorImagePreparation() {
+        colorImageRequestID = UUID()
+        colorImagePreparation?.cancel()
+        colorImagePreparation = nil
+        isPreparingColorImage = false
+    }
+
+    private enum PreparedColorImage: Sendable {
+        case imported(Data)
+        case retained(String)
+    }
+
+    func importComponentColorImage(url: URL, target: ComponentColorImageTarget) {
+        prepareComponentColorImage(target: target) { [colorImages] in
+            .imported(try await colorImages.importImage(url: url))
+        }
+    }
+
+    func assignComponentColorImage(_ asset: DocumentColorImageAsset, target: ComponentColorImageTarget) {
+        guard let snapshot, target.isCurrent(in: snapshot), let imageID = asset.imageID else { return }
+        let document = snapshot.document
+        prepareComponentColorImage(target: target) { [colorImages] in
+            try await colorImages.validateRetainedImage(document: document, asset: asset)
+            return .retained(imageID)
+        }
+    }
+
+    func clearComponentColorImage(target: ComponentColorImageTarget) {
+        perform(regenerateMesh: false) { try await $0.setComponentColorImage(imageID: nil, target: target) }
+    }
+
+    private func prepareComponentColorImage(
+        target: ComponentColorImageTarget,
+        prepare: @escaping @Sendable () async throws -> PreparedColorImage
+    ) {
+        guard !isWorking, !stopped, let snapshot, target.isCurrent(in: snapshot) else { return }
+        cancelColorImagePreparation()
+        let requestID = colorImageRequestID
+        isPreparingColorImage = true
+        errorMessage = nil
+        colorImagePreparation = Task {
+            defer {
+                if colorImageRequestID == requestID {
+                    isPreparingColorImage = false
+                    colorImagePreparation = nil
+                }
+            }
+            do {
+                let prepared = try await prepare()
+                guard !Task.isCancelled, !stopped, colorImageRequestID == requestID,
+                    let current = self.snapshot, target.isCurrent(in: current)
+                else { return }
+                // End preparation before perform invalidates pending image requests.
+                isPreparingColorImage = false
+                colorImagePreparation = nil
+                perform(regenerateMesh: false) { session in
+                    switch prepared {
+                    case .imported(let png): try await session.importComponentColorImage(png: png, target: target)
+                    case .retained(let imageID):
+                        try await session.setComponentColorImage(imageID: imageID, target: target)
+                    }
+                }
+            } catch {
+                if !Task.isCancelled, !stopped, colorImageRequestID == requestID {
+                    errorMessage = Self.message(error)
+                }
+            }
         }
     }
 
@@ -318,17 +408,20 @@ final class EditorStore {
     /// Clipboard promise registration succeeds before a Cut can mutate the document.
     func copyNodes(cut: Bool = false, to pasteboard: EditorPasteboard) {
         guard cut ? canCutNodes : canCopyNodes, !stopped else { return }
+        cancelColorImagePreparation()
         cancelOriginDrag()
+        let requestID = UUID()
+        operationRequestID = requestID
         isWorking = true
         operation = Task {
-            defer { isWorking = false }
+            defer { if operationRequestID == requestID { isWorking = false } }
             do {
                 let data = try await session.copyRepresentations(identifier: UUID().uuidString, onlyEditable: cut)
-                guard !Task.isCancelled, !stopped else { return }
+                guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
                 try pasteboard.write(data.native, snapshotXML: data.snapshotXML)
                 if cut {
                     let next = try await session.deleteSelection()
-                    guard !Task.isCancelled, !stopped else { return }
+                    guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
                     snapshot = next
                     fit()
                     onDocumentChanged?(next.document.encoded())
@@ -336,7 +429,7 @@ final class EditorStore {
                 }
                 errorMessage = nil
             } catch {
-                if !Task.isCancelled { errorMessage = Self.message(error) }
+                if !Task.isCancelled, operationRequestID == requestID { errorMessage = Self.message(error) }
             }
         }
     }
@@ -434,6 +527,9 @@ final class EditorStore {
     }
 
     func stop() {
+        cancelColorImagePreparation()
+        operationRequestID = UUID()
+        isWorking = false
         cancelOriginDrag()
         stopped = true
         operation?.cancel()
@@ -454,17 +550,20 @@ final class EditorStore {
             completion?(false)
             return
         }
+        cancelColorImagePreparation()
         cancelOriginDrag()
+        let requestID = UUID()
+        operationRequestID = requestID
         isWorking = true
         operation = Task {
             var succeeded = false
             defer {
-                isWorking = false
+                if operationRequestID == requestID { isWorking = false }
                 completion?(succeeded)
             }
             do {
                 let next = try await action(session)
-                guard !Task.isCancelled, !stopped else { return }
+                guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
                 let changed = next.documentRevision != snapshot?.documentRevision
                 // Visibility changes need fitting even when topology is unchanged; movements keep stable drag bounds.
                 let countChanged = next.nodes.count != snapshot?.nodes.count
@@ -492,7 +591,7 @@ final class EditorStore {
                 }
                 succeeded = true
             } catch {
-                if !Task.isCancelled { errorMessage = Self.message(error) }
+                if !Task.isCancelled, operationRequestID == requestID { errorMessage = Self.message(error) }
             }
         }
     }
@@ -694,6 +793,7 @@ final class EditorStore {
             case .readOnlyNode: return "This node belongs to a locked, hidden or disabled part."
             case .staleReferenceComposition:
                 return "The document or locks changed. Reopen the reference image composer."
+            case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."
             case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
             case .unavailableOrigin:
