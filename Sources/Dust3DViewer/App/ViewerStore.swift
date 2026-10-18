@@ -7,6 +7,21 @@ import Observation
 final class ViewerStore {
     private(set) var mesh: IndexedMesh?
     private(set) var bakedMesh: MeshWithBakedTextures?
+    private(set) var materialSourceCapabilities = MaterialSourceCapabilities.unknown
+    var materialSourceIssue: String? { materialSourceCapabilities.issue?.localizedDescription }
+    var previewCompatibilityWarning: String? {
+        MaterialPreviewWarning.message(
+            mesh?.warning ?? "",
+            hasBakedMaterials: bakedMesh != nil && renderedMaterialRevision == meshRevision + materialRevision,
+            hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails)
+    }
+    private var renderedMaterialRevision: Int?
+
+    func materialsRendered(revision: Int) {
+        guard bakedMesh != nil, revision == meshRevision + materialRevision else { return }
+        renderedMaterialRevision = revision
+    }
+
     private(set) var documentName = "Dust3D Viewer"
     private(set) var isLoading = false
     private(set) var isBakingMaterials = false
@@ -43,6 +58,7 @@ final class ViewerStore {
                 try Task.checkCancellation()
                 guard let self, self.revision == requestedRevision else { return }
                 mesh = loaded.mesh
+                materialSourceCapabilities = loaded.materialSourceCapabilities
                 archiveData = loaded.data
                 meshRevision += 1
                 documentName = url.lastPathComponent
@@ -84,6 +100,7 @@ final class ViewerStore {
     }
 
     func materialFailed(_ cause: String) {
+        renderedMaterialRevision = nil
         bakedMesh = nil
         materialIssue = cause
     }
@@ -94,12 +111,14 @@ final class ViewerStore {
         clearMaterials()
         archiveData = nil
         mesh = nil
+        materialSourceCapabilities = .unknown
         isLoading = false
     }
 
     private func clearMaterials() {
         materialTask?.cancel()
         materialRequestID = UUID()
+        renderedMaterialRevision = nil
         bakedMesh = nil
         materialIssue = nil
         isBakingMaterials = false

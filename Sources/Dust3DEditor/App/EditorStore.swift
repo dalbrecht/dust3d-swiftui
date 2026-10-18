@@ -27,8 +27,17 @@ final class EditorStore {
             return tree.rows.contains { $0.component.hasLegacySurfaceDetails }
         }
         return MaterialPreviewWarning.message(
-            mesh?.warning ?? "", hasBakedMaterials: bakedMesh != nil, hasLegacySurfaceDetails: legacyDetails)
+            mesh?.warning ?? "",
+            hasBakedMaterials: bakedMesh != nil && renderedMaterialRevision == materialViewportRevision,
+            hasLegacySurfaceDetails: legacyDetails)
     }
+    private var renderedMaterialRevision: Int?
+
+    func materialsRendered(revision: Int) {
+        guard bakedMesh != nil, revision == materialViewportRevision else { return }
+        renderedMaterialRevision = revision
+    }
+
     var isBakingMaterials: Bool { materialState.isGenerating }
     var materialRenderError: String?
     var materialIssue: String? { materialRenderError ?? materialState.errorMessage }
@@ -652,6 +661,7 @@ final class EditorStore {
     }
 
     private func clearMaterials() {
+        renderedMaterialRevision = nil
         materialGeneration?.cancel()
         materialState.clear()
         materialRenderError = nil
@@ -665,6 +675,7 @@ final class EditorStore {
     }
 
     private func generateMaterials(_ snapshot: EditorSnapshot) {
+        renderedMaterialRevision = nil
         materialGeneration?.cancel()
         materialRenderError = nil
         let requestID = UUID()

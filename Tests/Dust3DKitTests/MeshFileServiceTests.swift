@@ -1,3 +1,4 @@
+import Dust3DDocument
 import Foundation
 import XCTest
 
@@ -10,6 +11,41 @@ final class MeshFileServiceTests: XCTestCase {
             Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
         let mesh = try await MeshFileService().load(url: url)
         XCTAssertGreaterThan(mesh.triangleCount, 0)
+    }
+
+    func testIndexedSnapshotCarriesReadOnlyMaterialCapabilities() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let before = try Data(contentsOf: url)
+        let snapshot = try await MeshFileService().loadIndexedSnapshot(url: url)
+        XCTAssertEqual(snapshot.materialSourceCapabilities.hasLegacySurfaceDetails, false)
+        XCTAssertNil(snapshot.materialSourceCapabilities.issue)
+        XCTAssertEqual(snapshot.data, before)
+        XCTAssertEqual(try Data(contentsOf: url), before)
+    }
+
+    func testUnsupportedMaterialMetadataDoesNotBreakPrimaryGeometryOrLoseItsCause() async throws {
+        let fixture = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let original = try Dust3DDocument(data: Data(contentsOf: fixture))
+        let xml = try XCTUnwrap(String(data: original.modelXML, encoding: .utf8))
+            .replacingOccurrences(
+                of: "</components>", with: "<future id='{eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee}'/></components>")
+        let model = Data(xml.utf8)
+        let header = "<ds3><model name='model.xml' offset='0' size='\(model.count)'/></ds3>"
+        let prefix = "DUST3D 1.0 xml "
+        let archive =
+            Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
+            + model
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".ds3")
+        try archive.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let snapshot = try await MeshFileService().loadIndexedSnapshot(url: url)
+        XCTAssertGreaterThan(snapshot.mesh.triangleCount, 0)
+        XCTAssertNil(snapshot.materialSourceCapabilities.hasLegacySurfaceDetails)
+        XCTAssertEqual(snapshot.materialSourceCapabilities.issue as? DocumentError, .invalidComponent)
+        XCTAssertEqual(snapshot.data, archive)
+        XCTAssertEqual(try Data(contentsOf: url), archive)
     }
 
     func testMissingFilePreservesFileSystemError() async {

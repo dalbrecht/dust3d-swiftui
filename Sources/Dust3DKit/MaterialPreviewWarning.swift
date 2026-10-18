@@ -15,7 +15,7 @@ public enum MaterialPreviewWarning {
         case "Untextured preview: image textures are not yet displayed.":
             return nil
         case "Untextured preview: image textures and procedural surface details are not yet displayed.":
-            guard let hasLegacySurfaceDetails else { return warning }
+            guard let hasLegacySurfaceDetails else { return "Procedural surface details could not be verified." }
             return hasLegacySurfaceDetails ? "Procedural surface details are not yet displayed." : nil
         default:
             return warning

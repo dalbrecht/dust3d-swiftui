@@ -88,7 +88,10 @@ final class ViewerMaterialTests: XCTestCase {
     }
 
     func testShouldPreserveFileErrorsAndRejectLateFileLoadsAfterStop() async throws {
-        let snapshot = try snapshot()
+        let original = try snapshot()
+        let snapshot = MeshFileSnapshot(
+            data: original.data, mesh: original.mesh,
+            materialSourceCapabilities: .unavailable(cause: ViewerSourceFailure.original))
         let loader = SuspendedSnapshotLoader()
         let store = ViewerStore(service: loader)
         defer { store.stop() }
@@ -108,6 +111,51 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertNil(store.mesh)
         XCTAssertFalse(store.isLoading)
         XCTAssertFalse(store.isBakingMaterials)
+        XCTAssertNil(store.materialSourceIssue)
+    }
+
+    func testMaterialNoticeTracksCurrentRenderingAndKeepsSourceFailureCause() async throws {
+        let original = try snapshot()
+        let warning = "Untextured preview: image textures and procedural surface details are not yet displayed."
+        let mesh = IndexedMesh(
+            vertices: original.mesh.vertices, indices: original.mesh.indices,
+            nodeCount: original.mesh.nodeCount, partCount: original.mesh.partCount, warning: warning)
+        let baked = try await MeshBakingService().load(
+            data: original.data,
+            options: MeshBakeOptions(colorSize: 32, normalSize: 16, materialSize: 8, atlasTextureSize: 32))
+        for capabilities in [
+            MaterialSourceCapabilities.known(hasLegacySurfaceDetails: false),
+            .known(hasLegacySurfaceDetails: true), .unavailable(cause: ViewerSourceFailure.original),
+        ] {
+            let snapshot = MeshFileSnapshot(data: original.data, mesh: mesh, materialSourceCapabilities: capabilities)
+            let baker = SuspendedViewerBaker()
+            let store = ViewerStore(service: SnapshotLoader(snapshot: snapshot), materialBaker: baker)
+            defer { store.stop() }
+            store.open(URL(fileURLWithPath: "/test/image.ds3"))
+            await store.loadTask?.value
+            try await waitForRequests(1, baker)
+            XCTAssertEqual(store.previewCompatibilityWarning, warning)
+            await baker.finish(0, baked)
+            await store.materialTask?.value
+            XCTAssertEqual(store.previewCompatibilityWarning, warning, "CPU baking must not imply GPU readiness")
+            store.materialsRendered(revision: store.meshRevision + store.materialRevision - 1)
+            XCTAssertEqual(store.previewCompatibilityWarning, warning)
+            store.materialsRendered(revision: store.meshRevision + store.materialRevision)
+            switch capabilities {
+            case .known(false): XCTAssertNil(store.previewCompatibilityWarning)
+            case .known(true):
+                XCTAssertEqual(store.previewCompatibilityWarning, "Procedural surface details are not yet displayed.")
+            default:
+                XCTAssertEqual(store.previewCompatibilityWarning, "Procedural surface details could not be verified.")
+                XCTAssertEqual(store.materialSourceIssue, "Original source interpretation cause")
+            }
+            store.materialFailed("Original GPU failure")
+            XCTAssertEqual(store.previewCompatibilityWarning, warning)
+            XCTAssertEqual(store.materialIssue, "Original GPU failure")
+            store.stop()
+            XCTAssertNil(store.previewCompatibilityWarning)
+            XCTAssertNil(store.materialSourceIssue)
+        }
     }
 
     private func waitForFileRequests(_ expected: Int, _ loader: SuspendedSnapshotLoader) async throws {
@@ -184,4 +232,9 @@ private actor SuspendedSnapshotLoader: MeshFileSnapshotLoading {
         pending[index]?.resume(throwing: Failure.file)
         pending[index] = nil
     }
+}
+
+private enum ViewerSourceFailure: LocalizedError {
+    case original
+    var errorDescription: String? { "Original source interpretation cause" }
 }

@@ -8,6 +8,30 @@ public struct FilePreviewDocument: Sendable {
     public let bakedMesh: MeshWithBakedTextures?
     /// Optional material failure; ordinary geometry remains available and the original cause survives.
     public let materialError: (any Error)?
+    /// Metadata interpreted from the exact source snapshot, separately from optional material rendering.
+    public let materialSourceCapabilities: MaterialSourceCapabilities
+
+    init(
+        mesh: IndexedMesh?, bakedMesh: MeshWithBakedTextures?, materialError: (any Error)?,
+        materialSourceCapabilities: MaterialSourceCapabilities = .unknown
+    ) {
+        self.mesh = mesh
+        self.bakedMesh = bakedMesh
+        self.materialError = materialError
+        self.materialSourceCapabilities = materialSourceCapabilities
+    }
+
+    /// Select the compatibility notice for the representation actually available in the system host.
+    /// - Parameters:
+    ///   - materialsRendered: True only after the current GPU renderer completes a material frame.
+    ///   - materialRenderingFailed: True after a GPU/material upload failure forces ordinary geometry.
+    /// - Returns: Remaining source/representation limitations, retaining unknown warnings verbatim.
+    public func compatibilityWarning(materialsRendered: Bool = false, materialRenderingFailed: Bool = false) -> String?
+    {
+        MaterialPreviewWarning.message(
+            mesh?.warning ?? "", hasBakedMaterials: materialsRendered && bakedMesh != nil && !materialRenderingFailed,
+            hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails)
+    }
 }
 
 /// Serialized, bounded archive loading for read-only Finder and Quick Look workers.
@@ -54,15 +78,19 @@ public actor FilePreviewDocumentService {
             throw FilePreviewError.unavailable(
                 "Embedded or unsupported component links cannot yet be rendered in file previews.")
         }
+        let capabilities = MaterialSourceCapabilities.known(
+            hasLegacySurfaceDetails: components.contains { $0.hasLegacySurfaceDetails })
         let excluded = Set(contents.parts.filter { $0.isDisabled || $0.target == .cutFace }.map(\.id))
         guard contents.nodes.contains(where: { node in node.partID.map { !excluded.contains($0) } ?? true }) else {
-            return FilePreviewDocument(mesh: nil, bakedMesh: nil, materialError: nil)
+            return FilePreviewDocument(
+                mesh: nil, bakedMesh: nil, materialError: nil, materialSourceCapabilities: capabilities)
         }
         let session = try MeshGenerationSession(maximumCachePayloadBytes: 16 * 1024 * 1024)
         let ordinary = try await session.generateIndexed(data: data, maximumPayloadBytes: 64 * 1024 * 1024)
         try Task.checkCancellation()
         guard let mesh = ordinary.mesh else {
-            return FilePreviewDocument(mesh: nil, bakedMesh: nil, materialError: nil)
+            return FilePreviewDocument(
+                mesh: nil, bakedMesh: nil, materialError: nil, materialSourceCapabilities: capabilities)
         }
         do {
             let baked = try await materialBaker.load(
@@ -74,12 +102,14 @@ public actor FilePreviewDocumentService {
                     maximumEncodedImageBytes: 16 * 1024 * 1024, maximumEncodedTotalBytes: 32 * 1024 * 1024,
                     maximumDecodedTotalBytes: 64 * 1024 * 1024))
             try Task.checkCancellation()
-            return FilePreviewDocument(mesh: mesh, bakedMesh: baked, materialError: nil)
+            return FilePreviewDocument(
+                mesh: mesh, bakedMesh: baked, materialError: nil, materialSourceCapabilities: capabilities)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             try Task.checkCancellation()
-            return FilePreviewDocument(mesh: mesh, bakedMesh: nil, materialError: error)
+            return FilePreviewDocument(
+                mesh: mesh, bakedMesh: nil, materialError: error, materialSourceCapabilities: capabilities)
         }
     }
 }

@@ -17,3 +17,8 @@ the view cancels pending work; late results cannot restore a closed preview.
 
 See `docs/native-material-viewports-verification.md` and ADR 0065 for tests,
 native acceptance and remaining AO, transparency and full-parity limits.
+
+Compatibility notices follow the representation being displayed: successful image
+baking removes obsolete untextured-image text; geometry/GPU fallback restores its
+original notice. Legacy surface limitations and source interpretation failures
+remain explicit. Metadata is prepared from the same file snapshot off-main.

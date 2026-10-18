@@ -10,6 +10,7 @@ public struct MeshViewport: NSViewRepresentable {
     let onError: (String) -> Void
     let meshRevision: Int
     let bakedMesh: MeshWithBakedTextures?
+    let onMaterialRendered: () -> Void
     let onMaterialError: (String) -> Void
 
     /// Increment meshRevision to replace geometry; increment cameraReset to fit the view.
@@ -17,6 +18,7 @@ public struct MeshViewport: NSViewRepresentable {
     public init(
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0, onError: @escaping (String) -> Void
     ) {
+        onMaterialRendered = {}
         bakedMesh = nil
         onMaterialError = { _ in }
         self.mesh = .expanded(mesh)
@@ -34,12 +36,15 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - meshRevision: Increment to replace GPU geometry while retaining orbit and zoom.
     ///   - bakedMesh: Optional baked geometry/maps paired with this mesh revision. Uploads in the background.
     ///   - onMaterialError: Receives optional material failures; defaults to onError. Ordinary geometry remains available.
+    ///   - onMaterialRendered: Called after a successful GPU frame for the current material revision.
     ///   - onError: Receives ordinary GPU setup diagnostics on the main actor.
     public init(
         mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
         bakedMesh: MeshWithBakedTextures? = nil, onMaterialError: ((String) -> Void)? = nil,
+        onMaterialRendered: @escaping () -> Void = {},
         onError: @escaping (String) -> Void
     ) {
+        self.onMaterialRendered = onMaterialRendered
         self.bakedMesh = bakedMesh
         self.onMaterialError = onMaterialError ?? onError
         self.mesh = .indexed(mesh)
@@ -107,7 +112,8 @@ public struct MeshViewport: NSViewRepresentable {
         view.materialRenderer?.isWireframe = isWireframe
         view.requestedWireframe = isWireframe
         if let bakedMesh {
-            view.updateMaterials(bakedMesh, revision: meshRevision, onError: onMaterialError)
+            view.updateMaterials(
+                bakedMesh, revision: meshRevision, onRendered: onMaterialRendered, onError: onMaterialError)
         }
         view.needsDisplay = true
     }
@@ -141,7 +147,10 @@ public class InteractiveMeshView: MTKView {
         failedMaterialRevision = nil
     }
 
-    func updateMaterials(_ baked: MeshWithBakedTextures, revision: Int, onError: @escaping (String) -> Void) {
+    func updateMaterials(
+        _ baked: MeshWithBakedTextures, revision: Int, onRendered: @escaping () -> Void,
+        onError: @escaping (String) -> Void
+    ) {
         guard requestedMaterialRevision != revision, completedMaterialRevision != revision,
             failedMaterialRevision != revision
         else { return }
@@ -166,6 +175,12 @@ public class InteractiveMeshView: MTKView {
                 renderer.onError = { [weak self] error in
                     guard let self, self.completedMaterialRevision == revision else { return }
                     onError(error.localizedDescription)
+                }
+                renderer.onRendered = { [weak self, weak renderer] in
+                    guard let self, let renderer, self.completedMaterialRevision == revision,
+                        self.materialRenderer === renderer, self.delegate === renderer
+                    else { return }
+                    onRendered()
                 }
                 self.materialRenderer = renderer
                 self.completedMaterialRevision = revision
