@@ -40,6 +40,11 @@ esac
 
 python3 -B "$ROOT_DIR/script/check_running_app.py" "$APP_BINARY"
 ./script/swift.sh build --product "$APP_NAME"
+if [ "$APP_NAME" = "Dust3DEditor" ] && [ "$IS_QA" = false ]; then
+    for EXTENSION_NAME in Dust3DQuickLookExtension Dust3DThumbnailExtension; do
+        ./script/swift.sh build --product "$EXTENSION_NAME"
+    done
+fi
 BUILD_DIR="$DUST3D_BINARY_DIR"
 # The target may have launched during compilation; check again before touching its bundle.
 python3 -B "$ROOT_DIR/script/check_running_app.py" "$APP_BINARY"

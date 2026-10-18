@@ -111,3 +111,17 @@ and preview-store tests pass; no native cache-reset failure was forced in this
 pass. The corrected full `make ci` passes 694 Swift tests with zero failures in
 139.558 seconds, 17 build-support tests and all build/formatting/coverage, Qt-free
 and signed package checks. Fresh exact-head review and remote CI remain required.
+
+## Automated review correction: provider compilation preflight
+
+Review found two provider builds inside the packaging helper after the final
+process check. The canonical entry point now compiles the app, Quick Look and
+thumbnail products before that check and before any bundle mutation. The helper
+requires prebuilt binaries/resources, never compiles, and rechecks the owning
+editor before each provider copy. Four failing regressions reproduced target
+launches during either provider build and either build failing after the app had
+already been replaced. All now retain the original executable and metadata.
+The corrected full `make ci` passes 694 Swift tests with zero failures in 131.052
+seconds, 21 build-support tests and all build/formatting/coverage, Qt-free and
+signed canonical/QA package checks. Fresh exact-head review and remote CI remain
+required.

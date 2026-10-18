@@ -36,9 +36,11 @@ the same immutable captured identity. Startup logs carry source/core/digest/dirt
 
 `--editor-qa` reuses org.dust3d.editor.combine-qa and separate default output/archive
 directories. QA bundles remove copied Quick Look/thumbnail providers; canonical
-org.dust3d.editor remains their sole owner. Every packaging mode checks the exact target executable path before compilation
-and rechecks immediately before modifying the bundle, refusing to replace a
-target that started while compilation was running. It does
+org.dust3d.editor remains their sole owner. Every packaging mode checks the exact target executable path before compilation.
+Canonical editor builds compile the app and both preview products before the final
+check and first bundle mutation. The provider helper only packages prebuilt products
+and checks the owning editor again before each provider copy. A target launched
+during any build, or a provider compilation failure, leaves the old bundle intact. It does
 not terminate editors or conflate other QA/canonical paths. Launch verification
 also checks that exact executable rather than any process with the same basename.
 
