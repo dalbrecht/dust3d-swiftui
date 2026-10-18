@@ -99,3 +99,15 @@ accessible. Its pre-commit source capture reports modified revision
 88393777921c38728bc5d44e3076b8912753607b and digest
 1c4599bcd97b499671b17f0c865880f04fc0c20073688bc614f3258602bbe62c.
 Fresh exact-head review and remote CI remain required.
+
+## Automated review correction: preview-cache event routing
+
+Review found that the preview-cache reset logger still used the canonical
+subsystem, so a QA-only stream omitted those events. Preview-cache, recovery and
+startup loggers now use one pure captured-identity scope selector, including an
+explicit fallback for launches without a bundle ID. Tests distinguish QA and
+canonical scopes and preserve custom/missing identity behavior. Focused identity
+and preview-store tests pass; no native cache-reset failure was forced in this
+pass. The corrected full `make ci` passes 694 Swift tests with zero failures in
+139.558 seconds, 17 build-support tests and all build/formatting/coverage, Qt-free
+and signed package checks. Fresh exact-head review and remote CI remain required.

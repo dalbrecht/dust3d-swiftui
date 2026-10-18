@@ -9,6 +9,13 @@ public struct RuntimeBuildIdentity: Sendable {
     /// Time of the startup capture, distinct from a build timestamp or kernel process start time.
     public let capturedAt: Date
 
+    /// Route app-owned events using the retained launch identity, including QA builds.
+    /// - Parameter fallback: Owning app subsystem for launches without a bundle identifier.
+    /// - Returns: Captured bundle identifier, or the explicit fallback when absent.
+    public func loggingSubsystem(fallback: String) -> String {
+        launchBundleIdentifier ?? fallback
+    }
+
     /// Apps read this value during initialization and retain it for diagnostics and startup logging.
     public static let current = capture()
 

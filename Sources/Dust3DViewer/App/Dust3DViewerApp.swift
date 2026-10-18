@@ -43,7 +43,7 @@ final class ViewerAppDelegate: NSObject, NSApplicationDelegate {
     private let buildIdentity = RuntimeBuildIdentity.current
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        buildIdentity.logStartup(subsystem: Bundle.main.bundleIdentifier ?? "org.dust3d.viewer")
+        buildIdentity.logStartup(fallbackSubsystem: "org.dust3d.viewer")
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }

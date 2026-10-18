@@ -104,7 +104,7 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     private let buildIdentity = RuntimeBuildIdentity.current
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        buildIdentity.logStartup(subsystem: Bundle.main.bundleIdentifier ?? "org.dust3d.editor")
+        buildIdentity.logStartup(fallbackSubsystem: "org.dust3d.editor")
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(cancelReferenceComposition(_:)),
             name: EditorCompositionRecovery.notification, object: Bundle.main.bundleIdentifier)
@@ -115,8 +115,11 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     @objc nonisolated private func cancelReferenceComposition(_ notification: Notification) {
         Task { @MainActor in
             let cancelled = EditorCompositionRecovery.shared.cancelLatest()
-            Logger(subsystem: Bundle.main.bundleIdentifier ?? "org.dust3d.editor", category: "recovery")
-                .info("operation=cancelReferenceComposition cancelled=\(cancelled)")
+            Logger(
+                subsystem: RuntimeBuildIdentity.current.loggingSubsystem(fallback: "org.dust3d.editor"),
+                category: "recovery"
+            )
+            .info("operation=cancelReferenceComposition cancelled=\(cancelled)")
         }
     }
 }

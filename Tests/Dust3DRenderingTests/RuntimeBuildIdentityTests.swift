@@ -93,6 +93,27 @@ final class RuntimeBuildIdentityTests: XCTestCase {
         }
     }
 
+    func testShouldRouteAllQAEventsThroughTheCapturedSubsystem() {
+        let qa = RuntimeBuildIdentity(
+            metadataData: nil, processIdentifier: 1, capturedAt: Date(),
+            launchBundleIdentifier: "org.dust3d.editor.combine-qa")
+        let canonical = RuntimeBuildIdentity(
+            metadataData: nil, processIdentifier: 2, capturedAt: Date(), launchBundleIdentifier: "org.dust3d.editor")
+        XCTAssertEqual(qa.loggingSubsystem(fallback: "org.dust3d.editor"), "org.dust3d.editor.combine-qa")
+        XCTAssertEqual(canonical.loggingSubsystem(fallback: "org.dust3d.editor"), "org.dust3d.editor")
+        XCTAssertNotEqual(
+            qa.loggingSubsystem(fallback: "org.dust3d.editor"),
+            canonical.loggingSubsystem(fallback: "org.dust3d.editor"))
+    }
+
+    func testShouldUseExplicitLogFallbackOnlyWhenCapturedBundleIdentityIsMissing() {
+        let missing = RuntimeBuildIdentity(metadataData: nil, processIdentifier: 1, capturedAt: Date())
+        let custom = RuntimeBuildIdentity(
+            metadataData: nil, processIdentifier: 2, capturedAt: Date(), launchBundleIdentifier: "org.example.custom")
+        XCTAssertEqual(missing.loggingSubsystem(fallback: "org.dust3d.viewer"), "org.dust3d.viewer")
+        XCTAssertEqual(custom.loggingSubsystem(fallback: "org.dust3d.editor"), "org.example.custom")
+    }
+
     private func metadata(
         schemaVersion: Int = 1, sourceRevision: String = String(repeating: "a", count: 40),
         sourceDigest: String = String(repeating: "c", count: 64), isDirty: Bool = true

@@ -2,9 +2,9 @@ import OSLog
 
 extension RuntimeBuildIdentity {
     /// Emit startup provenance without document names, paths or user information.
-    /// - Parameter subsystem: The owning app's logging subsystem.
-    public func logStartup(subsystem: String) {
-        let logger = Logger(subsystem: subsystem, category: "build-identity")
+    /// - Parameter fallbackSubsystem: Owning app subsystem when no launch bundle ID was captured.
+    public func logStartup(fallbackSubsystem: String) {
+        let logger = Logger(subsystem: loggingSubsystem(fallback: fallbackSubsystem), category: "build-identity")
         switch metadata {
         case .success(let build):
             logger.info(
