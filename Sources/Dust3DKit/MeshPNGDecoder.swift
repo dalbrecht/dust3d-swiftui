@@ -1,4 +1,5 @@
 import CoreGraphics
+import Dust3DDocument
 import Foundation
 import ImageIO
 
@@ -43,14 +44,19 @@ public enum MeshPNGDecoder {
         maximumEncodedBytes: Int = 32 * 1024 * 1024,
         maximumDecodedBytes: Int = 256 * 1024 * 1024
     ) throws -> MeshBakeImage {
-        let ceiling = 256 * 1024 * 1024
-        guard (1...ceiling).contains(maximumEncodedBytes), (1...ceiling).contains(maximumDecodedBytes) else {
-            throw MeshPNGDecodingError.invalidLimits
+        let dimensions: PNGContainerMetadata
+        do {
+            dimensions = try PNGContainerMetadata(
+                data: data, maximumEncodedBytes: maximumEncodedBytes, maximumDecodedBytes: maximumDecodedBytes)
+        } catch let error as PNGContainerError {
+            switch error {
+            case .invalidLimits: throw MeshPNGDecodingError.invalidLimits
+            case .encodedLimitExceeded: throw MeshPNGDecodingError.encodedLimitExceeded
+            case .invalidPNG: throw MeshPNGDecodingError.invalidPNG
+            case .decodedLimitExceeded: throw MeshPNGDecodingError.decodedLimitExceeded
+            }
         }
-        guard data.count <= maximumEncodedBytes else { throw MeshPNGDecodingError.encodedLimitExceeded }
-        let dimensions = try validateContainer(data)
         let outputBytes = dimensions.width * dimensions.height * 4
-        guard outputBytes <= maximumDecodedBytes else { throw MeshPNGDecodingError.decodedLimitExceeded }
         let options = [kCGImageSourceShouldCache: false, kCGImageSourceShouldAllowFloat: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, options),
             let image = CGImageSourceCreateImageAtIndex(source, 0, options),
@@ -63,6 +69,8 @@ public enum MeshPNGDecoder {
         guard !storageSpan.overflow, image.bytesPerRow >= image.width * layout.bytesPerPixel,
             CFDataGetLength(providerData) >= storageSpan.partialValue
         else { throw MeshPNGDecodingError.invalidPNG }
+        let zerosTransparentGray =
+            dimensions.hasTransparencyKey && dimensions.colorType == 0 && [2, 4, 8].contains(dimensions.bitDepth)
         var pixels = Data(count: outputBytes)
         try pixels.withUnsafeMutableBytes { (output: UnsafeMutableRawBufferPointer) in
             for row in 0..<image.height {
@@ -71,7 +79,7 @@ public enum MeshPNGDecoder {
                     let inputOffset = row * image.bytesPerRow + column * layout.bytesPerPixel
                     let outputOffset = (row * image.width + column) * 4
                     var pixel = try layout.rgba(storage.advanced(by: inputOffset))
-                    if dimensions.zerosTransparentGray && pixel.3 == 0 { pixel = (0, 0, 0, 0) }
+                    if zerosTransparentGray && pixel.3 == 0 { pixel = (0, 0, 0, 0) }
                     output[outputOffset] = pixel.0
                     output[outputOffset + 1] = pixel.1
                     output[outputOffset + 2] = pixel.2
@@ -84,41 +92,6 @@ public enum MeshPNGDecoder {
             rowStride: image.width * 4, pixels: pixels)
     }
 
-    private static func validateContainer(_ data: Data) throws
-        -> (width: Int, height: Int, zerosTransparentGray: Bool)
-    {
-        let bytes = Array(data)
-        guard bytes.count >= 33, Array(bytes.prefix(8)) == [137, 80, 78, 71, 13, 10, 26, 10] else {
-            throw MeshPNGDecodingError.invalidPNG
-        }
-        func integer(_ offset: Int) -> Int {
-            bytes[offset..<offset + 4].reduce(0) { $0 * 256 + Int($1) }
-        }
-        guard integer(8) == 13, Array(bytes[12..<16]) == Array("IHDR".utf8) else {
-            throw MeshPNGDecodingError.invalidPNG
-        }
-        let width = integer(16)
-        let height = integer(20)
-        guard (1...8192).contains(width), (1...8192).contains(height) else {
-            throw MeshPNGDecodingError.decodedLimitExceeded
-        }
-        var offset = 8
-        var zerosTransparentGray = false
-        while offset <= bytes.count - 12 {
-            let count = integer(offset)
-            guard count <= bytes.count - offset - 12 else { throw MeshPNGDecodingError.invalidPNG }
-            let kind = Array(bytes[offset + 4..<offset + 8])
-            if bytes[25] == 0 && [2, 4, 8].contains(bytes[24]) && kind == Array("tRNS".utf8) {
-                zerosTransparentGray = true
-            }
-            if kind == Array("IEND".utf8) {
-                guard count == 0, offset + 12 == bytes.count else { throw MeshPNGDecodingError.invalidPNG }
-                return (width, height, zerosTransparentGray)
-            }
-            offset += count + 12
-        }
-        throw MeshPNGDecodingError.invalidPNG
-    }
 }
 
 private struct SampleLayout {

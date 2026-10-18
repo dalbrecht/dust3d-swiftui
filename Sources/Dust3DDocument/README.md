@@ -197,3 +197,17 @@ count too. Exceeding either quota throws `DocumentError.limitExceeded` before th
 next binding set is allocated, without publishing a partial document or history
 entry. Existing source/archive limits still apply; this is not a process RSS cap.
 See [ADR 0067](../../docs/adr/0067-bounded-namespace-transfers.md).
+
+Component color images expose missing/reference/unsupported source state through
+`DocumentComponent.colorImage`. Assign an existing retained image with
+`.setComponentColorImage(id:imageID:)`, or pass nil to remove the override while
+retaining all assets. `.importComponentColorImage(id:imageID:png:)` atomically
+inserts bounded encoded PNG bytes and assigns a caller-supplied identity. Exact
+alias no-ops retain source spelling and redo; conflicting resources reject without
+publication. Import plus assignment is one history step, including asset bytes.
+
+`PNGContainerMetadata(data:)` provides the shared pure envelope/quota boundary used
+by imports and Dust3DKit's existing decoder. It does not decompress samples or
+validate CRCs; platform image validation remains necessary before user imports.
+See [ADR 0068](../../docs/adr/0068-lossless-component-color-images.md) for identity,
+resource, transaction and remaining native-import requirements.

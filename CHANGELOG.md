@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add lossless component color-image assignment, removal and atomic PNG asset import commands with exact asset-aware history and shared bounded PNG envelope validation; native import controls remain pending.
+
 - Bound cumulative XML namespace expansion across clipboard and asset/header transfers, rejecting excessive growth with a typed limit error and preserving normal namespace meanings, assets and exact history.
 
 - Add editor-owned macOS Quick Look and Finder thumbnail providers that render existing `.ds3` objects without rewriting their archives, with bounded read-only loading and material fallback.
