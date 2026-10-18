@@ -46,6 +46,25 @@ print(f'{bundle.name}: rebuilt directory timestamp includes current plist and ic
 PY
     codesign --verify --deep --strict "$bundle"
 done
+# Reusing the QA identity must remove copied provider bundles rather than registering duplicates.
+qa_output="$APP_TEST_DIR/qa"
+mkdir -p "$qa_output/Dust3DEditor.app/Contents/PlugIns/Dust3DQuickLookExtension.appex"
+mkdir -p "$qa_output/Dust3DEditor.app/Contents/PlugIns/Dust3DThumbnailExtension.appex"
+DUST3D_APP_OUTPUT_DIR="$qa_output" DUST3D_ARCHIVE_OUTPUT_DIR="$APP_TEST_DIR/qa-archives" \
+    ./script/build_and_run.sh --editor-qa --build-only
+python3 - "$qa_output/Dust3DEditor.app" <<'PYQA'
+from pathlib import Path
+import plistlib
+import sys
+bundle = Path(sys.argv[1])
+with (bundle / 'Contents/Info.plist').open('rb') as source:
+    metadata = plistlib.load(source)
+assert metadata['CFBundleIdentifier'] == 'org.dust3d.editor.combine-qa'
+assert metadata['CFBundleName'] == 'Dust3D Editor QA'
+assert not list((bundle / 'Contents/PlugIns').glob('*.appex')), 'QA apps must not own preview providers'
+print('QA bundle reuses the existing identity and has no preview providers')
+PYQA
+codesign --verify --deep --strict "$qa_output/Dust3DEditor.app"
 archive_manifest > "$APP_TEST_DIR/default-archives-after.json"
 cmp "$APP_TEST_DIR/default-archives-before.json" "$APP_TEST_DIR/default-archives-after.json"
 for app in Dust3DEditor Dust3DViewer; do

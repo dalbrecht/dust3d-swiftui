@@ -5,35 +5,40 @@ APP_NAME="Dust3DViewer"
 DISPLAY_NAME="Dust3D Viewer"
 BUNDLE_ID="org.dust3d.viewer"
 DOCUMENT_ROLE="Viewer"
-if [ "${1:-}" = "--editor" ]; then
+IS_QA=false
+if [ "${1:-}" = "--editor" ] || [ "${1:-}" = "--editor-qa" ]; then
     APP_NAME="Dust3DEditor"
     DISPLAY_NAME="Dust3D Editor"
     BUNDLE_ID="org.dust3d.editor"
     DOCUMENT_ROLE="Editor"
+    if [ "$1" = "--editor-qa" ]; then
+        IS_QA=true
+        DISPLAY_NAME="Dust3D Editor QA"
+        BUNDLE_ID="org.dust3d.editor.combine-qa"
+    fi
     shift
 fi
 MODE="${1:-run}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/script/build_paths.sh"
-APP_BUNDLE="${DUST3D_APP_OUTPUT_DIR:-$DUST3D_BUILD_ROOT/app}/$APP_NAME.app"
-ARCHIVE_OUTPUT_DIR="${DUST3D_ARCHIVE_OUTPUT_DIR:-$ROOT_DIR/dist}"
+APP_OUTPUT_DEFAULT="$DUST3D_BUILD_ROOT/app"
+ARCHIVE_OUTPUT_DEFAULT="$ROOT_DIR/dist"
+if [ "$IS_QA" = true ]; then
+    APP_OUTPUT_DEFAULT="$DUST3D_BUILD_ROOT/app-qa"
+    ARCHIVE_OUTPUT_DEFAULT="$ROOT_DIR/dist/qa"
+fi
+APP_BUNDLE="${DUST3D_APP_OUTPUT_DIR:-$APP_OUTPUT_DEFAULT}/$APP_NAME.app"
+ARCHIVE_OUTPUT_DIR="${DUST3D_ARCHIVE_OUTPUT_DIR:-$ARCHIVE_OUTPUT_DEFAULT}"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_BINARY="$APP_CONTENTS/MacOS/$APP_NAME"
 cd "$ROOT_DIR"
 
 case "$MODE" in
     run|--debug|--logs|--telemetry|--verify|--build-only) ;;
-    *) echo "usage: $0 [--editor] [--debug|--logs|--telemetry|--verify|--build-only]" >&2; exit 2 ;;
+    *) echo "usage: $0 [--editor|--editor-qa] [--debug|--logs|--telemetry|--verify|--build-only]" >&2; exit 2 ;;
 esac
 
-if [ "$APP_NAME" = "Dust3DEditor" ] && [ "$MODE" != "--build-only" ]; then
-    if pgrep -x "$APP_NAME" >/dev/null 2>&1; then
-        echo "Quit Dust3D Editor normally before rebuilding so pending document edits can be saved." >&2
-        exit 1
-    fi
-elif [ "$MODE" != "--build-only" ]; then
-    pkill -x "$APP_NAME" >/dev/null 2>&1 || true
-fi
+python3 -B "$ROOT_DIR/script/check_running_app.py" "$APP_BINARY"
 ./script/swift.sh build --product "$APP_NAME"
 BUILD_DIR="$DUST3D_BINARY_DIR"
 mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources" "$ARCHIVE_OUTPUT_DIR"
@@ -80,13 +85,15 @@ $CLIPBOARD_TYPE_DECLARATION
 </dict></plist>
 PLIST
 # Strip copied Finder metadata before ad-hoc signing this local development bundle.
-if [ "$APP_NAME" = "Dust3DEditor" ]; then
+if [ "$IS_QA" = true ]; then
+    rm -rf "$APP_CONTENTS/PlugIns/Dust3DQuickLookExtension.appex" "$APP_CONTENTS/PlugIns/Dust3DThumbnailExtension.appex"
+elif [ "$APP_NAME" = "Dust3DEditor" ]; then
     "$ROOT_DIR/script/package_file_preview_extensions.sh" "$APP_BUNDLE" "$BUILD_DIR"
 fi
 xattr -cr "$APP_BUNDLE"
 codesign --force --sign - "$APP_BUNDLE"
 codesign --verify --deep --strict "$APP_BUNDLE"
-if [ "$APP_NAME" = "Dust3DEditor" ]; then
+if [ "$APP_NAME" = "Dust3DEditor" ] && [ "$IS_QA" = false ]; then
     "$ROOT_DIR/script/check_file_preview_bundles.sh" "$APP_BUNDLE"
 fi
 # Launch Services detects rebuilt bundle metadata through the application directory timestamp.
@@ -109,6 +116,6 @@ case "$MODE" in
     --verify)
         /usr/bin/open -n "$APP_BUNDLE"
         sleep 1
-        pgrep -x "$APP_NAME" >/dev/null
+        python3 -B "$ROOT_DIR/script/check_running_app.py" --expect-running "$APP_BINARY"
         ;;
 esac

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add immutable executable build diagnostics to both apps and a repeatable editor QA packaging mode that reuses its existing identity, omits preview providers and refuses to overwrite a running target bundle.
+
 - Make viewer and Quick Look material notices reflect current baked or fallback rendering, preserving legacy limitations and original source-interpretation errors without blocking valid geometry.
 
 - Add native component image import, retained-image selection and clearing with background pixel validation, cancellation, material refresh, shared-asset preservation and exact undo/save.

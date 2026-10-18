@@ -1,9 +1,12 @@
 import AppKit
 import Dust3DEditorModel
+import Dust3DRendering
 import OSLog
 import SwiftUI
 
 struct Dust3DEditorApp: App {
+    @Environment(\.openWindow) private var openWindow
+    private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(EditorAppDelegate.self) private var appDelegate
     @FocusedValue(\.editorStore) private var store
     @State private var pasteboard = EditorPasteboard()
@@ -16,6 +19,9 @@ struct Dust3DEditorApp: App {
         }
         .defaultSize(width: 1300, height: 820)
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About Dust3D Editor…") { openWindow(id: "build-diagnostics") }
+            }
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") { store?.undo() }
                     .keyboardShortcut("z")
@@ -72,6 +78,10 @@ struct Dust3DEditorApp: App {
                 }
             }
         }
+        Window("About Dust3D Editor", id: "build-diagnostics") {
+            BuildDiagnosticsView(applicationName: "Dust3D Editor", identity: buildIdentity)
+        }
+        .defaultSize(width: 660, height: 520)
     }
 
     private func shortcut(for constraint: EditingConstraint) -> KeyEquivalent {
@@ -86,7 +96,10 @@ struct Dust3DEditorApp: App {
 
 @MainActor
 final class EditorAppDelegate: NSObject, NSApplicationDelegate {
+    private let buildIdentity = RuntimeBuildIdentity.current
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        buildIdentity.logStartup(subsystem: Bundle.main.bundleIdentifier ?? "org.dust3d.editor")
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(cancelReferenceComposition(_:)),
             name: EditorCompositionRecovery.notification, object: Bundle.main.bundleIdentifier)

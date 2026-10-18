@@ -63,3 +63,11 @@ transparent thumbnail output; `FilePreviewView` hosts read-only interactive
 Quick Look content. The editor packages the two system providers. See
 [ADR 0066](../../docs/adr/0066-macos-file-preview-extensions.md) for quotas,
 registration, sandboxing and supported-content limits.
+
+## Build diagnostics
+
+The About window reports the source revision/digest, dirty state and exact core pin
+embedded in the loaded executable, separately from process identity. The startup
+capture remains fixed if an on-disk bundle changes. Use the canonical build wrapper
+to embed metadata; direct SwiftPM builds show unavailable identity honestly.
+See [ADR 0071](../../docs/adr/0071-immutable-runtime-build-identity.md).

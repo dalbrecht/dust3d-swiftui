@@ -1,4 +1,4 @@
-.PHONY: build test run run-editor format lint ci check-coverage check-qt-free check-app-bundle-rebuild sync-standards
+.PHONY: build test run run-editor format lint ci check-coverage check-qt-free check-app-bundle-rebuild check-build-support sync-standards
 
 build:
 	./script/swift.sh build
@@ -28,7 +28,10 @@ check-coverage:
 check-app-bundle-rebuild:
 	./script/check_app_bundle_rebuild.sh
 
-ci: lint build test check-coverage check-qt-free check-app-bundle-rebuild
+check-build-support:
+	python3 -B -m unittest discover -s Tests/BuildSupportTests
+
+ci: lint check-build-support build test check-coverage check-qt-free check-app-bundle-rebuild
 
 sync-standards:
 	.standards/scripts/assemble-config.sh codex .standards/standards/shared/blocks .standards/standards/agents/codex/base-codex.md AGENTS.md lang-swift.md role-app.md

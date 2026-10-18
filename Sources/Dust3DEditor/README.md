@@ -247,3 +247,17 @@ with Cancel or Escape. PNG bytes stay unchanged; other formats use their first
 encoded frame and convert to PNG. Each assignment is one undo step; clearing keeps
 shared and unused assets. Limits and native acceptance are documented in
 [native image workflow verification](../../docs/native-component-color-images-verification.md).
+
+## Build diagnostics
+
+The About window reports the source revision/digest, dirty state and exact core pin
+embedded in the loaded executable, separately from process identity. The startup
+capture remains fixed if an on-disk bundle changes. Use the canonical build wrapper
+to embed metadata; direct SwiftPM builds show unavailable identity honestly.
+See [ADR 0071](../../docs/adr/0071-immutable-runtime-build-identity.md).
+
+Use `./script/build_and_run.sh --editor-qa --build-only` for the existing
+`org.dust3d.editor.combine-qa` identity. QA packaging omits system preview providers
+and uses separate default app/archive directories. All packaging modes refuse to
+replace the exact target bundle while its executable is running; quit it normally
+first so pending edits can be saved. Output overrides remain available for QA.
