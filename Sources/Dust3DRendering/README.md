@@ -28,3 +28,13 @@ is shared by drawable presentation and offscreen GPU verification.
 output on the same device. It explicitly skips when no Metal device exists.
 Set `DUST3D_METAL_QA_OUTPUT_DIR` to write optional local evidence PNGs; these are not
 committed visual baselines. Interactive window/input verification remains separate.
+
+`TexturedRenderGeometry` is an internal, immutable Sendable preparation value for
+subsequent baked-material renderer adoption. It retains copied SDK maps/metadata
+and creates stable UInt32 indices with complete position/normal/color, UV, tangent,
+mapping and component seams. Shared `RenderBounds` keeps ordinary/textured camera
+normalization identical. Prepare outside the main actor; validate actual buffer
+lengths against the device limit before upload. Logical output quotas exclude
+source arrays, metadata/textures and indexing workspace. No current viewport or
+shader uses this new representation yet. See ADR 0063 and
+`docs/textured-render-geometry-verification.md` for tests and remaining integration.

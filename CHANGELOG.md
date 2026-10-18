@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Prepare bounded, seam-aware indexed baked geometry for subsequent shared Metal adoption, retaining UVs, tangent frames, mapping states and component metadata; existing app previews remain unchanged.
+
 - Add bounded retained-PNG decoding and a shared background archive-to-bake service, preserving straight alpha, source scanline order, original assets and per-asset errors; existing previews remain unchanged.
 
 - Add copied Swift baked textures, expanded seam-preserving geometry, triangle tangents and a background baking actor with lifetime-safe native cancellation, using exact reviewed core revision `2703a17`; archive decoding and renderer adoption remain separate.
