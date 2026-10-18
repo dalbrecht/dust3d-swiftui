@@ -12,7 +12,7 @@ struct PartMaterialControls: View {
                 PartMaterialScalarControl(store: store, part: part, property: property)
             }
             Text(
-                "Values are saved in the document. This preview does not yet display metallic, roughness or glow effects."
+                "Apply saves one undo step and updates the material preview. Materials update in the background."
             )
             .font(.caption).foregroundStyle(.primary)
         }

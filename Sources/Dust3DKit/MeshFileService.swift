@@ -1,7 +1,22 @@
 import Foundation
 
+/// Copied archive and geometry from one bounded read, preventing cross-read material races.
+public struct MeshFileSnapshot: Sendable {
+    public let data: Data
+    public let mesh: IndexedMesh
+}
+
+/// Injectable file snapshot boundary for native viewer lifecycles.
+public protocol MeshFileSnapshotLoading: Sendable {
+    /// Read one bounded file and generate matching indexed geometry.
+    /// - Parameter url: Local or security-scoped document URL.
+    /// - Returns: Exact input archive paired with its copied geometry.
+    /// - Throws: Original filesystem, cancellation or native loading errors.
+    func loadIndexedSnapshot(url: URL) async throws -> MeshFileSnapshot
+}
+
 /// A serial background document service. File access and C++ work stay off the main actor.
-public actor MeshFileService {
+public actor MeshFileService: MeshFileSnapshotLoading {
     public init() {}
 
     /// Read a selected `.ds3` file with a bounded allocation and generate its geometry.
@@ -24,6 +39,17 @@ public actor MeshFileService {
         let mesh = try MeshLoader.loadIndexed(data: data)
         try Task.checkCancellation()
         return mesh
+    }
+
+    /// Read one archive snapshot for both ordinary geometry and subsequent material baking.
+    /// - Parameter url: Local or security-scoped document URL.
+    /// - Returns: Owned archive bytes and indexed geometry generated from exactly those bytes.
+    /// - Throws: Original filesystem, cancellation or native loading errors.
+    public func loadIndexedSnapshot(url: URL) throws -> MeshFileSnapshot {
+        let data = try read(url: url)
+        let mesh = try MeshLoader.loadIndexed(data: data)
+        try Task.checkCancellation()
+        return MeshFileSnapshot(data: data, mesh: mesh)
     }
 
     private func read(url: URL) throws -> Data {

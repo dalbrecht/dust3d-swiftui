@@ -181,9 +181,22 @@ struct EditorRootView: View {
             } else if let mesh = store.mesh {
                 MeshViewport(
                     mesh: mesh, isWireframe: store.isWireframe, cameraReset: store.cameraReset,
-                    meshRevision: store.previewRevision
+                    meshRevision: store.materialViewportRevision, bakedMesh: store.bakedMesh,
+                    onMaterialError: { store.materialRenderError = $0 }
                 ) { store.renderError = $0 }
                 .accessibilityLabel("3D mesh preview")
+                if store.isBakingMaterials {
+                    ProgressView("Updating materials…").controlSize(.small).padding(8)
+                }
+                if let issue = store.materialIssue {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Showing geometry without materials", systemImage: "exclamationmark.triangle")
+                        Text(issue).textSelection(.enabled)
+                        Button("Retry Materials") { store.retryMaterials() }
+                            .disabled(store.isGenerating || store.isBakingMaterials || store.isWorking)
+                    }
+                    .font(.caption).padding(8)
+                }
                 if store.previewState.isStale {
                     Label("Showing last valid mesh", systemImage: "exclamationmark.triangle")
                         .font(.caption).padding(8)

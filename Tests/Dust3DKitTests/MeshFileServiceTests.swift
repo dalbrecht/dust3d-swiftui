@@ -85,3 +85,15 @@ extension MeshFileServiceTests {
         }
     }
 }
+
+extension MeshFileServiceTests {
+    func testShouldReturnTheExactArchiveSnapshotUsedForIndexedGeometry() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let loaded = try await MeshFileService().loadIndexedSnapshot(url: url)
+        XCTAssertEqual(loaded.data, try Data(contentsOf: url))
+        let independentlyLoaded = try MeshLoader.loadIndexed(data: loaded.data)
+        XCTAssertEqual(loaded.mesh.indices, independentlyLoaded.indices)
+        XCTAssertEqual(loaded.mesh.vertices.map(\.position), independentlyLoaded.vertices.map(\.position))
+    }
+}

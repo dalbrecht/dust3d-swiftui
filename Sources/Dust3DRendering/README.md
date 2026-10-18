@@ -35,8 +35,8 @@ and creates stable UInt32 indices with complete position/normal/color, UV, tange
 mapping and component seams. Shared `RenderBounds` keeps ordinary/textured camera
 normalization identical. Prepare outside the main actor; validate actual buffer
 lengths against the device limit before upload. Logical output quotas exclude
-source arrays, metadata/textures and indexing workspace. The separate baked-material encoder uses this representation; current app
-viewports still use ordinary previews. See ADR 0063 and
+source arrays, metadata/textures and indexing workspace. The baked-material encoder uses this representation in both native app
+viewports, with ordinary previews retained during baking and on optional failure. See ADR 0063 and
 `docs/textured-render-geometry-verification.md` for tests and remaining integration.
 
 `TexturedMetalResourcesBuilder` performs preparation, admission and uploads on an
@@ -47,3 +47,10 @@ triangles after camera rotation. `TexturedMetalRenderingTests` exercises this
 production pass on a real Metal device, including pinned-core baked output.
 See ADR 0064 and `docs/metal-material-renderer-verification.md` for measured
 coverage, conservative transparency routing and remaining app/material limits.
+
+Supply `bakedMesh` paired with `meshRevision` to adopt materials asynchronously.
+Use `onMaterialError` for optional diagnostics (defaults to `onError`). The view
+retains orbit/zoom/fit/wireframe, rejects obsolete uploads and cancels detached
+work. Both ordinary and material resources can coexist for fallback; quotas do
+not claim a whole-process memory cap. See ADR 0065 and native material viewport
+verification for app lifecycle and acceptance evidence.

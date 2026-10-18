@@ -140,8 +140,8 @@ released. Task cancellation reaches a lifetime-pinned native token without actor
 re-entry; inherited generation observes phase boundaries. `MeshLoader.loadBaked`
 is a synchronous lower-level alternative for callers already off the main actor.
 
-The default apps retain their current preview behavior. PBR/transparency/AO and
-textured export still require renderer integration and acceptance evidence. See
+Both apps now use bounded background material previews with ordinary geometry
+fallback. AO, textured export and full Qt parity still require acceptance. See
 [ADR 0061](docs/adr/0061-copied-baked-mesh-sdk.md) and
 [verification](docs/swift-baked-mesh-verification.md). Run `make ci` before publication.
 
@@ -159,14 +159,14 @@ lower-level boundary for callers already outside the main actor.
 Decoding preserves source-encoded RGB, straight alpha and scanline orientation;
 it does not apply EXIF transforms or normalize color profiles. Keyed transparent
 2/4/8-bit grayscale matches Qt's zeroed RGB policy. Logical quotas do
-not include ImageIO/native workspace or the retained archive. Existing previews
-remain untextured. See [ADR 0062](docs/adr/0062-retained-color-image-decoding.md)
+not include ImageIO/native workspace or the retained archive. Both native apps
+now use this service for material previews. See [ADR 0062](docs/adr/0062-retained-color-image-decoding.md)
 and [verification](docs/archive-texture-decoding-verification.md).
 
 ### Material renderer stage
 
 The shared rendering module now contains a separate baked-material Metal encoder,
 with actor-built owned resources, sRGB color/emission maps, linear normal/scalar
-maps, GGX direct lighting and camera-sorted transparency. Existing app viewports
-still use their ordinary preview renderer. See [ownership and limitations](docs/adr/0064-owned-metal-material-renderer.md)
+maps, GGX direct lighting and camera-sorted transparency. Both app viewports now adopt this encoder asynchronously, retaining ordinary
+geometry while baking and on optional material failures. See [ownership and limitations](docs/adr/0064-owned-metal-material-renderer.md)
 and [GPU verification](docs/metal-material-renderer-verification.md).

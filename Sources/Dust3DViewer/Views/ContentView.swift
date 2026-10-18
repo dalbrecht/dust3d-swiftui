@@ -28,7 +28,11 @@ struct ContentView: View {
             }
             ZStack {
                 if let mesh = store.mesh {
-                    MeshViewport(mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset) { message in
+                    MeshViewport(
+                        mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
+                        meshRevision: store.meshRevision + store.materialRevision, bakedMesh: store.bakedMesh,
+                        onMaterialError: { store.materialFailed($0) }
+                    ) { message in
                         rendererError = message
                     }
                     .id(store.meshRevision)
@@ -48,6 +52,22 @@ struct ContentView: View {
                         .padding(24)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
+            }
+            if store.isBakingMaterials {
+                ProgressView("Updating materials…").controlSize(.small).padding(8)
+            }
+            if let issue = store.materialIssue {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Showing geometry without materials")
+                        Text(issue).textSelection(.enabled)
+                    }
+                    Spacer()
+                    Button("Retry Materials") { store.retryMaterials() }
+                        .disabled(store.isLoading || store.isBakingMaterials)
+                }
+                .font(.caption).padding(12)
             }
             Divider()
             HStack {
@@ -100,6 +120,7 @@ struct ContentView: View {
             }
         }
         .onOpenURL { store.open($0) }
+        .onDisappear { store.stop() }
         .onChange(of: store.meshRevision) { rendererError = nil }
         .focusedSceneValue(\.openDocument, { isImporterPresented = true })
     }

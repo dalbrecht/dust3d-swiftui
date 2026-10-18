@@ -224,12 +224,19 @@ Cache state is transient and is never saved in the archive. See
 Model part inspectors expose Metallic, Roughness and Glow drafts. Return or Apply
 commits one undo step; Escape or Reset Draft restores the current document value without
 editing. Unsupported source values remain until explicit replacement. These
-values are saved, but the current preview does not display their material effects.
+values are saved and now refresh the background baked-material preview.
 See [material parameter verification](../../docs/part-material-verification.md).
 
 Component color controls provide a native picker and a hex draft. Apply/Return
 commits one undo step; Reset Draft/Escape restores the current source color.
 Use Default Color removes the explicit attribute. Unsupported source values stay
 unmodified until replacement/removal. RGB updates regenerate procedural colors;
-alpha is saved, but the current preview remains opaque. Color-space conversion is
+alpha is saved and displayed through the baked-material transparency pass. Color-space conversion is
 confined to the UI boundary. See [verification](../../docs/component-color-verification.md).
+
+Material generation follows current ordinary geometry, with bounded 512/256/128
+preview maps. Material-only edits, undo/redo, replacement and close invalidate
+obsolete work. Failures retain ordinary geometry with the original diagnostic
+and Retry Materials; baked output never changes document bytes or undo history.
+See [native material verification](../../docs/native-material-viewports-verification.md)
+for acceptance evidence and remaining transparency, AO and parity limits.

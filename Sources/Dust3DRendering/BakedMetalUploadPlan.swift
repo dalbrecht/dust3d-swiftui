@@ -3,12 +3,22 @@ import Foundation
 import Metal
 
 /// Preflight and allocation failures preserve the specific resource or policy boundary.
-enum BakedMetalPreparationError: Error, Equatable {
+enum BakedMetalPreparationError: LocalizedError, Equatable {
     case invalidLimits
     case invalidTexture(String)
     case payloadLimitExceeded
     case invalidCamera
     case unavailable(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidLimits: return "The material renderer resource limits are invalid."
+        case .invalidTexture(let name): return "The \(name) material texture has invalid dimensions or pixel storage."
+        case .payloadLimitExceeded: return "The material preview exceeds its combined GPU payload limit."
+        case .invalidCamera: return "The material preview camera contains invalid values."
+        case .unavailable(let cause): return cause
+        }
+    }
 }
 
 /// A validated CPU view; source padding is separate from tightly allocated GPU payload.

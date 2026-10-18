@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show baked color, normal, metallic, roughness and emission in both native app viewports, with background preparation, camera continuity, ordinary-geometry fallback, original diagnostics and material retry; editor changes and undo invalidate obsolete bakes, and viewer baking uses one exact file snapshot.
+
 - Add an owned background-uploaded Metal material renderer with color, normal, metallic, roughness and emission maps, linear alpha blending, depth handling and camera-sorted transparency. Production-encoder GPU tests cover pinned-core output; app viewport adoption remains pending.
 
 - Prepare bounded, seam-aware indexed baked geometry for subsequent shared Metal adoption, retaining UVs, tangent frames, mapping states and component metadata; existing app previews remain unchanged.

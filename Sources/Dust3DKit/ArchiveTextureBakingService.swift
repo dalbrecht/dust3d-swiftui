@@ -32,8 +32,20 @@ public enum ArchiveTextureBakingError: Error, Equatable, Sendable {
     case imageDecoding(assetName: String, cause: MeshPNGDecodingError)
 }
 
+/// Injectable archive material boundary shared by native app previews.
+public protocol ArchiveTextureBaking: Sendable {
+    /// Bake a complete archive without changing retained document bytes.
+    /// - Parameters:
+    ///   - data: Complete archive snapshot.
+    ///   - options: Native output dimensions and quotas.
+    ///   - limits: Independent retained-image admission quotas.
+    /// - Returns: Copied geometry and matching material maps.
+    /// - Throws: Original archive, image, native or cancellation errors.
+    func load(data: Data, options: MeshBakeOptions, limits: ArchiveTextureLimits) async throws -> MeshWithBakedTextures
+}
+
 /// Shared archive-to-baker infrastructure, isolated from observable UI state.
-public actor ArchiveTextureBakingService {
+public actor ArchiveTextureBakingService: ArchiveTextureBaking {
     private let baker = MeshBakingService()
 
     /// Create a background service for the standalone viewer or editor.

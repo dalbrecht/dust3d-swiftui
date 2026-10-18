@@ -16,7 +16,15 @@ final class EditorStore {
         guard !previewState.isStale, !isWorking, !stopped else { return nil }
         return previewState.value?.sourceHints
     }
+    private(set) var materialState = MeshPreviewState<MeshWithBakedTextures>()
+    var bakedMesh: MeshWithBakedTextures? {
+        materialRenderError == nil && !materialState.isStale ? materialState.value : nil
+    }
+    var isBakingMaterials: Bool { materialState.isGenerating }
+    var materialRenderError: String?
+    var materialIssue: String? { materialRenderError ?? materialState.errorMessage }
     var previewRevision: Int { previewState.revision }
+    var materialViewportRevision: Int { previewState.revision + materialState.revision }
     var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
     var renderError: String?
@@ -40,6 +48,8 @@ final class EditorStore {
     var onDocumentChanged: ((Data) -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
     private let session = EditorSession()
+    private let materialBaker: any ArchiveTextureBaking
+    private(set) var materialGeneration: Task<Void, Never>?
     private let preview: any EditorPreviewServing
     private var previewScopeID = UUID()
     private(set) var previewCacheStatistics: MeshGenerationStatistics?
@@ -55,10 +65,12 @@ final class EditorStore {
 
     init(
         referenceImages: any ReferenceImageServing = ReferenceImageService(),
-        preview: any EditorPreviewServing = EditorPreviewService()
+        preview: any EditorPreviewServing = EditorPreviewService(),
+        materialBaker: any ArchiveTextureBaking = ArchiveTextureBakingService()
     ) {
         self.referenceImages = referenceImages
         self.preview = preview
+        self.materialBaker = materialBaker
     }
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
@@ -470,7 +482,12 @@ final class EditorStore {
                 errorMessage = nil
                 if commits && changed {
                     onDocumentChanged?(next.document.encoded())
-                    if regenerateMesh { generate(next) }
+                    if regenerateMesh {
+                        generate(next)
+                    } else {
+                        clearMaterials()
+                        if !previewState.isStale, mesh != nil { generateMaterials(next) }
+                    }
                     if reloadReferenceImage { refreshReferenceImage(next) }
                 }
                 succeeded = true
@@ -481,6 +498,7 @@ final class EditorStore {
     }
 
     private func clearPreview() {
+        clearMaterials()
         generation?.cancel()
         previewState.clear()
         previewCacheStatistics = nil
@@ -499,6 +517,7 @@ final class EditorStore {
     }
 
     private func generate(_ snapshot: EditorSnapshot) {
+        clearMaterials()
         generation?.cancel()
         renderError = nil
         guard snapshot.hasEnabledGeometry else {
@@ -522,12 +541,47 @@ final class EditorStore {
                 previewSourceIssue = result.sourceIssue
                 if let output = result.output {
                     previewState.succeed(output, requestID: requestID)
+                    if let currentSnapshot = self.snapshot { generateMaterials(currentSnapshot) }
                 } else {
                     previewState.succeedEmpty(requestID: requestID)
                 }
             } catch {
                 guard !Task.isCancelled, !stopped, scopeID == previewScopeID else { return }
                 previewState.fail(Self.message(error), requestID: requestID)
+            }
+        }
+    }
+
+    private func clearMaterials() {
+        materialGeneration?.cancel()
+        materialState.clear()
+        materialRenderError = nil
+    }
+
+    func retryMaterials() {
+        guard !stopped, !isWorking, !previewState.isGenerating, !previewState.isStale,
+            mesh != nil, let snapshot
+        else { return }
+        generateMaterials(snapshot)
+    }
+
+    private func generateMaterials(_ snapshot: EditorSnapshot) {
+        materialGeneration?.cancel()
+        materialRenderError = nil
+        let requestID = UUID()
+        let scopeID = previewScopeID
+        materialState.begin(requestID: requestID)
+        materialGeneration = Task { [materialBaker] in
+            do {
+                let result = try await materialBaker.load(
+                    data: snapshot.document.encoded(),
+                    options: MeshBakeOptions(colorSize: 512, normalSize: 256, materialSize: 128, atlasTextureSize: 512),
+                    limits: ArchiveTextureLimits())
+                guard !Task.isCancelled, !stopped, scopeID == previewScopeID else { return }
+                materialState.succeed(result, requestID: requestID)
+            } catch {
+                guard !Task.isCancelled, !stopped, scopeID == previewScopeID else { return }
+                materialState.fail(error.localizedDescription, requestID: requestID)
             }
         }
     }
