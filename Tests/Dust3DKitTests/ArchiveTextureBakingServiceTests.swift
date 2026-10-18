@@ -5,6 +5,26 @@ import XCTest
 @testable import Dust3DKit
 
 final class ArchiveTextureBakingServiceTests: XCTestCase {
+    func test_should_publish_actionable_archive_and_png_diagnostics() {
+        let pngErrors: [(MeshPNGDecodingError, String)] = [
+            (.invalidLimits, "limits"), (.encodedLimitExceeded, "encoded"), (.invalidPNG, "PNG"),
+            (.decodedLimitExceeded, "decoded"), (.unsupportedPixelLayout, "pixel"),
+        ]
+        for (cause, expected) in pngErrors {
+            XCTAssertTrue(cause.localizedDescription.contains(expected))
+            let wrapped = ArchiveTextureBakingError.imageDecoding(assetName: "images/broken.png", cause: cause)
+            XCTAssertTrue(wrapped.localizedDescription.contains("images/broken.png"))
+            XCTAssertTrue(wrapped.localizedDescription.contains(cause.localizedDescription))
+        }
+        for (cause, expected) in [
+            (ArchiveTextureBakingError.invalidLimits, "limits"),
+            (.encodedLimitExceeded, "encoded"), (.decodedLimitExceeded, "decoded"),
+            (.missingAsset("images/missing.png"), "images/missing.png"),
+        ] {
+            XCTAssertTrue(cause.localizedDescription.contains(expected))
+        }
+    }
+
     func test_should_bake_retained_png_without_modifying_archive_assets() async throws {
         let bytes = try archive()
         let document = try Dust3DDocument(data: bytes)

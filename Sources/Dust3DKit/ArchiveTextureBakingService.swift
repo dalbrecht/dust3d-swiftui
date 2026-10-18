@@ -24,16 +24,40 @@ public struct ArchiveTextureLimits: Sendable {
 }
 
 /// Resource failures and per-asset decoder causes; document/native errors propagate unchanged.
-public enum ArchiveTextureBakingError: Error, Equatable, Sendable {
+public enum ArchiveTextureBakingError: LocalizedError, Equatable, Sendable {
     case invalidLimits
     case encodedLimitExceeded
     case decodedLimitExceeded
     case missingAsset(String)
     case imageDecoding(assetName: String, cause: MeshPNGDecodingError)
+
+    /// Keep the retained asset identity and underlying decoder cause in UI notices.
+    public var errorDescription: String? {
+        switch self {
+        case .invalidLimits: return "The material image resource limits are invalid."
+        case .encodedLimitExceeded: return "The encoded material images exceed the configured input limit."
+        case .decodedLimitExceeded: return "The decoded material images exceed the configured input limit."
+        case .missingAsset(let name): return "The material image asset \(name) is missing from the document."
+        case .imageDecoding(let name, let cause):
+            return "Could not decode material image \(name): \(cause.localizedDescription)"
+        }
+    }
+}
+
+/// Injectable archive material boundary shared by native app previews.
+public protocol ArchiveTextureBaking: Sendable {
+    /// Bake a complete archive without changing retained document bytes.
+    /// - Parameters:
+    ///   - data: Complete archive snapshot.
+    ///   - options: Native output dimensions and quotas.
+    ///   - limits: Independent retained-image admission quotas.
+    /// - Returns: Copied geometry and matching material maps.
+    /// - Throws: Original archive, image, native or cancellation errors.
+    func load(data: Data, options: MeshBakeOptions, limits: ArchiveTextureLimits) async throws -> MeshWithBakedTextures
 }
 
 /// Shared archive-to-baker infrastructure, isolated from observable UI state.
-public actor ArchiveTextureBakingService {
+public actor ArchiveTextureBakingService: ArchiveTextureBaking {
     private let baker = MeshBakingService()
 
     /// Create a background service for the standalone viewer or editor.

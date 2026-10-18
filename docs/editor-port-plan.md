@@ -392,3 +392,49 @@ emission sampling, linear blending, opaque depth and cancellable camera ordering
 bake rendering and independent GPU fixtures. App viewport adoption and bake
 scheduling/invalidation are the next integration stage. AO, imports, material
 image controls, exports and full M4/Qt acceptance remain incomplete.
+
+## Native material viewport adoption (Apple #131, in progress)
+
+Both apps now locally adopt the reviewed material encoder through the shared
+viewport. Bounded background bakes and GPU uploads preserve camera state, reject
+obsolete completions and retain ordinary geometry with original failure causes
+and retry. Material-only editor edits refresh independently of geometry/history;
+the viewer uses one exact bounded archive snapshot. See ADR 0065 and
+[native acceptance record](native-material-viewports-verification.md). The full
+local gate passes 613 tests; native material edits, history, save/reopen,
+wireframe, camera and automatic first-frame checks pass. Automated review and
+remote CI remain required before merge; this does not complete M4.
+
+## macOS rendered file previews (Apple #132, required)
+
+The user requires rendered `.ds3` previews outside the app. Prioritize this after
+native material viewport adoption (#131), before unrelated editor features.
+Implement both a Finder thumbnail provider (`QLThumbnailProvider`) and a Quick
+Look preview extension (`NSViewController` conforming to `QLPreviewingController`).
+Show the actual object through the shared Qt-free pipeline; a generic app icon
+is not acceptance. Quick Look is read-only, with orbit/zoom/fit where supported
+and a rendered static fallback when necessary.
+
+- Existing archives must work on demand without a re-save. Investigate upstream
+  embedded preview conventions before optionally using them; `canvas.png` is a
+  reference image and must not masquerade as a rendered model thumbnail.
+- Match requested dimensions, scale and aspect; fit a deterministic camera and
+  background, preserve color/alpha semantics and reject malformed or oversized
+  inputs. Budget extension work, handle cancellation and unavailable GPU cases,
+  and never write the source file, use the network or depend on editor state.
+- Unify document-type declarations and select one owning app bundle to avoid
+  competing providers when viewer and editor coexist. Keep shared sources and
+  dependencies in SwiftPM; document deterministic `.appex` build/embedding,
+  resources, entry points, entitlements, signing and OS discovery. A standalone
+  SwiftPM executable is not evidence of registered Quick Look support.
+- Verify actual Finder icons/gallery/preview-pane behavior, Quick Look Space-bar
+  rendering, applicable native open panels, and rebuild/install/upgrade behavior
+  without stale registrations. Test independent recognizable models, textured,
+  empty, malformed and large files, and unchanged source bytes after preview.
+- Include automated framing/render/lifecycle tests and native screenshots with
+  the PR. Offscreen images alone do not prove Finder integration. Full local
+  gate, final-head review and all remote CI must pass before merge. Distribution
+  signing/notarization and platform limits must be reported honestly.
+
+References: [Apple thumbnail extensions](https://developer.apple.com/documentation/quicklookthumbnailing/providing-thumbnails-of-your-custom-file-types)
+and [Quick Look UI](https://developer.apple.com/documentation/quicklookui/).

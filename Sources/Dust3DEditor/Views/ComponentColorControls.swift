@@ -44,7 +44,7 @@ struct ComponentColorControls: View {
             }
             .accessibilityLabel("Remove explicit component color")
             .disabled(component.color == .unset)
-            Text("Apply is one undo step. Opacity is saved; the current mesh preview stays opaque.")
+            Text("Apply is one undo step. Color and opacity update the material preview in the background.")
                 .font(.caption).foregroundStyle(.primary)
         }
         .onChange(of: component.id, initial: true) { _, _ in reset() }

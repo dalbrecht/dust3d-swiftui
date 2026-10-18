@@ -3,12 +3,23 @@ import Foundation
 import ImageIO
 
 /// PNG decoding failures remain separate from document preservation and mesh generation.
-public enum MeshPNGDecodingError: Error, Equatable, Sendable {
+public enum MeshPNGDecodingError: LocalizedError, Equatable, Sendable {
     case invalidLimits
     case encodedLimitExceeded
     case invalidPNG
     case decodedLimitExceeded
     case unsupportedPixelLayout
+
+    /// Specific decoder cause suitable for a retained-asset diagnostic.
+    public var errorDescription: String? {
+        switch self {
+        case .invalidLimits: return "The PNG decoding limits are invalid."
+        case .encodedLimitExceeded: return "The encoded PNG exceeds the configured input limit."
+        case .invalidPNG: return "The image is not a complete, supported PNG."
+        case .decodedLimitExceeded: return "The decoded PNG exceeds its dimension or storage limit."
+        case .unsupportedPixelLayout: return "The PNG pixel layout is not supported."
+        }
+    }
 }
 
 /// Apple image boundary for source-encoded, unassociated RGBA8 bake inputs.
