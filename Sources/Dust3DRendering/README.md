@@ -35,6 +35,15 @@ and creates stable UInt32 indices with complete position/normal/color, UV, tange
 mapping and component seams. Shared `RenderBounds` keeps ordinary/textured camera
 normalization identical. Prepare outside the main actor; validate actual buffer
 lengths against the device limit before upload. Logical output quotas exclude
-source arrays, metadata/textures and indexing workspace. No current viewport or
-shader uses this new representation yet. See ADR 0063 and
+source arrays, metadata/textures and indexing workspace. The separate baked-material encoder uses this representation; current app
+viewports still use ordinary previews. See ADR 0063 and
 `docs/textured-render-geometry-verification.md` for tests and remaining integration.
+
+`TexturedMetalResourcesBuilder` performs preparation, admission and uploads on an
+actor and transfers fresh noncopyable GPU ownership into `TexturedMeshRenderer`.
+The encoder consumes color/normal/metallic/roughness/emission maps, blends linear
+straight alpha into BGRA8 sRGB, writes opaque depth and sorts transparent
+triangles after camera rotation. `TexturedMetalRenderingTests` exercises this
+production pass on a real Metal device, including pinned-core baked output.
+See ADR 0064 and `docs/metal-material-renderer-verification.md` for measured
+coverage, conservative transparency routing and remaining app/material limits.
