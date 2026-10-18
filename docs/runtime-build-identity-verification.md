@@ -68,3 +68,16 @@ Qt-free and signed canonical/QA package checks. Exact-head automated review and
 remote CI remain required. Earlier
 native captures above predate this build-order correction; the app reader and
 diagnostics presentation are unchanged.
+
+## Automated review correction: post-build process recheck
+
+Review identified a stale pre-build guard when a target launches during a long
+compilation. Three orchestration regressions first reproduced replacement of the
+original executable in viewer, canonical editor and QA editor build-only modes.
+The script now rechecks the same exact target immediately before the first bundle
+mutation. All three tests retain the original binary bytes and reject packaging
+with the original running-target diagnostic. The corrected full `make ci` passes
+690 Swift tests in 126.652 seconds with zero failures, 14 build-support tests,
+formatting/build/coverage, Qt-free linkage and signed canonical/QA package checks.
+Fresh exact-head review and remote CI remain required. This is a recheck
+at the mutation boundary, not a cross-process launch lock.

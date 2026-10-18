@@ -41,6 +41,8 @@ esac
 python3 -B "$ROOT_DIR/script/check_running_app.py" "$APP_BINARY"
 ./script/swift.sh build --product "$APP_NAME"
 BUILD_DIR="$DUST3D_BINARY_DIR"
+# The target may have launched during compilation; check again before touching its bundle.
+python3 -B "$ROOT_DIR/script/check_running_app.py" "$APP_BINARY"
 mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources" "$ARCHIVE_OUTPUT_DIR"
 cp "$BUILD_DIR/$APP_NAME" "$APP_BINARY"
 cp "$ROOT_DIR/assets/app-icons/$APP_NAME.icns" "$APP_CONTENTS/Resources/$APP_NAME.icns"

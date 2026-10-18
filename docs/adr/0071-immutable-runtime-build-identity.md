@@ -32,8 +32,9 @@ logs carry source/core/digest/dirty fields and process ID without document paths
 
 `--editor-qa` reuses org.dust3d.editor.combine-qa and separate default output/archive
 directories. QA bundles remove copied Quick Look/thumbnail providers; canonical
-org.dust3d.editor remains their sole owner. Every packaging mode first checks the
-exact target executable path and refuses to overwrite a running bundle. It does
+org.dust3d.editor remains their sole owner. Every packaging mode checks the exact target executable path before compilation
+and rechecks immediately before modifying the bundle, refusing to replace a
+target that started while compilation was running. It does
 not terminate editors or conflate other QA/canonical paths. Launch verification
 also checks that exact executable rather than any process with the same basename.
 
