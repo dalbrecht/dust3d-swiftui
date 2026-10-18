@@ -39,8 +39,10 @@ final class FilePreviewDocumentTests: XCTestCase {
             let preview = try await FilePreviewDocumentService().load(url: url)
             XCTAssertNotNil(preview.bakedMesh)
             XCTAssertEqual(preview.materialSourceCapabilities.hasLegacySurfaceDetails, legacy)
+            XCTAssertEqual(preview.compatibilityWarning(), preview.mesh?.warning, "The GPU has not rendered yet")
             XCTAssertEqual(
-                preview.compatibilityWarning(), legacy ? "Procedural surface details are not yet displayed." : nil)
+                preview.compatibilityWarning(materialsRendered: true),
+                legacy ? "Procedural surface details are not yet displayed." : nil)
             XCTAssertEqual(preview.compatibilityWarning(materialRenderingFailed: true), preview.mesh?.warning)
             XCTAssertEqual(try Data(contentsOf: url), source.encoded())
             let failed = try await FilePreviewDocumentService(materialBaker: MissingPreviewImage()).load(url: url)

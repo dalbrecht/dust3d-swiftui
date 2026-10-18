@@ -24,7 +24,7 @@ and Quick Look, without changing source archives, core pin or dependencies.
   the legacy notice in narrow columns. A layout regression first failed at 200/250
   points, then passes at 200/250/640 after host sizing and adaptive footer changes.
 
-Final `make ci` passes 683 tests with zero failures in 106.737 seconds, plus
+Before the review correction, `make ci` passed 683 tests with zero failures in 106.737 seconds, plus
 build, strict formatting, Qt-free linkage and packaged app/extension rebuild checks.
 Measured Swift lines: Kit 1454/1474; Document 3303/3391; EditorModel 1545/1551;
 pure EditorState 534/534, Undo 97/97 and Orbit 33/33. These do not measure
@@ -74,3 +74,23 @@ states and final narrow-host readability pass. Native appearance evidence is dar
 mode. Full VoiceOver, keyboard-only navigation, actual forced GPU failure, light
 appearance and renewed Finder Space-bar acceptance are not established by these
 checks. Pure/layout tests do not establish full native accessibility or M4 parity.
+
+## Automated review correction: GPU readiness
+
+CPU bake completion no longer clears or downgrades the notice. Viewer, editor and
+Quick Look require a successful Metal command completion from the current material
+renderer. View/revision guards reject detached or obsolete callbacks, and material
+replacement clears readiness. The regression tests first reproduced premature
+warning removal in the viewer and Quick Look; renderer tests distinguish resource
+upload from frame completion and reject a detached renderer callback. The full corrected `make ci` passes 683 tests in 137.887 seconds with zero failures,
+plus build, formatting, coverage and Qt-free/package checks. Coverage measurements
+remain as recorded above.
+
+Freshly staged viewer PID 70891 and canonical Quick Look provider PID 72478 were
+started after the correction build. OS open-panel Quick Look rendered the retained
+image fixture without the obsolete image notice and retained the fully wrapped
+legacy-only notice for the legacy fixture. These observations verify the final
+rendered states; the upload interval itself is covered by deterministic regression
+tests rather than a timing-sensitive screenshot. The current Open panel has kept
+its Open button disabled, so a new standalone viewer document-load check has not
+yet been established for this correction.

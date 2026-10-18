@@ -179,10 +179,12 @@ struct EditorRootView: View {
                     Button("Retry Preview") { store.retryPreview() }.disabled(store.isGenerating)
                 }
             } else if let mesh = store.mesh {
+                let materialRevision = store.materialViewportRevision
                 MeshViewport(
                     mesh: mesh, isWireframe: store.isWireframe, cameraReset: store.cameraReset,
                     meshRevision: store.materialViewportRevision, bakedMesh: store.bakedMesh,
-                    onMaterialError: { store.materialRenderError = $0 }
+                    onMaterialError: { store.materialRenderError = $0 },
+                    onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                 ) { store.renderError = $0 }
                 .accessibilityLabel("3D mesh preview")
                 if store.isBakingMaterials {

@@ -14,10 +14,12 @@ final class MaterialViewportTests: XCTestCase {
         view.depthStencilPixelFormat = .depth32Float
         let baked = try BakedMetalFixture.quad()
         var errors: [String] = []
+        var renderedFrames = 0
         func update(_ material: MeshWithBakedTextures?, revision: Int = 1, reset: Int = 0) {
             MeshViewport(
                 mesh: indexed(baked), isWireframe: true, cameraReset: reset, meshRevision: revision,
-                bakedMesh: material, onMaterialError: { errors.append($0) }, onError: { errors.append($0) }
+                bakedMesh: material, onMaterialError: { errors.append($0) },
+                onMaterialRendered: { renderedFrames += 1 }, onError: { errors.append($0) }
             ).updateRenderer(in: view)
         }
         update(nil)
@@ -29,7 +31,10 @@ final class MaterialViewportTests: XCTestCase {
         view.orbitCamera.orbit(horizontal: 5, vertical: 3)
         let latest = view.orbitCamera
         await view.materialTask?.value
-        XCTAssertNotNil(view.materialRenderer)
+        XCTAssertEqual(renderedFrames, 0, "Resource upload alone must not report a rendered frame")
+        let previousRenderer = try XCTUnwrap(view.materialRenderer)
+        previousRenderer.onRendered?()
+        XCTAssertEqual(renderedFrames, 1)
         XCTAssertEqual(view.colorPixelFormat, .bgra8Unorm_srgb)
         XCTAssertEqual(view.orbitCamera.yaw, latest.yaw)
         XCTAssertNotEqual(latest.yaw, camera.yaw)
@@ -37,6 +42,8 @@ final class MaterialViewportTests: XCTestCase {
         XCTAssertTrue(view.materialRenderer?.isWireframe == true)
         update(nil, revision: 2)
         XCTAssertNil(view.materialRenderer)
+        previousRenderer.onRendered?()
+        XCTAssertEqual(renderedFrames, 1, "Detached renderer completion must be ignored")
         XCTAssertEqual(view.colorPixelFormat, .bgra8Unorm)
         XCTAssertEqual(view.orbitCamera.yaw, latest.yaw)
         update(baked, revision: 3, reset: 1)

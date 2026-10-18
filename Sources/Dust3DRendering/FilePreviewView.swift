@@ -6,6 +6,7 @@ public struct FilePreviewView: View {
     @State private var isWireframe = false
     @State private var cameraReset = 0
     @State private var renderIssue: String?
+    @State private var materialsRendered = false
     @State private var materialRenderIssue: String?
 
     /// Display one immutable prepared document in a Quick Look host.
@@ -24,7 +25,11 @@ public struct FilePreviewView: View {
                 MeshViewport(
                     mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
                     bakedMesh: materialRenderIssue == nil ? document.bakedMesh : nil,
-                    onMaterialError: { materialRenderIssue = $0 }, onError: { renderIssue = $0 }
+                    onMaterialError: {
+                        materialRenderIssue = $0
+                        materialsRendered = false
+                    },
+                    onMaterialRendered: { materialsRendered = true }, onError: { renderIssue = $0 }
                 )
                 .accessibilityLabel("Read-only 3D object preview")
             } else {
@@ -40,7 +45,9 @@ public struct FilePreviewView: View {
                     Text(issue).textSelection(.enabled)
                 }.font(.caption).frame(maxWidth: .infinity, alignment: .leading).padding(10)
             }
-            if let warning = document.compatibilityWarning(materialRenderingFailed: materialRenderIssue != nil) {
+            if let warning = document.compatibilityWarning(
+                materialsRendered: materialsRendered, materialRenderingFailed: materialRenderIssue != nil)
+            {
                 Text(warning).font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true).padding(8)
             }

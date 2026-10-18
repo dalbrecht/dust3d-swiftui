@@ -11,7 +11,7 @@ No package dependency or core revision changes. Existing engine warning strings
 remain unchanged in geometry; presentation recognizes only the exact pinned
 image-only and combined image/surface notices. Unknown warnings stay verbatim.
 
-When current baked output is available, the image-only warning disappears. The
+After the current material renderer completes a successful GPU frame, the image-only warning disappears. The
 combined warning becomes a surface-only warning when legacy metadata is present,
 disappears when that metadata is absent, and says surface details could not be
 verified when interpretation is unavailable. It never claims a displayed image
@@ -33,12 +33,14 @@ Viewer source metadata follows the same request/revision acceptance as its mesh.
 Replacement cannot pair old capabilities with new geometry; stop clears them.
 The original source interpretation cause remains visible independently of
 optional material/GPU failures. Existing bake request IDs continue to reject
-obsolete output.
+obsolete output. CPU baking and resource upload do not establish rendering readiness.
+A once-per-renderer GPU command completion reports readiness only while that renderer
+is still the active delegate for the accepted revision. Replacement clears readiness.
 
 Quick Look already parses and validates document components before generating
 geometry. It derives capabilities from that same parsed value, without a second
 read or parse. The immutable `FilePreviewDocument` carries them to the host;
-`compatibilityWarning(materialRenderingFailed:)` is independently testable.
+`compatibilityWarning(materialsRendered:materialRenderingFailed:)` is independently testable.
 The host owns available size: remove the SwiftUI root's fixed 320-point minimum
 and adapt the footer with ViewThatFits so narrow native preview columns wrap
 notices instead of clipping them. The controller retains its 640×480 preferred

@@ -137,6 +137,10 @@ final class ViewerMaterialTests: XCTestCase {
             XCTAssertEqual(store.previewCompatibilityWarning, warning)
             await baker.finish(0, baked)
             await store.materialTask?.value
+            XCTAssertEqual(store.previewCompatibilityWarning, warning, "CPU baking must not imply GPU readiness")
+            store.materialsRendered(revision: store.meshRevision + store.materialRevision - 1)
+            XCTAssertEqual(store.previewCompatibilityWarning, warning)
+            store.materialsRendered(revision: store.meshRevision + store.materialRevision)
             switch capabilities {
             case .known(false): XCTAssertNil(store.previewCompatibilityWarning)
             case .known(true):

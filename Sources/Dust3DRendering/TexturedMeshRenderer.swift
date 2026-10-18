@@ -19,6 +19,8 @@ final class TexturedMeshRenderer: NSObject, MTKViewDelegate {
     private weak var presentationView: MTKView?
     private(set) var orderingError: (any Error)?
     private(set) var renderingError: (any Error)?
+    private var hasRenderedFrame = false
+    var onRendered: (() -> Void)?
     var onError: ((any Error) -> Void)?
     var isWireframe = false
     var camera: OrbitCamera {
@@ -92,8 +94,16 @@ final class TexturedMeshRenderer: NSObject, MTKViewDelegate {
         encoder.endEncoding()
         command.present(drawable)
         command.addCompletedHandler { [weak self] completed in
-            guard let error = completed.error else { return }
-            Task { @MainActor [weak self] in self?.report(error) }
+            let error = completed.error
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let error {
+                    self.report(error)
+                } else if self.renderingError == nil && !self.hasRenderedFrame {
+                    self.hasRenderedFrame = true
+                    self.onRendered?()
+                }
+            }
         }
         command.commit()
     }

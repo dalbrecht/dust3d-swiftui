@@ -28,10 +28,12 @@ struct ContentView: View {
             }
             ZStack {
                 if let mesh = store.mesh {
+                    let materialRevision = store.meshRevision + store.materialRevision
                     MeshViewport(
                         mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
                         meshRevision: store.meshRevision + store.materialRevision, bakedMesh: store.bakedMesh,
-                        onMaterialError: { store.materialFailed($0) }
+                        onMaterialError: { store.materialFailed($0) },
+                        onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                     ) { message in
                         rendererError = message
                     }

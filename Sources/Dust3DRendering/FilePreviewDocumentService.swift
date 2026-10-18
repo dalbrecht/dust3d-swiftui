@@ -22,11 +22,14 @@ public struct FilePreviewDocument: Sendable {
     }
 
     /// Select the compatibility notice for the representation actually available in the system host.
-    /// - Parameter materialRenderingFailed: True after a GPU/material upload failure forces ordinary geometry.
+    /// - Parameters:
+    ///   - materialsRendered: True only after the current GPU renderer completes a material frame.
+    ///   - materialRenderingFailed: True after a GPU/material upload failure forces ordinary geometry.
     /// - Returns: Remaining source/representation limitations, retaining unknown warnings verbatim.
-    public func compatibilityWarning(materialRenderingFailed: Bool = false) -> String? {
+    public func compatibilityWarning(materialsRendered: Bool = false, materialRenderingFailed: Bool = false) -> String?
+    {
         MaterialPreviewWarning.message(
-            mesh?.warning ?? "", hasBakedMaterials: bakedMesh != nil && !materialRenderingFailed,
+            mesh?.warning ?? "", hasBakedMaterials: materialsRendered && bakedMesh != nil && !materialRenderingFailed,
             hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails)
     }
 }
