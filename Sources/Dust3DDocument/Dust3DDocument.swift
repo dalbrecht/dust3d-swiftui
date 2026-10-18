@@ -80,6 +80,16 @@ public enum DocumentCommand: Sendable {
     /// Throws `missingComponent` for an absent identity; semantic no-ops retain original archive bytes.
     /// Example: `.setComponentColor(id: id, color: DocumentColor(red: 255, green: 0, blue: 0))`.
     case setComponentColor(id: String, color: DocumentColor?)
+    /// Assign a retained image or remove an override; unreferenced/shared assets remain untouched.
+    /// Throws `TextureImageReferenceError` for unresolved resources, or `missingComponent`.
+    /// Example: `.setComponentColorImage(id: componentID, imageID: nil)` removes the override.
+    case setComponentColorImage(id: String, imageID: String?)
+    /// Atomically insert bounded PNG bytes and assign their image identity, preserving unrelated assets.
+    /// Existing identical bytes can be shared; conflicting identities throw without publication.
+    /// Throws `PNGContainerError`, `TextureImageReferenceError` or `DocumentError`.
+    /// Pixel/CRC validation is a platform import responsibility; this validates the PNG envelope.
+    /// Example: `.importComponentColorImage(id: componentID, imageID: freshID, png: bytes)`.
+    case importComponentColorImage(id: String, imageID: String, png: Data)
     /// Set one component combination mode, clearing legacy component inversion on a semantic change.
     /// Unknown unrelated XML/assets stay intact; semantic no-ops preserve original archive bytes.
     case setComponentCombineMode(id: String, mode: ComponentCombineMode)
@@ -311,8 +321,7 @@ public struct Dust3DDocument: Sendable {
         let imageIDs = PartSplitting.componentElements(model).compactMap {
             $0.attribute(forName: "colorImageId")?.stringValue
         }
-        let assets = items.map { DocumentTextureAssetMetadata(name: $0.name, kind: $0.type, byteCount: $0.range.count) }
-        return try DocumentTextureImages.references(imageIDs: imageIDs, assets: assets)
+        return try DocumentTextureImages.references(imageIDs: imageIDs, assets: textureAssetMetadata())
     }
 
     /// Qt-compatible reference image bytes, if canvas.png is an asset. Opaque input bytes are not decoded here.
@@ -455,6 +464,22 @@ public struct Dust3DDocument: Sendable {
         case .setComponentCombineMode(let id, let mode):
             guard try ComponentCombination.set(model, id: id, mode: mode) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentColorImage(let id, let imageID):
+            let element = try ComponentColorImageValue.element(model, id: id)
+            let canonical: String?
+            if let imageID {
+                canonical = try DocumentTextureImages.reference(imageID: imageID, assets: textureAssetMetadata())
+                    .imageID
+            } else {
+                canonical = nil
+            }
+            guard ComponentColorImageValue.set(element, imageID: canonical) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .importComponentColorImage(let id, let imageID, let png):
+            _ = try ComponentColorImageValue.element(model, id: id)
+            _ = try PNGContainerMetadata(data: png)
+            return try importingColorImage(imageID: imageID, png: png).applying(
+                .setComponentColorImage(id: id, imageID: imageID))
         case .setComponentColor(let id, let color):
             guard try ComponentColorValue.set(model, id: id, color: color) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
@@ -790,6 +815,15 @@ public struct Dust3DDocument: Sendable {
                     }
                 }
             }
+            for component in PartSplitting.componentElements(model) {
+                guard let attribute = component.attribute(forName: "colorImageId"), let text = attribute.stringValue
+                else { continue }
+                if text.isEmpty {
+                    component.removeAttribute(forName: "colorImageId")
+                } else if let identity = DocumentTextureImages.identityBytes(text) {
+                    attribute.stringValue = "{" + String(decoding: identity, as: UTF8.self) + "}"
+                }
+            }
             return model.xmlData(options: [.nodePreserveAll])
         }
         return try canonical(modelXML) == canonical(other.modelXML)
@@ -798,6 +832,55 @@ public struct Dust3DDocument: Sendable {
     private func replacingModel(_ model: Data) throws -> Dust3DDocument {
         guard model.count <= 16 * 1024 * 1024 else { throw DocumentError.limitExceeded }
         return try replacingItem(at: modelIndex, with: model)
+    }
+
+    private func textureAssetMetadata() -> [DocumentTextureAssetMetadata] {
+        items.map { DocumentTextureAssetMetadata(name: $0.name, kind: $0.type, byteCount: $0.range.count) }
+    }
+
+    private func importingColorImage(imageID: String, png: Data) throws -> Dust3DDocument {
+        guard let identity = DocumentTextureImages.identityBytes(imageID),
+            !identity.contains(47), !identity.contains(46),
+            imageID.unicodeScalars.allSatisfy({
+                !CharacterSet.controlCharacters.contains($0) && $0.value != 0xFFFE && $0.value != 0xFFFF
+            })
+        else { throw TextureImageReferenceError.invalidImageIdentity(imageID) }
+        let canonical = "{" + String(decoding: identity, as: UTF8.self) + "}"
+        let assetName = "images/\(canonical).png"
+        do {
+            let existing = try DocumentTextureImages.reference(imageID: canonical, assets: textureAssetMetadata())
+            guard asset(named: existing.assetName) == png else {
+                throw DocumentError.conflictingAsset(existing.assetName)
+            }
+            return self
+        } catch TextureImageReferenceError.missingAsset {
+            // A fresh import must not implicitly repair other components' missing resources.
+            let model = try Self.xml(modelXML, root: "canvas")
+            guard
+                !PartSplitting.componentElements(model).contains(where: {
+                    DocumentTextureImages.identityBytes($0.attribute(forName: "colorImageId")?.stringValue ?? "")
+                        == identity
+                })
+            else { throw DocumentError.conflictingAsset(assetName) }
+        }
+        guard !items.contains(where: { $0.name == assetName }) else { throw DocumentError.conflictingAsset(assetName) }
+        guard items.count < 10_000, bytes.count - payloadOffset <= 256 * 1024 * 1024 - png.count else {
+            throw DocumentError.limitExceeded
+        }
+        let xml = try Self.xml(header, root: "ds3")
+        let asset = XMLElement(name: "asset")
+        for (name, value) in [
+            ("name", assetName), ("offset", String(bytes.count - payloadOffset)), ("size", String(png.count)),
+        ] {
+            let attribute = XMLNode(kind: .attribute)
+            attribute.name = name
+            attribute.stringValue = value
+            asset.addAttribute(attribute)
+        }
+        xml.rootElement()?.addChild(asset)
+        var payload = Data(bytes[payloadOffset...])
+        payload.append(png)
+        return try rebuildingArchive(xml, payload: payload)
     }
 
     private func replacingReferenceImage(_ png: Data?) throws -> Dust3DDocument {

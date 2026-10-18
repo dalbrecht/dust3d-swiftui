@@ -99,6 +99,25 @@ final class ArchiveTextureBakingServiceTests: XCTestCase {
         } catch { XCTAssertTrue(error is CancellationError) }
     }
 
+    func test_should_bake_newly_imported_component_image_and_preserve_unreferenced_resources() async throws {
+        let original = try Dust3DDocument(data: archive(png: Data([9, 8, 7])))
+        let valid = try Dust3DDocument(data: archive())
+        let png = try XCTUnwrap(valid.asset(named: assetName))
+        let componentID = try XCTUnwrap(original.components().first?.id)
+        let importedID = "{jjjjjjjj-jjjj-jjjj-jjjj-jjjjjjjjjjjj}"
+        let edited = try original.applying(.importComponentColorImage(id: componentID, imageID: importedID, png: png))
+        let output = try await ArchiveTextureBakingService().load(
+            data: edited.encoded(), options: MeshBakeOptions(colorSize: 8, normalSize: 8, materialSize: 8))
+        var observed: Set<[UInt8]> = []
+        for offset in stride(from: 0, to: output.textures.color.pixels.count, by: 4) {
+            observed.insert(Array(output.textures.color.pixels[offset..<offset + 4]))
+        }
+        XCTAssertEqual(observed, [[255, 0, 0, 128], [0, 0, 255, 1]])
+        XCTAssertEqual(edited.asset(named: assetName), Data([9, 8, 7]))
+        XCTAssertEqual(edited.asset(named: "opaque.bin"), Data([19, 20, 21]))
+        XCTAssertEqual(original.asset(named: assetName), Data([9, 8, 7]))
+    }
+
     private var imageID: String { "{iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii}" }
     private var assetName: String { "images/\(imageID).png" }
 

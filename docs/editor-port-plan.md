@@ -140,6 +140,14 @@ Dependencies: M3, with import preservation already required in M1. Suggested PRs
 - Port embedded GLB loading and transforms with bounded parsing; decide supported extensions and handling of unsupported ones in an ADR.
 - Done: texture/import fixtures render and export correctly; UV seams/material grouping retained; all archive assets survive; malformed images/GLB cannot crash the app.
 
+Color-image document commands under #138 ([ADR 0068](adr/0068-lossless-component-color-images.md)) provide
+assignment/removal and atomic bounded PNG import while retaining opaque/shared assets,
+source identity semantics and exact history. Real-baker integration verifies
+assigned-image output; a shared pure PNG envelope parser preserves the existing
+platform decoding boundary. Platform import services, native controls and M4
+acceptance remain required; no user-facing import workflow or full material parity
+is claimed by this foundation.
+
 ### M5 — Rigging and skeletal editing
 
 Dependencies: M3; material/export integration follows M4. Suggested PRs: rig adapter; skeleton overlay/bone inspector; IK/weights.
