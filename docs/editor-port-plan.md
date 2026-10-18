@@ -168,6 +168,7 @@ Implement M1's document codec and immutable state with lossless round-trip fixtu
 
 ## Verification and risk controls
 
+- When each PR opens, send the user a current app screenshot when capture is available. Identify the app iteration and whether the visible UI changed. Label offscreen renderer evidence separately; do not present it as an app screenshot. If capture is unavailable, report that limitation without requiring human interaction.
 - New pure Swift domain: 100% meaningful coverage; application/infrastructure: at least 95%, with thin native/manual boundaries disclosed. Add a real CI threshold checker rather than relying on the current coverage report alone. C++ adapter coverage is a separate instrumented job; inherited algorithm coverage is a tracked adoption gap.
 - Keep formatting, Swift warning errors, explicit C++17 rules, Qt source/link checks and clean-clone builds in both applicable repositories. Test ABI ownership, size arithmetic, malformed inputs and long-running generation. No artificial hooks just to increase coverage.
 - Use semantic equality for archives, tolerance-based geometric assertions and independent format readers. Maintain rendered reference baselines on controlled CI machines with human review; do not treat local GPU pixels as portable golden files.
@@ -371,13 +372,23 @@ invalidation, seam-aware textured indexing, renderer/PBR/transparency/AO and
 textured export acceptance remain subsequent stages. This does not complete M4.
 
 
-## Seam-aware textured render geometry (Apple #127, in progress)
+## Seam-aware textured render geometry (Apple #127, landed through #128)
 
 Pure Sendable preparation retains triangle-aligned UV/component metadata and maps,
 shares only complete corner attributes, and bounds logical/GPU buffer spans. It
 reuses ordinary camera normalization. Targeted seam, resource, cancellation and
 actual-baker tests and the full local gate pass (587 tests), with 100% measured
-line coverage for both pure preparation files. Automated review/remote CI remain
-required before landing. See ADR 0063. Metal upload,
+line coverage for both pure preparation files. Exact-head automated review and
+all remote CI passed before squash merge. See ADR 0063. Metal upload,
 material shading, transparent ordering, PBR/AO, app scheduling/invalidation and
 textured export remain subsequent work; current app previews are unchanged.
+
+## Owned Metal material renderer (Apple #129)
+
+Following landed #128, the separate production material encoder now implements
+bounded actor uploads, transferred noncopyable GPU ownership, color/normal/scalar/
+emission sampling, linear blending, opaque depth and cancellable camera ordering.
+[Verification](metal-material-renderer-verification.md) records actual pinned-core
+bake rendering and independent GPU fixtures. App viewport adoption and bake
+scheduling/invalidation are the next integration stage. AO, imports, material
+image controls, exports and full M4/Qt acceptance remain incomplete.

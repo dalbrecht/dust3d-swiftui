@@ -162,3 +162,11 @@ it does not apply EXIF transforms or normalize color profiles. Keyed transparent
 not include ImageIO/native workspace or the retained archive. Existing previews
 remain untextured. See [ADR 0062](docs/adr/0062-retained-color-image-decoding.md)
 and [verification](docs/archive-texture-decoding-verification.md).
+
+### Material renderer stage
+
+The shared rendering module now contains a separate baked-material Metal encoder,
+with actor-built owned resources, sRGB color/emission maps, linear normal/scalar
+maps, GGX direct lighting and camera-sorted transparency. Existing app viewports
+still use their ordinary preview renderer. See [ownership and limitations](docs/adr/0064-owned-metal-material-renderer.md)
+and [GPU verification](docs/metal-material-renderer-verification.md).
