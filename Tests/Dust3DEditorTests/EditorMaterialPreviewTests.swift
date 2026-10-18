@@ -6,6 +6,21 @@ import XCTest
 
 @MainActor
 final class EditorMaterialPreviewTests: XCTestCase {
+    func testShouldExposeRetainedAssetAndPNGFailureInTheEditorNotice() async throws {
+        let document = try StitchingFixture.document(loop: true, attributes: "", isolatedLoop: true)
+        let baker = FailingMaterialBaker(
+            error: ArchiveTextureBakingError.imageDecoding(assetName: "images/broken.png", cause: .invalidPNG))
+        let store = EditorStore(materialBaker: baker)
+        defer { store.stop() }
+        await store.load(data: document.encoded())
+        await store.generation?.value
+        await store.materialGeneration?.value
+        XCTAssertTrue(store.materialIssue?.contains("images/broken.png") == true)
+        XCTAssertTrue(store.materialIssue?.contains("PNG") == true)
+        XCTAssertNotNil(store.mesh)
+        XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
+    }
+
     func testShouldRetainOrdinaryMeshAndOriginalMaterialFailureWithoutChangingDocument() async throws {
         let document = try StitchingFixture.document(loop: true, attributes: "", isolatedLoop: true)
         let service = FailingMaterialBaker()
@@ -110,6 +125,8 @@ final class EditorMaterialPreviewTests: XCTestCase {
 
 private actor FailingMaterialBaker: ArchiveTextureBaking {
     private(set) var count = 0
+    private let error: any Error
+    init(error: any Error = Failure.decoding) { self.error = error }
     private enum Failure: LocalizedError {
         case decoding
         var errorDescription: String? { "Original material decode cause" }
@@ -117,7 +134,7 @@ private actor FailingMaterialBaker: ArchiveTextureBaking {
     func load(data: Data, options: MeshBakeOptions, limits: ArchiveTextureLimits) async throws -> MeshWithBakedTextures
     {
         count += 1
-        throw Failure.decoding
+        throw error
     }
 }
 

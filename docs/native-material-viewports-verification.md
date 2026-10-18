@@ -55,3 +55,12 @@ file service 37/37, viewer store 117/117, upload admission 88/88, editor store
 do not claim every application/UI file meets 95%. The final gate subsequently passed 613 tests (84.329 seconds), all formatting,
 build, coverage, Qt-link and isolated bundle rebuild checks. Review and all
 remote CI remain required before merge.
+
+## Automated review follow-up
+
+Codex identified that actual ArchiveTextureBakingError/MeshPNGDecodingError values
+lost their asset/cause when converted to localizedDescription. Both now implement
+LocalizedError. Failing-first tests reproduce the real error types in editor and
+viewer notices and cover every quota/missing-asset/PNG diagnostic. All 13 targeted
+tests pass, followed by the full gate: 615 tests, no failures (84.541 seconds),
+coverage thresholds, formatting, builds, Qt-link and bundle rebuild checks.

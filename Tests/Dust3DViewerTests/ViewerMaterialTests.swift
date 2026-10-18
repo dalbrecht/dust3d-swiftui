@@ -16,10 +16,12 @@ final class ViewerMaterialTests: XCTestCase {
         try await waitForRequests(1, baker)
         XCTAssertNotNil(store.mesh)
         XCTAssertFalse(store.isLoading)
-        await baker.fail(0)
+        await baker.fail(
+            0, error: ArchiveTextureBakingError.imageDecoding(assetName: "images/broken.png", cause: .invalidPNG))
         await store.materialTask?.value
         XCTAssertNil(store.bakedMesh)
-        XCTAssertEqual(store.materialIssue, "Original retained image cause")
+        XCTAssertTrue(store.materialIssue?.contains("images/broken.png") == true)
+        XCTAssertTrue(store.materialIssue?.contains("PNG") == true)
         XCTAssertNil(store.errorMessage)
         store.retryMaterials()
         try await waitForRequests(2, baker)
@@ -158,8 +160,8 @@ private actor SuspendedViewerBaker: ArchiveTextureBaking {
         pending[index]?.resume(throwing: CancellationError())
         pending[index] = nil
     }
-    func fail(_ index: Int) {
-        pending[index]?.resume(throwing: Failure.image)
+    func fail(_ index: Int, error: any Error = Failure.image) {
+        pending[index]?.resume(throwing: error)
         pending[index] = nil
     }
 }

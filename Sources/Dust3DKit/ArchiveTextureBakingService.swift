@@ -24,12 +24,24 @@ public struct ArchiveTextureLimits: Sendable {
 }
 
 /// Resource failures and per-asset decoder causes; document/native errors propagate unchanged.
-public enum ArchiveTextureBakingError: Error, Equatable, Sendable {
+public enum ArchiveTextureBakingError: LocalizedError, Equatable, Sendable {
     case invalidLimits
     case encodedLimitExceeded
     case decodedLimitExceeded
     case missingAsset(String)
     case imageDecoding(assetName: String, cause: MeshPNGDecodingError)
+
+    /// Keep the retained asset identity and underlying decoder cause in UI notices.
+    public var errorDescription: String? {
+        switch self {
+        case .invalidLimits: return "The material image resource limits are invalid."
+        case .encodedLimitExceeded: return "The encoded material images exceed the configured input limit."
+        case .decodedLimitExceeded: return "The decoded material images exceed the configured input limit."
+        case .missingAsset(let name): return "The material image asset \(name) is missing from the document."
+        case .imageDecoding(let name, let cause):
+            return "Could not decode material image \(name): \(cause.localizedDescription)"
+        }
+    }
 }
 
 /// Injectable archive material boundary shared by native app previews.
