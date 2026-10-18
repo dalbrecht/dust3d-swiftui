@@ -10,6 +10,8 @@ let package = Package(
         .library(name: "Dust3DEditorModel", targets: ["Dust3DEditorModel"]),
         .executable(name: "Dust3DViewer", targets: ["Dust3DViewer"]),
         .executable(name: "Dust3DEditor", targets: ["Dust3DEditor"]),
+        .executable(name: "Dust3DQuickLookExtension", targets: ["Dust3DQuickLookExtension"]),
+        .executable(name: "Dust3DThumbnailExtension", targets: ["Dust3DThumbnailExtension"]),
     ],
     dependencies: [
         .package(
@@ -19,7 +21,7 @@ let package = Package(
         .target(name: "Dust3DEditorModel", dependencies: ["Dust3DDocument"], exclude: ["README.md"]),
         .testTarget(name: "Dust3DEditorModelTests", dependencies: ["Dust3DEditorModel", "Dust3DDocument"]),
         .target(
-            name: "Dust3DRendering", dependencies: ["Dust3DKit"], exclude: ["README.md"],
+            name: "Dust3DRendering", dependencies: ["Dust3DKit", "Dust3DDocument"], exclude: ["README.md"],
             resources: [.copy("Shaders.metal")]),
         .testTarget(
             name: "Dust3DRenderingTests", dependencies: ["Dust3DRendering", "Dust3DKit", "Dust3DDocument"]),
@@ -37,6 +39,24 @@ let package = Package(
             name: "Dust3DViewer",
             dependencies: ["Dust3DKit", "Dust3DRendering"], exclude: ["README.md"]
         ),
+        .executableTarget(
+            name: "Dust3DQuickLookExtension", dependencies: ["Dust3DRendering"], exclude: ["README.md"],
+            swiftSettings: [.unsafeFlags(["-parse-as-library", "-application-extension"])],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-e", "-Xlinker", "_NSExtensionMain",
+                    "-Xlinker", "-alias", "-Xlinker", "_NSExtensionMain", "-Xlinker", "_Dust3DQuickLookExtension_main",
+                ])
+            ]),
+        .executableTarget(
+            name: "Dust3DThumbnailExtension", dependencies: ["Dust3DRendering"], exclude: ["README.md"],
+            swiftSettings: [.unsafeFlags(["-parse-as-library", "-application-extension"])],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-e", "-Xlinker", "_NSExtensionMain",
+                    "-Xlinker", "-alias", "-Xlinker", "_NSExtensionMain", "-Xlinker", "_Dust3DThumbnailExtension_main",
+                ])
+            ]),
         .testTarget(name: "Dust3DViewerTests", dependencies: ["Dust3DViewer", "Dust3DKit"]),
         .testTarget(
             name: "Dust3DKitTests",

@@ -54,3 +54,12 @@ retains orbit/zoom/fit/wireframe, rejects obsolete uploads and cancels detached
 work. Both ordinary and material resources can coexist for fallback; quotas do
 not claim a whole-process memory cap. See ADR 0065 and native material viewport
 verification for app lifecycle and acceptance evidence.
+
+## macOS file previews
+
+`FilePreviewDocumentService` loads one bounded archive snapshot without writing
+the file. `FilePreviewRenderer` uses the shared production Metal encoder for
+transparent thumbnail output; `FilePreviewView` hosts read-only interactive
+Quick Look content. The editor packages the two system providers. See
+[ADR 0066](../../docs/adr/0066-macos-file-preview-extensions.md) for quotas,
+registration, sandboxing and supported-content limits.

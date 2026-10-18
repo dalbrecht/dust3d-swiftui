@@ -80,9 +80,15 @@ $CLIPBOARD_TYPE_DECLARATION
 </dict></plist>
 PLIST
 # Strip copied Finder metadata before ad-hoc signing this local development bundle.
+if [ "$APP_NAME" = "Dust3DEditor" ]; then
+    "$ROOT_DIR/script/package_file_preview_extensions.sh" "$APP_BUNDLE" "$BUILD_DIR"
+fi
 xattr -cr "$APP_BUNDLE"
 codesign --force --sign - "$APP_BUNDLE"
 codesign --verify --deep --strict "$APP_BUNDLE"
+if [ "$APP_NAME" = "Dust3DEditor" ]; then
+    "$ROOT_DIR/script/check_file_preview_bundles.sh" "$APP_BUNDLE"
+fi
 # Launch Services detects rebuilt bundle metadata through the application directory timestamp.
 /usr/bin/touch "$APP_BUNDLE"
 # A ZIP keeps File Provider Finder metadata outside the app's sealed resources.

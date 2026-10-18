@@ -20,11 +20,19 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
     var camera = OrbitCamera()
     var isWireframe = false
 
-    init(
+    convenience init(
         mesh: RenderMesh, device: MTLDevice,
         colorPixelFormat: MTLPixelFormat = .bgra8Unorm, depthPixelFormat: MTLPixelFormat = .depth32Float
     ) throws {
-        let geometry = try RenderGeometry(mesh: mesh)
+        try self.init(
+            geometry: RenderGeometry(mesh: mesh), device: device,
+            colorPixelFormat: colorPixelFormat, depthPixelFormat: depthPixelFormat)
+    }
+
+    init(
+        geometry: RenderGeometry, device: MTLDevice,
+        colorPixelFormat: MTLPixelFormat = .bgra8Unorm, depthPixelFormat: MTLPixelFormat = .depth32Float
+    ) throws {
         try geometry.validateBufferLengths(maximumBufferLength: device.maxBufferLength)
         let packagedResources = Bundle.main.resourceURL.flatMap {
             Bundle(url: $0.appendingPathComponent("Dust3DNative_Dust3DRendering.bundle"))
