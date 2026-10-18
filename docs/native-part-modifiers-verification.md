@@ -49,3 +49,10 @@ controller/archive tests do not replace those end-to-end checks. Reuse
 `org.dust3d.editor.combine-qa` when available. Deformation controls now have [separate offscreen verification](native-part-deformation-verification.md). Cut-face controls now have [separate offscreen verification](native-part-cut-face-verification.md).
 Qt differential checks and the rest of M3 remain pending; full modeling
 parity and native UI coverage are not claimed.
+
+## October 18 native acceptance update
+
+The earlier offscreen evidence and historical test totals above are retained.
+[Native modeling acceptance](native-modifier-acceptance.md) now records actual
+inspector/Metal behavior, saved archive comparisons and the specific remaining
+#120 cases. Its scope does not establish full modeling parity.

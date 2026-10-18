@@ -64,3 +64,10 @@ known, unsupported and unresolved controls in light/dark appearances under
 /private/tmp/dust3d-cut-face-menu-review-qa were inspected: source placeholders
 remain readable and supported profiles display their chosen value. Native menu
 interaction remains pending rather than inferred from static render output.
+
+## October 18 native acceptance update
+
+The earlier offscreen evidence and historical test totals above are retained.
+[Native modeling acceptance](native-modifier-acceptance.md) now records actual
+inspector/Metal behavior, saved archive comparisons and the specific remaining
+#120 cases. Its scope does not establish full modeling parity.
