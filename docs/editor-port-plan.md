@@ -358,14 +358,26 @@ bake invalidation, seam-aware indexing, PBR/transparency/AO, textured export and
 broader M3/M4 acceptance remain subsequent stages; current preview UI is unchanged.
 
 
-## Retained archive texture decoding (Apple #125, in progress)
+## Retained archive texture decoding (Apple #125, landed through #126)
 
 The existing document parser resolves exact referenced assets without changing
 archive bytes. A shared Apple actor decodes PNG samples into straight RGBA8 with
 per-image/aggregate limits, preserves asset-specific causes, and feeds the actual
 native baker. Independent fixtures cover standard sample families, low/zero alpha
-and encoded orientation; full local gates pass (580 tests). Automated review and
-remote CI remain required before landing. See
+and encoded orientation; full local gates pass (580 tests), with completed clean
+exact-head automated review and all three CI checks passing before merge. See
 [ADR 0062](adr/0062-retained-color-image-decoding.md). Editor scheduling/cache
 invalidation, seam-aware textured indexing, renderer/PBR/transparency/AO and
 textured export acceptance remain subsequent stages. This does not complete M4.
+
+
+## Seam-aware textured render geometry (Apple #127, in progress)
+
+Pure Sendable preparation retains triangle-aligned UV/component metadata and maps,
+shares only complete corner attributes, and bounds logical/GPU buffer spans. It
+reuses ordinary camera normalization. Targeted seam, resource, cancellation and
+actual-baker tests and the full local gate pass (587 tests), with 100% measured
+line coverage for both pure preparation files. Automated review/remote CI remain
+required before landing. See ADR 0063. Metal upload,
+material shading, transparent ordering, PBR/AO, app scheduling/invalidation and
+textured export remain subsequent work; current app previews are unchanged.

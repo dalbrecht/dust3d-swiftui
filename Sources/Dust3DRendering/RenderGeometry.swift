@@ -51,19 +51,29 @@ struct RenderGeometry {
             indices.map({ !$0.isEmpty && $0.count.isMultiple(of: 3) && $0.allSatisfy { Int($0) < source.count } })
                 ?? source.count.isMultiple(of: 3)
         else { throw RendererError.unavailable("The mesh contains invalid triangle buffers.") }
-        let minimum = source.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, $1.position) }
-        let maximum = source.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, $1.position) }
-        let center = (minimum + maximum) * 0.5
-        let radius = max(simd_length(maximum - minimum) * 0.5, 0.001)
-        guard radius.isFinite, (0..<3).allSatisfy({ center[$0].isFinite }) else {
-            throw RendererError.unavailable("The mesh bounds cannot be represented for rendering.")
-        }
+        let bounds = try RenderBounds(vertices: source)
         vertices = source.map { vertex in
             Vertex(
-                position: SIMD4((vertex.position - center) / radius, 1),
+                position: SIMD4((vertex.position - bounds.center) / bounds.radius, 1),
                 normal: SIMD4(vertex.normal, 0), color: vertex.color)
         }
         self.indices = indices
+    }
+}
+
+/// Shared normalization keeps ordinary and textured previews in the same camera space.
+struct RenderBounds: Sendable {
+    let center: SIMD3<Float>
+    let radius: Float
+
+    init(vertices: [MeshVertex]) throws {
+        let minimum = vertices.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, $1.position) }
+        let maximum = vertices.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, $1.position) }
+        center = (minimum + maximum) * 0.5
+        radius = max(simd_length(maximum - minimum) * 0.5, 0.001)
+        guard radius.isFinite, (0..<3).allSatisfy({ center[$0].isFinite }) else {
+            throw RendererError.unavailable("The mesh bounds cannot be represented for rendering.")
+        }
     }
 }
 
