@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Make viewer and Quick Look material notices reflect current baked or fallback rendering, preserving legacy limitations and original source-interpretation errors without blocking valid geometry.
+
 - Add native component image import, retained-image selection and clearing with background pixel validation, cancellation, material refresh, shared-asset preservation and exact undo/save.
 
 - Add lossless component color-image assignment, removal and atomic PNG asset import commands with exact asset-aware history and shared bounded PNG envelope validation; native import controls remain pending.

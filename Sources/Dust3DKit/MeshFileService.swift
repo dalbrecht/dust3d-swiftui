@@ -4,6 +4,14 @@ import Foundation
 public struct MeshFileSnapshot: Sendable {
     public let data: Data
     public let mesh: IndexedMesh
+    /// Derived from the same immutable archive off-main; interpretation failure never hides its cause.
+    public let materialSourceCapabilities: MaterialSourceCapabilities
+
+    init(data: Data, mesh: IndexedMesh, materialSourceCapabilities: MaterialSourceCapabilities = .unknown) {
+        self.data = data
+        self.mesh = mesh
+        self.materialSourceCapabilities = materialSourceCapabilities
+    }
 }
 
 /// Injectable file snapshot boundary for native viewer lifecycles.
@@ -49,7 +57,9 @@ public actor MeshFileService: MeshFileSnapshotLoading {
         let data = try read(url: url)
         let mesh = try MeshLoader.loadIndexed(data: data)
         try Task.checkCancellation()
-        return MeshFileSnapshot(data: data, mesh: mesh)
+        let capabilities = MaterialSourceCapabilities.read(data: data)
+        try Task.checkCancellation()
+        return MeshFileSnapshot(data: data, mesh: mesh, materialSourceCapabilities: capabilities)
     }
 
     /// Read immutable archive bytes for constrained system preview workers without generating geometry.

@@ -17,6 +17,39 @@ final class FilePreviewDocumentTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: fixture), before)
     }
 
+    func testTexturedFilePreviewNoticeTracksMaterialsAndPreservesLegacyLimits() async throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Dust3DKitTests/Fixtures/Capsule.ds3")
+        let original = try Dust3DDocument(data: Data(contentsOf: fixture))
+        let png = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABAQMAAADO7O3JAAAABlBMVEX/AAAAAP9sof2OAAAAAnRSTlOAAToXZeUAAAAKSURBVHicY3AAAABCAEEpN/TvAAAAAElFTkSuQmCC"
+            ))
+        for legacy in [false, true] {
+            var xml = try XCTUnwrap(String(data: original.modelXML, encoding: .utf8))
+            if legacy { xml = xml.replacingOccurrences(of: "<component ", with: "<component wrapPattern='future' ") }
+            let source = try Dust3DDocument(snapshotXML: Data(xml.utf8)).applying(
+                .importComponentColorImage(
+                    id: "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}", imageID: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+                    png: png))
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".ds3")
+            try source.encoded().write(to: url)
+            defer { try? FileManager.default.removeItem(at: url) }
+            let preview = try await FilePreviewDocumentService().load(url: url)
+            XCTAssertNotNil(preview.bakedMesh)
+            XCTAssertEqual(preview.materialSourceCapabilities.hasLegacySurfaceDetails, legacy)
+            XCTAssertEqual(
+                preview.compatibilityWarning(), legacy ? "Procedural surface details are not yet displayed." : nil)
+            XCTAssertEqual(preview.compatibilityWarning(materialRenderingFailed: true), preview.mesh?.warning)
+            XCTAssertEqual(try Data(contentsOf: url), source.encoded())
+            let failed = try await FilePreviewDocumentService(materialBaker: MissingPreviewImage()).load(url: url)
+            XCTAssertEqual(failed.compatibilityWarning(), failed.mesh?.warning)
+            XCTAssertTrue(failed.materialError?.localizedDescription.contains("images/missing.png") == true)
+            XCTAssertEqual(try Data(contentsOf: url), source.encoded())
+        }
+    }
+
     func testShouldRejectEmbeddedLinksInsteadOfPresentingAnEmptyOrPartialModel() async throws {
         let xml = """
             <canvas><nodes/><edges/><parts/><components>

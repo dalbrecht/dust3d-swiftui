@@ -7,6 +7,13 @@ import Observation
 final class ViewerStore {
     private(set) var mesh: IndexedMesh?
     private(set) var bakedMesh: MeshWithBakedTextures?
+    private(set) var materialSourceCapabilities = MaterialSourceCapabilities.unknown
+    var materialSourceIssue: String? { materialSourceCapabilities.issue?.localizedDescription }
+    var previewCompatibilityWarning: String? {
+        MaterialPreviewWarning.message(
+            mesh?.warning ?? "", hasBakedMaterials: bakedMesh != nil,
+            hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails)
+    }
     private(set) var documentName = "Dust3D Viewer"
     private(set) var isLoading = false
     private(set) var isBakingMaterials = false
@@ -43,6 +50,7 @@ final class ViewerStore {
                 try Task.checkCancellation()
                 guard let self, self.revision == requestedRevision else { return }
                 mesh = loaded.mesh
+                materialSourceCapabilities = loaded.materialSourceCapabilities
                 archiveData = loaded.data
                 meshRevision += 1
                 documentName = url.lastPathComponent
@@ -94,6 +102,7 @@ final class ViewerStore {
         clearMaterials()
         archiveData = nil
         mesh = nil
+        materialSourceCapabilities = .unknown
         isLoading = false
     }
 

@@ -83,12 +83,21 @@ struct ContentView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .padding(12)
-            if let mesh = store.mesh, !mesh.warning.isEmpty {
-                Text(mesh.warning)
+            if let warning = store.previewCompatibilityWarning {
+                Text(warning)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 10)
+            }
+            if let issue = store.materialSourceIssue {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Material source details unavailable", systemImage: "info.circle")
+                    Text(issue).textSelection(.enabled)
+                }
+                .font(.caption).foregroundStyle(.secondary)
+                .padding(.horizontal, 12).padding(.bottom, 10)
+                .accessibilityIdentifier("material-source-notice")
             }
         }
         .frame(minWidth: 650, minHeight: 450)

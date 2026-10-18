@@ -144,9 +144,9 @@ Color-image document commands under #138 ([ADR 0068](adr/0068-lossless-component
 assignment/removal and atomic bounded PNG import while retaining opaque/shared assets,
 source identity semantics and exact history. Real-baker integration verifies
 assigned-image output; a shared pure PNG envelope parser preserves the existing
-platform decoding boundary. Platform import services, native controls and M4
-acceptance remain required; no user-facing import workflow or full material parity
-is claimed by this foundation.
+platform decoding boundary. Native import services and inspector controls landed in PR #141 with exact
+history, real-bake and native save/reopen evidence. Full M4 acceptance remains
+required; neither the foundation nor that workflow claims complete material parity.
 
 ### M5 — Rigging and skeletal editing
 
@@ -484,3 +484,22 @@ and [verification](native-component-color-images-verification.md). Native import
 retained selection, clear, history and save have current working-tree observations;
 the final accessibility rerun passes. Final-head review/remote CI remain required. Textured
 exports, wider material/reference parity and the remaining M4–M8 work are open.
+
+## Remaining milestone tracking
+
+These epics preserve the full goal and are not a count of implementation PRs.
+Split them into focused issues as the actual core/native contracts are established.
+Existing native modeling acceptance (#120) and the hollow-thickness decision (#96)
+remain open; UI presence or passing unit tests alone do not close those gates.
+
+| Milestone | Tracking | Required remaining evidence |
+| --- | --- | --- |
+| M4 materials/imports | [#143](https://github.com/dalbrecht/dust3d-swiftui/issues/143) | Material/reference parity, embedded GLB, malformed assets and textured export integration |
+| M5 rigging | [#144](https://github.com/dalbrecht/dust3d-swiftui/issues/144) | Portable rig/IK contracts, native editing, weights/rest poses and deformation fixtures |
+| M6 animation/audio | [#145](https://github.com/dalbrecht/dust3d-swiftui/issues/145) | Actual upstream types/parameters, evaluation, playback, synchronization and WAV correctness |
+| M7 export/automation | [#146](https://github.com/dalbrecht/dust3d-swiftui/issues/146) | Independent re-import of static/textured/rigged/animated outputs and recoverable batch failures |
+| M8 production release | [#147](https://github.com/dalbrecht/dust3d-swiftui/issues/147) | Measured performance, C++ instrumentation/fuzzing, accessibility/recovery and signed upgradeable separate apps |
+
+Cross-app representation-aware compatibility notices are tracked in #142; see
+[ADR 0070](adr/0070-shared-material-preview-notices.md). The remaining milestone
+epics must not be closed when only their first API or inspector stage lands.

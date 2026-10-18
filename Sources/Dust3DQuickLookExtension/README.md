@@ -10,3 +10,7 @@ No independent configuration or network access is required.
 Shared bounded loading and rendering live in Dust3DRendering. Run `make ci`
 for tests, formatting, linkage and packaged-bundle validation. Native Finder
 and Quick Look acceptance additionally requires a graphical macOS session.
+
+Image compatibility notices follow current baked output or GPU fallback. Legacy
+surface limitations remain separate; metadata comes from the same read-only
+archive snapshot. See [shared notice verification](../../docs/shared-material-notices-verification.md).

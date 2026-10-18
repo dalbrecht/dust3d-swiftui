@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import Dust3DEditorModel
+@testable import Dust3DKit
 
 final class MaterialPreviewWarningTests: XCTestCase {
     func testBakedImagesRemoveOnlyRecognizedImageWarnings() {
@@ -17,7 +17,8 @@ final class MaterialPreviewWarningTests: XCTestCase {
             MaterialPreviewWarning.message(combined, hasBakedMaterials: true, hasLegacySurfaceDetails: true),
             "Procedural surface details are not yet displayed.")
         XCTAssertEqual(
-            MaterialPreviewWarning.message(combined, hasBakedMaterials: true, hasLegacySurfaceDetails: nil), combined)
+            MaterialPreviewWarning.message(combined, hasBakedMaterials: true, hasLegacySurfaceDetails: nil),
+            "Procedural surface details could not be verified.")
         XCTAssertNil(MaterialPreviewWarning.message(image, hasBakedMaterials: true, hasLegacySurfaceDetails: true))
         for baked in [false, true] {
             XCTAssertNil(MaterialPreviewWarning.message("", hasBakedMaterials: baked, hasLegacySurfaceDetails: false))
