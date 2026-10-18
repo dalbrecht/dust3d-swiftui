@@ -131,7 +131,7 @@ follow triangle index order rather than unique vertex order. See
 `try await MeshBakingService().load(data: archive, images: decodedImages)` performs
 CPU baking on a background actor and returns copied Sendable geometry, UVs,
 tangent frames and RGBA8 maps. `MeshBakeImage` accepts decoded straight-alpha bytes
-with explicit dimensions/row stride; this stage does not decode archive assets.
+with explicit dimensions/row stride; the archive service below resolves/decodes retained assets.
 `MeshBakeOptions` controls dimensions and independent native UV/bake quotas.
 
 Expanded vertices preserve texture/material seams. Existing geometry-only indexed
@@ -144,3 +144,21 @@ The default apps retain their current preview behavior. PBR/transparency/AO and
 textured export still require renderer integration and acceptance evidence. See
 [ADR 0061](docs/adr/0061-copied-baked-mesh-sdk.md) and
 [verification](docs/swift-baked-mesh-verification.md). Run `make ci` before publication.
+
+
+### Retained archive color images
+
+`try await ArchiveTextureBakingService().load(data: archive)` resolves retained
+component color-image references, decodes their PNG samples and invokes the copied
+baking SDK off the main actor. Archive/opaque asset bytes remain unchanged.
+`ArchiveTextureLimits` bounds each encoded image, total encoded references and
+total decoded RGBA inputs independently of native output quotas. Errors preserve
+asset names and decoder causes. `MeshPNGDecoder.decode` is the synchronous
+lower-level boundary for callers already outside the main actor.
+
+Decoding preserves source-encoded RGB, straight alpha and scanline orientation;
+it does not apply EXIF transforms or normalize color profiles. Keyed transparent
+2/4/8-bit grayscale matches Qt's zeroed RGB policy. Logical quotas do
+not include ImageIO/native workspace or the retained archive. Existing previews
+remain untextured. See [ADR 0062](docs/adr/0062-retained-color-image-decoding.md)
+and [verification](docs/archive-texture-decoding-verification.md).

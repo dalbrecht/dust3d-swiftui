@@ -299,6 +299,22 @@ public struct Dust3DDocument: Sendable {
         return Data(bytes[(payloadOffset + item.range.lowerBound)..<(payloadOffset + item.range.upperBound)])
     }
 
+    /// Resolve distinct component color-image references to retained archive assets.
+    /// - Returns: Source-ordered, alias-deduplicated metadata without copying/decoding image payloads.
+    /// - Throws: `TextureImageReferenceError` for invalid, missing, ambiguous or wrong-kind
+    ///   references; existing document errors for unsupported XML/component hierarchy.
+    /// No bytes are changed. Callers can enforce encoded/decoded limits before asset(named:).
+    /// - Example: `let references = try document.textureImageReferences()`.
+    public func textureImageReferences() throws -> [DocumentTextureImageReference] {
+        let model = try Self.xml(modelXML, root: "canvas")
+        _ = try ComponentHierarchy.read(model)
+        let imageIDs = PartSplitting.componentElements(model).compactMap {
+            $0.attribute(forName: "colorImageId")?.stringValue
+        }
+        let assets = items.map { DocumentTextureAssetMetadata(name: $0.name, kind: $0.type, byteCount: $0.range.count) }
+        return try DocumentTextureImages.references(imageIDs: imageIDs, assets: assets)
+    }
+
     /// Qt-compatible reference image bytes, if canvas.png is an asset. Opaque input bytes are not decoded here.
     public var referenceImagePNG: Data? {
         guard hasReferenceImage else { return nil }

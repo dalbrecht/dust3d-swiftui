@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add bounded retained-PNG decoding and a shared background archive-to-bake service, preserving straight alpha, source scanline order, original assets and per-asset errors; existing previews remain unchanged.
+
 - Add copied Swift baked textures, expanded seam-preserving geometry, triangle tangents and a background baking actor with lifetime-safe native cancellation, using exact reviewed core revision `2703a17`; archive decoding and renderer adoption remain separate.
 
 - Add opt-in copied Swift UV atlas metadata with explicit missing/ambiguous source states, bounded image dimension inputs and an exact reviewed core pin; the default app previews remain untextured.
