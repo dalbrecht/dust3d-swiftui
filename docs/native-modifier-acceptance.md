@@ -1,9 +1,33 @@
-# Native modeling acceptance
+# Native modeling observations and acceptance limits
 
-Tracks #120. Tested October 18, 2026 against `0219ad1` using the existing
-`org.dust3d.editor` application and a disposable copy named
+Tracks #120. Exploratory native observations from October 18, 2026 using the
+existing `org.dust3d.editor` application and disposable copies, starting with
 `NativeModifiersQA-20261018.ds3`. No new application identity, human button
 presses, dependency or product code change was needed for this pass.
+
+## Runtime provenance and formal acceptance limit
+
+The earlier acceptance procedure specifies `org.dust3d.editor.combine-qa` at
+`/private/tmp/dust3d-combine-qa/Dust3DEditor.app`. This pass did **not** use that
+isolated bundle and does **not** complete that procedure. It reused the canonical
+editor already running during the preceding Quick Look integration work, with
+fresh disposable documents. This avoided another app identity, but did not
+provide the named QA bundle's separate application state. That requirement has
+not been superseded.
+
+Process inspection identifies PID 8960 at
+`/private/tmp/dust3d-editor-screenshot/Dust3DEditor.app/Contents/MacOS/Dust3DEditor`,
+launched October 17 at 22:13:41 local time. The on-disk bundle was subsequently
+rebuilt during preview development. A new on-disk executable or passing gate
+cannot prove which executable image an existing process has loaded. Therefore
+these observations are not attributed to exact revision `0219ad1`. The fresh
+627-test gate does apply to that source revision; it is separate evidence.
+
+Repeat the relevant native cases after a controlled launch of the mandated
+combine-qa bundle built from an identified revision before marking #120's formal
+native acceptance complete. The desktop locked before that repeat was possible.
+The results below remain useful direct observations of actual control behavior
+and exact disposable archive bytes, with this provenance limit retained.
 
 ## Known procedural controls
 
@@ -35,7 +59,7 @@ guard: the native alert explained that the edit was still being applied. Dismiss
 and retry after completion saved successfully. This is evidence of safe rejection,
 not evidence that every possible save/edit interleaving is tested.
 
-The full local gate on the tested product revision passed 627 tests, formatting,
+The full local gate on source revision `0219ad1` passed 627 tests, formatting,
 build, measured coverage thresholds, Qt-free linkage and isolated signed bundle
 rebuilds in PR #134. These results do not measure native interaction coverage.
 A documentation delivery still requires its own gate and automated review.
@@ -79,7 +103,8 @@ and draft observations are not substitutes for the unverified mutation.
 
 ## Remaining acceptance
 
-Linked-profile selection/output, profile history/reopen, independent native
+The controlled exact-revision combine-qa repeat remains required for formal
+acceptance of the observations above. Linked-profile selection/output, profile history/reopen, independent native
 Undo/Redo for thickness/unified/profile rotation and further keyboard paths remain
 in #120. Qt differential tolerances, broader topology and
 modifier combinations, VoiceOver and other M3 families remain unverified. This
