@@ -652,10 +652,12 @@ public struct Dust3DDocument: Sendable {
                 edge.attribute(forName: "to")?.stringValue = from
             }
         case .pasteNodes(let clipboard, let identities, let offset, let partitions):
+            var namespaceBudget = DocumentXML.NamespaceBudget()
             try NodeClipboardMutation.paste(
-                clipboard, identities: identities, offset: offset, into: model, contents: contents)
+                clipboard, identities: identities, offset: offset, into: model, contents: contents,
+                namespaceBudget: &namespaceBudget)
             var result = try replacingModel(model.xmlData(options: [.nodePreserveAll])).mergingAssets(
-                from: clipboard.document)
+                from: clipboard.document, namespaceBudget: &namespaceBudget)
             let contents = try result.editorContents()
             let pastedParts = Set(
                 try clipboard.document.editorContents().nodes.compactMap(\.partID).compactMap { identities[$0] })
@@ -877,7 +879,9 @@ public struct Dust3DDocument: Sendable {
             document: replacingModel(model.xmlData(options: [.nodePreserveAll])), selectedNodeIDs: ids)
     }
 
-    private func mergingAssets(from source: Dust3DDocument) throws -> Dust3DDocument {
+    private func mergingAssets(
+        from source: Dust3DDocument, namespaceBudget: inout DocumentXML.NamespaceBudget
+    ) throws -> Dust3DDocument {
         let xml = try Self.xml(header, root: "ds3")
         let sourceXML = try Self.xml(source.header, root: "ds3")
         let destinationElements = (xml.rootElement()?.children ?? []).compactMap { $0 as? XMLElement }
@@ -888,8 +892,8 @@ public struct Dust3DDocument: Sendable {
         for (index, item) in source.items.enumerated() where index != source.modelIndex {
             if let existingIndex = existingByName[item.name] {
                 let existing = items[existingIndex]
-                func metadata(_ element: XMLElement) -> String {
-                    NodeClipboardMutation.preserveNamespaces(element)
+                func metadata(_ element: XMLElement) throws -> String {
+                    try namespaceBudget.preserve(element)
                     let copy = element.copy() as? XMLElement
                     copy?.removeAttribute(forName: "offset")
                     return copy?.xmlString(options: [.nodePreserveAll]) ?? ""
@@ -899,11 +903,11 @@ public struct Dust3DDocument: Sendable {
                         == source.bytes[
                             (source.payloadOffset + item.range.lowerBound)..<(source.payloadOffset
                                 + item.range.upperBound)],
-                    metadata(destinationElements[existingIndex]) == metadata(sourceElements[index])
+                    try metadata(destinationElements[existingIndex]) == metadata(sourceElements[index])
                 else { throw DocumentError.conflictingAsset(item.name) }
                 continue
             }
-            NodeClipboardMutation.preserveNamespaces(sourceElements[index])
+            try namespaceBudget.preserve(sourceElements[index])
             guard payload.count <= 256 * 1024 * 1024 - item.range.count,
                 let copy = sourceElements[index].copy() as? XMLElement
             else { throw DocumentError.limitExceeded }

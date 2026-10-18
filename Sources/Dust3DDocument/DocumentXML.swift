@@ -17,9 +17,32 @@ enum DocumentXML {
 
     typealias NamespaceBinding = (prefix: String, uri: String)
 
-    /// Carry inherited bindings when detaching a subtree; omit redundant bindings for a known destination.
-    static func preserveNamespaces(_ element: XMLElement, movingTo destination: XMLElement? = nil) {
-        installNamespaces(namespaceBindingsToPreserve(element, movingTo: destination), on: element)
+    /// One operation owns a cumulative quota before inherited bindings become new XML nodes.
+    struct NamespaceBudget {
+        private var remainingBindings = 100_000
+        private var remainingBytes = 16 * 1024 * 1024
+
+        init() {}
+
+        mutating func preserve(_ element: XMLElement, movingTo destination: XMLElement? = nil) throws {
+            try install(DocumentXML.namespaceBindingsToPreserve(element, movingTo: destination), on: element)
+        }
+
+        mutating func install(_ bindings: [NamespaceBinding], on element: XMLElement) throws {
+            guard bindings.count <= remainingBindings else { throw DocumentError.limitExceeded }
+            var available = remainingBytes
+            for binding in bindings {
+                guard available >= 16, binding.prefix.utf8.count <= available - 16 else {
+                    throw DocumentError.limitExceeded
+                }
+                available -= 16 + binding.prefix.utf8.count
+                guard binding.uri.utf8.count <= available else { throw DocumentError.limitExceeded }
+                available -= binding.uri.utf8.count
+            }
+            remainingBindings -= bindings.count
+            remainingBytes = available
+            DocumentXML.installNamespaces(bindings, on: element)
+        }
     }
 
     static func namespaceBindingsToPreserve(_ element: XMLElement, movingTo destination: XMLElement?)
@@ -33,7 +56,7 @@ enum DocumentXML {
         }.map { (prefix: $0.key, uri: $0.value) }
     }
 
-    static func installNamespaces(_ bindings: [NamespaceBinding], on element: XMLElement) {
+    private static func installNamespaces(_ bindings: [NamespaceBinding], on element: XMLElement) {
         for (prefix, uri) in bindings {
             let namespace = XMLNode(kind: .namespace)
             namespace.name = prefix

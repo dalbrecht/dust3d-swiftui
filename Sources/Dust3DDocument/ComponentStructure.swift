@@ -2,27 +2,7 @@ import Foundation
 
 /// Structural edits operate on a validated XML copy; only the caller's fully encoded result is published.
 enum ComponentStructure {
-    private struct NamespaceBudget {
-        private var remainingBindings = 100_000
-        private var remainingBytes = 16 * 1024 * 1024
-
-        mutating func preserve(_ element: XMLElement, movingTo destination: XMLElement) throws {
-            let bindings = DocumentXML.namespaceBindingsToPreserve(element, movingTo: destination)
-            guard bindings.count <= remainingBindings else { throw DocumentError.limitExceeded }
-            var available = remainingBytes
-            for binding in bindings {
-                guard available >= 16, binding.prefix.utf8.count <= available - 16 else {
-                    throw DocumentError.limitExceeded
-                }
-                available -= 16 + binding.prefix.utf8.count
-                guard binding.uri.utf8.count <= available else { throw DocumentError.limitExceeded }
-                available -= binding.uri.utf8.count
-            }
-            remainingBindings -= bindings.count
-            remainingBytes = available
-            DocumentXML.installNamespaces(bindings, on: element)
-        }
-    }
+    private typealias NamespaceBudget = DocumentXML.NamespaceBudget
 
     private struct Entry {
         let component: DocumentComponent

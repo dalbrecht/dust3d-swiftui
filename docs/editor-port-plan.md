@@ -173,6 +173,12 @@ Dependencies: all parity milestones. Split into focused performance, security an
 - Complete keyboard/VoiceOver, appearance, multi-window recovery, file associations and settings checks. Add signed release builds, entitlements/sandbox decision, notarization, versioning, reproducible packaging and upgrade tests.
 - Done: no unresolved blocking parity defects; all automated gates green; manual GPU/export/accessibility matrix recorded; editor and viewer packaged separately. Viewer gains compatible shared improvements without acquiring editing behavior.
 
+Namespace-growth hardening for clipboard/asset transfers is implemented locally
+under #67 ([ADR 0067](adr/0067-bounded-namespace-transfers.md)): one cumulative
+binding/payload budget checks inherited preservation and explicit default binding
+allocation before new XML nodes are installed. Review and full-gate results remain
+required; this does not establish general parser fuzzing or resource isolation.
+
 ## First editor PR after viewer merge
 
 Implement M1's document codec and immutable state with lossless round-trip fixtures, then the minimal command/undo layer. Keep the renderer unchanged in that PR. The first user-visible editor PR follows with a separate app, node movement/radius editing, undo and save. This prevents a convincing canvas from hiding a lossy persistence model.

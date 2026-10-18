@@ -189,3 +189,11 @@ Apply `.setComponentColor(id: id, color: color)`; nil removes only the explicit
 color. Missing identities throw `DocumentError.missingComponent`; semantic no-ops
 retain exact source spellings/bytes and redo. Untouched unsupported colors remain
 lossless. See [verification](../../docs/component-color-verification.md).
+
+Clipboard graph insertion and asset/header merging share one namespace
+materialization quota: 100,000 installed bindings and 16 MiB of UTF-8 prefix/URI
+payload plus a logical 16-byte charge per binding. Explicit default replacements
+count too. Exceeding either quota throws `DocumentError.limitExceeded` before the
+next binding set is allocated, without publishing a partial document or history
+entry. Existing source/archive limits still apply; this is not a process RSS cap.
+See [ADR 0067](../../docs/adr/0067-bounded-namespace-transfers.md).

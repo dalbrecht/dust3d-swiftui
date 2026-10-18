@@ -75,9 +75,6 @@ public struct NodeClipboard: Sendable {
 enum NodeClipboardMutation {
     static func semanticElements(_ model: XMLDocument) -> [XMLElement] { DocumentXML.semanticElements(model) }
 
-    /// Detached subtrees must carry bindings inherited from their former ancestors.
-    static func preserveNamespaces(_ element: XMLElement) { DocumentXML.preserveNamespaces(element) }
-
     static func extract(_ selected: Set<String>, model: XMLDocument, contents: DocumentContents) throws {
         guard !selected.isEmpty, selected.isSubset(of: Set(contents.nodes.map(\.id))),
             contents.nodes.filter({ selected.contains($0.id) }).allSatisfy({ $0.partID != nil }),
@@ -149,7 +146,7 @@ enum NodeClipboardMutation {
 
     static func paste(
         _ clipboard: NodeClipboard, identities: [String: String], offset: NodePosition,
-        into model: XMLDocument, contents: DocumentContents
+        into model: XMLDocument, contents: DocumentContents, namespaceBudget: inout DocumentXML.NamespaceBudget
     ) throws {
         let fragment = try XMLDocument(data: clipboard.document.modelXML, options: [.nodePreserveAll])
         guard let root = model.rootElement(), let sourceRoot = fragment.rootElement(),
@@ -225,17 +222,14 @@ enum NodeClipboardMutation {
         let incoming = semanticElements(fragment)
         let semanticObjects = Set(incoming.map { ObjectIdentifier($0) })
         for element in incoming {
-            preserveNamespaces(element)
+            try namespaceBudget.preserve(element)
             for child in (element.children ?? []).compactMap({ $0 as? XMLElement })
-            where !semanticObjects.contains(ObjectIdentifier(child)) { preserveNamespaces(child) }
+            where !semanticObjects.contains(ObjectIdentifier(child)) { try namespaceBudget.preserve(child) }
         }
         // Native graph objects join the destination canvas namespace; opaque extensions keep theirs.
         for element in incoming {
             element.removeNamespace(forPrefix: "")
-            let namespace = XMLNode(kind: .namespace)
-            namespace.name = ""
-            namespace.stringValue = root.uri ?? ""
-            element.addNamespace(namespace)
+            try namespaceBudget.install([(prefix: "", uri: root.uri ?? "")], on: element)
             element.uri = root.uri
         }
         for (containerName, children) in transfers {
@@ -247,7 +241,7 @@ enum NodeClipboardMutation {
                 root.addChild(container)
             }
             for child in children {
-                preserveNamespaces(child)
+                try namespaceBudget.preserve(child)
                 child.detach()
                 container.addChild(child)
             }
