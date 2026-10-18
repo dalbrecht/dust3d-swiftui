@@ -438,3 +438,12 @@ and a rendered static fallback when necessary.
 
 References: [Apple thumbnail extensions](https://developer.apple.com/documentation/quicklookthumbnailing/providing-thumbnails-of-your-custom-file-types)
 and [Quick Look UI](https://developer.apple.com/documentation/quicklookui/).
+
+Local implementation for #132 now packages both providers in the editor, with
+shared bounded loading and production Metal rendering. Native acceptance renders
+Sword in Quick Look (including wireframe), Finder icons and gallery; public system
+thumbnail requests render two independent fixtures. Regression tests cover
+background callback isolation and Retina bitmap sizing. Full local validation
+passes 627 tests. Automated PR review and remote CI remain required before merge;
+broader textured/empty/error/open-panel and install/upgrade acceptance must retain
+its explicit evidence rather than be inferred from an offscreen render.

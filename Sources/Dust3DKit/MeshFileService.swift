@@ -52,7 +52,20 @@ public actor MeshFileService: MeshFileSnapshotLoading {
         return MeshFileSnapshot(data: data, mesh: mesh)
     }
 
-    private func read(url: URL) throws -> Data {
+    /// Read immutable archive bytes for constrained system preview workers without generating geometry.
+    /// - Parameters:
+    ///   - url: Local or security-scoped document URL.
+    ///   - maximumBytes: Positive allocation ceiling, at most the shared 256 MiB file limit.
+    /// - Returns: One owned snapshot of the selected archive.
+    /// - Throws: Original filesystem/cancellation errors or `MeshLoadingError` for invalid/excess limits.
+    public func readArchive(url: URL, maximumBytes: Int) throws -> Data {
+        guard (1...MeshLoader.maximumFileSize).contains(maximumBytes) else {
+            throw MeshLoadingError(status: 4, message: "The archive read limit must be positive and at most 256 MiB.")
+        }
+        return try read(url: url, maximumBytes: maximumBytes)
+    }
+
+    private func read(url: URL, maximumBytes: Int = MeshLoader.maximumFileSize) throws -> Data {
         try Task.checkCancellation()
         let isScoped = url.startAccessingSecurityScopedResource()
         defer {
@@ -61,11 +74,15 @@ public actor MeshFileService: MeshFileSnapshotLoading {
         let file = try FileHandle(forReadingFrom: url)
         defer { try? file.close() }
         let size = try file.seekToEnd()
-        guard size <= MeshLoader.maximumFileSize else {
-            throw MeshLoadingError(status: 4, message: "The document exceeds the 256 MiB file limit.")
+        guard size <= maximumBytes else {
+            throw MeshLoadingError(status: 4, message: "The document exceeds the \(maximumBytes)-byte file limit.")
         }
         try file.seek(toOffset: 0)
-        let data = try file.read(upToCount: MeshLoader.maximumFileSize + 1) ?? Data()
+        let data = try file.read(upToCount: maximumBytes + 1) ?? Data()
+        // Reject growth between the initial size check and the bounded read.
+        guard data.count <= maximumBytes else {
+            throw MeshLoadingError(status: 4, message: "The document exceeds the \(maximumBytes)-byte file limit.")
+        }
         try Task.checkCancellation()
         return data
     }

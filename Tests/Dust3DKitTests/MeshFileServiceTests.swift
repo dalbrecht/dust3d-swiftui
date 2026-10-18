@@ -97,3 +97,19 @@ extension MeshFileServiceTests {
         XCTAssertEqual(loaded.mesh.vertices.map(\.position), independentlyLoaded.vertices.map(\.position))
     }
 }
+
+extension MeshFileServiceTests {
+    func testShouldReadExactBoundedArchiveAndRejectInvalidPreviewReadBudgets() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let bytes = try Data(contentsOf: url)
+        let loaded = try await MeshFileService().readArchive(url: url, maximumBytes: bytes.count)
+        XCTAssertEqual(loaded, bytes)
+        for budget in [0, bytes.count - 1, MeshLoader.maximumFileSize + 1] {
+            do {
+                _ = try await MeshFileService().readArchive(url: url, maximumBytes: budget)
+                XCTFail("Invalid or exceeded preview budget must fail")
+            } catch let error as MeshLoadingError { XCTAssertEqual(error.status, 4) }
+        }
+    }
+}

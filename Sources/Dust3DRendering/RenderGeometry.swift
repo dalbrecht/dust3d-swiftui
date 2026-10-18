@@ -22,8 +22,8 @@ enum RenderMesh {
 }
 
 /// Pure preparation keeps normalization, triangle validation, and GPU layout independent of Metal allocation.
-struct RenderGeometry {
-    struct Vertex {
+struct RenderGeometry: Sendable {
+    struct Vertex: Sendable {
         let position: SIMD4<Float>
         let normal: SIMD4<Float>
         let color: SIMD4<Float>
