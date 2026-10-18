@@ -14,11 +14,16 @@ jobs:
     if: github.ref == 'refs/heads/debug' || github.base_ref == 'debug'
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v3
+      - name: Set up Python for Qt installer
+        uses: actions/setup-python@v6
         with:
+          python-version: '3.11'
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.4.1
+        with:
+          setup-python: false
           aqtversion: '==3.3.*'
           version: '5.15.2'
           host: 'linux'
@@ -41,7 +46,7 @@ jobs:
           mv Dust3D-x86_64.AppImage dust3d-debug-built.AppImage
 
       - name: Upload built AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dust3d-debug-built-appimage
           path: dust3d-debug-built.AppImage
@@ -73,7 +78,7 @@ jobs:
             xorg-x11-server-Xvfb
 
       - name: Download built AppImage artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: dust3d-debug-built-appimage
           path: .
@@ -203,7 +208,7 @@ jobs:
 
       - name: Upload debug artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fedora-appimage-crash-debug
           path: |

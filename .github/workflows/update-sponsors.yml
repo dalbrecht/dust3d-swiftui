@@ -3,17 +3,15 @@ name: update-sponsors
 on:
   schedule:
     - cron: "0 0 * * *" # Run every day at midnight
-      branches:
-        - master
   workflow_dispatch:
 
 jobs:
   update-sponsors:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Fetch sponsors
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
