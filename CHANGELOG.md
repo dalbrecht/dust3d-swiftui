@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Bound cumulative XML namespace expansion across clipboard and asset/header transfers, rejecting excessive growth with a typed limit error and preserving normal namespace meanings, assets and exact history.
+
 - Add editor-owned macOS Quick Look and Finder thumbnail providers that render existing `.ds3` objects without rewriting their archives, with bounded read-only loading and material fallback.
 
 - Show baked color, normal, metallic, roughness and emission in both native app viewports, with background preparation, camera continuity, ordinary-geometry fallback, original diagnostics and material retry; editor changes and undo invalidate obsolete bakes, and viewer baking uses one exact file snapshot.
