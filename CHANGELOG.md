@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Render supported embedded GLB materials in macOS Quick Look and object thumbnails through the shared bounded imported renderer, preserving read-only archives and original failure diagnostics.
+
 - Display supported embedded GLB materials in the editor with current-frame loading, revision-safe errors and lossless edit/history preservation.
 
 - Render supported imported GLB materials in the standalone viewer with authored UV/sampler policy, linear color/factors, PBR scalars, alpha modes and double-sided handling; preserve geometry fallback and remaining editor/file-preview/atlas/export limits.

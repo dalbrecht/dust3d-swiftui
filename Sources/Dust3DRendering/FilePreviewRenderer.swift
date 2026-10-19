@@ -6,6 +6,7 @@ import Metal
 /// Read-only image rendering through the same material encoder as native app viewports.
 public enum FilePreviewRenderer {
     private static let builder = TexturedMetalResourcesBuilder()
+    private static let importedBuilder = ImportedMetalResourcesBuilder()
     private static let imageConverter = FilePreviewImageConverter()
 
     /// Render a fitted object on a transparent background without creating a window.
@@ -31,6 +32,37 @@ public enum FilePreviewRenderer {
             maximumPayloadBytes: 64 * 1024 * 1024)
         try Task.checkCancellation()
         let renderer = TexturedMeshRenderer(resources: owner)
+        let (pixels, stride) = try await readPixels(
+            device: device, dimensions: dimensions, pixelFormat: .bgra8Unorm_srgb
+        ) { encoder, size in renderer.encode(encoder: encoder, drawableSize: size) }
+        try Task.checkCancellation()
+        return try await imageConverter.convert(pixels, dimensions: dimensions, sourceRowStride: stride)
+    }
+
+    /// Render authored imported materials through the production encoder without a window.
+    /// - Parameters:
+    ///   - importedMaterials: Matching owned source geometry, UVs, material facts and decoded images.
+    ///   - maximumSize: Requested point bounds, limited to 2048 pixels per output side.
+    ///   - scale: Positive display scale, at most eight.
+    /// - Returns: Owned premultiplied sRGB image with transparent background.
+    /// - Throws: Original material/Metal errors, FilePreviewError or CancellationError.
+    /// - Note: Prepared geometry/textures have a 64 MiB logical upload quota; input, workspace,
+    ///   attachments, readback, in-flight resources and driver overhead are additional, not an RSS cap.
+    /// - Example: try await FilePreviewRenderer.render(importedMaterials: inputs, maximumSize: size, scale: 1).
+    @MainActor
+    public static func render(
+        importedMaterials: ImportedMaterialRenderData, maximumSize: CGSize, scale: CGFloat
+    ) async throws -> FilePreviewImage {
+        try Task.checkCancellation()
+        let dimensions = try FilePreviewDimensions(maximumSize: maximumSize, scale: scale)
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw FilePreviewError.unavailable("This Mac does not provide a Metal device for file previews.")
+        }
+        let owner = try await importedBuilder.make(
+            data: importedMaterials, device: device, camera: OrbitCamera(yaw: -0.4, pitch: 0.2, distance: 3),
+            maximumPayloadBytes: 64 * 1024 * 1024)
+        try Task.checkCancellation()
+        let renderer = ImportedMeshRenderer(resources: owner)
         let (pixels, stride) = try await readPixels(
             device: device, dimensions: dimensions, pixelFormat: .bgra8Unorm_srgb
         ) { encoder, size in renderer.encode(encoder: encoder, drawableSize: size) }

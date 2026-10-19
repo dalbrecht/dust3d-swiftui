@@ -1,10 +1,12 @@
 import Dust3DRendering
 import Foundation
 import QuickLookThumbnailing
+import os
 
 /// System thumbnail requests consume only copied URL/size inputs and immutable preview output.
 final class ThumbnailProvider: QLThumbnailProvider {
     private let service = FilePreviewDocumentService()
+    private static let logger = Logger(subsystem: "org.dust3d.editor.thumbnail", category: "Rendering")
 
     override func provideThumbnail(
         for request: QLFileThumbnailRequest,
@@ -15,11 +17,20 @@ final class ThumbnailProvider: QLThumbnailProvider {
         let maximumSize = request.maximumSize
         let scale = request.scale
         let service = service
+        let operationID = UUID().uuidString
         Task { @MainActor in
             do {
                 let document = try await service.load(url: url)
                 let image: FilePreviewImage
-                if let baked = document.bakedMesh {
+                if let issue = document.materialError {
+                    Self.logger.warning(
+                        "Thumbnail operation \(operationID, privacy: .public): using ordinary geometry after material preparation failed: \(issue.localizedDescription, privacy: .private)"
+                    )
+                }
+                if let imported = document.importedMaterials {
+                    image = try await FilePreviewRenderer.render(
+                        importedMaterials: imported, maximumSize: maximumSize, scale: scale)
+                } else if let baked = document.bakedMesh {
                     image = try await FilePreviewRenderer.render(
                         bakedMesh: baked, maximumSize: maximumSize, scale: scale)
                 } else if let mesh = document.mesh {

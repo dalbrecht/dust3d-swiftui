@@ -160,7 +160,7 @@ Dependencies: M3; material/export integration follows M4. Suggested PRs: rig ada
 
 Dependencies: M5. Suggested PRs: evaluation APIs; animation management/playback; sound generation and synchronization.
 
-- Add required `dust3d/animation` and `dust3d/sound` code as explicit Qt-free targets; they are not compiled by the current viewer package. Inventory existing animation types/parameters rather than assuming a general keyframe editor.
+- Add required `dust3d/animation` code, including its sound generator/event detector, as explicit Qt-free targets; they are not compiled by the current viewer package. Inventory existing animation types/parameters rather than assuming a general keyframe editor.
 - Port preview/export worker orchestration into actors. Add animation list and parameter inspectors, playback/time controls, skeleton skinning and audio preview where supported by the reference app.
 - Done: sampled poses and durations match fixtures, playback independent of frame rate, sound exports have correct format/duration, stale generation and cancellation do not publish wrong animations.
 
@@ -556,3 +556,14 @@ progress/warnings and revision-guarded errors preserve document/history boundari
 Actual edit/undo/redo/reopen tests retain original GLB bytes. Full local/native,
 review and hosted gates remain required. File-preview adoption, imported atlas/
 baking, textured exports and full M4–M8 acceptance remain open.
+
+### Imported materials in system file previews (issue #161)
+
+Viewer #158 and editor #160 are merged. The system-provider stage reuses matching
+owned imported materials, the production encoder and premultiplied-sRGB readback
+(ADR 0076). Local Finder icons, actual public thumbnail API output and interactive
+Quick Look rendering/wireframe/orbit/Fit are verified using existing provider IDs.
+Required malformed geometry rejects before partial publication; optional material
+failures preserve ordinary geometry and their original cause. The integrated local
+gate passes 777 tests; exact-head review and hosted checks remain required. Imported atlas/baking, broader material
+compatibility, exports and M4–M8 acceptance remain open.

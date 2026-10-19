@@ -24,7 +24,7 @@ public struct FilePreviewView: View {
             } else if let mesh = document.mesh {
                 MeshViewport(
                     mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
-                    bakedMesh: materialRenderIssue == nil ? document.bakedMesh : nil,
+                    materials: materialRenderIssue == nil ? document.materials : nil,
                     onMaterialError: {
                         materialRenderIssue = $0
                         materialsRendered = false

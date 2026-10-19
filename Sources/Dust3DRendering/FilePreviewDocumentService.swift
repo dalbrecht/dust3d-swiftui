@@ -2,10 +2,21 @@ import Dust3DDocument
 import Dust3DKit
 import Foundation
 
-/// Matching ordinary geometry and optional baked output from one unchanged source snapshot.
+/// Matching ordinary geometry and optional material output from one unchanged source snapshot.
 public struct FilePreviewDocument: Sendable {
     public let mesh: IndexedMesh?
-    public let bakedMesh: MeshWithBakedTextures?
+    /// Mutually exclusive matching baked or imported inputs; nil retains ordinary geometry.
+    public let materials: MeshMaterialContent?
+    /// Procedural baked output when that representation was prepared successfully.
+    public var bakedMesh: MeshWithBakedTextures? {
+        guard case .baked(let value) = materials else { return nil }
+        return value
+    }
+    /// Authored imported material inputs when supported embedded models contribute geometry.
+    public var importedMaterials: ImportedMaterialRenderData? {
+        guard case .imported(let value) = materials else { return nil }
+        return value
+    }
     /// Optional material failure; ordinary geometry remains available and the original cause survives.
     public let materialError: (any Error)?
     /// Metadata interpreted from the exact source snapshot, separately from optional material rendering.
@@ -15,8 +26,17 @@ public struct FilePreviewDocument: Sendable {
         mesh: IndexedMesh?, bakedMesh: MeshWithBakedTextures?, materialError: (any Error)?,
         materialSourceCapabilities: MaterialSourceCapabilities = .unknown
     ) {
+        self.init(
+            mesh: mesh, materials: bakedMesh.map(MeshMaterialContent.baked), materialError: materialError,
+            materialSourceCapabilities: materialSourceCapabilities)
+    }
+
+    init(
+        mesh: IndexedMesh?, materials: MeshMaterialContent?, materialError: (any Error)?,
+        materialSourceCapabilities: MaterialSourceCapabilities = .unknown
+    ) {
         self.mesh = mesh
-        self.bakedMesh = bakedMesh
+        self.materials = materials
         self.materialError = materialError
         self.materialSourceCapabilities = materialSourceCapabilities
     }
@@ -30,6 +50,7 @@ public struct FilePreviewDocument: Sendable {
     {
         MaterialPreviewWarning.message(
             mesh?.warning ?? "", hasBakedMaterials: materialsRendered && bakedMesh != nil && !materialRenderingFailed,
+            hasImportedMaterials: materialsRendered && importedMaterials != nil && !materialRenderingFailed,
             hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails)
     }
 }
@@ -38,17 +59,25 @@ public struct FilePreviewDocument: Sendable {
 public actor FilePreviewDocumentService {
     private let files = MeshFileService()
     private let materialBaker: any ArchiveTextureBaking
+    private let importedMaterialLoader: any ArchiveImportedMaterialLoading
     private var tail: Task<Void, Never>?
 
     /// Create a preview worker with a substitutable material boundary.
-    /// - Parameter materialBaker: Shared retained-asset decoder and Qt-free native baker.
-    public init(materialBaker: any ArchiveTextureBaking = ArchiveTextureBakingService()) {
+    /// - Parameters:
+    ///   - materialBaker: Shared retained-asset decoder and Qt-free native baker.
+    ///   - importedMaterialLoader: Bounded owned source/material preparation for embedded models.
+    public init(
+        materialBaker: any ArchiveTextureBaking = ArchiveTextureBakingService(),
+        importedMaterialLoader: any ArchiveImportedMaterialLoading = ArchiveImportedMaterialService()
+    ) {
         self.materialBaker = materialBaker
+        self.importedMaterialLoader = importedMaterialLoader
     }
 
     /// Prepare a document without modifying bytes, writing caches or using editor state.
     /// - Parameter url: Local or system-granted file URL.
-    /// - Returns: Ordinary/baked geometry, or an explicit empty result; material failures retain their cause.
+    /// - Returns: Ordinary geometry with optional baked/imported materials, or an explicit empty result.
+    ///   Material failures retain their original cause alongside ordinary geometry.
     /// - Throws: Original filesystem/native errors or `CancellationError` at cooperative boundaries.
     /// - Note: Archive input is at most 64 MiB; logical output/workspace are separate quotas.
     public func load(url: URL) async throws -> FilePreviewDocument {
@@ -93,6 +122,13 @@ public actor FilePreviewDocumentService {
                 mesh: nil, bakedMesh: nil, materialError: nil, materialSourceCapabilities: capabilities)
         }
         do {
+            if let imported = try await importedMaterialLoader.loadIfPresent(data: data, limits: .init()) {
+                try Task.checkCancellation()
+                return FilePreviewDocument(
+                    mesh: mesh, materials: .imported(imported), materialError: nil,
+                    materialSourceCapabilities: capabilities)
+            }
+            try Task.checkCancellation()
             let baked = try await materialBaker.load(
                 data: data,
                 options: MeshBakeOptions(
