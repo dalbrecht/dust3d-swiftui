@@ -96,6 +96,21 @@ final class ImportedSurfaceCopyTests: XCTestCase {
             ImportedSurfaceComponent(id: "e\u{301}", kind: .original))
     }
 
+    func test_should_compare_and_hash_model_identities_as_exact_utf8() throws {
+        let composed = try ImportedSurfaceModelIdentity(id: "é")
+        let decomposed = try ImportedSurfaceModelIdentity(id: "e\u{301}")
+        XCTAssertNotEqual(composed, decomposed)
+        XCTAssertEqual(Set([composed, decomposed]).count, 2)
+        let byIdentity = [composed: "first", decomposed: "second"]
+        XCTAssertEqual(byIdentity[try ImportedSurfaceModelIdentity(id: "é")], "first")
+        XCTAssertEqual(byIdentity[try ImportedSurfaceModelIdentity(id: "e\u{301}")], "second")
+        for invalid in ["", "a\0b", String(repeating: "a", count: 39)] {
+            XCTAssertThrowsError(try ImportedSurfaceModelIdentity(id: invalid)) {
+                XCTAssertEqual($0 as? ImportedSurfaceError, .invalidIdentity)
+            }
+        }
+    }
+
     func test_should_validate_options_and_report_actionable_errors() throws {
         for options in [
             ImportedSurfaceOptions(maximumNativePayloadBytes: -1), .init(maximumNativePayloadBytes: Int.max),

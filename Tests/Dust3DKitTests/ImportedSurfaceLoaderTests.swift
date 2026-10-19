@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEngine
 import Foundation
 import XCTest
 
@@ -15,7 +16,7 @@ final class ImportedSurfaceLoaderTests: XCTestCase {
         let value = try ImportedSurfaceLoader.load(data: resource())
         XCTAssertEqual(value.mesh.triangleCount, 4)
         XCTAssertEqual(value.triangles.count, value.mesh.triangleCount)
-        XCTAssertEqual(value.modelIDs, ["{00000300-0000-4000-8000-000000000300}"])
+        XCTAssertEqual(value.modelIDs.map(\.id), ["{00000300-0000-4000-8000-000000000300}"])
         XCTAssertEqual(value.components.count, 1)
         XCTAssertEqual(value.components.first?.id, "{00000200-0000-4000-8000-000000000200}")
         XCTAssertEqual(value.components.first?.kind, .original)
@@ -139,6 +140,32 @@ final class ImportedSurfaceLoaderTests: XCTestCase {
         XCTAssertTrue(history.redo())
         XCTAssertEqual(history.document.encoded(), edited)
         XCTAssertEqual(try ImportedSurfaceLoader.load(data: history.document.encoded()).triangles, surface.triangles)
+    }
+
+    func test_should_discard_direct_loader_result_when_cancelled_during_geometry_copy() async throws {
+        let data = try resource()
+        let task = Task {
+            var options = Dust3DImportedSurfaceOptions()
+            options.struct_size = MemoryLayout<Dust3DImportedSurfaceOptions>.size
+            var error = Dust3DError()
+            let owner = try XCTUnwrap(
+                data.withUnsafeBytes {
+                    dust3d_imported_surface_mesh_load(
+                        $0.bindMemory(to: UInt8.self).baseAddress, $0.count, &options, &error)
+                })
+            defer { dust3d_imported_surface_mesh_destroy(owner) }
+            return try ImportedSurfaceCopy.copy(
+                owner, options: .init(),
+                copyGeometry: { geometry in
+                    let mesh = try MeshLoader.copyNativeMesh(geometry)
+                    withUnsafeCurrentTask { $0?.cancel() }
+                    return mesh
+                })
+        }
+        do {
+            _ = try await task.value
+            XCTFail("A direct copy cancelled during geometry work must not publish success")
+        } catch is CancellationError {}
     }
 
     func test_should_load_on_background_actor_and_cancel_before_publication() async throws {

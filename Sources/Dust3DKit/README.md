@@ -42,3 +42,10 @@ No borrowed native pointer survives the load. Errors preserve original native
 status/messages or provide typed Swift validation diagnostics. Cancellation is
 checked around synchronous native work and between copied records. Source values
 are not packed atlas UVs and do not enable imported texture display by themselves.
+
+Surface model catalogs expose `ImportedSurfaceModelIdentity`, whose equality and
+hashing compare UTF-8 bytes. Use `try ImportedSurfaceModelIdentity(id: material.id)`
+when correlating a material identity; read `.id` for display or serialization.
+This prevents Swift Unicode normalization from collapsing distinct engine keys.
+The direct synchronous copy also checks cancellation after geometry allocation
+and before returning, independently of the background service's publication check.

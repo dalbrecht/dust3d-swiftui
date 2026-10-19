@@ -89,7 +89,10 @@ enum ImportedSurfaceCopy {
         return ImportedSurfaceComponent(id: id, kind: kind)
     }
 
-    static func copy(_ owner: OpaquePointer, options: ImportedSurfaceOptions) throws -> ImportedSurfaceMesh {
+    static func copy(
+        _ owner: OpaquePointer, options: ImportedSurfaceOptions,
+        copyGeometry: (OpaquePointer) throws -> Mesh = MeshLoader.copyNativeMesh
+    ) throws -> ImportedSurfaceMesh {
         try Task.checkCancellation()
         guard let geometry = dust3d_imported_surface_mesh_geometry(owner),
             let source = dust3d_imported_surface_mesh_triangles(owner)
@@ -107,17 +110,17 @@ enum ImportedSurfaceCopy {
         try budget.charge(1, width: MemoryLayout<ImportedSurfaceMesh>.stride)
         try budget.charge(vertices, width: MemoryLayout<MeshVertex>.stride)
         try budget.charge(triangles, width: MemoryLayout<ImportedSurfaceTriangle>.stride)
-        try budget.charge(models, width: MemoryLayout<String>.stride)
+        try budget.charge(models, width: MemoryLayout<ImportedSurfaceModelIdentity>.stride)
         try budget.charge(components, width: MemoryLayout<ImportedSurfaceComponent>.stride)
-        var modelIDs: [String] = []
+        var modelIDs: [ImportedSurfaceModelIdentity] = []
         modelIDs.reserveCapacity(models)
-        try budget.charge(modelIDs.capacity - models, width: MemoryLayout<String>.stride)
+        try budget.charge(modelIDs.capacity - models, width: MemoryLayout<ImportedSurfaceModelIdentity>.stride)
         var modelKeys: Set<[UInt8]> = []
         for index in 0..<models {
             try Task.checkCancellation()
             let id = try identity(dust3d_imported_surface_mesh_model_id(owner, index), budget: &budget)
             guard modelKeys.insert(Array(id.utf8)).inserted else { throw ImportedSurfaceError.invalidIdentity }
-            modelIDs.append(id)
+            modelIDs.append(try ImportedSurfaceModelIdentity(id: id))
         }
         var catalog: [ImportedSurfaceComponent] = []
         catalog.reserveCapacity(components)
@@ -139,9 +142,10 @@ enum ImportedSurfaceCopy {
             records.append(try triangle(source[index], models: models, components: components))
         }
         try Task.checkCancellation()
-        let mesh = try MeshLoader.copyNativeMesh(geometry)
+        let mesh = try copyGeometry(geometry)
         try budget.charge(mesh.vertices.capacity - vertices, width: MemoryLayout<MeshVertex>.stride)
         try budget.charge(mesh.warning.utf8.count + 1)
+        try Task.checkCancellation()
         return ImportedSurfaceMesh(
             mesh: mesh, triangles: records, modelIDs: modelIDs, components: catalog, nativePayloadBytes: payload,
             copiedPayloadBytes: budget.used)

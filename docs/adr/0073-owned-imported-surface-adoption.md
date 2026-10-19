@@ -31,3 +31,10 @@ quota edges, malformed source records, original errors, background cancellation
 and exact GLB preservation through edit/undo/save/reopen. Full make ci and review
 remain required. Imported sampling, atlas/baking, PBR/alpha presentation, rendered
 file-preview parity and textured export still require separate M4 acceptance.
+
+Automated review follow-up: resolved model IDs use an explicit byte-exact Hashable
+value, with bounded construction, so normal equality/dictionary lookup preserves
+original engine keys. A narrow internal geometry-copy dependency allows a real
+copy followed by deterministic cancellation in tests; the synchronous boundary
+checks cancellation again after that copy and before publishing. No test hook or
+mutable global is added to the public API.

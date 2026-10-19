@@ -17,6 +17,36 @@ public struct ImportedSurfaceComponent: Sendable, Equatable {
     }
 }
 
+/// Resolved model key with byte-exact equality and hashing for material lookup.
+public struct ImportedSurfaceModelIdentity: Sendable, Hashable {
+    public let id: String
+
+    /// Preserve a bounded opaque identity without Unicode or UUID normalization.
+    /// - Parameter id: Nonempty UTF-8 identity, at most 38 bytes, without NUL.
+    /// - Throws: ImportedSurfaceError.invalidIdentity for invalid source keys.
+    /// - Example: let key = try ImportedSurfaceModelIdentity(id: material.id).
+    public init(id: String) throws {
+        guard !id.isEmpty, id.utf8.count <= 38, !id.utf8.contains(0) else {
+            throw ImportedSurfaceError.invalidIdentity
+        }
+        self.id = id
+    }
+
+    /// Compare original UTF-8 bytes rather than canonical Unicode equivalence.
+    /// - Parameters: lhs and rhs are bounded copied model keys.
+    /// - Returns: True only for byte-identical keys.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id.utf8.elementsEqual(rhs.id.utf8)
+    }
+
+    /// Hash the same UTF-8 bytes used by equality, without temporary storage.
+    /// - Parameter hasher: The caller's randomized Swift hasher.
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id.utf8.count)
+        for byte in id.utf8 { hasher.combine(byte) }
+    }
+}
+
 /// Straight source RGBA in expanded triangle corner order, without material factors.
 public struct ImportedSurfaceColors: Sendable, Equatable {
     public let first: SIMD4<Double>
@@ -37,7 +67,7 @@ public struct ImportedSurfaceTriangle: Sendable, Equatable {
 public struct ImportedSurfaceMesh: Sendable {
     public let mesh: Mesh
     public let triangles: [ImportedSurfaceTriangle]
-    public let modelIDs: [String]
+    public let modelIDs: [ImportedSurfaceModelIdentity]
     public let components: [ImportedSurfaceComponent]
     public let nativePayloadBytes: Int
     /// Copied record/array capacities, identity bytes and warning bytes; excludes workspace/allocator overhead.
