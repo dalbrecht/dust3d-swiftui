@@ -97,3 +97,11 @@ linear-space filtering and minification against independent factor references.
 Tests explicitly skip if Metal is unavailable; native inspection remains separate.
 The editor and file-preview services continue using their existing representation
 until separate adoption. See ADR 0074 and imported-material viewer verification.
+
+System file previews prepare mutually exclusive baked/imported materials from the
+same read-only archive snapshot. Imported thumbnail rendering reuses the production
+encoder, 64 MiB logical upload admission, fitted camera and premultiplied-sRGB
+readback. Preparation failures retain ordinary geometry and their original cause;
+thumbnail GPU failures return the original system error. See
+[ADR 0076](../../docs/adr/0076-imported-material-file-previews.md) for quotas and
+native-host acceptance requirements.
