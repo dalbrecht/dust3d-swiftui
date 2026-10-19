@@ -13,3 +13,21 @@ check closed edge topology, translated/hard/subtraction variants and near-weld
 separation; this Swift integration test does not prescribe triangulation order.
 
 These binary archives have byte offsets and CRLF headers. Do not text-normalize.
+
+ImportedMaterials.ds3 and ImportedPreview.ds3 are synthetic MIT fixtures encoded
+independently with Python for Apple issue #153, consuming core revision
+4db1bb770b4c342446805f77ccfa4dc0aabc90c4. The first checks two model materials,
+original braced/bare identities, shared instances and an uninstanced part. The
+second contains a closed tetrahedron on a two-node spine for geometry preview and
+lossless edit/undo/reopen checks. Their GLB assets must remain byte-exact on save.
+
+ImportedMaterial.png is the core's synthetic 2x2 straight-alpha RGBA fixture:
+red/128 alpha, green/255, blue/255, yellow/64 in row order. ImportedMaterial.jpg
+is the corresponding core-owned 2x2 JPEG. ImportedProgressive.jpg was generated
+with jpegtran -progressive -copy none from that JPEG; ImportedGray.jpg was created
+with cjpeg -grayscale -quality 95 from a synthetic 2x2 RGB PPM. These tools are
+fixture-generation tools, not application dependencies. JPEG tests check shape,
+opacity and grayscale relationships rather than codec-dependent exact RGB values.
+ImportedCMYK.jpg is a synthetic 2x2 device-CMYK CGImage encoded by Apple's ImageIO
+JPEG writer. Its unsupported CMYK pixel layout must produce a typed failure,
+rather than silently interpreting four CMYK channels as RGBA.

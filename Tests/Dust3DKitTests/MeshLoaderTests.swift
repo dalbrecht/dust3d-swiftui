@@ -86,11 +86,23 @@ final class MeshLoaderTests: XCTestCase {
                 data: archive(xml: valid.replacingOccurrences(of: "radius=\"0.12\"", with: "radius=\"nan\""))))
     }
 
-    func testImportedGeometryFailsExplicitlyInsteadOfShowingPartialMesh() throws {
+    func testUnusedImportedMetadataRetainsProceduralGeometry() throws {
         let xml = try modelXML().replacingOccurrences(
             of: "visible=\"true\"", with: "visible=\"true\" importedModelId=\"{eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee}\"")
+        let original = try MeshLoader.load(data: fixture())
+        let mesh = try MeshLoader.load(data: archive(xml: xml))
+        XCTAssertEqual(mesh.vertices.map(\.position), original.vertices.map(\.position))
+        XCTAssertEqual(mesh.triangleCount, original.triangleCount)
+    }
+
+    func testRequiredMissingImportedGeometryFailsInsteadOfShowingPartialMesh() throws {
+        let xml = try modelXML().replacingOccurrences(
+            of: "visible=\"true\"",
+            with: "visible=\"true\" target=\"ImportedModel\" importedModelId=\"{eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee}\""
+        )
         XCTAssertThrowsError(try MeshLoader.load(data: archive(xml: xml))) { error in
-            XCTAssertEqual((error as? MeshLoadingError)?.status, 2)
+            XCTAssertEqual((error as? MeshLoadingError)?.status, 1)
+            XCTAssertTrue(error.localizedDescription.lowercased().contains("missing"))
         }
     }
 
