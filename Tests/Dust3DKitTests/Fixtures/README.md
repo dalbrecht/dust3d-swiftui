@@ -40,3 +40,11 @@ COLOR_0 values and alpha; its texture and nontrivial material factors remain
 separate from source RGBA. The mirror test independently rebuilds its narrow DS3
 envelope after changing XML, preserving original GLB bytes. It is not a rendered
 baseline and carries no additional dependency or license requirement.
+
+MixedMaterials.ds3 is a synthetic MIT fixture derived from ImportedSurface.ds3
+without changing its GLB bytes. It adds a separate uncombined procedural sphere
+(center 3/3/3, radius 0.1), a two-pixel red/blue PNG with alpha 128/1, and an
+opaque three-byte asset (19/20/21). It mirrors the mixed-archive contract from
+ArchiveSourceTextureBakingTests. Expected output contains mapped imported and
+procedural triangles with their own ownership/policies, preserving all archive
+assets. It is source input, not a locally rendered snapshot baseline.

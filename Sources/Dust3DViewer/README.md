@@ -55,3 +55,20 @@ material display or material-aware system file previews. It deliberately applies
 glTF factors even with a base-color image; Qt's legacy importer omits that factor
 when an image loads. See [ADR 0074](../../docs/adr/0074-imported-material-viewer.md)
 and [verification](../../docs/imported-material-viewer-verification.md).
+
+Material preparation chooses one representation from the exact opened archive:
+authored UV/sampler rendering for purely imported surfaces, legacy baking for
+procedural-only geometry, and source-aware baking when imported and procedural
+(or unknown bridge) triangles coexist. Imported and procedural textures therefore
+share the mixed atlas while preserving per-triangle source alpha/sidedness.
+Materials appear only for the matching current revision; replacement, cancellation,
+GPU failure and retry retain ordinary geometry and original failure diagnostics.
+The viewer never re-encodes the input archive.
+
+The shared `ArchiveMaterialPreparationService` owns this choice. Mixed preparation
+releases imported inspection output before re-inspecting the same bytes through
+the source baker; this currently repeats inspection/decoding work. Default mixed
+maps are color 512, normal/material 256, atlas 256, with 64 MiB aggregate decoded
+image admission. Native/output/workspace quotas remain independent; these are not
+a process-memory cap. Atlases currently sample only their base level (core #59).
+Editor and system-preview adoption follow separately. See ADR 0082 and #172.
