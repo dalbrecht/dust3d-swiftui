@@ -7,6 +7,8 @@
 - Refuse to compile a core checkout that restores the quarantined GLB material catalog C API. The reviewed core pin is unchanged.
 
 - Preserve positive subnormal MASK alpha through interpolation and factor multiplication on GPUs that flush subnormal arithmetic (#169, PR #171 review).
+- Render mixed imported/procedural materials in the editor through shared preparation, preserving exact document history, asset bytes, selection, camera and revision-safe geometry fallback.
+
 - Render mixed imported/procedural materials in the standalone viewer through shared bounded preparation, retaining authored imported rendering for purely imported surfaces and geometry fallback on material failure.
 
 - Preserve finite nonnegative imported alpha cutoffs through source baking and both Metal paths, including cutoffs above one and positive values below Float precision.

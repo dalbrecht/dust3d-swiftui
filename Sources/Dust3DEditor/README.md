@@ -303,3 +303,18 @@ Native QA verified explicit `ImportedSurface.ds3` opening, ordinary Open of
 startup checks observed disabled picker controls; a later selected-file check
 showed them becoming enabled when the native object preview completed. The role
 of retained app state/registration and preview latency remains unconfirmed (#170).
+
+Mixed imported/procedural documents now use the same source-aware material
+preparation as the viewer. Pure imported surfaces retain authored UV/sampler
+rendering; pure procedural documents retain legacy baking. The existing
+revision-bound material state owns the selected representation, confirms the
+current GPU frame, and retains ordinary geometry with original causes on failure.
+Retry uses the exact snapshot. Stale results, stopped windows and empty documents
+cannot restore obsolete source-baked materials.
+
+Geometry edits and material-only edits retain camera/selection and exact undo,
+redo and save/reopen behavior. Tests preserve imported GLB, procedural PNG and
+opaque asset bytes in the mixed fixture and verify metallic-map refresh without
+regenerating ordinary geometry. Native QA displays both textured surface kinds
+(20 triangles). System-preview adoption, chart-isolated mipmaps (core #59),
+textured export and broader M4 acceptance remain separate (#173, ADR 0083).

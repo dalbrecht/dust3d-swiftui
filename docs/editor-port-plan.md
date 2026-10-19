@@ -633,3 +633,15 @@ exercise both ownership kinds. Native inspection shows both textured surfaces.
 Inspection/decoding currently repeats for mixed inputs, with the first result
 released before baking. Editor and system-preview adoption, core #59, exports
 and full M4 acceptance remain open (ADR 0082).
+
+### Mixed-material editor checkpoint (#173)
+
+Adopt shared archive-material preparation in the editor while keeping the existing
+`MeshPreviewState<MeshMaterialContent>` as the only material state. Mixed surfaces
+use source-aware baking; pure imported/procedural paths retain their own policies.
+Current-frame confirmation, stale-result rejection, empty output, stop, original
+errors and exact-snapshot retry remain guarded by the existing scope/revisions.
+Tests cover geometry/material edits, camera/selection preservation, exact undo
+and redo, save/reopen and retained GLB/PNG/opaque bytes. Native inspection displays
+both textured surface kinds in the 20-triangle mixed fixture. This does not close
+M4: system previews, core #59, exports and acceptance remain open (ADR 0083).
