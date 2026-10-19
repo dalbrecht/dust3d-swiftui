@@ -17,9 +17,17 @@ final class EditorStore {
         guard !previewState.isStale, !isWorking, !stopped else { return nil }
         return previewState.value?.sourceHints
     }
-    private(set) var materialState = MeshPreviewState<MeshWithBakedTextures>()
-    var bakedMesh: MeshWithBakedTextures? {
+    private(set) var materialState = MeshPreviewState<MeshMaterialContent>()
+    var materialContent: MeshMaterialContent? {
         materialRenderError == nil && !materialState.isStale ? materialState.value : nil
+    }
+    var bakedMesh: MeshWithBakedTextures? {
+        guard case .baked(let value) = materialContent else { return nil }
+        return value
+    }
+    var importedMaterials: ImportedMaterialRenderData? {
+        guard case .imported(let value) = materialContent else { return nil }
+        return value
     }
     var previewCompatibilityWarning: String? {
         let tree = snapshot?.componentTree
@@ -30,16 +38,26 @@ final class EditorStore {
         return MaterialPreviewWarning.message(
             mesh?.warning ?? "",
             hasBakedMaterials: bakedMesh != nil && renderedMaterialRevision == materialViewportRevision,
+            hasImportedMaterials: importedMaterials != nil && renderedMaterialRevision == materialViewportRevision,
             hasLegacySurfaceDetails: legacyDetails)
     }
     private var renderedMaterialRevision: Int?
 
     func materialsRendered(revision: Int) {
-        guard bakedMesh != nil, revision == materialViewportRevision else { return }
+        guard materialContent != nil, revision == materialViewportRevision else { return }
         renderedMaterialRevision = revision
     }
 
+    func materialsFailed(_ cause: String, revision: Int) {
+        guard materialContent != nil, revision == materialViewportRevision else { return }
+        renderedMaterialRevision = nil
+        materialRenderError = cause
+    }
+
     var isBakingMaterials: Bool { materialState.isGenerating }
+    var isUpdatingMaterials: Bool {
+        isBakingMaterials || (materialContent != nil && renderedMaterialRevision != materialViewportRevision)
+    }
     var materialRenderError: String?
     var materialIssue: String? { materialRenderError ?? materialState.errorMessage }
     var previewRevision: Int { previewState.revision }
@@ -68,6 +86,7 @@ final class EditorStore {
     var onEditingChanged: ((Bool) -> Void)?
     private let session = EditorSession()
     private let materialBaker: any ArchiveTextureBaking
+    private let importedMaterialLoader: any ArchiveImportedMaterialLoading
     private(set) var materialGeneration: Task<Void, Never>?
     private let preview: any EditorPreviewServing
     private var previewScopeID = UUID()
@@ -93,12 +112,14 @@ final class EditorStore {
         colorImages: any ColorImageServing = ColorImageService(),
         referenceImages: any ReferenceImageServing = ReferenceImageService(),
         preview: any EditorPreviewServing = EditorPreviewService(),
-        materialBaker: any ArchiveTextureBaking = ArchiveTextureBakingService()
+        materialBaker: any ArchiveTextureBaking = ArchiveTextureBakingService(),
+        importedMaterialLoader: any ArchiveImportedMaterialLoading = ArchiveImportedMaterialService()
     ) {
         self.colorImages = colorImages
         self.referenceImages = referenceImages
         self.preview = preview
         self.materialBaker = materialBaker
+        self.importedMaterialLoader = importedMaterialLoader
     }
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
@@ -684,12 +705,21 @@ final class EditorStore {
         let requestID = UUID()
         let scopeID = previewScopeID
         materialState.begin(requestID: requestID)
-        materialGeneration = Task { [materialBaker] in
+        materialGeneration = Task { [materialBaker, importedMaterialLoader] in
             do {
-                let result = try await materialBaker.load(
-                    data: snapshot.document.encoded(),
-                    options: MeshBakeOptions(colorSize: 512, normalSize: 256, materialSize: 128, atlasTextureSize: 512),
-                    limits: ArchiveTextureLimits())
+                let data = snapshot.document.encoded()
+                let result: MeshMaterialContent
+                if let imported = try await importedMaterialLoader.loadIfPresent(data: data, limits: .init()) {
+                    result = .imported(imported)
+                } else {
+                    try Task.checkCancellation()
+                    result = .baked(
+                        try await materialBaker.load(
+                            data: data,
+                            options: MeshBakeOptions(
+                                colorSize: 512, normalSize: 256, materialSize: 128, atlasTextureSize: 512),
+                            limits: ArchiveTextureLimits()))
+                }
                 guard !Task.isCancelled, !stopped, scopeID == previewScopeID else { return }
                 materialState.succeed(result, requestID: requestID)
             } catch {
