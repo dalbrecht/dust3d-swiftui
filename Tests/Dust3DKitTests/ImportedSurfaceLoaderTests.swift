@@ -16,9 +16,9 @@ final class ImportedSurfaceLoaderTests: XCTestCase {
         let value = try ImportedSurfaceLoader.load(data: resource())
         XCTAssertEqual(value.mesh.triangleCount, 4)
         XCTAssertEqual(value.triangles.count, value.mesh.triangleCount)
-        XCTAssertEqual(value.modelIDs.map(\.id), ["{00000300-0000-4000-8000-000000000300}"])
+        XCTAssertEqual(value.modelIDs.map(\.rawValue), ["{00000300-0000-4000-8000-000000000300}"])
         XCTAssertEqual(value.components.count, 1)
-        XCTAssertEqual(value.components.first?.id, "{00000200-0000-4000-8000-000000000200}")
+        XCTAssertEqual(value.components.first?.id.rawValue, "{00000200-0000-4000-8000-000000000200}")
         XCTAssertEqual(value.components.first?.kind, .original)
         var alphaCounts: [Double: Int] = [:]
         let coordinates = [SIMD2<Double>(0, 0), SIMD2(1, 0), SIMD2(0.5, 1), SIMD2(0.5, 0.5)]

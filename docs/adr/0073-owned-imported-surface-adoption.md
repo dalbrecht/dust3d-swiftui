@@ -38,3 +38,8 @@ original engine keys. A narrow internal geometry-copy dependency allows a real
 copy followed by deterministic cancellation in tests; the synchronous boundary
 checks cancellation again after that copy and before publishing. No test hook or
 mutable global is added to the public API.
+
+The component catalog also exposes this shared ImportedSurfaceIdentity key type,
+not a raw String. Component entries synthesize Hashable from the typed key and
+catalog kind. Both model/material and component/binding correlation therefore
+require explicit byte-exact keys; rawValue is reserved for display/serialization.

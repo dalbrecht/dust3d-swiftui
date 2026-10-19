@@ -2,48 +2,41 @@
 public enum ImportedSurfaceColorEncoding: Sendable, Equatable { case sRGB, linear }
 
 /// Catalog membership only; generated does not establish unique Boolean provenance.
-public enum ImportedSurfaceComponentKind: Sendable, Equatable { case original, generated }
+public enum ImportedSurfaceComponentKind: Sendable, Hashable { case original, generated }
 
-/// Opaque copied component identity, compared as exact UTF-8 bytes.
-public struct ImportedSurfaceComponent: Sendable, Equatable {
-    public let id: String
+/// Copied component identity and its catalog membership.
+public struct ImportedSurfaceComponent: Sendable, Hashable {
+    public let id: ImportedSurfaceIdentity
     public let kind: ImportedSurfaceComponentKind
-
-    /// Compare catalog membership and original identity bytes.
-    /// - Parameters: lhs and rhs are independent copied component entries.
-    /// - Returns: True only when kind and UTF-8 identity match.
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.kind == rhs.kind && lhs.id.utf8.elementsEqual(rhs.id.utf8)
-    }
 }
 
-/// Resolved model key with byte-exact equality and hashing for material lookup.
-public struct ImportedSurfaceModelIdentity: Sendable, Hashable {
-    public let id: String
+/// Opaque model/component key with byte-exact equality and hashing for material lookup.
+public struct ImportedSurfaceIdentity: Sendable, Hashable {
+    public let rawValue: String
 
     /// Preserve a bounded opaque identity without Unicode or UUID normalization.
-    /// - Parameter id: Nonempty UTF-8 identity, at most 38 bytes, without NUL.
+    /// - Parameter rawValue: Nonempty UTF-8 identity, at most 38 bytes, without NUL.
     /// - Throws: ImportedSurfaceError.invalidIdentity for invalid source keys.
-    /// - Example: let key = try ImportedSurfaceModelIdentity(id: material.id).
-    public init(id: String) throws {
-        guard !id.isEmpty, id.utf8.count <= 38, !id.utf8.contains(0) else {
+    /// - Example: let key = try ImportedSurfaceIdentity(rawValue: material.id).
+    public init(rawValue: String) throws {
+        guard !rawValue.isEmpty, rawValue.utf8.count <= 38, !rawValue.utf8.contains(0) else {
             throw ImportedSurfaceError.invalidIdentity
         }
-        self.id = id
+        self.rawValue = rawValue
     }
 
     /// Compare original UTF-8 bytes rather than canonical Unicode equivalence.
-    /// - Parameters: lhs and rhs are bounded copied model keys.
+    /// - Parameters: lhs and rhs are bounded copied model/component keys.
     /// - Returns: True only for byte-identical keys.
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.id.utf8.elementsEqual(rhs.id.utf8)
+        lhs.rawValue.utf8.elementsEqual(rhs.rawValue.utf8)
     }
 
     /// Hash the same UTF-8 bytes used by equality, without temporary storage.
     /// - Parameter hasher: The caller's randomized Swift hasher.
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(id.utf8.count)
-        for byte in id.utf8 { hasher.combine(byte) }
+        hasher.combine(rawValue.utf8.count)
+        for byte in rawValue.utf8 { hasher.combine(byte) }
     }
 }
 
@@ -67,7 +60,7 @@ public struct ImportedSurfaceTriangle: Sendable, Equatable {
 public struct ImportedSurfaceMesh: Sendable {
     public let mesh: Mesh
     public let triangles: [ImportedSurfaceTriangle]
-    public let modelIDs: [ImportedSurfaceModelIdentity]
+    public let modelIDs: [ImportedSurfaceIdentity]
     public let components: [ImportedSurfaceComponent]
     public let nativePayloadBytes: Int
     /// Copied record/array capacities, identity bytes and warning bytes; excludes workspace/allocator overhead.

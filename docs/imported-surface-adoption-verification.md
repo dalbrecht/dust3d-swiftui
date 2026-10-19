@@ -5,14 +5,14 @@ reviewed merged core revision 0a83c3e3a59da4bafb5e3e83023fffd7df5cca90.
 
 ## Local gate
 
-`make ci` passed with 732 XCTest tests (169.383 seconds), 31 build-support tests,
+`make ci` passed with 733 XCTest tests (186.724 seconds), 31 build-support tests,
 strict formatting, native build, Qt-free source/link checks and bundle-rebuild
 verification for separate editor/viewer identities and both preview extensions.
 
-Measured library line coverage: Dust3DKit 1966/1992, Document 3471/3559, editor
+Measured library line coverage: Dust3DKit 1963/1989, Document 3471/3559, editor
 model 1545/1551; the enforced pure editor state, undo and orbit camera scopes are
-100%. The three new surface files together measure 206/207 lines (99.52%): copy
-140 lines with one missed, loader 46/46, value types 21/21. The defensive invalid
+100%. The three new surface files together measure 203/204 lines (99.51%): copy
+141 lines with one missed, loader 46/46, value types 17/17. The defensive invalid
 native component classification path is not exercised by valid core catalogs.
 LLVM's Swift branch report has no branch data; no branch-coverage percentage is
 claimed. These measurements do not instrument the inherited C++ engine or prove
@@ -20,7 +20,7 @@ GPU/Qt rendered parity.
 
 ## Acceptance cases
 
-Fourteen focused tests use the real core C owner and independently authored MIT
+Fifteen focused tests use the real core C owner and independently authored MIT
 DS3/GLB fixtures, plus raw malformed-record boundary cases. They verify exported
 geometry/triangle alignment, source corner RGB/alpha independent of factors and
 preview opacity, linear/sRGB tags, explicit unknown procedural records, original
@@ -45,7 +45,13 @@ Two P2 findings are addressed with regressions: model identity equality/hash mus
 preserve byte-distinct Unicode representations, and a direct synchronous copy
 must not publish after cancellation during geometry copying. The latter was
 reproduced as a behavioral failure after a real native geometry copy, then fixed
-with a final cancellation check. Fourteen focused tests now cover these cases.
-The updated full gate passed all 732 tests, coverage and bundle checks. The
+with a final cancellation check. Fifteen focused tests now cover these cases.
+The updated full gate passed all 733 tests, coverage and bundle checks. The
 measurements above describe the corrected source. Exact-head hosted CI and
 automated re-review remain required before merge.
+
+A subsequent P2 identified the same cross-API key issue on component IDs. Both
+catalogs now expose one bounded ImportedSurfaceIdentity type with byte-exact
+Hashable semantics. A component dictionary regression reproduced the overwrite
+before the fix; all fifteen focused tests pass after it. The updated full gate passed all 733 tests, coverage and bundle checks.
+Exact-head hosted checks and automated review are still required before merge.

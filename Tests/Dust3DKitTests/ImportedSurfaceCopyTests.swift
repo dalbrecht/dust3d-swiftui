@@ -88,27 +88,40 @@ final class ImportedSurfaceCopyTests: XCTestCase {
             XCTAssertThrowsError(try text.withCString { try ImportedSurfaceCopy.identity($0, budget: &budget) })
         }
         XCTAssertEqual(
-            ImportedSurfaceComponent(id: "a", kind: .original), ImportedSurfaceComponent(id: "a", kind: .original))
+            ImportedSurfaceComponent(id: try ImportedSurfaceIdentity(rawValue: "a"), kind: .original),
+            ImportedSurfaceComponent(id: try ImportedSurfaceIdentity(rawValue: "a"), kind: .original))
         XCTAssertNotEqual(
-            ImportedSurfaceComponent(id: "a", kind: .original), ImportedSurfaceComponent(id: "a", kind: .generated))
+            ImportedSurfaceComponent(id: try ImportedSurfaceIdentity(rawValue: "a"), kind: .original),
+            ImportedSurfaceComponent(id: try ImportedSurfaceIdentity(rawValue: "a"), kind: .generated))
         XCTAssertNotEqual(
-            ImportedSurfaceComponent(id: "é", kind: .original),
-            ImportedSurfaceComponent(id: "e\u{301}", kind: .original))
+            ImportedSurfaceComponent(id: try ImportedSurfaceIdentity(rawValue: "é"), kind: .original),
+            ImportedSurfaceComponent(id: try ImportedSurfaceIdentity(rawValue: "e\u{301}"), kind: .original))
     }
 
     func test_should_compare_and_hash_model_identities_as_exact_utf8() throws {
-        let composed = try ImportedSurfaceModelIdentity(id: "é")
-        let decomposed = try ImportedSurfaceModelIdentity(id: "e\u{301}")
+        let composed = try ImportedSurfaceIdentity(rawValue: "é")
+        let decomposed = try ImportedSurfaceIdentity(rawValue: "e\u{301}")
         XCTAssertNotEqual(composed, decomposed)
         XCTAssertEqual(Set([composed, decomposed]).count, 2)
         let byIdentity = [composed: "first", decomposed: "second"]
-        XCTAssertEqual(byIdentity[try ImportedSurfaceModelIdentity(id: "é")], "first")
-        XCTAssertEqual(byIdentity[try ImportedSurfaceModelIdentity(id: "e\u{301}")], "second")
+        XCTAssertEqual(byIdentity[try ImportedSurfaceIdentity(rawValue: "é")], "first")
+        XCTAssertEqual(byIdentity[try ImportedSurfaceIdentity(rawValue: "e\u{301}")], "second")
         for invalid in ["", "a\0b", String(repeating: "a", count: 39)] {
-            XCTAssertThrowsError(try ImportedSurfaceModelIdentity(id: invalid)) {
+            XCTAssertThrowsError(try ImportedSurfaceIdentity(rawValue: invalid)) {
                 XCTAssertEqual($0 as? ImportedSurfaceError, .invalidIdentity)
             }
         }
+    }
+
+    func test_should_keep_byte_distinct_component_ids_separate_as_lookup_keys() throws {
+        let composed = ImportedSurfaceComponent(id: try ImportedSurfaceIdentity(rawValue: "é"), kind: .original)
+        let decomposed = ImportedSurfaceComponent(
+            id: try ImportedSurfaceIdentity(rawValue: "e\u{301}"), kind: .original)
+        var bindings = [composed.id: "first"]
+        bindings[decomposed.id] = "second"
+        XCTAssertEqual(bindings.count, 2)
+        XCTAssertEqual(bindings[composed.id], "first")
+        XCTAssertEqual(bindings[decomposed.id], "second")
     }
 
     func test_should_validate_options_and_report_actionable_errors() throws {

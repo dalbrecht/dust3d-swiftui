@@ -86,7 +86,7 @@ enum ImportedSurfaceCopy {
         case DUST3D_SURFACE_COMPONENT_GENERATED: kind = .generated
         default: throw ImportedSurfaceError.invalidComponent
         }
-        return ImportedSurfaceComponent(id: id, kind: kind)
+        return ImportedSurfaceComponent(id: try ImportedSurfaceIdentity(rawValue: id), kind: kind)
     }
 
     static func copy(
@@ -110,26 +110,27 @@ enum ImportedSurfaceCopy {
         try budget.charge(1, width: MemoryLayout<ImportedSurfaceMesh>.stride)
         try budget.charge(vertices, width: MemoryLayout<MeshVertex>.stride)
         try budget.charge(triangles, width: MemoryLayout<ImportedSurfaceTriangle>.stride)
-        try budget.charge(models, width: MemoryLayout<ImportedSurfaceModelIdentity>.stride)
+        try budget.charge(models, width: MemoryLayout<ImportedSurfaceIdentity>.stride)
         try budget.charge(components, width: MemoryLayout<ImportedSurfaceComponent>.stride)
-        var modelIDs: [ImportedSurfaceModelIdentity] = []
+        var modelIDs: [ImportedSurfaceIdentity] = []
         modelIDs.reserveCapacity(models)
-        try budget.charge(modelIDs.capacity - models, width: MemoryLayout<ImportedSurfaceModelIdentity>.stride)
-        var modelKeys: Set<[UInt8]> = []
+        try budget.charge(modelIDs.capacity - models, width: MemoryLayout<ImportedSurfaceIdentity>.stride)
+        var modelKeys: Set<ImportedSurfaceIdentity> = []
         for index in 0..<models {
             try Task.checkCancellation()
             let id = try identity(dust3d_imported_surface_mesh_model_id(owner, index), budget: &budget)
-            guard modelKeys.insert(Array(id.utf8)).inserted else { throw ImportedSurfaceError.invalidIdentity }
-            modelIDs.append(try ImportedSurfaceModelIdentity(id: id))
+            let key = try ImportedSurfaceIdentity(rawValue: id)
+            guard modelKeys.insert(key).inserted else { throw ImportedSurfaceError.invalidIdentity }
+            modelIDs.append(key)
         }
         var catalog: [ImportedSurfaceComponent] = []
         catalog.reserveCapacity(components)
         try budget.charge(catalog.capacity - components, width: MemoryLayout<ImportedSurfaceComponent>.stride)
-        var componentKeys: Set<[UInt8]> = []
+        var componentKeys: Set<ImportedSurfaceIdentity> = []
         for index in 0..<components {
             try Task.checkCancellation()
             let entry = try component(owner, index: index, budget: &budget)
-            guard componentKeys.insert(Array(entry.id.utf8)).inserted else {
+            guard componentKeys.insert(entry.id).inserted else {
                 throw ImportedSurfaceError.invalidIdentity
             }
             catalog.append(entry)

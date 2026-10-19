@@ -43,9 +43,14 @@ status/messages or provide typed Swift validation diagnostics. Cancellation is
 checked around synchronous native work and between copied records. Source values
 are not packed atlas UVs and do not enable imported texture display by themselves.
 
-Surface model catalogs expose `ImportedSurfaceModelIdentity`, whose equality and
-hashing compare UTF-8 bytes. Use `try ImportedSurfaceModelIdentity(id: material.id)`
-when correlating a material identity; read `.id` for display or serialization.
+Surface model and component catalogs expose `ImportedSurfaceIdentity`, whose equality and
+hashing compare UTF-8 bytes. Use `try ImportedSurfaceIdentity(rawValue: material.id)`
+when correlating a material identity; read `.rawValue` for display or serialization.
 This prevents Swift Unicode normalization from collapsing distinct engine keys.
 The direct synchronous copy also checks cancellation after geometry allocation
 and before returning, independently of the background service's publication check.
+
+Component `.id` values use the same typed key as the model catalog. Convert an
+unwrapped legacy `ImportedMaterialBinding.componentID` with
+`try ImportedSurfaceIdentity(rawValue: componentID)` before dictionary lookup;
+`.rawValue` is for presentation/serialization, not key comparison.
