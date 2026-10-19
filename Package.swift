@@ -15,7 +15,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/dalbrecht/dust3d-core.git", revision: "2703a17ce4c1f8d21a30b23580b45520ef49c87b")
+            url: "https://github.com/dalbrecht/dust3d-core.git", revision: "4db1bb770b4c342446805f77ccfa4dc0aabc90c4")
     ],
     targets: [
         .target(name: "Dust3DEditorModel", dependencies: ["Dust3DDocument"], exclude: ["README.md"]),
@@ -34,7 +34,8 @@ let package = Package(
         .testTarget(name: "Dust3DDocumentTests", dependencies: ["Dust3DDocument"]),
         .target(
             name: "Dust3DKit",
-            dependencies: ["Dust3DDocument", .product(name: "Dust3DEngine", package: "dust3d-core")]),
+            dependencies: ["Dust3DDocument", .product(name: "Dust3DEngine", package: "dust3d-core")],
+            exclude: ["README.md"]),
         .executableTarget(
             name: "Dust3DViewer",
             dependencies: ["Dust3DKit", "Dust3DRendering"], exclude: ["README.md"]

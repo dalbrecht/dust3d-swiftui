@@ -513,3 +513,15 @@ path for the existing combine-qa identity without competing preview providers.
 [Local validation and native diagnostics inspection](runtime-build-identity-verification.md)
 pass; reviewed delivery remains pending. Formal
 M3 native/Qt acceptance under #120 is not established by this instrumentation.
+
+### Imported material ownership follow-up (issue #153)
+
+Core geometry #43 and owned material/image API #47 are merged. The Apple adoption
+stage pins `4db1bb770b4c342446805f77ccfa4dc0aabc90c4` and adds independent Swift
+metadata/image copies plus bounded background PNG/JPEG decoding (ADR 0072).
+Material factors are retained separately from source pixels. Its validation must
+include exact asset preservation through edit/undo/reopen and real imported
+geometry loading; metadata/decoded pixels do not establish rendered parity.
+Imported corner UV/Boolean/cache propagation, bake integration, PBR/alpha display,
+fully rendered Quick Look/thumbnails and textured-export re-import remain open M4
+acceptance work. The full editor plan remains incomplete.
