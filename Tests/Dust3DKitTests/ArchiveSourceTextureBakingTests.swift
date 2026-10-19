@@ -6,6 +6,25 @@ import XCTest
 
 @MainActor
 final class ArchiveSourceTextureBakingTests: XCTestCase {
+    func testPreservesLargeCutoffMetadataFromRealArchiveThroughReviewedCoreAndSwiftCopies() async throws {
+        let original = try fixture("ImportedSurface")
+        let field = Data("\"alphaCutoff\":0.375".utf8)
+        let range = try XCTUnwrap(original.range(of: field))
+        for (token, expected) in [("1.500", 1.5), ("1e300", 1e300)] {
+            var archive = original
+            archive.replaceSubrange(range.upperBound - 5..<range.upperBound, with: Data(token.utf8))
+            let unchanged = archive
+            let facts = try ImportedMaterialLoader.load(data: archive)
+            XCTAssertEqual(facts.models.first?.alphaCutoff, expected)
+            let output = try await ArchiveSourceTextureBakingService().load(data: archive, options: options())
+            XCTAssertEqual(output.triangles.count, 4)
+            XCTAssertTrue(output.triangles.allSatisfy { $0.policy?.alphaCutoff == expected })
+            XCTAssertEqual(archive, unchanged)
+            XCTAssertEqual(try Dust3DDocument(data: archive).encoded(), archive)
+        }
+        XCTAssertEqual(try ImportedMaterialLoader.load(data: original).models.first?.alphaCutoff, 0.375)
+    }
+
     func testDecodesImportedPixelsFromSameArchiveAndReturnsOwnedBake() async throws {
         let archive = try fixture("ImportedSurface")
         let original = archive

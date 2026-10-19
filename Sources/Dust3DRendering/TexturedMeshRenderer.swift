@@ -1,5 +1,4 @@
 import AppKit
-import Dust3DKit
 import MetalKit
 import simd
 
@@ -141,13 +140,7 @@ final class TexturedMeshRenderer: NSObject, MTKViewDelegate {
         _ batches: [BakedDrawBatch], indices: any MTLBuffer, encoder: any MTLRenderCommandEncoder
     ) {
         for batch in batches {
-            let mode: Float
-            switch batch.policy?.alphaMode {
-            case .opaque: mode = 0
-            case .mask: mode = 1
-            case .blend, nil: mode = 2
-            }
-            var parameters = SIMD4<Float>(mode, Float(batch.policy?.alphaCutoff ?? 0), 0, 0)
+            var parameters = batch.parameters
             encoder.setFragmentBytes(&parameters, length: MemoryLayout<SIMD4<Float>>.stride, index: 2)
             encoder.setCullMode(batch.policy?.isDoubleSided == false ? .back : .none)
             encoder.drawIndexedPrimitives(

@@ -15,7 +15,7 @@ final class ImportedRenderGeometryTests: XCTestCase {
         XCTAssertEqual(geometry.materials.count, 2)
         XCTAssertEqual(geometry.materials[0].uniforms.baseColor, SIMD4(0.25, 0.5, 0.75, 0.5))
         XCTAssertEqual(geometry.materials[0].uniforms.emissiveMetallic, SIMD4(0.1, 0.2, 0.3, 0.125))
-        XCTAssertEqual(geometry.materials[0].uniforms.parameters, SIMD4(0.625, 0.375, 0, 1))
+        XCTAssertEqual(geometry.materials[0].uniforms.parameters, SIMD4(0.625, 0.375, 0, 3))
         XCTAssertFalse(geometry.materials[0].isDoubleSided)
         XCTAssertEqual(geometry.materials[0].image?.mipmapLevelCount, 2)
         XCTAssertEqual(geometry.materials[0].image?.payloadBytes, 20)

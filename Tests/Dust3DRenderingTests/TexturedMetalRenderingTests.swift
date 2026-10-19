@@ -9,6 +9,29 @@ import XCTest
 
 @MainActor
 final class TexturedMetalRenderingTests: XCTestCase {
+    func testShouldKeepSourceMaskCutoffAboveAlphaAcrossDoubleToFloatConversion() async throws {
+        for (alpha, cutoff) in [
+            (Float(0.5), Double(0.5).nextUp), (Float(1), Double(1).nextUp), (Float(0), Double.leastNonzeroMagnitude),
+        ] {
+            let source = BakedMetalFixture.source(
+                try BakedMetalFixture.quad(
+                    mapped: false, tangentMapped: false,
+                    layers: [.init(color: SIMD4(1, 1, 1, alpha))]),
+                policy: .init(alphaMode: .mask, alphaCutoff: cutoff, isDoubleSided: true))
+            let output = try await render(source)
+            XCTAssertEqual(pixel(output, x: 64, y: 64)[3], 0)
+        }
+        for mode in [ImportedAlphaMode.opaque, .mask, .blend] {
+            let source = BakedMetalFixture.source(
+                try BakedMetalFixture.quad(
+                    mapped: false, tangentMapped: false,
+                    layers: [.init(color: SIMD4(1, 1, 1, 0.5))]),
+                policy: .init(alphaMode: mode, alphaCutoff: Double.greatestFiniteMagnitude, isDoubleSided: true))
+            let output = try await render(source)
+            XCTAssertEqual(pixel(output, x: 64, y: 64)[3], mode == .mask ? 0 : mode == .opaque ? 255 : 128)
+        }
+    }
+
     func testShouldKeepUnknownSourceMappingOnVertexColorFallbackAndIgnoreAtlasSamples() async throws {
         let first = BakedMetalFixture.source(
             try BakedMetalFixture.quad(

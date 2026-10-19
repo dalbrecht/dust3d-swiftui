@@ -8,6 +8,25 @@ import XCTest
 
 @MainActor
 final class ImportedMetalRenderingTests: XCTestCase {
+    func testShouldCompareMaskAlphaAgainstOriginalDoubleCutoffWithoutRoundingDown() async throws {
+        for (alpha, cutoff) in [
+            (0.5, Double(0.5).nextUp), (1.0, Double(1).nextUp), (0.0, Double.leastNonzeroMagnitude),
+        ] {
+            let output = try await render(
+                ImportedMetalFixture.quad(
+                    mode: .mask,
+                    baseColor: SIMD4(1, 1, 1, alpha), cutoff: cutoff))
+            XCTAssertEqual(pixel(output)[3], 0, "Alpha \(alpha) must remain below the original cutoff \(cutoff)")
+        }
+        for mode in [ImportedAlphaMode.opaque, .mask, .blend] {
+            let output = try await render(
+                ImportedMetalFixture.quad(
+                    mode: mode,
+                    baseColor: SIMD4(1, 1, 1, 0.5), cutoff: Double.greatestFiniteMagnitude))
+            XCTAssertEqual(pixel(output)[3], mode == .mask ? 0 : mode == .opaque ? 255 : 128)
+        }
+    }
+
     func test_should_sample_source_image_in_encoded_row_orientation() async throws {
         let pixels = try await render(
             ImportedMetalFixture.quad(layers: [

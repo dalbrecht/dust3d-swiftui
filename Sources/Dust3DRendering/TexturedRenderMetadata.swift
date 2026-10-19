@@ -62,7 +62,7 @@ struct TexturedInputTriangle {
             throw TexturedRenderGeometryError.invalidSourceMetadata
         }
         if let policy = source.policy {
-            guard policy.alphaCutoff.isFinite, (0...1).contains(policy.alphaCutoff) else {
+            guard policy.alphaCutoff.isFinite, policy.alphaCutoff >= 0 else {
                 throw TexturedRenderGeometryError.invalidSourceMetadata
             }
         }

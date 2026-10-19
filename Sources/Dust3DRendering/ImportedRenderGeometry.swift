@@ -81,8 +81,14 @@ struct ImportedRenderImage: Sendable {
 struct ImportedMaterialUniforms: Sendable {
     let baseColor: SIMD4<Float>
     let emissiveMetallic: SIMD4<Float>
-    /// Roughness, alpha cutoff, alpha mode (opaque/mask/blend), texture enabled.
+    /// Roughness, encoded cutoff, alpha mode, flags (bit 0 texture, bit 1 positive source cutoff).
     let parameters: SIMD4<Float>
+}
+
+struct ImportedMaterialUniformFlags: OptionSet, Sendable {
+    let rawValue: UInt32
+    static let textureEnabled = Self(rawValue: 1 << 0)
+    static let positiveAlphaCutoff = Self(rawValue: 1 << 1)
 }
 
 struct ImportedRenderMaterialPlan: Sendable {
@@ -98,7 +104,7 @@ struct ImportedRenderMaterialPlan: Sendable {
             (0..<4).allSatisfy({ value.baseColor[$0].isFinite && (0...1).contains(value.baseColor[$0]) }),
             (0..<3).allSatisfy({ value.emissive[$0].isFinite && (0...1).contains(value.emissive[$0]) }),
             [value.metallic, value.roughness].allSatisfy({ $0.isFinite && (0...1).contains($0) }),
-            value.alphaCutoff.isFinite, value.alphaCutoff >= 0, Float(value.alphaCutoff).isFinite,
+            value.alphaCutoff.isFinite, value.alphaCutoff >= 0,
             (value.image == nil) == (source.image == nil)
         else { throw ImportedRenderError.invalidMaterial }
         let sampler = ImportedSamplerPlan(sampler: value.sampler)
@@ -112,12 +118,16 @@ struct ImportedRenderMaterialPlan: Sendable {
         case .mask: mode = 1
         case .blend: mode = 2
         }
+        let threshold = try AlphaMaskThreshold(value.alphaCutoff)
+        var flags: ImportedMaterialUniformFlags = []
+        if image != nil { flags.insert(.textureEnabled) }
+        if threshold.shouldExcludeZeroAlpha { flags.insert(.positiveAlphaCutoff) }
         uniforms = ImportedMaterialUniforms(
             baseColor: SIMD4(
                 Float(value.baseColor.x), Float(value.baseColor.y), Float(value.baseColor.z), Float(value.baseColor.w)),
             emissiveMetallic: SIMD4(
                 Float(value.emissive.x), Float(value.emissive.y), Float(value.emissive.z), Float(value.metallic)),
-            parameters: SIMD4(Float(value.roughness), Float(value.alphaCutoff), mode, image == nil ? 0 : 1))
+            parameters: SIMD4(Float(value.roughness), threshold.value, mode, Float(flags.rawValue)))
     }
 
     /// Unknown/generated bridges retain source colors without invented texture or model ownership.

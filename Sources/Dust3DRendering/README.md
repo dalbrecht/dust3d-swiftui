@@ -141,3 +141,10 @@ sorted mixed policies after camera changes, unmapped fallback and actual source
 bakes, alongside the legacy regression suite. Tests skip explicitly without a
 Metal device. Offscreen PNGs are diagnostic artifacts, not committed pixel
 baselines or a claim of full application/material parity. See ADR 0079 and #167.
+
+Alpha cutoffs retain their original finite nonnegative Double metadata. The GPU
+threshold rounds upward to preserve comparisons against available Float alpha
+samples; a separate flag excludes zero for positive cutoffs even when subnormal
+thresholds flush to zero. Cutoffs above one reject every mask fragment. Opaque
+and blend policies ignore the cutoff. This does not add 64-bit texture or material
+math or remove existing bake quantization. See ADR 0080 and #169.

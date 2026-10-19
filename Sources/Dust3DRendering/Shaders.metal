@@ -127,7 +127,7 @@ fragment float4 bakedMeshFragment(BakedVertexOutput input [[stage_in]],
     if (policy.x < 0.5) {
         base.a = 1.0;
     } else if (policy.x < 1.5) {
-        if (base.a < policy.y)
+        if (base.a < policy.y || (policy.z > 0.5 && base.a <= 0.0))
             discard_fragment();
         base.a = 1.0;
     } else if (base.a <= 0.0) {
@@ -186,14 +186,15 @@ fragment float4 importedMeshFragment(ImportedVertexOutput input [[stage_in]], bo
     texture2d<float> colorMap [[texture(0)]], sampler sourceSampler [[sampler(0)]])
 {
     // sRGB texture decoding occurs before filtering; vertex RGB was linearized before interpolation.
-    float4 sample = material.parameters.w > 0.5 && input.textureCoordinate.z > 0.5
+    uint flags = uint(material.parameters.w);
+    float4 sample = (flags & 1u) != 0 && input.textureCoordinate.z > 0.5
         ? colorMap.sample(sourceSampler, input.textureCoordinate.xy) : float4(1);
     float4 base = sample * input.color * material.baseColor;
     float alpha = base.a;
     if (material.parameters.z < 0.5) {
         alpha = 1.0;
     } else if (material.parameters.z < 1.5) {
-        if (alpha < material.parameters.y)
+        if (alpha < material.parameters.y || ((flags & 2u) != 0 && alpha <= 0.0))
             discard_fragment();
         alpha = 1.0;
     } else if (alpha <= 0.0) {
