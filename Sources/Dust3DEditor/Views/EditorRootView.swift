@@ -182,12 +182,12 @@ struct EditorRootView: View {
                 let materialRevision = store.materialViewportRevision
                 MeshViewport(
                     mesh: mesh, isWireframe: store.isWireframe, cameraReset: store.cameraReset,
-                    meshRevision: store.materialViewportRevision, bakedMesh: store.bakedMesh,
-                    onMaterialError: { store.materialRenderError = $0 },
+                    meshRevision: store.materialViewportRevision, materials: store.materialContent,
+                    onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                     onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                 ) { store.renderError = $0 }
                 .accessibilityLabel("3D mesh preview")
-                if store.isBakingMaterials {
+                if store.isUpdatingMaterials {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)
                 }
                 if let issue = store.materialIssue {
@@ -195,7 +195,7 @@ struct EditorRootView: View {
                         Label("Showing geometry without materials", systemImage: "exclamationmark.triangle")
                         Text(issue).textSelection(.enabled)
                         Button("Retry Materials") { store.retryMaterials() }
-                            .disabled(store.isGenerating || store.isBakingMaterials || store.isWorking)
+                            .disabled(store.isGenerating || store.isUpdatingMaterials || store.isWorking)
                     }
                     .font(.caption).padding(8)
                 }

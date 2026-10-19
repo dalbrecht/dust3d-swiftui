@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Display supported embedded GLB materials in the editor with current-frame loading, revision-safe errors and lossless edit/history preservation.
+
 - Render supported imported GLB materials in the standalone viewer with authored UV/sampler policy, linear color/factors, PBR scalars, alpha modes and double-sided handling; preserve geometry fallback and remaining editor/file-preview/atlas/export limits.
 
 - Adopt owned imported surface UV/RGBA metadata with explicit RGB encoding, aligned geometry and independently bounded background Swift copies; texture rendering remains pending.

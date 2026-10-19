@@ -547,3 +547,12 @@ full gate, review and hosted checks remain required before delivery. This stage
 preserves explicit remaining procedural/legacy limits and does not complete the
 editor/file-preview adoption, imported atlas/baking or textured-export acceptance
 under #143. Full editor parity remains unproven.
+
+### Editor imported-material adoption (issue #159)
+
+Viewer #158 is merged. The editor stage adopts the shared imported material path
+through mutually exclusive transient preview output (ADR 0075). Current-frame
+progress/warnings and revision-guarded errors preserve document/history boundaries.
+Actual edit/undo/redo/reopen tests retain original GLB bytes. Full local/native,
+review and hosted gates remain required. File-preview adoption, imported atlas/
+baking, textured exports and full M4–M8 acceptance remain open.

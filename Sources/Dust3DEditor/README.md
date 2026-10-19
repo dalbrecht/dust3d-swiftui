@@ -270,3 +270,13 @@ The wrapper verifies source identity again after SwiftPM finishes; rerun a build
 test if inputs changed during execution. Log modes wait for the live consumer’s
 startup output before launching, with bounded readiness and explicit failures.
 Stopping capture leaves the editor running.
+
+Supported embedded GLB materials now use authored UVs and per-model samplers in the
+editor preview, sharing the viewer's bounded imported renderer. Source/texture/base
+factors, scalar PBR, alpha modes and sidedness follow ADR 0074. Material work remains
+transient: current-frame progress/compatibility feedback, retry and revision checks
+do not modify document bytes or undo. Existing procedural documents retain the
+baked renderer. Imported atlas/baking, component-image overrides on imported faces,
+additional maps/features, rendered file previews and textured exports remain open.
+See [editor adoption](../../docs/adr/0075-imported-material-editor.md) and its
+[verification limits](../../docs/imported-material-editor-verification.md).
