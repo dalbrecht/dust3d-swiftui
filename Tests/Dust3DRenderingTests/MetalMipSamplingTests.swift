@@ -17,9 +17,10 @@ final class MetalMipSamplingTests: XCTestCase {
         for cap in [2.0, 0.5] {
             let mesh = SourceBakedMesh(
                 geometry: original.geometry, triangles: original.triangles, modelIDs: [], components: [],
-                textures: original.textures, maximumSamplingLod: cap, nativePayloadBytes: 0, copiedPayloadBytes: 0)
+                textures: original.textures, mipmaps: SourceBakedMipmaps(color: chain), maximumSamplingLod: cap,
+                nativePayloadBytes: 0, copiedPayloadBytes: 0)
             let resources = try await TexturedMetalResourcesBuilder().make(
-                bakedMesh: mesh, device: device, mipmaps: [0: chain])
+                input: .source(mesh), device: device, camera: OrbitCamera())
             XCTAssertEqual(resources.textures[0].mipmapLevelCount, 3)
             XCTAssertEqual(resources.textures[1].mipmapLevelCount, 1, "Absent normal maps remain constant fallbacks")
             let source = """

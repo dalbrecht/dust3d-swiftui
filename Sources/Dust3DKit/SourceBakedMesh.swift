@@ -23,11 +23,30 @@ public struct SourceBakedMesh: Sendable {
     public let modelIDs: [ImportedSurfaceIdentity]
     public let components: [ImportedSurfaceComponent]
     public let textures: MeshTextureMaps
+    /// Owned additional/base chains by map role; empty for existing base-only native loading.
+    public let mipmaps: SourceBakedMipmaps
     /// Clamp atlas sampling to this LOD. Generating global mixed-chart mipmaps is unsafe.
     public let maximumSamplingLod: Double
     public let nativePayloadBytes: Int
     /// Retained Swift logical bytes; excludes allocator overhead and temporary workspace.
     public let copiedPayloadBytes: Int
+
+    init(
+        geometry: Mesh, triangles: [SourceBakedTriangle], modelIDs: [ImportedSurfaceIdentity],
+        components: [ImportedSurfaceComponent], textures: MeshTextureMaps,
+        mipmaps: SourceBakedMipmaps = SourceBakedMipmaps(), maximumSamplingLod: Double,
+        nativePayloadBytes: Int, copiedPayloadBytes: Int
+    ) {
+        self.geometry = geometry
+        self.triangles = triangles
+        self.modelIDs = modelIDs
+        self.components = components
+        self.textures = textures
+        self.mipmaps = mipmaps
+        self.maximumSamplingLod = maximumSamplingLod
+        self.nativePayloadBytes = nativePayloadBytes
+        self.copiedPayloadBytes = copiedPayloadBytes
+    }
 }
 
 /// Caller-decoded, source-matched straight-alpha RGBA8 pixels for an imported model.

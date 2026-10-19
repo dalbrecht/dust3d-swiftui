@@ -78,3 +78,14 @@ struct TexturedInputTriangle {
         modelIndex = source.modelIndex
     }
 }
+
+/// Pure map-role transformation shared by every source-aware rendering entry point.
+extension SourceBakedMipmaps {
+    var materialUploadSlots: [Int: TextureMipChain] {
+        let maps = [color, normal, metallic, roughness, emissive]
+        return Dictionary(
+            uniqueKeysWithValues: maps.enumerated().compactMap { slot, chain in
+                chain.map { (slot, $0) }
+            })
+    }
+}
