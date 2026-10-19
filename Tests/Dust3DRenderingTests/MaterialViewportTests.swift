@@ -6,6 +6,57 @@ import XCTest
 
 @MainActor
 final class MaterialViewportTests: XCTestCase {
+    func testShouldAdoptSourceBakePreserveCameraAndRetainGeometryOnFailureOrReplacement() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        let view = InteractiveMeshView(frame: .zero, device: device)
+        view.isPaused = true
+        view.colorPixelFormat = .bgra8Unorm
+        view.depthStencilPixelFormat = .depth32Float
+        let legacy = try BakedMetalFixture.quad()
+        let policy = SourceBakedPolicy(alphaMode: .mask, alphaCutoff: 0.5, isDoubleSided: true)
+        let source = BakedMetalFixture.source(legacy, policy: policy)
+        let invalid = BakedMetalFixture.source(
+            try BakedMetalFixture.quad(color: BakedMetalFixture.image([])), policy: policy)
+        var failures: [String] = []
+        var frames = 0
+        func update(_ materials: MeshMaterialContent?, revision: Int) {
+            MeshViewport(
+                mesh: indexed(legacy), isWireframe: true, cameraReset: 0, meshRevision: revision,
+                materials: materials, onMaterialError: { failures.append($0) }, onMaterialRendered: { frames += 1 },
+                onError: { failures.append($0) }
+            ).updateRenderer(in: view)
+        }
+        update(nil, revision: 1)
+        view.orbitCamera.orbit(horizontal: 20, vertical: -10)
+        update(.sourceBaked(source), revision: 1)
+        view.orbitCamera.zoom(delta: 5)
+        let camera = view.orbitCamera
+        await view.materialTask?.value
+        XCTAssertEqual(frames, 0)
+        let renderer = try XCTUnwrap(view.materialRenderer)
+        XCTAssertTrue(renderer.isWireframe)
+        XCTAssertEqual(view.orbitCamera.yaw, camera.yaw)
+        XCTAssertEqual(view.orbitCamera.distance, camera.distance)
+        renderer.onRendered?()
+        XCTAssertEqual(frames, 1)
+        update(nil, revision: 2)
+        renderer.onRendered?()
+        XCTAssertEqual(frames, 1)
+        XCTAssertNil(view.materialRenderer)
+        update(.sourceBaked(invalid), revision: 3)
+        await view.materialTask?.value
+        XCTAssertTrue(view.delegate === view.renderer)
+        XCTAssertEqual(failures.count, 1)
+        XCTAssertTrue(failures[0].contains("color"))
+        update(.sourceBaked(source), revision: 4)
+        let pending = view.materialTask
+        update(nil, revision: 5)
+        await pending?.value
+        XCTAssertNil(view.materialRenderer)
+        XCTAssertNil(view.completedMaterialRevision)
+        XCTAssertEqual(frames, 1)
+    }
+
     func testShouldAdoptMaterialsWithoutLosingCameraAndReturnToOrdinaryGeometry() async throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
         let view = InteractiveMeshView(frame: .zero, device: device)

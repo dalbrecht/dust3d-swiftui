@@ -8,6 +8,7 @@ enum BakedMetalPreparationError: LocalizedError, Equatable {
     case invalidTexture(String)
     case payloadLimitExceeded
     case invalidCamera
+    case drawLimitExceeded
     case unavailable(String)
 
     var errorDescription: String? {
@@ -16,6 +17,7 @@ enum BakedMetalPreparationError: LocalizedError, Equatable {
         case .invalidTexture(let name): return "The \(name) material texture has invalid dimensions or pixel storage."
         case .payloadLimitExceeded: return "The material preview exceeds its combined GPU payload limit."
         case .invalidCamera: return "The material preview camera contains invalid values."
+        case .drawLimitExceeded: return "The material preview exceeds 4096 policy draw batches per pass."
         case .unavailable(let cause): return cause
         }
     }

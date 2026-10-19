@@ -116,6 +116,7 @@ float3 materialDisplay(float3 baseColor, float3 normal, float metal, float rough
 
 fragment float4 bakedMeshFragment(BakedVertexOutput input [[stage_in]],
     bool frontFacing [[front_facing]], constant BakedUniforms& uniforms [[buffer(1)]],
+    constant float4& policy [[buffer(2)]],
     texture2d<float> colorMap [[texture(0)]], texture2d<float> normalMap [[texture(1)]],
     texture2d<float> metallicMap [[texture(2)]], texture2d<float> roughnessMap [[texture(3)]],
     texture2d<float> emissiveMap [[texture(4)]], sampler materialSampler [[sampler(0)]])
@@ -123,8 +124,15 @@ fragment float4 bakedMeshFragment(BakedVertexOutput input [[stage_in]],
     bool mapped = input.textureCoordinate.z > 0.5;
     float2 uv = input.textureCoordinate.xy;
     float4 base = mapped ? colorMap.sample(materialSampler, uv) : float4(bakedLinearColor(input.color.rgb), clamp(input.color.a, 0.0, 1.0));
-    if (base.a <= 0.0)
+    if (policy.x < 0.5) {
+        base.a = 1.0;
+    } else if (policy.x < 1.5) {
+        if (base.a < policy.y)
+            discard_fragment();
+        base.a = 1.0;
+    } else if (base.a <= 0.0) {
         discard_fragment();
+    }
     float3 normal = bakedNormalize(input.normal, float3(0, 0, 1));
     if (!frontFacing)
         normal = -normal;

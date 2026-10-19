@@ -12,7 +12,7 @@ final class TexturedRenderGeometryTests: XCTestCase {
         let result = try TexturedRenderGeometry(bakedMesh: source)
         XCTAssertEqual(result.indices, [0, 1, 2, 0, 1, 2])
         XCTAssertEqual(result.vertices.count, 3)
-        XCTAssertEqual(result.metadata, source.metadata)
+        XCTAssertEqual(result.metadata, .legacy(source.metadata))
         XCTAssertEqual(result.textures.color, source.textures.color)
         XCTAssertEqual(result.vertices[0].textureCoordinate, SIMD4(0, 0, 1, 1))
         XCTAssertEqual(result.vertices[0].tangent, SIMD4(1, 0, 0, 1))
@@ -48,7 +48,7 @@ final class TexturedRenderGeometryTests: XCTestCase {
             let result = try TexturedRenderGeometry(bakedMesh: source)
             XCTAssertEqual(result.vertices.count, count)
             XCTAssertEqual(result.indices.count, 6)
-            XCTAssertEqual(result.metadata.triangles, source.metadata.triangles)
+            XCTAssertEqual(result.metadata, .legacy(source.metadata))
         }
     }
 
@@ -157,7 +157,7 @@ final class TexturedRenderGeometryTests: XCTestCase {
             options: MeshBakeOptions(colorSize: 8, normalSize: 8, materialSize: 8))
         let result = try TexturedRenderGeometry(bakedMesh: source)
         XCTAssertEqual(result.indices.count, source.geometry.vertices.count)
-        XCTAssertEqual(result.metadata, source.metadata)
+        XCTAssertEqual(result.metadata, .legacy(source.metadata))
         let ordinary = try RenderGeometry(mesh: .expanded(source.geometry))
         for (corner, index) in result.indices.enumerated() {
             let vertex = result.vertices[Int(index)]

@@ -5,6 +5,21 @@ import simd
 
 /// Independent geometry and RGBA samples for production Metal tests, not rendered baselines.
 enum BakedMetalFixture {
+    static func source(_ mesh: MeshWithBakedTextures, policy: SourceBakedPolicy?) -> SourceBakedMesh {
+        source(mesh, policyAt: { _ in policy })
+    }
+
+    static func source(_ mesh: MeshWithBakedTextures, policyAt: (Int) -> SourceBakedPolicy?) -> SourceBakedMesh {
+        let records = mesh.metadata.triangles.enumerated().map { index, triangle in
+            SourceBakedTriangle(
+                packedUVs: triangle.hasMapping ? triangle.corners : nil,
+                tangent: mesh.tangents[index], policy: policyAt(index), modelIndex: nil, componentIndex: nil)
+        }
+        return SourceBakedMesh(
+            geometry: mesh.geometry, triangles: records, modelIDs: [], components: [],
+            textures: mesh.textures, maximumSamplingLod: 0, nativePayloadBytes: 0, copiedPayloadBytes: 0)
+    }
+
     struct Layer {
         let depth: Float
         let sample: SIMD2<Double>?
