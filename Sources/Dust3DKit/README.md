@@ -98,3 +98,26 @@ checked again before publishing completed output.
 
 This SDK foundation does not change the apps' rendering path, add textured export,
 or establish full material compatibility. See ADR 0077 and issue #163.
+
+`ArchiveSourceTextureBakingService().load(data:options:limits:)` prepares the
+source-aware inputs from the same immutable archive before baking. It resolves
+referenced procedural PNGs and declared required imported PNG/JPEG images, using
+the existing decoders and their distinct source-alpha policies. A textureless
+imported model requires no decoded pixels. This opt-in service does not modify
+the current apps' material preparation/rendering paths.
+
+`ArchiveSourceTextureLimits.materials` bounds native and Swift material inspection
+copies, including encoded image storage. `.textures` admits combined encoded bytes
+before pixel decoding (32 MiB per image, 128 MiB aggregate by default). Decoded
+pixels share the smaller of `.textures.maximumDecodedTotalBytes` and
+`SourceMeshBakeOptions.maximumInputImageBytes` (both 64 MiB by default).
+All limits are logical budgets, with a 256 MiB ceiling per byte quota, separate
+from codec/native workspace and input archive storage. Inspection itself precedes
+combined encoded admission and remains independently bounded.
+
+Procedural image failures retain ArchiveTextureBakingError asset context.
+Imported image failures retain the exact model identity and original typed codec
+error in ArchiveSourceTextureBakingError. Native/document failures and cancellation
+propagate. Output is checked for cancellation after preparation and after baking.
+Consumers must preserve the result's maximumSamplingLod and retain their original
+geometry when an optional bake fails. See ADR 0078 and issue #165.

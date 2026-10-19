@@ -578,3 +578,13 @@ policy/catalog alignment, material factors, lifetime and independent quotas.
 The output sampling LOD remains zero pending chart-isolated mipmaps (core #59).
 Archive-to-bake decoding, rendering/export adoption and broader M4 acceptance
 remain subsequent work; these foundations do not complete editor parity.
+
+### Archive-to-source-bake preparation (issue #165)
+
+Build on the owned SDK with background preparation of imported PNG/JPEG images
+and procedural PNGs from the same immutable archive (ADR 0078). Share encoded
+admission and decoded storage limits across both paths, retain original per-image
+failures and cancellation, and preserve original assets. Verify real mixed and
+textureless material archives and retain the existing legacy PNG regression suite.
+This opt-in service does not yet change application rendering or export. The
+atlas LOD restriction, core #59 and the remaining M4–M8 acceptance work stay open.
