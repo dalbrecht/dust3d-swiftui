@@ -14,14 +14,15 @@ decoding. Await `service.load(data: archive)` then
 Native and Swift output quotas are configurable logical ownership budgets, not
 process RSS limits. Temporary indexes, allocator overhead and codec workspace are
 excluded. Images have bounded encoded input, dimensions and final RGBA storage.
-PNG preserves the existing bake decoder's source-sample policy. JPEG supports
+Imported PNG decoding preserves hidden keyed-grayscale RGB, needed when glTF ignores alpha; the separate legacy bake decoder keeps its Qt-compatible policy. JPEG supports
 8-bit sequential/progressive RGB and grayscale platform layouts; unsupported
 layouts fail explicitly. Neither decoder applies EXIF orientation or material
 factors. Synchronous native/codec work cannot be preempted; cancellation is checked
 around work and at pixel row boundaries. Call synchronous APIs off the main actor.
 
-Imported material facts and pixels do not yet imply UV, baking, PBR rendering or
-export support. Geometry previews retain an explicit unapplied-material warning.
+Imported inspection APIs remain separate from packed UV/baking and export. The
+viewer now combines source facts/pixels with the shared imported PBR renderer;
+editor and system-preview adoption remain pending. Geometry previews retain an explicit unapplied-material warning.
 Archive edits preserve original assets rather than re-encoding image or GLB data.
 Tests use real owned C handles and synthetic MIT fixtures, plus malformed/budget
 cases. ImageIO remains a thin platform boundary; whole-engine coverage and Qt
@@ -54,3 +55,12 @@ Component `.id` values use the same typed key as the model catalog. Convert an
 unwrapped legacy `ImportedMaterialBinding.componentID` with
 `try ImportedSurfaceIdentity(rawValue: componentID)` before dictionary lookup;
 `.rawValue` is for presentation/serialization, not key comparison.
+
+`ArchiveImportedMaterialService().loadIfPresent(data: archive, limits: .init())`
+prepares coherent source geometry, byte-exact model/material joins and decoded
+images from one immutable archive snapshot. Nil selects the existing procedural
+bake path. Source/fact native and Swift quotas remain independent; decoded images
+share a 64 MiB aggregate default and 16 MiB per-encoded-image limit, each at most
+256 MiB. Codec/generator workspace and temporary lookups are excluded. Original
+native/codec causes and cancellation survive; no source pixel is premultiplied or
+modulated by factors during preparation. See ADR 0074 for renderer semantics.

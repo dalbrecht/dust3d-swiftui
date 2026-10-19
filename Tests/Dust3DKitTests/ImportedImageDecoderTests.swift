@@ -85,4 +85,37 @@ final class ImportedImageDecoderTests: XCTestCase {
         }
     }
 
+    func test_should_preserve_hidden_keyed_grayscale_rgb_for_opaque_gltf_materials() throws {
+        // Independent PNG scanlines shared with the Qt-compatibility decoder corpus.
+        let fixtures: [(String, UInt8)] = [
+            (
+                "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABAgAAAACb+Tj3AAAAAnRSTlMAA++anIIAAAAKSURBVHicYzgAAADCAMFSXldRAAAAAElFTkSuQmCC",
+                255
+            ),
+            (
+                "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABBAAAAAAUuc1XAAAAAnRSTlMAD+Ys0KkAAAAKSURBVHicY/gAAADyAPGc8R3mAAAAAElFTkSuQmCC",
+                255
+            ),
+            (
+                "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAAAAADRSSBWAAAAAnRSTlMAERwj7coAAAALSURBVHicYxA8AQAA7QDaiakNYwAAAABJRU5ErkJggg==",
+                17
+            ),
+        ]
+        for (base64, expected) in fixtures {
+            let bytes = try XCTUnwrap(Data(base64Encoded: base64))
+            let imported = try ImportedImageDecoder.decode(.init(encoding: .png, bytes: bytes), modelID: "Model")
+            XCTAssertEqual(Array(imported.pixels.prefix(4)), [expected, expected, expected, 0])
+            let legacy = try MeshPNGDecoder.decode(bytes, imageID: "Legacy")
+            XCTAssertEqual(Array(legacy.pixels.prefix(4)), [0, 0, 0, 0])
+        }
+    }
+
+    func test_should_surface_specific_jpeg_pixel_failures() {
+        XCTAssertEqual(
+            MeshJPEGDecodingError.invalidJPEG.localizedDescription, "The image is not a complete, supported JPEG.")
+        XCTAssertEqual(
+            MeshJPEGDecodingError.unsupportedPixelLayout.localizedDescription, "The JPEG pixel layout is not supported."
+        )
+    }
+
 }

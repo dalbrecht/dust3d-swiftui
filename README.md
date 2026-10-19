@@ -4,6 +4,12 @@
 
 This repository now includes a native SwiftUI/Metal viewer backed by the existing C++17 engine. Build and launch with `./script/build_and_run.sh`; use `make ci` for native verification. See [native/README.md](native/README.md) for document support, architecture, and coding standards. The separate editor runs with `./script/build_and_run.sh --editor` (or `make run-editor`). It opens/saves `.ds3` documents and supports node selection, front/side dragging, coordinate/radius edits, and undo/redo. See [editor usage](Sources/Dust3DEditor/README.md). The Qt application remains available below as the original implementation.
 
+The standalone viewer also renders supported imported GLB base-color textures,
+vertex colors, material factors/scalars, sampler wrapping/filtering and alpha
+policy. Geometry stays available on optional material failure. Editor, system
+file-preview, imported atlas/bake and textured-export adoption remain separate;
+see [imported material verification](docs/imported-material-viewer-verification.md).
+
 The Swift `Dust3DKit` module provides `MeshLoader.loadIfPresent(data:)`: it returns
 nil only for the reviewed core's successful no-geometry result. Other failures
 retain their original status/diagnostic; `load(data:)` keeps its strict nonempty

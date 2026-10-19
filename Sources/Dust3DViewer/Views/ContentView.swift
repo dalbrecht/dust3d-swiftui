@@ -29,10 +29,13 @@ struct ContentView: View {
             ZStack {
                 if let mesh = store.mesh {
                     let materialRevision = store.meshRevision + store.materialRevision
+                    let materials =
+                        store.importedMaterials.map(MeshMaterialContent.imported)
+                        ?? store.bakedMesh.map(MeshMaterialContent.baked)
                     MeshViewport(
                         mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
-                        meshRevision: store.meshRevision + store.materialRevision, bakedMesh: store.bakedMesh,
-                        onMaterialError: { store.materialFailed($0) },
+                        meshRevision: store.meshRevision + store.materialRevision, materials: materials,
+                        onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                         onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                     ) { message in
                         rendererError = message
@@ -55,7 +58,7 @@ struct ContentView: View {
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            if store.isBakingMaterials {
+            if store.isUpdatingMaterials {
                 ProgressView("Updating materials…").controlSize(.small).padding(8)
             }
             if let issue = store.materialIssue {
@@ -67,7 +70,7 @@ struct ContentView: View {
                     }
                     Spacer()
                     Button("Retry Materials") { store.retryMaterials() }
-                        .disabled(store.isLoading || store.isBakingMaterials)
+                        .disabled(store.isLoading || store.isUpdatingMaterials)
                 }
                 .font(.caption).padding(12)
             }
@@ -75,6 +78,7 @@ struct ContentView: View {
             HStack {
                 if let mesh = store.mesh {
                     Text("\(mesh.partCount) parts · \(mesh.nodeCount) nodes · \(mesh.triangleCount) triangles")
+                        .monospacedDigit()
                     Spacer()
                     Text("Drag to orbit · Scroll to zoom")
                 } else {

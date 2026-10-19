@@ -44,10 +44,20 @@ public enum MeshPNGDecoder {
         maximumEncodedBytes: Int = 32 * 1024 * 1024,
         maximumDecodedBytes: Int = 256 * 1024 * 1024
     ) throws -> MeshBakeImage {
+        try decode(
+            data, imageID: imageID, maximumEncodedBytes: maximumEncodedBytes,
+            maximumDecodedBytes: maximumDecodedBytes, preservesTransparentGrayRGB: false)
+    }
+
+    /// Imported glTF may ignore texture alpha; keep keyed grayscale RGB available for that policy.
+    static func decode(
+        _ data: Data, imageID: String, maximumEncodedBytes: Int, maximumDecodedBytes: Int,
+        preservesTransparentGrayRGB: Bool
+    ) throws -> MeshBakeImage {
         do {
             return try decodePixels(
                 data, imageID: imageID, maximumEncodedBytes: maximumEncodedBytes,
-                maximumDecodedBytes: maximumDecodedBytes)
+                maximumDecodedBytes: maximumDecodedBytes, preservesTransparentGrayRGB: preservesTransparentGrayRGB)
         } catch let error as ImageSampleError {
             switch error {
             case .unsupportedLayout: throw MeshPNGDecodingError.unsupportedPixelLayout
@@ -58,7 +68,7 @@ public enum MeshPNGDecoder {
 
     private static func decodePixels(
         _ data: Data, imageID: String, maximumEncodedBytes: Int,
-        maximumDecodedBytes: Int
+        maximumDecodedBytes: Int, preservesTransparentGrayRGB: Bool
     ) throws -> MeshBakeImage {
         let dimensions: PNGContainerMetadata
         do {
@@ -86,7 +96,8 @@ public enum MeshPNGDecoder {
             CFDataGetLength(providerData) >= storageSpan.partialValue
         else { throw MeshPNGDecodingError.invalidPNG }
         let zerosTransparentGray =
-            dimensions.hasTransparencyKey && dimensions.colorType == 0 && [2, 4, 8].contains(dimensions.bitDepth)
+            !preservesTransparentGrayRGB && dimensions.hasTransparencyKey && dimensions.colorType == 0
+            && [2, 4, 8].contains(dimensions.bitDepth)
         var pixels = Data(count: outputBytes)
         try pixels.withUnsafeMutableBytes { (output: UnsafeMutableRawBufferPointer) in
             for row in 0..<image.height {

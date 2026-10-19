@@ -28,4 +28,27 @@ final class MaterialPreviewWarningTests: XCTestCase {
                 "Original unknown engine warning")
         }
     }
+    func test_should_remove_only_acknowledged_imported_notice_and_keep_unapplied_procedural_or_unknown_details() {
+        let imported = "Imported geometry preview: GLB materials, textures and transparency are not yet applied."
+        XCTAssertEqual(
+            MaterialPreviewWarning.message(imported, hasBakedMaterials: true, hasLegacySurfaceDetails: false), imported)
+        XCTAssertNil(
+            MaterialPreviewWarning.message(
+                imported, hasBakedMaterials: false, hasImportedMaterials: true, hasLegacySurfaceDetails: false))
+        XCTAssertEqual(
+            MaterialPreviewWarning.message(
+                "Untextured preview: image textures are not yet displayed. " + imported, hasBakedMaterials: false,
+                hasImportedMaterials: true, hasLegacySurfaceDetails: false),
+            "Component image textures are not yet displayed.")
+        XCTAssertEqual(
+            MaterialPreviewWarning.message(
+                "Untextured preview: image textures and procedural surface details are not yet displayed. " + imported,
+                hasBakedMaterials: false, hasImportedMaterials: true, hasLegacySurfaceDetails: true),
+            "Component image textures and surface details are not yet displayed.")
+        XCTAssertEqual(
+            MaterialPreviewWarning.message(
+                "Original unknown warning. " + imported, hasBakedMaterials: false, hasImportedMaterials: true,
+                hasLegacySurfaceDetails: false), "Original unknown warning.")
+    }
+
 }

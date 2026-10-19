@@ -71,3 +71,29 @@ embedded in the loaded executable, separately from process identity. The startup
 capture remains fixed if an on-disk bundle changes. Use the canonical build wrapper
 to embed metadata; direct SwiftPM builds show unavailable identity honestly.
 See [ADR 0071](../../docs/adr/0071-immutable-runtime-build-identity.md).
+
+## Imported model materials
+
+`MeshViewport(..., materials: .imported(inputs), ...)` accepts coherent
+`ImportedMaterialRenderData`; `.baked` retains the existing atlas representation.
+The enum prevents mixing representations, and the original `bakedMesh` initializer
+remains compatible. Keep the same view identity and increment meshRevision for
+new output/retries; orbit/zoom survive background adoption. Acknowledgment follows
+a current completed GPU frame, not just resource upload. Revision checks reject
+obsolete failures as well as successes.
+
+Pure imported geometry/sampler/image/draw plans validate finite values, catalog
+alignment, actual device-buffer lengths, logical mip/vertex/index payloads,
+4096 material entries and 4096 draw runs per pass before submission. The actor
+builds one fresh noncopyable GPU ownership graph and transfers it with `sending`;
+there are no unchecked Sendable declarations. Texture storage is RGBA8 sRGB,
+vertex RGB is linear before interpolation, and factor/alpha/culling policy is
+per model. Both imported and baked encoders use the same PBR display calculation.
+Unknown bridges retain source colors without invented texture ownership.
+
+Hardware tests verify orientation, wrapping, straight alpha policies, globally
+sorted cross-model transparency, scalar PBR factors, wireframe/culling,
+linear-space filtering and minification against independent factor references.
+Tests explicitly skip if Metal is unavailable; native inspection remains separate.
+The editor and file-preview services continue using their existing representation
+until separate adoption. See ADR 0074 and imported-material viewer verification.
