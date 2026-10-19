@@ -77,38 +77,17 @@ public actor ArchiveTextureBakingService: ArchiveTextureBaking {
         data: Data, options: MeshBakeOptions = MeshBakeOptions(), limits: ArchiveTextureLimits = ArchiveTextureLimits()
     ) async throws -> MeshWithBakedTextures {
         try Task.checkCancellation()
-        let ceiling = 256 * 1024 * 1024
-        guard
-            [limits.maximumEncodedImageBytes, limits.maximumEncodedTotalBytes, limits.maximumDecodedTotalBytes]
-                .allSatisfy({ (1...ceiling).contains($0) })
-        else { throw ArchiveTextureBakingError.invalidLimits }
+        try ArchiveTextureImagePreparation.validate(limits)
         let document = try Dust3DDocument(data: data)
         let references = try document.textureImageReferences()
         var remainingEncoded = limits.maximumEncodedTotalBytes
-        for reference in references {
-            guard reference.encodedByteCount <= limits.maximumEncodedImageBytes,
-                reference.encodedByteCount <= remainingEncoded
-            else { throw ArchiveTextureBakingError.encodedLimitExceeded }
-            remainingEncoded -= reference.encodedByteCount
-        }
+        try ArchiveTextureImagePreparation.preflight(
+            references, maximumImageBytes: limits.maximumEncodedImageBytes,
+            remainingEncoded: &remainingEncoded)
         var remainingDecoded = limits.maximumDecodedTotalBytes
-        var images: [MeshBakeImage] = []
-        for reference in references {
-            try Task.checkCancellation()
-            guard remainingDecoded > 0 else { throw ArchiveTextureBakingError.decodedLimitExceeded }
-            guard let encoded = document.asset(named: reference.assetName) else {
-                throw ArchiveTextureBakingError.missingAsset(reference.assetName)
-            }
-            do {
-                let image = try MeshPNGDecoder.decode(
-                    encoded, imageID: reference.imageID,
-                    maximumEncodedBytes: limits.maximumEncodedImageBytes, maximumDecodedBytes: remainingDecoded)
-                remainingDecoded -= image.pixels.count
-                images.append(image)
-            } catch let cause as MeshPNGDecodingError {
-                throw ArchiveTextureBakingError.imageDecoding(assetName: reference.assetName, cause: cause)
-            }
-        }
+        let images = try ArchiveTextureImagePreparation.decode(
+            references, document: document,
+            maximumImageBytes: limits.maximumEncodedImageBytes, remainingDecoded: &remainingDecoded)
         try Task.checkCancellation()
         return try await baker.load(data: data, images: images, options: options)
     }
