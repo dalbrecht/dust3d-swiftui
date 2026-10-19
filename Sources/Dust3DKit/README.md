@@ -21,8 +21,8 @@ factors. Synchronous native/codec work cannot be preempted; cancellation is chec
 around work and at pixel row boundaries. Call synchronous APIs off the main actor.
 
 Imported inspection APIs remain separate from packed UV/baking and export. The
-viewer now combines source facts/pixels with the shared imported PBR renderer;
-editor and system-preview adoption remain pending. Geometry previews retain an explicit unapplied-material warning.
+viewer, editor and system previews combine source facts/pixels with the shared
+imported PBR renderer. Ordinary geometry previews retain an explicit unapplied-material warning.
 Archive edits preserve original assets rather than re-encoding image or GLB data.
 Tests use real owned C handles and synthetic MIT fixtures, plus malformed/budget
 cases. ImageIO remains a thin platform boundary; whole-engine coverage and Qt
@@ -64,3 +64,37 @@ share a 64 MiB aggregate default and 16 MiB per-encoded-image limit, each at mos
 256 MiB. Codec/generator workspace and temporary lookups are excluded. Original
 native/codec causes and cancellation survive; no source pixel is premultiplied or
 modulated by factors during preparation. See ADR 0074 for renderer semantics.
+
+## Source-aware baking
+
+`MeshLoader.loadSourceBaked(data:modelImages:images:options:)` uses reviewed core
+revision `c1215f472bd45b1ac4682c7d4c82be1e64064ee9`. Call it off the main actor,
+or await `SourceMeshBakingService().load(...)`. Pass `SourceMeshBakeImage` values
+decoded from the same archive's imported material images; the convenience
+`init(decodedImage:)` preserves `ImportedImageDecoder` output. Procedural images
+use the existing `MeshBakeImage` identity convention. This low-level API cannot
+prove that caller-supplied pixels correspond to the archive's encoded image.
+
+The result owns expanded geometry, aligned packed UV/tangent/material-policy
+records, exact identity catalogs and RGBA8 color/normal/scalar/emission maps.
+Known mapped vertex colors are neutral because material/source factors are already
+in the maps. Unknown UV/policy values remain optional. Copies finish before native
+owner destruction. Source-aware baking does not rewrite the input archive.
+
+Honor `maximumSamplingLod` on the output atlas: it is currently zero. Do not
+generate a global mixed-chart mip chain; chart-isolated output mipmaps remain
+tracked in `dalbrecht/dust3d-core#59`. Source-image derivative mip sampling is
+independent. Insufficient map resolution to reserve chart padding fails explicitly.
+
+`SourceMeshBakeOptions` defaults to 64 MiB each for native sampler/atlas storage,
+256 MiB each for native and Swift retained output, and 64 MiB combined decoded
+input storage. Each byte quota has a 256 MiB maximum. Actual input `Data.count`
+includes row padding and trailing storage, and is checked before pixel bridging.
+Swift output accounting includes array capacities, identity/warning bytes and
+copied pixels; temporary lookup tables, allocator overhead and native workspace
+are excluded. Chart/raster quotas bound packing inputs and pixel work, not total
+generator CPU time or process RSS. Cancellation reaches the core token and is
+checked again before publishing completed output.
+
+This SDK foundation does not change the apps' rendering path, add textured export,
+or establish full material compatibility. See ADR 0077 and issue #163.

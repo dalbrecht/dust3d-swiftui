@@ -567,3 +567,14 @@ Required malformed geometry rejects before partial publication; optional materia
 failures preserve ordinary geometry and their original cause. The integrated local
 gate passes 777 tests; exact-head review and hosted checks remain required. Imported atlas/baking, broader material
 compatibility, exports and M4–M8 acceptance remain open.
+
+### Owned source-aware baking SDK (issue #163)
+
+Core PRs #53, #55, #57 and #60 are merged: owned source-image sampling, aligned
+source atlas charts, source/procedural composition and an owned C API are available.
+Adopt exact core `c1215f472bd45b1ac4682c7d4c82be1e64064ee9` through copied Swift
+values and a cancellable background actor (ADR 0077). Verify final-order UVs,
+policy/catalog alignment, material factors, lifetime and independent quotas.
+The output sampling LOD remains zero pending chart-isolated mipmaps (core #59).
+Archive-to-bake decoding, rendering/export adoption and broader M4 acceptance
+remain subsequent work; these foundations do not complete editor parity.
