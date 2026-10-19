@@ -26,3 +26,19 @@ Archive edits preserve original assets rather than re-encoding image or GLB data
 Tests use real owned C handles and synthetic MIT fixtures, plus malformed/budget
 cases. ImageIO remains a thin platform boundary; whole-engine coverage and Qt
 render parity are not claimed by these tests.
+
+`ImportedSurfaceLoader.load(data: archive)` copies generated geometry and aligned
+source UV/RGBA records from one owned core result. Await
+`ImportedSurfaceService().load(data: archive)` for background work. Optional UVs
+retain authored coordinates outside 0–1; nil means unmapped. Model/component
+catalog indices remain bounded and optional, with original/generated membership
+separate from Boolean provenance. RGB encoding is explicit; alpha is straight and
+independent of material factors, textures and opaque preview policy.
+
+The default native and Swift budgets are independently 64 MiB, with a 256 MiB
+maximum. Swift charges records, array capacities, copied identity byte lengths
+and warning bytes, excluding temporary lookup structures and allocator overhead.
+No borrowed native pointer survives the load. Errors preserve original native
+status/messages or provide typed Swift validation diagnostics. Cancellation is
+checked around synchronous native work and between copied records. Source values
+are not packed atlas UVs and do not enable imported texture display by themselves.
