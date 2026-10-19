@@ -121,3 +121,10 @@ error in ArchiveSourceTextureBakingError. Native/document failures and cancellat
 propagate. Output is checked for cancellation after preparation and after baking.
 Consumers must preserve the result's maximumSamplingLod and retain their original
 geometry when an optional bake fails. See ADR 0078 and issue #165.
+
+`TextureMipChain` validates owned base/additional levels and the producer-supplied
+sampling cap. Checked copying preserves original accessor failures and cancellation,
+charges aggregate copied/native bytes, and shares its image primitive with the
+current source-bake path. Base-only loading rejects positive LOD even if image
+dimensions could support hypothetical mipmaps. Actual native mip accessors and GPU
+adoption await the reviewed core upgrade; see ADR 0085 and #175.

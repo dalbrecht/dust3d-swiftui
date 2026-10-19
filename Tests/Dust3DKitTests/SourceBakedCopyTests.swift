@@ -126,13 +126,11 @@ final class SourceBakedCopyTests: XCTestCase {
         }
     }
 
-    func testPreservesFiniteSamplingClampAndRejectsImpossibleLevels() throws {
+    func testBaseOnlyCopyRejectsSamplingLevelsThatWereNotRetained() throws {
         let image = MeshTextureImage(width: 8, height: 4, rowStride: 32, pixels: Data(repeating: 0, count: 128))
         let maps = MeshTextureMaps(color: image, normal: nil, metallic: nil, roughness: nil, emissive: nil)
         XCTAssertEqual(try SourceBakedCopy.samplingLod(0, maps: maps), 0)
-        XCTAssertEqual(try SourceBakedCopy.samplingLod(1.5, maps: maps), 1.5)
-        XCTAssertEqual(try SourceBakedCopy.samplingLod(2, maps: maps), 2)
-        for invalid in [Double.nan, .infinity, -1, 2.01] {
+        for invalid in [Double.nan, .infinity, -1, Double.leastNonzeroMagnitude, 1.5, 2, 2.01] {
             XCTAssertThrowsError(try SourceBakedCopy.samplingLod(invalid, maps: maps))
         }
     }

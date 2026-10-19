@@ -655,3 +655,14 @@ passed 854 XCTest cases and 31 build-support tests, including in-flight cancella
 and subsequent-request recovery. Public review remains pending. See
 [mixed file-preview verification](mixed-file-preview-verification.md). This does
 not close M4: isolated atlas mipmaps, large-model acceptance and export remain open.
+
+### Swift mip ownership checkpoint (#175)
+
+Immutable mip-chain validation and bounded borrowed-buffer copying now have
+test-first contracts, with shared image copying in the current source-bake path.
+Base-only loading rejects nonzero sampling caps rather than inferring levels from
+dimensions. The reviewed core pin is unchanged; native accessor binding, retained
+source chains, GPU upload/trilinear acceptance and textured export remain required.
+The full local gate passes 863 XCTest cases and 31 build-support tests; both
+new files have 100% measured line/region/function coverage. Public review remains
+pending. See ADR 0085.
