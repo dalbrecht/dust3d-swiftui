@@ -31,3 +31,12 @@ opacity and grayscale relationships rather than codec-dependent exact RGB values
 ImportedCMYK.jpg is a synthetic 2x2 device-CMYK CGImage encoded by Apple's ImageIO
 JPEG writer. Its unsupported CMYK pixel layout must produce a typed failure,
 rather than silently interpreting four CMYK channels as RGBA.
+
+ImportedSurface.ds3 is copied byte-for-byte from the synthetic MIT core #51
+fixture at 0a83c3e3a59da4bafb5e3e83023fffd7df5cca90 (SHA-256
+78d9e6a94cceccc4b5814692d25e8ca97ca01968c14927880a5e6a5837f715d6).
+It derives from ImportedPreview.ds3 with independently authored normalized uint8
+COLOR_0 values and alpha; its texture and nontrivial material factors remain
+separate from source RGBA. The mirror test independently rebuilds its narrow DS3
+envelope after changing XML, preserving original GLB bytes. It is not a rendered
+baseline and carries no additional dependency or license requirement.

@@ -525,3 +525,14 @@ geometry loading; metadata/decoded pixels do not establish rendered parity.
 Imported corner UV/Boolean/cache propagation, bake integration, PBR/alpha display,
 fully rendered Quick Look/thumbnails and textured-export re-import remain open M4
 acceptance work. The full editor plan remains incomplete.
+
+### Imported source surface adoption (issue #155)
+
+Core #49 and #51 are merged. The next Apple stage pins
+`0a83c3e3a59da4bafb5e3e83023fffd7df5cca90` and copies triangle-aligned source
+UV/RGBA, explicit RGB encoding and model/component catalogs through an owned
+background boundary (ADR 0073). Authored UVs may repeat outside 0–1 and must not be
+passed to the existing normalized atlas path. This stage does not remove imported
+UV/bake rejection or claim renderer/material/export parity. Subsequent stages
+must implement sampler policy and color/factor composition, imported atlas/bake
+integration, PBR/alpha display and rendered preview/export acceptance under #143.
