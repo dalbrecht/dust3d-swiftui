@@ -14,6 +14,7 @@ struct OwnedTexturedMetalResources: ~Copyable {
     let vertices: any MTLBuffer
     let opaqueIndices: (any MTLBuffer)?
     var transparentIndices: (any MTLBuffer)?
+    var transparentBatches: [BakedDrawBatch]
     let textures: [any MTLTexture]
     let order: BakedTriangleOrder
     let normalMapEnabled: Bool
@@ -22,21 +23,47 @@ struct OwnedTexturedMetalResources: ~Copyable {
 
 struct OwnedTexturedIndexBuffer: ~Copyable {
     let buffer: (any MTLBuffer)?
+    let batches: [BakedDrawBatch]
 }
 
 /// Shader compilation, CPU preparation and uploads run away from the UI executor.
 /// No mutable buffer/texture alias is retained after the ownership transfer.
 actor TexturedMetalResourcesBuilder {
+    func make(input: TexturedMaterialInput, device: any MTLDevice, camera: OrbitCamera) throws
+        -> sending OwnedTexturedMetalResources
+    {
+        switch input {
+        case .legacy(let mesh): return try make(bakedMesh: mesh, device: device, camera: camera)
+        case .source(let mesh): return try make(bakedMesh: mesh, device: device, camera: camera)
+        }
+    }
+
     func make(
         bakedMesh: MeshWithBakedTextures, device: any MTLDevice,
         camera: OrbitCamera = OrbitCamera(), maximumPayloadBytes: Int = 256 * 1024 * 1024
     ) throws -> sending OwnedTexturedMetalResources {
         try Task.checkCancellation()
         let geometry = try TexturedRenderGeometry(bakedMesh: bakedMesh, maximumPayloadBytes: maximumPayloadBytes)
+        return try make(geometry: geometry, device: device, camera: camera, maximumPayloadBytes: maximumPayloadBytes)
+    }
+
+    func make(
+        bakedMesh: SourceBakedMesh, device: any MTLDevice,
+        camera: OrbitCamera = OrbitCamera(), maximumPayloadBytes: Int = 256 * 1024 * 1024
+    ) throws -> sending OwnedTexturedMetalResources {
+        try Task.checkCancellation()
+        let geometry = try TexturedRenderGeometry(bakedMesh: bakedMesh, maximumPayloadBytes: maximumPayloadBytes)
+        return try make(geometry: geometry, device: device, camera: camera, maximumPayloadBytes: maximumPayloadBytes)
+    }
+
+    private func make(
+        geometry: TexturedRenderGeometry, device: any MTLDevice, camera: OrbitCamera,
+        maximumPayloadBytes: Int
+    ) throws -> sending OwnedTexturedMetalResources {
         let plan = try BakedMetalUploadPlan(
             geometry: geometry, maximumBufferLength: device.maxBufferLength, maximumPayloadBytes: maximumPayloadBytes)
         let order = try BakedTriangleOrder(geometry: geometry, hasTransparentColor: plan.hasTransparentColor)
-        let sorted = try order.transparentIndices(rotation: camera.rotation)
+        let sorted = try order.transparentDraws(rotation: camera.rotation)
         let packaged = Bundle.main.resourceURL.flatMap {
             Bundle(url: $0.appendingPathComponent("Dust3DNative_Dust3DRendering.bundle"))
         }
@@ -63,13 +90,16 @@ actor TexturedMetalResourcesBuilder {
         let samplerDescriptor = MTLSamplerDescriptor()
         samplerDescriptor.minFilter = .linear
         samplerDescriptor.magFilter = .linear
+        samplerDescriptor.mipFilter = .notMipmapped
         samplerDescriptor.sAddressMode = .clampToEdge
         samplerDescriptor.tAddressMode = .clampToEdge
+        samplerDescriptor.lodMinClamp = 0
+        samplerDescriptor.lodMaxClamp = Float(geometry.maximumSamplingLod)
         guard let sampler = device.makeSamplerState(descriptor: samplerDescriptor),
             let vertices = try Self.buffer(geometry.vertices, device: device)
         else { throw BakedMetalPreparationError.unavailable("Metal material buffers are unavailable.") }
         let opaque = try Self.buffer(order.opaqueIndices, device: device)
-        let transparent = try Self.buffer(sorted, device: device)
+        let transparent = try Self.buffer(sorted.indices, device: device)
         let opaqueDepth = try depthState(device: device, writesDepth: true)
         let transparentDepth = try depthState(device: device, writesDepth: false)
         var textures: [any MTLTexture] = []
@@ -96,17 +126,18 @@ actor TexturedMetalResourcesBuilder {
         return OwnedTexturedMetalResources(
             device: device, queue: queue, pipeline: pipeline, opaqueDepth: opaqueDepth,
             transparentDepth: transparentDepth, sampler: sampler, vertices: vertices,
-            opaqueIndices: opaque, transparentIndices: transparent, textures: textures, order: order,
+            opaqueIndices: opaque, transparentIndices: transparent, transparentBatches: sorted.batches,
+            textures: textures, order: order,
             normalMapEnabled: plan.normalMapEnabled, camera: camera)
     }
 
     func reorder(order: BakedTriangleOrder, rotation: simd_float4x4, device: any MTLDevice) throws
         -> sending OwnedTexturedIndexBuffer
     {
-        let indices = try order.transparentIndices(rotation: rotation)
-        let result = try Self.buffer(indices, device: device)
+        let draws = try order.transparentDraws(rotation: rotation)
+        let result = try Self.buffer(draws.indices, device: device)
         try Task.checkCancellation()
-        return OwnedTexturedIndexBuffer(buffer: result)
+        return OwnedTexturedIndexBuffer(buffer: result, batches: draws.batches)
     }
 
     nonisolated private static func buffer<Element: Sendable>(_ values: [Element], device: any MTLDevice) throws

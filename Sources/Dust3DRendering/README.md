@@ -95,8 +95,8 @@ Hardware tests verify orientation, wrapping, straight alpha policies, globally
 sorted cross-model transparency, scalar PBR factors, wireframe/culling,
 linear-space filtering and minification against independent factor references.
 Tests explicitly skip if Metal is unavailable; native inspection remains separate.
-The editor and file-preview services continue using their existing representation
-until separate adoption. See ADR 0074 and imported-material viewer verification.
+The editor and file-preview services also use this authored imported path. See
+ADR 0074 and imported-material viewer verification for its semantics.
 
 System file previews prepare mutually exclusive baked/imported materials from the
 same read-only archive snapshot. Imported thumbnail rendering reuses the production
@@ -105,3 +105,39 @@ readback. Preparation failures retain ordinary geometry and their original cause
 thumbnail GPU failures return the original system error. See
 [ADR 0076](../../docs/adr/0076-imported-material-file-previews.md) for quotas and
 native-host acceptance requirements.
+
+## Source-baked materials
+
+`MeshViewport(..., materials: .sourceBaked(output), ...)` consumes owned
+`SourceBakedMesh` values from the source-aware SDK/archive service. Retain the
+original indexed geometry as fallback, keep the same view identity, and advance
+`meshRevision` for replacement output or retry. The existing legacy `.baked` and
+authored `.imported` representations retain their behavior. App preparation still
+chooses its existing representations until separate source-bake adoption.
+
+Source and legacy bakes share one seam-safe indexer, resource builder and Metal
+encoder. Source metadata keeps actual packed triangles and exact model/component
+catalogs, without fabricated legacy UV charts. Model and component memberships
+participate in corner sharing. UVs, tangents, references, policy and atlas LOD are
+validated before upload; vertex/index quotas count logical arrays, excluding
+retained source metadata, indexing workspace and allocator/driver overhead.
+
+Opaque and mask triangles write depth. Masks apply the authored cutoff, including
+zero, and accepted fragments are opaque. Blend triangles sort globally by camera
+depth; adjacent identical policies coalesce into draw runs. There is a 4096-run
+limit per pass. Culling follows sidedness; unknown policy retains the conservative
+legacy path. Unknown mappings use geometry colors and ignore atlas samples.
+Camera replacements move sorted indices and matching policy runs together; stale
+uploads/callbacks and detached views cannot publish a new material frame.
+
+`maximumSamplingLod` is preserved and bounds the atlas sampler. Current uploads
+contain only the base level and explicitly disable mip filtering. They never
+generate a mixed-chart mip chain; chart-isolated mipmaps remain core issue #59.
+Mapped colors/factors are already in the baked maps, so the shader applies them
+once. Color/emission textures use sRGB formats; normal/scalar maps use linear data.
+
+Native GPU contracts cover alpha modes/cutoffs, sidedness, masked depth, globally
+sorted mixed policies after camera changes, unmapped fallback and actual source
+bakes, alongside the legacy regression suite. Tests skip explicitly without a
+Metal device. Offscreen PNGs are diagnostic artifacts, not committed pixel
+baselines or a claim of full application/material parity. See ADR 0079 and #167.

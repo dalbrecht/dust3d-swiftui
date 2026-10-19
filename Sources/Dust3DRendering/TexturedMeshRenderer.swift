@@ -1,4 +1,5 @@
 import AppKit
+import Dust3DKit
 import MetalKit
 import simd
 
@@ -54,6 +55,7 @@ final class TexturedMeshRenderer: NSObject, MTKViewDelegate {
                 try Task.checkCancellation()
                 guard let self, self.orderingRevision == revision else { return }
                 self.resources.transparentIndices = replacement.buffer
+                self.resources.transparentBatches = replacement.batches
                 self.orderingError = nil
                 if let view = self.presentationView { view.setNeedsDisplay(view.bounds) }
             } catch is CancellationError {
@@ -127,15 +129,30 @@ final class TexturedMeshRenderer: NSObject, MTKViewDelegate {
         for (index, texture) in resources.textures.enumerated() { encoder.setFragmentTexture(texture, index: index) }
         if let indices = resources.opaqueIndices {
             encoder.setDepthStencilState(resources.opaqueDepth)
-            encoder.drawIndexedPrimitives(
-                type: .triangle, indexCount: resources.order.opaqueIndices.count, indexType: .uint32,
-                indexBuffer: indices, indexBufferOffset: 0)
+            encodeBatches(resources.order.opaqueBatches, indices: indices, encoder: encoder)
         }
         if let indices = resources.transparentIndices {
             encoder.setDepthStencilState(resources.transparentDepth)
+            encodeBatches(resources.transparentBatches, indices: indices, encoder: encoder)
+        }
+    }
+
+    private func encodeBatches(
+        _ batches: [BakedDrawBatch], indices: any MTLBuffer, encoder: any MTLRenderCommandEncoder
+    ) {
+        for batch in batches {
+            let mode: Float
+            switch batch.policy?.alphaMode {
+            case .opaque: mode = 0
+            case .mask: mode = 1
+            case .blend, nil: mode = 2
+            }
+            var parameters = SIMD4<Float>(mode, Float(batch.policy?.alphaCutoff ?? 0), 0, 0)
+            encoder.setFragmentBytes(&parameters, length: MemoryLayout<SIMD4<Float>>.stride, index: 2)
+            encoder.setCullMode(batch.policy?.isDoubleSided == false ? .back : .none)
             encoder.drawIndexedPrimitives(
-                type: .triangle, indexCount: resources.order.transparentIndexCount, indexType: .uint32,
-                indexBuffer: indices, indexBufferOffset: 0)
+                type: .triangle, indexCount: batch.indexCount, indexType: .uint32,
+                indexBuffer: indices, indexBufferOffset: batch.indexOffset * MemoryLayout<UInt32>.stride)
         }
     }
 

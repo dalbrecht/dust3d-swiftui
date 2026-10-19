@@ -588,3 +588,14 @@ failures and cancellation, and preserve original assets. Verify real mixed and
 textureless material archives and retain the existing legacy PNG regression suite.
 This opt-in service does not yet change application rendering or export. The
 atlas LOD restriction, core #59 and the remaining M4–M8 acceptance work stay open.
+
+### Shared source-baked rendering (issue #167)
+
+SDK #164 and archive preparation #166 are merged. Extend the existing textured
+Metal path with source metadata and alpha/sidedness policy (ADR 0079), preserving
+model seams, LOD restrictions, current-frame acknowledgment, camera and original
+geometry fallback. Verify real core source bakes and independent GPU alpha/depth/
+culling samples, including mixed policy sorting after camera changes. The shared
+viewport exposes this representation without yet changing app preparation.
+Current textures stay base-level only; core #59, app/file-preview adoption,
+textured export and broader M4–M8 acceptance remain open.

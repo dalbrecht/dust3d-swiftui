@@ -9,6 +9,117 @@ import XCTest
 
 @MainActor
 final class TexturedMetalRenderingTests: XCTestCase {
+    func testShouldKeepUnknownSourceMappingOnVertexColorFallbackAndIgnoreAtlasSamples() async throws {
+        let first = BakedMetalFixture.source(
+            try BakedMetalFixture.quad(
+                color: BakedMetalFixture.image([0, 0, 255, 0]), mapped: false, tangentMapped: false,
+                layers: [.init(color: SIMD4(1, 0, 0, 0.5))]), policy: nil)
+        let second = BakedMetalFixture.source(
+            try BakedMetalFixture.quad(
+                color: BakedMetalFixture.image([0, 255, 0, 255]), mapped: false, tangentMapped: false,
+                layers: [.init(color: SIMD4(1, 0, 0, 0.5))]), policy: nil)
+        let firstOutput = try await render(first)
+        let secondOutput = try await render(second)
+        XCTAssertEqual(firstOutput, secondOutput)
+        let center = pixel(firstOutput, x: 64, y: 64)
+        XCTAssertEqual(center[3], 128)
+        XCTAssertGreaterThan(center[2], center[0])
+    }
+
+    func testShouldUpdateSourcePolicyBatchesTogetherWithCameraSortedIndices() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        let legacy = try BakedMetalFixture.quad(
+            color: BakedMetalFixture.image([255, 0, 0, 128, 0, 0, 255, 128], width: 1, height: 2),
+            layers: [.init(depth: 0.2, sample: SIMD2(0.5, 0.25)), .init(depth: -0.2, sample: SIMD2(0.5, 0.75))])
+        let source = BakedMetalFixture.source(
+            legacy,
+            policyAt: { index in
+                SourceBakedPolicy(alphaMode: .blend, alphaCutoff: 0.5, isDoubleSided: index >= 2)
+            })
+        let owner = try await TexturedMetalResourcesBuilder().make(
+            bakedMesh: source, device: device,
+            camera: OrbitCamera(yaw: 0, pitch: 0, distance: 3))
+        XCTAssertTrue(owner.textures.allSatisfy { $0.mipmapLevelCount == 1 })
+        let renderer = TexturedMeshRenderer(resources: owner)
+        let front = try await pixels(renderer, device: device)
+        XCTAssertEqual(pixel(front, x: 64, y: 64)[3], 192)
+        renderer.camera.yaw = .pi
+        await renderer.waitForPendingOrdering()
+        XCTAssertNil(renderer.orderingError)
+        let back = try await pixels(renderer, device: device)
+        let center = pixel(back, x: 64, y: 64)
+        XCTAssertEqual(center[3], 128)
+        XCTAssertGreaterThan(
+            center[0], center[2], "The blue double-sided layer must survive; the red single-sided layer is culled")
+    }
+
+    func testShouldDiscardMaskedFrontFragmentsWithoutOccludingOpaqueBackLayer() async throws {
+        for alpha: UInt8 in [0, 128] {
+            let legacy = try BakedMetalFixture.quad(
+                color: BakedMetalFixture.image([255, 0, 0, alpha, 0, 0, 255, 255], width: 1, height: 2),
+                layers: [.init(depth: 0.2, sample: SIMD2(0.5, 0.25)), .init(depth: -0.2, sample: SIMD2(0.5, 0.75))])
+            let source = BakedMetalFixture.source(
+                legacy,
+                policyAt: { index in
+                    SourceBakedPolicy(alphaMode: index < 2 ? .mask : .opaque, alphaCutoff: 0.5, isDoubleSided: true)
+                })
+            let output = try await render(source)
+            let center = pixel(output, x: 64, y: 64)
+            XCTAssertEqual(center[3], 255)
+            if alpha == 0 {
+                XCTAssertGreaterThan(center[0], center[2])
+            } else {
+                XCTAssertGreaterThan(center[2], center[0])
+            }
+        }
+    }
+
+    func testShouldHonorSourceOpaqueMaskAndBlendAlphaInProductionEncoder() async throws {
+        for mode in [ImportedAlphaMode.opaque, .mask, .blend] {
+            for alpha: UInt8 in [0, 1, 127, 128, 255] {
+                let source = BakedMetalFixture.source(
+                    try BakedMetalFixture.quad(color: BakedMetalFixture.image([255, 0, 0, alpha])),
+                    policy: SourceBakedPolicy(alphaMode: mode, alphaCutoff: 0.5, isDoubleSided: true))
+                let output = try await render(source)
+                let center = pixel(output, x: 64, y: 64)
+                let expected = mode == .opaque ? 255 : mode == .mask ? (alpha >= 128 ? 255 : 0) : Int(alpha)
+                XCTAssertEqual(center[3], expected, "\(mode) source alpha \(alpha)")
+                if mode == .opaque { XCTAssertGreaterThan(center[2], 0) }
+            }
+        }
+        let zeroCutoff = BakedMetalFixture.source(
+            try BakedMetalFixture.quad(color: BakedMetalFixture.image([255, 0, 0, 0])),
+            policy: SourceBakedPolicy(alphaMode: .mask, alphaCutoff: 0, isDoubleSided: true))
+        let zeroCutoffOutput = try await render(zeroCutoff)
+        XCTAssertEqual(pixel(zeroCutoffOutput, x: 64, y: 64)[3], 255)
+    }
+
+    func testShouldCullSourceBackFacesOnlyWhenMaterialIsSingleSided() async throws {
+        for doubleSided in [false, true] {
+            let source = BakedMetalFixture.source(
+                try BakedMetalFixture.quad(),
+                policy: SourceBakedPolicy(alphaMode: .opaque, alphaCutoff: 0.5, isDoubleSided: doubleSided))
+            let front = try await render(source)
+            let back = try await render(source, camera: OrbitCamera(yaw: .pi, pitch: 0, distance: 3))
+            XCTAssertEqual(pixel(front, x: 64, y: 64)[3], 255)
+            XCTAssertEqual(pixel(back, x: 64, y: 64)[3], doubleSided ? 255 : 0)
+        }
+    }
+
+    func testShouldRenderRealSourceBakedImportedAndProceduralArchives() async throws {
+        for name in ["ImportedSurface", "Capsule"] {
+            let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("Dust3DKitTests/Fixtures/\(name).ds3")
+            let source = try await ArchiveSourceTextureBakingService().load(
+                data: Data(contentsOf: url),
+                options: SourceMeshBakeOptions(
+                    bake: MeshBakeOptions(colorSize: 256, normalSize: 128, materialSize: 256, atlasTextureSize: 256)))
+            let output = try await render(source, camera: OrbitCamera())
+            XCTAssertTrue(stride(from: 3, to: output.count, by: 4).contains { output[$0] > 0 })
+            try saveArtifact(output, name: "source-baked-\(name)")
+        }
+    }
+
     func testShouldRenderAsymmetricAtlasInEncodedRowOrientation() async throws {
         let image = BakedMetalFixture.image(
             [255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255], width: 2, height: 2)
@@ -205,6 +316,14 @@ final class TexturedMetalRenderingTests: XCTestCase {
             bakedMesh: mesh, device: device, camera: OrbitCamera(yaw: 0, pitch: 0, distance: 3))
         let renderer = TexturedMeshRenderer(resources: owner)
         return try await pixels(renderer, device: device)
+    }
+
+    private func render(_ mesh: SourceBakedMesh, camera: OrbitCamera = OrbitCamera(yaw: 0, pitch: 0, distance: 3))
+        async throws -> [UInt8]
+    {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        let owner = try await TexturedMetalResourcesBuilder().make(bakedMesh: mesh, device: device, camera: camera)
+        return try await pixels(TexturedMeshRenderer(resources: owner), device: device)
     }
 
     private func pixels(_ renderer: TexturedMeshRenderer, device: any MTLDevice) async throws -> [UInt8] {

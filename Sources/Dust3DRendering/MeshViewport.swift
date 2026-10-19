@@ -5,6 +5,8 @@ import SwiftUI
 /// Mutually exclusive immutable material representation for one current mesh revision.
 public enum MeshMaterialContent: Sendable {
     case baked(MeshWithBakedTextures)
+    /// Source-aware packed maps with per-triangle alpha/sidedness and an atlas LOD restriction.
+    case sourceBaked(SourceBakedMesh)
     case imported(ImportedMaterialRenderData)
 }
 
@@ -55,13 +57,13 @@ public struct MeshViewport: NSViewRepresentable {
             onMaterialRendered: onMaterialRendered, onError: onError)
     }
 
-    /// Display one matching baked or imported representation without replacing the orbit view.
+    /// Display one matching baked, source-baked or imported representation without replacing the orbit view.
     /// - Parameters:
     ///   - mesh: Immutable copied indexed geometry, retained as the failure fallback.
     ///   - isWireframe: Draw triangle edges.
     ///   - cameraReset: Increment to fit the model.
     ///   - meshRevision: Increment for replacement geometry/material output or retry.
-    ///   - materials: Mutually exclusive current baked/imported data; uploads off the main actor.
+    ///   - materials: Mutually exclusive current material data; uploads off the main actor.
     ///   - onMaterialError: Original material preparation/GPU cause; defaults to onError.
     ///   - onMaterialRendered: Called only after a current material GPU frame completes.
     ///   - onError: Ordinary geometry setup failure on the main actor.
@@ -138,6 +140,9 @@ public struct MeshViewport: NSViewRepresentable {
         case .baked(let baked):
             view.updateMaterials(
                 baked, revision: meshRevision, onRendered: onMaterialRendered, onError: onMaterialError)
+        case .sourceBaked(let baked):
+            view.updateSourceMaterials(
+                baked, revision: meshRevision, onRendered: onMaterialRendered, onError: onMaterialError)
         case .imported(let imported):
             view.updateImportedMaterials(
                 imported, revision: meshRevision, onRendered: onMaterialRendered, onError: onMaterialError)
@@ -182,6 +187,20 @@ public class InteractiveMeshView: MTKView {
         _ baked: MeshWithBakedTextures, revision: Int, onRendered: @escaping () -> Void,
         onError: @escaping (String) -> Void
     ) {
+        updateTexturedMaterials(.legacy(baked), revision: revision, onRendered: onRendered, onError: onError)
+    }
+
+    func updateSourceMaterials(
+        _ baked: SourceBakedMesh, revision: Int, onRendered: @escaping () -> Void,
+        onError: @escaping (String) -> Void
+    ) {
+        updateTexturedMaterials(.source(baked), revision: revision, onRendered: onRendered, onError: onError)
+    }
+
+    private func updateTexturedMaterials(
+        _ input: TexturedMaterialInput, revision: Int, onRendered: @escaping () -> Void,
+        onError: @escaping (String) -> Void
+    ) {
         guard requestedMaterialRevision != revision, completedMaterialRevision != revision,
             failedMaterialRevision != revision
         else { return }
@@ -195,7 +214,7 @@ public class InteractiveMeshView: MTKView {
                 guard let device else {
                     throw BakedMetalPreparationError.unavailable("This Mac does not provide a Metal device.")
                 }
-                let resources = try await builder.make(bakedMesh: baked, device: device, camera: camera)
+                let resources = try await builder.make(input: input, device: device, camera: camera)
                 try Task.checkCancellation()
                 guard let self, self.requestedMaterialRevision == revision, self.meshRevision == revision else {
                     return
