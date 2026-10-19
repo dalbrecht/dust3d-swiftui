@@ -536,3 +536,14 @@ passed to the existing normalized atlas path. This stage does not remove importe
 UV/bake rejection or claim renderer/material/export parity. Subsequent stages
 must implement sampler policy and color/factor composition, imported atlas/bake
 integration, PBR/alpha display and rendered preview/export acceptance under #143.
+
+### Viewer imported-material rendering (issue #157)
+
+Following merged #156, the viewer stage uses the shared renderer for authored
+source UVs, per-model samplers, linear color/factors, scalar PBR, alpha modes and
+sidedness (ADR 0074). Background/viewport revision checks retain geometry on
+optional failures and acknowledge only a current GPU frame. Native acceptance,
+full gate, review and hosted checks remain required before delivery. This stage
+preserves explicit remaining procedural/legacy limits and does not complete the
+editor/file-preview adoption, imported atlas/baking or textured-export acceptance
+under #143. Full editor parity remains unproven.

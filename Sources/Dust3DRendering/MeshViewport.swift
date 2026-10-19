@@ -2,6 +2,12 @@ import Dust3DKit
 import MetalKit
 import SwiftUI
 
+/// Mutually exclusive immutable material representation for one current mesh revision.
+public enum MeshMaterialContent: Sendable {
+    case baked(MeshWithBakedTextures)
+    case imported(ImportedMaterialRenderData)
+}
+
 /// Main-actor SwiftUI surface for a validated mesh and its interactive orbit camera.
 public struct MeshViewport: NSViewRepresentable {
     let mesh: RenderMesh
@@ -9,7 +15,7 @@ public struct MeshViewport: NSViewRepresentable {
     let cameraReset: Int
     let onError: (String) -> Void
     let meshRevision: Int
-    let bakedMesh: MeshWithBakedTextures?
+    let materials: MeshMaterialContent?
     let onMaterialRendered: () -> Void
     let onMaterialError: (String) -> Void
 
@@ -19,7 +25,7 @@ public struct MeshViewport: NSViewRepresentable {
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0, onError: @escaping (String) -> Void
     ) {
         onMaterialRendered = {}
-        bakedMesh = nil
+        materials = nil
         onMaterialError = { _ in }
         self.mesh = .expanded(mesh)
         self.isWireframe = isWireframe
@@ -28,24 +34,44 @@ public struct MeshViewport: NSViewRepresentable {
         self.onError = onError
     }
 
-    /// Display copied indexed geometry; revision and camera-reset semantics match the expanded initializer.
+    /// Display indexed geometry with optional baked maps; existing SDK call sites retain their API.
     /// - Parameters:
-    ///   - mesh: Immutable vertices and UInt32 triangle indices.
-    ///   - isWireframe: Whether to draw triangle edges.
-    ///   - cameraReset: Increment to fit the model again.
-    ///   - meshRevision: Increment to replace GPU geometry while retaining orbit and zoom.
-    ///   - bakedMesh: Optional baked geometry/maps paired with this mesh revision. Uploads in the background.
-    ///   - onMaterialError: Receives optional material failures; defaults to onError. Ordinary geometry remains available.
-    ///   - onMaterialRendered: Called after a successful GPU frame for the current material revision.
-    ///   - onError: Receives ordinary GPU setup diagnostics on the main actor.
+    ///   - mesh: Immutable copied geometry.
+    ///   - isWireframe: Draw triangle edges.
+    ///   - cameraReset: Increment to fit the model.
+    ///   - meshRevision: Increment for replacement geometry/material output.
+    ///   - bakedMesh: Current matching baked output, or nil for ordinary geometry.
+    ///   - onMaterialError: Material failure retaining ordinary geometry; defaults to onError.
+    ///   - onMaterialRendered: A current GPU frame completed successfully.
+    ///   - onError: Ordinary GPU setup diagnostic.
     public init(
         mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
         bakedMesh: MeshWithBakedTextures? = nil, onMaterialError: ((String) -> Void)? = nil,
-        onMaterialRendered: @escaping () -> Void = {},
-        onError: @escaping (String) -> Void
+        onMaterialRendered: @escaping () -> Void = {}, onError: @escaping (String) -> Void
+    ) {
+        self.init(
+            mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset, meshRevision: meshRevision,
+            materials: bakedMesh.map(MeshMaterialContent.baked), onMaterialError: onMaterialError,
+            onMaterialRendered: onMaterialRendered, onError: onError)
+    }
+
+    /// Display one matching baked or imported representation without replacing the orbit view.
+    /// - Parameters:
+    ///   - mesh: Immutable copied indexed geometry, retained as the failure fallback.
+    ///   - isWireframe: Draw triangle edges.
+    ///   - cameraReset: Increment to fit the model.
+    ///   - meshRevision: Increment for replacement geometry/material output or retry.
+    ///   - materials: Mutually exclusive current baked/imported data; uploads off the main actor.
+    ///   - onMaterialError: Original material preparation/GPU cause; defaults to onError.
+    ///   - onMaterialRendered: Called only after a current material GPU frame completes.
+    ///   - onError: Ordinary geometry setup failure on the main actor.
+    public init(
+        mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
+        materials: MeshMaterialContent?, onMaterialError: ((String) -> Void)? = nil,
+        onMaterialRendered: @escaping () -> Void = {}, onError: @escaping (String) -> Void
     ) {
         self.onMaterialRendered = onMaterialRendered
-        self.bakedMesh = bakedMesh
+        self.materials = materials
         self.onMaterialError = onMaterialError ?? onError
         self.mesh = .indexed(mesh)
         self.isWireframe = isWireframe
@@ -63,24 +89,20 @@ public struct MeshViewport: NSViewRepresentable {
         view.enableSetNeedsDisplay = true
         return view
     }
-
-    public func updateNSView(_ view: InteractiveMeshView, context: Context) {
-        updateRenderer(in: view)
-    }
-
+    public func updateNSView(_ view: InteractiveMeshView, context: Context) { updateRenderer(in: view) }
     public static func dismantleNSView(_ view: InteractiveMeshView, coordinator: ()) {
         view.cancelMaterialUpload()
         view.delegate = nil
     }
 
     func updateRenderer(in view: InteractiveMeshView) {
-        if bakedMesh == nil || view.meshRevision != meshRevision {
+        if materials == nil || view.meshRevision != meshRevision {
             view.cancelMaterialUpload()
             view.materialRenderer = nil
+            view.importedRenderer = nil
             view.colorPixelFormat = .bgra8Unorm
             view.delegate = view.renderer
         }
-        // A revision replaces GPU geometry while retaining the existing orbit camera.
         if (view.renderer == nil || view.meshRevision != meshRevision) && view.failedMeshRevision != meshRevision {
             do {
                 guard let device = view.device else {
@@ -110,10 +132,16 @@ public struct MeshViewport: NSViewRepresentable {
         }
         view.renderer?.isWireframe = isWireframe
         view.materialRenderer?.isWireframe = isWireframe
+        view.importedRenderer?.isWireframe = isWireframe
         view.requestedWireframe = isWireframe
-        if let bakedMesh {
+        switch materials {
+        case .baked(let baked):
             view.updateMaterials(
-                bakedMesh, revision: meshRevision, onRendered: onMaterialRendered, onError: onMaterialError)
+                baked, revision: meshRevision, onRendered: onMaterialRendered, onError: onMaterialError)
+        case .imported(let imported):
+            view.updateImportedMaterials(
+                imported, revision: meshRevision, onRendered: onMaterialRendered, onError: onMaterialError)
+        case nil: break
         }
         view.needsDisplay = true
     }
@@ -124,18 +152,21 @@ public struct MeshViewport: NSViewRepresentable {
 public class InteractiveMeshView: MTKView {
     var renderer: MeshRenderer?
     var materialRenderer: TexturedMeshRenderer?
+    var importedRenderer: ImportedMeshRenderer?
     var materialTask: Task<Void, Never>?
     var requestedMaterialRevision: Int?
     var completedMaterialRevision: Int?
     var failedMaterialRevision: Int?
     var requestedWireframe = false
     let materialBuilder = TexturedMetalResourcesBuilder()
+    let importedMaterialBuilder = ImportedMetalResourcesBuilder()
 
     var orbitCamera: OrbitCamera {
-        get { materialRenderer?.camera ?? renderer?.camera ?? OrbitCamera() }
+        get { importedRenderer?.camera ?? materialRenderer?.camera ?? renderer?.camera ?? OrbitCamera() }
         set {
             renderer?.camera = newValue
             materialRenderer?.camera = newValue
+            importedRenderer?.camera = newValue
         }
     }
 
@@ -182,7 +213,65 @@ public class InteractiveMeshView: MTKView {
                     else { return }
                     onRendered()
                 }
+                self.importedRenderer = nil
                 self.materialRenderer = renderer
+                self.completedMaterialRevision = revision
+                self.requestedMaterialRevision = nil
+                self.colorPixelFormat = .bgra8Unorm_srgb
+                self.delegate = renderer
+                self.setNeedsDisplay(self.bounds)
+                // Paused MTKViews must present the accepted upload without waiting for another SwiftUI update.
+                self.draw()
+            } catch is CancellationError {
+                // A replacement or detached view owns presentation now.
+            } catch {
+                guard let self, self.requestedMaterialRevision == revision, self.meshRevision == revision else {
+                    return
+                }
+                self.failedMaterialRevision = revision
+                self.requestedMaterialRevision = nil
+                onError(error.localizedDescription)
+            }
+        }
+    }
+
+    func updateImportedMaterials(
+        _ imported: ImportedMaterialRenderData, revision: Int, onRendered: @escaping () -> Void,
+        onError: @escaping (String) -> Void
+    ) {
+        guard requestedMaterialRevision != revision, completedMaterialRevision != revision,
+            failedMaterialRevision != revision
+        else { return }
+        materialTask?.cancel()
+        requestedMaterialRevision = revision
+        let camera = orbitCamera
+        let builder = importedMaterialBuilder
+        let device = device
+        materialTask = Task { [weak self] in
+            do {
+                guard let device else {
+                    throw ImportedRenderError.unavailable("This Mac does not provide a Metal device.")
+                }
+                let resources = try await builder.make(data: imported, device: device, camera: camera)
+                try Task.checkCancellation()
+                guard let self, self.requestedMaterialRevision == revision, self.meshRevision == revision else {
+                    return
+                }
+                let renderer = ImportedMeshRenderer(resources: resources)
+                renderer.camera = self.orbitCamera
+                renderer.isWireframe = self.requestedWireframe
+                renderer.onError = { [weak self] error in
+                    guard let self, self.completedMaterialRevision == revision else { return }
+                    onError(error.localizedDescription)
+                }
+                renderer.onRendered = { [weak self, weak renderer] in
+                    guard let self, let renderer, self.completedMaterialRevision == revision,
+                        self.importedRenderer === renderer, self.delegate === renderer
+                    else { return }
+                    onRendered()
+                }
+                self.materialRenderer = nil
+                self.importedRenderer = renderer
                 self.completedMaterialRevision = revision
                 self.requestedMaterialRevision = nil
                 self.colorPixelFormat = .bgra8Unorm_srgb

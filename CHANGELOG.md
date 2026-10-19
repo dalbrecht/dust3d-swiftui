@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Render supported imported GLB materials in the standalone viewer with authored UV/sampler policy, linear color/factors, PBR scalars, alpha modes and double-sided handling; preserve geometry fallback and remaining editor/file-preview/atlas/export limits.
+
 - Adopt owned imported surface UV/RGBA metadata with explicit RGB encoding, aligned geometry and independently bounded background Swift copies; texture rendering remains pending.
 
 - Adopt reviewed core `4db1bb7` for embedded imported geometry, lifetime-safe material/image metadata copies, and bounded background PNG/JPEG decoding. Imported material rendering, UV/baking and textured export remain pending; archives and original assets survive native edits and undo.

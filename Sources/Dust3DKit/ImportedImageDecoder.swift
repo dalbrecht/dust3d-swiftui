@@ -13,9 +13,16 @@ public struct ImportedDecodedImage: Sendable, Equatable {
 }
 
 /// Platform pixel failures remain distinct from JPEG envelope/quota failures.
-public enum MeshJPEGDecodingError: Error, Equatable, Sendable {
+public enum MeshJPEGDecodingError: LocalizedError, Equatable, Sendable {
     case invalidJPEG
     case unsupportedPixelLayout
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidJPEG: return "The image is not a complete, supported JPEG."
+        case .unsupportedPixelLayout: return "The JPEG pixel layout is not supported."
+        }
+    }
 }
 
 /// Bounded imported-image decoding without transforms, color conversion or premultiplication.
@@ -40,7 +47,8 @@ public enum ImportedImageDecoder {
         case .png:
             let value = try MeshPNGDecoder.decode(
                 image.bytes, imageID: modelID,
-                maximumEncodedBytes: maximumEncodedBytes, maximumDecodedBytes: maximumDecodedBytes)
+                maximumEncodedBytes: maximumEncodedBytes, maximumDecodedBytes: maximumDecodedBytes,
+                preservesTransparentGrayRGB: true)
             return ImportedDecodedImage(
                 modelID: modelID, width: value.width, height: value.height,
                 rowStride: value.rowStride, pixels: value.pixels)
