@@ -22,13 +22,36 @@ public enum FilePreviewRenderer {
     public static func render(
         bakedMesh: MeshWithBakedTextures, maximumSize: CGSize, scale: CGFloat
     ) async throws -> FilePreviewImage {
+        try await renderTextured(input: .legacy(bakedMesh), maximumSize: maximumSize, scale: scale)
+    }
+
+    /// Render source-aware packed maps and policy through the production textured encoder.
+    /// - Parameters:
+    ///   - sourceBakedMesh: Owned geometry, source policies/maps and atlas sampling restriction.
+    ///   - maximumSize: Requested point dimensions, bounded to 2048 pixels per output side.
+    ///   - scale: Positive display scale, at most eight.
+    /// - Returns: Owned premultiplied sRGB image with authored transparency and sidedness.
+    /// - Throws: Original material/Metal error, FilePreviewError or CancellationError.
+    /// - Note: Prepared uploads have a 64 MiB quota; workspace/readback/driver storage are additional.
+    /// - Example: try await FilePreviewRenderer.render(sourceBakedMesh: source, maximumSize: size, scale: 1).
+    @MainActor
+    public static func render(
+        sourceBakedMesh: SourceBakedMesh, maximumSize: CGSize, scale: CGFloat
+    ) async throws -> FilePreviewImage {
+        try await renderTextured(input: .source(sourceBakedMesh), maximumSize: maximumSize, scale: scale)
+    }
+
+    @MainActor
+    private static func renderTextured(
+        input: TexturedMaterialInput, maximumSize: CGSize, scale: CGFloat
+    ) async throws -> FilePreviewImage {
         try Task.checkCancellation()
         let dimensions = try FilePreviewDimensions(maximumSize: maximumSize, scale: scale)
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw FilePreviewError.unavailable("This Mac does not provide a Metal device for file previews.")
         }
         let owner = try await builder.make(
-            bakedMesh: bakedMesh, device: device, camera: OrbitCamera(yaw: -0.4, pitch: 0.2, distance: 3),
+            input: input, device: device, camera: OrbitCamera(yaw: -0.4, pitch: 0.2, distance: 3),
             maximumPayloadBytes: 64 * 1024 * 1024)
         try Task.checkCancellation()
         let renderer = TexturedMeshRenderer(resources: owner)

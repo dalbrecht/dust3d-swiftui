@@ -101,7 +101,23 @@ public struct SourceMeshBakeOptions: Sendable {
 }
 
 /// Swift boundary failures; native generation failures preserve MeshLoadingError status and cause.
-public enum SourceMeshBakeError: Error, Sendable, Equatable {
+public enum SourceMeshBakeError: LocalizedError, Sendable, Equatable {
     case invalidLimits, invalidInputImage, inputLimitExceeded, invalidNativeCounts
     case copyLimitExceeded, invalidCatalog, invalidTriangle, invalidPolicy, invalidSamplingLod
+
+    /// Describe the exact Swift ownership/input failure while preserving its typed identity.
+    public var errorDescription: String? {
+        switch self {
+        case .invalidLimits: "The source-baking limits are invalid."
+        case .invalidInputImage: "A source image has invalid identity, dimensions, row stride or pixel storage."
+        case .inputLimitExceeded: "Decoded source texture inputs exceed the configured input limit."
+        case .invalidNativeCounts: "The engine returned inconsistent source-baked counts."
+        case .copyLimitExceeded:
+            "Copied source-baked geometry, metadata or textures exceed the configured output limit."
+        case .invalidCatalog: "The engine returned invalid source-baked model or component catalogs."
+        case .invalidTriangle: "The engine returned invalid source-baked triangle UVs, tangents or references."
+        case .invalidPolicy: "The engine returned an invalid source-baked alpha or sidedness policy."
+        case .invalidSamplingLod: "The engine returned an invalid source-atlas sampling LOD."
+        }
+    }
 }

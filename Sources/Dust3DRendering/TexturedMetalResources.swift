@@ -29,12 +29,17 @@ struct OwnedTexturedIndexBuffer: ~Copyable {
 /// Shader compilation, CPU preparation and uploads run away from the UI executor.
 /// No mutable buffer/texture alias is retained after the ownership transfer.
 actor TexturedMetalResourcesBuilder {
-    func make(input: TexturedMaterialInput, device: any MTLDevice, camera: OrbitCamera) throws
+    func make(
+        input: TexturedMaterialInput, device: any MTLDevice, camera: OrbitCamera,
+        maximumPayloadBytes: Int = 256 * 1024 * 1024
+    ) throws
         -> sending OwnedTexturedMetalResources
     {
         switch input {
-        case .legacy(let mesh): return try make(bakedMesh: mesh, device: device, camera: camera)
-        case .source(let mesh): return try make(bakedMesh: mesh, device: device, camera: camera)
+        case .legacy(let mesh):
+            return try make(bakedMesh: mesh, device: device, camera: camera, maximumPayloadBytes: maximumPayloadBytes)
+        case .source(let mesh):
+            return try make(bakedMesh: mesh, device: device, camera: camera, maximumPayloadBytes: maximumPayloadBytes)
         }
     }
 

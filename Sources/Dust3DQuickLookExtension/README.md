@@ -21,3 +21,8 @@ Unsupported component-link forms still reject rather than disappear. Original
 archives are read-only and need not be re-saved. Imported atlas/baking, additional
 maps/features and exports remain open; see
 [ADR 0076](../../docs/adr/0076-imported-material-file-previews.md).
+
+Mixed imported/procedural archives use shared source-aware baking and rendering.
+Optional material failures retain ordinary geometry and their original diagnostics.
+See [mixed preview verification](../../docs/mixed-file-preview-verification.md)
+and ADR 0084 for bounds, native system evidence and remaining limitations.
