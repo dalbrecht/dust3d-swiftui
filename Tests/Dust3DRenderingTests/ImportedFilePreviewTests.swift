@@ -1,3 +1,4 @@
+import Dust3DDocument
 import Metal
 import XCTest
 
@@ -25,6 +26,68 @@ final class ImportedFilePreviewTests: XCTestCase {
             document.compatibilityWarning(materialsRendered: true, materialRenderingFailed: true),
             document.mesh?.warning)
         XCTAssertEqual(try Data(contentsOf: url), before)
+    }
+
+    func test_should_reject_textured_primitives_without_uvs_without_changing_archive() async throws {
+        let bytes = try missingUVArchive()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".ds3")
+        try bytes.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        do {
+            _ = try await FilePreviewDocumentService().load(url: url)
+            XCTFail("Malformed textured geometry must not be presented as a partial model")
+        } catch let error as MeshLoadingError {
+            XCTAssertEqual(error.status, 1)
+            XCTAssertTrue(error.message.contains("textured primitives require UVs"))
+        }
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+    }
+
+    /// Rebuild only the trusted fixture envelope/JSON; source pixels and geometry stay unchanged.
+    private func missingUVArchive() throws -> Data {
+        let document = try Dust3DDocument(data: Data(contentsOf: fixture()))
+        let assetName = "models/{00000300-0000-4000-8000-000000000300}.glb"
+        let original = try XCTUnwrap(document.asset(named: assetName).flatMap { $0.count >= 20 ? $0 : nil })
+        let length = original[12..<16].enumerated().reduce(0) { $0 | (Int($1.element) << ($1.offset * 8)) }
+        _ = try XCTUnwrap(20 + length <= original.count ? true : nil)
+        var root = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: original.subdata(in: 20..<(20 + length))) as? [String: Any])
+        var meshes = try XCTUnwrap(root["meshes"] as? [[String: Any]])
+        var mesh = try XCTUnwrap(meshes.first)
+        var primitives = try XCTUnwrap(mesh["primitives"] as? [[String: Any]])
+        var primitive = try XCTUnwrap(primitives.first)
+        var attributes = try XCTUnwrap(primitive["attributes"] as? [String: Any])
+        attributes.removeValue(forKey: "TEXCOORD_0")
+        primitive["attributes"] = attributes
+        primitives[0] = primitive
+        mesh["primitives"] = primitives
+        meshes[0] = mesh
+        root["meshes"] = meshes
+        var json = try JSONSerialization.data(withJSONObject: root, options: .sortedKeys)
+        while !json.count.isMultiple(of: 4) { json.append(32) }
+        let remainder = original.subdata(in: (20 + length)..<original.count)
+        func word(_ value: Int) throws -> Data {
+            var checked = try XCTUnwrap(UInt32(exactly: value)).littleEndian
+            return withUnsafeBytes(of: &checked) { Data($0) }
+        }
+        var glb = Data([0x67, 0x6c, 0x54, 0x46])
+        glb.append(try word(2))
+        glb.append(try word(20 + json.count + remainder.count))
+        glb.append(try word(json.count))
+        glb.append(Data([0x4a, 0x53, 0x4f, 0x4e]))
+        glb.append(json)
+        glb.append(remainder)
+        let model = document.modelXML
+        let table = Data(
+            ("<ds3><model name='model.xml' offset='0' size='\(model.count)'/>"
+                + "<asset name='\(assetName)' offset='\(model.count)' size='\(glb.count)'/></ds3>\n").utf8)
+        let prefix = "DUST3D 1.0 xml "
+        let offset = String(prefix.utf8.count + 10 + 2 + table.count)
+        var archive = Data((prefix + String(repeating: "0", count: 10 - offset.utf8.count) + offset + "\r\n").utf8)
+        archive.append(table)
+        archive.append(model)
+        archive.append(glb)
+        return archive
     }
 
     func test_should_keep_ordinary_geometry_and_original_imported_preparation_cause() async throws {

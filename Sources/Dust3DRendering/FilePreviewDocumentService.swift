@@ -76,7 +76,8 @@ public actor FilePreviewDocumentService {
 
     /// Prepare a document without modifying bytes, writing caches or using editor state.
     /// - Parameter url: Local or system-granted file URL.
-    /// - Returns: Ordinary/baked geometry, or an explicit empty result; material failures retain their cause.
+    /// - Returns: Ordinary geometry with optional baked/imported materials, or an explicit empty result.
+    ///   Material failures retain their original cause alongside ordinary geometry.
     /// - Throws: Original filesystem/native errors or `CancellationError` at cooperative boundaries.
     /// - Note: Archive input is at most 64 MiB; logical output/workspace are separate quotas.
     public func load(url: URL) async throws -> FilePreviewDocument {

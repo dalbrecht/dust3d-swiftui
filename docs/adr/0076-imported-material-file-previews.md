@@ -1,7 +1,7 @@
 # ADR 0076: Imported materials in macOS file previews
 
-Status: prepared locally under #161; full integrated gate, native host acceptance
-and PR publication remain pending the serial delivery of #160.
+Status: #160 is merged; scoped native host acceptance and combined local gate pass.
+Expanded gate passes 777 tests; exact-head review and hosted CI remain required under #161.
 
 ## Decision
 
