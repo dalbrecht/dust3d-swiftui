@@ -164,3 +164,11 @@ File previews use the same archive preparation service with explicit preview quo
 Thumbnail dispatch supports legacy, authored imported and source-baked materials;
 CPU-tested fallback preserves original causes and cancellation. Fully transparent
 material output is valid. See ADR 0084 and the mixed file-preview verification record.
+
+Explicit owned mip chains can now enter the source-aware resource builder.
+Upload preflight verifies exact bases, every present map and the aggregate payload
+before allocation; each retained level uploads with its established color format.
+Sampler bounds round down and minified alpha participates in unknown-policy
+routing. Existing app inputs remain base-only until reviewed native chain adoption.
+Real GPU trilinear/clamp and production-fragment minification tests pass; see
+ADR 0086 and #176 for remaining mixed/large-model/export acceptance.

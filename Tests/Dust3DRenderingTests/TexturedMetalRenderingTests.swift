@@ -365,6 +365,33 @@ final class TexturedMetalRenderingTests: XCTestCase {
         return bytes[offset..<offset + 4].map(Int.init)
     }
 
+    func testProductionFragmentSamplesUploadedMipsDuringMinification() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        func solid(_ side: Int, _ color: [UInt8]) -> MeshTextureImage {
+            BakedMetalFixture.image(
+                Array(repeating: color, count: side * side).flatMap { $0 }, width: side, height: side)
+        }
+        let color = solid(512, [255, 0, 0, 255])
+        let baked = try BakedMetalFixture.quad(color: color)
+        let base = BakedMetalFixture.source(
+            baked, policy: .init(alphaMode: .opaque, alphaCutoff: 0.5, isDoubleSided: true))
+        let chain = try TextureMipChain(
+            levels: [color, solid(256, [0, 255, 0, 255]), solid(128, [0, 0, 255, 255])], maximumSamplingLod: 2)
+        let source = SourceBakedMesh(
+            geometry: base.geometry, triangles: base.triangles, modelIDs: [], components: [], textures: base.textures,
+            maximumSamplingLod: 2, nativePayloadBytes: 0, copiedPayloadBytes: 0)
+        let owner = try await TexturedMetalResourcesBuilder().make(
+            bakedMesh: source, device: device, camera: OrbitCamera(yaw: 0, pitch: 0, distance: 3), mipmaps: [0: chain])
+        let minified = try await pixels(TexturedMeshRenderer(resources: owner), device: device)
+        let original = try await render(base)
+        let center = (64 * 128 + 64) * 4
+        XCTAssertEqual(minified[center + 3], 255)
+        XCTAssertGreaterThan(
+            Int(minified[center]), Int(minified[center + 2]) + 50,
+            "BGRA output must reveal the blue retained mip rather than the red base")
+        XCTAssertGreaterThan(Int(original[center + 2]), Int(original[center]) + 50, "Base-only rendering remains red")
+    }
+
     private func render(_ mesh: MeshWithBakedTextures) async throws -> [UInt8] {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
         let owner = try await TexturedMetalResourcesBuilder().make(
