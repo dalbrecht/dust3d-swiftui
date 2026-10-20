@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refuse to compile a core checkout that restores the quarantined GLB material catalog C API. The reviewed core pin is unchanged.
+
 - Add source-baked materials to the shared Metal viewport, preserving packed source metadata, alpha modes, sidedness, seam-safe indexing and atlas sampling limits, with revision-safe uploads and geometry fallback.
 
 - Prepare source-aware bakes from one unchanged archive snapshot, with shared imported/procedural image budgets, contextual codec failures and background cancellation.

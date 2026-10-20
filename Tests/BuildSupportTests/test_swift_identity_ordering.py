@@ -18,7 +18,7 @@ class SwiftIdentityOrderingTests(unittest.TestCase):
         temporary = Path(self.directory.name)
         self.root = temporary / 'source'
         (self.root / 'script').mkdir(parents=True)
-        for name in ['swift.sh', 'build_paths.sh', 'build_identity.py']:
+        for name in ['swift.sh', 'build_paths.sh', 'build_identity.py', 'glb_catalog_quarantine.py']:
             shutil.copyfile(ROOT / 'script' / name, self.root / 'script' / name)
         self.state = temporary / 'state.json'
         self.build_root = temporary / 'cache'
@@ -61,6 +61,12 @@ else:
             ['commit', '--quiet', '-m', 'Initial fixture'],
         ]:
             subprocess.run(['git', '-C', str(self.root), *arguments], check=True, capture_output=True)
+        checkout = self.build_root / 'build/checkouts/dust3d-core'
+        header = checkout / 'native/Engine/include'
+        header.mkdir(parents=True)
+        (header / 'Dust3DBridge.h').write_text('/* Existing supported bridge. */\n')
+        (checkout / 'Package.swift').write_text('sources: ["GlbReader.cc"],\n')
+        (checkout / 'CMakeLists.txt').write_text('native/Engine/GlbReader.cc\n')
         self.environment = dict(os.environ, PATH=str(self.fake_tools) + os.pathsep + os.environ['PATH'],
                                 DUST3D_BUILD_ROOT=str(self.build_root), IDENTITY_TEST_STATE=str(self.state))
 
