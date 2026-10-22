@@ -159,3 +159,8 @@ Selection inspects source geometry without copying/decoding material images,
 using independent `selectionSurface` limits. Its geometry owner is released before
 the selected path enforces its own image policy and performs decoding. There is no retained document cache or GPU state in this actor.
 The viewer adopts it first; editor/file-preview adoption is separate (#172, ADR 0082).
+
+File previews use the same archive preparation service with explicit preview quotas.
+Thumbnail dispatch supports legacy, authored imported and source-baked materials;
+CPU-tested fallback preserves original causes and cancellation. Fully transparent
+material output is valid. See ADR 0084 and the mixed file-preview verification record.

@@ -645,3 +645,13 @@ Tests cover geometry/material edits, camera/selection preservation, exact undo
 and redo, save/reopen and retained GLB/PNG/opaque bytes. Native inspection displays
 both textured surface kinds in the 20-triangle mixed fixture. This does not close
 M4: system previews, core #59, exports and acceptance remain open (ADR 0083).
+
+### Mixed file-preview checkpoint (#174)
+
+Shared source-aware preparation now reaches Quick Look and thumbnails. Native
+Finder inspection shows both material kinds and 20 triangles; system thumbnail
+generation also succeeds with the editor closed. The final full local gate
+passed 854 XCTest cases and 31 build-support tests, including in-flight cancellation
+and subsequent-request recovery. Public review remains pending. See
+[mixed file-preview verification](mixed-file-preview-verification.md). This does
+not close M4: isolated atlas mipmaps, large-model acceptance and export remain open.
