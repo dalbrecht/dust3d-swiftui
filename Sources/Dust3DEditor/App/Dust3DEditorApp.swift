@@ -102,6 +102,11 @@ struct Dust3DEditorApp: App {
 @MainActor
 final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     private let buildIdentity = RuntimeBuildIdentity.current
+    private let launchDocument = EditorLaunchDocumentOpener(arguments: CommandLine.arguments)
+
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        !launchDocument.shouldSuppressUntitledDocument
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildIdentity.logStartup(fallbackSubsystem: "org.dust3d.editor")
@@ -110,6 +115,13 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
             name: EditorCompositionRecovery.notification, object: Bundle.main.bundleIdentifier)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        Task { @MainActor in
+            await launchDocument.openRequestedDocument(
+                open: { url in
+                    _ = try await NSDocumentController.shared.openDocument(withContentsOf: url, display: true)
+                },
+                reportError: { error in NSApp.presentError(error) })
+        }
     }
 
     @objc nonisolated private func cancelReferenceComposition(_ notification: Notification) {

@@ -608,3 +608,15 @@ Both Metal paths compare available Float alpha samples using upward-rounded
 thresholds and explicit zero exclusion, including values above one and below
 Float precision (ADR 0080). This correction does not close M4: mixed-material
 app adoption, chart-isolated mipmaps, export and acceptance coverage remain open.
+
+### Native document launch checkpoint (#170)
+
+Add bounded `--open-document /absolute/path/model.ds3` startup handling through
+`NSDocumentController`, keeping `DocumentGroup` responsible for file lifecycle
+and suppressing the initial picker only for explicit requests. Native QA opens
+ImportedSurface directly, Capsule through ordinary Open, and verifies fresh-start
+New/Open after same-identity packaging comparisons. Selection controls were
+observed becoming enabled after native object-preview completion. The earlier
+failure's relationship to retained state/registration and latency is unconfirmed;
+#170 remains open for that investigation. The explicit QA route needs no human
+button interaction.

@@ -280,3 +280,26 @@ baked renderer. Imported atlas/baking, component-image overrides on imported fac
 additional maps/features, rendered file previews and textured exports remain open.
 See [editor adoption](../../docs/adr/0075-imported-material-editor.md) and its
 [verification limits](../../docs/imported-material-editor-verification.md).
+
+For unattended native QA, build the bundle and launch it with an explicit local
+document, reusing the existing app identity:
+
+```sh
+./script/build_and_run.sh --editor --build-only
+# Use the staged bundle path printed above.
+open -n /absolute/path/Dust3DEditor.app --args --open-document /absolute/path/model.ds3
+```
+
+The argument accepts one absolute `.ds3` path, bounded to 4096 UTF-8 bytes. It
+opens once through `NSDocumentController`, suppressing the initial untitled/open
+panel for that launch. Normal document coordination, Open, Save, undo and
+unsaved-close prompts remain with the existing document scene. Invalid arguments
+and file-open failures appear through normal native error presentation. The flag
+is consumed at process startup; use standard Open for an already-running app.
+No network listener, forced quit or alternate document state is introduced.
+
+Native QA verified explicit `ImportedSurface.ds3` opening, ordinary Open of
+`Capsule.ds3` afterward, and fresh-start New/Open in the regular bundle. Earlier
+startup checks observed disabled picker controls; a later selected-file check
+showed them becoming enabled when the native object preview completed. The role
+of retained app state/registration and preview latency remains unconfirmed (#170).
