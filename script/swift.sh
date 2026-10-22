@@ -16,6 +16,9 @@ if BUILD_IDENTITY_FILE="$(python3 -B "$ROOT_DIR/script/build_identity.py" --root
 else
     echo "Continuing without embedded build identity; diagnostics will report it unavailable." >&2
 fi
+# SwiftPM never runs the core CMake quarantine gate. Refuse the unfinished GLB
+# material catalog API before compiling the resolved checkout.
+python3 -B "$ROOT_DIR/script/glb_catalog_quarantine.py" --core "$DUST3D_BUILD_ROOT/build/checkouts/dust3d-core"
 # Xcode 27's default SwiftPM build system failed signing its generated resource
 # test bundle on this host. The native builder keeps the local package reproducible.
 set -- "$@" --build-system native --disable-sandbox \
