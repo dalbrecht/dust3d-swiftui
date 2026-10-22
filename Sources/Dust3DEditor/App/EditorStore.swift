@@ -29,6 +29,10 @@ final class EditorStore {
         guard case .imported(let value) = materialContent else { return nil }
         return value
     }
+    var sourceBakedMesh: SourceBakedMesh? {
+        guard case .sourceBaked(let value) = materialContent else { return nil }
+        return value
+    }
     var previewCompatibilityWarning: String? {
         let tree = snapshot?.componentTree
         let legacyDetails = tree.flatMap { tree -> Bool? in
@@ -37,8 +41,12 @@ final class EditorStore {
         }
         return MaterialPreviewWarning.message(
             mesh?.warning ?? "",
-            hasBakedMaterials: bakedMesh != nil && renderedMaterialRevision == materialViewportRevision,
-            hasImportedMaterials: importedMaterials != nil && renderedMaterialRevision == materialViewportRevision,
+            hasBakedMaterials: (bakedMesh != nil || sourceBakedMesh != nil)
+                && renderedMaterialRevision == materialViewportRevision,
+            hasImportedMaterials: (importedMaterials != nil || sourceBakedMesh != nil)
+                && renderedMaterialRevision == materialViewportRevision,
+            hasSourceBakedMaterials: sourceBakedMesh != nil
+                && renderedMaterialRevision == materialViewportRevision,
             hasLegacySurfaceDetails: legacyDetails)
     }
     private var renderedMaterialRevision: Int?
@@ -85,8 +93,7 @@ final class EditorStore {
     var onDocumentChanged: ((Data) -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
     private let session = EditorSession()
-    private let materialBaker: any ArchiveTextureBaking
-    private let importedMaterialLoader: any ArchiveImportedMaterialLoading
+    private let materialPreparation: any ArchiveMaterialPreparing
     private(set) var materialGeneration: Task<Void, Never>?
     private let preview: any EditorPreviewServing
     private var previewScopeID = UUID()
@@ -113,13 +120,14 @@ final class EditorStore {
         referenceImages: any ReferenceImageServing = ReferenceImageService(),
         preview: any EditorPreviewServing = EditorPreviewService(),
         materialBaker: any ArchiveTextureBaking = ArchiveTextureBakingService(),
-        importedMaterialLoader: any ArchiveImportedMaterialLoading = ArchiveImportedMaterialService()
+        importedMaterialLoader: any ArchiveImportedMaterialLoading = ArchiveImportedMaterialService(),
+        sourceMaterialBaker: any ArchiveSourceTextureBaking = ArchiveSourceTextureBakingService()
     ) {
         self.colorImages = colorImages
         self.referenceImages = referenceImages
         self.preview = preview
-        self.materialBaker = materialBaker
-        self.importedMaterialLoader = importedMaterialLoader
+        materialPreparation = ArchiveMaterialPreparationService(
+            importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
     }
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
@@ -705,21 +713,10 @@ final class EditorStore {
         let requestID = UUID()
         let scopeID = previewScopeID
         materialState.begin(requestID: requestID)
-        materialGeneration = Task { [materialBaker, importedMaterialLoader] in
+        materialGeneration = Task { [materialPreparation] in
             do {
                 let data = snapshot.document.encoded()
-                let result: MeshMaterialContent
-                if let imported = try await importedMaterialLoader.loadIfPresent(data: data, limits: .init()) {
-                    result = .imported(imported)
-                } else {
-                    try Task.checkCancellation()
-                    result = .baked(
-                        try await materialBaker.load(
-                            data: data,
-                            options: MeshBakeOptions(
-                                colorSize: 512, normalSize: 256, materialSize: 128, atlasTextureSize: 512),
-                            limits: ArchiveTextureLimits()))
-                }
+                let result = try await materialPreparation.load(data: data, options: .init())
                 guard !Task.isCancelled, !stopped, scopeID == previewScopeID else { return }
                 materialState.succeed(result, requestID: requestID)
             } catch {
