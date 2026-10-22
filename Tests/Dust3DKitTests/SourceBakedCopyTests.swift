@@ -5,6 +5,16 @@ import XCTest
 @testable import Dust3DKit
 
 final class SourceBakedCopyTests: XCTestCase {
+    func testCopiesEveryFiniteNonnegativeCutoffWithoutChangingOriginalDoubleMetadata() throws {
+        for cutoff in [0.0, Double.leastNonzeroMagnitude, 1.0, 1.5, Double.greatestFiniteMagnitude] {
+            var value = record()
+            value.policy_known = 1
+            value.alpha_mode = DUST3D_IMPORTED_ALPHA_MASK
+            value.alpha_cutoff = cutoff
+            XCTAssertEqual(try SourceBakedCopy.triangle(value, models: 0, components: 0).policy?.alphaCutoff, cutoff)
+        }
+    }
+
     func testKnownAndUnknownMappingsRemainIndependentOfPolicy() throws {
         var value = record()
         let unknown = try SourceBakedCopy.triangle(value, models: 0, components: 0)
@@ -65,7 +75,7 @@ final class SourceBakedCopyTests: XCTestCase {
             },
             {
                 $0.policy_known = 1
-                $0.alpha_cutoff = 2
+                $0.alpha_cutoff = .infinity
             },
         ]
         for change in changes {

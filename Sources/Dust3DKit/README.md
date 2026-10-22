@@ -68,7 +68,7 @@ modulated by factors during preparation. See ADR 0074 for renderer semantics.
 ## Source-aware baking
 
 `MeshLoader.loadSourceBaked(data:modelImages:images:options:)` uses reviewed core
-revision `c1215f472bd45b1ac4682c7d4c82be1e64064ee9`. Call it off the main actor,
+revision `41af7d4c1b67dd037e02858e3ef0fdb96a84aebb`. Call it off the main actor,
 or await `SourceMeshBakingService().load(...)`. Pass `SourceMeshBakeImage` values
 decoded from the same archive's imported material images; the convenience
 `init(decodedImage:)` preserves `ImportedImageDecoder` output. Procedural images

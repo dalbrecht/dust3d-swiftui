@@ -3,8 +3,23 @@ import simd
 
 struct BakedDrawBatch: Sendable {
     let policy: SourceBakedPolicy?
+    let parameters: SIMD4<Float>
     let indexOffset: Int
     var indexCount: Int
+
+    init(policy: SourceBakedPolicy?, indexOffset: Int, indexCount: Int) throws {
+        let mode: Float
+        switch policy?.alphaMode {
+        case .opaque: mode = 0
+        case .mask: mode = 1
+        case .blend, nil: mode = 2
+        }
+        let threshold = try AlphaMaskThreshold(policy?.alphaCutoff ?? 0)
+        parameters = SIMD4(mode, threshold.value, threshold.shouldExcludeZeroAlpha ? 1 : 0, 0)
+        self.policy = policy
+        self.indexOffset = indexOffset
+        self.indexCount = indexCount
+    }
 }
 
 struct BakedDrawIndices: Sendable {
@@ -93,7 +108,7 @@ struct BakedTriangleOrder: Sendable {
                 batches[batches.count - 1].indexCount += 3
             } else {
                 guard batches.count < 4096 else { throw BakedMetalPreparationError.drawLimitExceeded }
-                batches.append(BakedDrawBatch(policy: triangle.policy, indexOffset: indices.count, indexCount: 3))
+                batches.append(try BakedDrawBatch(policy: triangle.policy, indexOffset: indices.count, indexCount: 3))
             }
             indices.append(contentsOf: [triangle.indices.x, triangle.indices.y, triangle.indices.z])
         }

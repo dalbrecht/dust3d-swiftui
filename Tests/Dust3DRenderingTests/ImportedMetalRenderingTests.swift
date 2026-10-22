@@ -8,6 +8,62 @@ import XCTest
 
 @MainActor
 final class ImportedMetalRenderingTests: XCTestCase {
+    func testShouldCompareMaskAlphaAgainstOriginalDoubleCutoffWithoutRoundingDown() async throws {
+        for (alpha, cutoff) in [
+            (0.5, Double(0.5).nextUp), (1.0, Double(1).nextUp), (0.0, Double.leastNonzeroMagnitude),
+        ] {
+            let output = try await render(
+                ImportedMetalFixture.quad(
+                    mode: .mask,
+                    baseColor: SIMD4(1, 1, 1, alpha), cutoff: cutoff))
+            XCTAssertEqual(pixel(output)[3], 0, "Alpha \(alpha) must remain below the original cutoff \(cutoff)")
+        }
+        for mode in [ImportedAlphaMode.opaque, .mask, .blend] {
+            let output = try await render(
+                ImportedMetalFixture.quad(
+                    mode: mode,
+                    baseColor: SIMD4(1, 1, 1, 0.5), cutoff: Double.greatestFiniteMagnitude))
+            XCTAssertEqual(pixel(output)[3], mode == .mask ? 0 : mode == .opaque ? 255 : 128)
+        }
+    }
+
+    func testShouldPreservePositiveSubnormalMaskAlphaFactors() async throws {
+        for alpha in [Float.leastNonzeroMagnitude, Float.leastNormalMagnitude.nextDown] {
+            for isVertex in [false, true] {
+                for cutoff in [Double(alpha), Double(alpha).nextUp] {
+                    let output = try await render(
+                        ImportedMetalFixture.quad(
+                            mode: .mask, baseColor: SIMD4(1, 1, 1, isVertex ? 1 : Double(alpha)),
+                            color: SIMD4(1, 1, 1, isVertex ? Double(alpha) : 1), cutoff: cutoff))
+                    XCTAssertEqual(
+                        pixel(output)[3], Double(alpha) >= cutoff ? 255 : 0,
+                        "alpha \(alpha), vertex \(isVertex), cutoff \(cutoff)")
+                }
+            }
+        }
+    }
+
+    func testShouldRoundSubnormalMaskProductsWithoutFlushingFactors() async throws {
+        let smallest = Float.leastNonzeroMagnitude
+        for (vertexAlpha, materialAlpha, textureAlpha) in [
+            (smallest, Float(0.5), UInt8(255)), (smallest, Float(0.75), UInt8(255)),
+            (smallest * 2, Float(0.5), UInt8(255)), (smallest, Float(1), UInt8(128)),
+            (smallest * 2, Float(0.75), UInt8(255)),
+        ] {
+            let alpha = (Float(textureAlpha) / 255 * vertexAlpha) * materialAlpha
+            for cutoff in [Double(smallest), Double(smallest * 2)] {
+                let output = try await render(
+                    ImportedMetalFixture.quad(
+                        mode: .mask, baseColor: SIMD4(1, 1, 1, Double(materialAlpha)),
+                        color: SIMD4(1, 1, 1, Double(vertexAlpha)), cutoff: cutoff,
+                        layers: [.init(rgba: [255, 0, 0, textureAlpha])]))
+                XCTAssertEqual(
+                    pixel(output)[3], Double(alpha) >= cutoff ? 255 : 0,
+                    "vertex \(vertexAlpha), material \(materialAlpha), texture \(textureAlpha), cutoff \(cutoff)")
+            }
+        }
+    }
+
     func test_should_sample_source_image_in_encoded_row_orientation() async throws {
         let pixels = try await render(
             ImportedMetalFixture.quad(layers: [
