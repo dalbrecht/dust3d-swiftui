@@ -172,3 +172,9 @@ Sampler bounds round down and minified alpha participates in unknown-policy
 routing. Existing app inputs remain base-only until reviewed native chain adoption.
 Real GPU trilinear/clamp and production-fragment minification tests pass; see
 ADR 0086 and #176 for remaining mixed/large-model/export acceptance.
+
+Source rendering now takes typed mip chains from SourceBakedMesh itself. A pure
+map-role adapter feeds the existing upload plan, so viewports and file previews
+share default routing. GPU sampling and public thumbnail rendering exercise this
+path; missing chains retain their specific cause during geometry fallback.
+Actual native mip production/copy binding remains pending; see ADR 0087 and #177.

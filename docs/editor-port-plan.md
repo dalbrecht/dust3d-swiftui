@@ -676,3 +676,15 @@ minification. App-produced source data and the reviewed core pin remain unchange
 native accessor/source-result integration and full mixed/procedural/export
 acceptance remain required. The full local gate passes 869 XCTest cases and
 31 build-support tests; public review remains pending. See ADR 0086.
+
+### Result-owned source mip checkpoint (#177)
+
+Source results now retain typed owned chains and default shared rendering routes
+them into canonical map slots. GPU sampling and public file-preview minification
+pass without a side-channel mip override; missing chains preserve material errors
+during geometry fallback. Existing native results remain base-only at the same
+reviewed core pin. Native accessor/copy binding, generation and full material/export
+acceptance remain required. The full gate passes 872 XCTest cases and 31
+build-support tests; typed ownership, source-result and pure slot-adapter files
+have 100% measured line/region/function coverage. Public review remains pending.
+See ADR 0087.

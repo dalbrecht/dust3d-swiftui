@@ -54,14 +54,13 @@ actor TexturedMetalResourcesBuilder {
 
     func make(
         bakedMesh: SourceBakedMesh, device: any MTLDevice,
-        camera: OrbitCamera = OrbitCamera(), maximumPayloadBytes: Int = 256 * 1024 * 1024,
-        mipmaps: [Int: TextureMipChain] = [:]
+        camera: OrbitCamera = OrbitCamera(), maximumPayloadBytes: Int = 256 * 1024 * 1024
     ) throws -> sending OwnedTexturedMetalResources {
         try Task.checkCancellation()
         let geometry = try TexturedRenderGeometry(bakedMesh: bakedMesh, maximumPayloadBytes: maximumPayloadBytes)
         return try make(
             geometry: geometry, device: device, camera: camera, maximumPayloadBytes: maximumPayloadBytes,
-            mipmaps: mipmaps)
+            mipmaps: bakedMesh.mipmaps.materialUploadSlots)
     }
 
     private func make(

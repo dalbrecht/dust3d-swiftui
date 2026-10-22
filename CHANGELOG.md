@@ -7,6 +7,8 @@
 - Refuse to compile a core checkout that restores the quarantined GLB material catalog C API. The reviewed core pin is unchanged.
 
 - Preserve positive subnormal MASK alpha through interpolation and factor multiplication on GPUs that flush subnormal arithmetic (#169, PR #171 review).
+- Retain typed source-result mip chains and route them through shared viewport/file-preview rendering, preserving base-only defaults and material-failure fallback. Native accessor adoption remains pending.
+
 - Add bounded explicit Metal mip uploads and trilinear sampling with conservative Float caps and minified-alpha routing; native/app mip adoption remains pending.
 
 - Validate owned texture mip chains and cumulative copies; reject unavailable sampling levels in the base-only source-bake loader. Native mip and GPU adoption remain pending.

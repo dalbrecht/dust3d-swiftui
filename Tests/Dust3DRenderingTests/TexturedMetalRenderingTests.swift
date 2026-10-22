@@ -379,9 +379,10 @@ final class TexturedMetalRenderingTests: XCTestCase {
             levels: [color, solid(256, [0, 255, 0, 255]), solid(128, [0, 0, 255, 255])], maximumSamplingLod: 2)
         let source = SourceBakedMesh(
             geometry: base.geometry, triangles: base.triangles, modelIDs: [], components: [], textures: base.textures,
+            mipmaps: SourceBakedMipmaps(color: chain),
             maximumSamplingLod: 2, nativePayloadBytes: 0, copiedPayloadBytes: 0)
         let owner = try await TexturedMetalResourcesBuilder().make(
-            bakedMesh: source, device: device, camera: OrbitCamera(yaw: 0, pitch: 0, distance: 3), mipmaps: [0: chain])
+            input: .source(source), device: device, camera: OrbitCamera(yaw: 0, pitch: 0, distance: 3))
         let minified = try await pixels(TexturedMeshRenderer(resources: owner), device: device)
         let original = try await render(base)
         let center = (64 * 128 + 64) * 4
