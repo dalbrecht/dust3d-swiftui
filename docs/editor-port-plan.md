@@ -666,3 +666,13 @@ source chains, GPU upload/trilinear acceptance and textured export remain requir
 The full local gate passes 863 XCTest cases and 31 build-support tests; both
 new files have 100% measured line/region/function coverage. Public review remains
 pending. See ADR 0085.
+
+### Metal mip upload checkpoint (#176)
+
+Explicit retained mip chains now have combined-budget upload preflight, per-level
+GPU uploads, safe Float sampler bounds and minified-alpha routing. Real Metal
+checks prove fractional LOD blending, upper clamps and production-fragment
+minification. App-produced source data and the reviewed core pin remain unchanged;
+native accessor/source-result integration and full mixed/procedural/export
+acceptance remain required. The full local gate passes 869 XCTest cases and
+31 build-support tests; public review remains pending. See ADR 0086.

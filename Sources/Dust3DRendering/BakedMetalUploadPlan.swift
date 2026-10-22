@@ -74,13 +74,16 @@ struct BakedMetalImage: Sendable {
 /// device allocation overhead and in-flight replacement buffers; no hard RSS claim.
 struct BakedMetalUploadPlan: Sendable {
     let images: [BakedMetalImage]
+    let imageLevels: [[BakedMetalImage]]
+    let maximumSamplingLod: Float
+    let usesMipFiltering: Bool
     let payloadBytes: Int
     let normalMapEnabled: Bool
     let hasTransparentColor: Bool
 
     init(
         geometry: TexturedRenderGeometry, maximumBufferLength: Int,
-        maximumPayloadBytes: Int = 256 * 1024 * 1024
+        maximumPayloadBytes: Int = 256 * 1024 * 1024, mipmaps: [Int: TextureMipChain] = [:]
     ) throws {
         try Task.checkCancellation()
         guard (1...256 * 1024 * 1024).contains(maximumPayloadBytes) else {
@@ -109,13 +112,40 @@ struct BakedMetalUploadPlan: Sendable {
                 try source.map { try BakedMetalImage(source: $0, name: name, pixelFormat: format) }
                     ?? BakedMetalImage(defaultPixel: fallback, pixelFormat: format))
         }
-        for image in images {
-            guard image.payloadBytes <= remaining else { throw BakedMetalPreparationError.payloadLimitExceeded }
-            remaining -= image.payloadBytes
+        guard mipmaps.keys.allSatisfy({ (0..<5).contains($0) }) else {
+            throw BakedMetalPreparationError.invalidTexture("unknown mip slot")
         }
+        let sourceImages = [maps.color, maps.normal, maps.metallic, maps.roughness, maps.emissive]
+        let names = ["color", "normal", "metallic", "roughness", "emissive"]
+        var imageLevels = images.map { [$0] }
+        for slot in images.indices {
+            try Task.checkCancellation()
+            if let chain = mipmaps[slot] {
+                guard let original = sourceImages[slot], chain.levels.first == original,
+                    geometry.maximumSamplingLod <= chain.maximumSamplingLod
+                else { throw BakedMetalPreparationError.invalidTexture("\(names[slot]) mip chain") }
+                imageLevels[slot] = try chain.levels.map {
+                    try BakedMetalImage(source: $0, name: names[slot], pixelFormat: images[slot].pixelFormat)
+                }
+            } else if sourceImages[slot] != nil && geometry.maximumSamplingLod > 0 {
+                throw BakedMetalPreparationError.invalidTexture("\(names[slot]) missing mip chain")
+            }
+            for level in imageLevels[slot] {
+                guard level.payloadBytes <= remaining else { throw BakedMetalPreparationError.payloadLimitExceeded }
+                remaining -= level.payloadBytes
+            }
+        }
+        let rounded = Float(geometry.maximumSamplingLod)
+        maximumSamplingLod = Double(rounded) > geometry.maximumSamplingLod ? rounded.nextDown : rounded
+        usesMipFiltering = maximumSamplingLod > 0
         self.images = images
+        self.imageLevels = imageLevels
         payloadBytes = maximumPayloadBytes - remaining
         normalMapEnabled = maps.normal != nil
-        hasTransparentColor = try color.containsTransparency()
+        var hasTransparency = false
+        for level in imageLevels[0] where !hasTransparency {
+            hasTransparency = try level.containsTransparency()
+        }
+        hasTransparentColor = hasTransparency
     }
 }

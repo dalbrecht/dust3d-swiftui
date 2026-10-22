@@ -54,19 +54,23 @@ actor TexturedMetalResourcesBuilder {
 
     func make(
         bakedMesh: SourceBakedMesh, device: any MTLDevice,
-        camera: OrbitCamera = OrbitCamera(), maximumPayloadBytes: Int = 256 * 1024 * 1024
+        camera: OrbitCamera = OrbitCamera(), maximumPayloadBytes: Int = 256 * 1024 * 1024,
+        mipmaps: [Int: TextureMipChain] = [:]
     ) throws -> sending OwnedTexturedMetalResources {
         try Task.checkCancellation()
         let geometry = try TexturedRenderGeometry(bakedMesh: bakedMesh, maximumPayloadBytes: maximumPayloadBytes)
-        return try make(geometry: geometry, device: device, camera: camera, maximumPayloadBytes: maximumPayloadBytes)
+        return try make(
+            geometry: geometry, device: device, camera: camera, maximumPayloadBytes: maximumPayloadBytes,
+            mipmaps: mipmaps)
     }
 
     private func make(
         geometry: TexturedRenderGeometry, device: any MTLDevice, camera: OrbitCamera,
-        maximumPayloadBytes: Int
+        maximumPayloadBytes: Int, mipmaps: [Int: TextureMipChain] = [:]
     ) throws -> sending OwnedTexturedMetalResources {
         let plan = try BakedMetalUploadPlan(
-            geometry: geometry, maximumBufferLength: device.maxBufferLength, maximumPayloadBytes: maximumPayloadBytes)
+            geometry: geometry, maximumBufferLength: device.maxBufferLength, maximumPayloadBytes: maximumPayloadBytes,
+            mipmaps: mipmaps)
         let order = try BakedTriangleOrder(geometry: geometry, hasTransparentColor: plan.hasTransparentColor)
         let sorted = try order.transparentDraws(rotation: camera.rotation)
         let packaged = Bundle.main.resourceURL.flatMap {
@@ -95,11 +99,11 @@ actor TexturedMetalResourcesBuilder {
         let samplerDescriptor = MTLSamplerDescriptor()
         samplerDescriptor.minFilter = .linear
         samplerDescriptor.magFilter = .linear
-        samplerDescriptor.mipFilter = .notMipmapped
+        samplerDescriptor.mipFilter = plan.usesMipFiltering ? .linear : .notMipmapped
         samplerDescriptor.sAddressMode = .clampToEdge
         samplerDescriptor.tAddressMode = .clampToEdge
         samplerDescriptor.lodMinClamp = 0
-        samplerDescriptor.lodMaxClamp = Float(geometry.maximumSamplingLod)
+        samplerDescriptor.lodMaxClamp = plan.maximumSamplingLod
         guard let sampler = device.makeSamplerState(descriptor: samplerDescriptor),
             let vertices = try Self.buffer(geometry.vertices, device: device)
         else { throw BakedMetalPreparationError.unavailable("Metal material buffers are unavailable.") }
@@ -108,22 +112,27 @@ actor TexturedMetalResourcesBuilder {
         let opaqueDepth = try depthState(device: device, writesDepth: true)
         let transparentDepth = try depthState(device: device, writesDepth: false)
         var textures: [any MTLTexture] = []
-        for image in plan.images {
+        for (slot, levels) in plan.imageLevels.enumerated() {
             try Task.checkCancellation()
+            let image = plan.images[slot]
             let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: image.pixelFormat, width: image.width, height: image.height, mipmapped: false)
+                pixelFormat: image.pixelFormat, width: image.width, height: image.height, mipmapped: levels.count > 1)
+            descriptor.mipmapLevelCount = levels.count
             descriptor.usage = .shaderRead
             descriptor.storageMode = device.hasUnifiedMemory ? .shared : .managed
             guard let texture = device.makeTexture(descriptor: descriptor) else {
                 throw BakedMetalPreparationError.unavailable("Metal could not allocate a material texture.")
             }
-            try image.pixels.withUnsafeBytes { bytes in
-                guard let base = bytes.baseAddress else {
-                    throw BakedMetalPreparationError.unavailable("A material texture has no readable samples.")
+            for (index, level) in levels.enumerated() {
+                try Task.checkCancellation()
+                try level.pixels.withUnsafeBytes { bytes in
+                    guard let base = bytes.baseAddress else {
+                        throw BakedMetalPreparationError.unavailable("A material texture has no readable samples.")
+                    }
+                    texture.replace(
+                        region: MTLRegionMake2D(0, 0, level.width, level.height), mipmapLevel: index,
+                        withBytes: base, bytesPerRow: level.rowStride)
                 }
-                texture.replace(
-                    region: MTLRegionMake2D(0, 0, image.width, image.height), mipmapLevel: 0,
-                    withBytes: base, bytesPerRow: image.rowStride)
             }
             textures.append(texture)
         }
