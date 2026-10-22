@@ -22,10 +22,18 @@ Dust3DKit; no GPU resource or observable state enters preparation.
 
 The service injects existing imported/procedural/source boundaries and forwards
 selected-path quotas and original errors. Check cancellation before inspection,
-after inspection and after baking. Mixed inspection returns a data-free decision
-so its copied images can be released before the source baker repeats inspection
-and decoding. This costs extra work but avoids retaining two decoded-image sets.
+after inspection and after baking. Production selection inspects only source geometry, under the independent
+`selectionSurface` ownership limits, before any material image copying or pixel
+decoding. Its geometry owner is released before selected-path preparation. Pure
+imported output then enforces `imported`; mixed output enforces `source` and
+`sourceLimits`. Existing injected loaders have a compatibility selection adapter;
+the native service overrides it with image-free inspection. Selection repeats
+geometry generation but does not impose imported-only image limits on mixed
+inputs or retain two decoded-image sets.
 Independent workspace/output quotas are not a process-memory guarantee.
+A confirmed current source-baked frame also clears recognized procedural-detail
+limitations; ordinary legacy bakes retain those notices and unknown diagnostics
+remain visible.
 
 Adopt the service in the viewer first. Store one enum-valued material result and
 derive representation-specific accessors. Preserve current-frame confirmation,

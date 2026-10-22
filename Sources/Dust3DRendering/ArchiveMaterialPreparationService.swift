@@ -3,6 +3,7 @@ import Foundation
 
 /// Independent resource policies for the selected archive-material representation.
 public struct ArchiveMaterialPreparationOptions: Sendable {
+    public let selectionSurface: ImportedSurfaceOptions
     public let imported: ImportedMaterialRenderLimits
     public let procedural: MeshBakeOptions
     public let proceduralLimits: ArchiveTextureLimits
@@ -11,12 +12,14 @@ public struct ArchiveMaterialPreparationOptions: Sendable {
 
     /// Configure selected-path limits; codec/generator workspace is not a process-memory cap.
     /// - Parameters:
+    ///   - selectionSurface: Independent temporary geometry inspection, with no pixel decoding.
     ///   - imported: Inspection and decoded inputs for authored source rendering.
     ///   - procedural: Legacy bake dimensions and output quotas for procedural-only geometry.
     ///   - proceduralLimits: Retained image limits for that legacy bake.
     ///   - source: Mixed-surface bake quotas; default atlas fits every default output map.
     ///   - sourceLimits: Combined imported/procedural image admission for mixed surfaces.
     public init(
+        selectionSurface: ImportedSurfaceOptions = .init(),
         imported: ImportedMaterialRenderLimits = .init(),
         procedural: MeshBakeOptions = MeshBakeOptions(
             colorSize: 512, normalSize: 256, materialSize: 128, atlasTextureSize: 512),
@@ -25,6 +28,7 @@ public struct ArchiveMaterialPreparationOptions: Sendable {
             bake: MeshBakeOptions(colorSize: 512, normalSize: 256, materialSize: 256, atlasTextureSize: 256)),
         sourceLimits: ArchiveSourceTextureLimits = .init()
     ) {
+        self.selectionSurface = selectionSurface
         self.imported = imported
         self.procedural = procedural
         self.proceduralLimits = proceduralLimits
@@ -64,13 +68,15 @@ public actor ArchiveMaterialPreparationService: ArchiveMaterialPreparing {
     /// - Parameters: data is unchanged source bytes; options are separate quotas for each representation.
     /// - Returns: One immutable material input matching this archive snapshot.
     /// - Throws: Original preparation error or cancellation before/after an asynchronous boundary.
-    /// - Note: Mixed inputs are inspected again by the source baker. Inspection output is released first.
+    /// - Note: Geometry inspection is released before selected-path image preparation begins.
     /// - Example: `let materials = try await ArchiveMaterialPreparationService().load(data: archive)`.
     public func load(data: Data, options: ArchiveMaterialPreparationOptions = .init()) async throws
         -> MeshMaterialContent
     {
         try Task.checkCancellation()
-        let choice = try await inspect(data: data, limits: options.imported)
+        let choice = try await importedLoader.selectForPreparation(
+            data: data, limits: options.imported, inspectionLimits: options.selectionSurface)
+        try Task.checkCancellation()
         let result: MeshMaterialContent
         switch choice {
         case .imported(let imported): result = .imported(imported)
@@ -86,17 +92,4 @@ public actor ArchiveMaterialPreparationService: ArchiveMaterialPreparing {
         return result
     }
 
-    private enum Choice: Sendable {
-        case procedural, mixed
-        case imported(ImportedMaterialRenderData)
-    }
-
-    private func inspect(data: Data, limits: ImportedMaterialRenderLimits) async throws -> Choice {
-        let imported = try await importedLoader.loadIfPresent(data: data, limits: limits)
-        try Task.checkCancellation()
-        guard let imported else { return .procedural }
-        // Unknown/generated bridges conservatively need the same source-aware bake as procedural surfaces.
-        if imported.surface.triangles.contains(where: { $0.modelIndex == nil }) { return .mixed }
-        return .imported(imported)
-    }
 }

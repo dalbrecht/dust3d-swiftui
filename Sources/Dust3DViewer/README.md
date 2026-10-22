@@ -66,8 +66,9 @@ GPU failure and retry retain ordinary geometry and original failure diagnostics.
 The viewer never re-encodes the input archive.
 
 The shared `ArchiveMaterialPreparationService` owns this choice. Mixed preparation
-releases imported inspection output before re-inspecting the same bytes through
-the source baker; this currently repeats inspection/decoding work. Default mixed
+uses image-free source-geometry inspection under separate ownership limits, then
+releases it before the selected path applies its own image policy. This repeats
+geometry generation but avoids importing mixed images under imported-only limits. Default mixed
 maps are color 512, normal/material 256, atlas 256, with 64 MiB aggregate decoded
 image admission. Native/output/workspace quotas remain independent; these are not
 a process-memory cap. Atlases currently sample only their base level (core #59).

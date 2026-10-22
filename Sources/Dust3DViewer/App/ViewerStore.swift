@@ -29,6 +29,8 @@ final class ViewerStore {
                 && renderedMaterialRevision == meshRevision + materialRevision,
             hasImportedMaterials: (importedMaterials != nil || sourceBakedMesh != nil)
                 && renderedMaterialRevision == meshRevision + materialRevision,
+            hasSourceBakedMaterials: sourceBakedMesh != nil
+                && renderedMaterialRevision == meshRevision + materialRevision,
             hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails)
     }
     private var renderedMaterialRevision: Int?

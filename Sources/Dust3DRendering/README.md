@@ -155,6 +155,7 @@ baked when there is no rendered imported model, and source-baked when retained
 imported geometry also contains procedural/unknown-owned triangles. Selected-path
 quotas are explicit in `ArchiveMaterialPreparationOptions`. Original errors and
 cancellation propagate; callers own revision checks and ordinary geometry fallback.
-Mixed inspection output is released before the source baker repeats inspection
-and decoding. There is no retained document cache or GPU state in this actor.
+Selection inspects source geometry without copying/decoding material images,
+using independent `selectionSurface` limits. Its geometry owner is released before
+the selected path enforces its own image policy and performs decoding. There is no retained document cache or GPU state in this actor.
 The viewer adopts it first; editor/file-preview adoption is separate (#172, ADR 0082).

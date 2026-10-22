@@ -8,7 +8,10 @@ import XCTest
 @MainActor
 final class ViewerSourceBakedMaterialTests: XCTestCase {
     func testPreparesBothMixedSurfaceKindsAndWaitsForMatchingGpuFrame() async throws {
-        let snapshot = try snapshot()
+        let snapshot = try snapshot(
+            warning:
+                "Untextured preview: image textures and procedural surface details are not yet displayed. "
+                + "Imported geometry preview: GLB materials, textures and transparency are not yet applied.")
         let original = snapshot.data
         let store = ViewerStore(service: SourceViewerSnapshotLoader(snapshot: snapshot))
         defer { store.stop() }
@@ -23,10 +26,12 @@ final class ViewerSourceBakedMaterialTests: XCTestCase {
         XCTAssertEqual(source.maximumSamplingLod, 0)
         XCTAssertNil(store.materialIssue)
         XCTAssertTrue(store.isUpdatingMaterials)
+        XCTAssertNotNil(store.previewCompatibilityWarning)
         let revision = store.meshRevision + store.materialRevision
         store.materialsRendered(revision: revision - 1)
         XCTAssertTrue(store.isUpdatingMaterials)
         store.materialsRendered(revision: revision)
+        XCTAssertNil(store.previewCompatibilityWarning)
         XCTAssertFalse(store.isUpdatingMaterials)
         store.materialsFailed("stale GPU failure", revision: revision - 1)
         XCTAssertNotNil(store.sourceBakedMesh)
@@ -107,10 +112,14 @@ final class ViewerSourceBakedMaterialTests: XCTestCase {
         return try Data(contentsOf: url)
     }
 
-    private func snapshot() throws -> MeshFileSnapshot {
+    private func snapshot(warning: String? = nil) throws -> MeshFileSnapshot {
         let data = try fixture("MixedMaterials")
+        let original = try MeshLoader.loadIndexed(data: data)
+        let mesh = IndexedMesh(
+            vertices: original.vertices, indices: original.indices,
+            nodeCount: original.nodeCount, partCount: original.partCount, warning: warning ?? original.warning)
         return MeshFileSnapshot(
-            data: data, mesh: try MeshLoader.loadIndexed(data: data),
+            data: data, mesh: mesh,
             materialSourceCapabilities: .known(hasLegacySurfaceDetails: true))
     }
 

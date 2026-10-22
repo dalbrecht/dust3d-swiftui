@@ -6,6 +6,35 @@ import XCTest
 
 @MainActor
 final class ArchiveMaterialPreparationTests: XCTestCase {
+    func testMixedImageAdmissionDoesNotUseImportedOnlyLimits() async throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Dust3DKitTests/Fixtures")
+        let service = ArchiveMaterialPreparationService()
+        let options = ArchiveMaterialPreparationOptions(
+            imported: ImportedMaterialRenderLimits(maximumEncodedImageBytes: 1))
+        let mixed = try Data(contentsOf: root.appendingPathComponent("MixedMaterials.ds3"))
+        guard case .sourceBaked = try await service.load(data: mixed, options: options) else {
+            return XCTFail("Mixed images must use source admission")
+        }
+        do {
+            _ = try await service.load(
+                data: mixed,
+                options: ArchiveMaterialPreparationOptions(
+                    sourceLimits: ArchiveSourceTextureLimits(
+                        textures: ArchiveTextureLimits(maximumEncodedImageBytes: 1))))
+            XCTFail("Mixed images must still enforce source admission")
+        } catch { XCTAssertEqual(error as? ArchiveTextureBakingError, .encodedLimitExceeded) }
+        let procedural = try Data(contentsOf: root.appendingPathComponent("Capsule.ds3"))
+        guard case .baked = try await service.load(data: procedural, options: options) else {
+            return XCTFail("Procedural archives must retain their own bake path")
+        }
+        let imported = try Data(contentsOf: root.appendingPathComponent("ImportedSurface.ds3"))
+        do {
+            _ = try await service.load(data: imported, options: options)
+            XCTFail("Pure imported images must still enforce imported admission")
+        } catch { XCTAssertEqual(error as? MeshPNGDecodingError, .encodedLimitExceeded) }
+    }
+
     func testChoosesAuthoredImportedOrProceduralBakeWithoutCallingOtherBakers() async throws {
         for hasImported in [false, true] {
             let imported = try importedRenderFixture()
