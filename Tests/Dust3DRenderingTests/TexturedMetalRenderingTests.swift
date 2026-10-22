@@ -9,6 +9,20 @@ import XCTest
 
 @MainActor
 final class TexturedMetalRenderingTests: XCTestCase {
+    func testShouldPreserveUnmappedPositiveSubnormalMaskAlpha() async throws {
+        for alpha in [Float.leastNonzeroMagnitude, Float.leastNormalMagnitude.nextDown] {
+            for cutoff in [Double(alpha), Double(alpha).nextUp] {
+                let source = BakedMetalFixture.source(
+                    try BakedMetalFixture.quad(
+                        mapped: false, tangentMapped: false,
+                        layers: [.init(color: SIMD4(1, 1, 1, alpha))]),
+                    policy: .init(alphaMode: .mask, alphaCutoff: cutoff, isDoubleSided: true))
+                let output = try await render(source)
+                XCTAssertEqual(pixel(output, x: 64, y: 64)[3], Double(alpha) >= cutoff ? 255 : 0)
+            }
+        }
+    }
+
     func testShouldKeepSourceMaskCutoffAboveAlphaAcrossDoubleToFloatConversion() async throws {
         for (alpha, cutoff) in [
             (Float(0.5), Double(0.5).nextUp), (Float(1), Double(1).nextUp), (Float(0), Double.leastNonzeroMagnitude),

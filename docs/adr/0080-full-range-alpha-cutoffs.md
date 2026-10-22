@@ -17,7 +17,12 @@ full-range cutoff metadata in the reader and source baker. Validate finite
 nonnegative values at Swift copy and rendering boundaries. Keep original Double
 policy metadata unchanged. Encode a shared Float threshold rounded upward, or
 two for cutoffs above one, and a separate positive-cutoff zero-exclusion flag.
-Both imported and source-baked shaders use these values for MASK only. Reuse
+Before interpolation, decode MASK vertex alpha through integer Float bits and
+scale by 2^126 so positive subnormals remain normal. Scale material/texture
+factors and thresholds the same way, with exponent-separated multiplication to
+avoid overflow and underflow. Restore Float subnormal rounding in the scaled
+domain after interpolation and each alpha multiplication. Both imported and
+source-baked shaders use this comparison for MASK only. Reuse
 existing uniform storage and prepare policy parameters before drawing.
 
 ## Consequences and verification
@@ -27,6 +32,11 @@ samples; it does not provide Double material math or remove RGBA8 bake
 quantization. CPU tests compare independently against Double expressions,
 including representable boundaries and simulated threshold flushing. Native GPU
 tests cover downward-rounding boundaries, zero, values above one, and ignored
-cutoffs in OPAQUE/BLEND. Archive tests retain exact metadata and unchanged bytes.
+cutoffs in OPAQUE/BLEND. Review regression tests reproduce six native GPU failures
+for positive subnormal material/vertex/unmapped-baked alpha, then verify acceptance
+at the authored cutoff and rejection just above it. Combined factors cover
+round-to-zero and round-up/ties at the subnormal boundary. Texture sampling still
+uses the samples available from the texture unit; this does not recover precision
+already lost by texture filtering/quantization. Archive tests retain exact metadata and unchanged bytes.
 
 Reference: [Khronos material schema](https://raw.githubusercontent.com/KhronosGroup/glTF/main/specification/2.0/schema/material.schema.json).
