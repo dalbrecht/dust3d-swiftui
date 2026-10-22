@@ -148,3 +148,14 @@ samples; a separate flag excludes zero for positive cutoffs even when subnormal
 thresholds flush to zero. Cutoffs above one reject every mask fragment. Opaque
 and blend policies ignore the cutoff. This does not add 64-bit texture or material
 math or remove existing bake quantization. See ADR 0080 and #169.
+
+`ArchiveMaterialPreparationService` prepares one `MeshMaterialContent` from one
+unchanged archive: authored imported for all-owned imported triangles, legacy
+baked when there is no rendered imported model, and source-baked when retained
+imported geometry also contains procedural/unknown-owned triangles. Selected-path
+quotas are explicit in `ArchiveMaterialPreparationOptions`. Original errors and
+cancellation propagate; callers own revision checks and ordinary geometry fallback.
+Selection inspects source geometry without copying/decoding material images,
+using independent `selectionSurface` limits. Its geometry owner is released before
+the selected path enforces its own image policy and performs decoding. There is no retained document cache or GPU state in this actor.
+The viewer adopts it first; editor/file-preview adoption is separate (#172, ADR 0082).

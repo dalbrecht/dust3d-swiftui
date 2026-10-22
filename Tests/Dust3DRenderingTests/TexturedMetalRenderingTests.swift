@@ -162,7 +162,7 @@ final class TexturedMetalRenderingTests: XCTestCase {
     }
 
     func testShouldRenderRealSourceBakedImportedAndProceduralArchives() async throws {
-        for name in ["ImportedSurface", "Capsule"] {
+        for name in ["ImportedSurface", "Capsule", "MixedMaterials"] {
             let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
                 .appendingPathComponent("Dust3DKitTests/Fixtures/\(name).ds3")
             let source = try await ArchiveSourceTextureBakingService().load(

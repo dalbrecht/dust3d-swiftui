@@ -29,12 +29,9 @@ struct ContentView: View {
             ZStack {
                 if let mesh = store.mesh {
                     let materialRevision = store.meshRevision + store.materialRevision
-                    let materials =
-                        store.importedMaterials.map(MeshMaterialContent.imported)
-                        ?? store.bakedMesh.map(MeshMaterialContent.baked)
                     MeshViewport(
                         mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
-                        meshRevision: store.meshRevision + store.materialRevision, materials: materials,
+                        meshRevision: store.meshRevision + store.materialRevision, materials: store.materials,
                         onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                         onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                     ) { message in

@@ -3,6 +3,25 @@ import XCTest
 @testable import Dust3DKit
 
 final class MaterialPreviewWarningTests: XCTestCase {
+    func testConfirmedSourceBakeRemovesOnlySupportedSurfaceWarnings() {
+        let combined = "Untextured preview: image textures and procedural surface details are not yet displayed."
+        let imported = "Imported geometry preview: GLB materials, textures and transparency are not yet applied."
+        for details: Bool? in [true, false, nil] {
+            XCTAssertNil(
+                MaterialPreviewWarning.message(
+                    combined + " " + imported, hasBakedMaterials: false, hasSourceBakedMaterials: true,
+                    hasLegacySurfaceDetails: details))
+        }
+        XCTAssertEqual(
+            MaterialPreviewWarning.message(
+                "Original unknown warning. " + imported, hasBakedMaterials: false, hasSourceBakedMaterials: true,
+                hasLegacySurfaceDetails: true), "Original unknown warning.")
+        XCTAssertEqual(
+            MaterialPreviewWarning.message(
+                combined, hasBakedMaterials: true, hasSourceBakedMaterials: false,
+                hasLegacySurfaceDetails: true), "Procedural surface details are not yet displayed.")
+    }
+
     func testBakedImagesRemoveOnlyRecognizedImageWarnings() {
         let image = "Untextured preview: image textures are not yet displayed."
         let combined = "Untextured preview: image textures and procedural surface details are not yet displayed."

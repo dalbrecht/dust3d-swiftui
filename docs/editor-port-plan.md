@@ -620,3 +620,16 @@ observed becoming enabled after native object-preview completion. The earlier
 failure's relationship to retained state/registration and latency is unconfirmed;
 #170 remains open for that investigation. The explicit QA route needs no human
 button interaction.
+
+### Mixed-material viewer checkpoint (#172)
+
+Route the viewer through shared archive-material preparation: purely imported
+surfaces retain authored UVs/samplers, procedural-only geometry keeps legacy
+baking, and mixed surfaces use the source-aware baker and Metal path. Keep one
+material representation per revision with current-frame confirmation, original
+errors, geometry fallback and exact-snapshot retry. A synthetic MIT mixed fixture
+retains original GLB and opaque assets; CPU/native GPU and viewer lifecycle tests
+exercise both ownership kinds. Native inspection shows both textured surfaces.
+Inspection/decoding currently repeats for mixed inputs, with the first result
+released before baking. Editor and system-preview adoption, core #59, exports
+and full M4 acceptance remain open (ADR 0082).
