@@ -7,6 +7,8 @@
 - Refuse to compile a core checkout that restores the quarantined GLB material catalog C API. The reviewed core pin is unchanged.
 
 - Preserve positive subnormal MASK alpha through interpolation and factor multiplication on GPUs that flush subnormal arithmetic (#169, PR #171 review).
+- Validate owned texture mip chains and cumulative copies; reject unavailable sampling levels in the base-only source-bake loader. Native mip and GPU adoption remain pending.
+
 - Render mixed imported/procedural materials in macOS Quick Look and thumbnails, retaining ordinary geometry on optional material failure and reporting original causes.
 
 - Render mixed imported/procedural materials in the editor through shared preparation, preserving exact document history, asset bytes, selection, camera and revision-safe geometry fallback.

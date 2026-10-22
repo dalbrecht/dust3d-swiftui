@@ -92,7 +92,9 @@ enum SourceBakedCopy {
     static func samplingLod(_ value: Double, maps: MeshTextureMaps) throws -> Double {
         let images = [maps.color, maps.normal, maps.metallic, maps.roughness, maps.emissive].compactMap { $0 }
         let minimumDimension = images.reduce(8192) { min($0, min($1.width, $1.height)) }
-        guard minimumDimension > 0, value.isFinite, value >= 0,
+        // This loader copied only level zero. Dimensions alone do not prove that
+        // higher levels exist or that their chart ownership is safe.
+        guard minimumDimension > 0, value.isFinite, value == 0,
             value <= Double(Int.bitWidth - minimumDimension.leadingZeroBitCount - 1)
         else { throw SourceMeshBakeError.invalidSamplingLod }
         return value
@@ -103,8 +105,11 @@ enum SourceBakedCopy {
         nativeRemaining: inout Int, budget: inout SourceBakeCopyBudget
     ) throws -> MeshTextureImage? {
         let view = dust3d_source_baked_mesh_texture(owner, map.rawValue)
-        try budget.charge(view.byte_count)
-        return try MeshBakedCopy.image(view, required: required, remaining: &nativeRemaining)
+        if view.pixels == nil {
+            try budget.charge(view.byte_count)
+            return try MeshBakedCopy.image(view, required: required, remaining: &nativeRemaining)
+        }
+        return try TextureMipChainCopy.image(view, nativeRemaining: &nativeRemaining, budget: &budget)
     }
 
     static func copy(_ owner: OpaquePointer, options: SourceMeshBakeOptions) throws -> SourceBakedMesh {
