@@ -599,3 +599,12 @@ culling samples, including mixed policy sorting after camera changes. The shared
 viewport exposes this representation without yet changing app preparation.
 Current textures stay base-level only; core #59, app/file-preview adoption,
 textured export and broader M4–M8 acceptance remain open.
+
+### Alpha cutoff correctness checkpoint (#169)
+
+Adopt reviewed core `41af7d4c1b67dd037e02858e3ef0fdb96a84aebb` and preserve
+finite nonnegative cutoff metadata across archive preparation and Swift copies.
+Both Metal paths compare available Float alpha samples using upward-rounded
+thresholds and explicit zero exclusion, including values above one and below
+Float precision (ADR 0080). This correction does not close M4: mixed-material
+app adoption, chart-isolated mipmaps, export and acceptance coverage remain open.

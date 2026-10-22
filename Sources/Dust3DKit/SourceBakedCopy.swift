@@ -44,7 +44,7 @@ enum SourceBakedCopy {
             case DUST3D_IMPORTED_ALPHA_BLEND: mode = .blend
             default: throw SourceMeshBakeError.invalidPolicy
             }
-            guard value.alpha_cutoff.isFinite, (0...1).contains(value.alpha_cutoff) else {
+            guard value.alpha_cutoff.isFinite, value.alpha_cutoff >= 0 else {
                 throw SourceMeshBakeError.invalidPolicy
             }
             policy = SourceBakedPolicy(

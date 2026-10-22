@@ -59,6 +59,7 @@ struct BakedVertexOutput {
     float4 color;
     float4 textureCoordinate;
     float4 tangent;
+    float maskAlpha;
 };
 
 float3 bakedNormalize(float3 value, float3 fallback)
@@ -73,6 +74,43 @@ float3 bakedLinearColor(float3 value)
     return select(pow((value + 0.055) / 1.055, float3(2.4)), value / 12.92, value <= 0.04045);
 }
 
+// Alpha inputs are validated in [0, 1]; MASK thresholds may also use the sentinel 2.
+// Decode the bits before floating-point arithmetic can flush a subnormal operand.
+// Scaling by 2^24 keeps every positive Float alpha normal during interpolation.
+float maskScaleAlpha(float value)
+{
+    uint bits = as_type<uint>(value);
+    uint exponent = (bits >> 23) & 255u;
+    if (exponent == 0)
+        return float(bits & 0x007fffffu) * 0x1p-125f;
+    return as_type<float>(bits + (24u << 23));
+}
+
+float maskScaleClampedVertexAlpha(float value)
+{
+    // Preserve the baked path's clamp without flushing a positive subnormal first.
+    uint bits = as_type<uint>(value);
+    uint clamped = (bits & 0x80000000u) != 0 ? 0u : min(bits, 0x3f800000u);
+    return maskScaleAlpha(as_type<float>(clamped));
+}
+
+float maskRoundScaled(float value)
+{
+    // Restore Float subnormal rounding while the scaled arithmetic stays normal.
+    return value < 0x1p-102f ? rint(value * 0x1p125f) * 0x1p-125f : value;
+}
+
+float maskMultiplyScaled(float left, float right)
+{
+    if (left == 0.0 || right == 0.0)
+        return 0.0;
+    int leftExponent;
+    int rightExponent;
+    float mantissa = frexp(left, leftExponent) * frexp(right, rightExponent);
+    float scaled = ldexp(mantissa, leftExponent + rightExponent - 24);
+    return maskRoundScaled(scaled);
+}
+
 vertex BakedVertexOutput bakedMeshVertex(uint index [[vertex_id]],
     const device BakedMeshVertex* vertices [[buffer(0)]],
     constant BakedUniforms& uniforms [[buffer(1)]])
@@ -83,6 +121,7 @@ vertex BakedVertexOutput bakedMeshVertex(uint index [[vertex_id]],
     output.normal = (uniforms.rotation * vertices[index].normal).xyz;
     output.tangent = float4((uniforms.rotation * float4(vertices[index].tangent.xyz, 0)).xyz, vertices[index].tangent.w);
     output.color = vertices[index].color;
+    output.maskAlpha = maskScaleClampedVertexAlpha(vertices[index].color.a);
     output.textureCoordinate = vertices[index].textureCoordinate;
     return output;
 }
@@ -127,7 +166,8 @@ fragment float4 bakedMeshFragment(BakedVertexOutput input [[stage_in]],
     if (policy.x < 0.5) {
         base.a = 1.0;
     } else if (policy.x < 1.5) {
-        if (base.a < policy.y)
+        float maskAlpha = mapped ? maskScaleAlpha(base.a) : maskRoundScaled(input.maskAlpha);
+        if (maskAlpha < maskScaleAlpha(policy.y) || (policy.z > 0.5 && maskAlpha <= 0.0))
             discard_fragment();
         base.a = 1.0;
     } else if (base.a <= 0.0) {
@@ -167,6 +207,7 @@ struct ImportedVertexOutput {
     float3 normal;
     float4 color;
     float3 textureCoordinate;
+    float maskAlpha;
 };
 
 vertex ImportedVertexOutput importedMeshVertex(uint index [[vertex_id]],
@@ -177,6 +218,7 @@ vertex ImportedVertexOutput importedMeshVertex(uint index [[vertex_id]],
     output.viewPosition = (uniforms.rotation * vertices[index].position).xyz;
     output.normal = (uniforms.rotation * vertices[index].normal).xyz;
     output.color = vertices[index].color;
+    output.maskAlpha = maskScaleAlpha(vertices[index].color.a);
     output.textureCoordinate = vertices[index].textureCoordinate.xyz;
     return output;
 }
@@ -186,14 +228,17 @@ fragment float4 importedMeshFragment(ImportedVertexOutput input [[stage_in]], bo
     texture2d<float> colorMap [[texture(0)]], sampler sourceSampler [[sampler(0)]])
 {
     // sRGB texture decoding occurs before filtering; vertex RGB was linearized before interpolation.
-    float4 sample = material.parameters.w > 0.5 && input.textureCoordinate.z > 0.5
+    uint flags = uint(material.parameters.w);
+    float4 sample = (flags & 1u) != 0 && input.textureCoordinate.z > 0.5
         ? colorMap.sample(sourceSampler, input.textureCoordinate.xy) : float4(1);
     float4 base = sample * input.color * material.baseColor;
     float alpha = base.a;
     if (material.parameters.z < 0.5) {
         alpha = 1.0;
     } else if (material.parameters.z < 1.5) {
-        if (alpha < material.parameters.y)
+        float maskAlpha = maskMultiplyScaled(
+            maskMultiplyScaled(maskScaleAlpha(sample.a), maskRoundScaled(input.maskAlpha)), maskScaleAlpha(material.baseColor.a));
+        if (maskAlpha < maskScaleAlpha(material.parameters.y) || ((flags & 2u) != 0 && maskAlpha <= 0.0))
             discard_fragment();
         alpha = 1.0;
     } else if (alpha <= 0.0) {
