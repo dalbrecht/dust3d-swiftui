@@ -22,7 +22,10 @@ the following hold:
   `dust3d_glb_material_catalog_` or `Dust3DGlbMaterialCatalog`.
 - `native/Engine/GlbMaterialCatalog.cc` is absent.
 - `Package.swift` and the root `CMakeLists.txt`, when present, do not name that
-  implementation file.
+  implementation file as a source. A complete negative CMake existence guard
+  whose only body is `message(FATAL_ERROR ...)` may name the file; its diagnostic
+  does not compile it. All other filename occurrences remain conservatively
+  rejected, including source entries after a guard or inside a compiling guard.
 
 `Package.swift` and `Package.resolved` stay on the reviewed core revision. This
 gate does not restore the API, run allocation-failure probes, or change the pin.

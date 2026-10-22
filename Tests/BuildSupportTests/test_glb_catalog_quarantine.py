@@ -53,6 +53,27 @@ class GlbCatalogQuarantineTests(unittest.TestCase):
         (self.core / 'CMakeLists.txt').write_text('native/Engine/GlbReader.cc\n')
         self.assertIsNone(quarantine_violation(self.core))
 
+    def test_should_admit_negative_cmake_guard_without_admitting_source_entries(self):
+        guard = ('if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/native/Engine/GlbMaterialCatalog.cc")\n'
+                 '    message(FATAL_ERROR "GLB catalog quarantine: implementation was restored")\n'
+                 'endif()\n')
+        manifest = self.core / 'CMakeLists.txt'
+        for negative_guard in [guard, guard.replace('    message', '# Retain the quarantine.\n    message')]:
+            with self.subTest(guard=negative_guard):
+                manifest.write_text(negative_guard + 'add_library(engine GlbReader.cc)\n')
+                self.assertIsNone(quarantine_violation(self.core))
+                for entry in ['target_sources(engine PRIVATE native/Engine/GlbMaterialCatalog.cc)\n',
+                              'set(engine_sources "GlbMaterialCatalog.cc")\n']:
+                    manifest.write_text(negative_guard + entry)
+                    self.assert_rejected('unfinished implementation was restored')
+
+    def test_should_not_ignore_a_guard_that_compiles_the_catalog(self):
+        (self.core / 'CMakeLists.txt').write_text(
+            'if(EXISTS "native/Engine/GlbMaterialCatalog.cc")\n'
+            '    target_sources(engine PRIVATE native/Engine/GlbMaterialCatalog.cc)\n'
+            'endif()\n')
+        self.assert_rejected('unfinished implementation was restored')
+
     def test_script_should_reject_an_absent_checkout(self):
         result = subprocess.run(
             [sys.executable, str(ROOT / 'script/glb_catalog_quarantine.py'),

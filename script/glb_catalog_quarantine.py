@@ -8,6 +8,15 @@ import sys
 DECLARATION = re.compile(r'dust3d_glb_material_catalog_|Dust3DGlbMaterialCatalog')
 IMPLEMENTATION = 'GlbMaterialCatalog.cc'
 
+_CMAKE_SPACING = r'(?:\s|#[^\n]*(?:\n|$))*'
+# Admit only the non-compiling companion guard; every other filename occurrence stays rejected.
+NEGATIVE_CMAKE_GUARD = re.compile(
+    r'^[ \t]*if' + _CMAKE_SPACING + r'\(' + _CMAKE_SPACING + r'EXISTS' + _CMAKE_SPACING
+    + r'"[^"\r\n]*GlbMaterialCatalog\.cc"' + _CMAKE_SPACING + r'\)' + _CMAKE_SPACING
+    + r'message' + _CMAKE_SPACING + r'\(' + _CMAKE_SPACING + r'FATAL_ERROR' + _CMAKE_SPACING
+    + r'"(?:\\.|[^"\\])*"' + _CMAKE_SPACING + r'\)' + _CMAKE_SPACING
+    + r'endif' + _CMAKE_SPACING + r'\(' + _CMAKE_SPACING + r'\)', re.MULTILINE | re.IGNORECASE)
+
 
 def quarantine_violation(core):
     """Return a fail-closed diagnostic, or None when the selected core stays inside quarantine."""
@@ -20,8 +29,12 @@ def quarantine_violation(core):
         return 'GLB catalog quarantine (#69): unfinished implementation was restored'
     for name in ('Package.swift', 'CMakeLists.txt'):
         manifest = core / name
-        if manifest.is_file() and IMPLEMENTATION in manifest.read_text(encoding='utf-8', errors='surrogateescape'):
-            return 'GLB catalog quarantine (#69): unfinished implementation was restored'
+        if manifest.is_file():
+            text = manifest.read_text(encoding='utf-8', errors='surrogateescape')
+            if name == 'CMakeLists.txt':
+                text = NEGATIVE_CMAKE_GUARD.sub('', text)
+            if IMPLEMENTATION in text:
+                return 'GLB catalog quarantine (#69): unfinished implementation was restored'
     return None
 
 
