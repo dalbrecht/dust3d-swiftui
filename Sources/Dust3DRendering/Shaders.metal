@@ -76,20 +76,28 @@ float3 bakedLinearColor(float3 value)
 
 // Alpha inputs are validated in [0, 1]; MASK thresholds may also use the sentinel 2.
 // Decode the bits before floating-point arithmetic can flush a subnormal operand.
-// Scaling by 2^126 keeps every positive Float alpha normal during interpolation.
+// Scaling by 2^24 keeps every positive Float alpha normal during interpolation.
 float maskScaleAlpha(float value)
 {
     uint bits = as_type<uint>(value);
     uint exponent = (bits >> 23) & 255u;
     if (exponent == 0)
-        return float(bits & 0x007fffffu) * 0x1p-23f;
-    return as_type<float>(bits + (126u << 23));
+        return float(bits & 0x007fffffu) * 0x1p-125f;
+    return as_type<float>(bits + (24u << 23));
+}
+
+float maskScaleClampedVertexAlpha(float value)
+{
+    // Preserve the baked path's clamp without flushing a positive subnormal first.
+    uint bits = as_type<uint>(value);
+    uint clamped = (bits & 0x80000000u) != 0 ? 0u : min(bits, 0x3f800000u);
+    return maskScaleAlpha(as_type<float>(clamped));
 }
 
 float maskRoundScaled(float value)
 {
     // Restore Float subnormal rounding while the scaled arithmetic stays normal.
-    return value < 1.0 ? rint(value * 0x1p23f) * 0x1p-23f : value;
+    return value < 0x1p-102f ? rint(value * 0x1p125f) * 0x1p-125f : value;
 }
 
 float maskMultiplyScaled(float left, float right)
@@ -99,7 +107,7 @@ float maskMultiplyScaled(float left, float right)
     int leftExponent;
     int rightExponent;
     float mantissa = frexp(left, leftExponent) * frexp(right, rightExponent);
-    float scaled = ldexp(mantissa, leftExponent + rightExponent - 126);
+    float scaled = ldexp(mantissa, leftExponent + rightExponent - 24);
     return maskRoundScaled(scaled);
 }
 
@@ -113,7 +121,7 @@ vertex BakedVertexOutput bakedMeshVertex(uint index [[vertex_id]],
     output.normal = (uniforms.rotation * vertices[index].normal).xyz;
     output.tangent = float4((uniforms.rotation * float4(vertices[index].tangent.xyz, 0)).xyz, vertices[index].tangent.w);
     output.color = vertices[index].color;
-    output.maskAlpha = maskScaleAlpha(vertices[index].color.a);
+    output.maskAlpha = maskScaleClampedVertexAlpha(vertices[index].color.a);
     output.textureCoordinate = vertices[index].textureCoordinate;
     return output;
 }

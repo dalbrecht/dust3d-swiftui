@@ -18,7 +18,10 @@ nonnegative values at Swift copy and rendering boundaries. Keep original Double
 policy metadata unchanged. Encode a shared Float threshold rounded upward, or
 two for cutoffs above one, and a separate positive-cutoff zero-exclusion flag.
 Before interpolation, decode MASK vertex alpha through integer Float bits and
-scale by 2^126 so positive subnormals remain normal. Scale material/texture
+scale by 2^24 so positive subnormals and their rounding midpoint remain normal,
+while keeping headroom for perspective interpolation. Clamp finite baked vertex
+alpha to [0,1] using its ordered bits before scaling, preserving the existing
+unmapped color contract without flushing subnormals. Scale material/texture
 factors and thresholds the same way, with exponent-separated multiplication to
 avoid overflow and underflow. Restore Float subnormal rounding in the scaled
 domain after interpolation and each alpha multiplication. Both imported and
@@ -35,7 +38,9 @@ tests cover downward-rounding boundaries, zero, values above one, and ignored
 cutoffs in OPAQUE/BLEND. Review regression tests reproduce six native GPU failures
 for positive subnormal material/vertex/unmapped-baked alpha, then verify acceptance
 at the authored cutoff and rejection just above it. Combined factors cover
-round-to-zero and round-up/ties at the subnormal boundary. Texture sampling still
+round-to-zero and round-up/ties at the subnormal boundary. A second native
+regression reproduces three failures before the bitwise clamp, covering alpha2
+with cutoff1.5, negative values, signed zero and the largest finite Float. Texture sampling still
 uses the samples available from the texture unit; this does not recover precision
 already lost by texture filtering/quantization. Archive tests retain exact metadata and unchanged bytes.
 

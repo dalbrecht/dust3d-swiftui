@@ -23,6 +23,24 @@ final class TexturedMetalRenderingTests: XCTestCase {
         }
     }
 
+    func testShouldClampUnmappedMaskAlphaBeforeScaledComparison() async throws {
+        for (alpha, cutoff) in [
+            (Float(2), 1.5), (.greatestFiniteMagnitude, 1.5), (2, 1),
+            (-2, 0), (-Float.leastNonzeroMagnitude, Double.leastNonzeroMagnitude), (-0.0, 0),
+        ] {
+            let source = BakedMetalFixture.source(
+                try BakedMetalFixture.quad(
+                    mapped: false, tangentMapped: false,
+                    layers: [.init(color: SIMD4(1, 1, 1, alpha))]),
+                policy: .init(alphaMode: .mask, alphaCutoff: cutoff, isDoubleSided: true))
+            let output = try await render(source)
+            let clamped = min(Float(1), max(Float(0), alpha))
+            XCTAssertEqual(
+                pixel(output, x: 64, y: 64)[3], Double(clamped) >= cutoff ? 255 : 0,
+                "alpha \(alpha), cutoff \(cutoff)")
+        }
+    }
+
     func testShouldKeepSourceMaskCutoffAboveAlphaAcrossDoubleToFloatConversion() async throws {
         for (alpha, cutoff) in [
             (Float(0.5), Double(0.5).nextUp), (Float(1), Double(1).nextUp), (Float(0), Double.leastNonzeroMagnitude),
