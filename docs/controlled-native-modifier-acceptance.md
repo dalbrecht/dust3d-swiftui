@@ -7,7 +7,7 @@ The October 18 exploratory observations retain their provenance limits in
 
 ## Runtime identity
 
-Both passes reused `org.dust3d.editor.combine-qa` at
+All passes reused `org.dust3d.editor.combine-qa` at
 `/private/tmp/dust3d-validator-safe-build/app-qa/Dust3DEditor.app`. No bundle was
 rebuilt while its process was being tested, no new app ID was introduced, and
 all files were disposable QA copies. Repository fixtures were untouched.
@@ -15,7 +15,7 @@ all files were disposable QA copies. Repository fixtures were untouched.
 | Pass | Loaded clean source | PID | Core pin |
 | --- | --- | ---: | --- |
 | Earlier controlled shape/width/profile cases | `ac6da0214bbdc36281076411db401c05e635d0c9` | 79169 | `41af7d4c1b67dd037e02858e3ef0fdb96a84aebb` |
-| Thickness/unified/history/reopen, October 23 | `2011b362df1495862eb8ee10c41ef5ccb7ba9718` | 77988 | Same pin |
+| Thickness/unified and intersecting hard-join history/reopen, October 23 | `2011b362df1495862eb8ee10c41ef5ccb7ba9718` | 77988 | Same pin |
 
 The earlier immutable identity and binary hash are retained in
 `pr244-native-runtime.json`. During the later pass, About diagnostics were read
@@ -91,9 +91,38 @@ checkpoint `2026-10-23-numeric-admission`. These are diagnostic artifacts, not
 committed pixel baselines. Screenshots include `native-thickness-applied.png`,
 `native-unified-applied.png` and `native-deformation-reopened.png`.
 
+## Intersecting hard joins
+
+The same loaded `2011b362` process opened `NativeHardJoinQA-20261023.ds3`,
+a disposable five-node/two-part fixture matching the existing ordinary
+`testHardJoinChangesTheActualIntersectingPartSeam` integration geometry. A pure
+Dust3DDocument utility created the archive and expected edit without invoking the
+engine. Both parts contain unknown `future="retained"` metadata, and the archive
+includes `opaque.bin` with bytes `00 ff 0a 80`.
+
+1. The initial native preview has 278 triangles. Select Crossing and enable Hard
+   joins: the checkbox turns on and the preview changes to 370 triangles.
+2. Native Save matches the pure expected archive byte for byte. Independent
+   bounded archive/XML inspection permits only Crossing's `hard="true"` addition;
+   all item metadata, other attributes and opaque payload bytes are retained.
+3. Undo, wait for Hard joins off and 278 triangles, then Save: exact baseline.
+   Redo, wait for Hard joins on and 370 triangles, then Save: exact edited archive.
+4. Close the saved document normally and reopen it through the native Open panel.
+   Crossing restores Hard joins on and 370 triangles, with fresh disabled Undo
+   and Redo. The saved archive still matches the pure expected result exactly.
+
+Baseline SHA-256 is
+`a9823136a923d817f376e56f52f782ce66ff82a0c3271058ede9af774178af12`;
+the hard-join archive is
+`4b61b0ecba8ed5f4c61e06fa60ad6ac775cdc94f42d02ac214514a8bb1515146`.
+Both other owned QA documents retain their prior exact bytes. Generator source,
+archives and `native-hardjoin-before.png`, `native-hardjoin-applied.png` and
+`native-hardjoin-reopened.png` are retained in the recovery checkpoint. This
+establishes this intersecting case, not every seam configuration or Qt parity.
+
 ## Remaining acceptance
 
-Hard joins on intersecting parts, linked-profile mutation/history/reopen,
+Linked-profile mutation/history/reopen,
 unsupported legacy replacements, other modifier families, full Qt differential
 checks, VoiceOver, supported-OS coverage and broad gesture acceptance remain open.
 This pass did not exercise GLB, the quarantined writer fixture, allocation failure,

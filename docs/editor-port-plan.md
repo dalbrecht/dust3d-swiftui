@@ -721,6 +721,8 @@ exact loaded QA identities for the earlier shape/width/profile checks and the ne
 thickness/unified keyboard, history, save and reopen cases. The latter changed only
 the intended part attributes and restored exact archives through Undo/Redo; the
 other owned window and original fixtures remained unchanged. These scoped native
-checks supplement the earlier offscreen and exploratory evidence. Hard joins on
-intersections, linked-profile mutation/history, unsupported replacements and broad
+checks supplement the earlier offscreen and exploratory evidence. A controlled
+intersecting hard-join case also restores exact archives through history and
+reopening, retaining unknown metadata and an opaque binary asset. Linked-profile
+mutation/history, unsupported replacements and broad
 Qt/accessibility/OS acceptance remain pending; #120 and M3 remain open.
