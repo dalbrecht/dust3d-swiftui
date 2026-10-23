@@ -74,7 +74,7 @@ feedback should remain immediate). Existing numeric fields provide precision
 where small preview crops cannot offer large pointer targets.
 
 Verdict: Approve static preview presentation and the native checks recorded below;
-mirrored-side gestures, keyboard focus/VoiceOver, held Escape and gesture
+keyboard focus/VoiceOver, held Escape and gesture
 replacement ordering still need controlled acceptance. This review does not
 replace automated PR review.
 
@@ -103,8 +103,15 @@ Undo/Redo. Runtime identity, screenshots and the four archive states are retaine
 in the reboot checkpoint; public evidence is linked from
 [issue #56](https://github.com/dalbrecht/dust3d-swiftui/issues/56#issuecomment-6374481432).
 
-These checks do not establish mirrored-side native gestures, held-gesture Escape,
-VoiceOver, complete keyboard focus routing, Qt differential behavior or full M2.
+The Side panel was separately imported and mirrored (the control changed to
+Unmirror Side). Physical Draw, move and bottom-right resize produced displayed
+crops `(20,20,120,80)`, `(40,40,120,80)` and `(40,40,140,100)`. Escape discarded
+that draft with disabled Undo/Redo; the saved applied archive remained byte-exact.
+This UI observation does not independently prove internal source-coordinate
+conversion, which remains covered by the pure mirrored-draft contracts.
+
+These checks do not establish held-gesture Escape, VoiceOver, complete keyboard
+focus routing, Qt differential behavior or full M2.
 
 ## Limits
 
