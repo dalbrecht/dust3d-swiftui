@@ -1,6 +1,6 @@
 # ADR 0090: Native selectable node identity
 
-Status: local implementation; native Command-C verification pending. Refs #235.
+Status: locally implemented and natively verified; publication pending. Refs #235.
 
 ## Context
 
@@ -44,6 +44,16 @@ and zero reported runtime skips (113.282 seconds). Formatting, coverage,
 Qt-link and bundle checks pass. One shared build root is reused. The legacy pinned
 core's known global stitch SVG output was restored to retained original bytes and
 mtime after tests. The running QA bundle was not overwritten by isolated bundle
-checks. Fresh native keyboard Copy/paste and rendered label acceptance remain
-required before claiming that workflow complete. Full VoiceOver and editor parity
-remain unproven. All existing safety quarantines remain in force.
+checks. A subsequent fresh QA process (77988) reports clean source
+`2011b362df1495862eb8ee10c41ef5ccb7ba9718`, digest
+`b9dfc3de67e2d474c626d11c4cfc265725e8bc10e81c99087bf9d0607bc7d65f`,
+unchanged core41af7d4 and the reused QA bundle ID. Native Node1→Node2 selection
+updates the full accessibility value. Triple-click selects the UUID; Command-C
+and paste into an uncommitted X draft produce only that exact UUID, rather than
+node-fragment XML. Reset restores X0.5. Archive bytes match the prior saved
+2-node fixture and Undo/Redo remain disabled. The label's rendered appearance was
+inspected; screenshots/runtime identity are retained in the checkpoint. The app
+was rebuilt only after normal Quit and verified process exit.
+
+Full VoiceOver, staged OBJ status and editor parity remain unproven. All existing
+safety quarantines remain in force.
