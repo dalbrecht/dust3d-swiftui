@@ -30,9 +30,7 @@ struct NodeInspector: View {
                 let targets = store.snapshot?.connectionTargets ?? []
                 let editableEdges = Set(store.snapshot?.editableEdges.map(\.id) ?? [])
                 Text(node.title).font(.title3)
-                Text(node.id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                    // Recreate the selectable native text when selection changes; its AX value otherwise stays cached.
-                    .id(node.id)
+                SelectableNodeIdentifier(value: node.id)
                     .focusedValue(\.editorTextEditing, true)
                 Form {
                     TextField("X", value: $draft.x, format: .number).accessibilityIdentifier("node-x")
