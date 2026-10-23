@@ -39,11 +39,10 @@ eleven service contracts pass after implementation, covering latest replacement,
 multi-scope behavior, cleanup order/backlog, original reset error propagation and
 subsequent successful preview. Use ordinary licensed/procedural documents and
 controlled Swift protocol backends, not native fault hooks or crash/signal probes.
-The first full gate passed 36 build-support tests and 886 XCTest cases (51
-explicit quarantine skips, zero failures), coverage gates and Qt-free checks.
+The first full gate passed 36 build-support tests and 886 XCTest cases (zero failures; no runtime skips reported), coverage gates and Qt-free checks.
 The final bundle-rebuild check initially lacked sandbox process-list access;
 its separate authorized rerun passed. The complete authorized `make ci` rerun then passed (exit 0), including
-packaging, with 886 XCTest cases, 51 explicit skips and zero failures in 133.86s.
+packaging, with 886 XCTest cases, zero failures and no runtime skips reported in 133.86s.
 Scoped service coverage measured 190/195 lines (97.44%) and 92/94 regions
 (97.87%). These measurements do not establish full editor feature parity.
 The unchanged pinned core still emits the known global stitch-debug SVG during
