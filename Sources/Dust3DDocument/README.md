@@ -226,3 +226,17 @@ rig/animation XML and assets survive. Semantic no-ops retain original bytes and
 redo, including legacy boolean spellings. Eyelids use inherited true/True/1
 semantics; changing to false removes the attribute. Reading/editing never invokes
 an engine, skeleton, pose, or animation evaluator. See ADR 0091 and issue #246.
+
+## Stored edge bone bindings
+
+`DocumentEdge.boneName` retains the exact inherited lookup name, or an empty string
+when unassigned. `.setEdgeBoneName(id: edgeID, name: "Root")` assigns that intent;
+an empty name removes the attribute. New names are limited to 1024 UTF-8 bytes and
+reject controls/newlines. Names are not trimmed or case-normalized because template
+lookup is exact. Legacy values, including longer unsupported names, survive reads
+and unrelated edits. Both endpoints must be editable under existing part flags.
+
+The command preserves unrelated edge/rig XML and assets, uses exact snapshot
+undo/redo, and does not invoke generation or prove the named bone exists. Editor
+snapshots carry the same intent through their existing edge array. See #247 and
+ADR 0092; actual rig evaluation and native binding controls remain M5 follow-up.

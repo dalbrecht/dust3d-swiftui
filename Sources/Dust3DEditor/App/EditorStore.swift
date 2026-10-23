@@ -824,6 +824,8 @@ final class EditorStore {
             case .invalidPartMaterial: return "Enter a material value within its supported range."
             case .invalidPartDeformation: return "Enter a scale from 0 to 2 that the modeling engine can represent."
             case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."
+            case .invalidBoneName:
+                return "Use an exact bone name of at most 1024 UTF-8 bytes without controls or newlines."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
             case .conflictingAsset(let name): return "Clipboard asset \(name) conflicts with this document."
             case .cyclicProfile: return "This edit would create a cyclic cut-face reference."

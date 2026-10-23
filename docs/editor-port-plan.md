@@ -167,6 +167,8 @@ template/eyelid intent, retain unsupported values and leave ordinary preview sta
 unchanged on direct edits. Native keyboard/save acceptance and generated rig,
 weights and deformation parity remain open; #199 stays quarantined.
 
+Exact edge bone-assignment persistence is locally implemented under #247: [ADR 0092](adr/0092-lossless-edge-bone-bindings.md). This exposes stored intent with bounded lossless commands; native binding controls, generated weights and deformation acceptance remain open.
+
 ### M6 — Animation and procedural audio
 
 Dependencies: M5. Suggested PRs: evaluation APIs; animation management/playback; sound generation and synchronization.

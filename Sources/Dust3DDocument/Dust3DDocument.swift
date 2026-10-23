@@ -23,6 +23,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidPartDeformation
     case invalidPartMaterial
     case invalidPartName
+    case invalidBoneName
     case invalidNode
     case cyclicProfile
     case conflictingAsset(String)
@@ -69,6 +70,11 @@ public struct NodeUpdate: Sendable {
 
 /// Atomic node and graph commands. Unknown archive data remains untouched.
 public enum DocumentCommand: Sendable {
+    /// Set an editable edge's exact inherited bone identity; empty clears the attribute.
+    /// - Parameters: `id` is the edge identity; `name` is at most 1024 UTF-8 bytes without controls/newlines.
+    /// - Throws: `invalidBoneName` or `invalidNode` for missing/read-only endpoints; no generation occurs.
+    /// - Example: `.setEdgeBoneName(id: edgeID, name: "Root")`.
+    case setEdgeBoneName(id: String, name: String)
     /// Store a recognized rig template without generating or replacing any skeleton data.
     /// Semantic no-ops preserve source bytes. Example: `.setRigType(.biped)`.
     case setRigType(DocumentRigType)
@@ -198,6 +204,8 @@ public struct DocumentEdge: Identifiable, Equatable, Sendable {
     public let id: String
     public let fromID: String
     public let toID: String
+    /// Exact retained bone lookup intent, empty when unassigned; not proof of a generated bone or weight.
+    public let boneName: String
 }
 
 public struct DocumentContents: Sendable {
@@ -459,6 +467,9 @@ public struct Dust3DDocument: Sendable {
         }
         func edgeElements() -> [XMLElement] { root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] }
         switch command {
+        case .setEdgeBoneName(let id, let name):
+            guard try EdgeBoneBinding.set(model: model, contents: contents, id: id, name: name) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setRigType(let type):
             if DocumentRigSettings(root: root).rigType == type { return self }
             DocumentRigMetadata.set(root: root, name: "rigType", value: type.rawValue)
@@ -1096,7 +1107,9 @@ public struct Dust3DDocument: Sendable {
                 let to = edge.attribute(forName: "to")?.stringValue,
                 ids.contains(from), ids.contains(to)
             else { throw DocumentError.invalidNode }
-            return DocumentEdge(id: id, fromID: from, toID: to)
+            return DocumentEdge(
+                id: id, fromID: from, toID: to,
+                boneName: edge.attribute(forName: "boneName")?.stringValue ?? "")
         }
         guard edges.count <= 20_000 else { throw DocumentError.limitExceeded }
         return DocumentContents(
