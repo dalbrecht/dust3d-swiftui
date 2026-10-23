@@ -68,7 +68,11 @@ final class EditorPreviewServiceTests: XCTestCase {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for _ in 0..<12 {
                 group.addTask {
-                    _ = try await service.generate(data, scopeID: UUID())
+                    do {
+                        _ = try await service.generate(data, scopeID: UUID())
+                    } catch is CancellationError {
+                        // Superseded waiting previews are deliberately retired.
+                    }
                 }
             }
             try await group.waitForAll()
@@ -101,6 +105,206 @@ final class EditorPreviewServiceTests: XCTestCase {
         } catch is CancellationError {
             // The backend deliberately completes; the service must discard its result.
         }
+    }
+
+    func testReplacedWaitingPreviewCancelsBeforeActiveGenerationFinishes() async throws {
+        let data = try archive()
+        let result = try await MeshGenerationSession().generateSourcedIndexed(data: data)
+        let worker = SuspendedMeshGenerator(result: result)
+        let service = EditorPreviewService(makeSession: { _ in worker })
+        let scope = UUID()
+        let active = Task { try await service.generate(data, scopeID: scope) }
+        defer { Task { await worker.finishAll() } }
+        for _ in 0..<300 {
+            if await worker.hasStarted { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let started = await worker.hasStarted
+        XCTAssertTrue(started)
+        let probe = PreviewCancellationProbe()
+        let waiting = Task {
+            do {
+                _ = try await service.generate(data, scopeID: scope)
+                probe.completedWithoutCancellation = true
+            } catch is CancellationError {
+                probe.cancelled = true
+            }
+        }
+        // The actor is free while the controlled backend suspends; give submission a turn.
+        try await Task.sleep(for: .milliseconds(30))
+        let newest = Task { try await service.generate(data, scopeID: scope) }
+        for _ in 0..<100 {
+            if probe.cancelled { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(probe.cancelled, "Replaced waiting work must return without waiting for active native generation")
+        XCTAssertFalse(probe.completedWithoutCancellation)
+        await worker.finishAll()
+        _ = try await active.value
+        _ = try await newest.value
+        try await waiting.value
+    }
+
+    func testCancelledWaitingPreviewReturnsBeforeActiveGenerationFinishes() async throws {
+        let data = try archive()
+        let result = try await MeshGenerationSession().generateSourcedIndexed(data: data)
+        let worker = SuspendedMeshGenerator(result: result)
+        let service = EditorPreviewService(makeSession: { _ in worker })
+        let scope = UUID()
+        let active = Task { try await service.generate(data, scopeID: scope) }
+        defer { Task { await worker.finishAll() } }
+        for _ in 0..<300 {
+            if await worker.hasStarted { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let probe = PreviewCancellationProbe()
+        let waiting = Task {
+            do {
+                _ = try await service.generate(data, scopeID: scope)
+                probe.completedWithoutCancellation = true
+            } catch is CancellationError {
+                probe.cancelled = true
+            }
+        }
+        try await Task.sleep(for: .milliseconds(30))
+        waiting.cancel()
+        for _ in 0..<100 {
+            if probe.cancelled { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(probe.cancelled, "Queued cancellation must not wait for native generation")
+        XCTAssertFalse(probe.completedWithoutCancellation)
+        await worker.finishAll()
+        _ = try await active.value
+        try await waiting.value
+    }
+
+    func testOldScopeCleanupRunsBeforeLatestWaitingPreview() async throws {
+        let data = try archive()
+        let result = try await MeshGenerationSession().generateSourcedIndexed(data: data)
+        let worker = SuspendedMeshGenerator(result: result)
+        let service = EditorPreviewService(makeSession: { _ in worker })
+        let firstScope = UUID()
+        let active = Task { try await service.generate(data, scopeID: firstScope) }
+        defer { Task { await worker.finishAll() } }
+        for _ in 0..<300 {
+            if await worker.hasStarted { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let newest = Task { try await service.generate(data, scopeID: UUID()) }
+        try await Task.sleep(for: .milliseconds(30))
+        let reset = Task { try await service.reset(scopeID: firstScope) }
+        try await Task.sleep(for: .milliseconds(30))
+        await worker.finishAll()
+        _ = try await active.value
+        _ = try await newest.value
+        try await reset.value
+        let events = await worker.events
+        XCTAssertEqual(events, ["generate", "reset", "generate"])
+    }
+
+    func testResetBacklogIsBoundedWithoutRejectingNewestPreview() async throws {
+        let data = try archive()
+        let result = try await MeshGenerationSession().generateSourcedIndexed(data: data)
+        let worker = SuspendedMeshGenerator(result: result)
+        let service = EditorPreviewService(makeSession: { _ in worker })
+        let scope = UUID()
+        let active = Task { try await service.generate(data, scopeID: scope) }
+        defer { Task { await worker.finishAll() } }
+        for _ in 0..<300 {
+            if await worker.hasStarted { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let probe = PreviewCancellationProbe()
+        var resets: [Task<Void, any Error>] = []
+        for _ in 0..<3 {
+            resets.append(
+                Task {
+                    do {
+                        try await service.reset(scopeID: scope)
+                    } catch EditorPreviewSchedulingError.resetBacklog {
+                        probe.resetBacklogCount += 1
+                    }
+                })
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        let newest = Task { try await service.generate(data, scopeID: UUID()) }
+        for _ in 0..<100 {
+            if probe.resetBacklogCount == 1 { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(probe.resetBacklogCount, 1, "Cleanup metadata has a fixed bound even while native work suspends")
+        await worker.finishAll()
+        _ = try await active.value
+        let preview = try await newest.value
+        XCTAssertNotNil(preview.mesh, "Cleanup overload must not reject the latest document preview")
+        for reset in resets { try await reset.value }
+    }
+
+    func testResetErrorPreservesOriginalCauseAndAllowsNextPreview() async throws {
+        let data = try archive()
+        let result = try await MeshGenerationSession().generateSourcedIndexed(data: data)
+        let worker = SuspendedMeshGenerator(result: result)
+        await worker.failNextReset()
+        let service = EditorPreviewService(makeSession: { _ in worker })
+        let scope = UUID()
+        let active = Task { try await service.generate(data, scopeID: scope) }
+        defer { Task { await worker.finishAll() } }
+        for _ in 0..<300 {
+            if await worker.hasStarted { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let reset = Task { try await service.reset(scopeID: scope) }
+        try await Task.sleep(for: .milliseconds(30))
+        let newest = Task { try await service.generate(data, scopeID: UUID()) }
+        await worker.finishAll()
+        _ = try await active.value
+        do {
+            try await reset.value
+            XCTFail("Cleanup must retain its original reported error")
+        } catch PreviewResetFailure.expected {
+            // This is a Swift backend value error, not native fault injection.
+        }
+        let preview = try await newest.value
+        XCTAssertNotNil(preview.mesh)
+    }
+
+    func testCancelledResetStillClearsWaitingPreviewAndCompletesCleanup() async throws {
+        let data = try archive()
+        let result = try await MeshGenerationSession().generateSourcedIndexed(data: data)
+        let worker = SuspendedMeshGenerator(result: result)
+        let service = EditorPreviewService(makeSession: { _ in worker })
+        let scope = UUID()
+        let active = Task { try await service.generate(data, scopeID: scope) }
+        defer { Task { await worker.finishAll() } }
+        for _ in 0..<300 {
+            if await worker.hasStarted { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let probe = PreviewCancellationProbe()
+        let waiting = Task {
+            do {
+                _ = try await service.generate(data, scopeID: scope)
+                probe.completedWithoutCancellation = true
+            } catch is CancellationError {
+                probe.cancelled = true
+            }
+        }
+        try await Task.sleep(for: .milliseconds(30))
+        let reset = Task { try await service.reset(scopeID: scope) }
+        reset.cancel()
+        for _ in 0..<100 {
+            if probe.cancelled { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(probe.cancelled, "Closing a scope retires its waiting preview promptly")
+        await worker.finishAll()
+        _ = try await active.value
+        try await reset.value
+        try await waiting.value
+        let events = await worker.events
+        XCTAssertEqual(
+            events, ["generate", "reset"], "Cleanup survives cancellation and does not generate closed-scope work")
     }
 
     private func archive() throws -> Data {
@@ -140,11 +344,16 @@ private actor SuspendedMeshGenerator: EditorMeshGenerating {
     let result: SourcedMeshGenerationResult
     private var continuation: CheckedContinuation<SourcedMeshGenerationResult, Never>?
     private(set) var hasStarted = false
+    private var shouldFinishAll = false
+    private var shouldFailReset = false
+    private(set) var events: [String] = []
     init(result: SourcedMeshGenerationResult) { self.result = result }
     func generateSourcedIndexed(data: Data, maximumPayloadBytes: Int, maximumSourcePayloadBytes: Int) async throws
         -> SourcedMeshGenerationResult
     {
-        await withCheckedContinuation { continuation in
+        events.append("generate")
+        if shouldFinishAll { return result }
+        return await withCheckedContinuation { continuation in
             self.continuation = continuation
             hasStarted = true
         }
@@ -152,7 +361,18 @@ private actor SuspendedMeshGenerator: EditorMeshGenerating {
     func generateIndexed(data: Data, maximumPayloadBytes: Int) async throws -> MeshGenerationResult {
         throw UnexpectedPreviewBackendCall.fallback
     }
-    func reset() async throws {}
+    func failNextReset() { shouldFailReset = true }
+    func reset() async throws {
+        events.append("reset")
+        if shouldFailReset {
+            shouldFailReset = false
+            throw PreviewResetFailure.expected
+        }
+    }
+    func finishAll() {
+        shouldFinishAll = true
+        finish()
+    }
     func finish() {
         continuation?.resume(returning: result)
         continuation = nil
@@ -160,3 +380,11 @@ private actor SuspendedMeshGenerator: EditorMeshGenerating {
 }
 
 private enum UnexpectedPreviewBackendCall: Error { case fallback }
+private enum PreviewResetFailure: Error { case expected }
+
+@MainActor
+private final class PreviewCancellationProbe {
+    var cancelled = false
+    var completedWithoutCancellation = false
+    var resetBacklogCount = 0
+}

@@ -318,3 +318,10 @@ opaque asset bytes in the mixed fixture and verify metallic-map refresh without
 regenerating ordinary geometry. Native QA displays both textured surface kinds
 (20 triangles). System-preview adoption, chart-isolated mipmaps (core #59),
 textured export and broader M4 acceptance remain separate (#173, ADR 0083).
+
+Preview scheduling retains at most one active backend operation and one latest
+waiting preview archive. A newer waiting preview cancels its predecessor promptly.
+Scope cleanup has a separate two-barrier metadata bound and runs before the latest
+preview; cleanup errors remain separate from document writes. Native generation
+is still cooperatively cancellable and can continue until its algorithm returns.
+See [the scheduling decision](../../docs/adr/0088-bounded-editor-preview-scheduling.md).

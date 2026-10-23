@@ -688,3 +688,14 @@ acceptance remain required. The full gate passes 872 XCTest cases and 31
 build-support tests; typed ownership, source-result and pure slot-adapter files
 have 100% measured line/region/function coverage. Public review remains pending.
 See ADR 0087.
+
+## Bounded preview scheduling (#243)
+
+The native preview service now keeps one active backend operation, one replaceable
+waiting preview archive and up to two metadata-only cleanup barriers. Waiting
+cancellation returns promptly, cleanup stays serialized and original errors remain
+separate from primary document writes. See [ADR 0088](adr/0088-bounded-editor-preview-scheduling.md).
+The full local `make ci` passes (886 XCTest cases, 51 explicit skips, zero failures;
+36 build-support tests). Automated review and hosted CI remain pending. This is backlog mitigation, not hard
+cancellation, process containment or full M8 acceptance; the core pin and quarantines
+remain unchanged.
