@@ -699,3 +699,13 @@ The full local `make ci` passes (886 XCTest cases, zero failures, no runtime ski
 36 build-support tests). Automated review and hosted CI remain pending. This is backlog mitigation, not hard
 cancellation, process containment or full M8 acceptance; the core pin and quarantines
 remain unchanged.
+
+
+## Existing reference crop adjustment (#56, local stage)
+
+Draw/Adjust tools, bounded rectangle movement and eight edge/corner resize handles
+are implemented locally. Pure projection contracts cover constraints, all handles,
+grab offsets and invalid input; mirrored draft integration and light/dark/mirrored
+preview renders pass. Native new-control gestures remain pending while the desktop
+is locked. This does not close held-gesture cancellation, Qt differential, broader
+keyboard/VoiceOver or full M2 acceptance. See ADR0089. Production pin unchanged.
