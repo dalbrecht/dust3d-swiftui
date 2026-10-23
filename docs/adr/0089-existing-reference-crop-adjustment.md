@@ -44,8 +44,9 @@ coverage. The thin SwiftUI boundary retains explicit manual verification gaps.
 The legacy pinned core wrote its known global stitch SVG during ordinary fixtures;
 retained original bytes and mtime were restored after validation. The existing
 running QA bundle hash was verified unchanged after isolated bundle tests.
-Native interaction is unverified: the Mac locked before normal Quit of the previous
-QA process. Do not overwrite that running bundle or ask humans to push buttons.
+The Mac initially locked before normal Quit; the subsequent controlled native
+checks below supersede that temporary limitation. Never overwrite a running QA
+bundle or ask humans to push buttons.
 All validation reuses /private/tmp/dust3d-validator-safe-build.
 
 ## Interface review (full, bounded scope)
@@ -72,9 +73,38 @@ Considered but rejected: separate 40-point hit boxes on every tiny crop handle
 feedback should remain immediate). Existing numeric fields provide precision
 where small preview crops cannot offer large pointer targets.
 
-Verdict: Approve static preview presentation; native complete-sheet interaction,
-keyboard/focus/VoiceOver, held Escape and gesture replacement ordering still need
-controlled acceptance. This review does not replace automated PR review.
+Verdict: Approve static preview presentation and the native checks recorded below;
+mirrored-side gestures, keyboard focus/VoiceOver, held Escape and gesture
+replacement ordering still need controlled acceptance. This review does not
+replace automated PR review.
+
+## Controlled native acceptance (October 23)
+
+The canonical QA bundle was rebuilt only after normal Quit and process-exit
+verification, reusing `org.dust3d.editor.combine-qa` and the shared build root.
+The loaded About panel reports clean source
+`7d41f60f0738a16dec158056f0b0c21bc49b78d5`, digest
+`0f9e381b8917c082dcf881b5aae4ba477830d196c1ea8b7d11896f1e8ddb0270`,
+unchanged core `41af7d4c1b67dd037e02858e3ef0fdb96a84aebb`, and process
+55725. Subsequent documentation edits do not alter that captured runtime identity.
+
+A bounded synthetic 200×160 grid in an owned QA document verifies physical Draw
+selection `(20,20,120,80)` and automatic switch to Adjust. Moving changes only X/Y
+to `(40,40)`; dragging the bottom-right handle changes size to `140×100`.
+Escape dismisses the draft with Undo/Redo disabled and no applied reference.
+
+Applying a fresh `(20,20,120,80)` crop with profile-center origin enabled adds
+`canvas.png` (1536×512) and origin `(0.75,0.5,2.25)` in one transaction. Archive
+inspection confirms the remaining model tree and existing assets are unchanged.
+Keyboard Undo followed by Save restores the exact original archive bytes; Redo
+and Save restore the exact applied archive bytes. Closing/reopening renders the
+saved reference and 80-triangle mesh, retains the origin, and starts with disabled
+Undo/Redo. Runtime identity, screenshots and the four archive states are retained
+in the reboot checkpoint; public evidence is linked from
+[issue #56](https://github.com/dalbrecht/dust3d-swiftui/issues/56#issuecomment-6374481432).
+
+These checks do not establish mirrored-side native gestures, held-gesture Escape,
+VoiceOver, complete keyboard focus routing, Qt differential behavior or full M2.
 
 ## Limits
 
