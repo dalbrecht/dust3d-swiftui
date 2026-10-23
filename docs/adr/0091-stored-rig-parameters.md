@@ -35,3 +35,14 @@ This is one M5 persistence stage. Native template controls must expose actual en
 capability and must not accidentally invoke quarantined evaluation. Bone ownership,
 axes/units, parent graphs, weights, skeleton picking, IK, rest/deformed poses and Qt
 fixture comparisons remain unimplemented or unaccepted follow-up work.
+
+## Editor snapshot integration
+
+DocumentContents decodes rig settings during its existing canvas parse;
+EditorSnapshot copies that value from the same accepted contents. There is no
+additional per-gesture XML parse or UI-thread derivation. Existing session batches
+publish parameters atomically with graph metadata, preserving selection and locks.
+No separate rig state store is introduced. Regression tests first failed on the
+missing snapshot property, then verify one-step batches, no-op revisions/redo,
+rejected-batch rollback, independent sessions and replacement freshness. These
+pure tests make no engine or pose call.

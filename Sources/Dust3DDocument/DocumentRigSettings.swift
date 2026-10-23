@@ -21,12 +21,12 @@ public struct DocumentRigSettings: Sendable, Equatable {
     /// Inherited truth semantics: true, True and 1 enable eyelids; other strings disable them.
     public let headHasEyelids: Bool
 
-    init(root: XMLElement) {
-        sourceRigType = root.attribute(forName: "rigType")?.stringValue
+    init(root: XMLElement?) {
+        sourceRigType = root?.attribute(forName: "rigType")?.stringValue
         let text = sourceRigType ?? ""
         rigType = text.isEmpty ? .disabled : DocumentRigType(rawValue: text)
         headHasEyelids = ["true", "True", "1"].contains(
-            root.attribute(forName: "headHasEyelids")?.stringValue ?? "")
+            root?.attribute(forName: "headHasEyelids")?.stringValue ?? "")
     }
 }
 

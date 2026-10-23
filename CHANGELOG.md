@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add lossless, undoable stored rig-template and eyelid document parameters; native rig generation and UI adoption remain pending (#246).
+- Add lossless, undoable stored rig-template and eyelid parameters with actor-prepared editor snapshots; native rig generation and UI adoption remain pending (#246).
 
 - Route selectable node-ID copying through the native read-only field editor instead of copying a graph fragment (#235).
 

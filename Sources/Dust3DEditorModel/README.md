@@ -173,3 +173,13 @@ let next = try projection.adjust(displayedCrop, interaction: operation, from: st
 The SwiftUI sheet defaults to Draw, switches to Adjust after a pointer selection,
 and keeps numeric fields available for keyboard editing. Neither preview geometry
 nor drag completion writes the document; composition Apply remains one transaction.
+
+## Stored rig intent in snapshots
+
+`EditorSnapshot.rigSettings` is immutable canvas intent decoded with the graph on
+the editing actor. Accessing it does not parse XML, invoke an engine or imply rig
+capability. Use `session.apply([.setRigType(.bird), .setHeadHasEyelids(true)])` for
+one undoable batch. Snapshot intent follows open, accepted edits, undo, redo and
+replacement; failed batches leave both intent and history untouched. Node selection,
+locks and independent document sessions retain their normal semantics. UI and
+native rig evaluation remain separate #144 work; this storage stage tracks #246.

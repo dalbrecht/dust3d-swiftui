@@ -206,12 +206,18 @@ public struct DocumentContents: Sendable {
     public let parts: [DocumentPart]
     /// Complete supported stored origin; nil preserves missing/unsupported source fields.
     public let origin: NodePosition?
+    /// Stored rig intent decoded with the graph, without native evaluation or a second XML parse.
+    public let rigSettings: DocumentRigSettings
 
-    init(nodes: [DocumentNode], edges: [DocumentEdge], parts: [DocumentPart] = [], origin: NodePosition? = nil) {
+    init(
+        nodes: [DocumentNode], edges: [DocumentEdge], parts: [DocumentPart] = [], origin: NodePosition? = nil,
+        rigSettings: DocumentRigSettings = .init(root: nil)
+    ) {
         self.nodes = nodes
         self.edges = edges
         self.parts = parts
         self.origin = origin
+        self.rigSettings = rigSettings
     }
 }
 
@@ -1094,7 +1100,8 @@ public struct Dust3DDocument: Sendable {
         }
         guard edges.count <= 20_000 else { throw DocumentError.limitExceeded }
         return DocumentContents(
-            nodes: nodes, edges: edges, parts: orderedParts, origin: xml.rootElement().flatMap(Self.decodeOrigin))
+            nodes: nodes, edges: edges, parts: orderedParts, origin: xml.rootElement().flatMap(Self.decodeOrigin),
+            rigSettings: DocumentRigSettings(root: xml.rootElement()))
     }
 
     /// Construct a valid blank document for a native untitled document window.
