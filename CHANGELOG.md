@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Bound editor preview work to one active operation and one latest waiting archive; retire queued cancellation promptly and keep cleanup serialized with explicit backlog errors (#243).
+
 - Select mixed material preparation without imported-only image admission, and clear supported surface-detail notices only after a confirmed source-baked frame.
 
 - Refuse to compile a core checkout that restores the quarantined GLB material catalog C API. The reviewed core pin is unchanged.
