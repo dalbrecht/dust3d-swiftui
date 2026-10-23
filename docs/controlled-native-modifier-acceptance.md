@@ -1,0 +1,106 @@
+# Controlled native modifier acceptance
+
+Tracks #120 and the M3 acceptance in [the editor plan](editor-port-plan.md).
+This records specific native cases, not complete modeling or editor parity.
+The October 18 exploratory observations retain their provenance limits in
+[native-modifier-acceptance.md](native-modifier-acceptance.md).
+
+## Runtime identity
+
+Both passes reused `org.dust3d.editor.combine-qa` at
+`/private/tmp/dust3d-validator-safe-build/app-qa/Dust3DEditor.app`. No bundle was
+rebuilt while its process was being tested, no new app ID was introduced, and
+all files were disposable QA copies. Repository fixtures were untouched.
+
+| Pass | Loaded clean source | PID | Core pin |
+| --- | --- | ---: | --- |
+| Earlier controlled shape/width/profile cases | `ac6da0214bbdc36281076411db401c05e635d0c9` | 79169 | `41af7d4c1b67dd037e02858e3ef0fdb96a84aebb` |
+| Thickness/unified/history/reopen, October 23 | `2011b362df1495862eb8ee10c41ef5ccb7ba9718` | 77988 | Same pin |
+
+The earlier immutable identity and binary hash are retained in
+`pr244-native-runtime.json`. During the later pass, About diagnostics were read
+again from the existing process, confirming clean source, the above revision,
+source digest
+`b9dfc3de67e2d474c626d11c4cfc265725e8bc10e81c99087bf9d0607bc7d65f`,
+and immutable capture time `2026-10-23T21:17:31Z`. Process inspection confirmed
+the owned executable path. The current documentation branch has no implementation
+difference from `2011b362` in Sources, Tests, Package.swift or scripts; that does
+not change the revision attributed to the loaded process.
+
+## Earlier controlled cases
+
+These cases are transcribed from the retained October 23 controlled checkpoint,
+not inferred from the October 18 process whose loaded revision was unverified.
+The disposable Capsule copy began with three nodes and 80 triangles.
+
+| Native operation | Visible result | Stored/history evidence |
+| --- | --- | --- |
+| Chamfer on | 80 → 160 triangles | Only `chamfered=true`; Undo/Save exact original, Redo/Save exact edited archive |
+| Width 1.5 Apply | Width field and preview update | Only `deformWidth=1.5`; exact prior/edited archives through Undo/Redo/Save |
+| Close/reopen | Chamfer on, width 1.5, 160 triangles | Fresh disabled Undo/Redo |
+| Hexagon preset | 160 → 240 triangles | Only `cutFace=Hexagon`; exact history saves |
+| Rotation 0.25 | Rotation field restored after history | Only `cutRotation=0.25`; exact history saves |
+| Subdivision off | 240 → 120 triangles | Absent false-default attribute; exact history saves |
+| Rounded ends off | 120 → 72 triangles | Absent false-default attribute; exact history saves |
+| Extra rings off | 72 → 72 triangles | `interpolated=false`; exact history saves |
+| Width 3 Apply | Bounded 0–2 validation notice | Dismiss and Reset work; archive unchanged, width restored to 1.5 |
+
+An initial external assertion incorrectly expected explicit `false` for every
+false default. Inspection of PartModifiers.swift and the archives established the
+existing absent-default behavior; this was a QA assertion correction, not a product
+fix. These are cumulative simple-chain cases, not all modifier combinations.
+
+## Thickness and unified deformation
+
+The later pass used a fresh copy named `NativeDeformationQA-20261023.ds3` of the
+saved controlled fixture. Starting state: three nodes, 72 triangles, chamfer on,
+width 1.5, thickness 1.0, Hexagon, rotation 0.25 and Unified off. Its archive had one
+model item; unknown/binary-asset retention is not established by this fixture.
+
+1. Click Thickness scale, enter `0.6`, inspect the draft and disabled Undo. Saved
+   bytes remain exact baseline before applying. Return applies the draft; settled
+   native Save changes only `deformThickness=0.6` in the model tree.
+2. Command-Z, wait for thickness 1.0/Redo enabled, then Save: byte-exact original
+   archive. Command-Shift-Z, wait for thickness 0.6, then Save: byte-exact edited
+   archive. One immediate Undo/Save hit the existing in-flight edit guard. Its
+   readable alert was dismissed; saving after completion succeeded. This is safe
+   rejection evidence, not proof of every save/edit interleaving.
+3. Click Unified deformation. Save changes only `deformUnified=true` relative to
+   the thickness archive. Undo/Save restores the thickness archive byte for byte;
+   Redo/Save restores the unified archive byte for byte.
+4. Close the saved document normally and reopen through the native Open panel.
+   Select the part: thickness 0.6, Unified on, width 1.5, Hexagon and rotation 0.25
+   return, with 72 triangles and fresh disabled Undo/Redo. Saved bytes remain exact.
+
+The actual Metal preview and both deformation controls were inspected. An
+unchanged triangle count does not establish numerical deformation/Qt parity.
+The other owned `NativeCreatedChainQA.ds3` window retained Node 2 selection, empty
+history and its exact prior archive. Original QA input and global SVG bytes/mtime
+were unchanged. No process was killed or document discarded.
+
+| Snapshot | SHA-256 |
+| --- | --- |
+| Baseline | `56c71b74defe7477d9633c9704417b88185c76818a96322590608cb307004f02` |
+| Thickness 0.6 | `8dddeb110e1a4080e8335cd6c34860bfeff03cd8951d15f122e9b2fefaa2ec59` |
+| Unified on | `2ee330aa78210db298235c393a610c24e353590de2a648ee6ded3d30cf934ac9` |
+
+Independent bounded archive/XML inspection compared every model node/attribute
+and item, allowing only the named part attribute per edit. Runtime JSON, exact
+archives, semantic-check scripts and native PNGs are retained in the recovery
+checkpoint `2026-10-23-numeric-admission`. These are diagnostic artifacts, not
+committed pixel baselines. Screenshots include `native-thickness-applied.png`,
+`native-unified-applied.png` and `native-deformation-reopened.png`.
+
+## Remaining acceptance
+
+Hard joins on intersecting parts, linked-profile mutation/history/reopen,
+unsupported legacy replacements, other modifier families, full Qt differential
+checks, VoiceOver, supported-OS coverage and broad gesture acceptance remain open.
+This pass did not exercise GLB, the quarantined writer fixture, allocation failure,
+resource exhaustion, active signal delivery, animation or rig-pose paths. Pins
+and quarantines remain unchanged.
+
+CUA paste did not alter the Open panel's Go to Folder field; an accessibility value
+setter resolved the verified path and reopening succeeded. The cause is not
+isolated to product code versus the control helper. Keyboard paste into native
+file panels is not counted as passed, and no speculative product fix is claimed.

@@ -4,11 +4,13 @@ Status: October 16, 2026. The viewer, pinned-core migration (#3), and lossless d
 
 Editor previews now pair current geometry with optional source hints and preserve ordinary geometry when optional details fail; see [verification and limits](editor-preview-source-verification.md). Material/rig use and full M3 acceptance remain pending.
 
+Current evidence and remaining gates are summarized in [delivery status](editor-delivery-status.md). Historical sequencing notes below do not establish current milestone completion.
+
 ## Product boundary
 
 Keep `Dust3DViewer` as a separate read-only macOS app with its own executable, bundle identifier, launch/package command, and release artifacts. Add `Dust3DEditor` as a different app, initially macOS 14+, Swift 6, SwiftUI and Metal. Share document/engine services and reusable rendering code; never make opening a model in the viewer start an editor session. Preserve the Qt app as a compatibility oracle during the port. iOS, cloud collaboration, and new modeling features are outside parity scope.
 
-Full implementation means native support for the existing repository's document, modeling, material, rigging, animation, sound and export workflows. Feature names alone are insufficient: establish a fixture and acceptance case for each behavior before calling it complete. The current viewer supports procedural mesh previews only and is not an editable document model.
+Full implementation means native support for the existing repository's document, modeling, material, rigging, animation, sound and export workflows. Feature names alone are insufficient: establish a fixture and acceptance case for each behavior before calling it complete. The initial viewer delivered procedural previews; later import/material stages have their own scoped verification. The viewer remains read-only, and those stages do not establish full editor parity.
 
 ## Repository structure and ownership
 
@@ -121,10 +123,11 @@ Hexagon/rotation, exact archive history, reopen, selection draft reset and profi
 search. [Native modeling observations](native-modifier-acceptance.md) records the
 actual mesh counts and byte comparisons. These used the existing canonical editor
 process rather than the mandated combine-qa bundle, and its loaded revision was
-not verified after on-disk rebuilds. Consequently the formal native acceptance
-claims in the preceding paragraph remain pending a controlled exact-revision QA
-repeat. Linked-profile mutation/history, other indicated history paths, Qt
-differential acceptance, VoiceOver and full M3 parity remain pending as well.
+not verified after on-disk rebuilds. Those observations alone did not satisfy controlled native acceptance.
+[Selected controlled repeats](controlled-native-modifier-acceptance.md) now cover
+the named shape/width/profile and thickness/unified/history/reopen cases with
+verified loaded identities. Linked-profile mutation/history, unlisted cases, Qt
+differential acceptance, VoiceOver and full M3 parity remain pending.
 
 - Implement every part/component property in the parity matrix with validated ranges, lock behavior and undo. Add ordered component tree, inspector selection, previews and grouping/reordering.
 - Expose generated source IDs and indexed geometry; implement component preview caches keyed by semantic revision. Audit graph assumptions: the current viewer rejects branching/disconnected chains, so do not loosen validation without proving generator support or defining explicit editing diagnostics.
@@ -709,3 +712,15 @@ grab offsets and invalid input; mirrored draft integration and light/dark/mirror
 preview renders pass. Native new-control gestures remain pending while the desktop
 is locked. This does not close held-gesture cancellation, Qt differential, broader
 keyboard/VoiceOver or full M2 acceptance. See ADR0089. Production pin unchanged.
+
+
+### Controlled native modeling evidence update (October 23)
+
+[Controlled modifier acceptance](controlled-native-modifier-acceptance.md) records
+exact loaded QA identities for the earlier shape/width/profile checks and the new
+thickness/unified keyboard, history, save and reopen cases. The latter changed only
+the intended part attributes and restored exact archives through Undo/Redo; the
+other owned window and original fixtures remained unchanged. These scoped native
+checks supplement the earlier offscreen and exploratory evidence. Hard joins on
+intersections, linked-profile mutation/history, unsupported replacements and broad
+Qt/accessibility/OS acceptance remain pending; #120 and M3 remain open.
