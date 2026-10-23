@@ -69,6 +69,12 @@ public struct NodeUpdate: Sendable {
 
 /// Atomic node and graph commands. Unknown archive data remains untouched.
 public enum DocumentCommand: Sendable {
+    /// Store a recognized rig template without generating or replacing any skeleton data.
+    /// Semantic no-ops preserve source bytes. Example: `.setRigType(.biped)`.
+    case setRigType(DocumentRigType)
+    /// Store inherited eyelid intent without evaluating a rig. False removes the attribute on change.
+    /// Example: `.setHeadHasEyelids(true)`; unrelated and unsupported rig data remains retained.
+    case setHeadHasEyelids(Bool)
     /// Set finite canvas origin coordinates within ±1,000,000 without moving any nodes.
     case setOrigin(NodePosition)
     /// Rename the legacy part name, preserving component names. Empty input restores the default label.
@@ -303,6 +309,16 @@ public struct Dust3DDocument: Sendable {
     /// Return archive bytes ready for an atomic file write. No-op saves are byte-identical.
     public func encoded() -> Data { bytes }
 
+    /// Read inherited canvas rig parameters without invoking native generation.
+    /// - Returns: Recognized or unsupported source intent and inherited eyelid state.
+    /// - Throws: `DocumentError.invalidXML` for malformed canvas XML.
+    /// - Example: `let template = try document.rigSettings().rigType`.
+    public func rigSettings() throws -> DocumentRigSettings {
+        let model = try Self.xml(modelXML, root: "canvas")
+        guard let root = model.rootElement() else { throw DocumentError.invalidXML }
+        return DocumentRigSettings(root: root)
+    }
+
     /// Copy an asset by its unique archive name, preserving arbitrary binary content.
     public func asset(named name: String) -> Data? {
         guard let item = items.first(where: { $0.name == name }) else { return nil }
@@ -402,7 +418,8 @@ public struct Dust3DDocument: Sendable {
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
         switch command {
-        case .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName, .setComponentCombineMode,
+        case .setRigType, .setHeadHasEyelids, .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName,
+            .setComponentCombineMode,
             .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
             .setComponentWrapKeepChildren, .setComponentWrapFaces,
             .reorderComponent,
@@ -436,6 +453,14 @@ public struct Dust3DDocument: Sendable {
         }
         func edgeElements() -> [XMLElement] { root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] }
         switch command {
+        case .setRigType(let type):
+            if DocumentRigSettings(root: root).rigType == type { return self }
+            DocumentRigMetadata.set(root: root, name: "rigType", value: type.rawValue)
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setHeadHasEyelids(let enabled):
+            if DocumentRigSettings(root: root).headHasEyelids == enabled { return self }
+            DocumentRigMetadata.set(root: root, name: "headHasEyelids", value: enabled ? "true" : nil)
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setReferenceImagePNG(let png): return try replacingReferenceImage(png)
         case .setOrigin(let position):
             guard [position.x, position.y, position.z].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }) else {

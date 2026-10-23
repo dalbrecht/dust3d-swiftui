@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add lossless, undoable stored rig-template and eyelid document parameters; native rig generation and UI adoption remain pending (#246).
+
 - Route selectable node-ID copying through the native read-only field editor instead of copying a graph fragment (#235).
 
 - Refresh the selectable node ID accessibility value when inspector selection changes while retaining copyability (#235).
