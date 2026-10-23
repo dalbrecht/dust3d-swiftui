@@ -120,10 +120,34 @@ archives and `native-hardjoin-before.png`, `native-hardjoin-applied.png` and
 `native-hardjoin-reopened.png` are retained in the recovery checkpoint. This
 establishes this intersecting case, not every seam configuration or Qt parity.
 
+## Linked profile replacing unsupported metadata
+
+The same loaded clean `2011b362` process opened a disposable five-node fixture
+matching `PartCutFaceStoreTests` geometry: a three-node owner and a separate
+two-node CutFace part. The owner starts with unsupported `cutFace="future"`.
+Both parts retain unknown metadata and an opaque binary asset. The pure document
+utility generated the baseline and expected linked archive without engine calls.
+
+Select Owner, expand Link profile and choose Profile by its displayed exact ID
+`{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}`. The preset display changes from
+Unsupported source value to Linked profile. Native Save matches the pure expected
+archive byte for byte. Undo restores Unsupported source value and Save matches
+the original archive exactly; Redo and Save restore the exact linked archive.
+Closing normally and reopening restores Linked profile with fresh disabled
+Undo/Redo. The final saved bytes still match the pure expected edit, SHA-256
+`b103a3b0612cc994032c9e85759935931306bd4f62475ab8e4056606feed7a2f`.
+
+Both visible previews contain 88 triangles. This proves native selection,
+replacement, history and persistence for this case; triangle counts alone do not
+prove the geometric difference or Qt parity. Broader source-profile node mutation,
+missing/cyclic link interactions and other legacy replacements remain open.
+Generator source, archives and `native-linked-profile-reopened.png` are retained
+in the recovery checkpoint, outside committed pixel baselines.
+
 ## Remaining acceptance
 
-Linked-profile mutation/history/reopen,
-unsupported legacy replacements, other modifier families, full Qt differential
+Source-profile mutation and broader linked-profile interactions,
+other unsupported legacy replacements, other modifier families, full Qt differential
 checks, VoiceOver, supported-OS coverage and broad gesture acceptance remain open.
 This pass did not exercise GLB, the quarantined writer fixture, allocation failure,
 resource exhaustion, active signal delivery, animation or rig-pose paths. Pins
