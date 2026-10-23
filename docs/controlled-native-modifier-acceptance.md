@@ -139,14 +139,26 @@ Undo/Redo. The final saved bytes still match the pure expected edit, SHA-256
 
 Both visible previews contain 88 triangles. This proves native selection,
 replacement, history and persistence for this case; triangle counts alone do not
-prove the geometric difference or Qt parity. Broader source-profile node mutation,
-missing/cyclic link interactions and other legacy replacements remain open.
+prove the geometric difference or Qt parity. Missing/cyclic link interactions and other legacy replacements remain open.
 Generator source, archives and `native-linked-profile-reopened.png` are retained
 in the recovery checkpoint, outside committed pixel baselines.
 
+### Mutating the linked source
+
+With the saved link in place, select Profile's Node 5 and apply radius `0.08`
+from `0.05`. Bounded archive/XML comparison permits only that node's radius;
+the owner's exact link ID, all other attributes, item metadata and opaque asset
+remain unchanged. Undo/Save restores the linked baseline byte for byte;
+Redo/Save restores the edited archive byte for byte. A normal close/reopen shows
+Node 5 radius 0.08, 88 triangles and fresh disabled Undo/Redo. Reopened bytes
+still match the edited snapshot exactly. The native screenshot is retained as
+`native-linked-profile-radius-reopened.png`. This verifies source-node mutation
+and persistence for this case; it does not establish numerical cross-section or
+Qt equivalence, nor every profile topology interaction.
+
 ## Remaining acceptance
 
-Source-profile mutation and broader linked-profile interactions,
+Broader linked-profile topology interactions,
 other unsupported legacy replacements, other modifier families, full Qt differential
 checks, VoiceOver, supported-OS coverage and broad gesture acceptance remain open.
 This pass did not exercise GLB, the quarantined writer fixture, allocation failure,
