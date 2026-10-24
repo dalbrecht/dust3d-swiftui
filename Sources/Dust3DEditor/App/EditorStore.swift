@@ -395,6 +395,9 @@ final class EditorStore {
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
+    func setEdgeBoneName(_ id: String, name: String) {
+        perform { try await $0.apply([.setEdgeBoneName(id: id, name: name)]) }
+    }
     func setComponentColor(_ id: String, value: String) {
         guard !isWorking, !stopped else { return }
         guard let color = DocumentColor(archiveValue: value) else {

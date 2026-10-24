@@ -332,3 +332,12 @@ Scope cleanup has a separate two-barrier metadata bound and runs before the late
 preview; cleanup errors remain separate from document writes. Native generation
 is still cooperatively cancellable and can continue until its algorithm returns.
 See [the scheduling decision](../../docs/adr/0088-bounded-editor-preview-scheduling.md).
+
+## Edge bone assignment
+
+Select an edge to edit its Bone assignment in the selection inspector. Enter an
+exact name and press Return or Apply. Reset Draft/Escape restores the saved field;
+Clear removes a saved assignment. Each applied change is one undo step. Both
+endpoints must be editable. Names are stored intent: this build does not provide a
+rigged preview, and the inspector states that limitation. Undo/redo and ordinary
+open/save retain the assignments; native rig generation and weights remain M5 work.

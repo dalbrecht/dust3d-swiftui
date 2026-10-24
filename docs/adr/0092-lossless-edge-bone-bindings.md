@@ -36,3 +36,20 @@ was corrected to those rules, without changing target-role editing policy.
 No native evaluator, pose, animation, GLB or quarantined API is called. No core pin,
 dependency, CI, renderer or visible binding control changes. Actual bone existence,
 weights, deformation and native interaction acceptance remain separate M5 gates.
+
+## Native inspector adoption
+
+A dedicated EdgeBoneBindingControls view owns only its text draft. Apply/Return
+sends an explicit command through EditorStore and the existing serialized session;
+Clear removes the binding. Escape/Reset changes only the draft. Selection identity,
+accepted name and document replacement reset the draft. Existing editability and
+busy state disable the controls. Semantic no-op Apply is disabled.
+
+The inspector explicitly explains that assignments are saved and rigged preview
+is unavailable. It does not display fabricated bone validation or weights. System
+controls/colors, focused text-editing routing and accessible action labels match
+the existing inspector. A controller regression first failed on the missing store
+entry point, then covers unchanged ordinary mesh positions/camera, exact history,
+selection, no-op publications, invalid edits, Clear and stop. Light/dark unassigned,
+bound and read-only inspector renders do not publish edits. Native interaction and
+full-gate evidence are recorded separately before publication.
