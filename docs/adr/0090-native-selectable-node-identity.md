@@ -39,6 +39,11 @@ NSStringPboardType, and the test now exercises that advertised type. It does not
 write to the user's general pasteboard. The existing first/second/first identity
 regression also passes with unchanged document bytes and history.
 
+The state-transition contract can export diagnostic light/dark selection-inspector
+renders through `DUST3D_UI_QA_OUTPUT_DIR`, retaining archive/history assertions
+after rendering. These are scoped offscreen views, not fresh whole-app or keyboard
+interaction evidence; no screenshot baselines are committed.
+
 Full make ci passes 36 build-support checks and 895 XCTest cases, zero failures
 and zero reported runtime skips (113.282 seconds). Formatting, coverage,
 Qt-link and bundle checks pass. One shared build root is reused. The legacy pinned

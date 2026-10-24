@@ -50,6 +50,17 @@ final class InspectorIdentityTests: XCTestCase {
                 "Selected identity missing from accessibility values: \(values)")
             let obsolete = identity == firstID ? secondID : firstID
             XCTAssertFalse(values.contains(where: { $0.contains(obsolete) }), "Previous identity remains accessible")
+            if let output = ProcessInfo.processInfo.environment["DUST3D_UI_QA_OUTPUT_DIR"] {
+                let directory = URL(fileURLWithPath: output, isDirectory: true)
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                for scheme in [ColorScheme.light, .dark] {
+                    let png = try InspectorRenderer.png(
+                        NodeInspector(store: store).environment(EditorPasteboard()), width: 250, scheme: scheme)
+                    let name =
+                        "node-identity-\(identity == firstID ? "first" : "second")-\(scheme == .dark ? "dark" : "light").png"
+                    try png.write(to: directory.appendingPathComponent(name), options: .atomic)
+                }
+            }
         }
         XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
         XCTAssertFalse(store.snapshot?.canUndo ?? true)
