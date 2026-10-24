@@ -211,3 +211,18 @@ by imports and Dust3DKit's existing decoder. It does not decompress samples or
 validate CRCs; platform image validation remains necessary before user imports.
 See [ADR 0068](../../docs/adr/0068-lossless-component-color-images.md) for identity,
 resource, transaction and remaining native-import requirements.
+
+## Stored rig parameters
+
+`try document.rigSettings()` reads canvas template intent with exact source text.
+`DocumentRigType` recognizes None, Biped, Quadruped, Bird, Fish, Snake, Insect and
+Spider from the inherited Qt template resources. Missing/empty values mean disabled;
+unknown spellings remain `rigType == nil` with `sourceRigType` retained. Recognition
+is not a claim that native generation supports the template.
+
+Apply `.setRigType(.biped)` or `.setHeadHasEyelids(true)` through DocumentHistory
+for undoable edits. These commands change only their canvas attribute; unrelated
+rig/animation XML and assets survive. Semantic no-ops retain original bytes and
+redo, including legacy boolean spellings. Eyelids use inherited true/True/1
+semantics; changing to false removes the attribute. Reading/editing never invokes
+an engine, skeleton, pose, or animation evaluator. See ADR 0091 and issue #246.

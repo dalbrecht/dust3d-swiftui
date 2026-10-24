@@ -31,6 +31,8 @@ public struct EditorSnapshot: Sendable {
     public let edges: [DocumentEdge]
     public let parts: [DocumentPart]
     public let componentTree: ComponentTree
+    /// Parsed on the editing actor; stored intent does not imply native rig generation support.
+    public let rigSettings: DocumentRigSettings
     /// Materialized off the UI actor, without copying image payloads.
     public let colorImageAssets: [DocumentColorImageAsset]
     /// All selected component identities, independent of graph selection and history.
@@ -206,7 +208,8 @@ public struct EditorState: Sendable {
         EditorSnapshot(
             documentIdentity: documentIdentity, document: history.document, nodes: contents.nodes,
             edges: contents.edges, parts: contents.parts,
-            componentTree: componentTree, colorImageAssets: history.document.colorImageAssets(),
+            componentTree: componentTree, rigSettings: contents.rigSettings,
+            colorImageAssets: history.document.colorImageAssets(),
             selectedComponentIDs: selectedComponentIDs,
             origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
