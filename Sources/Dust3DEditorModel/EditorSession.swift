@@ -92,8 +92,18 @@ public actor EditorSession {
     /// - Throws: `staleAnimationTarget` or original document/load/cancellation cause, atomically.
     /// - Example: `try await session.editAnimation(.rename("Rest"), target: target)`.
     public func editAnimation(_ edit: AnimationEdit, target: AnimationEditTarget) throws -> EditorAnimationSnapshot {
+        try editAnimations([edit], target: target)
+    }
+
+    /// Apply an ordered group of captured-row edits as one atomic undo transaction.
+    /// - Parameters: edits are stored-intent commands in order; target captures one row and source epoch.
+    /// - Returns: One committed snapshot; empty/net-zero batches preserve revision and redo.
+    /// - Throws: Stale-target, cancellation or original command cause; no partial state is published.
+    /// - Example: `try await session.editAnimations([.rename("Rest"), .setType("BipedIdle")], target: target)`.
+    public func editAnimations(_ edits: [AnimationEdit], target: AnimationEditTarget) throws -> EditorAnimationSnapshot
+    {
         var next = try validatedAnimationState(for: target)
-        try next.apply([edit.command(id: target.animationID)])
+        try next.apply(edits.map { $0.command(id: target.animationID) })
         let result = Self.animationSnapshot(next, selectedID: selectedAnimationID)
         try Task.checkCancellation()
         state = next

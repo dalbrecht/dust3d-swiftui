@@ -209,6 +209,15 @@ final class EditorStore {
         performAnimationMutation(completion: completion) { try await $0.editAnimation(edit, target: target) }
     }
 
+    /// Publish a captured-row metadata transaction through the existing source-correlated workflow.
+    /// - Parameters: edits are ordered stored-intent changes; target is the captured source; completion reports publication.
+    /// - Effects: One undo entry on change; geometry preview is not regenerated. Original errors surface in the store.
+    func editAnimations(
+        _ edits: [AnimationEdit], target: AnimationEditTarget, completion: (@MainActor (Bool) -> Void)? = nil
+    ) {
+        performAnimationMutation(completion: completion) { try await $0.editAnimations(edits, target: target) }
+    }
+
     func duplicateAnimation(
         target: AnimationEditTarget, name: String, completion: (@MainActor (Bool) -> Void)? = nil
     ) {
