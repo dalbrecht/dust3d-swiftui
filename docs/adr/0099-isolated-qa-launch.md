@@ -27,3 +27,24 @@ macOS. Controlled single-document startup, preservation of normal restoration,
 unsaved recovery/history/save and clean closure require native acceptance before
 #257 closes. No native app is launched by these contract tests. No production core
 pin or quarantined engine path changes.
+
+## Reviewed-base preparation
+
+Prepared on merged targeted recovery PR258, retaining its replacement-load and
+failed-shrink storage fixes. Only helper/tests/documentation change; packaging,
+production core pin and normal application entry remain unchanged. Nine helper
+contracts pass with injected runners; they never start Launch Services or native
+apps. The archival AppKit source above was checked again, but current macOS
+startup/restoration behavior still requires separate native acceptance. A full
+local gate is required before publication.
+
+## Public delivery gate
+
+On the merged recovery base c6a9cdd5, the full make ci gate passed45 build-support
+checks and941 XCTest cases (120.433s), formatting, coverage thresholds, Qt-free
+source/link checks and isolated signed bundle/provider rebuild. All nine launch
+contracts used injected runners or rejected invalid CLI metadata before launch.
+No protected app was launched/contacted/controlled/rebuilt, and no defaults or
+saved-state files were changed. The helper is a bounded command-construction
+boundary, not build attestation or current-OS restoration acceptance. Keep #257
+and broader M8 acceptance open. Production core pin and quarantines are unchanged.
