@@ -44,24 +44,32 @@ public actor DocumentExportFileService {
     ///   - format: Geometry format matching the destination extension.
     ///   - destination: Local or security-scoped output URL.
     ///   - sourceURL: Current source URL when available, protected against path/inode aliases.
+    ///   - validateSnapshot: Optional current-document admission before encoding and before publication.
+    ///     Omit for intentionally fixed snapshots. Original admission errors propagate unchanged.
     /// - Returns: Published owned output with its original diagnostic.
     /// - Throws: Typed admission errors, cancellation or original encoder/filesystem cause.
     /// - Note: Does not mark history saved. Concurrent external filesystem mutation and
-    ///   power-loss directory durability are outside this prototype's guarantee.
+    ///   power-loss directory durability are outside this prototype's guarantee. Admission is not a lease;
+    ///   an editor caller must serialize final publication with edits to guarantee current-revision output.
     public func export(
-        _ document: Dust3DDocument, format: DocumentExportFormat, to destination: URL, sourceURL: URL?
+        _ document: Dust3DDocument, format: DocumentExportFormat, to destination: URL, sourceURL: URL?,
+        validateSnapshot: @Sendable () async throws -> Void = {}
     ) async throws -> DocumentExportArtifact {
         try Task.checkCancellation()
         let scoped = destination.startAccessingSecurityScopedResource()
         defer { if scoped { destination.stopAccessingSecurityScopedResource() } }
         let sourceScoped = sourceURL?.startAccessingSecurityScopedResource() ?? false
         defer { if sourceScoped { sourceURL?.stopAccessingSecurityScopedResource() } }
+        try await validateSnapshot()
+        try Task.checkCancellation()
         try validate(destination, format: format, source: sourceURL)
         let output = try await encoder.encode(archive: document.encoded(), format: format)
         try Task.checkCancellation()
         guard !output.bytes.isEmpty, output.bytes.count <= Self.maximumBytes else {
             throw DocumentExportError.invalidOutput
         }
+        try await validateSnapshot()
+        try Task.checkCancellation()
         try validate(destination, format: format, source: sourceURL)
         try output.bytes.write(to: destination, options: .atomic)
         return output

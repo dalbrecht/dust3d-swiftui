@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import Foundation
 import XCTest
 
@@ -48,6 +49,66 @@ private actor SuspendedDocumentExportEncoder: DocumentExportEncoding {
 
 @MainActor
 final class DocumentExportFileServiceTests: XCTestCase {
+    func testStaleRevisionAfterEncodingPreservesOutputIncludingEditUndoCycle() async throws {
+        let session = EditorSession()
+        let snapshot = try await session.open(data: Dust3DDocument.emptyArchive())
+        let target = EditorExportTarget(snapshot: snapshot)
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".obj")
+        let previous = Data("previous export".utf8)
+        try previous.write(to: destination)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let encoder = SuspendedDocumentExportEncoder()
+        let service = DocumentExportFileService(encoder: encoder)
+        let operation = Task {
+            try await service.export(
+                snapshot.document, format: .obj, to: destination, sourceURL: nil,
+                validateSnapshot: { try await session.validateExport(target) })
+        }
+        await encoder.waitUntilStarted()
+        _ = try await session.apply([.setOrigin(.init(x: 1, y: 2, z: 3))])
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), snapshot.document.encoded())
+        await encoder.release()
+        do {
+            _ = try await operation.value
+            XCTFail("A newer revision must retire output even after Undo restores bytes")
+        } catch { XCTAssertEqual(error as? EditorError, .staleExport) }
+        XCTAssertEqual(try Data(contentsOf: destination), previous)
+    }
+
+    func testReopenedDocumentRejectsOldExportBeforeEncoding() async throws {
+        let session = EditorSession()
+        let snapshot = try await session.open(data: Dust3DDocument.emptyArchive())
+        let target = EditorExportTarget(snapshot: snapshot)
+        _ = try await session.open(data: snapshot.document.encoded())
+        let encoder = RecordingExportEncoder()
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".obj")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        do {
+            _ = try await DocumentExportFileService(encoder: encoder).export(
+                snapshot.document, format: .obj, to: destination, sourceURL: nil,
+                validateSnapshot: { try await session.validateExport(target) })
+            XCTFail("Reopen must invalidate a captured target even with the same bytes/revision")
+        } catch { XCTAssertEqual(error as? EditorError, .staleExport) }
+        let received = await encoder.received
+        XCTAssertNil(received)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+    }
+
+    func testCurrentExportAdmissionIgnoresTransientLocksAndPreservesDiagnostic() async throws {
+        let session = EditorSession()
+        let snapshot = try await session.open(data: Dust3DDocument.emptyArchive())
+        let target = EditorExportTarget(snapshot: snapshot)
+        _ = try await session.setLock(.x, isLocked: true)
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".obj")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let artifact = try await DocumentExportFileService(encoder: RecordingExportEncoder()).export(
+            snapshot.document, format: .obj, to: destination, sourceURL: nil,
+            validateSnapshot: { try await session.validateExport(target) })
+        XCTAssertEqual(try Data(contentsOf: destination), artifact.bytes)
+        XCTAssertEqual(artifact.warning, "retained diagnostic")
+    }
+
     func testPublishesCapturedDocumentAndPreservesSourceAndDiagnostic() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

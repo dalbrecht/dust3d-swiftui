@@ -767,3 +767,11 @@ ADR0100 adds the captured-document export publication actor and injectable nativ
 encoder boundary. Owned-filesystem source/alias/output tests pass. The production
 pin remains unchanged; native binding, export commands and full M7 acceptance
 remain open. This stage does not advertise working app export.
+
+### Export snapshot admission (#146)
+
+ADR0101 adds document-identity/revision admission before and after background
+encoding. Owned-file tests cover replaced documents and Edit/Undo returning to
+identical bytes without reviving old output. Native binding, final publication
+coordination with edits/close and end-to-end M7 acceptance remain required. The
+production core pin and all quarantines remain unchanged.
