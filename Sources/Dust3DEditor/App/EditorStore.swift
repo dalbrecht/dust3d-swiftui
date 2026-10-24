@@ -132,6 +132,17 @@ final class EditorStore {
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
     var canSave: Bool { snapshot != nil && !isWorking && !stopped }
+    var canEditRigSettings: Bool { canSave }
+
+    func setRigType(_ type: DocumentRigType) {
+        guard canEditRigSettings else { return }
+        perform(changesRendering: false) { try await $0.apply([.setRigType(type)]) }
+    }
+
+    func setHeadHasEyelids(_ enabled: Bool) {
+        guard canEditRigSettings else { return }
+        perform(changesRendering: false) { try await $0.apply([.setHeadHasEyelids(enabled)]) }
+    }
     var canUndo: Bool { !isWorking && snapshot?.canUndo == true }
     var canRedo: Bool { !isWorking && snapshot?.canRedo == true }
 
@@ -584,6 +595,7 @@ final class EditorStore {
 
     private func perform(
         commits: Bool = true, reloadReferenceImage: Bool = false, regenerateMesh: Bool = true,
+        changesRendering: Bool = true,
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
@@ -622,11 +634,13 @@ final class EditorStore {
                 errorMessage = nil
                 if commits && changed {
                     onDocumentChanged?(next.document.encoded())
-                    if regenerateMesh {
-                        generate(next)
-                    } else {
-                        clearMaterials()
-                        if !previewState.isStale, mesh != nil { generateMaterials(next) }
+                    if changesRendering {
+                        if regenerateMesh {
+                            generate(next)
+                        } else {
+                            clearMaterials()
+                            if !previewState.isStale, mesh != nil { generateMaterials(next) }
+                        }
                     }
                     if reloadReferenceImage { refreshReferenceImage(next) }
                 }

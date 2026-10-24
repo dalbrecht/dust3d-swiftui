@@ -161,6 +161,12 @@ Dependencies: M3; material/export integration follows M4. Suggested PRs: rig ada
 
 Stored rig-parameter commands are locally implemented under #246: [ADR 0091](adr/0091-stored-rig-parameters.md). They preserve unsupported intent and exact history without engine evaluation. This does not establish skeleton generation, weights, pose or native rig UI acceptance.
 
+Native stored-setting controls now have controller tests and scoped light/dark
+renders under [ADR 0094](adr/0094-native-stored-rig-settings.md). They expose saved
+template/eyelid intent, retain unsupported values and leave ordinary preview state
+unchanged on direct edits. Native keyboard/save acceptance and generated rig,
+weights and deformation parity remain open; #199 stays quarantined.
+
 ### M6 — Animation and procedural audio
 
 Dependencies: M5. Suggested PRs: evaluation APIs; animation management/playback; sound generation and synchronization.
