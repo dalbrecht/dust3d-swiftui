@@ -860,3 +860,6 @@ the full 45-support/1014-XCTest gate pass. Owned forms and integrated empty/ligh
 and selected/dark panel renders were inspected. Catalog-specific type/parameter
 controls, live keyboard/VoiceOver acceptance, Qt/runtime interoperability,
 evaluation/playback/audio and full M6 remain open; no runtime/pin/quarantine changes.
+
+
+ADR0111 adds source-checked atomic animation edit batches through the session/store, supporting future multi-field timing forms with one undo step. A red regression exposed attribute reordering on net-zero edits; existing attributes now update in place. Full make ci passes45support/1018XCTest, coverage and Qt/bundle gates. Structured catalog UI and reviewed core adoption remain pending; production pin and quarantines are unchanged.

@@ -207,3 +207,6 @@ request/source correlation and remaining store/UI/runtime acceptance.
 Actor `editAnimation` and targeted duplication reject replacement/Edit-Undo stale
 sources before mutation, while preserving independent graph/clip selection and
 original metadata errors. ADR 0106 describes the accepted-source store workflow.
+
+
+`session.editAnimations(_:target:)` applies ordered stored-intent edits to one captured row as one atomic history transaction. Any failed command rejects every change. Empty/net-zero batches preserve redo and original bytes; single-edit calls share this path. No numerical timing interpretation or core generation occurs. See [ADR0111](../../docs/adr/0111-atomic-animation-edits.md).

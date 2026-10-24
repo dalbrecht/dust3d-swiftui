@@ -159,4 +159,40 @@ final class AnimationStoreTests: XCTestCase {
         XCTAssertNil(store.animationSnapshot)
         XCTAssertFalse(store.canManageAnimations)
     }
+    func testBatchMetadataEditPublishesOnceWithoutGeometryAndReportsAtomicFailure() async throws {
+        let store = EditorStore(preview: AnimationStoreNoPreview())
+        defer { store.stop() }
+        try await store.load(data: document().encoded())
+        await refresh(store)
+        let previewRevision = store.previewRevision
+        let before = try XCTUnwrap(store.snapshot)
+        var target = try AnimationEditTarget(snapshot: XCTUnwrap(store.animationSnapshot), animationID: "a")
+        var accepted: Bool?
+        store.editAnimations(
+            [
+                .setParameter(name: "durationSeconds", value: "2.500"),
+                .setParameter(name: "frameCount", value: "3"),
+            ], target: target
+        ) { accepted = $0 }
+        try await settle(store)
+        XCTAssertEqual(accepted, true)
+        XCTAssertEqual(store.animationSnapshot?.list.rows.first?.source.parameter(named: "durationSeconds"), "2.500")
+        XCTAssertEqual(store.animationSnapshot?.list.rows.first?.source.parameter(named: "frameCount"), "3")
+        XCTAssertEqual(store.previewRevision, previewRevision)
+        let changed = try XCTUnwrap(store.snapshot)
+        target = try AnimationEditTarget(snapshot: XCTUnwrap(store.animationSnapshot), animationID: "a")
+        store.editAnimations([.rename("Changed"), .setParameter(name: "xmlns", value: "bad")], target: target) {
+            accepted = $0
+        }
+        try await settle(store)
+        XCTAssertEqual(accepted, false)
+        XCTAssertEqual(store.snapshot?.document.encoded(), changed.document.encoded())
+        XCTAssertEqual(store.snapshot?.documentRevision, changed.documentRevision)
+        XCTAssertNotNil(store.errorMessage)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), before.document.encoded())
+        XCTAssertEqual(store.previewRevision, previewRevision)
+    }
+
 }

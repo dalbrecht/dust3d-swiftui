@@ -6,6 +6,8 @@
 
 - Clear removed animation selections when publishing edits and history transitions, independently of list reads (#145).
 
+- Group captured animation metadata edits into one atomic undo step; preserve redo for restored-to-original batches (#145).
+
 - Add source-bound creation of stored animation records from empty or populated lists, selecting fresh IDs with exact undo/save support and stale-draft rejection (#145).
 
 - Add source-bound creation of stored animation parameters, rejecting existing names without overwrite and preserving exact undo/save behavior (#145).
