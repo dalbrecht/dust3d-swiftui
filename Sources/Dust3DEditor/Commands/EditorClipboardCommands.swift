@@ -6,6 +6,7 @@ struct EditorClipboardCommands: Commands {
     let pasteboard: EditorPasteboard
     @FocusedValue(\.editorStore) private var store
     @FocusedValue(\.editorTextEditing) private var isEditingText
+    @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
 
     private var textView: NSTextView? {
         _ = isEditingText
@@ -17,10 +18,13 @@ struct EditorClipboardCommands: Commands {
             Button("Cut") { route(#selector(NSText.cut(_:))) { store?.copyNodes(cut: true, to: pasteboard) } }
                 .keyboardShortcut("x")
                 .disabled(
-                    textView.map { !$0.isEditable || $0.selectedRange().length == 0 } ?? (store?.canCutNodes != true))
+                    textView.map { !$0.isEditable || $0.selectedRange().length == 0 }
+                        ?? (isAnimationFocused == true || store?.canCutNodes != true))
             Button("Copy") { route(#selector(NSText.copy(_:))) { store?.copyNodes(to: pasteboard) } }
                 .keyboardShortcut("c")
-                .disabled(textView.map { $0.selectedRange().length == 0 } ?? (store?.canCopyNodes != true))
+                .disabled(
+                    textView.map { $0.selectedRange().length == 0 }
+                        ?? (isAnimationFocused == true || store?.canCopyNodes != true))
             if let textView {
                 Button("Paste") { NSApp.sendAction(#selector(NSText.paste(_:)), to: textView, from: nil) }
                     .keyboardShortcut("v")
@@ -31,12 +35,20 @@ struct EditorClipboardCommands: Commands {
             Divider()
             Button("Select All") { route(#selector(NSText.selectAll(_:))) { store?.selectAll() } }
                 .keyboardShortcut("a")
-                .disabled(textView == nil && (store?.snapshot == nil || store?.isWorking != false))
+                .disabled(
+                    textView == nil
+                        && (isAnimationFocused == true || store?.snapshot == nil || store?.isWorking != false))
 
         }
     }
     private func route(_ action: Selector, nodes: () -> Void) {
-        if let textView { NSApp.sendAction(action, to: textView, from: nil) } else { nodes() }
+        if let textView {
+            NSApp.sendAction(action, to: textView, from: nil)
+        } else if EditorCommandScope.allowsGraphShortcuts(
+            animationFocus: isAnimationFocused == true, nativeTextFocus: false)
+        {
+            nodes()
+        }
     }
 }
 

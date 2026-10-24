@@ -5,8 +5,12 @@ import SwiftUI
 @MainActor enum InspectorRenderer {
     enum Failure: Error, Equatable { case invalidSize, bitmapUnavailable, encodingUnavailable, visibleWindow }
 
-    static func png<Content: View>(_ content: Content, width: CGFloat, scheme: ColorScheme) throws -> Data {
-        guard width.isFinite, width > 0, width <= 1000 else { throw Failure.invalidSize }
+    static func png<Content: View>(
+        _ content: Content, width: CGFloat, scheme: ColorScheme, padding: CGFloat = 16
+    ) throws -> Data {
+        guard width.isFinite, width > 0, width <= 1000, padding.isFinite, (0...32).contains(padding),
+            width > 2 * padding
+        else { throw Failure.invalidSize }
         // This artifact-exporting test process must never appear in the Dock or activate a product app.
         NSApplication.shared.setActivationPolicy(.prohibited)
         let window = NSWindow(
@@ -19,7 +23,7 @@ import SwiftUI
         }
         let appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
         window.appearance = appearance
-        let root = content.padding(16).frame(width: width, alignment: .topLeading)
+        let root = content.padding(padding).frame(width: width, alignment: .topLeading)
             .fixedSize(horizontal: false, vertical: true)
             .background(Color(nsColor: .windowBackgroundColor))
             .environment(\.colorScheme, scheme).environment(\.displayScale, 2)

@@ -818,3 +818,13 @@ history publication. Optional errors cannot relabel retained state or block grap
 editing/Save. Native list/inspector controls, keyboard/rendered acceptance, Qt/
 runtime catalogs, evaluation/playback/audio and full M6 acceptance remain open.
 The production pin and every quarantine remain unchanged.
+
+### Native stored-animation inspector (#145)
+
+ADR0107 adds a segmented inspector and native stored-record list with source-bound
+rename/duplicate/delete, inline exact-text drafts and scoped graph/text commands.
+Six focused tests and the full 45-support/998-XCTest gate pass; owned offscreen
+light/dark renders were inspected. Live app keyboard/menu/focus and VoiceOver
+acceptance remain unverified. Creation/type/parameter controls, Qt/runtime catalog
+interoperability, evaluation/playback/audio and full M6 acceptance remain open.
+No production pin or quarantine changes occur.

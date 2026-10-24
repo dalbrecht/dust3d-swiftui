@@ -195,20 +195,29 @@ final class EditorStore {
         performAnimationMutation { try await $0.createAnimation(name: name, type: type) }
     }
 
-    func editAnimation(_ edit: AnimationEdit, target: AnimationEditTarget) {
-        performAnimationMutation { try await $0.editAnimation(edit, target: target) }
+    func editAnimation(
+        _ edit: AnimationEdit, target: AnimationEditTarget, completion: (@MainActor (Bool) -> Void)? = nil
+    ) {
+        performAnimationMutation(completion: completion) { try await $0.editAnimation(edit, target: target) }
     }
 
-    func duplicateAnimation(target: AnimationEditTarget, name: String) {
-        performAnimationMutation { try await $0.duplicateAnimation(target: target, name: name) }
+    func duplicateAnimation(
+        target: AnimationEditTarget, name: String, completion: (@MainActor (Bool) -> Void)? = nil
+    ) {
+        performAnimationMutation(completion: completion) { try await $0.duplicateAnimation(target: target, name: name) }
     }
 
     private func performAnimationMutation(
+        completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorAnimationSnapshot
     ) {
-        guard canManageAnimations else { return }
+        guard canManageAnimations else {
+            completion?(false)
+            return
+        }
         let refreshAfterPublication: @MainActor (Bool) -> Void = { [weak self] succeeded in
             if succeeded { self?.refreshAnimations() }
+            completion?(succeeded)
         }
         perform(changesRendering: false, completion: refreshAfterPublication) { session in
             let result = try await action(session)
