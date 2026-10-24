@@ -1,0 +1,119 @@
+import Dust3DDocument
+import Foundation
+import XCTest
+
+@testable import Dust3DKit
+
+private actor RecordingExportEncoder: DocumentExportEncoding {
+    private(set) var received: Data?
+    private let bytes: Data
+    init(bytes: Data = Data("v 0 0 0\nf 1 1 1\n".utf8)) { self.bytes = bytes }
+    func encode(archive: Data, format: DocumentExportFormat) async throws -> DocumentExportArtifact {
+        received = archive
+        return DocumentExportArtifact(bytes: bytes, warning: "retained diagnostic")
+    }
+}
+
+@MainActor
+final class DocumentExportFileServiceTests: XCTestCase {
+    func testPublishesCapturedDocumentAndPreservesSourceAndDiagnostic() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("source.ds3")
+        try Data("existing source".utf8).write(to: source)
+        let destination = directory.appendingPathComponent("output.OBJ")
+        try Data("old output".utf8).write(to: destination)
+        let document = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+        let encoder = RecordingExportEncoder()
+        let receipt = try await DocumentExportFileService(encoder: encoder).export(
+            document, format: .obj, to: destination, sourceURL: source)
+        let received = await encoder.received
+        XCTAssertEqual(received, document.encoded())
+        XCTAssertEqual(try Data(contentsOf: source), Data("existing source".utf8))
+        XCTAssertEqual(try Data(contentsOf: destination), receipt.bytes)
+        XCTAssertEqual(receipt.warning, "retained diagnostic")
+    }
+
+    func testRejectsDestinationAliasingSourceBeforeEncoding() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("source.ds3")
+        let target = directory.appendingPathComponent("alias.obj")
+        let original = Data("source".utf8)
+        try original.write(to: source)
+        try FileManager.default.linkItem(at: source, to: target)
+        let encoder = RecordingExportEncoder()
+        do {
+            _ = try await DocumentExportFileService(encoder: encoder).export(
+                Dust3DDocument(data: Dust3DDocument.emptyArchive()), format: .obj, to: target, sourceURL: source)
+            XCTFail("Source alias accepted")
+        } catch {
+            XCTAssertEqual(error as? DocumentExportError, .sourceAlias)
+        }
+        let received = await encoder.received
+        XCTAssertNil(received)
+        XCTAssertEqual(try Data(contentsOf: source), original)
+    }
+    func testRejectsWrongExtensionAndSymlinkWithoutCallingEncoder() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let real = directory.appendingPathComponent("real.obj")
+        try Data("keep".utf8).write(to: real)
+        let link = directory.appendingPathComponent("link.obj")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+        let encoder = RecordingExportEncoder()
+        for target in [
+            directory.appendingPathComponent("output.ds3"), link, directory.appendingPathComponent("folder.obj"),
+        ] {
+            if target.lastPathComponent == "folder.obj" {
+                try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+            }
+            do {
+                _ = try await DocumentExportFileService(encoder: encoder).export(
+                    Dust3DDocument(data: Dust3DDocument.emptyArchive()), format: .obj, to: target, sourceURL: nil)
+                XCTFail("Invalid destination accepted")
+            } catch { XCTAssertEqual(error as? DocumentExportError, .invalidDestination) }
+        }
+        let received = await encoder.received
+        XCTAssertNil(received)
+        XCTAssertEqual(try Data(contentsOf: real), Data("keep".utf8))
+    }
+
+    func testEmptyOutputPreservesPreviousFile() async throws {
+        let target = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("fbx")
+        try Data("keep".utf8).write(to: target)
+        defer { try? FileManager.default.removeItem(at: target) }
+        do {
+            _ = try await DocumentExportFileService(encoder: RecordingExportEncoder(bytes: Data())).export(
+                Dust3DDocument(data: Dust3DDocument.emptyArchive()), format: .fbx, to: target, sourceURL: nil)
+            XCTFail("Empty output accepted")
+        } catch { XCTAssertEqual(error as? DocumentExportError, .invalidOutput) }
+        XCTAssertEqual(try Data(contentsOf: target), Data("keep".utf8))
+    }
+
+    func testCreatesNewOutputAndRejectsSameSourcePathAndNondirectoryParent() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let document = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+        let target = directory.appendingPathComponent("new.obj")
+        let service = DocumentExportFileService(encoder: RecordingExportEncoder())
+        let output = try await service.export(document, format: .obj, to: target, sourceURL: nil)
+        XCTAssertEqual(try Data(contentsOf: target), output.bytes)
+        do {
+            _ = try await service.export(document, format: .obj, to: target, sourceURL: target)
+            XCTFail("Same source path accepted")
+        } catch { XCTAssertEqual(error as? DocumentExportError, .sourceAlias) }
+        do {
+            _ = try await service.export(
+                document, format: .obj, to: target.appendingPathComponent("nested.obj"), sourceURL: nil)
+            XCTFail("Nondirectory parent accepted")
+        } catch { XCTAssertEqual(error as? DocumentExportError, .invalidDestination) }
+        XCTAssertEqual(try Data(contentsOf: target), output.bytes)
+    }
+
+}
