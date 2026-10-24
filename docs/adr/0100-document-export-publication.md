@@ -58,3 +58,18 @@ Swift supplies no branch outcomes. The earlier 942-case result above is historic
 No native export command was exposed or exercised; UI acceptance remains pending.
 Protected QA processes/bundles, all quarantines and the core dependency pin are
 unchanged. No new screenshot applies to this service-only stage.
+
+## Resolved-source alias regression
+
+A source opened through a symlink must receive the same inode protection as a
+source opened directly. An owned-filesystem regression initially allowed an
+export target hard-linked to the symlink's referent: the encoder ran and replaced
+the target, violating alias admission (the original source bytes remained intact
+because publication uses atomic replacement). Resolve source symlinks before
+reading its device/inode metadata. Both admission checks use this boundary.
+
+The regression now rejects before encoding and preserves the original, opened
+source and hardlink bytes. All ten service tests pass. The full `make ci` passes 45 build-support
+tests and 951 XCTest cases (120.383 seconds), formatting, coverage gates,
+Qt-free checks and isolated bundle rebuild/signature checks. This is not native export/UI acceptance,
+concurrent filesystem-mutation protection or a production dependency update.
