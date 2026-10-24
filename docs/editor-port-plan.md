@@ -775,3 +775,12 @@ encoding. Owned-file tests cover replaced documents and Edit/Undo returning to
 identical bytes without reviving old output. Native binding, final publication
 coordination with edits/close and end-to-end M7 acceptance remain required. The
 production core pin and all quarantines remain unchanged.
+
+### Serialized export publication (#146)
+
+ADR0102 closes the service admission/write gap when the caller binds publication
+to the owning EditorSession: final revision validation, source checks and atomic
+write run without suspension relative to accepted commands. Tests retain output
+on a stale target and report committed success after late task-only cancellation.
+Native encoder/UI/lifecycle binding, responsiveness and full M7/M8 acceptance
+remain open; the production core pin and quarantines are unchanged.

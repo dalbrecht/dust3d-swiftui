@@ -35,6 +35,19 @@ public actor EditorSession {
         else { throw EditorError.staleExport }
     }
 
+    /// Validate and perform one synchronous final publication without admitting an intervening edit.
+    /// - Parameters:
+    ///   - target: Identity/revision captured with the archive supplied to the encoder.
+    ///   - publication: Trusted synchronous source/destination checks and atomic write, performed once.
+    /// - Throws: Cancellation or stale-target errors before the write, or its original filesystem error.
+    /// - Note: This actor stays off-main. Encoding must finish before entering; the write temporarily
+    ///   serializes accepted document commands. A committed write has no post-write cancellation check.
+    /// - Example: `try await session.publishExport(target, publication: commit)`.
+    public func publishExport(_ target: EditorExportTarget, publication: @Sendable () throws -> Void) throws {
+        try validateExport(target)
+        try publication()
+    }
+
     /// Update this window's transient interaction lock state.
     public func setLock(_ constraint: EditingConstraint, isLocked: Bool) throws -> EditorSnapshot {
         try update { $0.setLock(constraint, isLocked: isLocked) }

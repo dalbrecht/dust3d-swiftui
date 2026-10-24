@@ -4,6 +4,22 @@ import XCTest
 @testable import Dust3DEditorModel
 
 final class EditorExportTargetTests: XCTestCase {
+    func testPublicationPropagatesOriginalWriteCauseWithoutEditingHistory() async throws {
+        enum PublicationCause: Error, Equatable { case unavailable }
+        let session = EditorSession()
+        let snapshot = try await session.open(data: Dust3DDocument.emptyArchive())
+        let target = EditorExportTarget(snapshot: snapshot)
+        do {
+            try await session.publishExport(target, publication: { throw PublicationCause.unavailable })
+            XCTFail("Original publication cause must propagate")
+        } catch { XCTAssertEqual(error as? PublicationCause, .unavailable) }
+        try await session.validateExport(target)
+        let unchanged = try await session.apply([])
+        XCTAssertEqual(unchanged.document.encoded(), snapshot.document.encoded())
+        XCTAssertEqual(unchanged.documentRevision, snapshot.documentRevision)
+        XCTAssertFalse(unchanged.canUndo)
+    }
+
     func testUnloadedAndOtherWindowRejectWithoutChangingCurrentDocument() async throws {
         let first = EditorSession()
         let snapshot = try await first.open(data: Dust3DDocument.emptyArchive())
