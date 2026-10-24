@@ -736,3 +736,16 @@ intersecting hard-join case also restores exact archives through history and
 reopening, retaining unknown metadata and an opaque binary asset. Linked-profile
 mutation/history, unsupported replacements and broad
 Qt/accessibility/OS acceptance remain pending; #120 and M3 remain open.
+
+
+### Node movement cancellation foundation (#245)
+
+Node movement now captures document identity, revision, selection, lock epoch and a
+fixed projection. The editor actor rejects stale commits; transient previews do not
+write document bytes or history. Escape clears node and origin movement and rotates
+the node recognizer generation so late callbacks cannot revive a cancelled gesture.
+Focused model/store tests cover exact undo/redo, cancellation replay, selection,
+replacement, lock changes, other-window identity and invalid displacement.
+Private AppKit event positive controls did not exercise SwiftUI dragging; they are
+preserved as failed harness experiments. Physical held-drag Escape, VoiceOver and
+Qt reopening acceptance remain open. This does not complete M2.

@@ -78,6 +78,11 @@ final class EditorStore {
     private(set) var isMovingOrigin = false
     private(set) var originDragPosition: NodePosition?
     private var originDrag: OriginDrag?
+    private(set) var nodeDragGeneration = UUID()
+    private var nodeDrag: NodeDrag?
+    private var nodeDragTranslation = CanvasPoint(x: 0, y: 0)
+    var hasNodeDrag: Bool { nodeDrag != nil }
+
     var isWireframe = false
     var cameraReset = 0
     private(set) var referenceImage: CGImage?
@@ -244,7 +249,46 @@ final class EditorStore {
         isMovingOrigin = enabled && !isWorking && !stopped && snapshot?.origin != nil
     }
 
+    /// Cancel transient canvas movement and invalidate callbacks captured by the old recognizer.
+    func cancelCanvasDrag() { cancelOriginDrag() }
+
+    func cancelNodeDrag() {
+        nodeDrag = nil
+        nodeDragGeneration = UUID()
+    }
+
+    func updateNodeDrag(anchorID: String, translation: CanvasPoint, projection: CanvasProjection, generation: UUID) {
+        guard generation == nodeDragGeneration, !isWorking, !stopped, !isMovingOrigin, let snapshot else { return }
+        do {
+            let baseline = try nodeDrag ?? NodeDrag(snapshot: snapshot, anchorID: anchorID, projection: projection)
+            guard baseline.anchorID == anchorID, baseline.isCurrent(in: snapshot) else {
+                cancelNodeDrag()
+                return
+            }
+            let position = baseline.position(by: translation)
+            guard [translation.x, translation.y, position.x, position.y, position.z].allSatisfy(\.isFinite),
+                [position.x, position.y, position.z].allSatisfy({ abs($0) <= 1_000_000 })
+            else { throw DocumentError.invalidNode }
+            nodeDrag = baseline
+            nodeDragTranslation = translation
+        } catch {
+            cancelNodeDrag()
+            errorMessage = Self.message(error)
+        }
+    }
+
+    func finishNodeDrag(translation: CanvasPoint, generation: UUID) {
+        guard generation == nodeDragGeneration, let baseline = nodeDrag else { return }
+        perform { try await $0.commitNodeDrag(baseline, translation: translation) }
+    }
+
+    func nodeDragPreviewPosition(_ node: DocumentNode) -> NodePosition {
+        guard let nodeDrag, let snapshot, nodeDrag.isCurrent(in: snapshot) else { return node.value.position }
+        return nodeDrag.previewPosition(for: node, by: nodeDragTranslation)
+    }
+
     func cancelOriginDrag() {
+        cancelNodeDrag()
         isMovingOrigin = false
         originDrag = nil
         originDragPosition = nil
@@ -855,6 +899,7 @@ final class EditorStore {
                 return "The document or locks changed. Reopen the reference image composer."
             case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."
             case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
+            case .staleNodeDrag: return "Node drag cancelled because the document, selection or constraints changed."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
             case .unavailableOrigin:
                 return

@@ -159,7 +159,7 @@ struct EditorRootView: View {
             store.onEditingChanged = { file.setEditing($0) }
             await store.load(data: file.data)
         }
-        .onExitCommand { store.cancelOriginDrag() }
+        .onExitCommand { store.cancelCanvasDrag() }
         .onDisappear { store.stop() }
     }
 

@@ -44,9 +44,9 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.isWorking != false || store?.snapshot?.origin == nil)
                 Button("Center Origin on Model") { store?.centerOriginOnModel() }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
-                Button("Cancel Origin Move") { store?.cancelOriginDrag() }
+                Button("Cancel Canvas Move") { store?.cancelCanvasDrag() }
                     .keyboardShortcut(.escape, modifiers: [])
-                    .disabled(store?.isMovingOrigin != true)
+                    .disabled(store?.isMovingOrigin != true && store?.hasNodeDrag != true)
                 Divider()
                 Button("Select All Nodes") { store?.selectAll() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])

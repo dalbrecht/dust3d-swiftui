@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Cancel node movement previews with Escape and reject stale gesture callbacks after cancellation, document replacement, selection or constraint changes (#245).
+
 - Add native edge bone assignment with Apply, Clear, draft reset and lossless undo/redo; rigged preview remains unavailable (#247).
 
 - Expose stored rig-template and eyelid parameters in the native inspector, preserving undo/redo and lossless save; skeleton generation and pose preview remain unavailable (#254).

@@ -131,6 +131,20 @@ public actor EditorSession {
     public func move(id: String, to position: NodePosition) throws -> EditorSnapshot {
         try update { try $0.move(id: id, to: position) }
     }
+    /// Commit a captured node displacement as one undoable selection movement.
+    /// - Parameters:
+    ///   - drag: Immutable anchor, selection, constraints and projection captured at gesture start.
+    ///   - translation: Total screen-point displacement from that start.
+    /// - Returns: The committed snapshot, or an unchanged snapshot for a no-op.
+    /// - Throws: `EditorError.staleNodeDrag`, load/cancellation errors or invalid geometry errors atomically.
+    public func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) throws -> EditorSnapshot {
+        try update { state in
+            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
+            guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidNode }
+            try state.move(id: drag.anchorID, to: drag.position(by: translation))
+        }
+    }
+
     public func deleteSelection() throws -> EditorSnapshot {
         try update { state in
             if let edge = state.snapshot.selectedEdge {
