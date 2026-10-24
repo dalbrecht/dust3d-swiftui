@@ -784,3 +784,11 @@ write run without suspension relative to accepted commands. Tests retain output
 on a stale target and report committed success after late task-only cancellation.
 Native encoder/UI/lifecycle binding, responsiveness and full M7/M8 acceptance
 remain open; the production core pin and quarantines are unchanged.
+
+### Captured editor export workflow (#146)
+
+ADR0103 binds an accepted store snapshot to the injected export service and
+serialized editor publication, with source-identity/revision receipts and
+reload/stop/caller cancellation. Default builds still lack an export encoder;
+native binding, scene/file URL wiring, menu/panel/diagnostic and end-to-end M7
+acceptance remain open. No production pin or quarantine is changed.
