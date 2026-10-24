@@ -124,7 +124,8 @@ actor EditorRecoveryCopyFileService: EditorRecoveryCopyWriting {
     }
 
     private struct Receipt: Encodable {
-        let version = 1
+        let version = 2
+        let processIdentifier = ProcessInfo.processInfo.processIdentifier
         let requestID: UUID
         let date = Date()
         let requestedCount: Int

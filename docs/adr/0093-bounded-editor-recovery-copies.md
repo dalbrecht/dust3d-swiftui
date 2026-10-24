@@ -4,8 +4,10 @@ Status: Implemented locally; rebased full gate passed on 97afea1b; native comman
 
 The editor needs an app-owned way to retain accepted document state when external
 window-control tooling cannot operate its UI. A separate invocation of the same
-bundle with `--write-recovery-copies` posts only a correlation UUID to that app
-identity. It does not accept destination paths or document bytes. The receiver
+bundle with `--write-recovery-copies PID` posts a correlation UUID and canonical
+positive process identifier to that app identity. The receiver requires its own
+PID, so another process sharing the same reusable bundle ID does not capture or
+write copies. Untargeted legacy requests are rejected. It does not accept destination paths or document bytes. The receiver
 admits one pending task, captures accepted immutable archives on the main actor,
 then writes on a filesystem actor. Closed windows unregister weak capture handlers.
 Loading, editing and stopped windows report typed failures; one failed window does
@@ -27,7 +29,7 @@ deleted. Replacement admission subtracts old sizes and writes shrinking replacem
 first. Atomic staging may require one additional snapshot's disk space; these are
 admission limits, not an OS quota or power-loss durability guarantee.
 
-`latest-recovery.json` records the exact request UUID, completed/partial/failed/
+`latest-recovery.json` version 2 records the exact request UUID and receiving PID, completed/partial/failed/
 noDocuments status, copied identities/revisions and bounded failure diagnostics.
 Original error objects remain available in the operation report; receipt failures
 are secondary and cannot discard successful copies. The command acknowledges only
@@ -84,3 +86,24 @@ exhaustion probe was used to raise coverage. The protected older QA process
 remains untouched and native command acceptance is not claimed. Original SVG
 bytes/mtime were restored after the terminal gate. The final follow-up changes
 verification prose only.
+
+
+## Exact process routing follow-up
+
+The untargeted CLI and UUID-only notification each failed a new regression test:
+they were accepted without identifying which process sharing the bundle ID should
+recover. The command now requires one canonical positive Int32 PID (no zero,
+negative, leading zeros, sign, whitespace, overflow or extra arguments). The
+receiver validates exactly two bounded metadata fields and matches its actual
+process ID before claiming the request gate or capturing windows. The receipt
+records the receiving process ID and version 2. PID routing is not authentication
+against another process belonging to the same user.
+
+Twenty-two focused cases pass, including same-bundle target/other-process
+admission, rejected untargeted messages, malformed metadata, CLI boundaries and
+PID-bearing receipts. No distributed notification was posted during these tests.
+The receipt remains one bounded latest record per bundle: a later request may
+replace it, so collect it and verify BOTH UUID and PID before another request.
+Dispatch acknowledgement still does not prove completion. This does not retrofit
+the protected older QA process or establish native command acceptance. A new full
+local gate is required before this follow-up is published.

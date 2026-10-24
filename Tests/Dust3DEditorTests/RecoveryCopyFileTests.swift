@@ -79,6 +79,8 @@ final class RecoveryCopyFileTests: XCTestCase {
         _ = try await service.write(captures: [], requestID: request)
         let url = root.appendingPathComponent("latest-recovery.json")
         let empty = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        XCTAssertEqual(empty["version"] as? Int, 2)
+        XCTAssertEqual(empty["processIdentifier"] as? Int32, ProcessInfo.processInfo.processIdentifier)
         XCTAssertEqual(empty["status"] as? String, "noDocuments")
         XCTAssertEqual(empty["requestID"] as? String, request.uuidString)
         let original = LongRecoveryError()
