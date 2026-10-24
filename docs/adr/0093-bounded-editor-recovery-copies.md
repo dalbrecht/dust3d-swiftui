@@ -111,3 +111,47 @@ provider checks. Registry/channel measures 74/74 lines and 34/34 regions; filesy
 adapter 134/142 lines (94.37%) and 80/95 regions. The native enumeration callback
 coverage gap remains below the 95% adoption target; no artificial failure probe
 was added. The final documentation follow-up leaves source/tests unchanged.
+
+## Replacement-load provenance regression
+
+Delivery audit found that EditorStore retains its previous accepted snapshot when
+loading a replacement fails. Recovery could therefore label that older snapshot
+with the replacement FileDocument identity. A test first reproduced a capture
+that incorrectly succeeded. Track the latest load's accepted document identity or
+original typed failure separately from retained preview state. Capture requires
+that accepted identity; a failed replacement surfaces its original error, and a
+later successful load re-enables recovery. No snapshot/history bytes are cleared
+or changed by this admission fix. Both focused snapshot tests pass; the combined
+PID-targeted copy/composition stage still requires its final full gate.
+
+The load admission also records the FileDocument identity supplied by the scene.
+A newly registered replacement window cannot capture an older accepted load
+before the asynchronous replacement begins. The identity-binding contract first
+failed to compile for the missing parameter and now passes alongside failure/
+recovery cases. Non-file test/model callers may omit the external file identity;
+the application scene always supplies it.
+
+A further ordinary data-boundary test fills a receipt with escaped diagnostic
+text. Over-limit JSON preserves the previous receipt and original error objects,
+and returns the typed receipt-budget cause. It does not force an OS failure or
+change primary copies. All seven filesystem contracts and three snapshot contracts
+pass; the final complete gate follows these additional acceptance checks.
+
+## Combined targeted delivery gate
+
+Prepare the final copy/composition protocol together, retaining all PID-targeting,
+versioned cancellation and pure sender/receiver fixes instead of publishing the
+initial broadcast design. Final make ci passed36 build-support cases and940
+XCTest cases (120.717s), formatting, coverage thresholds, Qt-link checks and
+isolated signed bundle/provider rebuild. No production core revision or resolved
+file changed. No protected QA app was launched, contacted, controlled or rebuilt.
+
+Fresh scoped coverage: plan57/57 lines, registry39/39, request decoder/gate35/35,
+and dispatch47/47 (100% lines/regions each). Filesystem adapter134/142 lines
+(94.37%) and81/95 regions; native enumeration/error callbacks, defensive invariants
+and fallback paths remain unforced. This remains below the95% adoption target;
+no OS/fault probe or fake branch is added to fill that gap. Swift branch outcomes
+are not instrumented. Actual distributed-notification delivery, entry-point side
+effects, callback/log visibility and native recovery acceptance remain manual
+boundary gaps. Keep #248/#56 and broader M1/M2/M8 acceptance open. No visual UI
+change or full feature parity is claimed.

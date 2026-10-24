@@ -166,7 +166,7 @@ struct EditorRootView: View {
             }
             store.onDocumentChanged = { file.data = $0 }
             store.onEditingChanged = { file.setEditing($0) }
-            await store.load(data: file.data)
+            await store.load(data: file.data, fileIdentity: identifier)
         }
         .onExitCommand { store.cancelOriginDrag() }
         .onDisappear {

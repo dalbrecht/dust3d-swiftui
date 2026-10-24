@@ -56,6 +56,24 @@ final class RecoveryCopyFileTests: XCTestCase {
         } catch { XCTAssertEqual(error as? RecoveryCopyPlanError, .invalidInventory) }
         XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("nested").path))
     }
+    func testOversizedEscapedDiagnosticReceiptPreservesPreviousReceiptAndOriginalCauses() async throws {
+        let root = directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let service = EditorRecoveryCopyFileService(directory: root)
+        _ = try await service.write(captures: [], requestID: UUID())
+        let receipt = root.appendingPathComponent("latest-recovery.json")
+        let previous = try Data(contentsOf: receipt)
+        let captures = (0..<RecoveryCopyPlan.maximumDocuments).map { _ in
+            EditorRecoveryCapture.failure(.init(documentID: UUID(), cause: EscapedRecoveryError()))
+        }
+        let report = try await service.write(captures: captures, requestID: UUID())
+        XCTAssertEqual(report.failures.count, RecoveryCopyPlan.maximumDocuments)
+        XCTAssertTrue(report.failures.allSatisfy { $0.cause is EscapedRecoveryError })
+        XCTAssertTrue(report.copied.isEmpty)
+        XCTAssertEqual(report.receiptError as? RecoveryCopyPlanError, .storageLimitExceeded)
+        XCTAssertEqual(try Data(contentsOf: receipt), previous)
+    }
+
     private func directory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(
             "dust3d-recovery-test-\(UUID().uuidString)", isDirectory: true)
@@ -205,4 +223,8 @@ private enum CopyFixtureError: Error, Equatable { case copy, capture, receipt }
 
 private struct LongRecoveryError: Error, CustomStringConvertible {
     var description: String { String(repeating: "x", count: 2048) }
+}
+
+private struct EscapedRecoveryError: Error, CustomStringConvertible {
+    var description: String { String(repeating: "\0", count: 2000) }
 }

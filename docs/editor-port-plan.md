@@ -745,3 +745,10 @@ intersecting hard-join case also restores exact archives through history and
 reopening, retaining unknown metadata and an opaque binary asset. Linked-profile
 mutation/history, unsupported replacements and broad
 Qt/accessibility/OS acceptance remain pending; #120 and M3 remain open.
+
+
+The combined targeted recovery stage retains bounded private copies, exact PID/
+UUID requests and versioned composition cancellation (ADRs0093/0098). Fresh full
+gate:36 support+940 XCTest, including failed/replaced-load provenance and oversized
+receipt preservation. Native command delivery remains unverified; protected QA
+apps and production pin are unchanged. M1/M2/M8 acceptance remains open.
