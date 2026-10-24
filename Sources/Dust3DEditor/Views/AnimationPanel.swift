@@ -7,6 +7,7 @@ enum AnimationNameAction { case rename, duplicate }
 /// Stored document animation management. No controls in this view invoke native evaluation.
 struct AnimationPanel: View {
     let store: EditorStore
+    @State private var creationTarget: AnimationCreationTarget?
     @State private var parameterTarget: AnimationEditTarget?
     @State private var valueDraft: AnimationValueDraft?
     @State private var nameTarget: AnimationEditTarget?
@@ -26,6 +27,10 @@ struct AnimationPanel: View {
         let sourceID = nameTarget.map { Array($0.animationID.utf8) }
         _sourceTitle = State(
             initialValue: store.animationSnapshot?.list.rows.first { $0.id == sourceID }?.title ?? "animation")
+    }
+
+    private var canBeginDraft: Bool {
+        nameTarget == nil && valueDraft == nil && parameterTarget == nil && creationTarget == nil
     }
 
     var body: some View {
@@ -48,6 +53,23 @@ struct AnimationPanel: View {
                     .help("Refresh animation details")
                     .disabled(store.isWorking || store.isLoadingAnimations || store.snapshot == nil)
                 }
+                if canBeginDraft, let value = store.animationSnapshot,
+                    value.list.issue == nil, store.animationQueryIssue == nil
+                {
+                    Button {
+                        guard canBeginDraft, store.canManageAnimations, let current = store.animationSnapshot else {
+                            return
+                        }
+                        do { creationTarget = try AnimationCreationTarget(snapshot: current) } catch {
+                            store.errorMessage = error.localizedDescription
+                        }
+                    } label: {
+                        Label("New Animation", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 40)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Create stored animation")
+                    .disabled(!store.canManageAnimations)
+                }
                 if let issue = store.animationQueryIssue ?? store.animationSnapshot?.list.issue {
                     Label("Animation details unavailable", systemImage: "exclamationmark.triangle")
                         .font(.subheadline)
@@ -61,10 +83,10 @@ struct AnimationPanel: View {
                         .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
                     } else {
                         animationList(value)
-                        if nameTarget == nil && valueDraft == nil && parameterTarget == nil { actions(value) }
+                        if canBeginDraft { actions(value) }
                         if let row = value.list.selectedRow {
-                            if nameTarget == nil && valueDraft == nil && parameterTarget == nil { details(row.source) }
-                        } else if nameTarget == nil && valueDraft == nil && parameterTarget == nil {
+                            if canBeginDraft { details(row.source) }
+                        } else if canBeginDraft {
                             Text("Select an animation to inspect its details.").font(.caption).foregroundStyle(
                                 .secondary)
                         }
@@ -85,6 +107,10 @@ struct AnimationPanel: View {
                 if let parameterTarget {
                     AnimationParameterEditor(
                         store: store, target: parameterTarget, onCancel: { self.parameterTarget = nil })
+                }
+                if let creationTarget {
+                    AnimationCreationEditor(
+                        store: store, target: creationTarget, onCancel: { self.creationTarget = nil })
                 }
                 Divider()
                 Text("Changes are included when you save. Playback is not available yet.")
@@ -122,7 +148,7 @@ struct AnimationPanel: View {
         .listStyle(.inset)
         .frame(height: 180)
         .accessibilityLabel("Stored animations")
-        .disabled(store.isWorking || nameTarget != nil || valueDraft != nil || parameterTarget != nil)
+        .disabled(store.isWorking || !canBeginDraft)
         .onDeleteCommand { deleteSelection() }
     }
 
@@ -181,7 +207,7 @@ struct AnimationPanel: View {
                 }
             }
             Button {
-                guard store.canManageAnimations, let snapshot = store.animationSnapshot else { return }
+                guard canBeginDraft, store.canManageAnimations, let snapshot = store.animationSnapshot else { return }
                 do {
                     parameterTarget = try AnimationEditTarget(snapshot: snapshot, animationID: record.id)
                 } catch { store.errorMessage = error.localizedDescription }
@@ -196,7 +222,7 @@ struct AnimationPanel: View {
 
     private func valueEditButton(_ field: AnimationStoredField, value: String, record: DocumentAnimation) -> some View {
         Button {
-            guard store.canManageAnimations, let snapshot = store.animationSnapshot else { return }
+            guard canBeginDraft, store.canManageAnimations, let snapshot = store.animationSnapshot else { return }
             do {
                 valueDraft = AnimationValueDraft(
                     target: try AnimationEditTarget(snapshot: snapshot, animationID: record.id),
@@ -236,7 +262,7 @@ struct AnimationPanel: View {
         }
     }
     private func beginNameAction(_ action: AnimationNameAction, value: EditorAnimationSnapshot) {
-        guard store.canManageAnimations, let row = value.list.selectedRow else { return }
+        guard canBeginDraft, store.canManageAnimations, let row = value.list.selectedRow else { return }
         do {
             nameTarget = try AnimationEditTarget(snapshot: value, animationID: row.source.id)
             sourceTitle = row.title
@@ -258,7 +284,7 @@ struct AnimationPanel: View {
     }
     private func cancelName() { if !isSubmitting { nameTarget = nil } }
     private func deleteSelection() {
-        guard nameTarget == nil, valueDraft == nil, parameterTarget == nil, store.canManageAnimations,
+        guard canBeginDraft, store.canManageAnimations,
             let value = store.animationSnapshot,
             let row = value.list.selectedRow
         else { return }

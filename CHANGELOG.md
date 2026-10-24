@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add source-bound creation of stored animation records from empty or populated lists, selecting fresh IDs with exact undo/save support and stale-draft rejection (#145).
+
 - Add source-bound creation of stored animation parameters, rejecting existing names without overwrite and preserving exact undo/save behavior (#145).
 
 - Add source-bound stored animation type and existing parameter editing, with explicit empty-value/removal behavior and read-only qualified attributes (#145).
