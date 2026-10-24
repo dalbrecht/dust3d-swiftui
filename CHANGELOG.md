@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add current-document export admission around background encoding, rejecting replaced documents and stale revisions without publishing output; app-level publication coordination remains pending (#146).
+
 - Reject export targets hard-linked to a document opened through a symlink before encoding or publication (#146).
 
 - Add an injectable document-snapshot export file service with source protection, atomic publication and retained diagnostics; native encoder/UI adoption remains pending (#146).

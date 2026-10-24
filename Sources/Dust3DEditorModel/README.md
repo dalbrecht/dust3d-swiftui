@@ -183,3 +183,9 @@ one undoable batch. Snapshot intent follows open, accepted edits, undo, redo and
 replacement; failed batches leave both intent and history untouched. Node selection,
 locks and independent document sessions retain their normal semantics. UI and
 native rig evaluation remain separate #144 work; this storage stage tracks #246.
+
+`EditorExportTarget(snapshot:)` captures document identity and semantic revision.
+`EditorSession.validateExport(_:)` rejects obsolete/foreign targets without
+changing history; exact Undo does not revive an old target. This is admission,
+not a publication lease. The app must coordinate final export publication with
+editing and replacement (ADR 0101); no native export command is enabled here.

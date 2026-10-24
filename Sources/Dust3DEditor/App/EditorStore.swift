@@ -882,6 +882,8 @@ final class EditorStore {
             case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."
             case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
+            case .staleExport:
+                return "Export cancelled because the document changed. Export the current document again."
             case .unavailableOrigin:
                 return
                     "Set a complete supported document origin first. Unlock position axes to initialize an unavailable origin."

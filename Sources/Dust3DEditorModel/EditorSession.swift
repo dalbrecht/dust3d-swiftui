@@ -21,6 +21,20 @@ public actor EditorSession {
         return next.snapshot
     }
 
+    /// Admit export work only for the captured document identity and semantic revision.
+    /// - Parameter target: Target captured before encoding; recheck before publication.
+    /// - Throws: Cancellation, `notLoaded`, or `staleExport` without changing history/state.
+    /// - Note: A successful check is not a lease; the app must serialize final publication with edits.
+    /// - Example: `try await session.validateExport(target)`.
+    public func validateExport(_ target: EditorExportTarget) throws {
+        try Task.checkCancellation()
+        guard let state else { throw EditorError.notLoaded }
+        let snapshot = state.snapshot
+        guard target.documentIdentity == snapshot.documentIdentity,
+            target.documentRevision == snapshot.documentRevision
+        else { throw EditorError.staleExport }
+    }
+
     /// Update this window's transient interaction lock state.
     public func setLock(_ constraint: EditingConstraint, isLocked: Bool) throws -> EditorSnapshot {
         try update { $0.setLock(constraint, isLocked: isLocked) }
