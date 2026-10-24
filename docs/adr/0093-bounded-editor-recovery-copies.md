@@ -155,3 +155,25 @@ are not instrumented. Actual distributed-notification delivery, entry-point side
 effects, callback/log visibility and native recovery acceptance remain manual
 boundary gaps. Keep #248/#56 and broader M1/M2/M8 acceptance open. No visual UI
 change or full feature parity is claimed.
+
+## Automated review: budget after a failed shrink
+
+Review found that final-plan admission assumed every earlier shrinking replacement
+succeeded. A failed shrink could therefore fund later growth and exceed retained
+storage. A small owned-fixture regression reproduced four assertion failures,
+without large allocations or OS failure probes. Re-admit each request against a
+fresh bounded inventory immediately before its write, so actual successful or
+partially committed previous writes determine available space. Failed growth
+retains its old copy and original typed budget cause; a later retry with a real
+successful shrink can proceed. File count and receipt validation also remain
+inside each bounded inventory pass. This is directory-state admission, not an OS
+quota or protection against arbitrary concurrent external mutation. The final
+review-fix gate follows the regression and successful-retry checks.
+
+The review-fix full gate passed36 support checks and941 XCTest cases (120.726s),
+formatting, coverage thresholds, Qt-link checks and isolated bundle/provider
+rebuild. The regression preserves both old copies after a failed shrink and then
+verifies that a successful retry can shrink first and grow within the actual
+budget. The updated filesystem adapter measures137/145 lines (94.48%) and83/97
+regions; the same eight unforced native/fallback lines remain explicit gaps. No
+large allocation, kernel failure or protected-app recovery command was used.

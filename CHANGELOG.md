@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Recheck actual recovery storage before each write so failed shrinking replacements cannot fund growth beyond the retained-byte budget (#248).
+
 - Reject recovery capture after a failed replacement load, preserving its original error and the previous accepted document (#248).
 
 - Require an exact PID and versioned notification channel for composition cancellation, ignoring older broadcast requests and bounding pending cancellation work (#56, #248).

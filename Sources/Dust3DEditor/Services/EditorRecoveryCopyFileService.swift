@@ -55,6 +55,9 @@ actor EditorRecoveryCopyFileService: EditorRecoveryCopyWriting {
                 guard let snapshot = byIdentifier[request.documentID] else {
                     throw EditorRecoveryCopyError.identityMismatch
                 }
+                // A failed or partially committed replacement cannot fund later growth.
+                // Re-admit actual retained files rather than assuming earlier writes succeeded.
+                _ = try RecoveryCopyPlan(requests: [request], inventory: inventory(), maximumBytes: maximumBytes)
                 let destination = directory.appendingPathComponent(request.filename)
                 try writeData(snapshot.document.encoded(), destination)
                 try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: destination.path)

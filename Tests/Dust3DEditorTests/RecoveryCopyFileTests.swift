@@ -74,6 +74,60 @@ final class RecoveryCopyFileTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: receipt), previous)
     }
 
+    func testFailedShrinkCannotFundALaterGrowthWrite() async throws {
+        let root = directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        func paddedDocument(_ count: Int) throws -> Dust3DDocument {
+            try Dust3DDocument(
+                snapshotXML: Data(
+                    "<canvas future='\(String(repeating: "x", count: count))'><nodes/><edges/><parts/><components/></canvas>"
+                        .utf8))
+        }
+        let first = UUID()
+        let second = UUID()
+        let firstName = first.uuidString.lowercased() + ".ds3"
+        let secondName = second.uuidString.lowercased() + ".ds3"
+        let oldFirst = try paddedDocument(2000).encoded()
+        let oldSecond = try paddedDocument(10).encoded()
+        let smaller = try paddedDocument(10)
+        let larger = try paddedDocument(1000)
+        let maximum = oldFirst.count + oldSecond.count
+        XCTAssertLessThanOrEqual(smaller.encoded().count + larger.encoded().count, maximum)
+        XCTAssertGreaterThan(oldFirst.count + larger.encoded().count, maximum)
+        try oldFirst.write(to: root.appendingPathComponent(firstName))
+        try oldSecond.write(to: root.appendingPathComponent(secondName))
+        let service = EditorRecoveryCopyFileService(
+            directory: root, maximumBytes: maximum,
+            writeData: { bytes, destination in
+                if destination.lastPathComponent == firstName { throw CopyFixtureError.copy }
+                try bytes.write(to: destination, options: .atomic)
+            })
+        let report = try await service.write(
+            captures: [
+                .snapshot(.init(documentID: first, revision: 1, document: smaller)),
+                .snapshot(.init(documentID: second, revision: 1, document: larger)),
+            ], requestID: UUID())
+        XCTAssertTrue(report.copied.isEmpty)
+        XCTAssertEqual(report.failures.count, 2)
+        XCTAssertEqual(report.failures.first?.cause as? CopyFixtureError, .copy)
+        XCTAssertEqual(report.failures.last?.cause as? RecoveryCopyPlanError, .storageLimitExceeded)
+        XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent(firstName)), oldFirst)
+        XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent(secondName)), oldSecond)
+        let retried = try await EditorRecoveryCopyFileService(directory: root, maximumBytes: maximum).write(
+            captures: [
+                .snapshot(.init(documentID: first, revision: 1, document: smaller)),
+                .snapshot(.init(documentID: second, revision: 1, document: larger)),
+            ], requestID: UUID())
+        XCTAssertTrue(retried.failures.isEmpty)
+        XCTAssertEqual(retried.copied.count, 2)
+        let retainedFirst = try Data(contentsOf: root.appendingPathComponent(firstName))
+        let retainedSecond = try Data(contentsOf: root.appendingPathComponent(secondName))
+        XCTAssertEqual(retainedFirst, smaller.encoded())
+        XCTAssertEqual(retainedSecond, larger.encoded())
+        XCTAssertLessThanOrEqual(retainedFirst.count + retainedSecond.count, maximum)
+    }
+
     private func directory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(
             "dust3d-recovery-test-\(UUID().uuidString)", isDirectory: true)
