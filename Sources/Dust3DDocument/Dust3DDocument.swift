@@ -206,6 +206,20 @@ public struct DocumentEdge: Identifiable, Equatable, Sendable {
     public let toID: String
     /// Exact retained bone lookup intent, empty when unassigned; not proof of a generated bone or weight.
     public let boneName: String
+
+    /// Compare the exact UTF-8 lookup spelling used by the inherited rig generator.
+    /// - Parameter name: Candidate stored bone identity, including case and spacing.
+    /// - Returns: Whether its UTF-8 bytes equal the retained name.
+    /// - Example: `edge.hasExactBoneName("Root")`.
+    public func hasExactBoneName(_ name: String) -> Bool {
+        BoneNameIdentity(boneName) == BoneNameIdentity(name)
+    }
+
+    /// Compare edge snapshots while retaining byte-distinct bone lookup identities.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id && lhs.fromID == rhs.fromID && lhs.toID == rhs.toID
+            && lhs.hasExactBoneName(rhs.boneName)
+    }
 }
 
 public struct DocumentContents: Sendable {

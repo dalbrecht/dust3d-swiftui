@@ -240,3 +240,9 @@ The command preserves unrelated edge/rig XML and assets, uses exact snapshot
 undo/redo, and does not invoke generation or prove the named bone exists. Editor
 snapshots carry the same intent through their existing edge array. See #247 and
 ADR 0092; actual rig evaluation and native binding controls remain M5 follow-up.
+
+Bone lookup identities compare exact UTF-8 spellings. `BoneNameIdentity` provides
+that equality for stored names and editing drafts, and
+`edge.hasExactBoneName(candidate)` checks a snapshot without Unicode canonical
+normalization. `DocumentEdge` equality retains byte-distinct names. Applied edits
+still use the document command's validation and exact undo/redo behavior.

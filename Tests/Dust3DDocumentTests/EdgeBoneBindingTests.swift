@@ -57,6 +57,39 @@ final class EdgeBoneBindingTests: XCTestCase {
         }
     }
 
+    func testCanonicallyEquivalentNamesRemainDistinctLookupIdentitiesAndHistory() throws {
+        let composed = "Caf\u{e9}"
+        let decomposed = "Cafe\u{301}"
+        XCTAssertEqual(composed, decomposed)
+        XCTAssertFalse(composed.utf8.elementsEqual(decomposed.utf8))
+        let composedIdentity = BoneNameIdentity(composed)
+        let decomposedIdentity = BoneNameIdentity(decomposed)
+        XCTAssertNotEqual(composedIdentity, decomposedIdentity)
+        XCTAssertEqual(composedIdentity, BoneNameIdentity(composed))
+        XCTAssertTrue(decomposedIdentity.rawValue.utf8.elementsEqual(decomposed.utf8))
+        let source = try document(edgeAttributes: "boneName='\(composed)'")
+        let sourceEdge = try XCTUnwrap(source.editorContents().edges.first)
+        XCTAssertTrue(sourceEdge.hasExactBoneName(composed))
+        XCTAssertFalse(sourceEdge.hasExactBoneName(decomposed))
+        var history = DocumentHistory(document: source)
+        try history.apply(.setEdgeBoneName(id: "e", name: decomposed))
+        let changed = history.document
+        let changedEdge = try XCTUnwrap(changed.editorContents().edges.first)
+        XCTAssertTrue(changedEdge.boneName.utf8.elementsEqual(decomposed.utf8))
+        XCTAssertTrue(changedEdge.hasExactBoneName(decomposed))
+        XCTAssertFalse(changedEdge.hasExactBoneName(composed))
+        XCTAssertNotEqual(changed.encoded(), source.encoded())
+        XCTAssertNotEqual(changedEdge, sourceEdge)
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), source.encoded())
+        try history.apply(.setEdgeBoneName(id: "e", name: composed))
+        XCTAssertTrue(history.canRedo)
+        XCTAssertTrue(history.redo())
+        XCTAssertEqual(history.document.encoded(), changed.encoded())
+        let reopened = try Dust3DDocument(data: changed.encoded())
+        XCTAssertTrue(try XCTUnwrap(reopened.editorContents().edges.first).boneName.utf8.elementsEqual(decomposed.utf8))
+    }
+
     func testInvalidNamesMissingEdgesAndReadonlyEndpointsRejectWithoutHistory() throws {
         let source = try document()
         for name in [

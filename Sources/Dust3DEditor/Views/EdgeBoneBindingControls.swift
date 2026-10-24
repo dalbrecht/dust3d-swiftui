@@ -4,18 +4,14 @@ import SwiftUI
 struct EdgeBoneBindingControls: View {
     let store: EditorStore
     let edge: DocumentEdge
-    @State private var draft = ""
+    @State private var draft = BoneNameIdentity("")
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Bone assignment").font(.headline)
-            TextField("Unassigned", text: $draft)
+            ExactBoneNameField(name: $draft, onSubmit: apply, onCancel: reset)
                 .frame(minHeight: 40)
-                .accessibilityLabel("Bone name")
-                .accessibilityIdentifier("edge-bone-name")
                 .focusedValue(\.editorTextEditing, true)
-                .onSubmit { apply() }
-                .onExitCommand { reset() }
             HStack {
                 Button(action: reset) { Text("Reset Draft").frame(minHeight: 32) }
                     .accessibilityLabel("Reset bone name draft")
@@ -29,7 +25,7 @@ struct EdgeBoneBindingControls: View {
                 .disabled(edge.boneName.isEmpty)
                 Button(action: apply) { Text("Apply").frame(minHeight: 32) }
                     .accessibilityLabel("Apply bone assignment")
-                    .disabled(draft == edge.boneName)
+                    .disabled(edge.hasExactBoneName(draft.rawValue))
             }
             Text("Use the exact bone name. Each applied change is one undo step.")
                 .font(.caption).foregroundStyle(.primary)
@@ -37,14 +33,13 @@ struct EdgeBoneBindingControls: View {
                 .font(.caption).foregroundStyle(.primary)
         }
         .disabled(store.isWorking || store.snapshot?.canEditSelectedEdge != true)
-        .onChange(of: edge.id, initial: true) { _, _ in reset() }
-        .onChange(of: edge.boneName) { _, _ in reset() }
+        .onChange(of: edge, initial: true) { _, _ in reset() }
         .onChange(of: store.snapshot?.documentIdentity) { _, _ in reset() }
     }
 
-    private func reset() { draft = edge.boneName }
+    private func reset() { draft = BoneNameIdentity(edge.boneName) }
     private func apply() {
-        guard draft != edge.boneName else { return }
-        store.setEdgeBoneName(edge.id, name: draft)
+        guard !edge.hasExactBoneName(draft.rawValue) else { return }
+        store.setEdgeBoneName(edge.id, name: draft.rawValue)
     }
 }

@@ -15,7 +15,7 @@ enum EdgeBoneBinding {
                 .first(where: { $0.attribute(forName: "id")?.stringValue == id })
         else { throw DocumentError.invalidNode }
         // Bone names are exact template lookup identities; trimming would silently retarget a binding.
-        guard current.boneName != name else { return false }
+        guard !current.hasExactBoneName(name) else { return false }
         edge.removeAttribute(forName: "boneName")
         if !name.isEmpty {
             let attribute = XMLNode(kind: .attribute)

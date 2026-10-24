@@ -82,6 +82,92 @@ final class EdgeBoneBindingStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.document.encoded(), bound)
     }
 
+    @MainActor func testNativeFieldSubmitsAndRefreshesByteDistinctUnicodeLookupNames() async throws {
+        _ = NSApplication.shared
+        let composed = "Caf\u{e9}"
+        let decomposed = "Cafe\u{301}"
+        let source = try document().applying(.setEdgeBoneName(id: edgeID, name: composed))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectEdge(edgeID)
+        try await settle(store)
+        let edge = try XCTUnwrap(store.snapshot?.selectedEdge)
+        let host = NSHostingView(rootView: EdgeBoneBindingControls(store: store, edge: edge))
+        let window = NSWindow(
+            contentRect: NSRect(x: -10000, y: -10000, width: 380, height: 320),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        window.orderBack(nil)
+        defer { window.close() }
+        for _ in 0..<100 where editableField(in: host) == nil {
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let field = try XCTUnwrap(editableField(in: host))
+        for _ in 0..<100 where !field.stringValue.utf8.elementsEqual(composed.utf8) {
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(field.stringValue.utf8.elementsEqual(composed.utf8))
+        window.makeKey()
+        field.selectText(nil)
+        let editor = try XCTUnwrap(window.firstResponder as? NSTextView)
+        let selection = NSRange(location: 1, length: 2)
+        editor.setSelectedRange(selection)
+        host.rootView = EdgeBoneBindingControls(store: store, edge: edge)
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        XCTAssertEqual(editor.selectedRange(), selection, "Unrelated publications must retain native selection")
+        editor.insertText("DraftOnly", replacementRange: NSRange(location: 0, length: editor.string.utf16.count))
+        let cancel = try XCTUnwrap(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber, context: nil, characters: "\u{1b}",
+                charactersIgnoringModifiers: "\u{1b}",
+                isARepeat: false, keyCode: 53))
+        window.sendEvent(cancel)
+        for _ in 0..<100 where !editor.string.utf8.elementsEqual(composed.utf8) {
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(editor.string.utf8.elementsEqual(composed.utf8))
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        editor.insertText(decomposed, replacementRange: NSRange(location: 0, length: editor.string.utf16.count))
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        XCTAssertTrue(editor.string.utf8.elementsEqual(decomposed.utf8))
+        let submit = try XCTUnwrap(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber, context: nil, characters: "\r", charactersIgnoringModifiers: "\r",
+                isARepeat: false, keyCode: 36))
+        window.sendEvent(submit)
+        try await settle(store)
+        XCTAssertTrue(try XCTUnwrap(store.snapshot?.selectedEdge).hasExactBoneName(decomposed))
+        host.rootView = EdgeBoneBindingControls(store: store, edge: try XCTUnwrap(store.snapshot?.selectedEdge))
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        XCTAssertTrue(field.stringValue.utf8.elementsEqual(decomposed.utf8))
+        store.setEdgeBoneName(edgeID, name: composed)
+        try await settle(store)
+        host.rootView = EdgeBoneBindingControls(store: store, edge: try XCTUnwrap(store.snapshot?.selectedEdge))
+        for _ in 0..<100 where !field.stringValue.utf8.elementsEqual(composed.utf8) {
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(
+            field.stringValue.utf8.elementsEqual(composed.utf8), "Accepted byte-distinct snapshots must reset the draft"
+        )
+    }
+
+    @MainActor private func editableField(in view: NSView) -> NSTextField? {
+        if let field = view as? NSTextField, field.isEditable { return field }
+        return view.subviews.lazy.compactMap { self.editableField(in: $0) }.first
+    }
+
     @MainActor func testInspectorRendersUnassignedBoundAndReadonlyWithoutPublishingEdits() async throws {
         let base = try document()
         let bound = try base.applying(.setEdgeBoneName(id: edgeID, name: "Root"))

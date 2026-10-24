@@ -62,3 +62,15 @@ fix passed. This rerun does not retag the historical native interaction capture
 above or establish the remaining native Save/Clear/history/reopen acceptance.
 Domain coverage is 35/35 compiler-attributed lines and 17/17 regions; control
 coverage is 89/100 lines and 11/19 regions, with native callback/focus gaps.
+
+## Scoped native Unicode correction
+
+The review regression demonstrates that canonical Swift String equality cannot
+represent the inherited byte lookup. The corrected command, snapshot and draft
+use BoneNameIdentity. A test-owned offscreen field reproduced the Unicode failure
+with SwiftUI TextField while an ASCII positive control passed, then passed with
+ExactBoneNameField. Return now submits the byte-distinct spelling; Escape resets
+the draft without writing, unrelated updates retain native selection, and an
+accepted spelling change refreshes the field. Eight focused contracts pass.
+This is native control evidence for the owned test window, separate from the
+protected older QA process and the outstanding native File/history/reopen scope.

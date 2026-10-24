@@ -111,3 +111,32 @@ and focus callbacks remain uncovered, below the later UI coverage adoption targe
 Swift branch coverage was not instrumented. These are scoped results, not full
 editor or inherited-engine coverage. The original SVG test side effect was
 restored after the terminal gate. Final follow-up changes verification prose only.
+
+## Review correction: exact Unicode identities
+
+Automated finding 4365761098 showed that Swift String canonical equality merged
+composed and decomposed names which the inherited C++ byte lookup distinguishes.
+The new regression first lost the requested edit and its history. BoneNameIdentity
+now compares UTF-8 bytes, shared by command no-op decisions, edge snapshot equality
+and the inspector draft. Apply eligibility uses the same exact-name predicate.
+Accepted edge snapshot changes reset drafts using byte-sensitive equality.
+
+A test-owned native field reproduced a further boundary: an atomic composed-to-
+decomposed replacement did not submit through SwiftUI TextField, while the ASCII
+positive control passed. The smallest bridge is ExactBoneNameField, a single
+NSViewRepresentable. SwiftUI still owns the typed draft and command callbacks;
+the coordinator forwards native edits/Return/Escape without maintaining a second
+document state. It compares active editor text by UTF-8 and retains selection
+during unrelated updates. Native system styling, placeholder and accessible
+labels remain. No window registry, global control helper or QA app is involved.
+
+Eight focused document/session/controller/native-field tests pass (3.319s),
+including exact history/reopen, canonical-byte distinctions, Return submission,
+Escape draft cancellation, accepted snapshot refresh and selection retention.
+The native test owns an offscreen NSWindow and closes it normally. It does not
+establish File-menu persistence, VoiceOver or full editor acceptance. Full
+corrected-head make ci remains a separate pending gate.
+
+| Severity | Location | Before | After | Why |
+| --- | --- | --- | --- | --- |
+| MEDIUM | Sources/Dust3DDocument/EdgeBoneBinding.swift; Sources/Dust3DEditor/Views/EdgeBoneBindingControls.swift; Sources/Dust3DEditor/Views/ExactBoneNameField.swift | Canonical equality could discard a byte-distinct lookup spelling and suppress native submission | Shared UTF-8 identity and a narrow native editing boundary | Preserve the actual inherited bone lookup identity across document and UI state |
