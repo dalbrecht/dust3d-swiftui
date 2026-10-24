@@ -792,3 +792,12 @@ serialized editor publication, with source-identity/revision receipts and
 reload/stop/caller cancellation. Default builds still lack an export encoder;
 native binding, scene/file URL wiring, menu/panel/diagnostic and end-to-end M7
 acceptance remain open. No production pin or quarantine is changed.
+
+### Stored animation management (#145)
+
+ADR0104 adds ordered stored-animation metadata and undoable create/name/type/
+parameter/duplicate/delete commands, preserving unknown XML/assets and exact UTF-8
+identities. Pure archive tests cover history/reopen and unsupported intent without
+native evaluation. Actor/store/UI and Qt-created/native-created interoperability,
+native catalog/evaluation/playback/audio and full M6 acceptance remain open. Core
+#95 and all other quarantines and the production pin remain unchanged.

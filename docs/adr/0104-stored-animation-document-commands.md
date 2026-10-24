@@ -1,0 +1,63 @@
+# ADR 0104: Manage stored animation intent independently of evaluation
+
+Status: Local document foundation; native catalog/evaluation/UI acceptance pending (#145).
+
+Read-only source audit of core document.cc create/name/type/parameter/delete/
+duplicate methods, snapshot_xml.cc and the writer's flat animation tag selection
+establishes the archive shape: canvas/animations/animation, with id/name/type and
+all other attributes as string parameters. No Qt app or inherited writer was run.
+Core #95 prohibits further native coarse-sampling probes; this stage neither
+compiles nor calls animation, rig or sound generators and does not lift it.
+
+Expose ordered DocumentAnimation rows, optional missing name/type, exact UTF-8
+identities and an ordered parameter array. Swift canonical dictionary equality
+must not merge byte-distinct source names. Retain unsupported types and raw timing
+strings without promising runtime support or rewriting saved timing. Reject
+ambiguous containers, missing/duplicate IDs and unknown tagged identities rather
+than silently hiding input that upstream may interpret. Unidentified extensions,
+comments, namespaces and nested opaque data stay retained.
+
+Commands create, rename, change type, set/remove one parameter, duplicate and
+delete. Fresh IDs come from the caller, keeping UUID generation out of document
+logic. Names/IDs/types are bounded to 1024 UTF-8 bytes; IDs/types must be nonempty.
+Parameter edits use unqualified ASCII identifier names up to128 bytes and values
+up to4096 UTF-8 bytes; id/name/type/xmlns are reserved. Controls/newlines and invalid
+XML text are rejected. Existing unsupported metadata remains readable/preservable;
+this does not validate numeric timing, rig/clip compatibility or playback.
+
+Archive XML keeps its existing16MiB bound. Reads/admission bound child elements
+including opaque extensions to10000, with a smaller caller quota for metadata
+listing. Append uses the same accounting. A two-element unit fixture with a
+limit of two proves that an opaque extension consumes capacity; no bulk fixture,
+allocator failure or resource-exhaustion probe runs. The proposed large fixture
+was rejected by automatic approval review and was never created or executed.
+The small unit-level alternative was explicitly recommended by that review.
+
+Every edit returns a new archive value; no-ops preserve exact source bytes and
+Redo. Unknown attributes/children and opaque assets survive, duplication clones
+nested data in its original namespace context, deletion keeps assets and container
+metadata, and a create/delete transaction can return to the exact clean archive.
+Native reader compatibility of newly created intent, caller UUID/schema policy,
+actor/store/list controls, native evaluation/playback/audio and full M6 acceptance
+remain separate stages. Production pin and all quarantines stay unchanged.
+
+Test-first compilation failed on the absent API. Pure XML/archive tests exercise
+history/reopen, string escaping, namespaced duplication, exact asset bytes,
+byte-distinct Unicode lookup, incomplete/unsupported intent, ambiguous metadata,
+small quotas, invalid edits and no-op Redo. A reserved-xmlns regression initially
+changed bytes/Redo instead of rejecting; parameter admission now excludes it.
+The full local `make ci` passes 45 build-support tests and 978 XCTest cases
+(119.983 seconds), including twelve animation-document tests, formatting,
+coverage gates, Qt-free linkage and isolated bundle rebuild/signature checks.
+Scoped coverage records 35/35 lines for public animation values/errors and
+185/190 (97.37%) for the XML helper; it is not a 100% whole-domain/core claim.
+Foundation copy/cast failure paths remain defensive boundary checks; no fault
+injection is used to force them. This document stage has no UI screenshot.
+
+A second history regression showed create/delete could leave an Undo record for
+an archive that started with an empty animation container. Transaction comparison
+now normalizes only metadata-free empty animation containers alongside the
+existing empty graph containers. Attributes, namespace declarations, comments and
+non-whitespace children remain significant. Tiny absent/empty/whitespace/comment/
+namespace variants verify exact clean-archive restoration; no native writer or
+animation evaluator is involved.
