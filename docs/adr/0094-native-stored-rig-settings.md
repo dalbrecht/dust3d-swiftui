@@ -1,6 +1,6 @@
 # ADR 0094: Native controls for stored rig settings
 
-Status: Implemented locally for #246; full gate passed on 2900229b; native interaction acceptance pending.
+Status: Implemented locally for #254 on the merged #246 foundation; historical full gate passed on 2900229b. Rebased delivery validation and native interaction acceptance remain pending.
 
 ## Decision
 
@@ -35,7 +35,7 @@ A counting ordinary preview service verifies that direct changes do not enqueue
 additional geometry evaluation. These are controller and scoped render tests, not
 native File menu, popup keyboard or full application acceptance.
 
-Full `make ci` on 2900229b passed 36 build-support tests and 904 XCTest cases
+Before delivery rebasing, full `make ci` on 2900229b passed 36 build-support tests and 904 XCTest cases
 (zero failures or reported skips; 115.875s), formatting, existing coverage
 thresholds, Qt-link checks and isolated bundle/provider checks. Compiler-attributed
 control coverage is 171/173 lines and 23/26 regions; the native binding callbacks

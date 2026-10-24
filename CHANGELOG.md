@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Add lossless, undoable stored rig-template and eyelid parameters with a native inspector and actor-prepared snapshots; skeleton generation and pose preview remain unavailable (#246).
+- Expose stored rig-template and eyelid parameters in the native inspector, preserving undo/redo and lossless save; skeleton generation and pose preview remain unavailable (#254).
+
+- Add lossless, undoable stored rig-template and eyelid parameters with actor-prepared snapshots; skeleton generation and pose preview remain unavailable (#246).
 
 - Route selectable node-ID copying through the native read-only field editor instead of copying a graph fragment (#235).
 
