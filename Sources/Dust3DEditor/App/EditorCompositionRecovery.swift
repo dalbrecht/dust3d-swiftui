@@ -4,15 +4,19 @@ import Foundation
 enum EditorLaunchMode: Equatable {
     case application
     case cancelComposition
+    case writeRecoveryCopies
     case invalidRecoveryCommand
 
     init(arguments: [String]) {
         let command = "--cancel-reference-composition"
+        let copies = "--write-recovery-copies"
         let options = Array(arguments.dropFirst())
         if options == [command] {
             self = .cancelComposition
+        } else if options == [copies] {
+            self = .writeRecoveryCopies
         } else {
-            self = options.contains(command) ? .invalidRecoveryCommand : .application
+            self = options.contains(command) || options.contains(copies) ? .invalidRecoveryCommand : .application
         }
     }
 }
@@ -53,8 +57,25 @@ enum EditorLaunchMode: Equatable {
                 EditorCompositionRecovery.notification, object: identifier, userInfo: nil, deliverImmediately: true)
             print("Requested cancellation of the most recently opened composition sheet in \(identifier).")
         case .invalidRecoveryCommand:
-            FileHandle.standardError.write(Data("Usage: Dust3DEditor --cancel-reference-composition\n".utf8))
+            FileHandle.standardError.write(
+                Data("Usage: Dust3DEditor --cancel-reference-composition | --write-recovery-copies\n".utf8))
             exit(2)
+        case .writeRecoveryCopies:
+            guard let identifier = Bundle.main.bundleIdentifier,
+                EditorRecoveryCopyChannel.isSupportedIdentity(identifier)
+            else {
+                FileHandle.standardError.write(
+                    Data("Run recovery using a supported editor app bundle executable.\n".utf8))
+                exit(2)
+            }
+            let requestID = UUID()
+            DistributedNotificationCenter.default().postNotificationName(
+                EditorRecoveryCopyChannel.notification, object: identifier,
+                userInfo: ["requestID": requestID.uuidString], deliverImmediately: true)
+            print("Requested recovery copies in \(identifier); requestID=\(requestID.uuidString).")
+            print(
+                "This acknowledges the request only. Check Application Support/\(identifier)/RecoveryCopies/latest-recovery.json for this requestID and results."
+            )
         }
     }
 }

@@ -6,6 +6,15 @@ Editor previews now pair current geometry with optional source hints and preserv
 
 Current evidence and remaining gates are summarized in [delivery status](editor-delivery-status.md). Historical sequencing notes below do not establish current milestone completion.
 
+## Explicit recovery-copy foundation (#248)
+
+Bounded private copies of accepted open-window archives now have pure admission,
+serialized filesystem writing, correlated receipts and an argument-free app-owned
+request channel. Original files and Undo/Redo history are unchanged. Controller and
+ordinary owned-directory tests cover exact bytes, partial failures and bounds;
+native command acceptance remains pending. This is one M1/M8 recovery step, not
+automatic crash recovery or full milestone completion. See ADR0093.
+
 ## Product boundary
 
 Keep `Dust3DViewer` as a separate read-only macOS app with its own executable, bundle identifier, launch/package command, and release artifacts. Add `Dust3DEditor` as a different app, initially macOS 14+, Swift 6, SwiftUI and Metal. Share document/engine services and reusable rendering code; never make opening a model in the viewer start an editor session. Preserve the Qt app as a compatibility oracle during the port. iOS, cloud collaboration, and new modeling features are outside parity scope.

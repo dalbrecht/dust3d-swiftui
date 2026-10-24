@@ -143,6 +143,13 @@ final class EditorStore {
         guard canEditRigSettings else { return }
         perform(changesRendering: false) { try await $0.apply([.setHeadHasEyelids(enabled)]) }
     }
+
+    func recoverySnapshot(documentID: UUID) throws -> EditorRecoverySnapshot {
+        guard !stopped else { throw EditorRecoveryCopyError.stopped }
+        guard !isWorking else { throw EditorRecoveryCopyError.editInProgress }
+        guard let snapshot else { throw EditorRecoveryCopyError.notLoaded }
+        return .init(documentID: documentID, revision: snapshot.documentRevision, document: snapshot.document)
+    }
     var canUndo: Bool { !isWorking && snapshot?.canUndo == true }
     var canRedo: Bool { !isWorking && snapshot?.canRedo == true }
 

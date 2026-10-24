@@ -91,6 +91,17 @@ Choose Reference Image → Compose Reference Image to import Front/Side sources,
 Cancel discards drafts. Apply replaces canvas.png, optionally sets the image-relative origin with axis locks, and creates one undo step. The composer rejects a document or lock change made since opening; reopen it rather than overwriting newer state. Invalid input, active crop gestures and pending previews disable Apply. See [workflow verification and remaining native acceptance](../../docs/reference-composition-workflow-verification.md).
 
 
+For an editor build that includes #248, its installed bundle executable accepts
+`--write-recovery-copies` with no other arguments. This requests private copies of
+accepted open documents under `~/Library/Application Support/<bundle-id>/RecoveryCopies`.
+Compare the printed request UUID with `latest-recovery.json`; dispatch alone is not
+proof of completion. Busy windows report failure, other copies continue, and original
+files and undo history are unchanged. Limits are 16 windows, 4096 retained files,
+256 MiB of retained archives and a separate 64 KiB receipt. Nothing is pruned
+automatically; atomic staging can temporarily require an additional snapshot's space.
+This requires a responsive app and cannot retrofit an older running executable.
+See [ADR 0093](../../docs/adr/0093-bounded-editor-recovery-copies.md) for verification limits.
+
 If a composition sheet cannot be controlled through accessibility, run its installed bundle executable with `--cancel-reference-composition`, for example:
 
 ```sh
