@@ -6,6 +6,56 @@ import XCTest
 @testable import Dust3DEditor
 
 final class RecoveryCopyFileTests: XCTestCase {
+    func testCancellationKeepsCompletedCopyAndReportsRemainingWindowWithoutChangingOriginal() async throws {
+        let root = directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = try document()
+        let first = UUID()
+        let second = UUID()
+        let writer = EditorRecoveryCopyFileService(
+            directory: root,
+            writeData: { data, url in
+                try data.write(to: url, options: .atomic)
+                if url.pathExtension == "ds3" { withUnsafeCurrentTask { $0?.cancel() } }
+            })
+        let captures: [EditorRecoveryCapture] = [first, second].map {
+            .snapshot(.init(documentID: $0, revision: 0, document: source))
+        }
+        let task = Task { try await writer.write(captures: captures, requestID: UUID()) }
+        let report = try await task.value
+        XCTAssertEqual(report.copied.count, 1)
+        XCTAssertEqual(report.failures.count, 1)
+        XCTAssertTrue(report.failures.first?.cause is CancellationError)
+        XCTAssertNil(report.receiptError)
+        let copied = try XCTUnwrap(report.copied.first)
+        XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent(copied.filename)), source.encoded())
+        let failed = try XCTUnwrap(report.failures.first?.documentID)
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: root.appendingPathComponent(failed.uuidString.lowercased() + ".ds3").path))
+        let receipt = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: root.appendingPathComponent("latest-recovery.json")))
+                as? [String: Any])
+        XCTAssertEqual(receipt["status"] as? String, "partial")
+        XCTAssertEqual(source.encoded(), try document().encoded())
+    }
+
+    func testNonFileRootAndNonRegularInventoryRejectWithoutFollowingPaths() async throws {
+        let remote = try XCTUnwrap(URL(string: "https://example.invalid/recovery"))
+        do {
+            _ = try await EditorRecoveryCopyFileService(directory: remote).write(captures: [], requestID: UUID())
+            XCTFail("Reject a non-file URL before filesystem operations")
+        } catch { XCTAssertEqual(error as? EditorRecoveryCopyError, .unsafeLocation) }
+        let root = directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent("nested"), withIntermediateDirectories: true)
+        do {
+            _ = try await EditorRecoveryCopyFileService(directory: root).write(captures: [], requestID: UUID())
+            XCTFail("Reject nested directories instead of traversing them")
+        } catch { XCTAssertEqual(error as? RecoveryCopyPlanError, .invalidInventory) }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("nested").path))
+    }
     private func directory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(
             "dust3d-recovery-test-\(UUID().uuidString)", isDirectory: true)

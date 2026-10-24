@@ -54,3 +54,10 @@ The filesystem adapter's 94.33% line coverage remains below the shared 95% adopt
 target; real enumeration failures and native event delivery remain thin boundary
 verification gaps. Swift branch coverage was not instrumented. No inherited-engine,
 native command, crash recovery or overall feature-parity coverage claim follows.
+
+Supplemental tests verify rejection of an overlapping request before recapture,
+retry after an original writer error, cooperative cancellation after one completed
+copy with a partial receipt, and rejection of non-file roots/nested directories.
+All 20 focused cases pass. Registry/channel regions increase to 31/31; file-adapter
+line coverage remains 133/141, so those ordinary tests do not close native enumeration
+error-handler coverage. The next full gate covers the supplemental test commit.

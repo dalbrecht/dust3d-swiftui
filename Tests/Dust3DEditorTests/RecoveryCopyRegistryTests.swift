@@ -6,6 +6,33 @@ import XCTest
 @testable import Dust3DEditor
 
 final class RecoveryCopyRegistryTests: XCTestCase {
+    @MainActor func testOverlappingRecoveryRejectsBeforeCaptureAndWriterFailureAllowsRetry() async throws {
+        let writer = HoldingRecoveryWriter()
+        let registry = EditorRecoveryCopyRegistry(writer: writer)
+        let document = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+        let id = UUID()
+        var captures = 0
+        registry.register(id) {
+            captures += 1
+            return EditorRecoverySnapshot(documentID: id, revision: 0, document: document)
+        }
+        let first = Task { try await registry.recover(requestID: UUID()) }
+        await writer.waitUntilEntered()
+        do {
+            _ = try await registry.recover(requestID: UUID())
+            XCTFail("A pending writer must not admit another capture")
+        } catch { XCTAssertEqual(error as? EditorRecoveryCopyError, .alreadyWriting) }
+        XCTAssertEqual(captures, 1)
+        await writer.release()
+        do {
+            _ = try await first.value
+            XCTFail("Preserve the original writer cause")
+        } catch { XCTAssertEqual(error as? RecoveryFixtureError, .writer) }
+        let retryID = UUID()
+        let retry = try await registry.recover(requestID: retryID)
+        XCTAssertEqual(retry.requestID, retryID)
+        XCTAssertEqual(captures, 2)
+    }
     @MainActor func testCaptureUsesLatestHandlerIsolatesOriginalErrorsAndUnregisters() async throws {
         let writer = RecordingRecoveryWriter()
         let registry = EditorRecoveryCopyRegistry(writer: writer)
@@ -76,7 +103,34 @@ final class RecoveryCopyRegistryTests: XCTestCase {
     }
 }
 
-private enum RecoveryFixtureError: Error { case replaced, busyWindow, shouldNotCapture }
+private enum RecoveryFixtureError: Error { case replaced, busyWindow, shouldNotCapture, writer }
+
+private actor HoldingRecoveryWriter: EditorRecoveryCopyWriting {
+    private var hasEntered = false
+    private var entryWaiter: CheckedContinuation<Void, Never>?
+    private var releaseWaiter: CheckedContinuation<Void, Never>?
+
+    func waitUntilEntered() async {
+        guard !hasEntered else { return }
+        await withCheckedContinuation { entryWaiter = $0 }
+    }
+
+    func release() {
+        releaseWaiter?.resume()
+        releaseWaiter = nil
+    }
+
+    func write(captures: [EditorRecoveryCapture], requestID: UUID) async throws -> EditorRecoveryReport {
+        if !hasEntered {
+            hasEntered = true
+            entryWaiter?.resume()
+            entryWaiter = nil
+            await withCheckedContinuation { releaseWaiter = $0 }
+            throw RecoveryFixtureError.writer
+        }
+        return .init(requestID: requestID, requestedCount: captures.count)
+    }
+}
 
 private actor RecordingRecoveryWriter: EditorRecoveryCopyWriting {
     private(set) var calls = 0
