@@ -18,9 +18,33 @@ inspected for readable text, fit and disabled controls.
 
 ## Native interaction
 
-Pending the fresh, clean QA bundle pass. Reuse org.dust3d.editor.combine-qa;
-never overwrite its running bundle or use a new QA ID. Preserve all owned saved
-documents and use a disposable ordinary fixture with unknown metadata and an
-opaque asset. Verify draft reset, Apply/Clear, exact history saves and reopening.
-Full evaluation, Qt deformation equivalence, VoiceOver and supported-OS acceptance
-remain separate requirements. Pins and quarantines are unchanged.
+The prior owned QA app quit normally through its existing app command. A fresh
+bundle reused `org.dust3d.editor.combine-qa` and the same shared app-qa path.
+About diagnostics confirmed clean loaded source
+`ed6fbd1e1e43da207e761fd13d6ece7c3e87610c`, digest
+`3c673a6f212da3f08d233be48d9e7449d7254445d76bc035c903068b7ad86242`,
+core `41af7d4c1b67dd037e02858e3ef0fdb96a84aebb`, PID 68751 and capture
+`2026-10-24T00:06:13Z`. No running bundle was overwritten.
+
+The disposable NativeBoneBindingQA-20261023.ds3 is an ordinary intersecting-parts
+copy retaining unknown metadata and opaque.bin. It opened with 370 triangles.
+Selecting the first edge exposed the named field and accessible Apply/Clear/Reset
+controls. Typing DraftOnly and Escape restored the empty field and disabled Apply;
+the saved archive remained byte-exact baseline. Typing Root and Return showed
+Root, enabled Clear and enabled Undo.
+
+The control helper then timed out reading the window. A fresh AX read, screenshot
+and one Escape recovery attempt also timed out, while app inventory and read-only
+process inspection still found the owned process. The attempted Save was not
+established: independent file inspection still matched baseline rather than the
+pure expected Root archive. Preserve the running process and its potentially
+unsaved edit; do not force quit or overwrite its bundle. No human action was
+requested. No cause has been isolated to product code versus control infrastructure.
+
+Native Save/Clear/history/reopen and a current whole-app screenshot are therefore
+**not passed**. No speculative product fix or complete native acceptance is claimed.
+Runtime JSON, exact baseline/expected archives, generator source and logs are
+retained in the recovery checkpoint. The offscreen inspector images above remain
+diagnostic evidence with their own scope. Full evaluation, Qt deformation
+comparison, VoiceOver and supported-OS acceptance remain separate requirements.
+Pins and quarantines are unchanged.
