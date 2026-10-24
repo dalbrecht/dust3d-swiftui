@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Share default compiler caches across linked worktrees and keep UI test captures under the shared build root, preserving explicit path overrides (#147).
+
 - Add native edge bone assignment with Apply, Clear, draft reset and lossless undo/redo; rigged preview remains unavailable (#247).
 
 - Expose stored rig-template and eyelid parameters in the native inspector, preserving undo/redo and lossless save; skeleton generation and pose preview remain unavailable (#254).
