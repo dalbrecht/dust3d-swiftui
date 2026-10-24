@@ -761,3 +761,9 @@ and existing saved state; injected contract tests cover the launch boundary.
 [ADR 0099](adr/0099-isolated-qa-launch.md) records the source and remaining native
 startup, restoration, recovery/history/save and clean-closure acceptance. This
 does not complete M8 recovery or OS integration acceptance.
+
+
+ADR0100 adds the captured-document export publication actor and injectable native
+encoder boundary. Owned-filesystem source/alias/output tests pass. The production
+pin remains unchanged; native binding, export commands and full M7 acceptance
+remain open. This stage does not advertise working app export.
