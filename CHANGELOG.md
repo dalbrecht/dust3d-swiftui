@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an explicit-fixture QA launcher using process-local AppKit restoration isolation while preserving normal launches and saved state (#257).
+
 - Require an exact PID and versioned notification channel for composition cancellation, ignoring older broadcast requests and bounding pending cancellation work (#56, #248).
 
 - Add bounded app-owned recovery copies targeted to an exact process, with PID/UUID-correlated receipts, preserving original files and undo history (#248).
