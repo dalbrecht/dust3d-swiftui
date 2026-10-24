@@ -86,6 +86,11 @@ public enum DocumentCommand: Sendable {
     /// `value` is at most 4096 UTF-8 bytes without controls/newlines; unknown values remain stored intent.
     /// Throws typed animation errors. Example: `.setAnimationParameter(id: id, name: "duration", value: "1.0")`.
     case setAnimationParameter(id: String, name: String, value: String?)
+    /// Add a new unqualified parameter without replacing an existing attribute, including an empty one.
+    /// Parameters use the same name/value bounds as setAnimationParameter; no timing is evaluated.
+    /// Throws parameterAlreadyExists or the original typed metadata error before publication.
+    /// Example: `.addAnimationParameter(id: id, name: "durationSeconds", value: "1.0")`.
+    case addAnimationParameter(id: String, name: String, value: String)
     /// Clone complete stored intent including nested data; supply a fresh ID and bounded display name.
     /// Throws typed animation/metadata quota errors; assets stay shared and unchanged.
     /// Example: `.duplicateAnimation(id: id, newID: freshID, name: "Walk copy")`.
@@ -481,7 +486,8 @@ public struct Dust3DDocument: Sendable {
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
         switch command {
-        case .createAnimation, .setAnimationName, .setAnimationType, .setAnimationParameter, .duplicateAnimation,
+        case .createAnimation, .setAnimationName, .setAnimationType, .setAnimationParameter, .addAnimationParameter,
+            .duplicateAnimation,
             .deleteAnimation, .setRigType, .setHeadHasEyelids, .setNode, .setNodes, .setReferenceImagePNG, .setOrigin,
             .setComponentName,
             .setComponentCombineMode,
@@ -529,6 +535,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setAnimationParameter(let id, let name, let value):
             guard try AnimationMetadata.setParameter(root, id: id, name: name, value: value) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .addAnimationParameter(let id, let name, let value):
+            try AnimationMetadata.addParameter(root, id: id, name: name, value: value)
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .duplicateAnimation(let id, let newID, let name):
             try AnimationMetadata.duplicate(root, id: id, newID: newID, name: name)

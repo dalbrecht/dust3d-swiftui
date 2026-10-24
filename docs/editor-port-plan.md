@@ -839,3 +839,13 @@ integrated light/dark renders were inspected. Creation, parameter addition,
 catalog-specific controls, live keyboard/VoiceOver acceptance, Qt/runtime
 interoperability, playback/audio and full M6 acceptance remain open. No runtime
 probe, production pin change or quarantine change occurs.
+
+### Non-overwriting animation parameter creation (#145)
+
+ADR0109 adds a distinct Add command and captured-source inline name/value form.
+Existing attributes, including empty values, reject with their original cause;
+qualified/reserved names remain protected. Five focused tests and the full
+45-support/1008-XCTest gate pass, with owned empty/ready/stale light/dark form
+renders inspected. Animation-record creation, catalog-specific controls, live
+native interaction/VoiceOver, Qt/runtime interoperability, evaluation/playback/audio
+and full M6 acceptance remain open. Production pin/quarantines remain unchanged.

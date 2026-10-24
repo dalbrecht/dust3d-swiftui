@@ -38,6 +38,9 @@ public enum AnimationEdit: Sendable {
     case setType(String)
     /// Set/remove a bounded unqualified parameter. Example: `.setParameter(name: "duration", value: "1.0")`.
     case setParameter(name: String, value: String?)
+    /// Add a previously absent unqualified parameter; existing empty attributes also reject.
+    /// Example: `.addParameter(name: "durationSeconds", value: "1.0")`.
+    case addParameter(name: String, value: String)
     /// Remove the captured row without removing its opaque assets.
     case delete
 
@@ -46,6 +49,7 @@ public enum AnimationEdit: Sendable {
         case .rename(let name): return .setAnimationName(id: id, name: name)
         case .setType(let type): return .setAnimationType(id: id, type: type)
         case .setParameter(let name, let value): return .setAnimationParameter(id: id, name: name, value: value)
+        case .addParameter(let name, let value): return .addAnimationParameter(id: id, name: name, value: value)
         case .delete: return .deleteAnimation(id: id)
         }
     }
