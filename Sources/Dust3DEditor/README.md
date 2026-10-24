@@ -390,8 +390,8 @@ work. ADR 0103 records native/scene/permission and responsiveness gates.
 Animation store workflows explicitly query source-correlated metadata, retire
 older requests on selection/reload/stop, and apply captured-source edits through
 existing document history without regenerating static geometry. Optional list
-errors remain isolated from modeling/Save. Native list controls and evaluation
-remain pending; ADR 0106 records remaining acceptance and unchanged quarantines.
+errors remain isolated from modeling/Save. Evaluation remains pending; ADR 0106 records the store foundation and unchanged
+quarantines. Native controls and their acceptance limits are described below.
 
 Use the Animations toolbar button (Command-Option-A), or choose Animations in the
 right inspector, to inspect stored animation records. Select a row to rename,
@@ -399,7 +399,13 @@ duplicate or delete it. Rename and duplicate use an inline name field: Return
 applies, Escape cancels, and a changed document disables the captured draft until
 you cancel and select again. Accepted changes use document Undo/Redo and Save.
 Native text editing retains its own undo and clipboard routing; graph clipboard
-shortcuts are excluded from animation focus. Stored types and parameters are
-read-only here. Creation, type/parameter controls, native catalog evaluation,
-playback and audio remain pending. See [panel verification](../../docs/animation-panel-verification.md)
+shortcuts are excluded from animation focus.
+
+Use the pencil beside Stored type or an editable parameter to change its retained
+text. Apply preserves an empty parameter value; Remove Parameter deletes the
+attribute. Qualified/reserved attributes remain read-only. These controls do not
+validate playback or generate animation. Creation, parameter addition, catalog-specific
+controls, native catalog evaluation, playback and audio remain pending. See
+[panel verification](../../docs/animation-panel-verification.md) and
+[stored-value verification](../../docs/animation-stored-values-verification.md)
 for owned offscreen evidence and the live keyboard/accessibility acceptance limits.

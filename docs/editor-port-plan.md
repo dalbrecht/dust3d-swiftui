@@ -828,3 +828,14 @@ light/dark renders were inspected. Live app keyboard/menu/focus and VoiceOver
 acceptance remain unverified. Creation/type/parameter controls, Qt/runtime catalog
 interoperability, evaluation/playback/audio and full M6 acceptance remain open.
 No production pin or quarantine changes occur.
+
+### Stored animation value controls (#145)
+
+ADR0108 adds inline source-bound editing of retained type and existing unqualified
+parameter values. Empty text retains a parameter; removal is explicit. Qualified
+and reserved attributes stay read-only, with one shared domain name policy.
+Five focused tests and full 45-support/1003-XCTest gate pass; owned forms and
+integrated light/dark renders were inspected. Creation, parameter addition,
+catalog-specific controls, live keyboard/VoiceOver acceptance, Qt/runtime
+interoperability, playback/audio and full M6 acceptance remain open. No runtime
+probe, production pin change or quarantine change occurs.
