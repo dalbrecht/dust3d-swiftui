@@ -1,6 +1,6 @@
 # ADR 0093: Bounded explicit editor recovery copies
 
-Status: Implemented locally; full gate passed on 73771d7c; native command acceptance pending (#248).
+Status: Implemented locally; rebased full gate passed on 97afea1b; native command acceptance pending (#248).
 
 The editor needs an app-owned way to retain accepted document state when external
 window-control tooling cannot operate its UI. A separate invocation of the same
@@ -68,5 +68,19 @@ Replayed the saved recovery stage onto reviewed bone-binding merge d38dbecc.
 The integration retains metadata-only rig/bone edits, exact UTF-8 identities and
 the tested native text-field boundary. The conflict was limited to the adjacent
 recoverySnapshot and rig-setting methods; both remain present. No recovery command
-is sent to the older running QA binary. Fresh rebased validation remains pending;
-the historical figures above do not retag this delivery.
+is sent to the older running QA binary. Fresh rebased validation is recorded below; the historical figures above retain
+their original implementation scope.
+
+## Rebased delivery gate
+
+Full `make ci` on stable clean 97afea1b passes 36 build-support tests and
+930 XCTest cases, zero failures/reported skips (120.893s), formatting, coverage,
+Qt-link and isolated bundle/provider checks. The planner measures 57/57 lines
+and 36/36 regions; registry/channel 68/68 lines and 31/31 regions. The file
+adapter measures 133/141 lines and 79/94 regions (94.33% line coverage), still
+below the shared 95% adoption target. Native enumeration error callbacks and
+notification delivery remain thin boundary gaps; no artificial failure or
+exhaustion probe was used to raise coverage. The protected older QA process
+remains untouched and native command acceptance is not claimed. Original SVG
+bytes/mtime were restored after the terminal gate. The final follow-up changes
+verification prose only.
