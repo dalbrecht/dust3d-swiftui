@@ -90,8 +90,9 @@ final class RecoveryCopyRegistryTests: XCTestCase {
             object: "org.dust3d.editor.combine-qa",
             userInfo: ["requestID": UUID().uuidString])
         XCTAssertNil(
-            EditorRecoveryCopyChannel.requestID(
-                notification, bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 42))
+            EditorRecoveryRequestChannel.requestID(
+                notification, bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 42,
+                notificationName: EditorRecoveryCopyChannel.notification))
     }
 
     func testNotificationAcceptsOnlyBoundedRequestIdentityForItsOwnBundle() {
@@ -101,17 +102,25 @@ final class RecoveryCopyRegistryTests: XCTestCase {
             name: name, object: "org.dust3d.editor.combine-qa",
             userInfo: ["requestID": id.uuidString, "processIdentifier": "42"])
         XCTAssertEqual(
-            EditorRecoveryCopyChannel.requestID(
-                valid, bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 42), id)
+            EditorRecoveryRequestChannel.requestID(
+                valid, bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 42,
+                notificationName: EditorRecoveryCopyChannel.notification), id)
         XCTAssertNil(
-            EditorRecoveryCopyChannel.requestID(valid, bundleIdentifier: "org.dust3d.editor", processIdentifier: 42))
-        XCTAssertNil(EditorRecoveryCopyChannel.requestID(valid, bundleIdentifier: nil, processIdentifier: 42))
+            EditorRecoveryRequestChannel.requestID(
+                valid, bundleIdentifier: "org.dust3d.editor", processIdentifier: 42,
+                notificationName: EditorRecoveryCopyChannel.notification))
         XCTAssertNil(
-            EditorRecoveryCopyChannel.requestID(
-                valid, bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 43))
+            EditorRecoveryRequestChannel.requestID(
+                valid, bundleIdentifier: nil, processIdentifier: 42,
+                notificationName: EditorRecoveryCopyChannel.notification))
         XCTAssertNil(
-            EditorRecoveryCopyChannel.requestID(
-                valid, bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 0))
+            EditorRecoveryRequestChannel.requestID(
+                valid, bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 43,
+                notificationName: EditorRecoveryCopyChannel.notification))
+        XCTAssertNil(
+            EditorRecoveryRequestChannel.requestID(
+                valid, bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 0,
+                notificationName: EditorRecoveryCopyChannel.notification))
         for info: [AnyHashable: Any]? in [
             ["requestID": id.uuidString, "processIdentifier": "43"],
             ["requestID": id.uuidString, "processIdentifier": "042"],
@@ -123,9 +132,10 @@ final class RecoveryCopyRegistryTests: XCTestCase {
             nil, [:], ["requestID": "bad"], ["requestID": id.uuidString, "path": "/tmp/ignored"], ["requestID": 7],
         ] {
             XCTAssertNil(
-                EditorRecoveryCopyChannel.requestID(
+                EditorRecoveryRequestChannel.requestID(
                     Notification(name: name, object: "org.dust3d.editor.combine-qa", userInfo: info),
-                    bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 42))
+                    bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 42,
+                    notificationName: EditorRecoveryCopyChannel.notification))
         }
     }
 }

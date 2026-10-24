@@ -3,6 +3,16 @@ import XCTest
 @testable import Dust3DEditor
 
 final class EditorRecoveryTests: XCTestCase {
+    func testUntargetedCompositionCommandIsRejected() {
+        XCTAssertEqual(
+            EditorLaunchMode(arguments: ["editor", "--cancel-reference-composition"]), .invalidRecoveryCommand)
+    }
+
+    @MainActor func testCompositionNotificationDoesNotReuseLegacyBroadcastName() {
+        XCTAssertNotEqual(
+            EditorCompositionRecoveryChannel.notification.rawValue, "org.dust3d.editor.cancel-reference-composition")
+    }
+
     func testUntargetedCopyCommandIsRejected() {
         XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "--write-recovery-copies"]), .invalidRecoveryCommand)
     }
@@ -10,13 +20,16 @@ final class EditorRecoveryTests: XCTestCase {
     func testRecoveryArgumentRequiresExactCommandAndPreservesNormalLaunchArguments() {
         XCTAssertEqual(EditorLaunchMode(arguments: ["editor"]), .application)
         XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "-NSDocumentRevisionsDebugMode", "YES"]), .application)
-        XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "--cancel-reference-composition"]), .cancelComposition)
+        XCTAssertEqual(
+            EditorLaunchMode(arguments: ["editor", "--cancel-reference-composition", "42"]),
+            .cancelComposition(processIdentifier: 42))
         XCTAssertEqual(
             EditorLaunchMode(arguments: ["editor", "--write-recovery-copies", "42"]),
             .writeRecoveryCopies(processIdentifier: 42))
         for value in ["0", "-1", "+42", "042", "2147483648", "1.0", "42 ", "", String(repeating: "1", count: 11)] {
-            XCTAssertEqual(
-                EditorLaunchMode(arguments: ["editor", "--write-recovery-copies", value]), .invalidRecoveryCommand)
+            for command in ["--write-recovery-copies", "--cancel-reference-composition"] {
+                XCTAssertEqual(EditorLaunchMode(arguments: ["editor", command, value]), .invalidRecoveryCommand)
+            }
         }
         XCTAssertEqual(
             EditorLaunchMode(arguments: ["editor", "--write-recovery-copies", "2147483647"]),
@@ -28,6 +41,33 @@ final class EditorRecoveryTests: XCTestCase {
             .invalidRecoveryCommand)
         XCTAssertEqual(
             EditorLaunchMode(arguments: ["editor", "--cancel-reference-composition", "extra"]), .invalidRecoveryCommand)
+    }
+
+    func testCompositionAdmissionRejectsLegacyOtherProcessAndWrongChannel() {
+        let id = UUID()
+        let info: [String: String] = ["requestID": id.uuidString, "processIdentifier": "42"]
+        let name = EditorCompositionRecoveryChannel.notification
+        let valid = Notification(name: name, object: "org.dust3d.editor.combine-qa", userInfo: info)
+        XCTAssertEqual(
+            EditorRecoveryRequestChannel.requestID(
+                valid, bundleIdentifier: "org.dust3d.editor.combine-qa",
+                processIdentifier: 42, notificationName: name), id)
+        XCTAssertNil(
+            EditorRecoveryRequestChannel.requestID(
+                valid, bundleIdentifier: "org.dust3d.editor.combine-qa",
+                processIdentifier: 43, notificationName: name))
+        for rejectedName in [
+            Notification.Name("org.dust3d.editor.cancel-reference-composition"), EditorRecoveryCopyChannel.notification,
+        ] {
+            XCTAssertNil(
+                EditorRecoveryRequestChannel.requestID(
+                    Notification(name: rejectedName, object: "org.dust3d.editor.combine-qa", userInfo: info),
+                    bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 42, notificationName: name))
+        }
+        XCTAssertNil(
+            EditorRecoveryRequestChannel.requestID(
+                Notification(name: name, object: "org.dust3d.editor.combine-qa", userInfo: nil),
+                bundleIdentifier: "org.dust3d.editor.combine-qa", processIdentifier: 42, notificationName: name))
     }
 
     @MainActor func testRecoveryCancelsOnlyNewestDraftAndDoesNotFallBackWhenApplying() {

@@ -104,6 +104,7 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     private let buildIdentity = RuntimeBuildIdentity.current
     private let launchDocument = EditorLaunchDocumentOpener(arguments: CommandLine.arguments)
     private let recoveryRequestGate = EditorRecoveryRequestGate()
+    private let compositionRequestGate = EditorRecoveryRequestGate()
 
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         !launchDocument.shouldSuppressUntitledDocument
@@ -113,7 +114,7 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
         buildIdentity.logStartup(fallbackSubsystem: "org.dust3d.editor")
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(cancelReferenceComposition(_:)),
-            name: EditorCompositionRecovery.notification, object: Bundle.main.bundleIdentifier)
+            name: EditorCompositionRecoveryChannel.notification, object: Bundle.main.bundleIdentifier)
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(writeRecoveryCopies(_:)),
             name: EditorRecoveryCopyChannel.notification, object: Bundle.main.bundleIdentifier)
@@ -130,9 +131,10 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
 
     @objc nonisolated private func writeRecoveryCopies(_ notification: Notification) {
         guard
-            let requestID = EditorRecoveryCopyChannel.requestID(
+            let requestID = EditorRecoveryRequestChannel.requestID(
                 notification, bundleIdentifier: Bundle.main.bundleIdentifier,
-                processIdentifier: ProcessInfo.processInfo.processIdentifier)
+                processIdentifier: ProcessInfo.processInfo.processIdentifier,
+                notificationName: EditorRecoveryCopyChannel.notification)
         else { return }
         let logger = Logger(subsystem: "org.dust3d.editor", category: "recovery")
         guard recoveryRequestGate.begin() else {
@@ -166,13 +168,31 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc nonisolated private func cancelReferenceComposition(_ notification: Notification) {
+        guard
+            let requestID = EditorRecoveryRequestChannel.requestID(
+                notification, bundleIdentifier: Bundle.main.bundleIdentifier,
+                processIdentifier: ProcessInfo.processInfo.processIdentifier,
+                notificationName: EditorCompositionRecoveryChannel.notification)
+        else { return }
+        let logger = Logger(
+            subsystem: RuntimeBuildIdentity.current.loggingSubsystem(fallback: "org.dust3d.editor"),
+            category: "recovery")
+        guard compositionRequestGate.begin() else {
+            logger.error(
+                "operation=cancelReferenceComposition requestID=\(requestID.uuidString, privacy: .public) cause=alreadyPending"
+            )
+            return
+        }
         Task { @MainActor in
+            defer { compositionRequestGate.finish() }
             let cancelled = EditorCompositionRecovery.shared.cancelLatest()
             Logger(
                 subsystem: RuntimeBuildIdentity.current.loggingSubsystem(fallback: "org.dust3d.editor"),
                 category: "recovery"
             )
-            .info("operation=cancelReferenceComposition cancelled=\(cancelled)")
+            .info(
+                "operation=cancelReferenceComposition requestID=\(requestID.uuidString, privacy: .public) cancelled=\(cancelled)"
+            )
         }
     }
 }
