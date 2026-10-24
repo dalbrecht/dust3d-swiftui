@@ -92,6 +92,16 @@ final class EditorStore {
     }
     var onDocumentChanged: ((Data) -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
+    private var animationValue: EditorAnimationSnapshot?
+    private var animationRequestID = UUID()
+    private(set) var animationQuery: Task<Void, Never>?
+    private(set) var isLoadingAnimations = false
+    private struct AnimationQueryFailure {
+        let documentIdentity: UUID
+        let documentRevision: Int
+        let cause: any Error
+    }
+    private var animationQueryFailure: AnimationQueryFailure?
     private let session = EditorSession()
     private let exportService: DocumentExportFileService?
     private var exportTask: Task<EditorExportReceipt, any Error>?
@@ -144,6 +154,110 @@ final class EditorStore {
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
     var canSave: Bool { snapshot != nil && !isWorking && !stopped }
     var canEditRigSettings: Bool { canSave }
+
+    private var acceptedAnimationSource: EditorSnapshot? {
+        guard !stopped, case .success(let accepted) = recoveryLoadResult,
+            let snapshot, snapshot.documentIdentity == accepted.documentIdentity
+        else { return nil }
+        return snapshot
+    }
+
+    var animationSnapshot: EditorAnimationSnapshot? {
+        guard let source = acceptedAnimationSource, let value = animationValue,
+            value.editor.documentIdentity == source.documentIdentity,
+            value.editor.documentRevision == source.documentRevision
+        else { return nil }
+        return value
+    }
+
+    var animationQueryIssue: (any Error)? {
+        guard let failure = animationQueryFailure, let source = acceptedAnimationSource,
+            source.documentIdentity == failure.documentIdentity,
+            source.documentRevision == failure.documentRevision
+        else { return nil }
+        return failure.cause
+    }
+
+    var canManageAnimations: Bool {
+        guard !isWorking, !isLoadingAnimations, animationQueryIssue == nil,
+            let value = animationSnapshot, value.list.issue == nil
+        else { return false }
+        return true
+    }
+
+    func refreshAnimations() { requestAnimations { try await $0.animationSnapshot() } }
+
+    func selectAnimation(_ id: String?) {
+        requestAnimations { try await $0.selectAnimation(id) }
+    }
+
+    func createAnimation(name: String, type: String) {
+        performAnimationMutation { try await $0.createAnimation(name: name, type: type) }
+    }
+
+    func editAnimation(_ edit: AnimationEdit, target: AnimationEditTarget) {
+        performAnimationMutation { try await $0.editAnimation(edit, target: target) }
+    }
+
+    func duplicateAnimation(target: AnimationEditTarget, name: String) {
+        performAnimationMutation { try await $0.duplicateAnimation(target: target, name: name) }
+    }
+
+    private func performAnimationMutation(
+        _ action: @escaping @Sendable (EditorSession) async throws -> EditorAnimationSnapshot
+    ) {
+        guard canManageAnimations else { return }
+        let refreshAfterPublication: @MainActor (Bool) -> Void = { [weak self] succeeded in
+            if succeeded { self?.refreshAnimations() }
+        }
+        perform(changesRendering: false, completion: refreshAfterPublication) { session in
+            let result = try await action(session)
+            return result.editor
+        }
+    }
+
+    private func requestAnimations(
+        _ action: @escaping @Sendable (EditorSession) async throws -> EditorAnimationSnapshot
+    ) {
+        guard !isWorking, let source = acceptedAnimationSource else { return }
+        let sourceIdentity = source.documentIdentity
+        let sourceRevision = source.documentRevision
+        let requestID = UUID()
+        animationRequestID = requestID
+        animationQuery?.cancel()
+        animationQueryFailure = nil
+        isLoadingAnimations = true
+        animationQuery = Task { [weak self, session] in
+            defer {
+                if let self, self.animationRequestID == requestID { self.isLoadingAnimations = false }
+            }
+            do {
+                let result = try await action(session)
+                guard !Task.isCancelled, let self, self.animationRequestID == requestID, !self.isWorking,
+                    let current = self.acceptedAnimationSource,
+                    current.documentIdentity == result.editor.documentIdentity,
+                    current.documentRevision == result.editor.documentRevision
+                else { return }
+                self.animationValue = result
+            } catch {
+                guard !Task.isCancelled, let self, self.animationRequestID == requestID,
+                    let current = self.acceptedAnimationSource,
+                    current.documentIdentity == sourceIdentity, current.documentRevision == sourceRevision
+                else { return }
+                self.animationQueryFailure = .init(
+                    documentIdentity: sourceIdentity, documentRevision: sourceRevision, cause: error)
+            }
+        }
+    }
+
+    private func cancelAnimationQuery() {
+        animationRequestID = UUID()
+        animationQuery?.cancel()
+        animationQuery = nil
+        animationValue = nil
+        animationQueryFailure = nil
+        isLoadingAnimations = false
+    }
 
     var canExport: Bool {
         guard exportService != nil, canSave,
@@ -236,6 +350,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        cancelAnimationQuery()
         cancelExport()
         cancelColorImagePreparation()
         operation?.cancel()
@@ -677,6 +792,7 @@ final class EditorStore {
     }
 
     func stop() {
+        cancelAnimationQuery()
         cancelExport()
         cancelColorImagePreparation()
         operationRequestID = UUID()
@@ -952,6 +1068,8 @@ final class EditorStore {
             case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."
             case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
+            case .staleAnimationTarget:
+                return "The document changed. Select the animation again before editing."
             case .staleExport:
                 return "Export cancelled because the document changed. Export the current document again."
             case .unavailableOrigin:

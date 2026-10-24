@@ -386,3 +386,9 @@ validation and future native binding. Default builds have no export encoder and
 no enabled Export command. The workflow tags receipts by captured document
 identity/revision and preserves history/source bytes; reload/stop cancel pending
 work. ADR 0103 records native/scene/permission and responsiveness gates.
+
+Animation store workflows explicitly query source-correlated metadata, retire
+older requests on selection/reload/stop, and apply captured-source edits through
+existing document history without regenerating static geometry. Optional list
+errors remain isolated from modeling/Save. Native list controls and evaluation
+remain pending; ADR 0106 records remaining acceptance and unchanged quarantines.

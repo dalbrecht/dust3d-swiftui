@@ -809,3 +809,12 @@ duplicate commands, with explicit source-correlated list queries and isolated
 optional errors. Pure presentation retains raw records and UTF-8 list identities.
 Store/list/inspector UI, Qt/native catalog interoperability, evaluation/playback/
 audio and full M6 acceptance remain open; no pin or quarantine changes occur.
+
+### Animation edit targets and store workflow (#145)
+
+ADR0106 connects source-bound metadata edits to the editor store, with latest-query
+adoption, source-epoch checks, lifecycle retirement and static-geometry-independent
+history publication. Optional errors cannot relabel retained state or block graph
+editing/Save. Native list/inspector controls, keyboard/rendered acceptance, Qt/
+runtime catalogs, evaluation/playback/audio and full M6 acceptance remain open.
+The production pin and every quarantine remain unchanged.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add stale-source animation edit targets and editor metadata workflows with latest-request list adoption, lifecycle retirement and geometry-independent history; native controls/evaluation remain pending (#145).
+
 - Add actor-owned stored-animation selection, fresh-ID creation/duplication and source-correlated list presentation, isolating optional metadata errors from graph editing; native UI/playback remain pending (#145).
 
 - Add lossless stored-animation listing and create/rename/type/parameter/duplicate/delete commands with exact history and opaque-data preservation; native evaluation/playback remain quarantined (#145).
