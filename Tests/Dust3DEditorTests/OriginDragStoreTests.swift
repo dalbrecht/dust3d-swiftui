@@ -33,23 +33,26 @@ final class OriginDragStoreTests: XCTestCase {
         var writes = 0
         store.onDocumentChanged = { _ in writes += 1 }
         store.setMovingOrigin(true)
-        store.updateOriginDrag(translation: .init(x: 40, y: 80), projection: projection)
+        store.updateOriginDrag(
+            translation: .init(x: 40, y: 80), projection: projection, generation: store.canvasDragGeneration)
         XCTAssertNotNil(store.originDragPosition)
         let resized = CanvasProjection(bounds: store.bounds, plane: .side, width: 872, height: 872)
-        store.updateOriginDrag(translation: .init(x: 40, y: 80), projection: resized)
+        store.updateOriginDrag(
+            translation: .init(x: 40, y: 80), projection: resized, generation: store.canvasDragGeneration)
         XCTAssertEqual(store.originDragPosition, projection.moving(origin, by: .init(x: 40, y: 80)))
         XCTAssertEqual(store.snapshot?.origin, origin)
         XCTAssertFalse(store.canUndo)
         XCTAssertFalse(other.isMovingOrigin)
         XCTAssertNil(other.originDragPosition)
         store.cancelOriginDrag()
-        store.finishOriginDrag(translation: .init(x: 40, y: 80))
+        store.finishOriginDrag(translation: .init(x: 40, y: 80), generation: store.canvasDragGeneration)
         XCTAssertEqual(store.snapshot?.document.encoded(), data)
         XCTAssertEqual(writes, 0)
         store.setMovingOrigin(true)
-        store.updateOriginDrag(translation: .init(x: 40, y: 80), projection: projection)
+        store.updateOriginDrag(
+            translation: .init(x: 40, y: 80), projection: projection, generation: store.canvasDragGeneration)
         let preview = store.originDragPosition
-        store.finishOriginDrag(translation: .init(x: 40, y: 80))
+        store.finishOriginDrag(translation: .init(x: 40, y: 80), generation: store.canvasDragGeneration)
         try await settle(store)
         XCTAssertEqual(store.snapshot?.origin, preview)
         XCTAssertNil(store.originDragPosition)
@@ -60,7 +63,8 @@ final class OriginDragStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.document.encoded(), data)
         XCTAssertFalse(store.canUndo)
         store.setMovingOrigin(true)
-        store.updateOriginDrag(translation: .init(x: 10, y: 10), projection: projection)
+        store.updateOriginDrag(
+            translation: .init(x: 10, y: 10), projection: projection, generation: store.canvasDragGeneration)
         store.cancelOriginDrag()
         XCTAssertTrue(store.canRedo)
         XCTAssertEqual(store.snapshot?.document.encoded(), data)
@@ -79,14 +83,15 @@ final class OriginDragStoreTests: XCTestCase {
         let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 472, height: 472)
         func begin() {
             store.setMovingOrigin(true)
-            store.updateOriginDrag(translation: .init(x: 40, y: 80), projection: projection)
+            store.updateOriginDrag(
+                translation: .init(x: 40, y: 80), projection: projection, generation: store.canvasDragGeneration)
             XCTAssertNotNil(store.originDragPosition)
         }
         begin()
         store.setLock(.radius, isLocked: true)
         try await settle(store)
         XCTAssertNil(store.originDragPosition)
-        store.finishOriginDrag(translation: .init(x: 40, y: 80))
+        store.finishOriginDrag(translation: .init(x: 40, y: 80), generation: store.canvasDragGeneration)
         XCTAssertFalse(store.canUndo)
         begin()
         store.plane = .side
@@ -99,7 +104,40 @@ final class OriginDragStoreTests: XCTestCase {
         begin()
         store.stop()
         XCTAssertNil(store.originDragPosition)
-        store.finishOriginDrag(translation: .init(x: 40, y: 80))
+        store.finishOriginDrag(translation: .init(x: 40, y: 80), generation: store.canvasDragGeneration)
         XCTAssertEqual(store.snapshot?.document.encoded(), data)
     }
+    @MainActor
+    func testCancelledCallbacksCannotReviveAfterOriginModeIsReenabled() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let data = Dust3DDocument.emptyArchive()
+        await store.load(data: data)
+        try await settle(store)
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 472, height: 472)
+        store.setMovingOrigin(true)
+        let old = store.canvasDragGeneration
+        store.updateOriginDrag(translation: .init(x: 40, y: 80), projection: projection, generation: old)
+        store.cancelCanvasDrag()
+        store.setMovingOrigin(true)
+        store.updateOriginDrag(translation: .init(x: 100, y: 100), projection: projection, generation: old)
+        XCTAssertNil(store.originDragPosition)
+        XCTAssertTrue(store.isMovingOrigin)
+        let fresh = store.canvasDragGeneration
+        store.updateOriginDrag(translation: .init(x: 20, y: 10), projection: projection, generation: fresh)
+        let preview = try XCTUnwrap(store.originDragPosition)
+        store.finishOriginDrag(translation: .init(x: 100, y: 100), generation: old)
+        XCTAssertEqual(store.originDragPosition, preview)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.document.encoded(), data)
+        XCTAssertFalse(store.canUndo)
+        store.finishOriginDrag(translation: .init(x: 20, y: 10), generation: fresh)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.origin, preview)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), data)
+        XCTAssertFalse(store.canUndo)
+    }
+
 }

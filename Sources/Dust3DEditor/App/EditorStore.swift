@@ -78,7 +78,7 @@ final class EditorStore {
     private(set) var isMovingOrigin = false
     private(set) var originDragPosition: NodePosition?
     private var originDrag: OriginDrag?
-    private(set) var nodeDragGeneration = UUID()
+    private(set) var canvasDragGeneration = UUID()
     private var nodeDrag: NodeDrag?
     private var nodeDragTranslation = CanvasPoint(x: 0, y: 0)
     var hasNodeDrag: Bool { nodeDrag != nil }
@@ -252,13 +252,13 @@ final class EditorStore {
     /// Cancel transient canvas movement and invalidate callbacks captured by the old recognizer.
     func cancelCanvasDrag() { cancelOriginDrag() }
 
-    func cancelNodeDrag() {
+    private func cancelNodeDrag() {
         nodeDrag = nil
-        nodeDragGeneration = UUID()
+        canvasDragGeneration = UUID()
     }
 
     func updateNodeDrag(anchorID: String, translation: CanvasPoint, projection: CanvasProjection, generation: UUID) {
-        guard generation == nodeDragGeneration, !isWorking, !stopped, !isMovingOrigin, let snapshot else { return }
+        guard generation == canvasDragGeneration, !isWorking, !stopped, !isMovingOrigin, let snapshot else { return }
         do {
             let baseline = try nodeDrag ?? NodeDrag(snapshot: snapshot, anchorID: anchorID, projection: projection)
             guard baseline.anchorID == anchorID, baseline.isCurrent(in: snapshot) else {
@@ -278,7 +278,7 @@ final class EditorStore {
     }
 
     func finishNodeDrag(translation: CanvasPoint, generation: UUID) {
-        guard generation == nodeDragGeneration, let baseline = nodeDrag else { return }
+        guard generation == canvasDragGeneration, let baseline = nodeDrag else { return }
         perform { try await $0.commitNodeDrag(baseline, translation: translation) }
     }
 
@@ -294,8 +294,8 @@ final class EditorStore {
         originDragPosition = nil
     }
 
-    func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
-        guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+    func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection, generation: UUID) {
+        guard generation == canvasDragGeneration, isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
         do {
             let baseline = try originDrag ?? OriginDrag(snapshot: snapshot, projection: projection)
             guard baseline.isCurrent(in: snapshot) else {
@@ -314,8 +314,8 @@ final class EditorStore {
         }
     }
 
-    func finishOriginDrag(translation: CanvasPoint) {
-        guard isMovingOrigin, let baseline = originDrag else { return }
+    func finishOriginDrag(translation: CanvasPoint, generation: UUID) {
+        guard generation == canvasDragGeneration, isMovingOrigin, let baseline = originDrag else { return }
         perform { try await $0.commitOriginDrag(baseline, translation: translation) }
     }
 

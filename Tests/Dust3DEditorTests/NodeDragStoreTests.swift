@@ -23,7 +23,7 @@ final class NodeDragStoreTests: XCTestCase {
         await store.load(data: source.encoded())
         try await settle(store)
         let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 400, height: 400)
-        let old = store.nodeDragGeneration
+        let old = store.canvasDragGeneration
         store.updateNodeDrag(anchorID: "a", translation: .init(x: 20, y: 10), projection: projection, generation: old)
         XCTAssertTrue(store.hasNodeDrag)
         XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
@@ -36,7 +36,7 @@ final class NodeDragStoreTests: XCTestCase {
         XCTAssertFalse(store.hasNodeDrag)
         XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
         XCTAssertFalse(store.canUndo)
-        let fresh = store.nodeDragGeneration
+        let fresh = store.canvasDragGeneration
         store.updateNodeDrag(anchorID: "a", translation: .init(x: 20, y: 10), projection: projection, generation: fresh)
         store.finishNodeDrag(translation: .init(x: 20, y: 10), generation: fresh)
         try await settle(store)

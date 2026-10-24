@@ -89,7 +89,8 @@ final class ReferenceImageCompletionTests: XCTestCase {
             let saved = store.snapshot?.document.encoded()
             store.setMovingOrigin(true)
             let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 472, height: 472)
-            store.updateOriginDrag(translation: .init(x: 10, y: 20), projection: projection)
+            store.updateOriginDrag(
+                translation: .init(x: 10, y: 20), projection: projection, generation: store.canvasDragGeneration)
             let draft = store.originDragPosition
             XCTAssertNotNil(draft)
             await images.release()

@@ -46,7 +46,7 @@ final class NodeDragRenderingTests: XCTestCase {
                     store.updateNodeDrag(
                         anchorID: first, translation: .init(x: 40, y: -30),
                         projection: .init(bounds: store.bounds, plane: .front, width: 600, height: 400),
-                        generation: store.nodeDragGeneration)
+                        generation: store.canvasDragGeneration)
                     XCTAssertTrue(store.hasNodeDrag)
                     XCTAssertNotEqual(store.nodeDragPreviewPosition(originalPosition), originalPosition.value.position)
                 } else if state == "cancelled" {
@@ -69,4 +69,44 @@ final class NodeDragRenderingTests: XCTestCase {
             }
         }
     }
+    @MainActor func testCanvasRendersOriginModePreviewAndCancellationWithoutEditingArchive() async throws {
+        let source = Dust3DDocument.emptyArchive()
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source)
+        try await settle(store)
+        let root =
+            ProcessInfo.processInfo.environment["DUST3D_UI_QA_OUTPUT_DIR"]
+            .map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent(
+                "dust3d-origin-canvas-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        for scheme in [ColorScheme.light, .dark] {
+            for state in ["enabled", "preview", "cancelled"] {
+                if state == "enabled" {
+                    store.setMovingOrigin(true)
+                } else if state == "preview" {
+                    store.updateOriginDrag(
+                        translation: .init(x: 40, y: -30),
+                        projection: .init(bounds: store.bounds, plane: .front, width: 600, height: 400),
+                        generation: store.canvasDragGeneration)
+                    XCTAssertNotNil(store.originDragPosition)
+                } else {
+                    store.cancelCanvasDrag()
+                    XCTAssertNil(store.originDragPosition)
+                    XCTAssertFalse(store.isMovingOrigin)
+                }
+                let data = try InspectorRenderer.png(
+                    NodeCanvas(store: store).frame(width: 600, height: 400),
+                    width: 632, scheme: scheme)
+                let target = root.appendingPathComponent(
+                    "origin-canvas-\(scheme == .dark ? "dark" : "light")-\(state).png")
+                try data.write(to: target, options: .atomic)
+                print("Origin QA artifact: \(target.path)")
+                XCTAssertEqual(store.snapshot?.document.encoded(), source)
+                XCTAssertFalse(store.canUndo)
+            }
+        }
+    }
+
 }

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Cancel node movement previews with Escape and reject stale gesture callbacks after cancellation, document replacement, selection or constraint changes (#245).
+- Cancel node and origin movement previews with Escape and reject stale callbacks, including after origin mode is re-enabled; preserve exact undo/redo (#245).
 
 - Add native edge bone assignment with Apply, Clear, draft reset and lossless undo/redo; rigged preview remains unavailable (#247).
 

@@ -78,3 +78,29 @@ verified. This is not overall M2 acceptance. The final full gate including the r
 checks and 920 XCTest tests, zero failures (121.105 seconds), formatting, coverage,
 Qt-link and isolated packaging/provider checks. The final documentation-only
 commit leaves implementation and tests unchanged.
+
+
+## Origin callback generation follow-up
+
+Controller-level regression reproduced an origin cancellation gap: cancelling and
+re-enabling Move Origin allowed an old change callback to restore a preview, and
+an old end callback to commit its displacement. The pre-fix behavioral test failed
+four assertions. This is direct controller evidence, not native pointer evidence.
+
+Node and origin callbacks now capture one per-window canvas generation. Cancel,
+mode changes and intervening commands rotate it; stale callbacks cannot alter a
+new preview or end a fresh gesture. OriginHandle resets only its inner gesture
+surface, preserving a stable outer accessibility element. Existing origin field
+editing and actor-side baseline checks remain unchanged.
+
+The new regression verifies ignored old updates after re-enable, ignored old end
+callbacks during a fresh preview, a valid fresh commit and exact undo. Sixteen
+focused node/origin/reference-completion tests pass. Two render tests pass in
+1.837 seconds and export twelve light/dark captures for node and origin states;
+all were inspected. Origin active accent, Escape hint and neutral cancelled
+marker retain semantic colors and the existing 44-point target. No animation or
+new icon assets were added. The scoped polish verdict remains Approve, with the
+same physical/VoiceOver/performance limits above. These captures do not establish
+physical held-gesture acceptance. The composition source already tracks active
+crop gestures and disables Apply while active; no composition behavior was changed.
+A new full gate including this origin fix is required before publication.

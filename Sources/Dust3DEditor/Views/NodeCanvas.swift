@@ -11,7 +11,7 @@ struct NodeCanvas: View {
                 bounds: store.bounds, plane: store.plane,
                 width: geometry.size.width, height: geometry.size.height)
             let nodes = store.snapshot?.nodes ?? []
-            let generation = store.nodeDragGeneration
+            let generation = store.canvasDragGeneration
             ZStack {
                 if store.showsReferenceImage, let image = store.referenceImage {
                     let aspect = Double(image.width) / Double(image.height)
