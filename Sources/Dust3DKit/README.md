@@ -134,3 +134,10 @@ Existing base-only native loading leaves these empty; copied-output root account
 includes the actual source-result layout. The shared renderer consumes result-owned
 chains without a caller override. Native count/level binding and generation await
 the reviewed core upgrade; see ADR 0087 and #177.
+
+`DocumentExportFileService(encoder:)` publishes an immutable current document
+snapshot via an injected `DocumentExportEncoding` implementation. For example,
+`try await service.export(document, format: .obj, to: output, sourceURL: source)`.
+It preserves the source/savepoint and returns owned bytes with the diagnostic.
+There is no production encoder binding until the core dependency is reviewed;
+see ADR0100 for destination, cancellation and atomic-publication limits.
