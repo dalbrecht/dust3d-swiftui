@@ -93,6 +93,9 @@ final class EditorStore {
     var onDocumentChanged: ((Data) -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
     private let session = EditorSession()
+    private let exportService: DocumentExportFileService?
+    private var exportTask: Task<EditorExportReceipt, any Error>?
+
     // A retained preview may belong to a previous load; recovery must preserve current-load provenance and errors.
     private struct RecoveryLoadIdentity {
         let documentIdentity: UUID
@@ -127,8 +130,10 @@ final class EditorStore {
         preview: any EditorPreviewServing = EditorPreviewService(),
         materialBaker: any ArchiveTextureBaking = ArchiveTextureBakingService(),
         importedMaterialLoader: any ArchiveImportedMaterialLoading = ArchiveImportedMaterialService(),
-        sourceMaterialBaker: any ArchiveSourceTextureBaking = ArchiveSourceTextureBakingService()
+        sourceMaterialBaker: any ArchiveSourceTextureBaking = ArchiveSourceTextureBakingService(),
+        exportService: DocumentExportFileService? = nil
     ) {
+        self.exportService = exportService
         self.colorImages = colorImages
         self.referenceImages = referenceImages
         self.preview = preview
@@ -139,6 +144,69 @@ final class EditorStore {
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
     var canSave: Bool { snapshot != nil && !isWorking && !stopped }
     var canEditRigSettings: Bool { canSave }
+
+    var canExport: Bool {
+        guard exportService != nil, canSave,
+            case .success(let accepted) = recoveryLoadResult,
+            snapshot?.documentIdentity == accepted.documentIdentity
+        else { return false }
+        return true
+    }
+
+    /// Export one accepted snapshot without changing save state, history, preview or source bytes.
+    /// Production scene commands must inject a reviewed native encoder and supply their source URL.
+    func exportDocument(format: DocumentExportFormat, to destination: URL, sourceURL: URL?) async throws
+        -> EditorExportReceipt
+    {
+        try Task.checkCancellation()
+        guard let exportService else { throw EditorExportWorkflowError.unavailable }
+        guard !isWorking, !stopped, let recoveryLoadResult else { throw EditorExportWorkflowError.notReady }
+        let accepted = try recoveryLoadResult.get()
+        guard let snapshot, snapshot.documentIdentity == accepted.documentIdentity else {
+            throw EditorExportWorkflowError.notReady
+        }
+        let target = EditorExportTarget(snapshot: snapshot)
+        cancelColorImagePreparation()
+        cancelOriginDrag()
+        let requestID = UUID()
+        operationRequestID = requestID
+        isWorking = true
+        let task = Task { [session] in
+            let output = try await exportService.export(
+                snapshot.document, format: format, to: destination, sourceURL: sourceURL,
+                validateSnapshot: { try await session.validateExport(target) },
+                publish: { commit in try await session.publishExport(target, publication: commit) })
+            return EditorExportReceipt(
+                documentIdentity: snapshot.documentIdentity, documentRevision: snapshot.documentRevision,
+                destination: destination, format: format, byteCount: output.bytes.count, warning: output.warning)
+        }
+        exportTask = task
+        defer {
+            if operationRequestID == requestID {
+                exportTask = nil
+                isWorking = false
+            }
+        }
+        do {
+            let receipt = try await withTaskCancellationHandler {
+                try await task.value
+            } onCancel: {
+                task.cancel()
+            }
+            if operationRequestID == requestID { errorMessage = nil }
+            return receipt
+        } catch {
+            if operationRequestID == requestID, !stopped, !(error is CancellationError) {
+                errorMessage = Self.message(error)
+            }
+            throw error
+        }
+    }
+
+    private func cancelExport() {
+        exportTask?.cancel()
+        exportTask = nil
+    }
 
     func setRigType(_ type: DocumentRigType) {
         guard canEditRigSettings else { return }
@@ -168,6 +236,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        cancelExport()
         cancelColorImagePreparation()
         operation?.cancel()
         let requestID = UUID()
@@ -608,6 +677,7 @@ final class EditorStore {
     }
 
     func stop() {
+        cancelExport()
         cancelColorImagePreparation()
         operationRequestID = UUID()
         isWorking = false

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Connect accepted editor snapshots to an injected export workflow with source revision receipts, history preservation and lifecycle cancellation; native encoder/menu binding remains unavailable by default (#146).
+
 - Serialize final export source checks and atomic publication with accepted editor commands, preserving committed success on late task cancellation; native UI binding remains pending (#146).
 
 - Add current-document export admission around background encoding, rejecting replaced documents and stale revisions without publishing output; app-level publication coordination remains pending (#146).
