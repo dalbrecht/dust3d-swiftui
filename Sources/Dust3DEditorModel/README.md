@@ -195,3 +195,10 @@ trusted synchronous final commit without admitting intervening editor commands.
 Encode before entering this background actor operation. Bind the file service's
 publication coordinator to it; no await may split validation from the write.
 ADR 0102 records the remaining native/UI/lifecycle and filesystem limits.
+
+`EditorSession.animationSnapshot()` explicitly queries optional stored-animation
+presentation off-main, returning matching editor identity/revision and original
+metadata issues. `selectAnimation` is transient and independent of graph selection;
+create/duplicate allocate fresh UUIDs atomically. Rows use byte-array identities
+for Unicode-safe list selection. No native evaluation runs. ADR 0105 records
+request/source correlation and remaining store/UI/runtime acceptance.
