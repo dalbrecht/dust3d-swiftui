@@ -1,6 +1,6 @@
 # ADR 0093: Bounded explicit editor recovery copies
 
-Status: Implemented locally; full gate and native command acceptance pending (#248).
+Status: Implemented locally; full gate passed on 73771d7c; native command acceptance pending (#248).
 
 The editor needs an app-owned way to retain accepted document state when external
 window-control tooling cannot operate its UI. A separate invocation of the same
@@ -41,3 +41,16 @@ a potentially unsaved bone edit remains untouched. Do not execute the new comman
 against that older executable, rebuild its bundle, or infer native command acceptance
 from filesystem/controller tests. Native acceptance on a future safely launched
 bundle, broader M1 recovery and full M8 acceptance remain open.
+
+## Verification
+
+Missing-API tests failed before implementation; the retained-file-count regression
+also failed before its fix. Seventeen focused cases pass. The full native gate on
+73771d7c passed 36 build-support tests and 922 XCTest cases (zero failures or reported
+skips), formatting, existing coverage thresholds, Qt-link and isolated bundle checks.
+The new pure planner measures 57/57 lines and 36/36 regions; registry/channel
+68/68 lines and 30/31 regions; file adapter 133/141 lines and 78/94 regions.
+The filesystem adapter's 94.33% line coverage remains below the shared 95% adoption
+target; real enumeration failures and native event delivery remain thin boundary
+verification gaps. Swift branch coverage was not instrumented. No inherited-engine,
+native command, crash recovery or overall feature-parity coverage claim follows.
