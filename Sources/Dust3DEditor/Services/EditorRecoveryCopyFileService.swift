@@ -13,7 +13,7 @@ actor EditorRecoveryCopyFileService: EditorRecoveryCopyWriting {
 
     init(bundleIdentifier: String?) {
         let identifier = bundleIdentifier ?? ""
-        isSupportedIdentity = EditorRecoveryCopyChannel.isSupportedIdentity(identifier)
+        isSupportedIdentity = EditorRecoveryRequestChannel.isSupportedIdentity(identifier)
         directory =
             (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support"))

@@ -112,11 +112,18 @@ replace it. Untargeted requests are rejected. This requires a responsive app and
 cannot retrofit an older running executable.
 See [ADR 0093](../../docs/adr/0093-bounded-editor-recovery-copies.md) for verification limits.
 
-If a composition sheet cannot be controlled through accessibility, run its installed bundle executable with `--cancel-reference-composition`, for example:
+If a composition sheet cannot be controlled through accessibility, run a build supporting the version-2 channel with `--cancel-reference-composition PID`,
+using the exact verified receiving PID (replace `12345` below):
 
 ```sh
-/path/to/Dust3DEditor.app/Contents/MacOS/Dust3DEditor --cancel-reference-composition
+/path/to/Dust3DEditor.app/Contents/MacOS/Dust3DEditor --cancel-reference-composition 12345
 ```
+
+This posts only to the version-2 channel; older binaries do not receive it, and
+other processes sharing the bundle ID reject it. The printed UUID acknowledges
+dispatch only: confirm the target process's recovery log or visible sheet state.
+A busy Apply refuses cancellation and never falls back to another document's sheet.
+Do not use an older argument-free executable as a fallback around protected data.
 
 This requests cancellation of only the most recently opened composition draft in running instances with that bundle identity and login session. It does not launch an editor window, save, close documents or accept file paths. It refuses to cancel during Apply and never falls back to an older sheet. The request uses a local distributed notification; shell sandbox restrictions can block delivery, and the printed request message is not an acknowledgement. Verify that the sheet closed before continuing. Run the executable inside the same app bundle as the target editor; the plain SwiftPM binary lacks a bundle identity.
 
