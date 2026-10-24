@@ -1,6 +1,6 @@
 # ADR 0094: Native controls for stored rig settings
 
-Status: Implemented locally for #254 on the merged #246 foundation; historical full gate passed on 2900229b. Rebased delivery validation and native interaction acceptance remain pending.
+Status: Implemented for #254 on the merged #246 foundation; rebased full local gate passed on 5f38e425. Native interaction acceptance remains pending.
 
 ## Decision
 
@@ -80,3 +80,16 @@ Verdict: Approve the inspected static presentation and tested controller behavio
 native interactions, keyboard focus, VoiceOver and native save acceptance are not
 verified. No actionable static polish findings remain. Full local validation and
 automated PR review remain separate gates.
+
+## Rebased delivery gate
+
+Full `make ci` on stable clean 5f38e425 passed 36 build-support tests and
+904 XCTest cases with zero failures/reported skips (118.530s), formatting,
+coverage, Qt-link and isolated bundle/provider checks. The earlier run passed
+its tests but was correctly rejected by the source-identity guard after a
+documentation edit during execution; it is not counted as a passing gate.
+The stable rerun regenerated sixteen diagnostic renders. Recognized expanded
+light and unsupported expanded dark states were inspected; the native interaction
+limits above remain open. Scoped control coverage remains 171/173 lines,
+23/26 regions and 12/14 functions; Swift branch coverage was not instrumented.
+The final follow-up changes only this verification record.
