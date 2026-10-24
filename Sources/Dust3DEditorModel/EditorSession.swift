@@ -63,6 +63,20 @@ public actor EditorSession {
         try insertAnimation { .createAnimation(id: $0, name: name, type: type) }
     }
 
+    /// Create/select one stored record only while its captured document epoch is current.
+    /// - Parameters: name/type are bounded stored text; target captures the accepted document and revision.
+    /// - Returns: One committed editor/list snapshot with a fresh UUID; no native evaluation occurs.
+    /// - Throws: Stale-target or original document/load/cancellation errors before publication.
+    /// - Example: `try await session.createAnimation(name: "Rest", type: "future", target: target)`.
+    public func createAnimation(name: String, type: String, target: AnimationCreationTarget) throws
+        -> EditorAnimationSnapshot
+    {
+        try Task.checkCancellation()
+        guard let state else { throw EditorError.notLoaded }
+        guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleAnimationTarget }
+        return try createAnimation(name: name, type: type)
+    }
+
     /// Duplicate/select complete stored intent using a fresh UUID; opaque data remains preserved.
     /// - Parameters: id identifies the source record exactly; name is the new bounded display name.
     /// - Returns: Committed source/history plus optional presentation.

@@ -195,6 +195,14 @@ final class EditorStore {
         performAnimationMutation { try await $0.createAnimation(name: name, type: type) }
     }
 
+    func createAnimation(
+        name: String, type: String, target: AnimationCreationTarget, completion: (@MainActor (Bool) -> Void)? = nil
+    ) {
+        performAnimationMutation(completion: completion) {
+            try await $0.createAnimation(name: name, type: type, target: target)
+        }
+    }
+
     func editAnimation(
         _ edit: AnimationEdit, target: AnimationEditTarget, completion: (@MainActor (Bool) -> Void)? = nil
     ) {

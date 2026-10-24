@@ -849,3 +849,14 @@ qualified/reserved names remain protected. Five focused tests and the full
 renders inspected. Animation-record creation, catalog-specific controls, live
 native interaction/VoiceOver, Qt/runtime interoperability, evaluation/playback/audio
 and full M6 acceptance remain open. Production pin/quarantines remain unchanged.
+
+### Captured-document animation record creation (#145)
+
+ADR0110 adds an epoch-bound creation API and inline name/type form available from
+valid empty or populated lists. Reopen and semantic edits/Undo retire drafts;
+failed Open cannot promote retained state for creation. Accepted insertion selects
+a fresh record and preserves exact history/save behavior. Six focused tests and
+the full 45-support/1014-XCTest gate pass. Owned forms and integrated empty/light
+and selected/dark panel renders were inspected. Catalog-specific type/parameter
+controls, live keyboard/VoiceOver acceptance, Qt/runtime interoperability,
+evaluation/playback/audio and full M6 remain open; no runtime/pin/quarantine changes.

@@ -408,9 +408,16 @@ validate playback or generate animation. Add Parameter opens an inline name/valu
 form for the selected animation. Existing names reject without replacement,
 including parameters with empty values; correct the name or cancel and use Edit.
 Return adds and Escape cancels. Reopening or changing the document retires the
-draft. Creation of animation records, catalog-specific controls, native catalog
+draft.
+
+New Animation creates a stored record from an empty or populated list. Enter an
+optional name and a nonempty stored type; no catalog choices or generator defaults
+are inferred. Return/Create applies and Escape/Cancel discards the draft. Accepted
+creation selects a fresh record and supports exact Undo/Redo and Save. A changed
+or reopened document retires the draft. Catalog-specific controls, native catalog
 evaluation, playback and audio remain pending. See
 [panel verification](../../docs/animation-panel-verification.md) and
 [stored-value verification](../../docs/animation-stored-values-verification.md) and
-[parameter addition](../../docs/animation-parameter-addition-verification.md)
+[parameter addition](../../docs/animation-parameter-addition-verification.md) and
+[record creation](../../docs/animation-record-creation-verification.md)
 for owned offscreen evidence and the live keyboard/accessibility acceptance limits.
