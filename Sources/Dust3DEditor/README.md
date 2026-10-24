@@ -19,6 +19,13 @@ even when the preview cannot display them. The standalone viewer remains read-on
 Development: `make ci`. No Qt dependency, hand-maintained Xcode project or extra
 Swift package is required beyond the existing pinned engine dependency.
 
+Expand Rig settings in the inspector to choose a saved template or edit the head-bone
+eyelid flag. Each change is undoable and is included when you save the document.
+Unsupported templates remain unchanged until you choose a replacement. Direct
+settings changes keep the ordinary mesh/material preview intact; skeleton generation
+and pose preview are not available yet. Native interaction acceptance remains pending;
+see [ADR 0094](../../docs/adr/0094-native-stored-rig-settings.md).
+
 Quit the editor normally before using the run script again; it refuses to kill a
 running editor with potentially unsaved document edits. `--build-only` does not launch.
 

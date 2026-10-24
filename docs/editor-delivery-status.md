@@ -1,14 +1,14 @@
 # Native editor delivery and acceptance status
 
-Snapshot: October 23, 2026. The full scope remains
+Snapshot: October 24, 2026. The full scope remains
 [editor-port-plan.md](editor-port-plan.md), including M0–M8. This snapshot separates
 implemented stages, local work and missing acceptance; it is not a parity signoff.
 
 ## Public and local baselines
 
-- Apple public master: `2be446e078a86504ae8f1a5aa2b48336108f1322` (reviewed PR #251).
+- Apple public master at this delivery base: `30cb289e09c9fdc8fad3dfdbe0e768ca5a392a85` (reviewed PR #253).
   Crop adjustment (#249) and the native node-ID accessibility/copy fix (#251) are
-  merged. Historical modifier/clipboard QA used clean implementation `2011b362`;
+  merged, as are the stored rig document/actor foundations (#253). Historical modifier/clipboard QA used clean implementation `2011b362`;
   later documentation and test commits do not retag that captured runtime.
 - Core public master: `69b428bd70e8b2f582502c83661f92a6df0a70a7` (reviewed PR #125).
   Transport #122, queue #124 and pure lifetime policy #125 merged after completed
@@ -29,7 +29,7 @@ implemented stages, local work and missing acceptance; it is not a parity signof
 | M2 — Canvas/editor | Node/edge creation/deletion/history, selection/transforms, front/side editing, references, separate windows; crop adjustment is merged in #249. Controlled two-window/drag evidence is tracked in [#245](https://github.com/dalbrecht/dust3d-swiftui/issues/245). | Native-created capsule and multi-part sword reopened in Qt; held-gesture Escape, responsiveness/stale-result scenarios, keyboard/VoiceOver/older macOS. |
 | M3 — Modeling | Hierarchy/modifier document/controller suites and scoped native checks, now including [controlled thickness/unified and intersecting hard-join history/reopen](controlled-native-modifier-acceptance.md). | Broader linked topology interactions/replacements, remaining families and Qt comparisons. Hollow-thickness consumer gap remains [#96](https://github.com/dalbrecht/dust3d-swiftui/issues/96); [#120](https://github.com/dalbrecht/dust3d-swiftui/issues/120) stays open. |
 | M4 — Materials/imports | Existing material/import/bake/render stages have [editor evidence](imported-material-editor-verification.md) and [file-preview evidence](mixed-file-preview-verification.md). | Mixed source mip adoption [#172–180](https://github.com/dalbrecht/dust3d-swiftui/issues/172), full alpha/PBR/UV/export parity and malformed-asset containment. Historical render evidence does not enable the quarantined experimental catalog. [#143](https://github.com/dalbrecht/dust3d-swiftui/issues/143) remains open. |
-| M5 — Rigging | Local stored-parameter/inspector stage #246 and bone-assignment stage #247 have document/controller tests and scoped render evidence. They are saved separately and not yet public adoption or native rig evaluation. | Rig/pose ownership, skeleton/hierarchy/weights, IK and native save/keyboard acceptance under [#144](https://github.com/dalbrecht/dust3d-swiftui/issues/144) and its staged issues. Preserve Apple #199 quarantine. |
+| M5 — Rigging | Stored-parameter document/actor commands (#246/#253) are merged; the separate inspector delivery #254 has controller tests and scoped render evidence. Bone-assignment stage #247 remains saved separately. These stages do not establish native rig evaluation. | Rig/pose ownership, skeleton/hierarchy/weights, IK and native save/keyboard acceptance under [#144](https://github.com/dalbrecht/dust3d-swiftui/issues/144) and its staged issues. Preserve Apple #199 quarantine. |
 | M6 — Animation/audio | Existing archive fields can be retained; no full native evaluation/playback/audio acceptance exists. | Catalog/commands, bounded pose/audio copies, time-based playback, synchronization and WAV workflows under [#145](https://github.com/dalbrecht/dust3d-swiftui/issues/145). Preserve core #95 quarantine. |
 | M7 — Export/batch | Portable development work and staged issues exist; document Save is not export parity. | Owned OBJ/GLB/FBX/WAV outputs, atomic publication, current-revision admission and independent re-import/batch acceptance under [#146](https://github.com/dalbrecht/dust3d-swiftui/issues/146). |
 | M8 — Release/hardening | Measured Swift suites, explicit Qt-free builds, file-preview integration stages and local core mitigation contracts. | Strong memory/descendant/filesystem/network/parent-death containment, active lifecycle evidence, trusted packaging/signing/notarization, hardware/OS/performance/accessibility/upgrade matrix under [#147](https://github.com/dalbrecht/dust3d-swiftui/issues/147). |

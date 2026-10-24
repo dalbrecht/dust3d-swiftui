@@ -159,7 +159,13 @@ Dependencies: M3; material/export integration follows M4. Suggested PRs: rig ada
 - Add skeleton visibility/picking, hierarchy/properties, rig generation progress, rest pose and deformation preview. Define coordinate/axis and joint index conventions once across renderer/exporters.
 - Done: valid parent graph and normalized weights; expected rest pose; fixture deformation parity; undoable rig edits persist; failures retain recoverable document data.
 
-Stored rig-parameter commands are locally implemented under #246: [ADR 0091](adr/0091-stored-rig-parameters.md). They preserve unsupported intent and exact history without engine evaluation. This does not establish skeleton generation, weights, pose or native rig UI acceptance.
+Stored rig-parameter commands merged in #253 under #246: [ADR 0091](adr/0091-stored-rig-parameters.md). They preserve unsupported intent and exact history without engine evaluation. This does not establish skeleton generation, weights, pose or native rig UI acceptance.
+
+Native stored-setting controls now have controller tests and scoped light/dark
+renders under #254 and [ADR 0094](adr/0094-native-stored-rig-settings.md). They expose saved
+template/eyelid intent, retain unsupported values and leave ordinary preview state
+unchanged on direct edits. Native keyboard/save acceptance and generated rig,
+weights and deformation parity remain open; #199 stays quarantined.
 
 ### M6 — Animation and procedural audio
 

@@ -17,6 +17,7 @@ struct NodeInspector: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Selection inspector").font(.headline)
             OriginControls(store: store)
+            RigSettingsControls(store: store)
             NodeClipboardMenu(store: store)
             if let component = store.snapshot?.selectedComponent {
                 ComponentInspector(store: store, component: component)
