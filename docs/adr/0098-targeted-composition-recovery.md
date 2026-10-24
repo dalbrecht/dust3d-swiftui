@@ -1,6 +1,6 @@
 # ADR 0098: Route composition cancellation to an exact process
 
-Status: Locally implemented; full gate and native delivery pending. Refs #56, #248.
+Status: Local full gate passed; automated review and native delivery pending. Refs #56, #248.
 
 ## Decision
 
@@ -54,4 +54,7 @@ branch outcomes are not instrumented. The executable entry point now only launch
 the app, posts a prepared request, prints output or exits with a typed error.
 Those native effects and the actual delegate notification callback remain manual
 boundary gaps; do not report whole-entry-point coverage or native delivery as
-verified. A final full gate including this sender refactor is still required.
+verified. The final full `make ci` gate at f1d53f02 passes 36 support checks and
+937 XCTest cases, zero failures (118.970 seconds), formatting, coverage, Qt-link
+and isolated packaging/provider checks. Final documentation does not change
+tested code. Pure planner and decoder/gate retain the measured coverage above.
