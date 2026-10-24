@@ -1,6 +1,7 @@
 # ADR 0090: Native selectable node identity
 
-Status: locally implemented and natively verified; publication pending. Refs #235.
+Status: locally implemented and natively verified; publication pending. Refs #250;
+the separate staged OBJ-status accessibility investigation in #235 remains open.
 
 ## Context
 
@@ -35,7 +36,9 @@ exact selected range, byte-exact text transfer to a private pasteboard using the
 text type advertised by AppKit, and current accessibility/active-editor values
 after an identity update. Initial private-pasteboard attempts incorrectly assumed
 the modern string type; diagnostics showed the field editor advertises legacy
-NSStringPboardType, and the test now exercises that advertised type. It does not
+NSStringPboardType, and the test now exercises that advertised type. A repeated
+publication of the same identifier retains the native control and a partial text
+selection before the subsequent exact full-identifier copy. It does not
 write to the user's general pasteboard. The existing first/second/first identity
 regression also passes with unchanged document bytes and history.
 
