@@ -52,50 +52,21 @@ enum EditorCompositionRecoveryChannel {
 /// No document data or destination paths are accepted through these channels.
 @main enum Dust3DEditorEntryPoint {
     @MainActor static func main() {
-        switch EditorLaunchMode(arguments: CommandLine.arguments) {
+        let plan = EditorRecoveryDispatchPlan(
+            mode: EditorLaunchMode(arguments: CommandLine.arguments),
+            bundleIdentifier: Bundle.main.bundleIdentifier, requestID: UUID())
+        switch plan {
         case .application:
             Dust3DEditorApp.main()
-        case .cancelComposition(let processIdentifier):
-            guard let identifier = Bundle.main.bundleIdentifier,
-                EditorRecoveryRequestChannel.isSupportedIdentity(identifier)
-            else {
-                FileHandle.standardError.write(Data("Run recovery using the editor app bundle executable.\n".utf8))
-                exit(2)
-            }
-            let requestID = UUID()
+        case .request(let request):
             DistributedNotificationCenter.default().postNotificationName(
-                EditorCompositionRecoveryChannel.notification, object: identifier,
-                userInfo: ["requestID": requestID.uuidString, "processIdentifier": String(processIdentifier)],
-                deliverImmediately: true)
-            print(
-                "Requested composition cancellation in \(identifier), PID=\(processIdentifier); requestID=\(requestID.uuidString)."
-            )
-            print(
-                "Dispatch does not confirm cancellation; verify the target process's recovery log or visible sheet state."
-            )
-        case .invalidRecoveryCommand:
-            FileHandle.standardError.write(
-                Data("Usage: Dust3DEditor --cancel-reference-composition PID | --write-recovery-copies PID\n".utf8))
+                request.notificationName, object: request.bundleIdentifier,
+                userInfo: request.userInfo, deliverImmediately: true)
+            print(request.acknowledgement)
+            print(request.guidance)
+        case .failure(let error):
+            FileHandle.standardError.write(Data((error.message + "\n").utf8))
             exit(2)
-        case .writeRecoveryCopies(let processIdentifier):
-            guard let identifier = Bundle.main.bundleIdentifier,
-                EditorRecoveryRequestChannel.isSupportedIdentity(identifier)
-            else {
-                FileHandle.standardError.write(
-                    Data("Run recovery using a supported editor app bundle executable.\n".utf8))
-                exit(2)
-            }
-            let requestID = UUID()
-            DistributedNotificationCenter.default().postNotificationName(
-                EditorRecoveryCopyChannel.notification, object: identifier,
-                userInfo: ["requestID": requestID.uuidString, "processIdentifier": String(processIdentifier)],
-                deliverImmediately: true)
-            print(
-                "Requested recovery copies in \(identifier), PID=\(processIdentifier); requestID=\(requestID.uuidString)."
-            )
-            print(
-                "This acknowledges the request only. Check Application Support/\(identifier)/RecoveryCopies/latest-recovery.json for this requestID, processIdentifier and results."
-            )
         }
     }
 }
