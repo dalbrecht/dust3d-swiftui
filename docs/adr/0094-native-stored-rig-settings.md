@@ -1,6 +1,6 @@
 # ADR 0094: Native controls for stored rig settings
 
-Status: Implemented locally for #246; focused tests pass; full gate and native interaction acceptance pending.
+Status: Implemented locally for #246; full gate passed on 2900229b; native interaction acceptance pending.
 
 ## Decision
 
@@ -34,6 +34,15 @@ unsupported, recognized and stopped states without mutating the document.
 A counting ordinary preview service verifies that direct changes do not enqueue
 additional geometry evaluation. These are controller and scoped render tests, not
 native File menu, popup keyboard or full application acceptance.
+
+Full `make ci` on 2900229b passed 36 build-support tests and 904 XCTest cases
+(zero failures or reported skips; 115.875s), formatting, existing coverage
+thresholds, Qt-link checks and isolated bundle/provider checks. Compiler-attributed
+control coverage is 171/173 lines and 23/26 regions; the native binding callbacks
+are not exercised by these scoped renders. Swift branch coverage was not
+instrumented. These figures do not establish native control or inherited-engine
+coverage. Six representative current-state PNGs, including collapsed, unsupported,
+checked and stopped controls, were visually inspected.
 
 The current running older QA bundle is preserved. Native control, keyboard focus,
 VoiceOver and save/reopen acceptance on a safely launched future build remain open.
