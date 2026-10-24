@@ -29,6 +29,8 @@ struct EdgeInspector: View {
                 "Reversing or deleting an edge is one undo step. Deleting an edge keeps its nodes and splits disconnected parts."
             )
             .font(.caption).foregroundStyle(.secondary)
+            Divider()
+            EdgeBoneBindingControls(store: store, edge: edge)
         }
     }
 }

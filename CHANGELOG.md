@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add native edge bone assignment with Apply, Clear, draft reset and lossless undo/redo; rigged preview remains unavailable (#247).
+
 - Expose stored rig-template and eyelid parameters in the native inspector, preserving undo/redo and lossless save; skeleton generation and pose preview remain unavailable (#254).
 
 - Add lossless, undoable stored rig-template and eyelid parameters with actor-prepared snapshots; skeleton generation and pose preview remain unavailable (#246).
