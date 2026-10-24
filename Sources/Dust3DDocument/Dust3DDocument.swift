@@ -68,8 +68,31 @@ public struct NodeUpdate: Sendable {
     }
 }
 
-/// Atomic node and graph commands. Unknown archive data remains untouched.
+/// Atomic document commands. Unknown archive data remains untouched.
 public enum DocumentCommand: Sendable {
+    /// Create stored intent with a fresh caller-supplied ID and name/type at most 1024 UTF-8 bytes.
+    /// Throws typed animation errors for invalid/duplicate metadata or DocumentError for quotas; no clip is evaluated.
+    /// Example: `.createAnimation(id: freshID, name: "Walk", type: "walk")`.
+    case createAnimation(id: String, name: String, type: String)
+    /// Rename stored intent, preserving unknown data and exact no-ops; empty names are allowed.
+    /// `id` is exact source identity; `name` is at most 1024 UTF-8 bytes without controls/newlines.
+    /// Throws typed animation errors. Example: `.setAnimationName(id: id, name: "Rest")`.
+    case setAnimationName(id: String, name: String)
+    /// Store a nonempty type (at most 1024 UTF-8 bytes), without catalog evaluation or parameter resets.
+    /// Throws typed animation errors. Example: `.setAnimationType(id: id, type: "walk")`.
+    case setAnimationType(id: String, type: String)
+    /// Set/remove one unqualified parameter; nil removes it. No timing is evaluated.
+    /// `name` is at most 128 ASCII identifier bytes; id/name/type/xmlns are reserved.
+    /// `value` is at most 4096 UTF-8 bytes without controls/newlines; unknown values remain stored intent.
+    /// Throws typed animation errors. Example: `.setAnimationParameter(id: id, name: "duration", value: "1.0")`.
+    case setAnimationParameter(id: String, name: String, value: String?)
+    /// Clone complete stored intent including nested data; supply a fresh ID and bounded display name.
+    /// Throws typed animation/metadata quota errors; assets stay shared and unchanged.
+    /// Example: `.duplicateAnimation(id: id, newID: freshID, name: "Walk copy")`.
+    case duplicateAnimation(id: String, newID: String, name: String)
+    /// Remove one exact `id`, retaining unrelated metadata and assets. Throws a typed missing/identity error.
+    /// Example: `.deleteAnimation(id: id)`; ordinary document history supplies Undo/Redo.
+    case deleteAnimation(id: String)
     /// Set an editable edge's exact inherited bone identity; empty clears the attribute.
     /// - Parameters: `id` is the edge identity; `name` is at most 1024 UTF-8 bytes without controls/newlines.
     /// - Throws: `invalidBoneName` or `invalidNode` for missing/read-only endpoints; no generation occurs.
@@ -347,6 +370,18 @@ public struct Dust3DDocument: Sendable {
         return DocumentRigSettings(root: root)
     }
 
+    /// Read stored animation metadata without evaluating clips, rigs or audio.
+    /// - Parameter maximumCount: Metadata row/extension-element bound in 0...10,000.
+    /// - Returns: Source-ordered records, preserving unsupported types and missing name/type fields.
+    /// - Throws: Typed animation metadata errors, XML errors or `limitExceeded`; source bytes stay unchanged.
+    /// - Example: `try document.animations().first?.parameter(named: "duration")`.
+    public func animations(maximumCount: Int = 10_000) throws -> [DocumentAnimation] {
+        guard (0...10_000).contains(maximumCount) else { throw DocumentError.limitExceeded }
+        let model = try Self.xml(modelXML, root: "canvas")
+        guard let root = model.rootElement() else { throw DocumentError.invalidXML }
+        return try AnimationMetadata.read(root, maximumCount: maximumCount)
+    }
+
     /// Copy an asset by its unique archive name, preserving arbitrary binary content.
     public func asset(named name: String) -> Data? {
         guard let item = items.first(where: { $0.name == name }) else { return nil }
@@ -446,7 +481,9 @@ public struct Dust3DDocument: Sendable {
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
         switch command {
-        case .setRigType, .setHeadHasEyelids, .setNode, .setNodes, .setReferenceImagePNG, .setOrigin, .setComponentName,
+        case .createAnimation, .setAnimationName, .setAnimationType, .setAnimationParameter, .duplicateAnimation,
+            .deleteAnimation, .setRigType, .setHeadHasEyelids, .setNode, .setNodes, .setReferenceImagePNG, .setOrigin,
+            .setComponentName,
             .setComponentCombineMode,
             .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
             .setComponentWrapKeepChildren, .setComponentWrapFaces,
@@ -481,6 +518,24 @@ public struct Dust3DDocument: Sendable {
         }
         func edgeElements() -> [XMLElement] { root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] }
         switch command {
+        case .createAnimation(let id, let name, let type):
+            try AnimationMetadata.create(root, id: id, name: name, type: type)
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setAnimationName(let id, let name):
+            guard try AnimationMetadata.setField(root, id: id, field: .name, value: name) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setAnimationType(let id, let type):
+            guard try AnimationMetadata.setField(root, id: id, field: .type, value: type) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setAnimationParameter(let id, let name, let value):
+            guard try AnimationMetadata.setParameter(root, id: id, name: name, value: value) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .duplicateAnimation(let id, let newID, let name):
+            try AnimationMetadata.duplicate(root, id: id, newID: newID, name: name)
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .deleteAnimation(let id):
+            try AnimationMetadata.delete(root, id: id)
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setEdgeBoneName(let id, let name):
             guard try EdgeBoneBinding.set(model: model, contents: contents, id: id, name: name) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
@@ -835,9 +890,9 @@ public struct Dust3DDocument: Sendable {
         func canonical(_ data: Data) throws -> Data {
             let model = try Self.xml(data, root: "canvas")
             model.isStandalone = false
-            // Absent graph containers and empty containers represent the same graph.
+            // Absent graph/animation containers and metadata-free empty ones have the same stored intent.
             // Attributes, namespaces, comments and non-whitespace content are metadata.
-            for name in ["nodes", "edges"] {
+            for name in ["nodes", "edges", "animations"] {
                 for container in model.rootElement()?.elements(forName: name) ?? [] {
                     if container.attributes?.isEmpty ?? true, container.namespaces?.isEmpty ?? true,
                         (container.children ?? []).allSatisfy({
