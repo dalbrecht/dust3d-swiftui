@@ -23,9 +23,10 @@ again from the existing process, confirming clean source, the above revision,
 source digest
 `b9dfc3de67e2d474c626d11c4cfc265725e8bc10e81c99087bf9d0607bc7d65f`,
 and immutable capture time `2026-10-23T21:17:31Z`. Process inspection confirmed
-the owned executable path. The current documentation branch has no implementation
-difference from `2011b362` in Sources, Tests, Package.swift or scripts; that does
-not change the revision attributed to the loaded process.
+the owned executable path. Product implementation in Sources, Package.swift and
+scripts matches `2011b362`; the current branch also contains newer node-ID test
+assertions and documentation. Those changes do not alter the revision attributed
+to the loaded process or turn historical observations into a fresh native pass.
 
 ## Earlier controlled cases
 
