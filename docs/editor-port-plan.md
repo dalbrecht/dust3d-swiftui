@@ -167,7 +167,7 @@ template/eyelid intent, retain unsupported values and leave ordinary preview sta
 unchanged on direct edits. Native keyboard/save acceptance and generated rig,
 weights and deformation parity remain open; #199 stays quarantined.
 
-Exact edge bone-assignment persistence is locally implemented under #247: [ADR 0092](adr/0092-lossless-edge-bone-bindings.md). This exposes stored intent with bounded lossless commands; native binding controls, generated weights and deformation acceptance remain open.
+Exact edge bone-assignment persistence and native binding controls merged in #256 under #247: [ADR 0092](adr/0092-lossless-edge-bone-bindings.md). Commands retain exact UTF-8 bone identity and lossless undo/redo. Test-owned native text-field Return/Escape and offscreen rendering are verified; full product-window save acceptance, generated weights and deformation acceptance remain open.
 
 ### M6 — Animation and procedural audio
 

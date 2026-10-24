@@ -74,5 +74,7 @@ Verification: `make ci` at e97ff9aa passed as above;
 `./script/swift.sh test --filter NodeDragRenderingTests` passed. All six exported
 states were visually inspected. Scoped verdict: Approve with physical held-drag,
 hover/focus interaction, VoiceOver, oldest macOS and runtime performance not
-verified. This is not overall M2 acceptance. A final gate including the render test
-is still required before this stage is published.
+verified. This is not overall M2 acceptance. The final full gate including the render test passed at 837f104f: 36 support
+checks and 920 XCTest tests, zero failures (121.105 seconds), formatting, coverage,
+Qt-link and isolated packaging/provider checks. The final documentation-only
+commit leaves implementation and tests unchanged.
