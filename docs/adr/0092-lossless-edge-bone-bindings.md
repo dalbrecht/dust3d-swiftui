@@ -140,3 +140,17 @@ corrected-head make ci remains a separate pending gate.
 | Severity | Location | Before | After | Why |
 | --- | --- | --- | --- | --- |
 | MEDIUM | Sources/Dust3DDocument/EdgeBoneBinding.swift; Sources/Dust3DEditor/Views/EdgeBoneBindingControls.swift; Sources/Dust3DEditor/Views/ExactBoneNameField.swift | Canonical equality could discard a byte-distinct lookup spelling and suppress native submission | Shared UTF-8 identity and a narrow native editing boundary | Preserve the actual inherited bone lookup identity across document and UI state |
+
+## Corrected review gate
+
+Full `make ci` on stable clean 52219442 passes 36 build-support tests and
+913 XCTest cases, zero failures/reported skips (120.078s), plus formatting,
+coverage, Qt-link and isolated bundle/provider checks. Six current diagnostic
+images were regenerated; bound-light was inspected after the native field change.
+The original SVG bytes/mtime were restored after the terminal gate.
+BoneNameIdentity measures 6/6 lines and 2/2 regions; EdgeBoneBinding remains
+35/35 lines and 17/17 regions. Controls measure 86/90 lines and 15/18 regions;
+the native field measures 46/47 lines and 15/18 regions. Native protocol/callback
+gaps remain, and Swift branch coverage was not instrumented. Whole-app File/
+VoiceOver acceptance and the protected older QA state remain unchanged. The
+final verification follow-up changes prose only.

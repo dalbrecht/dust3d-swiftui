@@ -74,3 +74,10 @@ the draft without writing, unrelated updates retain native selection, and an
 accepted spelling change refreshes the field. Eight focused contracts pass.
 This is native control evidence for the owned test window, separate from the
 protected older QA process and the outstanding native File/history/reopen scope.
+
+The corrected review gate on 52219442 passes all 36 support and 913 XCTest
+cases (120.078s), formatting, coverage, Qt-link and isolated packaging checks.
+New pure identity coverage is 6/6 lines; edge command coverage remains 35/35.
+The native field measures 46/47 lines and 15/18 regions, with protocol/callback
+gaps. Native control evidence is scoped to the owned offscreen window; full
+File-menu persistence and VoiceOver remain open.
