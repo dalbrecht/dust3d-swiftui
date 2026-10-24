@@ -6,9 +6,9 @@ implemented stages, local work and missing acceptance; it is not a parity signof
 
 ## Public and local baselines
 
-- Apple public master at this delivery base: `30cb289e09c9fdc8fad3dfdbe0e768ca5a392a85` (reviewed PR #253).
+- Apple public master at this delivery base: `87b03855f86cf45cc8091ed8e15df1954232e67d` (reviewed PR #255).
   Crop adjustment (#249) and the native node-ID accessibility/copy fix (#251) are
-  merged, as are the stored rig document/actor foundations (#253). Historical modifier/clipboard QA used clean implementation `2011b362`;
+  merged, as are the stored rig document/actor foundations (#253) and inspector (#255). Historical modifier/clipboard QA used clean implementation `2011b362`;
   later documentation and test commits do not retag that captured runtime.
 - Core public master: `69b428bd70e8b2f582502c83661f92a6df0a70a7` (reviewed PR #125).
   Transport #122, queue #124 and pure lifetime policy #125 merged after completed

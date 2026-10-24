@@ -9,6 +9,9 @@ The controller test first failed because EditorStore.setEdgeBoneName was absent.
 It now verifies Apply/Clear/rejection, unchanged ordinary mesh positions/camera,
 selected edge, exact undo/redo, no-op publications and stopped-store rejection.
 The fixture is an ordinary two-node procedural chain, without rig/pose evaluation.
+The rebased regression counts preview requests and checks preview/material revisions;
+direct assignment edits use the metadata-only path, while generic Undo/Redo retains
+its existing refresh behavior.
 
 Offscreen light/dark renders of the actual EdgeInspector cover unassigned, bound
 and read-only endpoints at 250-point width. PNGs are diagnostic artifacts in the

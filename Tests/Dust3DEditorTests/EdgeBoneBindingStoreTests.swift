@@ -1,5 +1,6 @@
 import AppKit
 import Dust3DDocument
+import Dust3DKit
 import Foundation
 import SwiftUI
 import XCTest
@@ -23,7 +24,7 @@ final class EdgeBoneBindingStoreTests: XCTestCase {
 
     @MainActor private func settle(_ store: EditorStore) async throws {
         for _ in 0..<300 {
-            if !store.isWorking && !store.isGenerating { return }
+            if !store.isWorking && !store.isGenerating && !store.isBakingMaterials { return }
             try await Task.sleep(for: .milliseconds(10))
         }
         XCTFail("Bone binding or ordinary preview did not settle")
@@ -31,7 +32,8 @@ final class EdgeBoneBindingStoreTests: XCTestCase {
 
     @MainActor func testBindingApplyClearAndRejectRetainGeometrySelectionCameraAndExactHistory() async throws {
         let original = try document()
-        let store = EditorStore()
+        let preview = CountingBoneBindingPreview()
+        let store = EditorStore(preview: preview)
         defer { store.stop() }
         var publications = 0
         store.onDocumentChanged = { _ in publications += 1 }
@@ -40,6 +42,8 @@ final class EdgeBoneBindingStoreTests: XCTestCase {
         store.selectEdge(edgeID)
         try await settle(store)
         let camera = store.cameraReset
+        let previewRevision = store.previewRevision
+        let materialRevision = store.materialViewportRevision
         let positions = try XCTUnwrap(store.mesh).vertices.map(\.position)
         store.setEdgeBoneName(edgeID, name: "Root")
         try await settle(store)
@@ -60,6 +64,10 @@ final class EdgeBoneBindingStoreTests: XCTestCase {
         store.setEdgeBoneName(edgeID, name: "")
         try await settle(store)
         XCTAssertEqual(store.snapshot?.selectedEdge?.boneName, "")
+        let requests = await preview.requests
+        XCTAssertEqual(requests, 1, "Stored bindings must not enqueue geometry or rig evaluation")
+        XCTAssertEqual(store.previewRevision, previewRevision)
+        XCTAssertEqual(store.materialViewportRevision, materialRevision)
         store.undo()
         try await settle(store)
         XCTAssertEqual(store.snapshot?.document.encoded(), bound)
@@ -105,4 +113,14 @@ final class EdgeBoneBindingStoreTests: XCTestCase {
             }
         }
     }
+}
+
+private actor CountingBoneBindingPreview: EditorPreviewServing {
+    private let service = EditorPreviewService()
+    private(set) var requests = 0
+    func generate(_ data: Data, scopeID: UUID) async throws -> EditorPreviewResult {
+        requests += 1
+        return try await service.generate(data, scopeID: scopeID)
+    }
+    func reset(scopeID: UUID) async throws { try await service.reset(scopeID: scopeID) }
 }
