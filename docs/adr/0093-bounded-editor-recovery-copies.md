@@ -105,5 +105,9 @@ PID-bearing receipts. No distributed notification was posted during these tests.
 The receipt remains one bounded latest record per bundle: a later request may
 replace it, so collect it and verify BOTH UUID and PID before another request.
 Dispatch acknowledgement still does not prove completion. This does not retrofit
-the protected older QA process or establish native command acceptance. A new full
-local gate is required before this follow-up is published.
+the protected older QA process or establish native command acceptance. Full `make ci` at 20fa6861 passes 36 support checks and 932 XCTest cases,
+zero failures (118.855 seconds), formatting, coverage, Qt-link and isolated bundle/
+provider checks. Registry/channel measures 74/74 lines and 34/34 regions; filesystem
+adapter 134/142 lines (94.37%) and 80/95 regions. The native enumeration callback
+coverage gap remains below the 95% adoption target; no artificial failure probe
+was added. The final documentation follow-up leaves source/tests unchanged.
