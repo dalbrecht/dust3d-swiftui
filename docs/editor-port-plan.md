@@ -6,6 +6,15 @@ Editor previews now pair current geometry with optional source hints and preserv
 
 Current evidence and remaining gates are summarized in [delivery status](editor-delivery-status.md). Historical sequencing notes below do not establish current milestone completion.
 
+## Explicit recovery-copy foundation (#248)
+
+Bounded private copies of accepted open-window archives now have pure admission,
+serialized filesystem writing, PID/UUID-correlated receipts and an app-owned
+request channel that requires the exact receiving PID. Original files and Undo/Redo history are unchanged. Controller and
+ordinary owned-directory tests cover exact bytes, partial failures and bounds;
+native command acceptance remains pending. This is one M1/M8 recovery step, not
+automatic crash recovery or full milestone completion. See ADR0093.
+
 ## Product boundary
 
 Keep `Dust3DViewer` as a separate read-only macOS app with its own executable, bundle identifier, launch/package command, and release artifacts. Add `Dust3DEditor` as a different app, initially macOS 14+, Swift 6, SwiftUI and Metal. Share document/engine services and reusable rendering code; never make opening a model in the viewer start an editor session. Preserve the Qt app as a compatibility oracle during the port. iOS, cloud collaboration, and new modeling features are outside parity scope.
@@ -736,3 +745,10 @@ intersecting hard-join case also restores exact archives through history and
 reopening, retaining unknown metadata and an opaque binary asset. Linked-profile
 mutation/history, unsupported replacements and broad
 Qt/accessibility/OS acceptance remain pending; #120 and M3 remain open.
+
+
+The combined targeted recovery stage retains bounded private copies, exact PID/
+UUID requests and versioned composition cancellation (ADRs0093/0098). Fresh full
+gate:36 support+940 XCTest, including failed/replaced-load provenance and oversized
+receipt preservation. Native command delivery remains unverified; protected QA
+apps and production pin are unchanged. M1/M2/M8 acceptance remains open.

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Recheck actual recovery storage before each write so failed shrinking replacements cannot fund growth beyond the retained-byte budget (#248).
+
+- Reject recovery capture after a failed replacement load, preserving its original error and the previous accepted document (#248).
+
+- Require an exact PID and versioned notification channel for composition cancellation, ignoring older broadcast requests and bounding pending cancellation work (#56, #248).
+
+- Add bounded app-owned recovery copies targeted to an exact process, with PID/UUID-correlated receipts, preserving original files and undo history (#248).
+
 - Add native edge bone assignment with Apply, Clear, draft reset and lossless undo/redo; rigged preview remains unavailable (#247).
 
 - Expose stored rig-template and eyelid parameters in the native inspector, preserving undo/redo and lossless save; skeleton generation and pose preview remain unavailable (#254).

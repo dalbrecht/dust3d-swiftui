@@ -93,6 +93,12 @@ final class EditorStore {
     var onDocumentChanged: ((Data) -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
     private let session = EditorSession()
+    // A retained preview may belong to a previous load; recovery must preserve current-load provenance and errors.
+    private struct RecoveryLoadIdentity {
+        let documentIdentity: UUID
+        let fileIdentity: UUID?
+    }
+    private var recoveryLoadResult: Result<RecoveryLoadIdentity, any Error>?
     private let materialPreparation: any ArchiveMaterialPreparing
     private(set) var materialGeneration: Task<Void, Never>?
     private let preview: any EditorPreviewServing
@@ -143,10 +149,25 @@ final class EditorStore {
         guard canEditRigSettings else { return }
         perform(changesRendering: false) { try await $0.apply([.setHeadHasEyelids(enabled)]) }
     }
+
+    func recoverySnapshot(documentID: UUID) throws -> EditorRecoverySnapshot {
+        guard !stopped else { throw EditorRecoveryCopyError.stopped }
+        guard !isWorking else { throw EditorRecoveryCopyError.editInProgress }
+        guard let recoveryLoadResult else { throw EditorRecoveryCopyError.notLoaded }
+        let accepted = try recoveryLoadResult.get()
+        if let fileIdentity = accepted.fileIdentity, fileIdentity != documentID {
+            throw EditorRecoveryCopyError.identityMismatch
+        }
+        guard let snapshot, snapshot.documentIdentity == accepted.documentIdentity else {
+            throw EditorRecoveryCopyError.notLoaded
+        }
+        return .init(documentID: documentID, revision: snapshot.documentRevision, document: snapshot.document)
+    }
     var canUndo: Bool { !isWorking && snapshot?.canUndo == true }
     var canRedo: Bool { !isWorking && snapshot?.canRedo == true }
 
-    func load(data: Data) async {
+    /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
+    func load(data: Data, fileIdentity: UUID? = nil) async {
         cancelColorImagePreparation()
         operation?.cancel()
         let requestID = UUID()
@@ -154,18 +175,23 @@ final class EditorStore {
         cancelOriginDrag()
         stopped = false
         isWorking = true
+        recoveryLoadResult = nil
         defer { if operationRequestID == requestID { isWorking = false } }
         do {
             let next = try await session.open(data: data)
             guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
             snapshot = next
+            recoveryLoadResult = .success(.init(documentIdentity: next.documentIdentity, fileIdentity: fileIdentity))
             referenceImage = nil
             fit()
             clearPreview()
             generate(next)
             refreshReferenceImage(next, forceFit: true)
         } catch {
-            if !Task.isCancelled, operationRequestID == requestID { errorMessage = Self.message(error) }
+            if !Task.isCancelled, operationRequestID == requestID {
+                recoveryLoadResult = .failure(error)
+                errorMessage = Self.message(error)
+            }
         }
     }
 
