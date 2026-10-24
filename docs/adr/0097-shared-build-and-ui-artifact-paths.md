@@ -1,6 +1,6 @@
 # ADR 0097: Share cache and UI artifact paths
 
-Status: Locally implemented; full gate and review pending. Refs #147.
+Status: Local full gate passed; automated review pending. Refs #147.
 
 ## Decision
 
@@ -30,6 +30,10 @@ Six disposable-repository tests initially failed four assertions covering cache
 sharing, aliases and missing artifact defaults. They now pass for linked worktrees,
 explicit build/artifact overrides, unrelated repositories, unavailable metadata
 and canonical source aliases. They do not compile product code or create caches.
-The final full native gate is required before publication. No UI appearance,
+Full `make ci` at 2b789900 passed 42 support checks and 913 XCTest cases,
+zero failures (119.327 seconds), formatting, coverage, Qt-link and isolated
+packaging/provider checks. Captures used the existing shared root and its ui-qa
+folder (25 MB), not another build cache. The final follow-up changes documentation
+only. No UI appearance,
 performance-budget or milestone completion is established by this infrastructure
 change. No live QA process is contacted.
