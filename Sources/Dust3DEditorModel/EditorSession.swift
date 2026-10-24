@@ -72,6 +72,38 @@ public actor EditorSession {
         try insertAnimation { .duplicateAnimation(id: id, newID: $0, name: name) }
     }
 
+    /// Apply an edit only to its captured source row and semantic epoch.
+    /// - Parameters: edit selects the bounded document command; target captures row/document identity.
+    /// - Returns: One committed editor/list snapshot with existing transient selection normalized.
+    /// - Throws: `staleAnimationTarget` or original document/load/cancellation cause, atomically.
+    /// - Example: `try await session.editAnimation(.rename("Rest"), target: target)`.
+    public func editAnimation(_ edit: AnimationEdit, target: AnimationEditTarget) throws -> EditorAnimationSnapshot {
+        var next = try validatedAnimationState(for: target)
+        try next.apply([edit.command(id: target.animationID)])
+        let result = Self.animationSnapshot(next, selectedID: selectedAnimationID)
+        try Task.checkCancellation()
+        state = next
+        selectedAnimationID = result.list.selectedRow?.source.id
+        return result
+    }
+
+    /// Duplicate a captured row only while its source epoch remains current.
+    /// - Parameters: target captures the exact source; name is the bounded new display name.
+    /// - Returns: One committed editor/list snapshot selecting a fresh UUID record.
+    /// - Throws: Stale-target or original document/load/cancellation errors before publication.
+    /// - Example: `try await session.duplicateAnimation(target: target, name: "Rest copy")`.
+    public func duplicateAnimation(target: AnimationEditTarget, name: String) throws -> EditorAnimationSnapshot {
+        _ = try validatedAnimationState(for: target)
+        return try duplicateAnimation(id: target.animationID, name: name)
+    }
+
+    private func validatedAnimationState(for target: AnimationEditTarget) throws -> EditorState {
+        try Task.checkCancellation()
+        guard let state else { throw EditorError.notLoaded }
+        guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleAnimationTarget }
+        return state
+    }
+
     private func insertAnimation(_ command: (String) -> DocumentCommand) throws -> EditorAnimationSnapshot {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
