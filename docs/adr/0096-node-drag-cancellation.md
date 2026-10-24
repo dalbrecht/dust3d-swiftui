@@ -103,4 +103,6 @@ new icon assets were added. The scoped polish verdict remains Approve, with the
 same physical/VoiceOver/performance limits above. These captures do not establish
 physical held-gesture acceptance. The composition source already tracks active
 crop gestures and disables Apply while active; no composition behavior was changed.
-A new full gate including this origin fix is required before publication.
+The combined full gate passed at dcd77447: 36 support checks and 922 XCTest
+tests, zero failures (120.082 seconds), formatting, coverage, Qt-link and isolated
+packaging/provider checks. The final evidence commit changes only documentation.
