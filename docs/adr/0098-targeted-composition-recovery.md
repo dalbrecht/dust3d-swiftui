@@ -37,3 +37,21 @@ remain required. Native notification delivery, held-gesture handling, VoiceOver,
 unsaved-copy recovery and full M1/M2/M8 acceptance remain open. Do not retrofit or
 probe the protected older executable, use its legacy cancellation helper, change
 the production core pin or lift a quarantine. No UI appearance change is claimed.
+
+## Pure sender/receiver contract
+
+The first implementation gate passed 36 support checks and 935 XCTest cases
+(119.780 seconds), with formatting, coverage, Qt-link and isolated packaging.
+A follow-up extracts a pure dispatch plan so tests verify the actual sender
+payload against the actual receiver decoder without posting notifications.
+Application launch, typed rejection, unsupported bundle identities and invalid
+constructed targets are covered. Both commands round-trip only to the intended
+process; acknowledgements preserve PID/UUID and distinguish dispatch from success.
+
+Twenty-seven focused cases pass. The dispatch plan measures 47/47 lines and 22/22
+regions; the shared decoder/gate measures 35/35 lines and 14/14 regions. Swift
+branch outcomes are not instrumented. The executable entry point now only launches
+the app, posts a prepared request, prints output or exits with a typed error.
+Those native effects and the actual delegate notification callback remain manual
+boundary gaps; do not report whole-entry-point coverage or native delivery as
+verified. A final full gate including this sender refactor is still required.
