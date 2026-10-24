@@ -5,6 +5,8 @@ existing `org.dust3d.editor` application and disposable copies, starting with
 `NativeModifiersQA-20261018.ds3`. No new application identity, human button
 presses, dependency or product code change was needed for this pass.
 
+[Later controlled repeats](controlled-native-modifier-acceptance.md) provide separate exact-runtime evidence for selected cases. The exploratory provenance limits below are retained.
+
 ## Runtime provenance and formal acceptance limit
 
 The earlier acceptance procedure specifies `org.dust3d.editor.combine-qa` at

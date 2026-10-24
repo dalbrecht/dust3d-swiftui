@@ -41,3 +41,13 @@ The earlier offscreen evidence and historical test totals above are retained.
 [Native modeling acceptance](native-modifier-acceptance.md) now records actual
 inspector/Metal behavior, saved archive comparisons and the specific remaining
 #120 cases. Its scope does not establish full modeling parity.
+
+
+## Controlled October 23 follow-up
+
+[Controlled native acceptance](controlled-native-modifier-acceptance.md) now verifies
+thickness Return/Save, Unified on, exact Undo/Redo archives and native reopen on
+clean source `2011b362` with the existing QA ID and unchanged core pin. This closes
+those specifically named native cases; it does not close all remaining M3,
+unsupported-source, Qt, VoiceOver or platform acceptance. The earlier historical
+counts and offscreen scope above remain unchanged.
