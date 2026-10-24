@@ -123,6 +123,7 @@ import UniformTypeIdentifiers
     let draft: ReferenceCompositionDraft
     let importImage: () -> Void
     @State private var values = ["", "", "", ""]
+    @State private var isAdjustingCrop = false
     private var source: ReferenceCompositionSource? { draft.source(profile) }
 
     var body: some View {
@@ -139,16 +140,36 @@ import UniformTypeIdentifiers
                     }
                 }
                 if let source {
-                    ReferenceCropPreview(source: source) { crop in
+                    Picker("\(profile.rawValue) crop tool", selection: $isAdjustingCrop) {
+                        Text("Draw").tag(false)
+                        Text("Adjust").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .help("Draw a new crop, or move and resize the existing rectangle.")
+                    ReferenceCropPreview(source: source, isAdjusting: isAdjustingCrop) { crop in
+                        isAdjustingCrop = true
                         draft.setPointerCrop(crop, profile: profile, expectedSource: source)
                     } failure: {
                         draft.reportRejectedInput($0)
                     } activity: { identifier, isActive in
                         draft.setCropping(identifier, isActive: isActive)
                     }
-                    .id(PreviewIdentity(image: ObjectIdentifier(source.image), isMirrored: source.isMirrored))
-                    Text("\(source.image.width) × \(source.image.height) pixels · Drag to select a crop")
-                        .font(.caption).foregroundStyle(.secondary)
+                    .id(
+                        PreviewIdentity(
+                            image: ObjectIdentifier(source.image), isMirrored: source.isMirrored,
+                            crop: [
+                                source.displayedCrop.x, source.displayedCrop.y, source.displayedCrop.width,
+                                source.displayedCrop.height,
+                            ],
+                            isAdjusting: isAdjustingCrop))
+                    Text("\(source.image.width) × \(source.image.height) pixels")
+                        .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                    Text(
+                        isAdjustingCrop
+                            ? "Drag inside to move; drag handles to resize. Draw starts a new crop."
+                            : "Drag to draw a crop. Use Adjust to move or resize it."
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
                     HStack {
                         ForEach(0..<4, id: \.self) { index in
                             VStack(alignment: .leading, spacing: 3) {
@@ -185,10 +206,13 @@ import UniformTypeIdentifiers
 private struct PreviewIdentity: Hashable {
     let image: ObjectIdentifier
     let isMirrored: Bool
+    let crop: [Int]
+    let isAdjusting: Bool
 }
 
-private struct ReferenceCropPreview: View {
+struct ReferenceCropPreview: View {
     let source: ReferenceCompositionSource
+    let isAdjusting: Bool
     let select: (ReferenceImageCrop) -> Void
     let failure: (Error) -> Void
     let activity: (UUID, Bool) -> Void
@@ -207,7 +231,7 @@ private struct ReferenceCropPreview: View {
                         .frame(width: projection.imageWidth, height: projection.imageHeight)
                         .offset(x: projection.imageX, y: projection.imageY)
                     let crop = tentativeCrop(projection) ?? source.displayedCrop
-                    Rectangle().stroke(.blue, lineWidth: 2)
+                    Rectangle().stroke(Color.accentColor, lineWidth: 2)
                         .frame(
                             width: Double(crop.width) * projection.imageWidth / Double(source.image.width),
                             height: Double(crop.height) * projection.imageHeight / Double(source.image.height)
@@ -216,26 +240,52 @@ private struct ReferenceCropPreview: View {
                             x: projection.imageX + Double(crop.x) * projection.imageWidth / Double(source.image.width),
                             y: projection.imageY + Double(crop.y) * projection.imageHeight / Double(source.image.height)
                         )
+                        .allowsHitTesting(false)
+                    if isAdjusting {
+                        ForEach(ReferenceCropHandle.allCases, id: \.self) { handle in
+                            if let point = try? projection.handlePoint(handle, crop: crop) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(.background)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 2).stroke(Color.accentColor, lineWidth: 1.5)
+                                    )
+                                    .frame(width: 8, height: 8)
+                                    .offset(x: point.x - 4, y: point.y - 4)
+                                    .allowsHitTesting(false)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                    }
                 }
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 3).updating($drag) { value, state, _ in state = value }
                         .onEnded { value in
                             do {
-                                select(try projection.crop(from: point(value.startLocation), to: point(value.location)))
+                                select(try selection(projection, value: value))
                             } catch { failure(error) }
                         })
             }
         }
         .frame(height: 180)
-        .accessibilityLabel("Profile crop preview; use crop fields for keyboard editing")
+        .accessibilityLabel("Profile crop preview")
+        .accessibilityHint(
+            "Draw a crop, or use Adjust to move its interior and resize its handles. Use crop fields for keyboard editing."
+        )
         .onChange(of: drag != nil) { _, isActive in activity(gestureIdentity, isActive) }
         .onDisappear { activity(gestureIdentity, false) }
     }
 
     private func point(_ point: CGPoint) -> CanvasPoint { .init(x: point.x, y: point.y) }
+    private func selection(_ projection: ReferenceCropProjection, value: DragGesture.Value) throws -> ReferenceImageCrop
+    {
+        let start = point(value.startLocation)
+        let interaction = try projection.interaction(at: start, crop: source.displayedCrop, isAdjusting: isAdjusting)
+        return try projection.adjust(
+            source.displayedCrop, interaction: interaction, from: start, to: point(value.location))
+    }
     private func tentativeCrop(_ projection: ReferenceCropProjection) -> ReferenceImageCrop? {
         // A subpixel or cancelled tentative rectangle is expected to be empty; only End validates an edit.
-        drag.flatMap { try? projection.crop(from: point($0.startLocation), to: point($0.location)) }
+        drag.flatMap { try? selection(projection, value: $0) }
     }
 }

@@ -5,6 +5,37 @@ import XCTest
 @testable import Dust3DEditor
 
 final class ReferenceCompositionDraftTests: XCTestCase {
+    @MainActor func testMovingAndResizingAMirroredSideCropMapsBackToOriginalPixels() async throws {
+        let input = try source()
+        let draft = ReferenceCompositionDraft(service: ImmediateCompositionService(source: input))
+        defer { draft.stop() }
+        draft.importSource(url: URL(fileURLWithPath: "/unused"), profile: .side)
+        try await settle(draft)
+        draft.setCrop(profile: .side, values: ["0", "0", "2", "2"])
+        try await settle(draft)
+        draft.toggleSideMirror()
+        try await settle(draft)
+        let mirrored = try XCTUnwrap(draft.side)
+        XCTAssertEqual(mirrored.displayedCrop.x, 2)
+        let projection = try ReferenceCropProjection(size: input.crop.size, width: 400, height: 200)
+        let moved = try projection.adjust(
+            mirrored.displayedCrop, interaction: .move, from: .init(x: 300, y: 100), to: .init(x: 200, y: 100))
+        draft.setPointerCrop(moved, profile: .side, expectedSource: mirrored)
+        try await settle(draft)
+        let current = try XCTUnwrap(draft.side)
+        XCTAssertEqual(current.crop.x, 1)
+        XCTAssertEqual(current.crop.width, 2)
+        let resized = try projection.adjust(
+            current.displayedCrop, interaction: .resize(.left),
+            from: projection.handlePoint(.left, crop: current.displayedCrop), to: .init(x: 200, y: 100))
+        draft.setPointerCrop(resized, profile: .side, expectedSource: current)
+        try await settle(draft)
+        XCTAssertEqual(draft.side?.crop.x, 1)
+        XCTAssertEqual(draft.side?.crop.width, 1)
+        XCTAssertEqual(draft.side?.displayedCrop.x, 2)
+        XCTAssertTrue(draft.canApply)
+    }
+
     private func source() throws -> ReferenceCompositionSource {
         let context = try XCTUnwrap(
             CGContext(

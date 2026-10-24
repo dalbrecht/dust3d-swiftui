@@ -151,3 +151,25 @@ document; constructing from current source resets a draft. `canApply` blocks emp
 or conversion-failed drafts, while nonempty invalid text reaches controller
 validation. Native platform color conversion stays in the app. Unsupported source
 summaries inspect bounded UTF-8 bytes and never change retained source data.
+
+
+### Existing crop adjustment
+
+`ReferenceCropProjection.interaction(at:crop:isAdjusting:)` chooses drawing,
+moving or an edge/corner resize at pointer start. Retain that original displayed
+crop and operation, then call `adjust(_:interaction:from:to:)` as the pointer moves.
+Move preserves extent and clamps translation; resize preserves opposite edges,
+retains the initial grab offset and enforces a one-pixel minimum. Inputs reject
+nonfinite points and mismatched image dimensions. `handlePoint(_:crop:)` maps
+visible handles back into preview points. Mirrored sources pass displayed crops
+and convert the result through the existing composition draft.
+
+```swift
+let projection = try ReferenceCropProjection(size: imageSize, width: 400, height: 180)
+let operation = try projection.interaction(at: start, crop: displayedCrop, isAdjusting: true)
+let next = try projection.adjust(displayedCrop, interaction: operation, from: start, to: current)
+```
+
+The SwiftUI sheet defaults to Draw, switches to Adjust after a pointer selection,
+and keeps numeric fields available for keyboard editing. Neither preview geometry
+nor drag completion writes the document; composition Apply remains one transaction.
