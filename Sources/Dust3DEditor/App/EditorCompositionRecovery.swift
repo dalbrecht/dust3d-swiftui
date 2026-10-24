@@ -1,10 +1,10 @@
 import Foundation
 
-/// Recovery uses an explicit, argument-free command; ordinary macOS launch arguments pass through.
+/// Recovery accepts only explicit bounded commands; ordinary macOS launch arguments pass through.
 enum EditorLaunchMode: Equatable {
     case application
     case cancelComposition
-    case writeRecoveryCopies
+    case writeRecoveryCopies(processIdentifier: Int32)
     case invalidRecoveryCommand
 
     init(arguments: [String]) {
@@ -13,8 +13,10 @@ enum EditorLaunchMode: Equatable {
         let options = Array(arguments.dropFirst())
         if options == [command] {
             self = .cancelComposition
-        } else if options == [copies] {
-            self = .writeRecoveryCopies
+        } else if options.count == 2, options[0] == copies,
+            let processIdentifier = EditorRecoveryCopyChannel.processIdentifier(options[1])
+        {
+            self = .writeRecoveryCopies(processIdentifier: processIdentifier)
         } else {
             self = options.contains(command) || options.contains(copies) ? .invalidRecoveryCommand : .application
         }
@@ -41,8 +43,8 @@ enum EditorLaunchMode: Equatable {
     }
 }
 
-/// The helper process posts only a cancellation request to this app identity in the current login session.
-/// No document data, paths or commands are accepted through this channel.
+/// Posts bounded recovery requests; copy requests require an exact process identity.
+/// No document data or destination paths are accepted through these channels.
 @main enum Dust3DEditorEntryPoint {
     @MainActor static func main() {
         switch EditorLaunchMode(arguments: CommandLine.arguments) {
@@ -58,9 +60,9 @@ enum EditorLaunchMode: Equatable {
             print("Requested cancellation of the most recently opened composition sheet in \(identifier).")
         case .invalidRecoveryCommand:
             FileHandle.standardError.write(
-                Data("Usage: Dust3DEditor --cancel-reference-composition | --write-recovery-copies\n".utf8))
+                Data("Usage: Dust3DEditor --cancel-reference-composition | --write-recovery-copies PID\n".utf8))
             exit(2)
-        case .writeRecoveryCopies:
+        case .writeRecoveryCopies(let processIdentifier):
             guard let identifier = Bundle.main.bundleIdentifier,
                 EditorRecoveryCopyChannel.isSupportedIdentity(identifier)
             else {
@@ -71,10 +73,13 @@ enum EditorLaunchMode: Equatable {
             let requestID = UUID()
             DistributedNotificationCenter.default().postNotificationName(
                 EditorRecoveryCopyChannel.notification, object: identifier,
-                userInfo: ["requestID": requestID.uuidString], deliverImmediately: true)
-            print("Requested recovery copies in \(identifier); requestID=\(requestID.uuidString).")
+                userInfo: ["requestID": requestID.uuidString, "processIdentifier": String(processIdentifier)],
+                deliverImmediately: true)
             print(
-                "This acknowledges the request only. Check Application Support/\(identifier)/RecoveryCopies/latest-recovery.json for this requestID and results."
+                "Requested recovery copies in \(identifier), PID=\(processIdentifier); requestID=\(requestID.uuidString)."
+            )
+            print(
+                "This acknowledges the request only. Check Application Support/\(identifier)/RecoveryCopies/latest-recovery.json for this requestID, processIdentifier and results."
             )
         }
     }

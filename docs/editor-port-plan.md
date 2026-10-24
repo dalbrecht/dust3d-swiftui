@@ -9,8 +9,8 @@ Current evidence and remaining gates are summarized in [delivery status](editor-
 ## Explicit recovery-copy foundation (#248)
 
 Bounded private copies of accepted open-window archives now have pure admission,
-serialized filesystem writing, correlated receipts and an argument-free app-owned
-request channel. Original files and Undo/Redo history are unchanged. Controller and
+serialized filesystem writing, PID/UUID-correlated receipts and an app-owned
+request channel that requires the exact receiving PID. Original files and Undo/Redo history are unchanged. Controller and
 ordinary owned-directory tests cover exact bytes, partial failures and bounds;
 native command acceptance remains pending. This is one M1/M8 recovery step, not
 automatic crash recovery or full milestone completion. See ADR0093.

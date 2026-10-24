@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add bounded app-owned recovery copies with correlated receipts, preserving original files and undo history (#248).
+- Add bounded app-owned recovery copies targeted to an exact process, with PID/UUID-correlated receipts, preserving original files and undo history (#248).
 
 - Add native edge bone assignment with Apply, Clear, draft reset and lossless undo/redo; rigged preview remains unavailable (#247).
 

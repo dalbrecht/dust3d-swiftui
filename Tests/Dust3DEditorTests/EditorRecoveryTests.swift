@@ -3,11 +3,24 @@ import XCTest
 @testable import Dust3DEditor
 
 final class EditorRecoveryTests: XCTestCase {
+    func testUntargetedCopyCommandIsRejected() {
+        XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "--write-recovery-copies"]), .invalidRecoveryCommand)
+    }
+
     func testRecoveryArgumentRequiresExactCommandAndPreservesNormalLaunchArguments() {
         XCTAssertEqual(EditorLaunchMode(arguments: ["editor"]), .application)
         XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "-NSDocumentRevisionsDebugMode", "YES"]), .application)
         XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "--cancel-reference-composition"]), .cancelComposition)
-        XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "--write-recovery-copies"]), .writeRecoveryCopies)
+        XCTAssertEqual(
+            EditorLaunchMode(arguments: ["editor", "--write-recovery-copies", "42"]),
+            .writeRecoveryCopies(processIdentifier: 42))
+        for value in ["0", "-1", "+42", "042", "2147483648", "1.0", "42 ", "", String(repeating: "1", count: 11)] {
+            XCTAssertEqual(
+                EditorLaunchMode(arguments: ["editor", "--write-recovery-copies", value]), .invalidRecoveryCommand)
+        }
+        XCTAssertEqual(
+            EditorLaunchMode(arguments: ["editor", "--write-recovery-copies", "2147483647"]),
+            .writeRecoveryCopies(processIdentifier: Int32.max))
         XCTAssertEqual(
             EditorLaunchMode(arguments: ["editor", "--write-recovery-copies", "extra"]), .invalidRecoveryCommand)
         XCTAssertEqual(

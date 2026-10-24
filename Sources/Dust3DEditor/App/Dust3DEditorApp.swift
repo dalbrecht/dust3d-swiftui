@@ -131,7 +131,8 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     @objc nonisolated private func writeRecoveryCopies(_ notification: Notification) {
         guard
             let requestID = EditorRecoveryCopyChannel.requestID(
-                notification, bundleIdentifier: Bundle.main.bundleIdentifier)
+                notification, bundleIdentifier: Bundle.main.bundleIdentifier,
+                processIdentifier: ProcessInfo.processInfo.processIdentifier)
         else { return }
         let logger = Logger(subsystem: "org.dust3d.editor", category: "recovery")
         guard recoveryRequestGate.begin() else {

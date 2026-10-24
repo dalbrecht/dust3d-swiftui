@@ -61,13 +61,23 @@ enum EditorRecoveryCopyChannel {
         ["org.dust3d.editor", "org.dust3d.editor.combine-qa"].contains(identifier)
     }
 
-    /// The channel carries only a bounded correlation UUID, never paths, archive data or executable commands.
-    static func requestID(_ notification: Notification, bundleIdentifier: String?) -> UUID? {
+    static func processIdentifier(_ text: String) -> Int32? {
+        guard text.utf8.count <= 10, let value = Int32(text), value > 0, String(value) == text else { return nil }
+        return value
+    }
+
+    /// Carry only a bounded UUID and exact process identity, never paths, archives or executable commands.
+    static func requestID(
+        _ notification: Notification, bundleIdentifier: String?,
+        processIdentifier: Int32
+    ) -> UUID? {
         guard let bundleIdentifier,
             isSupportedIdentity(bundleIdentifier),
             notification.name == Self.notification,
             notification.object as? String == bundleIdentifier,
-            let info = notification.userInfo, info.count == 1,
+            let info = notification.userInfo, info.count == 2,
+            let target = info["processIdentifier"] as? String,
+            Self.processIdentifier(target) == processIdentifier,
             let text = info["requestID"] as? String, text.utf8.count == 36,
             let identifier = UUID(uuidString: text), identifier.uuidString.lowercased() == text.lowercased()
         else { return nil }
