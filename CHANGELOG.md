@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Serialize final export source checks and atomic publication with accepted editor commands, preserving committed success on late task cancellation; native UI binding remains pending (#146).
+
 - Add current-document export admission around background encoding, rejecting replaced documents and stale revisions without publishing output; app-level publication coordination remains pending (#146).
 
 - Reject export targets hard-linked to a document opened through a symlink before encoding or publication (#146).
