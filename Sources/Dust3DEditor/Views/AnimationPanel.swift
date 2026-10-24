@@ -7,6 +7,7 @@ enum AnimationNameAction { case rename, duplicate }
 /// Stored document animation management. No controls in this view invoke native evaluation.
 struct AnimationPanel: View {
     let store: EditorStore
+    @State private var valueDraft: AnimationValueDraft?
     @State private var nameTarget: AnimationEditTarget?
     @State private var name: AnimationNameText
     @State private var nameAction: AnimationNameAction
@@ -59,10 +60,10 @@ struct AnimationPanel: View {
                         .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
                     } else {
                         animationList(value)
-                        if nameTarget == nil { actions(value) }
+                        if nameTarget == nil && valueDraft == nil { actions(value) }
                         if let row = value.list.selectedRow {
-                            if nameTarget == nil { details(row.source) }
-                        } else if nameTarget == nil {
+                            if nameTarget == nil && valueDraft == nil { details(row.source) }
+                        } else if nameTarget == nil && valueDraft == nil {
                             Text("Select an animation to inspect its details.").font(.caption).foregroundStyle(
                                 .secondary)
                         }
@@ -76,6 +77,10 @@ struct AnimationPanel: View {
                     Text("Open a document or refresh to inspect stored animations.").font(.caption)
                 }
                 if nameTarget != nil { nameEditor }
+                if let valueDraft {
+                    AnimationValueEditor(store: store, draft: valueDraft, onCancel: { self.valueDraft = nil })
+                        .id(valueDraft.id)
+                }
                 Divider()
                 Text("Changes are included when you save. Playback is not available yet.")
                     .font(.caption).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
@@ -112,7 +117,7 @@ struct AnimationPanel: View {
         .listStyle(.inset)
         .frame(height: 180)
         .accessibilityLabel("Stored animations")
-        .disabled(store.isWorking || nameTarget != nil)
+        .disabled(store.isWorking || nameTarget != nil || valueDraft != nil)
         .onDeleteCommand { deleteSelection() }
     }
 
@@ -144,7 +149,11 @@ struct AnimationPanel: View {
 
     private func details(_ record: DocumentAnimation) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Stored type").font(.caption).foregroundStyle(.secondary)
+            HStack {
+                Text("Stored type").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                valueEditButton(.type, value: record.type ?? "", record: record)
+            }
             Text(record.type ?? "Unspecified type").textSelection(.enabled)
                 .lineLimit(3).fixedSize(horizontal: false, vertical: true)
             if !record.parameters.isEmpty {
@@ -154,13 +163,36 @@ struct AnimationPanel: View {
                     ForEach(record.parameters.indices, id: \.self) { index in
                         let parameter = record.parameters[index]
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(parameter.name).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            HStack {
+                                Text(parameter.name).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                Spacer()
+                                if AnimationStoredField.parameter(parameter.name).isEditable {
+                                    valueEditButton(.parameter(parameter.name), value: parameter.value, record: record)
+                                }
+                            }
                             Text(parameter.value).monospacedDigit().textSelection(.enabled).lineLimit(3)
                         }
                     }
                 }
             }
         }
+    }
+
+    private func valueEditButton(_ field: AnimationStoredField, value: String, record: DocumentAnimation) -> some View {
+        Button {
+            guard store.canManageAnimations, let snapshot = store.animationSnapshot else { return }
+            do {
+                valueDraft = AnimationValueDraft(
+                    target: try AnimationEditTarget(snapshot: snapshot, animationID: record.id),
+                    field: field, originalValue: value)
+            } catch { store.errorMessage = error.localizedDescription }
+        } label: {
+            Image(systemName: "pencil").frame(minWidth: 40, minHeight: 40)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel("Edit animation \(field.title)")
+        .help("Edit stored \(field.title)")
+        .disabled(!store.canManageAnimations || !field.isEditable)
     }
 
     private var targetIsCurrent: Bool {
@@ -214,7 +246,7 @@ struct AnimationPanel: View {
     }
     private func cancelName() { if !isSubmitting { nameTarget = nil } }
     private func deleteSelection() {
-        guard nameTarget == nil, store.canManageAnimations, let value = store.animationSnapshot,
+        guard nameTarget == nil, valueDraft == nil, store.canManageAnimations, let value = store.animationSnapshot,
             let row = value.list.selectedRow
         else { return }
         do {

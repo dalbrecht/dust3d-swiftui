@@ -6,6 +6,8 @@
 
 - Clear removed animation selections when publishing edits and history transitions, independently of list reads (#145).
 
+- Add source-bound stored animation type and existing parameter editing, with explicit empty-value/removal behavior and read-only qualified attributes (#145).
+
 - Add a native stored-animation inspector with selection, source-bound rename/duplicate/delete, inline exact-text drafts and scoped graph shortcuts; playback remains unavailable (#145).
 
 - Add stale-source animation edit targets and editor metadata workflows with latest-request list adoption, lifecycle retirement and geometry-independent history; native controls/evaluation remain pending (#145).

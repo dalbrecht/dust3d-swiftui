@@ -78,11 +78,7 @@ enum AnimationMetadata {
     }
 
     static func setParameter(_ root: XMLElement, id: String, name: String, value: String?) throws -> Bool {
-        let characters = Array(name.utf8)
-        func letter(_ value: UInt8) -> Bool { (65...90).contains(value) || (97...122).contains(value) || value == 95 }
-        guard let first = characters.first, letter(first), characters.count <= 128,
-            characters.allSatisfy({ letter($0) || (48...57).contains($0) || $0 == 45 || $0 == 46 }),
-            !["id", "name", "type", "xmlns"].contains(name), value.map({ validText($0, maximum: 4096) }) ?? true
+        guard DocumentAnimationParameter.canEditName(name), value.map({ validText($0, maximum: 4096) }) ?? true
         else { throw DocumentAnimationError.invalidParameter }
         let element = try find(root, id: id)
         guard !AnimationTextIdentity.matches(element.attribute(forName: name)?.stringValue, value) else { return false }

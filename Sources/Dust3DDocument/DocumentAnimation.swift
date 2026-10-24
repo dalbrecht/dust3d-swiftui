@@ -5,6 +5,18 @@ public struct DocumentAnimationParameter: Sendable, Equatable {
     public let name: String
     public let value: String
 
+    /// Whether a stored attribute can be edited through the unqualified-parameter command.
+    /// - Parameter name: Exact retained attribute spelling; no trimming or normalization occurs.
+    /// - Returns: False for namespace declarations, qualified names, reserved fields and unsupported names.
+    /// - Example: `DocumentAnimationParameter.canEditName("durationSeconds")`.
+    public static func canEditName(_ name: String) -> Bool {
+        let characters = Array(name.utf8)
+        func letter(_ value: UInt8) -> Bool { (65...90).contains(value) || (97...122).contains(value) || value == 95 }
+        guard let first = characters.first, letter(first), characters.count <= 128 else { return false }
+        return characters.allSatisfy { letter($0) || (48...57).contains($0) || $0 == 45 || $0 == 46 }
+            && !["id", "name", "type", "xmlns"].contains(name)
+    }
+
     public static func == (lhs: Self, rhs: Self) -> Bool {
         AnimationTextIdentity.matches(lhs.name, rhs.name) && AnimationTextIdentity.matches(lhs.value, rhs.value)
     }

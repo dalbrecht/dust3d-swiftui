@@ -12,6 +12,8 @@ struct AnimationNameField: NSViewRepresentable {
     @Binding var text: AnimationNameText
     let onSubmit: @MainActor () -> Void
     let onCancel: @MainActor () -> Void
+    var fieldLabel = "Animation name"
+    var fieldIdentifier = "animation-name"
 
     static func makeField(_ value: String) -> NSTextField {
         let field = InitialFocusField(string: value)
@@ -30,6 +32,9 @@ struct AnimationNameField: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context: Context) -> NSTextField {
         let field = Self.makeField(text.value)
+        field.placeholderString = fieldLabel
+        field.setAccessibilityLabel(fieldLabel)
+        field.setAccessibilityIdentifier(fieldIdentifier)
         field.delegate = context.coordinator
         field.target = context.coordinator
         field.action = #selector(Coordinator.submit(_:))
