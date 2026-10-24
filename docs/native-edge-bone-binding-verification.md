@@ -51,3 +51,14 @@ retained in the recovery checkpoint. The offscreen inspector images above remain
 diagnostic evidence with their own scope. Full evaluation, Qt deformation
 comparison, VoiceOver and supported-OS acceptance remain separate requirements.
 Pins and quarantines are unchanged.
+
+## Current delivery gate
+
+The rebased stage on merged rig inspector #255 passed full `make ci` on
+9d122694: 36 build-support tests and 911 XCTest cases, zero failures or reported
+skips (119.887s), formatting, coverage, Qt-link and isolated packaging/provider
+checks. The metadata-only preview regression failed first, then its controller
+fix passed. This rerun does not retag the historical native interaction capture
+above or establish the remaining native Save/Clear/history/reopen acceptance.
+Domain coverage is 35/35 compiler-attributed lines and 17/17 regions; control
+coverage is 89/100 lines and 11/19 regions, with native callback/focus gaps.

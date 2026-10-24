@@ -63,8 +63,8 @@ of one after Apply/Clear, and changed preview/material revisions. Bone assignmen
 setters now use the existing metadata-only operation path, preserving accepted
 document publication while skipping direct geometry/material regeneration. The
 regression also checks camera/selection, exact history and unchanged mesh positions;
-generic Undo/Redo keeps its existing ordinary refresh behavior. Full rebased gate
-and current diagnostic render review remain pending. Historical native evidence
+generic Undo/Redo keeps its existing ordinary refresh behavior. The full rebased gate
+and current diagnostic render review are recorded below. Historical native evidence
 continues to identify its original runtime; it is not a new native acceptance pass.
 
 ## Interface review (full mode)
@@ -97,3 +97,17 @@ dark images were generated and bound-light/read-only-dark were inspected. The
 full rebased gate remains separate. No actionable static polish findings remain.
 Verdict: Approve inspected static presentation and controller behavior; native
 keyboard, VoiceOver and Save/Clear/history/reopen remain **not verified**.
+
+## Rebased full gate
+
+Full `make ci` on stable clean 9d122694 passed 36 build-support tests and
+911 XCTest cases, zero failures/reported skips (119.887s), plus formatting,
+coverage, Qt-link and isolated bundle/provider checks. No source changed during
+this gate. Six current diagnostic inspector renders were regenerated; the scoped
+light/dark review above remains distinct from native interaction acceptance.
+Compiler-attributed EdgeBoneBinding coverage is 35/35 lines, 17/17 regions and
+9/9 functions. The control measures 89/100 lines and 11/19 regions; native action
+and focus callbacks remain uncovered, below the later UI coverage adoption target.
+Swift branch coverage was not instrumented. These are scoped results, not full
+editor or inherited-engine coverage. The original SVG test side effect was
+restored after the terminal gate. Final follow-up changes verification prose only.
