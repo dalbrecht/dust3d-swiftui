@@ -9,11 +9,18 @@ struct Dust3DEditorApp: App {
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(EditorAppDelegate.self) private var appDelegate
     @FocusedValue(\.editorStore) private var store
+    @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
+    @FocusedValue(\.editorTextEditing) private var isEditingText
     @State private var pasteboard = EditorPasteboard()
 
     private var applicationName: String {
         BuildIdentityPresentation.applicationName(
             bundleIdentifier: buildIdentity.launchBundleIdentifier, fallback: "Dust3D Editor")
+    }
+
+    private var nativeTextEditor: NSTextView? {
+        guard let view = NSApp.keyWindow?.firstResponder as? NSTextView, view.isEditable else { return nil }
+        return view
     }
 
     var body: some Scene {
@@ -28,12 +35,20 @@ struct Dust3DEditorApp: App {
                 Button("About \(applicationName)…") { openWindow(id: "build-diagnostics") }
             }
             CommandGroup(replacing: .undoRedo) {
-                Button("Undo") { store?.undo() }
-                    .keyboardShortcut("z")
-                    .disabled(store?.canUndo != true)
-                Button("Redo") { store?.redo() }
-                    .keyboardShortcut("z", modifiers: [.command, .shift])
-                    .disabled(store?.canRedo != true)
+                Button("Undo") {
+                    EditorCommandScope.routeUndo(
+                        hasNativeEditor: nativeTextEditor != nil,
+                        nativeAction: { nativeTextEditor?.undoManager?.undo() }, documentAction: { store?.undo() })
+                }
+                .keyboardShortcut("z")
+                .disabled(nativeTextEditor.map { $0.undoManager?.canUndo != true } ?? (store?.canUndo != true))
+                Button("Redo") {
+                    EditorCommandScope.routeUndo(
+                        hasNativeEditor: nativeTextEditor != nil,
+                        nativeAction: { nativeTextEditor?.undoManager?.redo() }, documentAction: { store?.redo() })
+                }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+                .disabled(nativeTextEditor.map { $0.undoManager?.canRedo != true } ?? (store?.canRedo != true))
             }
             EditorClipboardCommands(pasteboard: pasteboard)
             CommandMenu("Canvas") {
@@ -69,7 +84,10 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.isWorking != false || store?.snapshot?.canEditSelectedEdge != true)
                 Button("Delete Selected Edge") { store?.deleteSelection() }
                     .keyboardShortcut(.delete, modifiers: [])
-                    .disabled(store?.isWorking != false || store?.snapshot?.canEditSelectedEdge != true)
+                    .disabled(
+                        !EditorCommandScope.allowsGraphShortcuts(
+                            animationFocus: isAnimationFocused == true, nativeTextFocus: isEditingText == true)
+                            || store?.isWorking != false || store?.snapshot?.canEditSelectedEdge != true)
                 Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
                     Toggle(
@@ -197,11 +215,18 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+private struct EditorAnimationFocusKey: FocusedValueKey { typealias Value = Bool }
+
 private struct EditorTextEditingKey: FocusedValueKey { typealias Value = Bool }
 
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 
 extension FocusedValues {
+    var editorAnimationFocus: Bool? {
+        get { self[EditorAnimationFocusKey.self] }
+        set { self[EditorAnimationFocusKey.self] = newValue }
+    }
+
     var editorTextEditing: Bool? {
         get { self[EditorTextEditingKey.self] }
         set { self[EditorTextEditingKey.self] = newValue }

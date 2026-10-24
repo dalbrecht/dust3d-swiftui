@@ -392,3 +392,14 @@ older requests on selection/reload/stop, and apply captured-source edits through
 existing document history without regenerating static geometry. Optional list
 errors remain isolated from modeling/Save. Native list controls and evaluation
 remain pending; ADR 0106 records remaining acceptance and unchanged quarantines.
+
+Use the Animations toolbar button (Command-Option-A), or choose Animations in the
+right inspector, to inspect stored animation records. Select a row to rename,
+duplicate or delete it. Rename and duplicate use an inline name field: Return
+applies, Escape cancels, and a changed document disables the captured draft until
+you cancel and select again. Accepted changes use document Undo/Redo and Save.
+Native text editing retains its own undo and clipboard routing; graph clipboard
+shortcuts are excluded from animation focus. Stored types and parameters are
+read-only here. Creation, type/parameter controls, native catalog evaluation,
+playback and audio remain pending. See [panel verification](../../docs/animation-panel-verification.md)
+for owned offscreen evidence and the live keyboard/accessibility acceptance limits.
