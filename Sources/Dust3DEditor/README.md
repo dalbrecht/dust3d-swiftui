@@ -316,14 +316,25 @@ additional maps/features, rendered file previews and textured exports remain ope
 See [editor adoption](../../docs/adr/0075-imported-material-editor.md) and its
 [verification limits](../../docs/imported-material-editor-verification.md).
 
-For unattended native QA, build the bundle and launch it with an explicit local
-document, reusing the existing app identity:
+For unattended native QA, stage the existing QA identity and use an explicit owned
+local fixture with isolated restoration:
 
 ```sh
-./script/build_and_run.sh --editor --build-only
+./script/build_and_run.sh --editor-qa --build-only
 # Use the staged bundle path printed above.
-open -n /absolute/path/Dust3DEditor.app --args --open-document /absolute/path/model.ds3
+python3 -B script/launch_editor_qa.py --app-bundle /absolute/path/Dust3DEditor.app --document /absolute/path/owned-model.ds3
 ```
+
+The launcher requires `org.dust3d.editor.combine-qa`, checks the executable and
+fixture paths, and uses Launch Services with process-local
+`-ApplePersistenceIgnoreState YES`. Apple's documented testing option ignores
+existing restoration data and redirects new restoration state and untitled
+autosaves to temporary storage. It does not delete existing saved state or write
+persistent defaults. Normal editor launches keep their existing behavior. Verify
+the staged build provenance before launching; this helper does not attest to the
+binary, fixture ownership, or the resulting window count. Do not rebuild or
+replace a bundle while its process is running. Native single-document startup
+acceptance remains pending; see [ADR 0099](../../docs/adr/0099-isolated-qa-launch.md).
 
 The argument accepts one absolute `.ds3` path, bounded to 4096 UTF-8 bytes. It
 opens once through `NSDocumentController`, suppressing the initial untitled/open

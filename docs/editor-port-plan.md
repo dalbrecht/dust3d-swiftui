@@ -752,3 +752,12 @@ UUID requests and versioned composition cancellation (ADRs0093/0098). Fresh full
 gate:36 support+940 XCTest, including failed/replaced-load provenance and oversized
 receipt preservation. Native command delivery remains unverified; protected QA
 apps and production pin are unchanged. M1/M2/M8 acceptance remains open.
+
+### Deterministic unattended launch (#257)
+
+The existing QA identity now has an explicit-fixture launcher using AppKit's
+process-local restoration-isolation option. It preserves ordinary launch behavior
+and existing saved state; injected contract tests cover the launch boundary.
+[ADR 0099](adr/0099-isolated-qa-launch.md) records the source and remaining native
+startup, restoration, recovery/history/save and clean-closure acceptance. This
+does not complete M8 recovery or OS integration acceptance.
