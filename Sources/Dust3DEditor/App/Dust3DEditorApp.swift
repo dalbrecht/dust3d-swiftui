@@ -103,6 +103,7 @@ struct Dust3DEditorApp: App {
 final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     private let buildIdentity = RuntimeBuildIdentity.current
     private let launchDocument = EditorLaunchDocumentOpener(arguments: CommandLine.arguments)
+    private let recoveryRequestGate = EditorRecoveryRequestGate()
 
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         !launchDocument.shouldSuppressUntitledDocument
@@ -113,6 +114,9 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(cancelReferenceComposition(_:)),
             name: EditorCompositionRecovery.notification, object: Bundle.main.bundleIdentifier)
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(writeRecoveryCopies(_:)),
+            name: EditorRecoveryCopyChannel.notification, object: Bundle.main.bundleIdentifier)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         Task { @MainActor in
@@ -121,6 +125,42 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
                     _ = try await NSDocumentController.shared.openDocument(withContentsOf: url, display: true)
                 },
                 reportError: { error in NSApp.presentError(error) })
+        }
+    }
+
+    @objc nonisolated private func writeRecoveryCopies(_ notification: Notification) {
+        guard
+            let requestID = EditorRecoveryCopyChannel.requestID(
+                notification, bundleIdentifier: Bundle.main.bundleIdentifier)
+        else { return }
+        let logger = Logger(subsystem: "org.dust3d.editor", category: "recovery")
+        guard recoveryRequestGate.begin() else {
+            logger.error(
+                "operation=recoveryCopies requestID=\(requestID.uuidString, privacy: .public) cause=alreadyWriting")
+            return
+        }
+        Task { @MainActor in
+            defer { recoveryRequestGate.finish() }
+            do {
+                let report = try await EditorRecoveryCopyRegistry.shared.recover(requestID: requestID)
+                logger.info(
+                    "operation=recoveryCopies requestID=\(requestID.uuidString, privacy: .public) copied=\(report.copied.count) failed=\(report.failures.count)"
+                )
+                for failure in report.failures {
+                    logger.error(
+                        "operation=recoveryCopy requestID=\(requestID.uuidString, privacy: .public) cause=\(String(describing: failure.cause), privacy: .private)"
+                    )
+                }
+                if let cause = report.receiptError {
+                    logger.error(
+                        "operation=recoveryReceipt requestID=\(requestID.uuidString, privacy: .public) cause=\(String(describing: cause), privacy: .private)"
+                    )
+                }
+            } catch {
+                logger.error(
+                    "operation=recoveryCopies requestID=\(requestID.uuidString, privacy: .public) cause=\(String(describing: error), privacy: .private)"
+                )
+            }
         }
     }
 

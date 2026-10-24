@@ -1,0 +1,43 @@
+# ADR 0093: Bounded explicit editor recovery copies
+
+Status: Implemented locally; full gate and native command acceptance pending (#248).
+
+The editor needs an app-owned way to retain accepted document state when external
+window-control tooling cannot operate its UI. A separate invocation of the same
+bundle with `--write-recovery-copies` posts only a correlation UUID to that app
+identity. It does not accept destination paths or document bytes. The receiver
+admits one pending task, captures accepted immutable archives on the main actor,
+then writes on a filesystem actor. Closed windows unregister weak capture handlers.
+Loading, editing and stopped windows report typed failures; one failed window does
+not block the other copies. Derived mesh/material failures do not gate capture.
+
+Copies live under the current user's Application Support directory, in
+`<bundle-id>/RecoveryCopies/<window-uuid>.ds3`. Stable per-window filenames replace
+earlier recovery copies without changing the original, savepoint, selection or
+undo history. Production and reusable QA identities have separate directories.
+The directory is private (0700), archives and receipts are 0600. Root symlinks and
+nonregular inventory entries are rejected. This assumes a trusted user-owned
+Application Support hierarchy; it is not containment against a hostile same-user
+process modifying paths concurrently.
+
+Pure admission limits a request to 16 windows, retained archives/other regular
+files to 4096 and 256 MiB total, and a separate receipt to 64 KiB. Enumeration is
+bounded, existing unknown files consume the budget, and nothing is automatically
+deleted. Replacement admission subtracts old sizes and writes shrinking replacements
+first. Atomic staging may require one additional snapshot's disk space; these are
+admission limits, not an OS quota or power-loss durability guarantee.
+
+`latest-recovery.json` records the exact request UUID, completed/partial/failed/
+noDocuments status, copied identities/revisions and bounded failure diagnostics.
+Original error objects remain available in the operation report; receipt failures
+are secondary and cannot discard successful copies. The command acknowledges only
+dispatch, not completion: an old receipt with another UUID is not success. Global
+admission/filesystem failures are logged with their original cause and request UUID.
+The channel requires a responsive app event loop and cannot recover a deadlocked or
+terminated process. It is explicit recovery copying, not automatic crash recovery.
+
+This cannot retrofit an already running older binary. The existing QA process with
+a potentially unsaved bone edit remains untouched. Do not execute the new command
+against that older executable, rebuild its bundle, or infer native command acceptance
+from filesystem/controller tests. Native acceptance on a future safely launched
+bundle, broader M1 recovery and full M8 acceptance remain open.

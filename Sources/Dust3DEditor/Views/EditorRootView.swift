@@ -8,6 +8,7 @@ struct EditorRootView: View {
     @Binding var file: EditorFileDocument
     @State private var store = EditorStore()
     @State private var isInspectorPresented = true
+    @State private var recoveryRegistrationID: UUID?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -155,12 +156,24 @@ struct EditorRootView: View {
         }
         .focusedSceneValue(\.editorStore, store)
         .task(id: file.identity) {
+            if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+            let identifier = file.identity
+            let recoveryStore = store
+            recoveryRegistrationID = identifier
+            EditorRecoveryCopyRegistry.shared.register(identifier) { [weak recoveryStore] in
+                guard let recoveryStore else { throw EditorRecoveryCopyError.stopped }
+                return try recoveryStore.recoverySnapshot(documentID: identifier)
+            }
             store.onDocumentChanged = { file.data = $0 }
             store.onEditingChanged = { file.setEditing($0) }
             await store.load(data: file.data)
         }
         .onExitCommand { store.cancelOriginDrag() }
-        .onDisappear { store.stop() }
+        .onDisappear {
+            if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+            recoveryRegistrationID = nil
+            store.stop()
+        }
     }
 
     private var preview: some View {

@@ -7,6 +7,12 @@ final class EditorRecoveryTests: XCTestCase {
         XCTAssertEqual(EditorLaunchMode(arguments: ["editor"]), .application)
         XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "-NSDocumentRevisionsDebugMode", "YES"]), .application)
         XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "--cancel-reference-composition"]), .cancelComposition)
+        XCTAssertEqual(EditorLaunchMode(arguments: ["editor", "--write-recovery-copies"]), .writeRecoveryCopies)
+        XCTAssertEqual(
+            EditorLaunchMode(arguments: ["editor", "--write-recovery-copies", "extra"]), .invalidRecoveryCommand)
+        XCTAssertEqual(
+            EditorLaunchMode(arguments: ["editor", "--write-recovery-copies", "--cancel-reference-composition"]),
+            .invalidRecoveryCommand)
         XCTAssertEqual(
             EditorLaunchMode(arguments: ["editor", "--cancel-reference-composition", "extra"]), .invalidRecoveryCommand)
     }
