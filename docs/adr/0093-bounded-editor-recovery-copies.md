@@ -61,3 +61,12 @@ copy with a partial receipt, and rejection of non-file roots/nested directories.
 All 20 focused cases pass. Registry/channel regions increase to 31/31; file-adapter
 line coverage remains 133/141, so those ordinary tests do not close native enumeration
 error-handler coverage. The next full gate covers the supplemental test commit.
+
+## Delivery integration
+
+Replayed the saved recovery stage onto reviewed bone-binding merge d38dbecc.
+The integration retains metadata-only rig/bone edits, exact UTF-8 identities and
+the tested native text-field boundary. The conflict was limited to the adjacent
+recoverySnapshot and rig-setting methods; both remain present. No recovery command
+is sent to the older running QA binary. Fresh rebased validation remains pending;
+the historical figures above do not retag this delivery.
