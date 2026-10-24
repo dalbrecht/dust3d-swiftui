@@ -49,6 +49,7 @@ public enum DocumentAnimationError: LocalizedError, Equatable, Sendable {
     case invalidMetadata, invalidIdentity, invalidName, invalidType, invalidParameter
     case missingAnimation(String)
     case duplicateIdentity(String)
+    case parameterAlreadyExists(String)
 
     public var errorDescription: String? {
         switch self {
@@ -59,6 +60,8 @@ public enum DocumentAnimationError: LocalizedError, Equatable, Sendable {
         case .invalidType: return "Use a nonempty animation type of at most 1024 UTF-8 bytes without controls."
         case .invalidParameter:
             return "Use an unqualified parameter name and a value of at most 4096 UTF-8 bytes without controls."
+        case .parameterAlreadyExists(let name):
+            return "Parameter \(name) already exists. Edit its value in the inspector."
         case .missingAnimation(let id): return "Animation \(id) is not present in this document."
         case .duplicateIdentity(let id): return "Animation identity \(id) is already present in this document."
         }

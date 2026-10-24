@@ -14,9 +14,11 @@ struct AnimationNameField: NSViewRepresentable {
     let onCancel: @MainActor () -> Void
     var fieldLabel = "Animation name"
     var fieldIdentifier = "animation-name"
+    var requestsInitialFocus = true
 
-    static func makeField(_ value: String) -> NSTextField {
+    static func makeField(_ value: String, requestsInitialFocus: Bool = true) -> NSTextField {
         let field = InitialFocusField(string: value)
+        field.shouldRequestFocus = requestsInitialFocus
         field.placeholderString = "Animation name"
         field.font = .preferredFont(forTextStyle: .body)
         field.bezelStyle = .roundedBezel
@@ -31,7 +33,7 @@ struct AnimationNameField: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context: Context) -> NSTextField {
-        let field = Self.makeField(text.value)
+        let field = Self.makeField(text.value, requestsInitialFocus: requestsInitialFocus)
         field.placeholderString = fieldLabel
         field.setAccessibilityLabel(fieldLabel)
         field.setAccessibilityIdentifier(fieldIdentifier)
@@ -72,10 +74,11 @@ struct AnimationNameField: NSViewRepresentable {
 
     /// Focus only the field's own newly attached window; never activate or find another app/window.
     @MainActor private final class InitialFocusField: NSTextField {
+        var shouldRequestFocus = true
         private var requestedFocus = false
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard !requestedFocus, let window else { return }
+            guard shouldRequestFocus, !requestedFocus, let window else { return }
             requestedFocus = true
             DispatchQueue.main.async { [weak self, weak window] in
                 guard let self, let window, self.window === window else { return }

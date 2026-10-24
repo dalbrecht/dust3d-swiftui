@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add source-bound creation of stored animation parameters, rejecting existing names without overwrite and preserving exact undo/save behavior (#145).
+
 - Add source-bound stored animation type and existing parameter editing, with explicit empty-value/removal behavior and read-only qualified attributes (#145).
 
 - Add a native stored-animation inspector with selection, source-bound rename/duplicate/delete, inline exact-text drafts and scoped graph shortcuts; playback remains unavailable (#145).

@@ -7,6 +7,7 @@ enum AnimationNameAction { case rename, duplicate }
 /// Stored document animation management. No controls in this view invoke native evaluation.
 struct AnimationPanel: View {
     let store: EditorStore
+    @State private var parameterTarget: AnimationEditTarget?
     @State private var valueDraft: AnimationValueDraft?
     @State private var nameTarget: AnimationEditTarget?
     @State private var name: AnimationNameText
@@ -60,10 +61,10 @@ struct AnimationPanel: View {
                         .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
                     } else {
                         animationList(value)
-                        if nameTarget == nil && valueDraft == nil { actions(value) }
+                        if nameTarget == nil && valueDraft == nil && parameterTarget == nil { actions(value) }
                         if let row = value.list.selectedRow {
-                            if nameTarget == nil && valueDraft == nil { details(row.source) }
-                        } else if nameTarget == nil && valueDraft == nil {
+                            if nameTarget == nil && valueDraft == nil && parameterTarget == nil { details(row.source) }
+                        } else if nameTarget == nil && valueDraft == nil && parameterTarget == nil {
                             Text("Select an animation to inspect its details.").font(.caption).foregroundStyle(
                                 .secondary)
                         }
@@ -80,6 +81,10 @@ struct AnimationPanel: View {
                 if let valueDraft {
                     AnimationValueEditor(store: store, draft: valueDraft, onCancel: { self.valueDraft = nil })
                         .id(valueDraft.id)
+                }
+                if let parameterTarget {
+                    AnimationParameterEditor(
+                        store: store, target: parameterTarget, onCancel: { self.parameterTarget = nil })
                 }
                 Divider()
                 Text("Changes are included when you save. Playback is not available yet.")
@@ -117,7 +122,7 @@ struct AnimationPanel: View {
         .listStyle(.inset)
         .frame(height: 180)
         .accessibilityLabel("Stored animations")
-        .disabled(store.isWorking || nameTarget != nil || valueDraft != nil)
+        .disabled(store.isWorking || nameTarget != nil || valueDraft != nil || parameterTarget != nil)
         .onDeleteCommand { deleteSelection() }
     }
 
@@ -175,6 +180,17 @@ struct AnimationPanel: View {
                     }
                 }
             }
+            Button {
+                guard store.canManageAnimations, let snapshot = store.animationSnapshot else { return }
+                do {
+                    parameterTarget = try AnimationEditTarget(snapshot: snapshot, animationID: record.id)
+                } catch { store.errorMessage = error.localizedDescription }
+            } label: {
+                Label("Add Parameter", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 40)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Add animation parameter")
+            .disabled(!store.canManageAnimations)
         }
     }
 
@@ -242,7 +258,8 @@ struct AnimationPanel: View {
     }
     private func cancelName() { if !isSubmitting { nameTarget = nil } }
     private func deleteSelection() {
-        guard nameTarget == nil, valueDraft == nil, store.canManageAnimations, let value = store.animationSnapshot,
+        guard nameTarget == nil, valueDraft == nil, parameterTarget == nil, store.canManageAnimations,
+            let value = store.animationSnapshot,
             let row = value.list.selectedRow
         else { return }
         do {

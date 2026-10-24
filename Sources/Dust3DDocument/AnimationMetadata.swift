@@ -78,12 +78,25 @@ enum AnimationMetadata {
     }
 
     static func setParameter(_ root: XMLElement, id: String, name: String, value: String?) throws -> Bool {
-        guard DocumentAnimationParameter.canEditName(name), value.map({ validText($0, maximum: 4096) }) ?? true
-        else { throw DocumentAnimationError.invalidParameter }
+        try validateParameter(name: name, value: value)
         let element = try find(root, id: id)
         guard !AnimationTextIdentity.matches(element.attribute(forName: name)?.stringValue, value) else { return false }
         setAttribute(element, name: name, value: value)
         return true
+    }
+
+    static func addParameter(_ root: XMLElement, id: String, name: String, value: String) throws {
+        try validateParameter(name: name, value: value)
+        let element = try find(root, id: id)
+        guard element.attribute(forName: name) == nil else {
+            throw DocumentAnimationError.parameterAlreadyExists(name)
+        }
+        setAttribute(element, name: name, value: value)
+    }
+
+    private static func validateParameter(name: String, value: String?) throws {
+        guard DocumentAnimationParameter.canEditName(name), value.map({ validText($0, maximum: 4096) }) ?? true
+        else { throw DocumentAnimationError.invalidParameter }
     }
 
     static func duplicate(_ root: XMLElement, id: String, newID: String, name: String) throws {

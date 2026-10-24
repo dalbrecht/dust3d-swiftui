@@ -404,8 +404,13 @@ shortcuts are excluded from animation focus.
 Use the pencil beside Stored type or an editable parameter to change its retained
 text. Apply preserves an empty parameter value; Remove Parameter deletes the
 attribute. Qualified/reserved attributes remain read-only. These controls do not
-validate playback or generate animation. Creation, parameter addition, catalog-specific
-controls, native catalog evaluation, playback and audio remain pending. See
+validate playback or generate animation. Add Parameter opens an inline name/value
+form for the selected animation. Existing names reject without replacement,
+including parameters with empty values; correct the name or cancel and use Edit.
+Return adds and Escape cancels. Reopening or changing the document retires the
+draft. Creation of animation records, catalog-specific controls, native catalog
+evaluation, playback and audio remain pending. See
 [panel verification](../../docs/animation-panel-verification.md) and
-[stored-value verification](../../docs/animation-stored-values-verification.md)
+[stored-value verification](../../docs/animation-stored-values-verification.md) and
+[parameter addition](../../docs/animation-parameter-addition-verification.md)
 for owned offscreen evidence and the live keyboard/accessibility acceptance limits.
