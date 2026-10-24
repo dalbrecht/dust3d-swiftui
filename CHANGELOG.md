@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Route selectable node-ID copying through the native read-only field editor instead of copying a graph fragment (#235).
+
+- Refresh the selectable node ID accessibility value when inspector selection changes while retaining copyability (#235).
+
 - Move and resize existing reference-image crops with Draw/Adjust tools and eight visible handles; preserve numeric editing, bounded geometry and atomic composition Apply (#56).
 
 - Bound editor preview work to one active operation and one latest waiting archive; retire queued cancellation promptly and keep cleanup serialized with explicit backlog errors (#243).
