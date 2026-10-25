@@ -56,8 +56,8 @@ cannot retrofit the protected older QA process.
 ## Next delivery priorities
 
 Per-document preview scheduling (#271) is locally committed, with five pure queue
-and four fake-backend actor tests passing. The pure queue has 100% measured line,
-region and function coverage; the focused service profile covers 160/198 lines.
+and seven fake-backend tests passing. The pure queue has 100% measured line,
+region and function coverage; the focused service profile covers 184/198 lines.
 Full local validation and PR delivery remain pending: the frozen core pin's
 ordinary stitching path writes the protected global debug SVG. A separate reviewed
 dependency upgrade is proposed; permission to lift the production-pin freeze is

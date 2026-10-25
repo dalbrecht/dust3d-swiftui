@@ -30,9 +30,14 @@ work. Queue/cleanup counts establish submission barriers before releasing work.
 Original fake backend errors reach callers unchanged. Successful empty copied
 results also reach every waiting document, with no retained payload or source issue.
 
-All nine focused tests pass with coverage. `ScopedPreviewQueue.swift` measures
+Three additional fake-backend contract tests verify optional-source fallback keeps
+copied geometry and the original source diagnostic, dual failures preserve both
+causes without duplicate text, and other source errors propagate without fallback.
+They construct Swift-owned values only; no native input is parsed.
+
+All twelve focused tests pass with coverage. `ScopedPreviewQueue.swift` measures
 28/28 lines, 20/20 regions and 10/10 functions. The fake-only service profile is
-160/198 lines (80.81%), not complete service or application coverage. Swift reports
+184/198 lines (92.93%), not complete service or application coverage. Swift reports
 no branch-outcome metrics. Compilation uses strict Swift 6 and the existing shared
 scratch/caches. No native generation, fault, cancellation, pressure or UI probe ran.
 
