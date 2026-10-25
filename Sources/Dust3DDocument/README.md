@@ -246,3 +246,11 @@ that equality for stored names and editing drafts, and
 `edge.hasExactBoneName(candidate)` checks a snapshot without Unicode canonical
 normalization. `DocumentEdge` equality retains byte-distinct names. Applied edits
 still use the document command's validation and exact undo/redo behavior.
+
+`animations(maximumCount:)` reads source-ordered stored intent, including unknown
+types and missing name/type fields. Animation create/name/type/parameter/duplicate/
+delete commands participate in exact document history and retain opaque XML/assets.
+IDs and parameter lookup compare UTF-8 bytes. Reserved xmlns is never an editable
+parameter. These APIs do not evaluate clips, rigs, sound or timing; core #95 stays
+quarantined. ADR 0104 documents quotas, unsupported metadata and remaining UI/
+native acceptance. Call document work on the existing editor actor, not the UI.

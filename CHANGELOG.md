@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve exact animation bytes and redo for restored parameter transactions (#145).
+
+- Add lossless stored-animation listing and create/rename/type/parameter/duplicate/delete commands with exact history and opaque-data preservation; native evaluation/playback remain quarantined (#145).
+
 - Connect accepted editor snapshots to an injected export workflow with source revision receipts, history preservation and lifecycle cancellation; native encoder/menu binding remains unavailable by default (#146).
 
 - Serialize final export source checks and atomic publication with accepted editor commands, preserving committed success on late task cancellation; native UI binding remains pending (#146).
