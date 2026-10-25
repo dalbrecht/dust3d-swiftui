@@ -33,3 +33,21 @@ state and history. The full local `make ci` passes 45 build-support tests and 95
 rebuild/signature checks. These are model/service checks, not native export or
 atomic app-publication acceptance. No production dependency or quarantine changes
 are included; there is no changed UI requiring a screenshot.
+
+
+## Export-admission delivery gate
+
+Prepare this stage on source-alias PR #261 at `5d0190b7`. Runtime, tests and
+manifest hashes match corrected saved `98b79773`; only inherited delivery notes
+differ. Preserve the existing source-alias regression and all earlier contracts.
+Fresh full `make ci` passes 45 support tests and 955 XCTest cases (121.175 seconds),
+formatting, coverage, Qt-link and isolated build-only bundle/signature checks.
+Tests use ordinary snapshots, small owned files and deterministic injected
+encoders. The production core pin and all quarantines remain unchanged.
+
+No native encoder, Export menu, protected QA control or new app UI is added.
+Admission remains distinct from serialized final publication; the next stage
+must bind that write to the owning editor actor. This result does not establish
+full M7 acceptance. Only delivery documentation changes after this gate, with
+runtime/test/manifest hashes checked unchanged. Require an accepted parent,
+completed clean exact-head automated review and every CI check green before merge.
