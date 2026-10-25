@@ -20,6 +20,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case staleComponentMove
     case staleColorImageTarget
     case staleOriginDrag
+    case staleExport
 }
 
 /// Immutable presentation snapshot crossing from the editing actor to its window.
