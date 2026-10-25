@@ -92,6 +92,28 @@ final class AnimationDocumentTests: XCTestCase {
                 .attribute(forName: "future")?.stringValue, "catalog")
     }
 
+    func testRestoringExistingAnimationFieldsInOneTransactionRetainsExactBytesAndRedo() throws {
+        let source = try document()
+        var history = DocumentHistory(document: source)
+        try history.apply(.setAnimationName(id: "a", name: "Redo name"))
+        let redoBytes = history.document.encoded()
+        XCTAssertTrue(history.undo())
+        try history.beginTransaction()
+        try history.apply(.setAnimationType(id: "a", type: "temporary-type"))
+        try history.apply(.setAnimationParameter(id: "a", name: "duration", value: "9.25"))
+        try history.apply(.setAnimationName(id: "a", name: "Temporary name"))
+        try history.apply(.setAnimationType(id: "a", type: "future-type"))
+        try history.apply(.setAnimationParameter(id: "a", name: "duration", value: "1.00"))
+        try history.apply(.setAnimationName(id: "a", name: "Idle & rest"))
+        try history.endTransaction()
+        XCTAssertEqual(history.document.encoded(), source.encoded())
+        XCTAssertFalse(history.isDirty)
+        XCTAssertFalse(history.canUndo)
+        XCTAssertTrue(history.canRedo)
+        XCTAssertTrue(history.redo())
+        XCTAssertEqual(history.document.encoded(), redoBytes)
+    }
+
     func testNoOpsAndInvalidCommandsPreserveBytesAndRedo() throws {
         let source = try document()
         var history = DocumentHistory(document: source)

@@ -151,6 +151,10 @@ enum AnimationMetadata {
     }
 
     private static func setAttribute(_ element: XMLElement, name: String, value: String?) {
+        if let attribute = element.attribute(forName: name), let value {
+            attribute.stringValue = value
+            return
+        }
         element.removeAttribute(forName: name)
         guard let value else { return }
         let attribute = XMLNode(kind: .attribute)

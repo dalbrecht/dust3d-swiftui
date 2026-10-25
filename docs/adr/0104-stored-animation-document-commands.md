@@ -61,3 +61,26 @@ existing empty graph containers. Attributes, namespace declarations, comments an
 non-whitespace children remain significant. Tiny absent/empty/whitespace/comment/
 namespace variants verify exact clean-archive restoration; no native writer or
 animation evaluator is involved.
+
+
+## Corrected animation-document delivery foundation
+
+Replay saved `ec026ae8` on the validated editor export coordinator. Before delivery,
+backport the in-place attribute update from later `ddc3f3af`. A new pure history
+regression first failed six assertions: changing and restoring existing name,
+type and duration in one transaction reordered attributes, changed archive bytes,
+marked history dirty and discarded redo. Updating the existing XML attribute's
+value retains its position. The focused regression then passes with exact source
+bytes, unchanged clean history and retained redo; other stored fields stay opaque.
+The later batch-edit stage must retain this already-applied fix rather than replay
+an unfixed intermediate foundation.
+
+Fresh full `make ci` passes 45 support tests and 979 XCTest cases (121.463 seconds),
+formatting, configured coverage, Qt-link and isolated build-only bundle/signature
+checks. Original foundation source hashes are preserved except this narrow helper
+fix/new regression and inherited delivery notes. Existing quota tests use 2/3-row
+units and small UTF-8 bounds; no previously denied bulk fixture or native animation
+probe is run. This is lossless stored intent, not playback/sampling acceptance.
+Production pin, quarantines and protected QA processes/bundles remain unchanged;
+known ordinary pinned fixture SVG writes are not restored. Require accepted
+parents, completed clean exact-head automated review and all CI green before merge.
