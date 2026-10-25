@@ -30,3 +30,15 @@ isolated bundle/signature checks. This is not a whole-shell coverage claim.
 See ../animation-panel-verification.md for visual review and remaining acceptance.
 No protected product app is launched or controlled. The production dependency pin
 and core #67/#69/#83/#84/#95 and Apple #199 quarantines remain unchanged.
+
+
+## Accepted parent delivery
+
+Apple #267 merged at `beaa6049` after clean completed exact-head review and all
+three CI checks green. A terminal index-write timeout interrupted the inspector
+rebase before its first replay commit; all fifteen files were compared byte for
+byte with the saved commit before staging and continuing. The completed recovery
+has full-tree equality with the prior inspector delivery and every gated source,
+test and manifest hash matches. No native product runs after ancestry changes;
+only this delivery note changes afterward. Fresh prior full gate passes 45 support
+tests and 1,002 XCTest cases (121.763 seconds), with logs/renders retained.
