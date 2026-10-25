@@ -16,16 +16,21 @@ struct NodeClipboardTransfer: Transferable, Sendable {
 }
 
 struct NodeClipboardPasteButton: View {
+    @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     let store: EditorStore?
     var body: some View {
         PasteButton(payloadType: NodeClipboardTransfer.self) { values in
-            guard let value = values.first else { return }
+            guard
+                EditorCommandScope.allowsGraphShortcuts(
+                    animationFocus: isAnimationFocused == true, nativeTextFocus: false),
+                let value = values.first
+            else { return }
             if value.isQtText {
                 store?.pasteQtNodes(snapshotXML: value.data)
             } else {
                 store?.pasteNodes(data: value.data)
             }
         }
-        .disabled(store?.snapshot == nil || store?.isWorking != false)
+        .disabled(isAnimationFocused == true || store?.snapshot == nil || store?.isWorking != false)
     }
 }

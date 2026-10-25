@@ -4,10 +4,16 @@ import Dust3DEditorModel
 import Dust3DRendering
 import SwiftUI
 
+private enum EditorInspectorSection: String, CaseIterable, Hashable {
+    case selection = "Selection"
+    case animations = "Animations"
+}
+
 struct EditorRootView: View {
     @Binding var file: EditorFileDocument
     @State private var store = EditorStore()
     @State private var isInspectorPresented = true
+    @State private var inspectorSection = EditorInspectorSection.selection
     @State private var recoveryRegistrationID: UUID?
 
     var body: some View {
@@ -114,7 +120,19 @@ struct EditorRootView: View {
             }
             if isInspectorPresented {
                 Divider()
-                NodeInspector(store: store).frame(width: 250)
+                VStack(spacing: 0) {
+                    Picker("Inspector section", selection: $inspectorSection) {
+                        ForEach(EditorInspectorSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented).padding(10)
+                    Divider()
+                    if inspectorSection == .animations {
+                        AnimationPanel(store: store)
+                    } else {
+                        NodeInspector(store: store)
+                    }
+                }
+                .frame(width: 250)
             }
         }
         .frame(minWidth: 1050, minHeight: 600)
@@ -151,6 +169,14 @@ struct EditorRootView: View {
                 } label: {
                     Label("Inspector", systemImage: "sidebar.right")
                 }
+                Button {
+                    isInspectorPresented = true
+                    inspectorSection = .animations
+                } label: {
+                    Label("Animations", systemImage: "film")
+                }
+                .keyboardShortcut("a", modifiers: [.command, .option])
+                .accessibilityLabel("Show animations inspector")
                 Toggle(isOn: $store.isWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
             }
         }
