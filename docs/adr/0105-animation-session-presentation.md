@@ -65,3 +65,6 @@ QA control changes occur; known ordinary pinned fixture SVG writes are not
 restored. Only delivery notes change after the gate with tested hashes unchanged.
 Require accepted parents, completed clean exact-head automated review and all CI
 green before merge.
+
+
+Apple #265 merged at `0029a6b0` after completed clean exact-head automated review and all CI checks green. Full-tree equality across ancestry-only rebase and matching gated source hashes preserve the tested implementation. No native binary executes after rebase; only this delivery note changes afterward.
