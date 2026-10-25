@@ -801,3 +801,11 @@ identities. Pure archive tests cover history/reopen and unsupported intent witho
 native evaluation. Actor/store/UI and Qt-created/native-created interoperability,
 native catalog/evaluation/playback/audio and full M6 acceptance remain open. Core
 #95 and all other quarantines and the production pin remain unchanged.
+
+### Animation session and presentation (#145)
+
+ADR0105 connects stored intent to actor-owned selection and fresh-ID create/
+duplicate commands, with explicit source-correlated list queries and isolated
+optional errors. Pure presentation retains raw records and UTF-8 list identities.
+Store/list/inspector UI, Qt/native catalog interoperability, evaluation/playback/
+audio and full M6 acceptance remain open; no pin or quarantine changes occur.

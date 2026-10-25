@@ -4,6 +4,7 @@ import Foundation
 /// Serializes XML parsing and commands away from the UI actor. A window owns one session.
 public actor EditorSession {
     private var state: EditorState?
+    private var selectedAnimationID: String?
     private var lastPasteIdentifier: String?
     private var pasteOrdinal = 0
     private var lastQtTransfer: (snapshot: Data, identifier: String)?
@@ -15,10 +16,79 @@ public actor EditorSession {
         let next = try EditorState(document: Dust3DDocument(data: data))
         try Task.checkCancellation()
         state = next
+        selectedAnimationID = nil
         lastPasteIdentifier = nil
         pasteOrdinal = 0
         lastQtTransfer = nil
         return next.snapshot
+    }
+
+    /// Query optional stored-intent presentation off-main without coupling it to graph snapshots.
+    /// - Returns: One source-correlated editor/list value; an uninterpretable catalog retains its cause.
+    /// - Throws: Cancellation or `notLoaded`; optional metadata errors never block primary editing.
+    /// - Example: `let list = try await session.animationSnapshot()`.
+    public func animationSnapshot() throws -> EditorAnimationSnapshot {
+        try Task.checkCancellation()
+        guard let state else { throw EditorError.notLoaded }
+        let result = Self.animationSnapshot(state, selectedID: selectedAnimationID)
+        try Task.checkCancellation()
+        selectedAnimationID = result.list.selectedRow?.source.id
+        return result
+    }
+
+    /// Select stored intent independently of graph selection, document bytes, revision and history.
+    /// - Parameter id: Exact source spelling or nil to clear, including when metadata is unavailable.
+    /// - Returns: Current source-correlated presentation.
+    /// - Throws: Original catalog cause or `missingAnimation`, cancellation or `notLoaded`, atomically.
+    /// - Example: `try await session.selectAnimation(id)`.
+    public func selectAnimation(_ id: String?) throws -> EditorAnimationSnapshot {
+        try Task.checkCancellation()
+        guard let state else { throw EditorError.notLoaded }
+        let result = Self.animationSnapshot(state, selectedID: id)
+        try Task.checkCancellation()
+        if let id {
+            if let cause = result.list.issue { throw cause }
+            guard result.list.selectedRow != nil else { throw DocumentAnimationError.missingAnimation(id) }
+        }
+        selectedAnimationID = result.list.selectedRow?.source.id
+        return result
+    }
+
+    /// Create/select one stored record using a fresh UUID, without native evaluation.
+    /// - Parameters: name/type follow the document's bounded text rules; unknown types remain stored intent.
+    /// - Returns: Committed source/history plus optional presentation; no post-commit cancellation check.
+    /// - Throws: Original document/load/cancellation errors before publication.
+    /// - Example: `try await session.createAnimation(name: "Walk", type: "walk")`.
+    public func createAnimation(name: String, type: String) throws -> EditorAnimationSnapshot {
+        try insertAnimation { .createAnimation(id: $0, name: name, type: type) }
+    }
+
+    /// Duplicate/select complete stored intent using a fresh UUID; opaque data remains preserved.
+    /// - Parameters: id identifies the source record exactly; name is the new bounded display name.
+    /// - Returns: Committed source/history plus optional presentation.
+    /// - Throws: Original document/load/cancellation errors atomically; no clip is evaluated.
+    /// - Example: `try await session.duplicateAnimation(id: id, name: "Walk copy")`.
+    public func duplicateAnimation(id: String, name: String) throws -> EditorAnimationSnapshot {
+        try insertAnimation { .duplicateAnimation(id: id, newID: $0, name: name) }
+    }
+
+    private func insertAnimation(_ command: (String) -> DocumentCommand) throws -> EditorAnimationSnapshot {
+        try Task.checkCancellation()
+        guard var next = state else { throw EditorError.notLoaded }
+        let id = Self.identifier()
+        try next.apply([command(id)])
+        let result = Self.animationSnapshot(next, selectedID: id)
+        try Task.checkCancellation()
+        state = next
+        selectedAnimationID = result.list.selectedRow?.source.id
+        return result
+    }
+
+    private static func animationSnapshot(_ state: EditorState, selectedID: String?) -> EditorAnimationSnapshot {
+        let editor = state.snapshot
+        let catalog = Result { try editor.document.animations() }
+        return EditorAnimationSnapshot(
+            editor: editor, list: AnimationListPresentation(catalog: catalog, selectedID: selectedID))
     }
 
     /// Admit export work only for the captured document identity and semantic revision.
@@ -307,6 +377,11 @@ public actor EditorSession {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
         try operation(&next)
+        // Prune at publication so intervening reads cannot change history selection semantics.
+        if selectedAnimationID != nil {
+            selectedAnimationID =
+                Self.animationSnapshot(next, selectedID: selectedAnimationID).list.selectedRow?.source.id
+        }
         state = next
         return next.snapshot
     }

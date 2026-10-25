@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Clear removed animation selections when publishing edits and history transitions, independently of list reads (#145).
+
+- Add actor-owned stored-animation selection, fresh-ID creation/duplication and source-correlated list presentation, isolating optional metadata errors from graph editing; native UI/playback remain pending (#145).
+
 - Preserve exact animation bytes and redo for restored parameter transactions (#145).
 
 - Add lossless stored-animation listing and create/rename/type/parameter/duplicate/delete commands with exact history and opaque-data preservation; native evaluation/playback remain quarantined (#145).
