@@ -34,7 +34,10 @@ let package = Package(
         .testTarget(name: "Dust3DDocumentTests", dependencies: ["Dust3DDocument"]),
         .target(
             name: "Dust3DKit",
-            dependencies: ["Dust3DDocument", .product(name: "Dust3DEngine", package: "dust3d-core")],
+            dependencies: [
+                "Dust3DDocument", .product(name: "Dust3DEngine", package: "dust3d-core"),
+                .product(name: "Dust3DWorkerRuntime", package: "dust3d-core"),
+            ],
             exclude: ["README.md"]),
         .executableTarget(
             name: "Dust3DViewer",

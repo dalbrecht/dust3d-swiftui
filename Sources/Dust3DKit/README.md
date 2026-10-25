@@ -1,5 +1,12 @@
 # Dust3DKit
 
+`WorkerRequestEncoder.encode(archive:identity:operation:limits:)` copies base/UV
+wire requests from the core codec into Sendable frame/header values. Call it off
+the UI actor; it neither parses archive bytes nor launches a helper. Use
+parent-owned `WorkerRequestIdentity` and positive `WorkerRequestLimits`; original
+core errors retain numeric fields and diagnostic bytes. Logical quotas are not
+process-memory bounds. See [ADR 0117](../../docs/adr/0117-owned-swift-worker-requests.md).
+
 Typed Swift ownership boundary for the pinned Qt-free Dust3D core. Consumed as a
 local SwiftPM library by the viewer, editor, rendering and preview targets. Build
 with `make build` and run the native gate with `make ci` from the repository root.

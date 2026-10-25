@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add owned Swift base/UV worker-request packets backed by the existing core codec, with bounded input and preserved error receipts; worker execution remains separate (#277).
+
 - Retain valid mesh previews across animation metadata Undo/Redo using history-owned geometry/material identities; reject obsolete auxiliary preview results (#275).
 
 - Upgrade the pinned native core to reviewed revision `48b0ce2d`, including removal of automatic stitching debug SVG writes; feature quarantines remain in place (#272).
