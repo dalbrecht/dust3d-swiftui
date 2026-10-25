@@ -46,14 +46,17 @@ public actor DocumentExportFileService {
     ///   - sourceURL: Current source URL when available, protected against path/inode aliases.
     ///   - validateSnapshot: Optional current-document admission before encoding and before publication.
     ///     Omit for intentionally fixed snapshots. Original admission errors propagate unchanged.
+    ///   - publish: Trusted coordinator that executes the supplied synchronous commit exactly once or throws.
+    ///     The editor binds it to `EditorSession.publishExport`; the default publishes a fixed snapshot.
     /// - Returns: Published owned output with its original diagnostic.
     /// - Throws: Typed admission errors, cancellation or original encoder/filesystem cause.
     /// - Note: Does not mark history saved. Concurrent external filesystem mutation and
     ///   power-loss directory durability are outside this prototype's guarantee. Admission is not a lease;
-    ///   an editor caller must serialize final publication with edits to guarantee current-revision output.
+    ///   bind the publication coordinator to the owning editor session for current-revision output.
     public func export(
         _ document: Dust3DDocument, format: DocumentExportFormat, to destination: URL, sourceURL: URL?,
-        validateSnapshot: @Sendable () async throws -> Void = {}
+        validateSnapshot: @Sendable () async throws -> Void = {},
+        publish: @Sendable (_ commit: @Sendable () throws -> Void) async throws -> Void = { commit in try commit() }
     ) async throws -> DocumentExportArtifact {
         try Task.checkCancellation()
         let scoped = destination.startAccessingSecurityScopedResource()
@@ -62,7 +65,7 @@ public actor DocumentExportFileService {
         defer { if sourceScoped { sourceURL?.stopAccessingSecurityScopedResource() } }
         try await validateSnapshot()
         try Task.checkCancellation()
-        try validate(destination, format: format, source: sourceURL)
+        try Self.validate(destination, format: format, source: sourceURL)
         let output = try await encoder.encode(archive: document.encoded(), format: format)
         try Task.checkCancellation()
         guard !output.bytes.isEmpty, output.bytes.count <= Self.maximumBytes else {
@@ -70,12 +73,15 @@ public actor DocumentExportFileService {
         }
         try await validateSnapshot()
         try Task.checkCancellation()
-        try validate(destination, format: format, source: sourceURL)
-        try output.bytes.write(to: destination, options: .atomic)
+        try await publish {
+            try Task.checkCancellation()
+            try Self.validate(destination, format: format, source: sourceURL)
+            try output.bytes.write(to: destination, options: .atomic)
+        }
         return output
     }
 
-    private func validate(_ destination: URL, format: DocumentExportFormat, source: URL?) throws {
+    private static func validate(_ destination: URL, format: DocumentExportFormat, source: URL?) throws {
         guard destination.isFileURL, destination.pathExtension.lowercased() == format.rawValue,
             source == nil || source?.isFileURL == true
         else { throw DocumentExportError.invalidDestination }

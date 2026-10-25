@@ -189,3 +189,9 @@ native rig evaluation remain separate #144 work; this storage stage tracks #246.
 changing history; exact Undo does not revive an old target. This is admission,
 not a publication lease. The app must coordinate final export publication with
 editing and replacement (ADR 0101); no native export command is enabled here.
+
+`EditorSession.publishExport(_:publication:)` checks identity/revision and runs a
+trusted synchronous final commit without admitting intervening editor commands.
+Encode before entering this background actor operation. Bind the file service's
+publication coordinator to it; no await may split validation from the write.
+ADR 0102 records the remaining native/UI/lifecycle and filesystem limits.

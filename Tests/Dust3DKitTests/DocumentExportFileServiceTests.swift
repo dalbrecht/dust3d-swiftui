@@ -109,6 +109,113 @@ final class DocumentExportFileServiceTests: XCTestCase {
         XCTAssertEqual(artifact.warning, "retained diagnostic")
     }
 
+    func testEditAfterFinalAdmissionIsRejectedAtSerializedPublication() async throws {
+        let session = EditorSession()
+        let snapshot = try await session.open(data: Dust3DDocument.emptyArchive())
+        let target = EditorExportTarget(snapshot: snapshot)
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".obj")
+        let previous = Data("keep previous output".utf8)
+        try previous.write(to: destination)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        do {
+            _ = try await DocumentExportFileService(encoder: RecordingExportEncoder()).export(
+                snapshot.document, format: .obj, to: destination, sourceURL: nil,
+                validateSnapshot: { try await session.validateExport(target) },
+                publish: { commit in
+                    _ = try await session.apply([.setOrigin(.init(x: 1, y: 2, z: 3))])
+                    try await session.publishExport(target, publication: commit)
+                })
+            XCTFail("An edit between final admission and commit must invalidate publication")
+        } catch { XCTAssertEqual(error as? EditorError, .staleExport) }
+        XCTAssertEqual(try Data(contentsOf: destination), previous)
+    }
+
+    func testCurrentSerializedPublicationRetainsBytesWarningAndUndoState() async throws {
+        let session = EditorSession()
+        _ = try await session.open(data: Dust3DDocument.emptyArchive())
+        let snapshot = try await session.apply([.setOrigin(.init(x: 1, y: 2, z: 3))])
+        let target = EditorExportTarget(snapshot: snapshot)
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".obj")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let encoder = RecordingExportEncoder()
+        let result = try await DocumentExportFileService(encoder: encoder).export(
+            snapshot.document, format: .obj, to: destination, sourceURL: nil,
+            validateSnapshot: { try await session.validateExport(target) },
+            publish: { commit in try await session.publishExport(target, publication: commit) })
+        XCTAssertEqual(try Data(contentsOf: destination), result.bytes)
+        XCTAssertEqual(result.warning, "retained diagnostic")
+        let received = await encoder.received
+        XCTAssertEqual(received, snapshot.document.encoded())
+        let current = try await session.apply([])
+        XCTAssertEqual(current.documentRevision, snapshot.documentRevision)
+        XCTAssertEqual(current.document.encoded(), snapshot.document.encoded())
+        XCTAssertTrue(current.canUndo)
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), Dust3DDocument.emptyArchive())
+    }
+
+    func testSerializedPublicationRechecksNewSourceAliasInsideCommit() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("source.ds3")
+        let destination = directory.appendingPathComponent("output.obj")
+        let original = Dust3DDocument.emptyArchive()
+        try original.write(to: source)
+        let session = EditorSession()
+        let snapshot = try await session.open(data: original)
+        let target = EditorExportTarget(snapshot: snapshot)
+        do {
+            _ = try await DocumentExportFileService(encoder: RecordingExportEncoder()).export(
+                snapshot.document, format: .obj, to: destination, sourceURL: source,
+                publish: { commit in
+                    try FileManager.default.linkItem(at: source, to: destination)
+                    try await session.publishExport(target, publication: commit)
+                })
+            XCTFail("Destination admission must occur inside the serialized commit")
+        } catch { XCTAssertEqual(error as? DocumentExportError, .sourceAlias) }
+        XCTAssertEqual(try Data(contentsOf: source), original)
+        XCTAssertEqual(try Data(contentsOf: destination), original)
+    }
+
+    func testCancellationAfterSerializedCommitStillReturnsPublishedSuccess() async throws {
+        let session = EditorSession()
+        let snapshot = try await session.open(data: Dust3DDocument.emptyArchive())
+        let target = EditorExportTarget(snapshot: snapshot)
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".obj")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let operation = Task {
+            try await DocumentExportFileService(encoder: RecordingExportEncoder()).export(
+                snapshot.document, format: .obj, to: destination, sourceURL: nil,
+                publish: { commit in
+                    try await session.publishExport(
+                        target,
+                        publication: {
+                            try commit()
+                            withUnsafeCurrentTask { $0?.cancel() }
+                        })
+                })
+        }
+        let result = try await operation.value
+        XCTAssertTrue(operation.isCancelled)
+        XCTAssertEqual(try Data(contentsOf: destination), result.bytes)
+        XCTAssertEqual(result.warning, "retained diagnostic")
+    }
+
+    func testOriginalPublicationFailurePreservesExistingOutput() async throws {
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".obj")
+        let previous = Data("keep previous export".utf8)
+        try previous.write(to: destination)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        do {
+            _ = try await DocumentExportFileService(encoder: RecordingExportEncoder()).export(
+                Dust3DDocument(data: Dust3DDocument.emptyArchive()), format: .obj, to: destination, sourceURL: nil,
+                publish: { _ in throw ExportFixtureError.encoding })
+            XCTFail("Original publication error must propagate")
+        } catch { XCTAssertEqual(error as? ExportFixtureError, .encoding) }
+        XCTAssertEqual(try Data(contentsOf: destination), previous)
+    }
+
     func testPublishesCapturedDocumentAndPreservesSourceAndDiagnostic() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
