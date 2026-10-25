@@ -42,3 +42,22 @@ Coverage export records 6/6 executable lines for the receipt/error type and
 editing/UI routing and is not a scoped export-method or 95% shell-coverage claim.
 The configured library/domain coverage gates pass; wider store tests and native
 panel/close/permission acceptance remain required before full release acceptance.
+
+
+## Editor coordinator delivery gate
+
+Replay corrected `f86b1a21` on the validated serialized-publication delivery.
+Runtime/test/manifest hashes match its saved tested checkpoint; only inherited
+delivery notes differ. The five workflow tests use injected encoders, no-native
+preview and small owned files. Production capability remains unbound by default;
+no Export menu, native encoder or new visible UI is installed.
+
+Fresh full `make ci` passes 45 support tests and 966 XCTest cases (121.426 seconds),
+formatting, configured coverage, Qt-link and isolated build-only bundle/signature
+checks. No protected QA process/bundle is launched, controlled or overwritten.
+Production pin and quarantines remain unchanged. Full EditorStore coverage is not
+claimed to meet the shared shell target, and native panels/close/permissions,
+scene/source URL binding and full M7 acceptance remain pending. Only delivery
+notes change after the gate, with tested hashes checked unchanged. Require
+accepted parents, completed clean exact-head automated review and all CI green
+before merge. Known ordinary pinned fixture SVG writes are not restored.
