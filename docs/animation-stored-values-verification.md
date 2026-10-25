@@ -53,3 +53,18 @@ lossless save/reopen/history without native evaluation. Fresh type-light and
 parameter-dark PNGs inspected at 250 points; system styles retained. Fresh full `make ci` passes 45 support tests and 1,007 XCTest cases
 (121.945 seconds), formatting, configured coverage, Qt-link and isolated
 build-only bundle checks. Live app keyboard/VoiceOver acceptance remains unverified.
+
+
+## Incorporate native Undo/Redo review correction
+
+The stored-value stage includes #268's notification-backed native command
+validation and both ordinary UndoManager/Observation regressions. Compared with
+the earlier gated stage, source changes are limited to the app's revision read
+and the new observer/tests; stored-value behavior and prior exact-history fixes
+remain intact. Fresh full `make ci` passes 45 support tests and 1,009 XCTest
+cases (123.864 seconds), formatting, configured coverage, Qt-link and isolated
+bundle checks. Logs and all runtime/test/manifest hashes are retained in the
+corrected checkpoint. Known ordinary pinned-fixture SVG writes remain untouched.
+No native animation evaluation, production dependency change or protected app
+control. Parent acceptance, clean exact-head review and all green CI remain
+required before merge; live keyboard/menu/VoiceOver acceptance remains open.
