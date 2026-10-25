@@ -40,6 +40,25 @@ final class AnimationSessionTests: XCTestCase {
         XCTAssertEqual(unchanged.editor.documentRevision, redone.editor.documentRevision)
     }
 
+    func testHistoryPrunesRemovedSelectionWithoutIntermediateQueries() async throws {
+        let session = EditorSession()
+        _ = try await session.open(data: Dust3DDocument.emptyArchive())
+        let created = try await session.createAnimation(name: "Walk", type: "future")
+        let identifier = try XCTUnwrap(created.list.selectedRow?.source.id)
+        _ = try await session.undo()
+        _ = try await session.redo()
+        let restoredCreation = try await session.animationSnapshot()
+        XCTAssertEqual(restoredCreation.editor.document.encoded(), created.editor.document.encoded())
+        XCTAssertNil(restoredCreation.list.selectedRow)
+
+        _ = try await session.selectAnimation(identifier)
+        _ = try await session.apply([.deleteAnimation(id: identifier)])
+        _ = try await session.undo()
+        let restoredDeletion = try await session.animationSnapshot()
+        XCTAssertEqual(restoredDeletion.editor.document.encoded(), created.editor.document.encoded())
+        XCTAssertNil(restoredDeletion.list.selectedRow)
+    }
+
     func testSelectionIsTransientIndependentFromGraphAndByteExact() async throws {
         let first = "caf\u{e9}"
         let second = "cafe\u{301}"

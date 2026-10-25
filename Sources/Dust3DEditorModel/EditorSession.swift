@@ -377,6 +377,11 @@ public actor EditorSession {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
         try operation(&next)
+        // Prune at publication so intervening reads cannot change history selection semantics.
+        if selectedAnimationID != nil {
+            selectedAnimationID =
+                Self.animationSnapshot(next, selectedID: selectedAnimationID).list.selectedRow?.source.id
+        }
         state = next
         return next.snapshot
     }

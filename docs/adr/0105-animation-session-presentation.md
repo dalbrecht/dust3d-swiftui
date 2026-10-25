@@ -68,3 +68,21 @@ green before merge.
 
 
 Apple #265 merged at `0029a6b0` after completed clean exact-head automated review and all CI checks green. Full-tree equality across ancestry-only rebase and matching gated source hashes preserve the tested implementation. No native binary executes after rebase; only this delivery note changes afterward.
+
+
+## Review correction: reconcile transient selection on publication
+
+PR #266 identified that querying between history operations changed whether a
+removed selection returned. A regression first reproduced both create/undo/redo
+and selected-delete/undo without intermediate list reads (two failures). The
+shared document-transition publication now normalizes a present selection against
+the next optional catalog. Invalid optional metadata still degrades through its
+original presentation cause and cannot block the primary edit. All actor animation
+tests pass after the correction; the full gate and exact-head review are required
+before merge. No native animation evaluation or production dependency change.
+
+Fresh full `make ci` passes 45 support tests and 988 XCTest cases (120.541
+seconds), formatting, configured coverage, Qt-link and isolated build-only bundle
+checks. Red/green/full logs and tested source hashes are retained in the review-fix
+checkpoint. The ordinary pinned fixtures retain their known SVG side effect; no
+manual SVG restoration, native animation evaluation or protected app control.
