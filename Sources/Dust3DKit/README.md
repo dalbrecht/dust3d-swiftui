@@ -141,3 +141,14 @@ snapshot via an injected `DocumentExportEncoding` implementation. For example,
 It preserves the source/savepoint and returns owned bytes with the diagnostic.
 There is no production encoder binding until the core dependency is reviewed;
 see ADR0100 for destination, cancellation and atomic-publication limits.
+
+`HelperCodeSignatureVerifier().verify(executableURL:policy:)` is a read-only macOS
+static-code check for future worker adoption. Supply trusted expected configuration
+independently of candidate metadata: `.signedTeam(identifier:teamIdentifier:)`
+requires an Apple-anchored exact identifier/team and rejects ad-hoc code;
+`.developmentAdHoc(codeDirectoryHash:)` is an explicit local-development pin.
+Neither policy falls back to the other. Original Security status/descriptions are
+retained in typed errors. Run verification away from the UI thread. A returned
+identity is inspection-time evidence, not authorization for a later path-based
+launch; signature/launch binding, trusted bundle packaging, notarization and
+containment remain separate gates. See ADR 0112 and issue #269.

@@ -863,3 +863,13 @@ evaluation/playback/audio and full M6 remain open; no runtime/pin/quarantine cha
 
 
 ADR0111 adds source-checked atomic animation edit batches through the session/store, supporting future multi-field timing forms with one undo step. A red regression exposed attribute reordering on net-zero edits; existing attributes now update in place. Full make ci passes45support/1018XCTest, coverage and Qt/bundle gates. Structured catalog UI and reviewed core adoption remain pending; production pin and quarantines are unchanged.
+
+### Static helper signature policy foundation (#269)
+
+Pure expected-identity policy and read-only macOS Security verification now
+separate signed-team requirements from explicit development ad-hoc CDHash pins,
+without automatic fallback (ADR 0112). Six focused tests and full 45-support plus
+1030-XCTest gate pass; separate inspection of the fresh core helper accepted the
+correct development pin and rejected wrong-pin/signed-team policies without
+executing it. This is not launch binding, bundle signing/notarization, sandbox or
+production adoption. Those M8/core #123 gates and all quarantines remain open.

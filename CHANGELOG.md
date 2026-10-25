@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add explicit signed-team and development-pinned static helper verification without fallback; production launch integration remains gated (#269).
+
 - Refresh native text Undo/Redo command availability after editing and undo-manager changes (#145).
 
 - Clear removed animation selections when publishing edits and history transitions, independently of list reads (#145).
