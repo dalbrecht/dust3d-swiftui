@@ -68,3 +68,16 @@ production pin/quarantine or protected QA control changes occur; known ordinary
 pinned fixture SVG writes are not restored. Only delivery notes change after the
 gate with tested hashes unchanged. Require accepted parents, completed clean
 exact-head automated review and every CI check green before merge.
+
+
+## Integrate the actor review correction
+
+The unpublished store stage now includes #266's selection-publication correction
+and its no-intermediate-read history regression. Fresh full `make ci` passes 45
+support tests and 996 XCTest cases (120.072 seconds), formatting, configured
+coverage, Qt-link and isolated build-only bundle checks. Compared with the prior
+store delivery, only the actor correction, its regression and inherited release/ADR
+notes change. Logs and runtime/test/manifest hashes are retained in the corrected
+store checkpoint. No native animation evaluation, production pin change or
+protected QA app control. Parent acceptance, exact-head clean review and all green
+CI remain required before public delivery/merge.
