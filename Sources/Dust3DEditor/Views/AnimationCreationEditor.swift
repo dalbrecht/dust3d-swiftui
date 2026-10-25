@@ -32,13 +32,13 @@ struct AnimationCreationEditor: View {
                 text: $name, onSubmit: submit, onCancel: cancel,
                 fieldLabel: "New animation name", fieldIdentifier: "animation-create-name"
             )
-            .frame(height: 28)
+            .frame(height: 44)
             Text("Type").font(.caption).foregroundStyle(.secondary)
             AnimationNameField(
                 text: $type, onSubmit: submit, onCancel: cancel,
                 fieldLabel: "New animation type", fieldIdentifier: "animation-create-type", requestsInitialFocus: false
             )
-            .frame(height: 28)
+            .frame(height: 44)
             Text("Enter the stored animation type. Preview and playback support are not checked.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !isCurrent {
@@ -46,10 +46,13 @@ struct AnimationCreationEditor: View {
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
             }
             HStack {
-                Button("Cancel", action: cancel).frame(minHeight: 40).disabled(isSubmitting)
+                Button(action: cancel) {
+                    Text("Cancel").frame(minWidth: 40, minHeight: 40)
+                }.disabled(isSubmitting)
                 Spacer()
-                Button("Create", action: submit).buttonStyle(.borderedProminent).frame(minHeight: 40)
-                    .disabled(!canCreate)
+                Button(action: submit) {
+                    Text("Create").frame(minWidth: 40, minHeight: 40)
+                }.buttonStyle(.borderedProminent).disabled(!canCreate)
             }
         }
         .focusedValue(\.editorTextEditing, true)

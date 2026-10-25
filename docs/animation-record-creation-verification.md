@@ -36,3 +36,18 @@ Return/Escape and two-field focus traversal, VoiceOver, interactive invalid-type
 retention, press/hover behavior, busy transitions and real-window resizing.
 Catalog-guided controls, Qt/native interoperability, native evaluation/playback/
 audio and complete M6 remain open. Production pin and all quarantines are unchanged.
+
+
+## Corrected-parent delivery
+
+The record form now inherits the corrected selection publication, exact history
+comparison and observable native Undo/Redo validation. Both native inputs retain
+the >=40-point intrinsic hit size, 44-point layout, and input-specific accessible
+identifiers; action labels retain desktop minimums. All six creation target/form
+tests pass (0.734 seconds), including failed-open preservation, rejected input
+retry with exact UTF-8 and stale captured epoch rejection without generation.
+Fresh ready-dark and stale-light owned 250-point renders inspected: source
+changes retain draft text and disable Create. No catalog defaults or supported
+playback types are inferred from a stored string. Fresh full `make ci` passes 45 support tests and 1,020 XCTest cases (123.598 seconds), formatting, configured coverage, Qt-link and isolated bundle checks; live app
+keyboard/VoiceOver acceptance remains unverified. No native evaluation or
+production pin/quarantine changes.
