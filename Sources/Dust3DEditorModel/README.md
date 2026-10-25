@@ -202,3 +202,8 @@ metadata issues. `selectAnimation` is transient and independent of graph selecti
 create/duplicate allocate fresh UUIDs atomically. Rows use byte-array identities
 for Unicode-safe list selection. No native evaluation runs. ADR 0105 records
 request/source correlation and remaining store/UI/runtime acceptance.
+
+`AnimationEditTarget` binds metadata dialogs to exact source epochs and row IDs.
+Actor `editAnimation` and targeted duplication reject replacement/Edit-Undo stale
+sources before mutation, while preserving independent graph/clip selection and
+original metadata errors. ADR 0106 describes the accepted-source store workflow.

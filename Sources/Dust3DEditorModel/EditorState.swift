@@ -21,6 +21,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case staleColorImageTarget
     case staleOriginDrag
     case staleExport
+    case staleAnimationTarget
 }
 
 /// Immutable presentation snapshot crossing from the editing actor to its window.
