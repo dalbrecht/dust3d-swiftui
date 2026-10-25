@@ -48,3 +48,17 @@ preservation. Fresh ready-dark and stale-light 250-point owned offscreen renders
 inspected with native styles; Add is disabled for stale targets and input retained.
 No native generation/playback, protected app control or production pin change.
 Fresh full `make ci` passes 45 support tests and 1,012 XCTest cases (122.458 seconds), formatting, configured coverage, Qt-link and isolated bundle checks; live keyboard/VoiceOver acceptance remains unverified.
+
+
+## Native Undo/Redo correction integration
+
+This source includes #268's observable command validation and actual UndoManager
+regressions. A terminal index-write timeout interrupted preparation of its base
+checkout; every changed, removed and untracked path was compared against the
+saved base before repairing only index/HEAD bookkeeping and replaying existing
+commits. Original branches remain preserved. Fresh full `make ci` passes 45
+support tests and 1,014 XCTest cases (122.871 seconds), formatting, configured
+coverage, Qt-link and isolated bundle checks. Logs/source hashes retained in the
+corrected checkpoint. No native animation evaluation, production pin/quarantine
+change, protected app control or manual SVG restoration. Public delivery remains
+serial and requires clean exact-head automated review and every CI check green.
