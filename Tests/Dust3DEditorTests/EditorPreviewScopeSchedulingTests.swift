@@ -1,8 +1,9 @@
-import Dust3DKit
+import Dust3DEngine
 import Foundation
 import XCTest
 
 @testable import Dust3DEditor
+@testable import Dust3DKit
 
 private enum RecordedPreview: Error, Equatable {
     case completed(UInt8)
@@ -11,11 +12,14 @@ private enum RecordedPreview: Error, Equatable {
 
 /// Records normal scheduling only; no document is parsed and no engine entry occurs.
 private actor GatedScopePreviewBackend: EditorMeshGenerating {
+    private let successfulResult: SourcedMeshGenerationResult?
     private var release: CheckedContinuation<Void, Never>?
     private(set) var started: [UInt8] = []
     private(set) var resetCount = 0
     private var active = 0
     private(set) var maximumActive = 0
+
+    init(successfulResult: SourcedMeshGenerationResult? = nil) { self.successfulResult = successfulResult }
 
     func generateSourcedIndexed(data: Data, maximumPayloadBytes: Int, maximumSourcePayloadBytes: Int)
         async throws -> SourcedMeshGenerationResult
@@ -26,6 +30,7 @@ private actor GatedScopePreviewBackend: EditorMeshGenerating {
         started.append(identifier)
         await withCheckedContinuation { release = $0 }
         active -= 1
+        if let successfulResult { return successfulResult }
         throw RecordedPreview.completed(identifier)
     }
 
@@ -41,6 +46,32 @@ private actor GatedScopePreviewBackend: EditorMeshGenerating {
 
 @MainActor
 final class EditorPreviewScopeSchedulingTests: XCTestCase {
+    func testSuccessfulEmptyPreviewsCompleteForEveryWaitingDocument() async throws {
+        // Construct copied metadata only; no native handle or generation function is called.
+        let result = SourcedMeshGenerationResult(
+            mesh: nil, sourceHints: nil, statistics: MeshGenerationStatistics(native: Dust3DGenerationStats()))
+        let backend = GatedScopePreviewBackend(successfulResult: result)
+        let service = EditorPreviewService(makeSession: { _ in backend })
+        let active = submit(0, scope: UUID(), to: service)
+        try await waitForStarted(1, backend: backend)
+        let first = submit(1, scope: UUID(), to: service)
+        try await waitForPending(1, service: service)
+        let second = submit(2, scope: UUID(), to: service)
+        try await waitForPending(2, service: service)
+        for (index, task) in [active, first, second].enumerated() {
+            try await waitForStarted(index + 1, backend: backend)
+            await backend.finish()
+            let output = try await task.value
+            XCTAssertNil(output.output)
+            XCTAssertNil(output.sourceIssue)
+            XCTAssertEqual(output.statistics.retainedPayloadBytes, 0)
+        }
+        let order = await backend.started
+        let maximum = await backend.maximumActive
+        XCTAssertEqual(order, [0, 1, 2])
+        XCTAssertEqual(maximum, 1)
+    }
+
     private func submit(_ number: UInt8, scope: UUID, to service: EditorPreviewService)
         -> Task<EditorPreviewResult, any Error>
     {

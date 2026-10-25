@@ -22,16 +22,17 @@ Document writes, undo and core dependency identity are unaffected.
 
 The initial four pure queue tests failed to compile for the missing type, then
 passed. Five pure tests now cover FIFO, cross-scope retention, replacement at
-capacity, removal/reuse and zero capacity. Three actor tests use a gated recording
+capacity, removal/reuse and zero capacity. Four actor tests use a gated recording
 backend that never parses a document or calls the engine. They verify execution
 order `[0, 3, 2, 4]`, one active job, capacity rejection and same-scope replacement,
 waiting cancellation/reuse and scope-specific reset with cleanup before surviving
 work. Queue/cleanup counts establish submission barriers before releasing work.
-Original fake backend errors reach callers unchanged.
+Original fake backend errors reach callers unchanged. Successful empty copied
+results also reach every waiting document, with no retained payload or source issue.
 
-All eight focused tests pass with coverage. `ScopedPreviewQueue.swift` measures
+All nine focused tests pass with coverage. `ScopedPreviewQueue.swift` measures
 28/28 lines, 20/20 regions and 10/10 functions. The fake-only service profile is
-149/198 lines (75.25%), not complete service or application coverage. Swift reports
+160/198 lines (80.81%), not complete service or application coverage. Swift reports
 no branch-outcome metrics. Compilation uses strict Swift 6 and the existing shared
 scratch/caches. No native generation, fault, cancellation, pressure or UI probe ran.
 
