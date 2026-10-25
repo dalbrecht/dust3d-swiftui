@@ -109,3 +109,6 @@ and all quarantines remain unchanged; known ordinary pinned fixture SVG writes
 are not restored. Both history corrections belong in this foundation before its
 first publication; later batch editing must retain them. Full M6 acceptance is
 still open.
+
+
+Apple #264 merged at `004a198e` after completed clean exact-head automated review and all CI checks green. Full-tree equality across ancestry-only rebase and matching gated source hashes preserve the tested implementation. No native binary executes after rebase; only this delivery note changes afterward.
