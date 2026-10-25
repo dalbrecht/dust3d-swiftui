@@ -84,3 +84,28 @@ probe is run. This is lossless stored intent, not playback/sampling acceptance.
 Production pin, quarantines and protected QA processes/bundles remain unchanged;
 known ordinary pinned fixture SVG writes are not restored. Require accepted
 parents, completed clean exact-head automated review and all CI green before merge.
+
+
+## Parameter removal/restoration comparison
+
+A second pure regression exposed the related remove-and-restore case: removing a
+parameter and restoring the same value in one transaction reinserted its attribute
+at a different position, changing bytes/dirty history and discarding redo. The
+focused test first failed six assertions. The model comparison now orders direct
+animation attributes by exact UTF-8 names in its separately parsed comparison
+DOM only. Persisted XML is never sorted. When all intent matches, history restores
+the original archive snapshot; row/child/comment/namespace order, raw values and
+opaque assets are otherwise compared unchanged. Real removal and empty values
+remain distinct, undoable changes in a separate regression. This extends existing
+model-only net-zero comparison rather than changing normal serialization.
+
+All 15 focused animation-document tests pass. Fresh full `make ci` passes 45
+support tests and 981 XCTest cases (118.880 seconds), formatting, configured
+coverage, Qt-link and isolated build-only bundles. Measured lines: animation value
+35/35, XML adapter189/194, full document file1201/1222; no whole-core or full
+Foundation-boundary coverage claim. No native animation, previously denied bulk
+fixture, fault/crash/resource probe or protected QA control occurs. Production pin
+and all quarantines remain unchanged; known ordinary pinned fixture SVG writes
+are not restored. Both history corrections belong in this foundation before its
+first publication; later batch editing must retain them. Full M6 acceptance is
+still open.

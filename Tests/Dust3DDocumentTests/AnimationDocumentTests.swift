@@ -114,6 +114,41 @@ final class AnimationDocumentTests: XCTestCase {
         XCTAssertEqual(history.document.encoded(), redoBytes)
     }
 
+    func testRemovingAndRestoringAnAnimationParameterRetainsExactBytesAndRedo() throws {
+        let source = try document()
+        var history = DocumentHistory(document: source)
+        try history.apply(.setAnimationName(id: "a", name: "Redo name"))
+        let redoBytes = history.document.encoded()
+        XCTAssertTrue(history.undo())
+        try history.beginTransaction()
+        try history.apply(.setAnimationParameter(id: "a", name: "duration", value: nil))
+        try history.apply(.setAnimationParameter(id: "a", name: "duration", value: "1.00"))
+        try history.endTransaction()
+        XCTAssertEqual(history.document.encoded(), source.encoded())
+        XCTAssertFalse(history.isDirty)
+        XCTAssertFalse(history.canUndo)
+        XCTAssertTrue(history.canRedo)
+        XCTAssertTrue(history.redo())
+        XCTAssertEqual(history.document.encoded(), redoBytes)
+    }
+
+    func testParameterRemovalAndEmptyValueRemainRealUndoableChanges() throws {
+        let source = try document()
+        for value: String? in [nil, ""] {
+            var history = DocumentHistory(document: source)
+            try history.beginTransaction()
+            try history.apply(.setAnimationParameter(id: "a", name: "duration", value: nil))
+            if let value { try history.apply(.setAnimationParameter(id: "a", name: "duration", value: value)) }
+            try history.endTransaction()
+            XCTAssertNotEqual(history.document.encoded(), source.encoded())
+            XCTAssertEqual(try history.document.animations().first?.parameter(named: "duration"), value)
+            XCTAssertTrue(history.isDirty)
+            XCTAssertTrue(history.canUndo)
+            XCTAssertTrue(history.undo())
+            XCTAssertEqual(history.document.encoded(), source.encoded())
+        }
+    }
+
     func testNoOpsAndInvalidCommandsPreserveBytesAndRedo() throws {
         let source = try document()
         var history = DocumentHistory(document: source)

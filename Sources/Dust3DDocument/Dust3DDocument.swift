@@ -890,6 +890,17 @@ public struct Dust3DDocument: Sendable {
         func canonical(_ data: Data) throws -> Data {
             let model = try Self.xml(data, root: "canvas")
             model.isStandalone = false
+            // Attribute order is not animation intent. Reorder only the parsed comparison tree;
+            // a net-zero transaction restores the original archive rather than serializing this order.
+            for container in DocumentXML.childElements(model.rootElement(), named: "animations") {
+                for animation in DocumentXML.childElements(container, named: "animation") {
+                    let attributes = (animation.attributes ?? []).sorted {
+                        ($0.name ?? "").utf8.lexicographicallyPrecedes(($1.name ?? "").utf8)
+                    }
+                    for attribute in attributes { attribute.detach() }
+                    for attribute in attributes { animation.addAttribute(attribute) }
+                }
+            }
             // Absent graph/animation containers and metadata-free empty ones have the same stored intent.
             // Attributes, namespaces, comments and non-whitespace content are metadata.
             for name in ["nodes", "edges", "animations"] {
