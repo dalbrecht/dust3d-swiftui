@@ -38,3 +38,18 @@ stale/busy form rendering, interactive rejection retention and real-window
 resizing. Store tests establish rejected/stale publication behavior, not those
 native UI interactions. Creation, parameter addition, catalog-specific controls,
 native evaluation/playback/audio and complete M6 acceptance remain open.
+
+
+## Corrected-parent delivery
+
+Replayed onto the inspector with #266's publication-time selection pruning and
+its history regression. Existing XML equality and exact-byte restoration fixes
+remain intact. Forms retain the inspector's minimum 40-point native input height
+and size action labels rather than surrounding containers. The owned render test
+checks actual native stored-value input bounds in light and dark modes. All five
+AnimationValueDraftTests pass (0.841 seconds), including exact UTF-8, qualified
+attribute restrictions, empty/removal semantics, stale-source rejection and
+lossless save/reopen/history without native evaluation. Fresh type-light and
+parameter-dark PNGs inspected at 250 points; system styles retained. Fresh full `make ci` passes 45 support tests and 1,007 XCTest cases
+(121.945 seconds), formatting, configured coverage, Qt-link and isolated
+build-only bundle checks. Live app keyboard/VoiceOver acceptance remains unverified.

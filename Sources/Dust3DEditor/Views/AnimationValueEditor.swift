@@ -24,7 +24,7 @@ struct AnimationValueEditor: View {
                 text: $text, onSubmit: { submit(removing: false) }, onCancel: cancel,
                 fieldLabel: "Animation \(draft.field.title)", fieldIdentifier: "animation-stored-value"
             )
-            .frame(height: 28)
+            .frame(height: 44)
             .focusedValue(\.editorTextEditing, true)
             .disabled(store.isWorking || isSubmitting)
             Text("Stored text only. This does not preview or validate playback.")
@@ -34,10 +34,14 @@ struct AnimationValueEditor: View {
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
             }
             HStack {
-                Button("Cancel", action: cancel).frame(minHeight: 40).disabled(isSubmitting)
+                Button(action: cancel) {
+                    Text("Cancel").frame(minWidth: 40, minHeight: 40)
+                }.disabled(isSubmitting)
                 Spacer()
-                Button("Apply", action: { submit(removing: false) })
-                    .buttonStyle(.borderedProminent).frame(minHeight: 40).disabled(!canApply)
+                Button(action: { submit(removing: false) }) {
+                    Text("Apply").frame(minWidth: 40, minHeight: 40)
+                }
+                .buttonStyle(.borderedProminent).disabled(!canApply)
             }
             if draft.field.removal != nil {
                 Button(role: .destructive) {

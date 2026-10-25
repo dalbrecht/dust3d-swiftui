@@ -140,7 +140,19 @@ final class AnimationValueDraftTests: XCTestCase {
             for scheme in [ColorScheme.light, .dark] {
                 let draft = AnimationValueDraft(target: target, field: field, originalValue: value)
                 let png = try InspectorRenderer.png(
-                    AnimationValueEditor(store: store, draft: draft, onCancel: {}), width: 250, scheme: scheme)
+                    AnimationValueEditor(store: store, draft: draft, onCancel: {}), width: 250, scheme: scheme,
+                    inspect: { hosting in
+                        @MainActor func storedField(in view: NSView) -> NSTextField? {
+                            if let field = view as? NSTextField,
+                                field.accessibilityIdentifier() == "animation-stored-value"
+                            {
+                                return field
+                            }
+                            return view.subviews.compactMap { storedField(in: $0) }.first
+                        }
+                        let field = try XCTUnwrap(storedField(in: hosting))
+                        XCTAssertGreaterThanOrEqual(field.bounds.height, 40)
+                    })
                 try png.write(to: directory.appendingPathComponent("\(name)-\(scheme == .dark ? "dark" : "light").png"))
                 XCTAssertEqual(store.snapshot?.document.encoded(), before)
                 XCTAssertFalse(store.canUndo)
