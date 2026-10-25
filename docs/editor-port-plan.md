@@ -883,3 +883,52 @@ directions, including rejection before listener delegate consultation. Final
 46-support plus 1033-XCTest full gate passes. This improves peer binding but does
 not implement an isolated engine service, bounded frames, lifecycle, sandbox,
 release signing/notarization or production adoption; M8/core #123 remain open.
+
+### Isolated-worker delivery checkpoint (M8, #147)
+
+The Apple runtime still uses core revision
+`41af7d4c1b67dd037e02858e3ef0fdb96a84aebb`. The local isolated-worker work below
+is not merged, pinned, packaged into either app or evidence of editor adoption.
+Keep its implementation status separate from release and full-parity acceptance.
+
+| Local core stage | Evidence | Remaining boundary |
+| --- | --- | --- |
+| [#171](https://github.com/dalbrecht/dust3d-core/issues/171), [#172](https://github.com/dalbrecht/dust3d-core/issues/172) | Healthy separate-process base mesh and UV jobs; maintained C request/reply ownership | No editor publication or release trust |
+| [#173](https://github.com/dalbrecht/dust3d-core/issues/173), [#174](https://github.com/dalbrecht/dust3d-core/issues/174) | Explicit development signatures, sandbox entitlement checks and healthy concurrent descriptor transfer | Entitlement receipts do not prove comprehensive effective permissions or resource bounds |
+| [#175](https://github.com/dalbrecht/dust3d-core/issues/175), [#176](https://github.com/dalbrecht/dust3d-core/issues/176) | One native slot and first-method connection ownership; pure foreign/stale decisions; 139 ordinary contracts passed | No real multi-peer, denial or load acceptance |
+| [#177](https://github.com/dalbrecht/dust3d-core/issues/177) | Recorded withdrawal before native entry, retained admission and retirement ordering; 139 ordinary contracts passed in 22.51 seconds | Running native work remains uninterrupted; public review and app adoption remain open |
+| [#178](https://github.com/dalbrecht/dust3d-core/issues/178) | Monotonic caller-identity routing and compiled scalar cancel handler; 139 ordinary contracts passed in 22.62 seconds | Remote cancellation was not invoked in native integration; current-source publication remains open |
+
+Continue delivery in this order:
+
+1. Finish the sole public Apple #268 review, address findings and merge only after
+   completed exact-head automated review and every CI check passes. Publish the
+   retained animation controls and worker changes serially; never treat local
+   commits or prior-head review as accepted dependencies.
+2. Review and deliver the local queued cancellation routing by nonzero monotonic caller identity on the owning
+   connection, preventing an old request from withdrawing a later one. Keep
+   request history bounded. Distinguish queued withdrawal from work already
+   started. Use pure recorded transitions under the existing probe restrictions.
+3. Bind the parent broker's authenticated connection, document/source revision,
+   request identity, collected EOF/semantic result and control receipt into one
+   completion decision. Retirement, cancellation and stale source must prevent
+   publication. Transport success or process disappearance alone cannot publish.
+4. Establish the remaining failure/descriptor cleanup, deadline, lifecycle,
+   resource and release-signing policy. Keep original causes and separate cleanup
+   diagnostics. Development ad-hoc pins and the peer-file exception are not the
+   production trust/distribution design.
+5. Replay independently reviewable core stages with their required gates. Only
+   after the pin-change restrictions are explicitly cleared, prepare a reviewed
+   exact revision/Package.resolved upgrade. Adopt the broker in the Apple preview
+   service with copied immutable geometry and existing stale-document guards;
+   preserve the Qt-free viewer/editor app separation.
+6. Obtain application-level open/edit/undo/save/reopen, rendered preview and
+   recovery evidence, then complete the remaining M4–M8 acceptance matrix. The
+   helper fixture gates cannot stand in for app acceptance or full feature parity.
+
+Preserve core #67/#69 GLB, #83 writer, #84 fault/allocation, #95 animation and
+Apple #199 rig-pose quarantines throughout. Do not add crash, signal, intentional
+broken-pipe, allocation-failure, pressure, native cancellation or real multi-peer
+probes as an acceptance shortcut. Keep one shared build root, clean generated
+products after gates and rebuild current source before native execution. Preserve
+all unpublished source, evidence and recovery bundles.
