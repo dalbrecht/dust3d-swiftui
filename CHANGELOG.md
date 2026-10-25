@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Upgrade the pinned native core to reviewed revision `48b0ce2d`, including removal of automatic stitching debug SVG writes; feature quarantines remain in place (#272).
+
 - Refresh native text Undo/Redo command availability after editing and undo-manager changes (#145).
 
 - Clear removed animation selections when publishing edits and history transitions, independently of list reads (#145).
