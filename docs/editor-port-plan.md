@@ -901,6 +901,7 @@ Keep its implementation status separate from release and full-parity acceptance.
 | [#179](https://github.com/dalbrecht/dust3d-core/issues/179) | Separate persistent-service semantic gate; focused ASan/UBSan and 62/62 implementation lines, 48/48 branch outcomes; 139 ordinary contracts passed in 22.56 seconds | C bridge follows in #180; XPC host/editor adoption remains open; leak checking unavailable on macOS |
 | [#180](https://github.com/dalbrecht/dust3d-core/issues/180) | Generation-bound C collector/admission and pure C/C++ ownership tests; corrected raw receipt opcode passes ASan/UBSan; 139 ordinary contracts passed in 22.70 seconds; 15-source SwiftPM runtime/helper build | Host integration follows in #181; reviewed delivery and editor adoption remain open |
 | [#181](https://github.com/dalbrecht/dust3d-core/issues/181) | Four healthy isolated mesh/UV file/socket pilots invoke C admission after actual EOF and actor-owned OS-peer observation; all 140 ordinary contracts passed in 24.52 seconds | One immutable fixture source/connection only; editor source/lifecycle retirement, reconnect, resource/release and failure/cancellation acceptance remain open |
+| [#182](https://github.com/dalbrecht/dust3d-core/issues/182) | Existing bounded RequestQueue supports service begin/completion with frozen generation and current-source retirement; scoped 87/87 lines and 48/48 branch outcomes, focused ASan/UBSan and all 140 ordinary contracts passed in 22.63 seconds | CMake C++ protocol only; C/runtime/host/editor coordinator exposure and per-document policy remain open |
 
 Continue delivery in this order:
 
@@ -912,7 +913,7 @@ Continue delivery in this order:
    connection, preventing an old request from withdrawing a later one. Keep
    request history bounded. Distinguish queued withdrawal from work already
    started. Use pure recorded transitions under the existing probe restrictions.
-3. Review and deliver the local C service-admission boundary and healthy XPC host integration, then bind the editor broker's authenticated connection, document/source revision,
+3. Review and deliver the local C service-admission boundary and healthy XPC host integration. Expose the existing bounded service queue through the C boundary, then bind the editor broker's authenticated connection, document/source revision,
    request identity, collected EOF/semantic result and control receipt into one
    completion decision. Retirement, cancellation and stale source must prevent
    publication. Transport success or process disappearance alone cannot publish.
@@ -959,3 +960,12 @@ normal owned cleanup, not native cancellation or a mutable editor source. The
 outcome profile is25/31 lines (diagnostic/invariant gaps), not a whole-core or
 95% coverage claim. Shared monotonic observation deadlines do not bound blocking
 descriptor I/O, native CPU or RSS. Preserve those open acceptance gates.
+
+The #182 extension keeps latest-source state in the existing queue. Service begin
+captures the connection generation; service completion checks the queue's current
+identity. Wrong-mode or foreign completion retains active work; stale or retired
+matching completion releases its slot without publication. The tests use only
+bounded state/protocol values, not actual cancellation or failed peers. Keep
+child reaping separate from persistent-service observations. Geometry-equivalent
+metadata/history edits and per-document fairness still need editor policy; a
+single latest-waiting queue is not proof of full multi-document acceptance.
