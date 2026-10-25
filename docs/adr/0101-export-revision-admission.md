@@ -51,3 +51,6 @@ must bind that write to the owning editor actor. This result does not establish
 full M7 acceptance. Only delivery documentation changes after this gate, with
 runtime/test/manifest hashes checked unchanged. Require an accepted parent,
 completed clean exact-head automated review and every CI check green before merge.
+
+
+Apple #261 merged at `ff3d4aba` after completed clean exact-head automated review and all CI checks green. Full-tree equality across ancestry-only rebase and matching gated source hashes preserve the tested implementation. No native binary executes after rebase; only this delivery note changes afterward.
