@@ -899,7 +899,8 @@ Keep its implementation status separate from release and full-parity acceptance.
 | [#177](https://github.com/dalbrecht/dust3d-core/issues/177) | Recorded withdrawal before native entry, retained admission and retirement ordering; 139 ordinary contracts passed in 22.51 seconds | Running native work remains uninterrupted; public review and app adoption remain open |
 | [#178](https://github.com/dalbrecht/dust3d-core/issues/178) | Monotonic caller-identity routing and compiled scalar cancel handler; 139 ordinary contracts passed in 22.62 seconds | Remote cancellation was not invoked in native integration; current-source publication remains open |
 | [#179](https://github.com/dalbrecht/dust3d-core/issues/179) | Separate persistent-service semantic gate; focused ASan/UBSan and 62/62 implementation lines, 48/48 branch outcomes; 139 ordinary contracts passed in 22.56 seconds | C bridge follows in #180; XPC host/editor adoption remains open; leak checking unavailable on macOS |
-| [#180](https://github.com/dalbrecht/dust3d-core/issues/180) | Generation-bound C collector/admission and pure C/C++ ownership tests; corrected raw receipt opcode passes ASan/UBSan; 139 ordinary contracts passed in 22.70 seconds; 15-source SwiftPM runtime/helper build | Reviewed delivery and real XPC host/editor adoption remain pending; ordinary healthy fixtures do not invoke the new C gate yet |
+| [#180](https://github.com/dalbrecht/dust3d-core/issues/180) | Generation-bound C collector/admission and pure C/C++ ownership tests; corrected raw receipt opcode passes ASan/UBSan; 139 ordinary contracts passed in 22.70 seconds; 15-source SwiftPM runtime/helper build | Host integration follows in #181; reviewed delivery and editor adoption remain open |
+| [#181](https://github.com/dalbrecht/dust3d-core/issues/181) | Four healthy isolated mesh/UV file/socket pilots invoke C admission after actual EOF and actor-owned OS-peer observation; all 140 ordinary contracts passed in 24.52 seconds | One immutable fixture source/connection only; editor source/lifecycle retirement, reconnect, resource/release and failure/cancellation acceptance remain open |
 
 Continue delivery in this order:
 
@@ -911,7 +912,7 @@ Continue delivery in this order:
    connection, preventing an old request from withdrawing a later one. Keep
    request history bounded. Distinguish queued withdrawal from work already
    started. Use pure recorded transitions under the existing probe restrictions.
-3. Review the local C service-admission boundary and integrate it into the real XPC host, then bind the parent broker's authenticated connection, document/source revision,
+3. Review and deliver the local C service-admission boundary and healthy XPC host integration, then bind the editor broker's authenticated connection, document/source revision,
    request identity, collected EOF/semantic result and control receipt into one
    completion decision. Retirement, cancellation and stale source must prevent
    publication. Transport success or process disappearance alone cannot publish.
@@ -949,3 +950,12 @@ representation in the initial unshipped field, which was corrected to uint32_t.
 Current pure-value ASan/UBSan and C consumers pass. This mitigation does not
 provide authenticated OS observations by itself, exercise real failed peers or
 publish editor state. Preserve the production pin and all quarantine restrictions.
+
+The #181 host creates service collectors before submission and keeps every opaque
+owner on its collecting thread. A retained completion event supports both parent
+and reader; an actor owns all NSXPCConnection access and copies actual OS PID
+separately from reported receipt data. Healthy pilots verify C admission and
+normal owned cleanup, not native cancellation or a mutable editor source. The
+outcome profile is25/31 lines (diagnostic/invariant gaps), not a whole-core or
+95% coverage claim. Shared monotonic observation deadlines do not bound blocking
+descriptor I/O, native CPU or RSS. Preserve those open acceptance gates.
