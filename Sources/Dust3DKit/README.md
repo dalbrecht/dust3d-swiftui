@@ -152,3 +152,14 @@ retained in typed errors. Run verification away from the UI thread. A returned
 identity is inspection-time evidence, not authorization for a later path-based
 launch; signature/launch binding, trusted bundle packaging, notarization and
 containment remain separate gates. See ADR 0112 and issue #269.
+
+`HelperXPCPeerFactory` creates suspended service/endpoint connections or anonymous
+listeners with expected peer requirements installed before activation. Configure
+interfaces, callbacks and a retained listener delegate, then own activation and
+invalidation on a serialized owner. Do not reset signing requirements; configure
+original proxy errors/invalidation handling explicitly. Requirements are parsed
+before Foundation calls, preventing malformed user configuration from reaching
+its exception-based setter. The development pin must refer to your trusted
+expected build. Anonymous owned-process tests verify both peer-rejection
+directions; embedded engine service, frame limits/lifecycle and release sandbox
+packaging remain separate gates (ADR 0113, #270).

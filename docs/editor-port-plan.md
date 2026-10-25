@@ -873,3 +873,13 @@ without automatic fallback (ADR 0112). Six focused tests and full 45-support plu
 correct development pin and rejected wrong-pin/signed-team policies without
 executing it. This is not launch binding, bundle signing/notarization, sandbox or
 production adoption. Those M8/core #123 gates and all quarantines remain open.
+
+### XPC peer-binding foundation (#270)
+
+Suspended XPC factories install explicit connection/listener peer requirements
+before activation (ADR 0113). An owned freshly compiled, explicitly ad-hoc-signed
+non-engine process verifies exact-byte echo and mismatched peers in both
+directions, including rejection before listener delegate consultation. Final
+46-support plus 1033-XCTest full gate passes. This improves peer binding but does
+not implement an isolated engine service, bounded frames, lifecycle, sandbox,
+release signing/notarization or production adoption; M8/core #123 remain open.

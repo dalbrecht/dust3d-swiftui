@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Configure suspended XPC connections and anonymous listeners with explicit peer requirements before activation; engine-service adoption remains gated (#270).
+
 - Add explicit signed-team and development-pinned static helper verification without fallback; production launch integration remains gated (#269).
 
 - Refresh native text Undo/Redo command availability after editing and undo-manager changes (#145).

@@ -55,12 +55,7 @@ public enum HelperSignaturePolicy: Equatable, Sendable {
     func requirementExpression() throws -> String {
         switch self {
         case .signedTeam(let identifier, let team):
-            guard !identifier.isEmpty, identifier.utf8.count <= 255,
-                identifier.utf8.allSatisfy({ byte in
-                    (65...90).contains(byte) || (97...122).contains(byte) || (48...57).contains(byte)
-                        || byte == 45 || byte == 46
-                })
-            else { throw HelperSignatureError.invalidIdentifier }
+            try Self.validateIdentifier(identifier)
             guard team.utf8.count == 10,
                 team.utf8.allSatisfy({ (65...90).contains($0) || (48...57).contains($0) })
             else { throw HelperSignatureError.invalidTeamIdentifier }
@@ -73,4 +68,13 @@ public enum HelperSignaturePolicy: Equatable, Sendable {
             return "cdhash H\"\(String(decoding: hex, as: UTF8.self))\""
         }
     }
+    static func validateIdentifier(_ identifier: String) throws {
+        guard !identifier.isEmpty, identifier.utf8.count <= 255,
+            identifier.utf8.allSatisfy({ byte in
+                (65...90).contains(byte) || (97...122).contains(byte) || (48...57).contains(byte)
+                    || byte == 45 || byte == 46
+            })
+        else { throw HelperSignatureError.invalidIdentifier }
+    }
+
 }
