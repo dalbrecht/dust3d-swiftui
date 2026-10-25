@@ -12,6 +12,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     @FocusedValue(\.editorTextEditing) private var isEditingText
     @State private var pasteboard = EditorPasteboard()
+    @State private var nativeUndoCommands = NativeUndoCommandState()
 
     private var applicationName: String {
         BuildIdentityPresentation.applicationName(
@@ -19,6 +20,8 @@ struct Dust3DEditorApp: App {
     }
 
     private var nativeTextEditor: NSTextView? {
+        _ = nativeUndoCommands.revision
+        _ = isEditingText
         guard let view = NSApp.keyWindow?.firstResponder as? NSTextView, view.isEditable else { return nil }
         return view
     }

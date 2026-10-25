@@ -64,3 +64,28 @@ native typography, semantic surfaces and SF Symbols retained. No new motion or
 dependency. Fresh full `make ci` passes 45 support tests and 1,002 XCTest cases (121.763 seconds), formatting, configured coverage, Qt-link and isolated build-only bundle checks for this corrected UI source. Live app interaction,
 VoiceOver and native first-responder traversal remain unverified as above; the
 rendered/native bounds check does not establish those acceptance requirements.
+
+
+## Review correction: native Undo/Redo availability
+
+PR #268 finding4369432594 identified that AppKit text editors and UndoManager
+are not observable SwiftUI values, so command enablement could remain stale. A
+main-actor observable bridge now refreshes command validation for undo-group close,
+undo/redo, native text editing/selection and key-window changes, delivered through
+the main run loop. The app reads that revision when resolving its native editor.
+Checkpoint notifications are deliberately excluded: querying canRedo itself emits
+a checkpoint and must not create a validation feedback loop.
+
+The missing-observer regression first failed to compile, then both focused tests
+pass (0.138 seconds): all subscribed notifications refresh the revision, and an
+actual UndoManager registration/undo/redo cycle invalidates Observation tracking
+while preserving stable revision on a later canRedo query. These tests control
+no product app/window. Full local gate and new exact-head review remain required;
+this does not replace live keyboard/menu/VoiceOver acceptance.
+
+Fresh full `make ci` passes 45 support tests and 1,004 XCTest cases (123.704
+seconds), formatting, configured coverage, Qt-link and isolated bundle checks.
+NativeUndoCommandState measures 21/21 lines and 5/5 regions; Swift reports no
+branch outcomes. Red/green/full logs, coverage and tested source hashes retained
+in the review-fix checkpoint. Require completed clean review and all CI on the
+new head before merge. No native animation evaluation or protected app control.
