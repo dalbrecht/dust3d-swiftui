@@ -61,3 +61,6 @@ scene/source URL binding and full M7 acceptance remain pending. Only delivery
 notes change after the gate, with tested hashes checked unchanged. Require
 accepted parents, completed clean exact-head automated review and all CI green
 before merge. Known ordinary pinned fixture SVG writes are not restored.
+
+
+Apple #263 merged at `42d4a084` after completed clean exact-head automated review and all CI checks green. Full-tree equality across ancestry-only rebase and matching gated source hashes preserve the tested implementation. No native binary executes after rebase; only this delivery note changes afterward.
