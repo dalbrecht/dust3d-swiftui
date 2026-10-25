@@ -81,3 +81,9 @@ notes change. Logs and runtime/test/manifest hashes are retained in the correcte
 store checkpoint. No native animation evaluation, production pin change or
 protected QA app control. Parent acceptance, exact-head clean review and all green
 CI remain required before public delivery/merge.
+
+
+Apple #266 merged at `2e7b2b06` after completed clean exact-head Codex review
+and all three CI checks passed. Full-tree equality and matching gated runtime,
+test and manifest hashes prove the ancestry-only store rebase preserves the
+validated source. No native executable runs after rebase; only this note changes.
