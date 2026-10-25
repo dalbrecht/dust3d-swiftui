@@ -34,14 +34,14 @@ struct AnimationParameterEditor: View {
                 text: $name, onSubmit: submit, onCancel: cancel,
                 fieldLabel: "New animation parameter name", fieldIdentifier: "animation-parameter-name"
             )
-            .frame(height: 28)
+            .frame(height: 44)
             Text("Value").font(.caption).foregroundStyle(.secondary)
             AnimationNameField(
                 text: $value, onSubmit: submit, onCancel: cancel,
                 fieldLabel: "New animation parameter value", fieldIdentifier: "animation-parameter-value",
                 requestsInitialFocus: false
             )
-            .frame(height: 28)
+            .frame(height: 44)
             Text("Use an unqualified parameter name. Existing parameters are edited in the inspector.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Text("Stored text only. This does not preview or validate playback.")
@@ -51,9 +51,13 @@ struct AnimationParameterEditor: View {
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
             }
             HStack {
-                Button("Cancel", action: cancel).frame(minHeight: 40).disabled(isSubmitting)
+                Button(action: cancel) {
+                    Text("Cancel").frame(minWidth: 40, minHeight: 40)
+                }.disabled(isSubmitting)
                 Spacer()
-                Button("Add", action: submit).buttonStyle(.borderedProminent).frame(minHeight: 40).disabled(!canAdd)
+                Button(action: submit) {
+                    Text("Add").frame(minWidth: 40, minHeight: 40)
+                }.buttonStyle(.borderedProminent).disabled(!canAdd)
             }
         }
         .focusedValue(\.editorTextEditing, true)

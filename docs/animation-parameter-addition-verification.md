@@ -34,3 +34,17 @@ interaction, press/hover states, busy transitions and real-window resizing.
 The actor/store tests prove publication rules, not native input behavior. Native
 catalog/runtime acceptance and complete M6 remain open; no product app control,
 production pin change or quarantine change occurs.
+
+
+## Corrected-parent delivery
+
+Preserves the actor publication-time selection fix, restored XML history
+comparison and intrinsic native input minimum from accepted/validated parents.
+Both parameter fields use 44-point SwiftUI layout around native controls whose
+actual bounds are checked at >=40 points; action labels retain the same minimum.
+All six focused parameter tests pass (0.736 seconds), covering domain duplicate
+rejection without overwrite, corrected draft retry, stale epochs and exact source
+preservation. Fresh ready-dark and stale-light 250-point owned offscreen renders
+inspected with native styles; Add is disabled for stale targets and input retained.
+No native generation/playback, protected app control or production pin change.
+Fresh full `make ci` passes 45 support tests and 1,012 XCTest cases (122.458 seconds), formatting, configured coverage, Qt-link and isolated bundle checks; live keyboard/VoiceOver acceptance remains unverified.

@@ -98,7 +98,18 @@ final class AnimationParameterEditorTests: XCTestCase {
             let png = try InspectorRenderer.png(
                 AnimationParameterEditor(
                     store: store, target: target, name: AnimationNameText(name), value: AnimationNameText("1.00"),
-                    onCancel: {}), width: 250, scheme: scheme)
+                    onCancel: {}), width: 250, scheme: scheme,
+                inspect: { hosting in
+                    @MainActor func fields(in view: NSView) -> [NSTextField] {
+                        let own = (view as? NSTextField).map { [$0] } ?? []
+                        return own + view.subviews.flatMap { fields(in: $0) }
+                    }
+                    for identifier in ["animation-parameter-name", "animation-parameter-value"] {
+                        let field = try XCTUnwrap(
+                            fields(in: hosting).first { $0.accessibilityIdentifier() == identifier })
+                        XCTAssertGreaterThanOrEqual(field.bounds.height, 40)
+                    }
+                })
             try png.write(to: directory.appendingPathComponent("\(label).png"))
             XCTAssertEqual(store.snapshot?.document.encoded(), data)
             XCTAssertEqual(publications, 0)
