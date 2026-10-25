@@ -1,25 +1,28 @@
 # Native editor delivery and acceptance status
 
-Snapshot: October 24, 2026. The full scope remains
+Snapshot: October 25, 2026. The full scope remains
 [editor-port-plan.md](editor-port-plan.md), including M0–M8. This snapshot separates
 implemented stages, local work and missing acceptance; it is not a parity signoff.
 
 ## Public and local baselines
 
-- Apple public master at this delivery base: `d38dbecc55b8182a3ebfdc1e41890f1e983d4874` (reviewed PR #256).
+- Apple public master at this delivery base: `b8d91a48fb90fa61b62fe838bdac8e4d95d5a836` (stored-animation inspector).
   Crop adjustment (#249) and the native node-ID accessibility/copy fix (#251) are
   merged, as are the stored rig document/actor foundations (#253), inspector (#255) and exact edge-bone assignments (#256). Historical modifier/clipboard QA used clean implementation `2011b362`;
   later documentation and test commits do not retag that captured runtime.
-- Core public master: `537cfe014eafd97d04630edce4dfb32c8a943b62` (reviewed PR #126).
-  Transport #122, queue #124, pure lifetime policy #125 and opt-in supervision
-  #126 merged after completed review and green CI. Resource policy #127 is in
-  review; setup, launch and admission stages remain saved separately. Active
-  stop/escalation OS paths and full containment are unverified.
+- Core PR [#212](https://github.com/dalbrecht/dust3d-core/pull/212) is merged at
+  `48b0ce2d6d61cf58731bb0c3e14ef5965a686d68`, following completed exact-head review
+  and six green CI checks. The development XPC host now uses the C request
+  coordinator's current-source admission. Its healthy fixture has one immutable
+  source, connection and job; this does not establish editor adoption, active
+  stop/escalation behavior or complete containment.
 - Apple continues to pin core `41af7d4c1b67dd037e02858e3ef0fdb96a84aebb`.
   Local core contracts and helper tests are not evidence of Apple adoption.
 - Every public PR still requires its full local gate, completed exact-head
   automated review, addressed feedback and all green CI before serial merging.
-  A stale running summary is not proof of worker liveness or permission to retry.
+  A stale running summary is not proof of worker liveness. The user authorizes
+  one fresh recovery review request per unchanged head before prompting; further
+  recovery requests on that head still require a decision.
 
 ## Milestone evidence and gaps
 
@@ -31,12 +34,12 @@ implemented stages, local work and missing acceptance; it is not a parity signof
 | M3 — Modeling | Hierarchy/modifier document/controller suites and scoped native checks, now including [controlled thickness/unified and intersecting hard-join history/reopen](controlled-native-modifier-acceptance.md). | Broader linked topology interactions/replacements, remaining families and Qt comparisons. Hollow-thickness consumer gap remains [#96](https://github.com/dalbrecht/dust3d-swiftui/issues/96); [#120](https://github.com/dalbrecht/dust3d-swiftui/issues/120) stays open. |
 | M4 — Materials/imports | Existing material/import/bake/render stages have [editor evidence](imported-material-editor-verification.md) and [file-preview evidence](mixed-file-preview-verification.md). | Mixed source mip adoption [#172–180](https://github.com/dalbrecht/dust3d-swiftui/issues/172), full alpha/PBR/UV/export parity and malformed-asset containment. Historical render evidence does not enable the quarantined experimental catalog. [#143](https://github.com/dalbrecht/dust3d-swiftui/issues/143) remains open. |
 | M5 — Rigging | Stored-parameter document/actor commands (#246/#253) and inspector controls (#254/#255) are merged. Edge-binding commands and controls (#247/#256) are merged, including exact UTF-8 identity and owned native field Return/Escape tests. Historical whole-app Save/history/reopen was not established after control timeouts. These stages do not establish native rig evaluation. | Rig/pose ownership, skeleton/hierarchy/weights, IK and native save/keyboard acceptance under [#144](https://github.com/dalbrecht/dust3d-swiftui/issues/144) and its staged issues. Preserve Apple #199 quarantine. |
-| M6 — Animation/audio | Existing archive fields can be retained; no full native evaluation/playback/audio acceptance exists. | Catalog/commands, bounded pose/audio copies, time-based playback, synchronization and WAV workflows under [#145](https://github.com/dalbrecht/dust3d-swiftui/issues/145). Preserve core #95 quarantine. |
+| M6 — Animation/audio | Stored-animation document commands, list snapshots, actor coordination and inspector are merged (#265–268). These edit retained metadata; no native evaluation/playback/audio acceptance exists. | Bounded pose/audio copies, time-based playback, synchronization and WAV workflows under [#145](https://github.com/dalbrecht/dust3d-swiftui/issues/145). Preserve core #95 quarantine. |
 | M7 — Export/batch | Portable development work and staged issues exist; document Save is not export parity. | Owned OBJ/GLB/FBX/WAV outputs, atomic publication, current-revision admission and independent re-import/batch acceptance under [#146](https://github.com/dalbrecht/dust3d-swiftui/issues/146). |
 | M8 — Release/hardening | Measured Swift suites, explicit Qt-free builds, file-preview integration stages and local core mitigation contracts. | Strong memory/descendant/filesystem/network/parent-death containment, active lifecycle evidence, trusted packaging/signing/notarization, hardware/OS/performance/accessibility/upgrade matrix under [#147](https://github.com/dalbrecht/dust3d-swiftui/issues/147). |
 
-The public Apple Sources do not expose the planned skeletal evaluation,
-animation/audio/export workflows. Local stored-intent controls are distinct from
+The public Apple Sources do not establish the planned skeletal evaluation,
+animation/audio playback or complete export parity. Stored-intent controls are distinct from
 those capabilities; an open issue series is not implementation evidence. The
 node-ID fix in #251 closes #250, while the separate staged OBJ-status accessibility
 investigation in #235 remains open. No milestone
@@ -51,6 +54,15 @@ matching request receipt. Native notification delivery remains unverified and
 cannot retrofit the protected older QA process.
 
 ## Next delivery priorities
+
+Per-document preview scheduling (#271) is locally committed, with five pure queue
+and four fake-backend actor tests passing. The pure queue has 100% measured line,
+region and function coverage; the focused service profile covers 160/198 lines.
+Full local validation and PR delivery remain pending: the frozen core pin's
+ordinary stitching path writes the protected global debug SVG. A separate reviewed
+dependency upgrade is proposed; permission to lift the production-pin freeze is
+pending. No pin change, test exclusion or full-gate pass is implied. See
+[ADR 0114](adr/0114-per-document-preview-scheduling.md).
 
 1. Finish the current public review gate and publish ready local stages serially.
    Preserve recoverable source/bundles and use the single shared compiler root.
