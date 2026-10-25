@@ -47,3 +47,24 @@ the original cause and are exposed only for the matching accepted source, just
 like list results. The small no-native-preview test first observed the stale
 error, then verifies retirement before any explicit list refresh. This adds no
 native error/failure-injection probe.
+
+
+## Captured animation coordinator delivery validation
+
+Replay saved `81cd4f93` on the validated actor/list delivery and corrected XML
+foundation. Actor/store implementation and new tests match the saved tested stage;
+retain both existing-field and remove/restore exact-history regressions. Captured
+row UUID/revision checks reject reopened or edited/undone source epochs while
+leaving transient graph selection and locks independent. Query failures retain
+original optional causes without blocking primary document editing.
+
+Fresh full `make ci` passes 45 support tests and 995 XCTest cases (122.190 seconds),
+formatting, configured coverage, Qt-link and isolated build-only bundle/signature
+checks. Captured-target value/command coverage is 23/23 lines and 14/14 regions;
+Swift supplies no branch outcomes. Tests use small stored-intent documents and
+no-native preview, with query/load/stop/stale-target checks. This is not a
+whole-EditorStore coverage, native UI, animation sampling or full M6 claim. No
+production pin/quarantine or protected QA control changes occur; known ordinary
+pinned fixture SVG writes are not restored. Only delivery notes change after the
+gate with tested hashes unchanged. Require accepted parents, completed clean
+exact-head automated review and every CI check green before merge.
