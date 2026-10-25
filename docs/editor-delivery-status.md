@@ -16,7 +16,8 @@ implemented stages, local work and missing acceptance; it is not a parity signof
   coordinator's current-source admission. Its healthy fixture has one immutable
   source, connection and job; this does not establish editor adoption, active
   stop/escalation behavior or complete containment.
-- Apple continues to pin core `41af7d4c1b67dd037e02858e3ef0fdb96a84aebb`.
+- Apple pins reviewed core `48b0ce2d6d61cf58731bb0c3e14ef5965a686d68` through
+  merged dependency PR #273, explicitly authorized by the user.
   Local core contracts and helper tests are not evidence of Apple adoption.
 - Every public PR still requires its full local gate, completed exact-head
   automated review, addressed feedback and all green CI before serial merging.
@@ -58,10 +59,13 @@ cannot retrofit the protected older QA process.
 Per-document preview scheduling (#271) is locally committed, with five pure queue
 and seven fake-backend tests passing. The pure queue has 100% measured line,
 region and function coverage; the focused service profile covers 184/198 lines.
-Full local validation and PR delivery remain pending: the frozen core pin's
-ordinary stitching path writes the protected global debug SVG. A separate reviewed
-dependency upgrade is proposed; permission to lift the production-pin freeze is
-pending. No pin change, test exclusion or full-gate pass is implied. See
+Full preview-stage local validation passed: 45 support and 1,016 XCTest cases,
+coverage, Qt-free linkage and bundle rebuilds. Queue line coverage is 28/28;
+service line coverage is 194/198 in the full suite. Public CI/review and native
+acceptance remain pending. The separate reviewed
+dependency upgrade #273 removed the automatic stitching debug SVG writer; its
+full local gate and completed clean review/all CI passed. All feature quarantines
+remain. See
 [ADR 0114](adr/0114-per-document-preview-scheduling.md).
 
 1. Finish the current public review gate and publish ready local stages serially.

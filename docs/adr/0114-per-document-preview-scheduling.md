@@ -1,6 +1,6 @@
 # ADR 0114: Bounded per-document preview scheduling
 
-Issue: #271. Status: local implementation; full delivery gates pending.
+Issue: #271. Status: full local gate passed; public review pending.
 
 ## Decision
 
@@ -46,10 +46,16 @@ explicit shared compiler-cache paths. An initial support run failed while compil
 its ordinary identity helper before launch; rerunning with those cache paths passes.
 These support checks do not replace the pending full application gate.
 
-The full local `make ci` gate has not run: source audit confirms the pinned core's
-ordinary stitching path still writes `/tmp/stitch_loop_debug.svg`. The current
-restriction forbids modifying that global artifact. This is a pending gate, not a
-pass or a reason to execute the path and restore the file afterward. No production
-pin change, quarantine removal or test exclusion is claimed as full verification.
-Full service regression, coverage gate, CI/review and native app acceptance remain
-pending. This stage alone does not complete XPC editor adoption or full parity.
+The initial full gate was held because the old pinned core's ordinary stitching
+path wrote `/tmp/stitch_loop_debug.svg`. Separately authorized dependency PR #273
+has now merged after its full gate, completed clean review and all green CI. Its
+exact core revision removes that writer; the preview stage is rebased onto it.
+No quarantine removal or test exclusion is claimed as full verification.
+After rebasing, full `make ci` passed: 45 build-support tests, 1,016 XCTest cases,
+coverage thresholds, Qt-free linkage and bundle-rebuild checks. The full suite
+includes existing ordinary native integration/boundary tests; no new native
+probes or app launches were introduced. Full-suite coverage measures the queue
+at 28/28 lines and service at 194/198 lines (97.98%), with all 33 service functions
+executed. The earlier fake-only profile above remains scoped historical evidence.
+Public CI/review and native app acceptance remain pending. This stage alone does
+not complete XPC editor adoption or full parity.
