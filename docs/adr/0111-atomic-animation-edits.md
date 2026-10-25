@@ -41,3 +41,16 @@ pinned-core fixtures retain their known SVG writer behavior; no global SVG resto
 is attempted. Structured catalog-guided inspectors, reviewed core dependency
 adoption, sampling/playback/audio and full M6 acceptance remain open. All existing
 GLB/writer/fault/animation/rig-pose quarantines remain in force.
+
+
+## Corrected-parent delivery validation
+
+Replayed onto the validated creation stage, retaining publication-time selection
+pruning, restored-parameter history comparison and observable native Undo/Redo
+validation. The existing-attribute update fix was already accepted in the
+foundation and is not duplicated or removed by this replay. All three focused
+actor batch contracts pass (0.004 seconds), with small ordinary stored records
+and no native animation evaluation. Fresh full `make ci` passes 45 support tests and 1,024 XCTest cases
+(124.397 seconds), formatting, configured coverage, Qt-link and isolated bundle
+checks for this combined source. Logs and source/test/manifest hashes retained
+in the delivery checkpoint. No new UI, production dependency or quarantine change.
