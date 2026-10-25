@@ -72,6 +72,8 @@ public struct EditorSnapshot: Sendable {
     public let canRedo: Bool
     public let locks: Set<EditingConstraint>
     public let documentRevision: Int
+    /// Trusted geometry/material input identities restored with accepted document history.
+    public let previewIdentity: DocumentPreviewIdentity
     /// Monotonic interaction epoch, including lock toggles that later restore the same values.
     public let constraintRevision: Int
 
@@ -218,7 +220,8 @@ public struct EditorState: Sendable {
             selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
-            documentRevision: revision, constraintRevision: constraintRevision)
+            documentRevision: revision, previewIdentity: history.previewIdentity, constraintRevision: constraintRevision
+        )
     }
 
     /// Select a single node or clear the transient selection.

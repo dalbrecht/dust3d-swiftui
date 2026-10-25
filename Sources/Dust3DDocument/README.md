@@ -1,5 +1,13 @@
 # Dust3DDocument
 
+`DocumentHistory.previewIdentity` exposes separate process-local `geometry` and
+`materials` identities for accepted preview inputs. Compare these values before
+and after commands or Undo/Redo to invalidate only the affected output. History
+restores the identities with exact document bytes; fresh history instances remain
+independent. They never enter archive data or replace request/scope admission.
+Unknown command kinds conservatively invalidate both inputs. See
+[ADR 0116](../../docs/adr/0116-history-owned-preview-sources.md).
+
 Lossless `.ds3` archive values, graph commands, and bounded snapshot undo/redo. This SwiftPM library uses Foundation XML and has no UI or Qt dependency. Build and test from the repository root with `make ci`.
 
 Initialize `Dust3DDocument(data:)`, inspect `editorContents()` or `modelXML`, apply typed `DocumentCommand` values, and write `encoded()` atomically through the application's file service. Unchanged archives remain byte-identical; commands retain unrelated XML and binary assets. Invalid commands throw `DocumentError` without replacing the original value.
