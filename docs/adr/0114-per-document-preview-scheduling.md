@@ -1,0 +1,61 @@
+# ADR 0114: Bounded per-document preview scheduling
+
+Issue: #271. Status: full local gate passed; public review pending.
+
+## Decision
+
+Keep native entry globally serial, but retain one latest waiting request for each
+document scope instead of one global waiting request. A pure value queue preserves
+FIFO scope order when replacing that scope's value. After its turn starts, a new
+request for that scope joins the tail, behind other waiting documents. Eight
+waiting scopes bound archive retention; the active job is separate. A ninth new
+scope receives `EditorPreviewSchedulingError.previewBacklog`, while replacement
+within an existing scope remains possible. No automatic retry is implied.
+
+Replacement resumes only the old same-scope continuation with cancellation.
+Explicit cancellation and reset remove matching work without displacing another
+scope. Existing two-barrier cleanup priority and serial backend entry remain.
+The actor exposes bounded pending preview/reset counts for scheduling diagnostics.
+Document writes, undo and core dependency identity are unaffected.
+
+## Evidence and limits
+
+The initial four pure queue tests failed to compile for the missing type, then
+passed. Five pure tests now cover FIFO, cross-scope retention, replacement at
+capacity, removal/reuse and zero capacity. Four actor tests use a gated recording
+backend that never parses a document or calls the engine. They verify execution
+order `[0, 3, 2, 4]`, one active job, capacity rejection and same-scope replacement,
+waiting cancellation/reuse and scope-specific reset with cleanup before surviving
+work. Queue/cleanup counts establish submission barriers before releasing work.
+Original fake backend errors reach callers unchanged. Successful empty copied
+results also reach every waiting document, with no retained payload or source issue.
+
+Three additional fake-backend contract tests verify optional-source fallback keeps
+copied geometry and the original source diagnostic, dual failures preserve both
+causes without duplicate text, and other source errors propagate without fallback.
+They construct Swift-owned values only; no native input is parsed.
+
+All twelve focused tests pass with coverage. `ScopedPreviewQueue.swift` measures
+28/28 lines, 20/20 regions and 10/10 functions. The fake-only service profile is
+184/198 lines (92.93%), not complete service or application coverage. Swift reports
+no branch-outcome metrics. Compilation uses strict Swift 6 and the existing shared
+scratch/caches. No native generation, fault, cancellation, pressure or UI probe ran.
+
+Repository formatting/shell lint passes. All 45 build-support tests pass with
+explicit shared compiler-cache paths. An initial support run failed while compiling
+its ordinary identity helper before launch; rerunning with those cache paths passes.
+These support checks do not replace the pending full application gate.
+
+The initial full gate was held because the old pinned core's ordinary stitching
+path wrote `/tmp/stitch_loop_debug.svg`. Separately authorized dependency PR #273
+has now merged after its full gate, completed clean review and all green CI. Its
+exact core revision removes that writer; the preview stage is rebased onto it.
+No quarantine removal or test exclusion is claimed as full verification.
+After rebasing, full `make ci` passed: 45 build-support tests, 1,016 XCTest cases,
+coverage thresholds, Qt-free linkage and bundle-rebuild checks. The full suite
+includes existing ordinary native integration/boundary tests; no new native
+probes or app launches were introduced. Full-suite coverage measures the queue
+at 28/28 lines and service at 194/198 lines (97.98%), with all 33 service functions
+executed. The earlier fake-only profile above remains scoped historical evidence.
+Public CI/review and native app acceptance remain pending. This stage alone does
+not complete XPC editor adoption or full parity.

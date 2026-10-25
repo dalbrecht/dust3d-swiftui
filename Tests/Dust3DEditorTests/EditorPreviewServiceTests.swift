@@ -72,6 +72,8 @@ final class EditorPreviewServiceTests: XCTestCase {
                         _ = try await service.generate(data, scopeID: UUID())
                     } catch is CancellationError {
                         // Superseded waiting previews are deliberately retired.
+                    } catch EditorPreviewSchedulingError.previewBacklog {
+                        // Distinct documents beyond the fixed waiting capacity receive a typed rejection.
                     }
                 }
             }
