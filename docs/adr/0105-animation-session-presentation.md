@@ -43,3 +43,25 @@ was mitigated by an explicitly typed local array without removing test cases.
 Store/list/inspector controls, native catalog/Qt interoperability, playback/audio,
 responsiveness and full M6 acceptance remain open. Pin and quarantines unchanged;
 no screenshot applies to this actor/data-only stage.
+
+
+## Animation-session delivery validation
+
+Replay saved `6e431fd8` on the corrected animation-document foundation, retaining
+both existing-value and remove/restore exact-history regressions. Actor/list
+implementation and new tests match the saved tested stage. The release-note
+conflict keeps both the actor entry and foundation correction; inherited XML
+comparison changes are deliberate prerequisites, not part of sampling.
+
+Fresh full `make ci` passes 45 support tests and 987 XCTest cases (120.683 seconds),
+formatting, configured coverage, Qt-link and isolated build-only bundle/signature
+checks. Pure presentation coverage is 37/37 lines and 24/24 regions; Swift supplies
+no branch outcomes. Tests use small stored-intent records and verify transient
+selection, exact UTF-8 identities, creation/duplication, source-correlated query,
+optional original metadata causes, history and cancellation without native
+animation or previously denied bulk fixtures. UI/store binding, sampling/playback
+and full M6 acceptance remain pending. No production pin/quarantine or protected
+QA control changes occur; known ordinary pinned fixture SVG writes are not
+restored. Only delivery notes change after the gate with tested hashes unchanged.
+Require accepted parents, completed clean exact-head automated review and all CI
+green before merge.
