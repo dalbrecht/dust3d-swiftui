@@ -90,7 +90,7 @@ public actor DocumentExportFileService {
         }
         guard target[.type] as? FileAttributeType == .typeRegular else { throw DocumentExportError.invalidDestination }
         if let source {
-            let origin = try manager.attributesOfItem(atPath: source.path)
+            let origin = try manager.attributesOfItem(atPath: source.resolvingSymlinksInPath().path)
             if let targetDevice = target[.systemNumber] as? NSNumber,
                 let sourceDevice = origin[.systemNumber] as? NSNumber,
                 let targetInode = target[.systemFileNumber] as? NSNumber,

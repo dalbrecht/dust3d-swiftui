@@ -101,6 +101,32 @@ final class DocumentExportFileServiceTests: XCTestCase {
         XCTAssertNil(received)
         XCTAssertEqual(try Data(contentsOf: source), original)
     }
+    func testRejectsHardlinkToSourceOpenedThroughSymlinkBeforeEncoding() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let original = directory.appendingPathComponent("original.ds3")
+        let source = directory.appendingPathComponent("opened.ds3")
+        let target = directory.appendingPathComponent("alias.obj")
+        let bytes = Dust3DDocument.emptyArchive()
+        try bytes.write(to: original)
+        try FileManager.default.createSymbolicLink(at: source, withDestinationURL: original)
+        try FileManager.default.linkItem(at: original, to: target)
+        let encoder = RecordingExportEncoder()
+        do {
+            _ = try await DocumentExportFileService(encoder: encoder).export(
+                Dust3DDocument(data: bytes), format: .obj, to: target, sourceURL: source)
+            XCTFail("A hardlink to the resolved source must be rejected")
+        } catch {
+            XCTAssertEqual(error as? DocumentExportError, .sourceAlias)
+        }
+        let received = await encoder.received
+        XCTAssertNil(received)
+        XCTAssertEqual(try Data(contentsOf: original), bytes)
+        XCTAssertEqual(try Data(contentsOf: source), bytes)
+        XCTAssertEqual(try Data(contentsOf: target), bytes)
+    }
+
     func testRejectsWrongExtensionAndSymlinkWithoutCallingEncoder() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
