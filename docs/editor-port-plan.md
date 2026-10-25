@@ -898,6 +898,7 @@ Keep its implementation status separate from release and full-parity acceptance.
 | [#175](https://github.com/dalbrecht/dust3d-core/issues/175), [#176](https://github.com/dalbrecht/dust3d-core/issues/176) | One native slot and first-method connection ownership; pure foreign/stale decisions; 139 ordinary contracts passed | No real multi-peer, denial or load acceptance |
 | [#177](https://github.com/dalbrecht/dust3d-core/issues/177) | Recorded withdrawal before native entry, retained admission and retirement ordering; 139 ordinary contracts passed in 22.51 seconds | Running native work remains uninterrupted; public review and app adoption remain open |
 | [#178](https://github.com/dalbrecht/dust3d-core/issues/178) | Monotonic caller-identity routing and compiled scalar cancel handler; 139 ordinary contracts passed in 22.62 seconds | Remote cancellation was not invoked in native integration; current-source publication remains open |
+| [#179](https://github.com/dalbrecht/dust3d-core/issues/179) | Separate persistent-service semantic gate; focused ASan/UBSan and 62/62 implementation lines, 48/48 branch outcomes; 139 ordinary contracts passed in 22.56 seconds | No C bridge, SwiftPM runtime exposure, XPC host or editor adoption yet; leak checking unavailable on macOS |
 
 Continue delivery in this order:
 
@@ -909,7 +910,7 @@ Continue delivery in this order:
    connection, preventing an old request from withdrawing a later one. Keep
    request history bounded. Distinguish queued withdrawal from work already
    started. Use pure recorded transitions under the existing probe restrictions.
-3. Bind the parent broker's authenticated connection, document/source revision,
+3. Expose and integrate the local service-admission gate through a reviewed C boundary, then bind the parent broker's authenticated connection, document/source revision,
    request identity, collected EOF/semantic result and control receipt into one
    completion decision. Retirement, cancellation and stale source must prevent
    publication. Transport success or process disappearance alone cannot publish.
@@ -932,3 +933,10 @@ broken-pipe, allocation-failure, pressure, native cancellation or real multi-pee
 probes as an acceptance shortcut. Keep one shared build root, clean generated
 products after gates and rebuild current source before native execution. Preserve
 all unpublished source, evidence and recovery bundles.
+
+The #179 service gate preserves the existing child-process exit gate. Its caller
+must supply real authenticated-connection/OS-peer/EOF/current-source observations;
+receipt bytes alone cannot create them. The focused rejection tests use bounded
+pure values, not native failure probes. Existing healthy XPC tests do not exercise
+that new gate until its C/host integration lands. Preserve that distinction in
+review descriptions and acceptance evidence.
