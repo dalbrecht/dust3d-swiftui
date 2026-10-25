@@ -59,3 +59,6 @@ ordinary pinned fixture SVG writes are not restored. Full M7 acceptance and actu
 editor workflow/native binding remain open. Only delivery notes change after this
 gate with tested hashes checked unchanged. Require accepted parents, completed
 clean exact-head automated review and all CI green before merge.
+
+
+Apple #262 merged at `78d77eda` after completed clean exact-head automated review and all CI checks green. Full-tree equality across ancestry-only rebase and matching gated source hashes preserve the tested implementation. No native binary executes after rebase; only this delivery note changes afterward.
