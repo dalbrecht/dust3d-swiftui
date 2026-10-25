@@ -380,3 +380,9 @@ Clear removes a saved assignment. Each applied change is one undo step. Both
 endpoints must be editable. Names are stored intent: this build does not provide a
 rigged preview, and the inspector states that limitation. Undo/redo and ordinary
 open/save retain the assignments; native rig generation and weights remain M5 work.
+
+The captured export workflow accepts an injected `DocumentExportFileService` for
+validation and future native binding. Default builds have no export encoder and
+no enabled Export command. The workflow tags receipts by captured document
+identity/revision and preserves history/source bytes; reload/stop cancel pending
+work. ADR 0103 records native/scene/permission and responsiveness gates.
