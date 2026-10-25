@@ -38,3 +38,24 @@ state/history after a supplied write error. The full local `make ci` passes 45 b
 (120.075 seconds), formatting, coverage gates, Qt-free linkage and isolated bundle
 rebuild/signature checks. All eighteen service contracts pass. This is not native
 encoder/UI/lifecycle or large-file responsiveness acceptance. No changed UI requires a screenshot.
+
+
+## Serialized-publication delivery gate
+
+Prepare corrected `47a2ec12` on the validated export-admission delivery, retaining
+source-alias protection. Runtime/test/manifest hashes match the saved tested
+stage; only inherited delivery documentation differs. Tests inject ordinary
+encoders and publication coordinators against small owned files. They reject an
+edit after final admission, retain bytes/warnings/history on success, recheck a
+new source alias inside commit, propagate original publication errors, and return
+success when cancellation arrives after an already committed write.
+
+Fresh full `make ci` passes 45 support tests and 961 XCTest cases (119.725 seconds),
+formatting, coverage, Qt-link and isolated build-only bundle/signature checks.
+Service coverage is 71/71 lines and 42/42 regions; Swift supplies no branch
+outcomes. No native encoder, Export menu or new app UI is installed. Production
+pin, all quarantines and protected QA processes/bundles remain unchanged; known
+ordinary pinned fixture SVG writes are not restored. Full M7 acceptance and actual
+editor workflow/native binding remain open. Only delivery notes change after this
+gate with tested hashes checked unchanged. Require accepted parents, completed
+clean exact-head automated review and all CI green before merge.
