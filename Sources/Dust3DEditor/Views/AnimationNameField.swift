@@ -68,6 +68,10 @@ struct AnimationNameField: NSViewRepresentable {
     /// Focus only the field's own newly attached window; never activate or find another app/window.
     @MainActor private final class InitialFocusField: NSTextField {
         private var requestedFocus = false
+        override var intrinsicContentSize: NSSize {
+            let size = super.intrinsicContentSize
+            return NSSize(width: size.width, height: max(40, size.height))
+        }
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             guard !requestedFocus, let window else { return }

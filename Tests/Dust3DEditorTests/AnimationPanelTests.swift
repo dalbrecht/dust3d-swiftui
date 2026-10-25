@@ -175,7 +175,19 @@ final class AnimationPanelTests: XCTestCase {
             let before = store.snapshot?.document.encoded()
             let png = try InspectorRenderer.png(
                 AnimationPanel(store: store, nameTarget: target, name: AnimationNameText("Rest & movement")),
-                width: 250, scheme: .light, padding: 0)
+                width: 250, scheme: .light, padding: 0,
+                inspect: { hosting in
+                    @MainActor func nameField(in view: NSView) -> NSTextField? {
+                        if let field = view as? NSTextField,
+                            field.accessibilityIdentifier() == "animation-name"
+                        {
+                            return field
+                        }
+                        return view.subviews.compactMap { nameField(in: $0) }.first
+                    }
+                    let field = try XCTUnwrap(nameField(in: hosting))
+                    XCTAssertGreaterThanOrEqual(field.bounds.height, 40, "Name input needs a desktop hit area")
+                })
             try png.write(
                 to: root.appendingPathComponent(stale ? "rename-stale.png" : "rename-current.png"), options: .atomic)
             XCTAssertEqual(store.snapshot?.document.encoded(), before)

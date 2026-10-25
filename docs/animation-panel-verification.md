@@ -43,3 +43,24 @@ loading transitions, duplicate-form interaction, resizing in a live window and
 large-document runtime performance. Those remain explicit acceptance tasks; the
 owned test controls do not establish them. Creation/type/parameter controls,
 native runtime/catalog acceptance, playback and audio remain open in M6.
+
+
+## Corrected-parent delivery and hit-area regression
+
+Rebased onto the store stage containing #266's selection-publication fix. Fresh
+focused `AnimationPanelTests` passes all six methods, including a new inspection
+of the actual native field in both current and stale owned offscreen draft windows.
+The regression first measured 24-point bounds and failed twice; a larger SwiftUI
+frame alone retained those bounds. The field now declares a minimum 40-point
+intrinsic height, and draft buttons size their labels rather than outer containers.
+All six tests then pass (1.617 seconds), preserving exact document bytes.
+
+| Severity | Location | Before | After | Why |
+| --- | --- | --- | --- | --- |
+| Medium | AnimationNameField.InitialFocusField; AnimationPanel.nameEditor | Native input bounds 24 points; draft action frame outside button | Native input intrinsic minimum 40; action labels minimum 40 | Actual desktop hit areas, not just surrounding layout, must be usable |
+
+Fresh current-draft light and selected dark PNGs inspected after correction;
+native typography, semantic surfaces and SF Symbols retained. No new motion or
+dependency. Fresh full `make ci` passes 45 support tests and 1,002 XCTest cases (121.763 seconds), formatting, configured coverage, Qt-link and isolated build-only bundle checks for this corrected UI source. Live app interaction,
+VoiceOver and native first-responder traversal remain unverified as above; the
+rendered/native bounds check does not establish those acceptance requirements.

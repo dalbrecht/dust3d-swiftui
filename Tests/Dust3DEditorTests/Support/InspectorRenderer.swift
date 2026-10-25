@@ -6,7 +6,8 @@ import SwiftUI
     enum Failure: Error, Equatable { case invalidSize, bitmapUnavailable, encodingUnavailable, visibleWindow }
 
     static func png<Content: View>(
-        _ content: Content, width: CGFloat, scheme: ColorScheme, padding: CGFloat = 16
+        _ content: Content, width: CGFloat, scheme: ColorScheme, padding: CGFloat = 16,
+        inspect: (NSView) throws -> Void = { _ in }
     ) throws -> Data {
         guard width.isFinite, width > 0, width <= 1000, padding.isFinite, (0...32).contains(padding),
             width > 2 * padding
@@ -41,6 +42,7 @@ import SwiftUI
         hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
         hosting.layoutSubtreeIfNeeded()
         guard !window.isVisible else { throw Failure.visibleWindow }
+        try inspect(hosting)
         guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
             throw Failure.bitmapUnavailable
         }

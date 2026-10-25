@@ -171,7 +171,7 @@ struct AnimationPanel: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("\(nameAction == .rename ? "Rename" : "Duplicate") \(sourceTitle)").font(.subheadline).lineLimit(2)
             AnimationNameField(text: $name, onSubmit: submitName, onCancel: cancelName)
-                .frame(height: 28)
+                .frame(height: 44)
                 .focusedValue(\.editorTextEditing, true)
                 .disabled(store.isWorking || isSubmitting)
             if !targetIsCurrent {
@@ -179,11 +179,15 @@ struct AnimationPanel: View {
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
             }
             HStack {
-                Button("Cancel", action: cancelName).frame(minHeight: 40).disabled(isSubmitting)
+                Button(action: cancelName) {
+                    Text("Cancel").frame(minWidth: 40, minHeight: 40)
+                }.disabled(isSubmitting)
                 Spacer()
-                Button(nameAction == .rename ? "Apply Name" : "Duplicate", action: submitName)
-                    .buttonStyle(.borderedProminent).frame(minHeight: 40)
-                    .disabled(!targetIsCurrent || !store.canManageAnimations || isSubmitting)
+                Button(action: submitName) {
+                    Text(nameAction == .rename ? "Apply Name" : "Duplicate").frame(minWidth: 40, minHeight: 40)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!targetIsCurrent || !store.canManageAnimations || isSubmitting)
             }
         }
     }
