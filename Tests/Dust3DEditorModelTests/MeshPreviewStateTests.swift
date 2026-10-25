@@ -3,6 +3,23 @@ import Foundation
 import XCTest
 
 final class MeshPreviewStateTests: XCTestCase {
+    func testCurrentRequestAdmissionRejectsRetiredAndCompletedAuxiliaryUpdates() {
+        var state = MeshPreviewState<String>()
+        let first = UUID()
+        let second = UUID()
+        XCTAssertFalse(state.isCurrent(requestID: first))
+        state.begin(requestID: first)
+        XCTAssertTrue(state.isCurrent(requestID: first))
+        state.begin(requestID: second)
+        XCTAssertFalse(state.isCurrent(requestID: first))
+        XCTAssertTrue(state.isCurrent(requestID: second))
+        state.succeed("mesh", requestID: second)
+        XCTAssertFalse(state.isCurrent(requestID: second))
+        state.begin(requestID: first)
+        state.clear()
+        XCTAssertFalse(state.isCurrent(requestID: first))
+    }
+
     func testInitialFailureAndSuccessfulRetry() {
         var state = MeshPreviewState<String>()
         XCTAssertNil(state.value)

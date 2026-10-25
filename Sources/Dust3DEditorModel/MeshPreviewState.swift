@@ -11,6 +11,11 @@ public struct MeshPreviewState<Output: Sendable>: Sendable {
     /// Creates an empty preview with no pending generation request.
     public init() {}
 
+    /// Whether one caller-owned request may publish geometry and its auxiliary diagnostics.
+    /// - Parameter requestID: Identity captured when generation began.
+    /// - Returns: False for obsolete, completed, duplicate or cleared requests.
+    public func isCurrent(requestID: UUID) -> Bool { self.requestID == requestID && isGenerating }
+
     /// Whether retained geometry predates the current pending or failed generation.
     public var isStale: Bool { value != nil && (isGenerating || errorMessage != nil) }
 

@@ -219,7 +219,7 @@ final class EditorStore {
             if succeeded { self?.refreshAnimations() }
             completion?(succeeded)
         }
-        perform(changesRendering: false, completion: refreshAfterPublication) { session in
+        perform(completion: refreshAfterPublication) { session in
             let result = try await action(session)
             return result.editor
         }
@@ -333,12 +333,12 @@ final class EditorStore {
 
     func setRigType(_ type: DocumentRigType) {
         guard canEditRigSettings else { return }
-        perform(changesRendering: false) { try await $0.apply([.setRigType(type)]) }
+        perform { try await $0.apply([.setRigType(type)]) }
     }
 
     func setHeadHasEyelids(_ enabled: Bool) {
         guard canEditRigSettings else { return }
-        perform(changesRendering: false) { try await $0.apply([.setHeadHasEyelids(enabled)]) }
+        perform { try await $0.apply([.setHeadHasEyelids(enabled)]) }
     }
 
     func recoverySnapshot(documentID: UUID) throws -> EditorRecoverySnapshot {
@@ -416,7 +416,7 @@ final class EditorStore {
     }
 
     func clearComponentColorImage(target: ComponentColorImageTarget) {
-        perform(regenerateMesh: false) { try await $0.setComponentColorImage(imageID: nil, target: target) }
+        perform { try await $0.setComponentColorImage(imageID: nil, target: target) }
     }
 
     private func prepareComponentColorImage(
@@ -443,7 +443,7 @@ final class EditorStore {
                 // End preparation before perform invalidates pending image requests.
                 isPreparingColorImage = false
                 colorImagePreparation = nil
-                perform(regenerateMesh: false) { session in
+                perform { session in
                     switch prepared {
                     case .imported(let png): try await session.importComponentColorImage(png: png, target: target)
                     case .retained(let imageID):
@@ -596,7 +596,7 @@ final class EditorStore {
             errorMessage = "Enter a value from 0 to \(Int(property.bounds.upperBound)) that the material can represent."
             return
         }
-        perform(regenerateMesh: false) {
+        perform {
             try await $0.apply([.setPartMaterial(id: id, property: property, value: scalar)])
         }
     }
@@ -615,7 +615,7 @@ final class EditorStore {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
     func setEdgeBoneName(_ id: String, name: String) {
-        perform(changesRendering: false) { try await $0.apply([.setEdgeBoneName(id: id, name: name)]) }
+        perform { try await $0.apply([.setEdgeBoneName(id: id, name: name)]) }
     }
     func setComponentColor(_ id: String, value: String) {
         guard !isWorking, !stopped else { return }
@@ -640,7 +640,7 @@ final class EditorStore {
         perform { try await $0.apply([.setComponentCombineMode(id: id, mode: mode)]) }
     }
     func renameComponent(_ id: String, name: String) {
-        perform(regenerateMesh: false) { try await $0.apply([.setComponentName(id: id, name: name)]) }
+        perform { try await $0.apply([.setComponentName(id: id, name: name)]) }
     }
     func selectPart(_ id: String?) { perform(commits: false) { try await $0.selectPart(id) } }
     func setOrigin(x: String, y: String, z: String) {
@@ -655,10 +655,10 @@ final class EditorStore {
         perform { try await $0.centerOriginOnModel() }
     }
     func renamePart(_ id: String, name: String) {
-        perform(regenerateMesh: false) { try await $0.apply([.setPartName(id: id, name: name)]) }
+        perform { try await $0.apply([.setPartName(id: id, name: name)]) }
     }
     func setPartState(_ id: String, property: PartStateProperty, value: Bool) {
-        perform(regenerateMesh: property == .disabled) {
+        perform {
             try await $0.apply([.setPartState(id: id, property: property, value: value)])
         }
     }
@@ -767,7 +767,7 @@ final class EditorStore {
     ) async -> Bool {
         await withCheckedContinuation { continuation in
             perform(
-                reloadReferenceImage: true, regenerateMesh: setsOrigin,
+                reloadReferenceImage: true,
                 completion: { continuation.resume(returning: $0) }
             ) { session in
                 try await session.applyReferenceComposition(
@@ -778,14 +778,14 @@ final class EditorStore {
 
     func importReferenceImage(from url: URL) {
         let service = referenceImages
-        perform(reloadReferenceImage: true, regenerateMesh: false) { session in
+        perform(reloadReferenceImage: true) { session in
             let png = try await service.importImage(url: url)
             return try await session.apply([.setReferenceImagePNG(png)])
         }
     }
 
     func removeReferenceImage() {
-        perform(reloadReferenceImage: true, regenerateMesh: false) { try await $0.apply([.setReferenceImagePNG(nil)]) }
+        perform(reloadReferenceImage: true) { try await $0.apply([.setReferenceImagePNG(nil)]) }
     }
 
     func fit() {
@@ -818,8 +818,7 @@ final class EditorStore {
     }
 
     private func perform(
-        commits: Bool = true, reloadReferenceImage: Bool = false, regenerateMesh: Bool = true,
-        changesRendering: Bool = true,
+        commits: Bool = true, reloadReferenceImage: Bool = false,
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
@@ -842,6 +841,7 @@ final class EditorStore {
                 let next = try await action(session)
                 guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
                 let changed = next.documentRevision != snapshot?.documentRevision
+                let previousPreviewIdentity = snapshot?.previewIdentity
                 // Visibility changes need fitting even when topology is unchanged; movements keep stable drag bounds.
                 let countChanged = next.nodes.count != snapshot?.nodes.count
                 let needsFit =
@@ -858,13 +858,11 @@ final class EditorStore {
                 errorMessage = nil
                 if commits && changed {
                     onDocumentChanged?(next.document.encoded())
-                    if changesRendering {
-                        if regenerateMesh {
-                            generate(next)
-                        } else {
-                            clearMaterials()
-                            if !previewState.isStale, mesh != nil { generateMaterials(next) }
-                        }
+                    if previousPreviewIdentity?.geometry != next.previewIdentity.geometry {
+                        generate(next)
+                    } else if previousPreviewIdentity?.materials != next.previewIdentity.materials {
+                        clearMaterials()
+                        if !previewState.isStale, mesh != nil { generateMaterials(next) }
                     }
                     if reloadReferenceImage { refreshReferenceImage(next) }
                 }
@@ -912,7 +910,10 @@ final class EditorStore {
                 try await Task.sleep(for: .milliseconds(150))
                 let result = try await preview.generate(snapshot.document.encoded(), scopeID: scopeID)
                 // Asset-only edits can advance document revision without changing geometry; request identity wins.
-                guard !Task.isCancelled, !stopped, scopeID == previewScopeID else {
+                guard !Task.isCancelled, !stopped, scopeID == previewScopeID,
+                    self.snapshot?.previewIdentity.geometry == snapshot.previewIdentity.geometry,
+                    previewState.isCurrent(requestID: requestID)
+                else {
                     return
                 }
                 previewCacheStatistics = result.statistics
@@ -924,7 +925,10 @@ final class EditorStore {
                     previewState.succeedEmpty(requestID: requestID)
                 }
             } catch {
-                guard !Task.isCancelled, !stopped, scopeID == previewScopeID else { return }
+                guard !Task.isCancelled, !stopped, scopeID == previewScopeID,
+                    self.snapshot?.previewIdentity.geometry == snapshot.previewIdentity.geometry,
+                    previewState.isCurrent(requestID: requestID)
+                else { return }
                 previewState.fail(Self.message(error), requestID: requestID)
             }
         }
