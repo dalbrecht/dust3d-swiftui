@@ -51,13 +51,17 @@ extension MeshGenerationSession: EditorMeshGenerating {}
 
 enum EditorPreviewSchedulingError: LocalizedError {
     case resetBacklog
+    case previewBacklog
 
     var errorDescription: String? {
-        "Preview cache cleanup is already queued; the reset backlog is full."
+        switch self {
+        case .resetBacklog: "Preview cache cleanup is already queued; the reset backlog is full."
+        case .previewBacklog: "Preview requests are waiting for eight documents. Try again after a preview completes."
+        }
     }
 }
 
-/// One active backend job, one latest waiting preview and at most two cleanup barriers.
+/// One active backend job, latest waiting work for eight scopes and at most two cleanup barriers.
 /// Native work remains serial across actor suspension points; cancellation is cooperative.
 actor EditorPreviewService: EditorPreviewServing {
     private struct Context {
@@ -101,8 +105,12 @@ actor EditorPreviewService: EditorPreviewServing {
         let task: Task<Void, Never>
     }
     private var active: Active?
-    private var waitingPreview: PreviewWork?
+    private var waitingPreviews = ScopedPreviewQueue<PreviewWork>(maximumScopes: 8)
+    /// Bounded waiting-scope count for scheduling diagnostics; excludes active work.
+    var pendingPreviewScopeCount: Int { waitingPreviews.count }
     private var waitingResets: [ResetWork] = []
+    /// Cleanup barriers waiting behind active work; bounded independently of previews.
+    var pendingResetCount: Int { waitingResets.count }
     private let makeSession: @Sendable (Int) throws -> any EditorMeshGenerating
 
     init(
@@ -144,20 +152,18 @@ actor EditorPreviewService: EditorPreviewServing {
     }
 
     private func submitPreview(_ work: PreviewWork) {
-        waitingPreview?.continuation.resume(throwing: CancellationError())
-        waitingPreview = nil
         if active == nil {
             start(.generate(work))
         } else {
-            waitingPreview = work
+            switch waitingPreviews.submit(work, scopeID: work.scopeID) {
+            case .queued(let replaced): replaced?.continuation.resume(throwing: CancellationError())
+            case .full: work.continuation.resume(throwing: EditorPreviewSchedulingError.previewBacklog)
+            }
         }
     }
 
     private func submitReset(_ work: ResetWork) {
-        if waitingPreview?.scopeID == work.scopeID {
-            waitingPreview?.continuation.resume(throwing: CancellationError())
-            waitingPreview = nil
-        }
+        waitingPreviews.remove(scopeID: work.scopeID)?.continuation.resume(throwing: CancellationError())
         guard current?.scopeID == work.scopeID || active?.scopeID == work.scopeID else {
             work.continuation.resume()
             return
@@ -174,9 +180,8 @@ actor EditorPreviewService: EditorPreviewServing {
     private func cancel(_ id: UUID) {
         if active?.id == id {
             active?.task.cancel()
-        } else if waitingPreview?.id == id {
-            waitingPreview?.continuation.resume(throwing: CancellationError())
-            waitingPreview = nil
+        } else {
+            waitingPreviews.remove { $0.id == id }?.continuation.resume(throwing: CancellationError())
         }
     }
 
@@ -205,11 +210,10 @@ actor EditorPreviewService: EditorPreviewServing {
             }
         }
         active = nil
-        // Prioritize old-scope cleanup without displacing the newest preview archive.
+        // Prioritize cleanup while keeping other document scopes in FIFO order.
         if !waitingResets.isEmpty {
             start(.reset(waitingResets.removeFirst()))
-        } else if let next = waitingPreview {
-            waitingPreview = nil
+        } else if let next = waitingPreviews.takeNext() {
             start(.generate(next))
         }
     }
