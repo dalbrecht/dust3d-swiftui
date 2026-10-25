@@ -73,3 +73,26 @@ source and hardlink bytes. All ten service tests pass. The full `make ci` passes
 tests and 951 XCTest cases (120.383 seconds), formatting, coverage gates,
 Qt-free checks and isolated bundle rebuild/signature checks. This is not native export/UI acceptance,
 concurrent filesystem-mutation protection or a production dependency update.
+
+
+## Source-alias delivery gate
+
+Prepare the narrow source-symlink fix on accepted Apple master `660b5d8f`.
+The implementation and regression hashes match the saved tested checkpoint;
+the original red regression preceded the fix. Resolve the source symlink before
+its device/inode comparison, so a hard-linked destination is rejected before the
+injected encoder runs. The owned-filesystem test retains all three file contents.
+
+Fresh full `make ci` passes 45 support tests and 951 XCTest cases (120.195 seconds),
+formatting, coverage, Qt-link and isolated build-only bundle/signature checks.
+Service coverage remains 57/57 executable lines and 32/32 regions; Swift reports
+no branch outcomes. No protected QA app was launched, controlled or overwritten.
+Ordinary fixtures at the unchanged `41af7d4c` production pin retain their known
+legacy debug SVG writes; no global SVG restoration is performed. No native export,
+GLB catalog, fault/crash or resource-exhaustion probe is involved.
+
+Only delivery documentation changes after this gate, with runtime/test/manifest
+hashes checked unchanged. This is alias admission, not a filesystem race guarantee,
+native Export UI acceptance or full M7 parity. Require completed clean exact-head
+automated review and all CI green before merge. Production pin/quarantines remain
+unchanged.
