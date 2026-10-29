@@ -21,7 +21,9 @@ struct EditorRootView: View {
     @State private var recoveryRegistrationID: UUID?
 
     init(file: Binding<EditorFileDocument>, sourceURL: URL? = nil) {
-        let store = EditorStore(exportService: DocumentExportFileService(encoder: NativeOBJExportEncoder()))
+        let store = EditorStore(
+            exportService: DocumentExportFileService(encoder: NativeOBJExportEncoder()),
+            animationCatalog: NativeAnimationCatalogLoader())
         let destinations = EditorOBJExportDestinationService()
         _file = file
         self.sourceURL = sourceURL

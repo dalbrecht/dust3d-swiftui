@@ -404,9 +404,8 @@ duplicate or delete it. Rename and duplicate use an inline name field: Return
 applies, Escape cancels, and a changed document disables the captured draft until
 you cancel and select again. Accepted changes use document Undo/Redo and Save.
 Native text editing retains its own undo and clipboard routing; graph clipboard
-shortcuts are excluded from animation focus. Stored types and parameters are
-read-only here. Creation, type/parameter controls, native catalog evaluation,
-playback and audio remain pending. See [panel verification](../../docs/animation-panel-verification.md)
+shortcuts are excluded from animation focus. Catalog-backed creation, type and parameter drafts are described below.
+Animation evaluation, playback and audio remain pending. See [panel verification](../../docs/animation-panel-verification.md)
 for owned offscreen evidence and the live keyboard/accessibility acceptance limits.
 
 
@@ -427,3 +426,29 @@ current export…” reports this drain honestly. A late cancellation cannot ret
 an already committed output. See [ADR 0118](../../docs/adr/0118-native-obj-export-workflow.md)
 and [UI verification](../../docs/obj-export-ui-verification.md) for test scope and
 remaining native-panel/keyboard/accessibility acceptance.
+
+
+### Stored animation authoring (#283)
+
+In the Animations inspector, choose New Animation, give it a name and choose a
+catalog type, then Create. The initial timing, discrete widget values and first
+known surface commit together as one undo step. Change Type retains other stored
+parameters. Parameters opens a separate captured draft for common timing, declared
+dynamic controls and surface material. Apply Changes (Command-Return) commits
+one transaction; Cancel or Escape discards the local draft.
+
+Exact unsupported values stay visible and unchanged until an explicit repair.
+Default removes that stored override. Slider edits use the declared discrete
+projection; returning to an exactly matching original number restores its source
+spelling. An invalid retained field does not block repairing a different field.
+A document edit, Undo/Redo or replacement Open retires the captured draft: Cancel
+and start it again. These changes participate in ordinary Undo/Redo and lossless
+Save without regenerating the static mesh preview.
+
+Type definitions load off-main and are independent of primary editing/Save. A
+failed lookup retains its original cause and offers Retry; existing animation
+rename/duplicate/delete remain available. This UI edits stored intent. It does not
+evaluate frames, generate sound, skin a rig or resolve core #95/Apple #199.
+See [ADR 0119](../../docs/adr/0119-catalog-backed-animation-authoring.md) and
+[UI verification](../../docs/animation-authoring-ui-verification.md) for scoped
+native evidence and unverified keyboard/focus/VoiceOver/GPU acceptance.

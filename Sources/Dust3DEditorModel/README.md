@@ -207,3 +207,17 @@ request/source correlation and remaining store/UI/runtime acceptance.
 Actor `editAnimation` and targeted duplication reject replacement/Edit-Undo stale
 sources before mutation, while preserving independent graph/clip selection and
 original metadata errors. ADR 0106 describes the accepted-source store workflow.
+
+
+`AnimationCreationTarget` captures the accepted document epoch before a creation
+draft. Targeted `EditorSession.createAnimation(name:type:parameters:target:)`
+validates that epoch before allocating an ID and applies the new record plus its
+initial parameters as one transaction. Array `editAnimation(_:target:)` similarly
+commits a parameter draft once, rolling back every edit if a later field fails.
+
+`AnimationParameterDraft` is a pure exact-text transform over one known fixed type.
+It validates changed fields only, preserves unsupported untouched values, restores
+source spelling on exact numeric slider round trips and emits explicit override
+removals for Default. `initialParameters(for:in:)` builds the displayed new-record
+settings without generating frames. Type edits are separate drafts and preserve
+unrelated parameters. These capabilities do not complete M6 evaluation/playback.

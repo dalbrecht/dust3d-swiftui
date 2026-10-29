@@ -262,3 +262,15 @@ IDs and parameter lookup compare UTF-8 bytes. Reserved xmlns is never an editabl
 parameter. These APIs do not evaluate clips, rigs, sound or timing; core #95 stays
 quarantined. ADR 0104 documents quotas, unsupported metadata and remaining UI/
 native acceptance. Call document work on the existing editor actor, not the UI.
+
+
+Owned `AnimationAuthoringCatalog`, `AnimationClipDefinition`,
+`AnimationControlDefinition` and `AnimationTimingDefinition` declare edit
+capabilities without engine/UI imports. Constructors reject ambiguous identities,
+invalid finite/scalar metadata and collection overflow. Clip identities compare
+exact UTF-8 bytes. A nominal default remains distinct from its discrete widget
+projection; inverse projection truncates then checks the declared range, matching
+the pinned reference contract. Timing validation preserves duration precision and
+requires integral bounded sample counts; it is not native sampling acceptance.
+Raw `DocumentAnimationParameter` construction preserves unsupported text; explicit
+edit commands still validate names/values before document mutation (ADR 0119).

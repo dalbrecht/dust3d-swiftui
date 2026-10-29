@@ -63,6 +63,25 @@ public actor EditorSession {
         try insertAnimation { .createAnimation(id: $0, name: name, type: type) }
     }
 
+    /// Create stored intent only while the draft's captured document remains current.
+    /// - Parameters: name/type are bounded stored text; parameters are ordered initial values;
+    ///   target identifies the source before drafting. All fields commit as one undo transaction.
+    /// - Returns: Committed source/history selecting a fresh record.
+    /// - Throws: `staleAnimationTarget`, cancellation, not-loaded or original document cause.
+    ///   Source validation precedes identifier allocation and any document mutation.
+    /// - Example: `try await session.createAnimation(name: "Idle", type: "BipedIdle", target: target)`.
+    public func createAnimation(
+        name: String, type: String, parameters: [DocumentAnimationParameter] = [], target: AnimationCreationTarget
+    ) throws -> EditorAnimationSnapshot {
+        try Task.checkCancellation()
+        guard let state else { throw EditorError.notLoaded }
+        guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleAnimationTarget }
+        return try insertAnimationCommands({ id in
+            [.createAnimation(id: id, name: name, type: type)]
+                + parameters.map { .setAnimationParameter(id: id, name: $0.name, value: $0.value) }
+        })
+    }
+
     /// Duplicate/select complete stored intent using a fresh UUID; opaque data remains preserved.
     /// - Parameters: id identifies the source record exactly; name is the new bounded display name.
     /// - Returns: Committed source/history plus optional presentation.
@@ -78,8 +97,17 @@ public actor EditorSession {
     /// - Throws: `staleAnimationTarget` or original document/load/cancellation cause, atomically.
     /// - Example: `try await session.editAnimation(.rename("Rest"), target: target)`.
     public func editAnimation(_ edit: AnimationEdit, target: AnimationEditTarget) throws -> EditorAnimationSnapshot {
+        try editAnimation([edit], target: target)
+    }
+
+    /// Commit one captured parameter/type draft as a single undo transaction.
+    /// - Parameters: edits are ordered stored-intent changes; target binds every change to one source row.
+    /// - Returns: One committed editor/list observation; empty and net-zero drafts retain Redo.
+    /// - Throws: Stale-target or original document/load/cancellation cause, with no partial publication.
+    /// - Example: `try await session.editAnimation([.setType("BipedIdle"), .setParameter(name: "frameCount", value: "30")], target: target)`.
+    public func editAnimation(_ edits: [AnimationEdit], target: AnimationEditTarget) throws -> EditorAnimationSnapshot {
         var next = try validatedAnimationState(for: target)
-        try next.apply([edit.command(id: target.animationID)])
+        try next.apply(edits.map { $0.command(id: target.animationID) })
         let result = Self.animationSnapshot(next, selectedID: selectedAnimationID)
         try Task.checkCancellation()
         state = next
@@ -105,10 +133,14 @@ public actor EditorSession {
     }
 
     private func insertAnimation(_ command: (String) -> DocumentCommand) throws -> EditorAnimationSnapshot {
+        try insertAnimationCommands({ [command($0)] })
+    }
+
+    private func insertAnimationCommands(_ commands: (String) -> [DocumentCommand]) throws -> EditorAnimationSnapshot {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
         let id = Self.identifier()
-        try next.apply([command(id)])
+        try next.apply(commands(id))
         let result = Self.animationSnapshot(next, selectedID: id)
         try Task.checkCancellation()
         state = next

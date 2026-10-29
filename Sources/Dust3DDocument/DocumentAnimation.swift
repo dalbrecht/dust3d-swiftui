@@ -5,6 +5,14 @@ public struct DocumentAnimationParameter: Sendable, Equatable {
     public let name: String
     public let value: String
 
+    /// Retain exact text, including unsupported source intent, without creating XML.
+    /// - Parameters: name/value are raw spellings; document edit commands validate explicit changes.
+    /// - Example: `DocumentAnimationParameter(name: "durationSeconds", value: "1.250")`.
+    public init(name: String, value: String) {
+        self.name = name
+        self.value = value
+    }
+
     public static func == (lhs: Self, rhs: Self) -> Bool {
         AnimationTextIdentity.matches(lhs.name, rhs.name) && AnimationTextIdentity.matches(lhs.value, rhs.value)
     }
