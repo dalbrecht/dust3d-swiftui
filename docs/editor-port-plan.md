@@ -828,3 +828,17 @@ light/dark renders were inspected. Live app keyboard/menu/focus and VoiceOver
 acceptance remain unverified. Creation/type/parameter controls, Qt/runtime catalog
 interoperability, evaluation/playback/audio and full M6 acceptance remain open.
 No production pin or quarantine changes occur.
+
+
+### Integrated original procedural OBJ export (#281)
+
+ADR 0118 connects the reviewed pinned original-geometry OBJ ABI to the editor's
+captured-revision export transaction, document-owned destination sheet, toolbar
+and File command. Output is copied before releasing its native owner. Source
+aliases, stale destination intents and cancellation before publication are
+covered with injected tests; the existing licensed Capsule supplies the healthy
+native compatibility case. Owned offscreen feedback rendering does not establish
+live panel, keyboard, VoiceOver or GPU acceptance. Original procedural positions
+and faces only are supported. UV/material/imported/rigged/animated exports,
+independent consumer re-import, automation and full M7/M4–M8 acceptance remain
+open. No feature quarantine or production dependency pin changes in this stage.

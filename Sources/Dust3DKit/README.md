@@ -146,5 +146,10 @@ the reviewed core upgrade; see ADR 0087 and #177.
 snapshot via an injected `DocumentExportEncoding` implementation. For example,
 `try await service.export(document, format: .obj, to: output, sourceURL: source)`.
 It preserves the source/savepoint and returns owned bytes with the diagnostic.
-There is no production encoder binding until the core dependency is reviewed;
-see ADR0100 for destination, cancellation and atomic-publication limits.
+`NativeOBJExportEncoder()` binds original procedural OBJ output to the reviewed
+pinned core ABI, copying bytes and warning before destroying the native owner.
+The default output payload quota is 64 MiB; this is not an RSS/workspace bound.
+The editor installs this encoder for File → Export OBJ Geometry (Command-Shift-E).
+No UVs, materials, imported models, rigs or animation are exported. Cancellation
+is checked before/after synchronous generation; it cannot interrupt native work.
+See ADR 0118 and ADR0100 for destination and atomic-publication limits.

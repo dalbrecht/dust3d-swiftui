@@ -386,9 +386,9 @@ endpoints must be editable. Names are stored intent: this build does not provide
 rigged preview, and the inspector states that limitation. Undo/redo and ordinary
 open/save retain the assignments; native rig generation and weights remain M5 work.
 
-The captured export workflow accepts an injected `DocumentExportFileService` for
-validation and future native binding. Default builds have no export encoder and
-no enabled Export command. The workflow tags receipts by captured document
+The captured export workflow accepts an injected `DocumentExportFileService`.
+Earlier builds had no export encoder or enabled Export command; #281 installs
+the original procedural OBJ encoder described below. The workflow tags receipts by captured document
 identity/revision and preserves history/source bytes; reload/stop cancel pending
 work. ADR 0103 records native/scene/permission and responsiveness gates.
 
@@ -408,3 +408,22 @@ shortcuts are excluded from animation focus. Stored types and parameters are
 read-only here. Creation, type/parameter controls, native catalog evaluation,
 playback and audio remain pending. See [panel verification](../../docs/animation-panel-verification.md)
 for owned offscreen evidence and the live keyboard/accessibility acceptance limits.
+
+
+### Original procedural OBJ export (#281)
+
+Choose File → Export OBJ Geometry… (Command-Shift-E), or Export OBJ in the
+toolbar. The destination sheet belongs to the current document window. It exports
+the captured current state, including unsaved edits, without marking the document
+saved or changing Undo/Redo. Source path/inode aliases are rejected. A changed
+source while choosing a destination cancels that export intent.
+
+This exports original procedural positions/faces only: materials, textures, UVs,
+embedded imported models, rigs and animation are unsupported. The completion strip
+shows the destination, byte count and original warning. Failures use the existing
+error banner. Cancel/Escape prevents uncommitted publication; synchronous native
+generation must finish before the workflow becomes available again. “Finishing
+current export…” reports this drain honestly. A late cancellation cannot retract
+an already committed output. See [ADR 0118](../../docs/adr/0118-native-obj-export-workflow.md)
+and [UI verification](../../docs/obj-export-ui-verification.md) for test scope and
+remaining native-panel/keyboard/accessibility acceptance.
