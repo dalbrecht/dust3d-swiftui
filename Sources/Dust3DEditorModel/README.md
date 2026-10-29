@@ -221,3 +221,10 @@ source spelling on exact numeric slider round trips and emits explicit override
 removals for Default. `initialParameters(for:in:)` builds the displayed new-record
 settings without generating frames. Type edits are separate drafts and preserve
 unrelated parameters. These capabilities do not complete M6 evaluation/playback.
+
+`AnimationTimeline` projects already-owned strictly increasing sample timestamps
+from elapsed seconds. `position(at:)` uses the latest sample at or before the
+phase, wraps looping clips, and clamps nonlooping clips to a finished endpoint.
+`scrub(to:)` accepts the closed clip interval, including the last sample of a
+loop. Invalid metadata/times throw `AnimationTimelineError`. The model neither
+generates native frames nor owns a clock, player, UI task or document mutation.

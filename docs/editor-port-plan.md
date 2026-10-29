@@ -857,3 +857,12 @@ have offscreen light/dark sample renders; live focus/keyboard/VoiceOver/GPU and 
 Qt authoring acceptance remain unverified. Core #95, Apple #199, animation
 sampling/playback/audio, rig generation and full M6/M4–M8 acceptance remain open.
 The production core pin and all feature quarantines are unchanged.
+
+
+### Elapsed-time animation timeline (#225)
+
+A pure timestamp projection now defines discrete playback and explicit scrubbing
+for already-owned samples (ADR 0120). Irregular intervals, skipped ticks, loop
+endpoints and typed invalid-input errors have engine-free tests. No native clip
+evaluation, clock/player ownership, audio or UI is enabled. Core #95, Apple #199
+and full M6 acceptance remain open.
