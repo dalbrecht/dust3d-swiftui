@@ -103,6 +103,7 @@ final class EditorStore {
     }
     private var animationQueryFailure: AnimationQueryFailure?
     private let session = EditorSession()
+    let authoringCatalog: EditorAnimationCatalogState
     private let exportService: DocumentExportFileService?
     private var exportTask: Task<EditorExportReceipt, any Error>?
 
@@ -141,8 +142,10 @@ final class EditorStore {
         materialBaker: any ArchiveTextureBaking = ArchiveTextureBakingService(),
         importedMaterialLoader: any ArchiveImportedMaterialLoading = ArchiveImportedMaterialService(),
         sourceMaterialBaker: any ArchiveSourceTextureBaking = ArchiveSourceTextureBakingService(),
-        exportService: DocumentExportFileService? = nil
+        exportService: DocumentExportFileService? = nil,
+        animationCatalog: (any AnimationCatalogLoading)? = nil
     ) {
+        authoringCatalog = EditorAnimationCatalogState(service: animationCatalog)
         self.exportService = exportService
         self.colorImages = colorImages
         self.referenceImages = referenceImages
@@ -193,6 +196,21 @@ final class EditorStore {
 
     func createAnimation(name: String, type: String) {
         performAnimationMutation { try await $0.createAnimation(name: name, type: type) }
+    }
+
+    func createAnimation(
+        name: String, type: String, parameters: [DocumentAnimationParameter], target: AnimationCreationTarget,
+        completion: (@MainActor (Bool) -> Void)? = nil
+    ) {
+        performAnimationMutation(completion: completion) {
+            try await $0.createAnimation(name: name, type: type, parameters: parameters, target: target)
+        }
+    }
+
+    func editAnimation(
+        _ edits: [AnimationEdit], target: AnimationEditTarget, completion: (@MainActor (Bool) -> Void)? = nil
+    ) {
+        performAnimationMutation(completion: completion) { try await $0.editAnimation(edits, target: target) }
     }
 
     func editAnimation(
@@ -801,6 +819,7 @@ final class EditorStore {
     }
 
     func stop() {
+        authoringCatalog.stop()
         cancelAnimationQuery()
         cancelExport()
         cancelColorImagePreparation()
