@@ -153,3 +153,15 @@ The editor installs this encoder for File → Export OBJ Geometry (Command-Shift
 No UVs, materials, imported models, rigs or animation are exported. Cancellation
 is checked before/after synchronous generation; it cannot interrupt native work.
 See ADR 0118 and ADR0100 for destination and atomic-publication limits.
+
+
+`NativeAnimationCatalogLoader().load()` copies the fixed document-free catalog
+from the unchanged reviewed core pin. It returns owned `AnimationAuthoringCatalog`
+values after destroying the native handle. Only names, declared timing, preset
+values, controls and surface names are read; no animation/document is evaluated.
+The actor rejects Swift cancellation before/after copy and preserves original
+native errors. Collection caps and a 1 MiB logical host-copy quota count value
+slots plus UTF-8 strings; they do not bound native catalog construction, temporary
+validation allocations or process RSS. The existing static catalog smoke contract
+provides the healthy ownership evidence; no foreign-pointer/fault/coarse-sampling
+probes are added. See ADR 0119.

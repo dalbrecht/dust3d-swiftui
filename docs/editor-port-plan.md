@@ -842,3 +842,18 @@ live panel, keyboard, VoiceOver or GPU acceptance. Original procedural positions
 and faces only are supported. UV/material/imported/rigged/animated exports,
 independent consumer re-import, automation and full M7/M4–M8 acceptance remain
 open. No feature quarantine or production dependency pin changes in this stage.
+
+
+### Catalog-backed stored animation authoring (#283)
+
+ADR 0119 connects the already-reviewed pinned document-free catalog ABI to owned
+Swift edit declarations and the native Animations inspector. Creation includes
+initial parameters in one captured transaction; type changes preserve unrelated
+intent; timing/dynamic/surface drafts validate changed fields only. Explicit Default,
+exact no-op/Undo/Redo behavior, stale-source rejection and primary-write isolation
+are covered with pure/injected tests. The existing static catalog smoke contract
+provides metadata ownership evidence without evaluating frames. Actual controls
+have offscreen light/dark sample renders; live focus/keyboard/VoiceOver/GPU and full
+Qt authoring acceptance remain unverified. Core #95, Apple #199, animation
+sampling/playback/audio, rig generation and full M6/M4–M8 acceptance remain open.
+The production core pin and all feature quarantines are unchanged.

@@ -1,0 +1,78 @@
+# ADR 0119: Catalog-backed stored animation authoring
+
+Status: Proposed for #283, following #145.
+
+## Decision
+
+Use the existing reviewed core revision `48b0ce2d` document-free animation catalog
+C ABI. Its constructor reads fixed clip/parameter/bone/surface metadata under the
+shared engine mutex. It accepts no archive, evaluates no clip and writes no files.
+There is no pin, C++ implementation, external dependency or feature-quarantine change.
+The pinned Swift package has no reusable Swift catalog SDK product, so Dust3DKit
+implements a narrow host copy over the canonical ABI rather than duplicating C++.
+
+Pure owned edit declarations belong to Dust3DDocument alongside stored animation
+intent; they have no engine or UI dependency. EditorModel supplies source targets
+and pure parameter drafts. Dust3DKit confines all borrowed pointers/owners to a
+synchronous copy scope, releases the handle on every exit and returns immutable
+Sendable values. Its actor checks Swift cancellation before/after copy. Count,
+strict UTF-8/string and finite/integral metadata checks precede host adoption.
+Logical copy accounting is 1 MiB of value slots and copied UTF-8 bytes/NULs. This
+is not an allocator/native-construction/workspace/RSS quota. Collection caps are
+2048 clips, 256 presets/controls per clip and 128 surfaces; strings are at most
+1024 UTF-8 bytes, with stricter parameter-name admission.
+
+Exact UTF-8 identities avoid canonical-equivalence substitution. Nominal defaults
+are separate from discrete slider values. The scalar reference order is
+`index / divisor * multiplier`; inverse projection truncates toward zero, checks
+32-bit representation, then rejects values outside widget bounds. It does not
+clamp. Common timing declarations preserve duration precision and accept integral
+counts inside reference bounds; display decimals/step are not rounding/admission
+multiples. None of this establishes a supported native sampling grid.
+
+## Editor ownership and publication
+
+A scene owns one optional catalog query until cooperative completion, caches fixed
+definitions after success and retains original lookup errors for Retry. It never
+uses the primary `isWorking`/Save barrier. Failure cannot block graph edits, Save
+or existing rename/duplicate/delete workflows. Stop cancels the owned Swift task,
+prevents pre-start dispatch and rejects late results; no native cancellation is sent.
+The production composition root explicitly injects the native loader. Unbound test
+stores do not query native metadata while rendering UI.
+
+A creation target captures identity/revision before collecting a name/type. The
+editor actor rechecks it before UUID allocation, then applies creation and all
+initial parameters together. A parameter draft applies one ordered edit array in
+one transaction. A later invalid field cannot partially publish or clear Redo.
+Independent selection does not retarget a captured record; edit/Undo/reopen epochs
+do retire the target. Backend admission remains authoritative after UI validation.
+
+Creation initializes common timing, projected widgets, preset-only overrides and
+the first declared surface. Type changes are separate drafts and retain existing
+parameters/assets. Parameter drafts parse changed known fields only: unsupported
+untouched values remain exact and do not block another repair. Default explicitly
+removes an override. An exact numeric slider round trip restores original text;
+non-grid nominal values are never silently normalized merely by displaying them.
+Empty/no-op and net-zero transactions retain history/Redo. Metadata changes keep
+the existing static preview identity. The UI uses native controls, exact-text name
+input, byte-array type tags, Apply/Cancel and source-appropriate stale guidance.
+
+## Verification limits
+
+TDD covers scalar metadata/copy budgets with no large payload allocation, fake
+loader errors/cancellation/lifecycle, exact draft preservation, captured creation,
+atomic multi-field edits, failed-batch rollback, source staleness, optional-error
+isolation, preview identity and save/reopen/history behavior. The only added native
+contract is the existing healthy static catalog smoke inventory/ownership check:
+180 types, four aliases, seven rigs, 1592 controls, declared timing and ordered
+surface names, copied across owner destruction and a subsequent load. No new
+malformed-native-input, pointer/fault, coarse sampling, crash, native cancellation
+or resource-exhaustion probe is introduced. Foreign accessor rejection/error
+branches are not claimed fully covered by that positive evidence.
+
+Offscreen sample renders use fake catalog/preview services and never display a
+window or control a QA app. See `animation-authoring-ui-verification.md`. No local
+pixel baseline is committed. Live keyboard/focus/menu/VoiceOver/GPU, full Qt
+interaction parity and release evidence remain unverified. No frames, sound or
+skin/pose are generated by these controls. Core #95/Apple #199 and all GLB/writer/
+fault quarantines remain unresolved; this does not complete M6 or editor parity.
