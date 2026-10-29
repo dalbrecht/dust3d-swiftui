@@ -149,8 +149,8 @@ It preserves the source/savepoint and returns owned bytes with the diagnostic.
 `NativeOBJExportEncoder()` binds original procedural OBJ output to the reviewed
 pinned core ABI, copying bytes and warning before destroying the native owner.
 The default output payload quota is 64 MiB; this is not an RSS/workspace bound.
-The editor installs this encoder for File → Export OBJ Geometry (Command-Shift-E).
-No UVs, materials, imported models, rigs or animation are exported. Cancellation
+OBJ exports no UVs, materials, imported models, rigs or animation.
+The shared NativeGeometryExportEncoder routes OBJ and FBX for the editor. Cancellation
 is checked before/after synchronous generation; it cannot interrupt native work.
 See ADR 0118 and ADR0100 for destination and atomic-publication limits.
 
@@ -165,3 +165,15 @@ slots plus UTF-8 strings; they do not bound native catalog construction, tempora
 validation allocations or process RSS. The existing static catalog smoke contract
 provides the healthy ownership evidence; no foreign-pointer/fault/coarse-sampling
 probes are added. See ADR 0119.
+
+
+`NativeFBXExportEncoder()` binds only original procedural GEOMETRY mode at the
+same core pin. It copies strict UTF-8 diagnostics and bytes before owner release,
+with independent geometry/output logical quotas (64 MiB each by default, up to
+256 MiB). Copied bytes plus warning share the output quota; warning text is at
+most 4096 UTF-8 bytes. These are not workspace/time/RSS bounds. Original native
+errors and before/after Swift cancellation survive without native interruption.
+FBX retains static position/topology/corner streams supplied by the generator;
+it does not request baking, imported assets, material, rig or animation output.
+Use `NativeGeometryExportEncoder()` for explicit format routing without fallback.
+See ADR 0121 and the scoped independent Assimp verification.

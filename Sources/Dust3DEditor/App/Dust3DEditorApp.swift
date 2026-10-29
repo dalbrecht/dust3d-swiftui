@@ -54,7 +54,7 @@ struct Dust3DEditorApp: App {
                 .disabled(nativeTextEditor.map { $0.undoManager?.canRedo != true } ?? (store?.canRedo != true))
             }
             EditorClipboardCommands(pasteboard: pasteboard)
-            EditorOBJExportCommands()
+            EditorGeometryExportCommands()
             CommandMenu("Canvas") {
                 Toggle(
                     "Move Origin",

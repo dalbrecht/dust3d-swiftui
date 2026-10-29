@@ -4,7 +4,7 @@ import SwiftUI
 /// Binds the panel to its document window instead of a process-global key window.
 @MainActor
 struct EditorExportWindowAnchor: NSViewRepresentable {
-    let service: EditorOBJExportDestinationService
+    let service: EditorGeometryExportDestinationService
 
     func makeNSView(context: Context) -> AnchorView {
         let view = AnchorView()
@@ -23,7 +23,7 @@ struct EditorExportWindowAnchor: NSViewRepresentable {
     }
 
     final class AnchorView: NSView {
-        weak var service: EditorOBJExportDestinationService?
+        weak var service: EditorGeometryExportDestinationService?
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             if let window { service?.attach(to: window) }

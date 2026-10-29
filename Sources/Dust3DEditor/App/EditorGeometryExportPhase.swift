@@ -1,5 +1,5 @@
 /// Immutable export presentation state, separate from orchestration and view rendering.
-enum EditorOBJExportPhase: Sendable {
+enum EditorGeometryExportPhase: Sendable {
     case idle, choosing, encoding, cancelling
     case completed(EditorExportReceipt)
     case failed(any Error)

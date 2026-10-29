@@ -866,3 +866,16 @@ for already-owned samples (ADR 0120). Irregular intervals, skipped ticks, loop
 endpoints and typed invalid-input errors have engine-free tests. No native clip
 evaluation, clock/player ownership, audio or UI is enabled. Core #95, Apple #199
 and full M6 acceptance remain open.
+
+
+### Original procedural FBX export (#286)
+
+The existing pinned GEOMETRY API now has an owned Swift binding and a shared
+format-aware editor export workflow (ADR 0121). OBJ retains its shortcut and
+behavior. One scene owns format choice, native chooser, source/revision admission,
+publication and cancellation/drain. A fresh licensed Capsule binary FBX imports
+in Assimp with matching oriented source-polygon geometry, bounds and finite unit
+normals; different planar-quad triangulations are accounted for explicitly.
+This is selected static interoperability, not textured/imported/rigged/animated,
+WAV/batch, isolation or full M7 acceptance. Live panel/menu/keyboard/VoiceOver and
+broader consumer/OS fixtures remain open. Production pin and quarantines remain.
