@@ -26,8 +26,16 @@ public protocol DocumentExportEncoding: Sendable {
 }
 
 /// Typed destination/output admission errors; filesystem and encoder causes propagate unchanged.
-public enum DocumentExportError: Error, Sendable, Equatable {
+public enum DocumentExportError: LocalizedError, Sendable, Equatable {
     case invalidDestination, sourceAlias, invalidOutput
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidDestination: "Choose a local export destination with the matching file extension."
+        case .sourceAlias: "Choose an export destination separate from the source document."
+        case .invalidOutput: "The encoder returned empty or oversized export output."
+        }
+    }
 }
 
 /// Off-main export publication, independent of the document's savepoint and undo history.

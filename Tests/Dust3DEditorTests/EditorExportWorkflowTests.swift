@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import Dust3DKit
 import Foundation
 import XCTest
@@ -83,6 +84,29 @@ final class EditorExportWorkflowTests: XCTestCase {
         let received = await encoder.received
         XCTAssertNil(received)
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+    }
+
+    func testDestinationDialogTargetRejectsLaterRevisionBeforeEncodingOrPublication() async throws {
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".obj")
+        let previous = Data("previous export".utf8)
+        try previous.write(to: destination)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let encoder = WorkflowExportEncoder()
+        let store = EditorStore(
+            preview: WorkflowNoPreview(), exportService: DocumentExportFileService(encoder: encoder))
+        defer { store.stop() }
+        await store.load(data: Dust3DDocument.emptyArchive())
+        let captured = EditorExportTarget(snapshot: try XCTUnwrap(store.snapshot))
+        store.setOrigin(x: "1", y: "2", z: "3")
+        try await settle(store)
+        do {
+            _ = try await store.exportDocument(format: .obj, to: destination, sourceURL: nil, capturedTarget: captured)
+            XCTFail("Choosing a destination cannot silently retarget an earlier export intent")
+        } catch { XCTAssertEqual(error as? EditorError, .staleExport) }
+        let received = await encoder.received
+        XCTAssertNil(received)
+        XCTAssertEqual(try Data(contentsOf: destination), previous)
+        XCTAssertTrue(store.canUndo)
     }
 
     func testUnsavedExportCapturesRevisionAndPreservesHistoryAndSource() async throws {

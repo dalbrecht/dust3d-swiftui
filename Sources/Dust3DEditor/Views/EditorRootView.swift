@@ -1,6 +1,7 @@
 import AppKit
 import Dust3DDocument
 import Dust3DEditorModel
+import Dust3DKit
 import Dust3DRendering
 import SwiftUI
 
@@ -11,10 +12,23 @@ private enum EditorInspectorSection: String, CaseIterable, Hashable {
 
 struct EditorRootView: View {
     @Binding var file: EditorFileDocument
-    @State private var store = EditorStore()
+    let sourceURL: URL?
+    @State private var store: EditorStore
+    @State private var exportDestinations: EditorOBJExportDestinationService
+    @State private var exportWorkflow: EditorOBJExportWorkflow
     @State private var isInspectorPresented = true
     @State private var inspectorSection = EditorInspectorSection.selection
     @State private var recoveryRegistrationID: UUID?
+
+    init(file: Binding<EditorFileDocument>, sourceURL: URL? = nil) {
+        let store = EditorStore(exportService: DocumentExportFileService(encoder: NativeOBJExportEncoder()))
+        let destinations = EditorOBJExportDestinationService()
+        _file = file
+        self.sourceURL = sourceURL
+        _store = State(initialValue: store)
+        _exportDestinations = State(initialValue: destinations)
+        _exportWorkflow = State(initialValue: EditorOBJExportWorkflow(store: store, destinations: destinations))
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -57,6 +71,9 @@ struct EditorRootView: View {
                     .padding(10)
                     Divider()
                 }
+                EditorOBJExportStatusView(
+                    phase: exportWorkflow.phase,
+                    onCancel: exportWorkflow.cancel, onDismiss: exportWorkflow.dismissResult)
                 HStack(spacing: 0) {
                     VStack(spacing: 0) {
                         HStack {
@@ -148,6 +165,14 @@ struct EditorRootView: View {
                 } label: {
                     Label("Save", systemImage: "square.and.arrow.down")
                 }.disabled(!store.canSave)
+                Button {
+                    exportWorkflow.begin(sourceURL: sourceURL)
+                } label: {
+                    Label("Export OBJ", systemImage: "square.and.arrow.up")
+                }
+                .disabled(!exportWorkflow.canBegin)
+                .help("Export original procedural geometry as OBJ")
+                .accessibilityLabel("Export original geometry as OBJ")
                 Divider()
                 Button {
                     store.undo()
@@ -180,7 +205,16 @@ struct EditorRootView: View {
                 Toggle(isOn: $store.isWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
             }
         }
+        .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
         .focusedSceneValue(\.editorStore, store)
+        .focusedSceneValue(
+            \.editorOBJExportAction,
+            EditorOBJExportAction(
+                canPerform: exportWorkflow.canBegin, perform: { exportWorkflow.begin(sourceURL: sourceURL) })
+        )
+        .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
+        .onChange(of: store.snapshot?.documentIdentity) { exportWorkflow.sourceDidChange() }
+        .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
         .task(id: file.identity) {
             if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
             let identifier = file.identity
@@ -194,10 +228,13 @@ struct EditorRootView: View {
             store.onEditingChanged = { file.setEditing($0) }
             await store.load(data: file.data, fileIdentity: identifier)
         }
-        .onExitCommand { store.cancelOriginDrag() }
+        .onExitCommand {
+            if exportWorkflow.canCancel { exportWorkflow.cancel() } else { store.cancelOriginDrag() }
+        }
         .onDisappear {
             if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
             recoveryRegistrationID = nil
+            exportWorkflow.stop()
             store.stop()
         }
     }

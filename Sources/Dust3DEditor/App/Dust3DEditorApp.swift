@@ -28,7 +28,7 @@ struct Dust3DEditorApp: App {
 
     var body: some Scene {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
-            EditorRootView(file: file.$document)
+            EditorRootView(file: file.$document, sourceURL: file.fileURL)
                 .environment(pasteboard)
                 .id(file.document.identity)
         }
@@ -54,6 +54,7 @@ struct Dust3DEditorApp: App {
                 .disabled(nativeTextEditor.map { $0.undoManager?.canRedo != true } ?? (store?.canRedo != true))
             }
             EditorClipboardCommands(pasteboard: pasteboard)
+            EditorOBJExportCommands()
             CommandMenu("Canvas") {
                 Toggle(
                     "Move Origin",

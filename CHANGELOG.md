@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add original procedural OBJ export to the editor toolbar and File menu, with captured-revision publication, source protection, cancellation/drain feedback and preserved export warnings (#281).
+
 - Add owned Swift base/UV worker-request packets backed by the existing core codec, with bounded input and preserved error receipts; worker execution remains separate (#277).
 
 - Retain valid mesh previews across animation metadata Undo/Redo using history-owned geometry/material identities; reject obsolete auxiliary preview results (#275).

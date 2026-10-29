@@ -278,9 +278,9 @@ final class EditorStore {
 
     /// Export one accepted snapshot without changing save state, history, preview or source bytes.
     /// Production scene commands must inject a reviewed native encoder and supply their source URL.
-    func exportDocument(format: DocumentExportFormat, to destination: URL, sourceURL: URL?) async throws
-        -> EditorExportReceipt
-    {
+    func exportDocument(
+        format: DocumentExportFormat, to destination: URL, sourceURL: URL?, capturedTarget: EditorExportTarget? = nil
+    ) async throws -> EditorExportReceipt {
         try Task.checkCancellation()
         guard let exportService else { throw EditorExportWorkflowError.unavailable }
         guard !isWorking, !stopped, let recoveryLoadResult else { throw EditorExportWorkflowError.notReady }
@@ -288,7 +288,7 @@ final class EditorStore {
         guard let snapshot, snapshot.documentIdentity == accepted.documentIdentity else {
             throw EditorExportWorkflowError.notReady
         }
-        let target = EditorExportTarget(snapshot: snapshot)
+        let target = capturedTarget ?? EditorExportTarget(snapshot: snapshot)
         cancelColorImagePreparation()
         cancelOriginDrag()
         let requestID = UUID()
