@@ -236,6 +236,35 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
         XCTAssertEqual(store.errorMessage, "Choose an export destination separate from the source document.")
     }
 
+    func testShouldRejectCancellationBeforeTaskStartsWithoutPresentingDestination() async throws {
+        for retirement in 0..<3 {
+            let encoder = DialogEncoder()
+            let store = await store(encoder)
+            defer { store.stop() }
+            let chooser = DialogChooser()
+            // Fail immediately if incorrectly invoked, so this regression never opens or hangs a panel.
+            chooser.failure = NSError(domain: "UnexpectedExportPresentation", code: 1)
+            let workflow = EditorOBJExportWorkflow(store: store, destinations: chooser)
+            let operation = try XCTUnwrap(workflow.begin(sourceURL: nil))
+            switch retirement {
+            case 0: workflow.cancel()
+            case 1: workflow.sourceDidChange()
+            default: workflow.stop()
+            }
+            let outcome = await operation.value
+            do {
+                _ = try outcome.get()
+                XCTFail("Retired intent must not present a chooser")
+            } catch { XCTAssertTrue(error is CancellationError) }
+            XCTAssertTrue(chooser.names.isEmpty)
+            let received = await encoder.received
+            XCTAssertNil(received)
+            XCTAssertNil(store.errorMessage)
+            XCTAssertEqual(workflow.canBegin, retirement != 2)
+            guard case .idle = workflow.phase else { return XCTFail("Retired task must drain to idle") }
+        }
+    }
+
     func testShouldPreserveOriginalChooserFailureAndRemainRetryable() async throws {
         let encoder = DialogEncoder()
         let store = await store(encoder)

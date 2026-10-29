@@ -46,6 +46,9 @@ final class EditorOBJExportWorkflow {
                 if stopped { phase = .idle }
             }
             do {
+                // Retirement may precede the task's first main-actor turn and panel ownership.
+                try Task.checkCancellation()
+                guard !stopped else { throw CancellationError() }
                 let destination = try await destinations.chooseDestination(suggestedName: suggestedName)
                 try Task.checkCancellation()
                 guard !stopped else { throw CancellationError() }
