@@ -64,18 +64,22 @@ public actor EditorSession {
     }
 
     /// Create stored intent only while the draft's captured document remains current.
-    /// - Parameters: name/type are bounded stored text; target identifies the source before drafting.
+    /// - Parameters: name/type are bounded stored text; parameters are ordered initial values;
+    ///   target identifies the source before drafting. All fields commit as one undo transaction.
     /// - Returns: Committed source/history selecting a fresh record.
     /// - Throws: `staleAnimationTarget`, cancellation, not-loaded or original document cause.
     ///   Source validation precedes identifier allocation and any document mutation.
     /// - Example: `try await session.createAnimation(name: "Idle", type: "BipedIdle", target: target)`.
     public func createAnimation(
-        name: String, type: String, target: AnimationCreationTarget
+        name: String, type: String, parameters: [DocumentAnimationParameter] = [], target: AnimationCreationTarget
     ) throws -> EditorAnimationSnapshot {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
         guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleAnimationTarget }
-        return try createAnimation(name: name, type: type)
+        return try insertAnimationCommands({ id in
+            [.createAnimation(id: id, name: name, type: type)]
+                + parameters.map { .setAnimationParameter(id: id, name: $0.name, value: $0.value) }
+        })
     }
 
     /// Duplicate/select complete stored intent using a fresh UUID; opaque data remains preserved.
@@ -129,10 +133,14 @@ public actor EditorSession {
     }
 
     private func insertAnimation(_ command: (String) -> DocumentCommand) throws -> EditorAnimationSnapshot {
+        try insertAnimationCommands({ [command($0)] })
+    }
+
+    private func insertAnimationCommands(_ commands: (String) -> [DocumentCommand]) throws -> EditorAnimationSnapshot {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
         let id = Self.identifier()
-        try next.apply([command(id)])
+        try next.apply(commands(id))
         let result = Self.animationSnapshot(next, selectedID: id)
         try Task.checkCancellation()
         state = next

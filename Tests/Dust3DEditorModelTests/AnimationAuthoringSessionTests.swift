@@ -20,11 +20,18 @@ final class AnimationAuthoringSessionTests: XCTestCase {
         let target = try AnimationCreationTarget(snapshot: source)
         _ = try await session.selectAnimation("a")
         _ = try await session.setLock(.x, isLocked: true)
-        let created = try await session.createAnimation(name: "  New  ", type: "BipedIdle", target: target)
+        let created = try await session.createAnimation(
+            name: "  New  ", type: "BipedIdle",
+            parameters: [
+                DocumentAnimationParameter(name: "durationSeconds", value: "1.250"),
+                DocumentAnimationParameter(name: "frameCount", value: "30"),
+            ], target: target)
         let selected = try XCTUnwrap(created.list.selectedRow)
         XCTAssertNotEqual(selected.source.id, "a")
         XCTAssertEqual(selected.source.name, "  New  ")
         XCTAssertEqual(selected.source.type, "BipedIdle")
+        XCTAssertEqual(selected.source.parameter(named: "durationSeconds"), "1.250")
+        XCTAssertEqual(selected.source.parameter(named: "frameCount"), "30")
         XCTAssertEqual(created.list.rows.count, 2)
         XCTAssertEqual(created.list.rows.first?.source.parameter(named: "opaque"), "keep")
         XCTAssertFalse(target.isCurrent(in: created.editor))
@@ -34,6 +41,30 @@ final class AnimationAuthoringSessionTests: XCTestCase {
         XCTAssertTrue(undone.canRedo)
         let redone = try await session.redo()
         XCTAssertEqual(redone.document.encoded(), created.editor.document.encoded())
+    }
+
+    func testInvalidInitialParametersCannotPartiallyCreateARecordOrClearRedo() async throws {
+        let session = EditorSession()
+        let original = try document()
+        _ = try await session.open(data: original.encoded())
+        _ = try await session.apply([.setAnimationName(id: "a", name: "temporary")])
+        _ = try await session.undo()
+        let source = try await session.animationSnapshot()
+        let target = try AnimationCreationTarget(snapshot: source)
+        do {
+            _ = try await session.createAnimation(
+                name: "New", type: "BipedIdle",
+                parameters: [
+                    DocumentAnimationParameter(name: "durationSeconds", value: "1.250"),
+                    DocumentAnimationParameter(name: "bad:name", value: "2"),
+                ], target: target)
+            XCTFail("An invalid later initial parameter must roll back creation")
+        } catch { XCTAssertEqual(error as? DocumentAnimationError, .invalidParameter) }
+        let unchanged = try await session.animationSnapshot()
+        XCTAssertEqual(unchanged.editor.document.encoded(), original.encoded())
+        XCTAssertEqual(unchanged.editor.documentRevision, source.editor.documentRevision)
+        XCTAssertTrue(unchanged.editor.canRedo)
+        XCTAssertNil(unchanged.list.selectedRow)
     }
 
     func testCreationRejectsChangedReopenedUnloadedAndInvalidCatalogSources() async throws {
