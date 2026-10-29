@@ -56,7 +56,7 @@ public struct AnimationControlDefinition: Sendable, Equatable {
         self.defaultParameter = defaultParameter
         self.divisor = divisor
         self.multiplier = multiplier
-        guard projectedSlider(for: defaultParameter) == defaultSlider else {
+        guard rawSlider(for: defaultParameter) == defaultSlider else {
             throw AnimationCatalogError.invalidDefinition
         }
     }
@@ -73,19 +73,20 @@ public struct AnimationControlDefinition: Sendable, Equatable {
 
     /// Project a display position without rewriting the retained stored parameter.
     /// - Parameter value: Finite retained/explicit value, including values outside nominal widget bounds.
-    /// - Returns: Truncation toward zero followed by widget bounds, matching inherited control semantics.
-    /// - Throws: `invalidValue` for nonfinite values; `unrepresentableValue` before any unsafe integer cast.
+    /// - Returns: Truncation toward zero with subsequent widget-range validation, matching inherited semantics.
+    /// - Throws: `invalidValue` for nonfinite/out-of-range values; `unrepresentableValue` before an unsafe integer cast.
     /// - Example: `try control.slider(for: control.defaultParameter)`.
     public func slider(for value: Double) throws -> Int {
         guard value.isFinite else { throw AnimationCatalogError.invalidValue }
-        guard let result = projectedSlider(for: value) else { throw AnimationCatalogError.unrepresentableValue }
+        guard let result = rawSlider(for: value) else { throw AnimationCatalogError.unrepresentableValue }
+        guard (minimumSlider...maximumSlider).contains(result) else { throw AnimationCatalogError.invalidValue }
         return result
     }
 
-    private func projectedSlider(for value: Double) -> Int? {
+    private func rawSlider(for value: Double) -> Int? {
         let scaled = value / multiplier * divisor
         guard scaled.isFinite, let integer = Int32(exactly: scaled.rounded(.towardZero)) else { return nil }
-        return min(max(Int(integer), minimumSlider), maximumSlider)
+        return Int(integer)
     }
 }
 

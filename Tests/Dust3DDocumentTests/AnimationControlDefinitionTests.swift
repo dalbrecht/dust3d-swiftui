@@ -19,8 +19,7 @@ final class AnimationControlDefinitionTests: XCTestCase {
         XCTAssertEqual(try control.value(at: 100), 1)
         XCTAssertEqual(try control.slider(for: 1.005), 100)
         XCTAssertEqual(try control.slider(for: 1.019), 101)
-        XCTAssertEqual(try control.slider(for: -0.019), 0)
-        XCTAssertEqual(try control.slider(for: 3), 200)
+        XCTAssertEqual(try control.slider(for: -0.001), 0)
         XCTAssertEqual(try control.value(at: 200), 2)
         let scaled = try definition(lower: -100, upper: 100, defaultSlider: 50, nominal: 10, divisor: 10, multiplier: 2)
         XCTAssertEqual(try scaled.value(at: -100), -20)
@@ -37,6 +36,11 @@ final class AnimationControlDefinitionTests: XCTestCase {
         for value in [Double.greatestFiniteMagnitude, Double(Int32.max) + 1, Double(Int32.min) - 1] {
             XCTAssertThrowsError(try control.slider(for: value)) {
                 XCTAssertEqual($0 as? AnimationCatalogError, .unrepresentableValue)
+            }
+        }
+        for value in [-0.019, 3.0] {
+            XCTAssertThrowsError(try control.slider(for: value)) {
+                XCTAssertEqual($0 as? AnimationCatalogError, .invalidValue)
             }
         }
         for index in [-1, 201, Int.max] {
@@ -59,6 +63,7 @@ final class AnimationControlDefinitionTests: XCTestCase {
             { try self.definition(divisor: .leastNonzeroMagnitude) },
             { try self.definition(nominal: .greatestFiniteMagnitude) },
             { try self.definition(defaultSlider: 99) },
+            { try self.definition(defaultSlider: 200, nominal: 3) },
         ]
         for build in invalid {
             XCTAssertThrowsError(try build()) { XCTAssertEqual($0 as? AnimationCatalogError, .invalidDefinition) }
