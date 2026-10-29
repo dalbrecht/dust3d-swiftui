@@ -7,6 +7,7 @@ enum AnimationNameAction { case rename, duplicate }
 /// Stored document animation management. No controls in this view invoke native evaluation.
 struct AnimationPanel: View {
     let store: EditorStore
+    @State private var authoring: EditorAnimationAuthoringWorkflow
     @State private var nameTarget: AnimationEditTarget?
     @State private var name: AnimationNameText
     @State private var nameAction: AnimationNameAction
@@ -18,6 +19,7 @@ struct AnimationPanel: View {
         name: AnimationNameText = AnimationNameText(""), action: AnimationNameAction = .rename
     ) {
         self.store = store
+        _authoring = State(initialValue: EditorAnimationAuthoringWorkflow(store: store))
         _nameTarget = State(initialValue: nameTarget)
         _name = State(initialValue: name)
         _nameAction = State(initialValue: action)
@@ -52,17 +54,20 @@ struct AnimationPanel: View {
                     Text(issue.localizedDescription).font(.caption).textSelection(.enabled)
                 } else if let value = store.animationSnapshot {
                     if value.list.rows.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label("No stored animations", systemImage: "film")
-                            Text("This document has no animation records.").font(.caption).foregroundStyle(.secondary)
+                        if !authoring.isActive {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Label("No stored animations", systemImage: "film")
+                                Text("This document has no animation records.").font(.caption).foregroundStyle(
+                                    .secondary)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
                     } else {
                         animationList(value)
-                        if nameTarget == nil { actions(value) }
+                        if nameTarget == nil && !authoring.isActive { actions(value) }
                         if let row = value.list.selectedRow {
-                            if nameTarget == nil { details(row.source) }
-                        } else if nameTarget == nil {
+                            if nameTarget == nil && !authoring.isActive { details(row.source) }
+                        } else if nameTarget == nil && !authoring.isActive {
                             Text("Select an animation to inspect its details.").font(.caption).foregroundStyle(
                                 .secondary)
                         }
@@ -75,7 +80,11 @@ struct AnimationPanel: View {
                 } else {
                     Text("Open a document or refresh to inspect stored animations.").font(.caption)
                 }
-                if nameTarget != nil { nameEditor }
+                if nameTarget != nil {
+                    nameEditor
+                } else {
+                    AnimationAuthoringControls(store: store, workflow: authoring)
+                }
                 Divider()
                 Text("Changes are included when you save. Playback is not available yet.")
                     .font(.caption).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
@@ -83,7 +92,11 @@ struct AnimationPanel: View {
             .padding(16)
         }
         .focusedValue(\.editorAnimationFocus, true)
-        .task(id: store.snapshot?.documentIdentity) { refreshIfNeeded() }
+        .task(id: store.snapshot?.documentIdentity) {
+            refreshIfNeeded()
+            store.authoringCatalog.load()
+        }
+        .onDisappear { authoring.stop() }
         .onChange(of: store.snapshot?.documentRevision) { _, _ in refreshIfNeeded() }
     }
 
@@ -112,7 +125,7 @@ struct AnimationPanel: View {
         .listStyle(.inset)
         .frame(height: 180)
         .accessibilityLabel("Stored animations")
-        .disabled(store.isWorking || nameTarget != nil)
+        .disabled(store.isWorking || nameTarget != nil || authoring.isActive)
         .onDeleteCommand { deleteSelection() }
     }
 
@@ -214,7 +227,7 @@ struct AnimationPanel: View {
     }
     private func cancelName() { if !isSubmitting { nameTarget = nil } }
     private func deleteSelection() {
-        guard nameTarget == nil, store.canManageAnimations, let value = store.animationSnapshot,
+        guard nameTarget == nil, !authoring.isActive, store.canManageAnimations, let value = store.animationSnapshot,
             let row = value.list.selectedRow
         else { return }
         do {
