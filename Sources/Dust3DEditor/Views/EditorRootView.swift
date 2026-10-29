@@ -14,22 +14,22 @@ struct EditorRootView: View {
     @Binding var file: EditorFileDocument
     let sourceURL: URL?
     @State private var store: EditorStore
-    @State private var exportDestinations: EditorOBJExportDestinationService
-    @State private var exportWorkflow: EditorOBJExportWorkflow
+    @State private var exportDestinations: EditorGeometryExportDestinationService
+    @State private var exportWorkflow: EditorGeometryExportWorkflow
     @State private var isInspectorPresented = true
     @State private var inspectorSection = EditorInspectorSection.selection
     @State private var recoveryRegistrationID: UUID?
 
     init(file: Binding<EditorFileDocument>, sourceURL: URL? = nil) {
         let store = EditorStore(
-            exportService: DocumentExportFileService(encoder: NativeOBJExportEncoder()),
+            exportService: DocumentExportFileService(encoder: NativeGeometryExportEncoder()),
             animationCatalog: NativeAnimationCatalogLoader())
-        let destinations = EditorOBJExportDestinationService()
+        let destinations = EditorGeometryExportDestinationService()
         _file = file
         self.sourceURL = sourceURL
         _store = State(initialValue: store)
         _exportDestinations = State(initialValue: destinations)
-        _exportWorkflow = State(initialValue: EditorOBJExportWorkflow(store: store, destinations: destinations))
+        _exportWorkflow = State(initialValue: EditorGeometryExportWorkflow(store: store, destinations: destinations))
     }
 
     var body: some View {
@@ -73,8 +73,8 @@ struct EditorRootView: View {
                     .padding(10)
                     Divider()
                 }
-                EditorOBJExportStatusView(
-                    phase: exportWorkflow.phase,
+                EditorGeometryExportStatusView(
+                    phase: exportWorkflow.phase, format: exportWorkflow.format,
                     onCancel: exportWorkflow.cancel, onDismiss: exportWorkflow.dismissResult)
                 HStack(spacing: 0) {
                     VStack(spacing: 0) {
@@ -167,14 +167,9 @@ struct EditorRootView: View {
                 } label: {
                     Label("Save", systemImage: "square.and.arrow.down")
                 }.disabled(!store.canSave)
-                Button {
-                    exportWorkflow.begin(sourceURL: sourceURL)
-                } label: {
-                    Label("Export OBJ", systemImage: "square.and.arrow.up")
+                EditorGeometryExportMenu(canExport: exportWorkflow.canBegin) { format in
+                    exportWorkflow.begin(format: format, sourceURL: sourceURL)
                 }
-                .disabled(!exportWorkflow.canBegin)
-                .help("Export original procedural geometry as OBJ")
-                .accessibilityLabel("Export original geometry as OBJ")
                 Divider()
                 Button {
                     store.undo()
@@ -210,9 +205,10 @@ struct EditorRootView: View {
         .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
         .focusedSceneValue(\.editorStore, store)
         .focusedSceneValue(
-            \.editorOBJExportAction,
-            EditorOBJExportAction(
-                canPerform: exportWorkflow.canBegin, perform: { exportWorkflow.begin(sourceURL: sourceURL) })
+            \.editorGeometryExportAction,
+            EditorGeometryExportAction(
+                canPerform: exportWorkflow.canBegin,
+                perform: { format in exportWorkflow.begin(format: format, sourceURL: sourceURL) })
         )
         .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
         .onChange(of: store.snapshot?.documentIdentity) { exportWorkflow.sourceDidChange() }

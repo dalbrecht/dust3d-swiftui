@@ -13,11 +13,16 @@ private struct DialogNoPreview: EditorPreviewServing {
 
 private actor DialogEncoder: DocumentExportEncoding {
     private(set) var received: Data?
+    private(set) var receivedFormat: DocumentExportFormat?
     private let suspended: Bool
+    private let failure: NativeFBXExportError?
     private var hasStarted = false
     private var start: CheckedContinuation<Void, Never>?
     private var pending: CheckedContinuation<Void, Never>?
-    init(suspended: Bool = false) { self.suspended = suspended }
+    init(suspended: Bool = false, failure: NativeFBXExportError? = nil) {
+        self.suspended = suspended
+        self.failure = failure
+    }
     func waitUntilStarted() async {
         if hasStarted { return }
         await withCheckedContinuation { start = $0 }
@@ -28,17 +33,20 @@ private actor DialogEncoder: DocumentExportEncoding {
     }
     func encode(archive: Data, format: DocumentExportFormat) async throws -> DocumentExportArtifact {
         received = archive
+        receivedFormat = format
         hasStarted = true
         start?.resume()
         start = nil
         if suspended { await withCheckedContinuation { pending = $0 } }
+        if let failure { throw failure }
         return .init(bytes: Data("owned OBJ".utf8), warning: "original export warning")
     }
 }
 
 @MainActor
-private final class DialogChooser: EditorOBJExportDestinationChoosing {
+private final class DialogChooser: EditorGeometryExportDestinationChoosing {
     private(set) var names: [String] = []
+    private(set) var formats: [DocumentExportFormat] = []
     private(set) var cancellationCount = 0
     var failure: NSError?
     private var start: CheckedContinuation<Void, Never>?
@@ -47,8 +55,9 @@ private final class DialogChooser: EditorOBJExportDestinationChoosing {
         if !names.isEmpty { return }
         await withCheckedContinuation { start = $0 }
     }
-    func chooseDestination(suggestedName: String) async throws -> URL? {
+    func chooseDestination(format: DocumentExportFormat, suggestedName: String) async throws -> URL? {
         names.append(suggestedName)
+        formats.append(format)
         start?.resume()
         start = nil
         if let failure { throw failure }
@@ -65,7 +74,7 @@ private final class DialogChooser: EditorOBJExportDestinationChoosing {
 }
 
 @MainActor
-final class EditorOBJExportWorkflowTests: XCTestCase {
+final class EditorGeometryExportWorkflowTests: XCTestCase {
     private func store(_ encoder: DialogEncoder) async -> EditorStore {
         let store = EditorStore(preview: DialogNoPreview(), exportService: DocumentExportFileService(encoder: encoder))
         await store.load(data: Dust3DDocument.emptyArchive())
@@ -75,6 +84,83 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+
+    func testFBXAdmissionCausesReachErrorBannerWithoutPublishingOrChangingSource() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let causes: [NativeFBXExportError] = [
+            .invalidGeometryBudget(0), .invalidOutputBudget(0), .invalidArchiveByteCount(0),
+            .unsupportedFormat(.obj), .invalidNativeOutput,
+        ]
+        for cause in causes {
+            let encoder = DialogEncoder(failure: cause)
+            let store = await store(encoder)
+            let source = try XCTUnwrap(store.snapshot?.document.encoded())
+            let chooser = DialogChooser()
+            let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
+            let operation = try XCTUnwrap(workflow.begin(format: .fbx, sourceURL: nil))
+            await chooser.waitUntilStarted()
+            let destination = directory.appendingPathComponent("not-published.fbx")
+            chooser.complete(destination)
+            let outcome = await operation.value
+            XCTAssertThrowsError(try outcome.get()) { XCTAssertEqual($0 as? NativeFBXExportError, cause) }
+            XCTAssertEqual(store.errorMessage, cause.localizedDescription)
+            XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+            XCTAssertEqual(store.snapshot?.document.encoded(), source)
+            XCTAssertTrue(workflow.canBegin)
+            store.stop()
+        }
+    }
+
+    func testFBXDestinationAndReceiptUseCapturedFormatAndPreserveSource() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let encoder = DialogEncoder()
+        let store = await store(encoder)
+        defer { store.stop() }
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        let chooser = DialogChooser()
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
+        let destination = directory.appendingPathComponent("out.fbx")
+        try Data("old destination".utf8).write(to: destination)
+        let operation = try XCTUnwrap(workflow.begin(format: .fbx, sourceURL: nil))
+        await chooser.waitUntilStarted()
+        XCTAssertEqual(chooser.names, ["Untitled.fbx"])
+        XCTAssertEqual(chooser.formats, [.fbx])
+        XCTAssertEqual(workflow.format, .fbx)
+        XCTAssertNil(workflow.begin(sourceURL: nil))
+        chooser.complete(destination)
+        let outcome = await operation.value
+        let receipt = try XCTUnwrap(try outcome.get())
+        XCTAssertEqual(receipt.format, .fbx)
+        let receivedFormat = await encoder.receivedFormat
+        XCTAssertEqual(receivedFormat, .fbx)
+        XCTAssertEqual(try Data(contentsOf: destination), Data("owned OBJ".utf8))
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testFBXChooserCannotPublishAfterSourceReplacement() async throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let encoder = DialogEncoder()
+        let store = await store(encoder)
+        defer { store.stop() }
+        let chooser = DialogChooser()
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
+        let destination = directory.appendingPathComponent("keep.fbx")
+        let original = Data("keep destination".utf8)
+        try original.write(to: destination)
+        let operation = try XCTUnwrap(workflow.begin(format: .fbx, sourceURL: nil))
+        await chooser.waitUntilStarted()
+        await store.load(data: Dust3DDocument.emptyArchive())
+        chooser.complete(destination)
+        let outcome = await operation.value
+        XCTAssertThrowsError(try outcome.get()) { XCTAssertEqual($0 as? EditorError, .staleExport) }
+        XCTAssertEqual(try Data(contentsOf: destination), original)
+        let received = await encoder.received
+        XCTAssertNil(received)
     }
 
     func testShouldExportCapturedDocumentThroughChosenDestinationAndPreserveSource() async throws {
@@ -87,7 +173,7 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
         let store = await store(encoder)
         defer { store.stop() }
         let chooser = DialogChooser()
-        let workflow = EditorOBJExportWorkflow(store: store, destinations: chooser)
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
         let operation = try XCTUnwrap(workflow.begin(sourceURL: source))
         await chooser.waitUntilStarted()
         XCTAssertEqual(chooser.names, ["Example.obj"])
@@ -113,7 +199,7 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
         let store = await store(encoder)
         defer { store.stop() }
         let chooser = DialogChooser()
-        let workflow = EditorOBJExportWorkflow(store: store, destinations: chooser)
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
         let operation = try XCTUnwrap(workflow.begin(sourceURL: nil))
         await chooser.waitUntilStarted()
         XCTAssertEqual(chooser.names, ["Untitled.obj"])
@@ -137,7 +223,7 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
         let store = await store(encoder)
         defer { store.stop() }
         let chooser = DialogChooser()
-        let workflow = EditorOBJExportWorkflow(store: store, destinations: chooser)
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
         let operation = try XCTUnwrap(workflow.begin(sourceURL: nil))
         await chooser.waitUntilStarted()
         chooser.complete(destination)
@@ -171,7 +257,7 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
         let store = await store(encoder)
         defer { store.stop() }
         let chooser = DialogChooser()
-        let workflow = EditorOBJExportWorkflow(store: store, destinations: chooser)
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
         let operation = try XCTUnwrap(workflow.begin(sourceURL: nil))
         await chooser.waitUntilStarted()
         await store.load(data: Dust3DDocument.emptyArchive(), fileIdentity: UUID())
@@ -193,7 +279,7 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
         let store = await store(encoder)
         defer { store.stop() }
         let chooser = DialogChooser()
-        let workflow = EditorOBJExportWorkflow(store: store, destinations: chooser)
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
         let operation = try XCTUnwrap(workflow.begin(sourceURL: nil))
         await chooser.waitUntilStarted()
         workflow.stop()
@@ -221,7 +307,7 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
         let store = await store(encoder)
         defer { store.stop() }
         let chooser = DialogChooser()
-        let workflow = EditorOBJExportWorkflow(store: store, destinations: chooser)
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
         let operation = try XCTUnwrap(workflow.begin(sourceURL: source))
         await chooser.waitUntilStarted()
         chooser.complete(alias)
@@ -244,7 +330,7 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
             let chooser = DialogChooser()
             // Fail immediately if incorrectly invoked, so this regression never opens or hangs a panel.
             chooser.failure = NSError(domain: "UnexpectedExportPresentation", code: 1)
-            let workflow = EditorOBJExportWorkflow(store: store, destinations: chooser)
+            let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
             let operation = try XCTUnwrap(workflow.begin(sourceURL: nil))
             switch retirement {
             case 0: workflow.cancel()
@@ -273,7 +359,7 @@ final class EditorOBJExportWorkflowTests: XCTestCase {
         let original = NSError(
             domain: "ExportDialogFixture", code: 7, userInfo: [NSLocalizedDescriptionKey: "Original chooser cause"])
         chooser.failure = original
-        let workflow = EditorOBJExportWorkflow(store: store, destinations: chooser)
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
         let operation = try XCTUnwrap(workflow.begin(sourceURL: nil))
         let outcome = await operation.value
         do {

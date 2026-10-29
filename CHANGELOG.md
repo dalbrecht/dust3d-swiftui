@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add original procedural FBX export beside OBJ in the editor’s Export menu, with shared source-bound atomic publication, preserved diagnostics and independent Capsule re-import verification (#286).
+
 - Add catalog-backed stored animation creation, type changes, timing/dynamic/surface parameter drafts and explicit defaults, with source-bound atomic Undo/Redo and lossless Save (#283).
 
 - Add original procedural OBJ export to the editor toolbar and File menu, with captured-revision publication, source protection, cancellation/drain feedback and preserved export warnings (#281).

@@ -409,16 +409,17 @@ Animation evaluation, playback and audio remain pending. See [panel verification
 for owned offscreen evidence and the live keyboard/accessibility acceptance limits.
 
 
-### Original procedural OBJ export (#281)
+### Original procedural geometry export (#281, #286)
 
-Choose File → Export OBJ Geometry… (Command-Shift-E), or Export OBJ in the
-toolbar. The destination sheet belongs to the current document window. It exports
+Choose File → Export OBJ Geometry… (Command-Shift-E), File → Export FBX
+Geometry…, or choose either format from the toolbar Export menu. The destination sheet belongs to the current document window. It exports
 the captured current state, including unsaved edits, without marking the document
 saved or changing Undo/Redo. Source path/inode aliases are rejected. A changed
 source while choosing a destination cancels that export intent.
 
-This exports original procedural positions/faces only: materials, textures, UVs,
-embedded imported models, rigs and animation are unsupported. The completion strip
+This exports original procedural geometry. OBJ contains positions/faces; FBX
+retains supplied static corner streams without generating an atlas. Materials,
+textures, embedded imported models, rigs and animation are unsupported. The completion strip
 shows the destination, byte count and original warning. Failures use the existing
 error banner. Cancel/Escape prevents uncommitted publication; synchronous native
 generation must finish before the workflow becomes available again. “Finishing
@@ -452,3 +453,12 @@ evaluate frames, generate sound, skin a rig or resolve core #95/Apple #199.
 See [ADR 0119](../../docs/adr/0119-catalog-backed-animation-authoring.md) and
 [UI verification](../../docs/animation-authoring-ui-verification.md) for scoped
 native evidence and unverified keyboard/focus/VoiceOver/GPU acceptance.
+
+
+The same source-bound workflow now captures OBJ/FBX before opening the native
+chooser; format-specific extensions, status and receipts remain attached to that
+intent. FBX uses original static geometry and supplied corner normals/UV streams,
+without requesting materials, textures, imported assets, rig or animation work.
+The ordinary Capsule output has independent Assimp re-import evidence; this does
+not establish broader export, worker isolation or M7 acceptance. See
+[FBX verification](../../docs/fbx-export-verification.md) and ADR 0121.
