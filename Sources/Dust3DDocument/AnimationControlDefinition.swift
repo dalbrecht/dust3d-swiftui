@@ -2,10 +2,11 @@ import Foundation
 
 /// Invalid catalog declarations are distinct from explicit stored-value projection failures.
 public enum AnimationCatalogError: LocalizedError, Equatable, Sendable {
-    case invalidDefinition, invalidValue, unrepresentableValue
+    case invalidDefinition, invalidValue, unrepresentableValue, limitExceeded
 
     public var errorDescription: String? {
         switch self {
+        case .limitExceeded: "The animation catalog exceeds its host metadata limit."
         case .invalidDefinition: "The animation catalog contains an invalid control definition."
         case .invalidValue: "Choose a finite animation parameter value within the declared control range."
         case .unrepresentableValue: "The animation parameter exceeds the control's integer representation."
