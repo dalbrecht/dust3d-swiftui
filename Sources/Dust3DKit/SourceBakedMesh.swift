@@ -91,6 +91,7 @@ public struct SourceMeshBakeOptions: Sendable {
     public let maximumInputImageBytes: Int
     public let maximumChartCount: Int
     public let maximumRasterSamples: Int
+    public let maximumMipLevels: Int
 
     /// Configure source baking; all values are checked before native conversion.
     /// - Parameters:
@@ -102,11 +103,12 @@ public struct SourceMeshBakeOptions: Sendable {
     ///   - maximumInputImageBytes: Positive aggregate decoded storage quota, at most 256 MiB.
     ///   - maximumChartCount: Zero selects 50000; maximum 100000.
     ///   - maximumRasterSamples: Zero selects 250 million; maximum one billion.
+    ///   - maximumMipLevels: Zero keeps base-only loading; 1...14 opts into isolated mip baking.
     public init(
         bake: MeshBakeOptions = MeshBakeOptions(), maximumSamplerPayloadBytes: Int = 0,
         maximumAtlasPayloadBytes: Int = 0, maximumNativePayloadBytes: Int = 0,
         maximumCopiedPayloadBytes: Int = 256 * 1024 * 1024, maximumInputImageBytes: Int = 64 * 1024 * 1024,
-        maximumChartCount: Int = 0, maximumRasterSamples: Int = 0
+        maximumChartCount: Int = 0, maximumRasterSamples: Int = 0, maximumMipLevels: Int = 0
     ) {
         self.bake = bake
         self.maximumSamplerPayloadBytes = maximumSamplerPayloadBytes
@@ -116,6 +118,7 @@ public struct SourceMeshBakeOptions: Sendable {
         self.maximumInputImageBytes = maximumInputImageBytes
         self.maximumChartCount = maximumChartCount
         self.maximumRasterSamples = maximumRasterSamples
+        self.maximumMipLevels = maximumMipLevels
     }
 }
 

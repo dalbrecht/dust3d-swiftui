@@ -6,6 +6,44 @@ import XCTest
 @testable import Dust3DKit
 
 final class SourceBakedLoaderTests: XCTestCase {
+    func testOptInMipBakeCopiesOwnedLevelsAndEnforcesCopyBudget() throws {
+        let archive = try fixture("Capsule")
+        let bake = MeshBakeOptions(colorSize: 256, normalSize: 128, materialSize: 256, atlasTextureSize: 256)
+        let options = SourceMeshBakeOptions(bake: bake, maximumMipLevels: 4)
+        let result = try MeshLoader.loadSourceBaked(data: archive, options: options)
+        let color = try XCTUnwrap(result.mipmaps.color)
+        XCTAssertGreaterThan(color.levels.count, 1)
+        XCTAssertEqual(color.levels[0], result.textures.color)
+        XCTAssertGreaterThan(result.maximumSamplingLod, 0)
+        let pixels = color.levels.map(\.pixels)
+        _ = try MeshLoader.loadSourceBaked(data: archive, options: options)
+        XCTAssertEqual(color.levels.map(\.pixels), pixels)
+        let exact = SourceMeshBakeOptions(
+            bake: bake, maximumCopiedPayloadBytes: result.copiedPayloadBytes, maximumMipLevels: 4)
+        XCTAssertEqual(
+            try MeshLoader.loadSourceBaked(data: archive, options: exact).copiedPayloadBytes, result.copiedPayloadBytes)
+        let short = SourceMeshBakeOptions(
+            bake: bake, maximumCopiedPayloadBytes: result.copiedPayloadBytes - 1, maximumMipLevels: 4)
+        XCTAssertThrowsError(try MeshLoader.loadSourceBaked(data: archive, options: short)) {
+            XCTAssertEqual($0 as? SourceMeshBakeError, .copyLimitExceeded)
+        }
+    }
+
+    func testOptInMipBakeRetainsImportedMaterialPolicy() throws {
+        let archive = try fixture("ImportedSurface")
+        let definition = try XCTUnwrap(ImportedMaterialLoader.load(data: archive).models.first)
+        let image = SourceMeshBakeImage(
+            decodedImage: try ImportedImageDecoder.decode(
+                try XCTUnwrap(definition.image), modelID: definition.id))
+        let bake = MeshBakeOptions(colorSize: 256, normalSize: 128, materialSize: 256, atlasTextureSize: 256)
+        let output = try MeshLoader.loadSourceBaked(
+            data: archive, modelImages: [image], options: SourceMeshBakeOptions(bake: bake, maximumMipLevels: 4))
+        let levels = try XCTUnwrap(output.mipmaps.color).levels
+        XCTAssertGreaterThanOrEqual(levels.count, 1)
+        XCTAssertLessThanOrEqual(output.maximumSamplingLod, Double(levels.count - 1))
+        XCTAssertEqual(output.triangles.first?.policy?.alphaMode, definition.alphaMode)
+        XCTAssertEqual(output.mipmaps.color?.levels.first, output.textures.color)
+    }
     func testPinsProceduralImagesAndCopiesStraightAlphaRows() throws {
         let imageID = "{iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii}"
         let part = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
@@ -135,6 +173,8 @@ final class SourceBakedLoaderTests: XCTestCase {
             SourceMeshBakeOptions(maximumInputImageBytes: Int.max),
             SourceMeshBakeOptions(maximumChartCount: 100001),
             SourceMeshBakeOptions(maximumRasterSamples: -1),
+            SourceMeshBakeOptions(maximumMipLevels: -1),
+            SourceMeshBakeOptions(maximumMipLevels: 15),
         ] {
             XCTAssertThrowsError(try SourceMeshBakeInput.validate(dataCount: 1, options: options)) {
                 XCTAssertEqual($0 as? SourceMeshBakeError, .invalidLimits)

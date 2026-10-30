@@ -56,8 +56,15 @@ extension MeshLoader {
                     native.model_images = modelViews.baseAddress
                     native.model_image_count = modelViews.count
                     return data.withUnsafeBytes {
-                        dust3d_source_baked_mesh_load(
-                            $0.bindMemory(to: UInt8.self).baseAddress, $0.count, &native, &error)
+                        let bytes = $0.bindMemory(to: UInt8.self).baseAddress
+                        if options.maximumMipLevels == 0 {
+                            return dust3d_source_baked_mesh_load(bytes, $0.count, &native, &error)
+                        }
+                        var mip = Dust3DSourceBakeMipOptions()
+                        mip.struct_size = MemoryLayout<Dust3DSourceBakeMipOptions>.size
+                        mip.source = native
+                        mip.maximum_levels = options.maximumMipLevels
+                        return dust3d_source_baked_mesh_load_with_mips(bytes, $0.count, &mip, &error)
                     }
                 }
             }
