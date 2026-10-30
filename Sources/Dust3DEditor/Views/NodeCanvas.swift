@@ -8,9 +8,10 @@ struct NodeCanvas: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let projection = CanvasProjection(
-                bounds: store.bounds, plane: store.plane,
-                width: geometry.size.width, height: geometry.size.height)
+            let projection = nodeDrag.displayProjection(
+                fallback: CanvasProjection(
+                    bounds: store.bounds, plane: store.plane,
+                    width: geometry.size.width, height: geometry.size.height))
             let nodes = store.snapshot?.nodes ?? []
             ZStack {
                 if store.showsReferenceImage, let image = store.referenceImage {
@@ -60,21 +61,20 @@ struct NodeCanvas: View {
                         enabled: !store.isWorking && !store.isMovingOrigin,
                         select: { store.select(node.id) },
                         toggle: { store.toggleSelection(node.id) },
-                        cancel: {
-                            if nodeDrag.anchorID == node.id { nodeDrag.gestureBecameInactive() }
-                        },
-                        disappear: {
-                            if nodeDrag.anchorID == node.id { nodeDrag.invalidate() }
-                        },
-                        drag: { translation in
+                        begin: { token in
                             guard let snapshot = store.snapshot else { return }
-                            try? nodeDrag.update(
-                                anchorID: node.id, snapshot: snapshot, projection: projection, translation: translation)
+                            try? nodeDrag.begin(
+                                token: token, anchorID: node.id, snapshot: snapshot, projection: projection)
                         },
-                        move: { translation in
-                            guard let baseline = nodeDrag.finish() else { return }
+                        update: { token, translation in
+                            guard let snapshot = store.snapshot else { return }
+                            nodeDrag.update(token: token, snapshot: snapshot, translation: translation)
+                        },
+                        finish: { token, translation in
+                            guard let baseline = nodeDrag.finish(token: token) else { return }
                             store.commitNodeDrag(baseline, translation: translation)
-                        }
+                        },
+                        cancel: { token in nodeDrag.cancel(token: token) }
                     )
                     .allowsHitTesting(!store.isMovingOrigin)
                 }
@@ -126,11 +126,10 @@ private struct NodeHandle: View {
     let enabled: Bool
     let select: () -> Void
     let toggle: () -> Void
-    let cancel: () -> Void
-    let disappear: () -> Void
-    let drag: (CanvasPoint) -> Void
-    let move: (CanvasPoint) -> Void
-    @GestureState private var isDragging = false
+    let begin: (UUID) -> Void
+    let update: (UUID, CanvasPoint) -> Void
+    let finish: (UUID, CanvasPoint) -> Void
+    let cancel: (UUID) -> Void
 
     var body: some View {
         let point = projection.point(for: position)
@@ -143,26 +142,14 @@ private struct NodeHandle: View {
                 .allowsHitTesting(false)
             Circle().fill(selected ? Color.accentColor : (node.isEditable ? .primary : .secondary))
                 .frame(width: 12, height: 12)
-            Color.clear.frame(width: 36, height: 36).contentShape(Circle())
+            NodePointerSurface(
+                enabled: enabled, canDrag: node.isEditable, begin: begin, update: update, finish: finish,
+                cancel: cancel,
+                select: select, toggle: toggle
+            ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
         .position(x: point.x, y: point.y)
-        .onTapGesture { if enabled { select() } }
-        .highPriorityGesture(TapGesture().modifiers(.command).onEnded { if enabled { toggle() } })
-        .gesture(
-            DragGesture(minimumDistance: 3, coordinateSpace: .named("node-canvas"))
-                .updating($isDragging) { _, state, _ in state = true }
-                .onChanged { value in
-                    if enabled && node.isEditable {
-                        drag(.init(x: value.translation.width, y: value.translation.height))
-                    }
-                }
-                .onEnded { value in
-                    move(.init(x: value.translation.width, y: value.translation.height))
-                }
-        )
-        .onChange(of: isDragging) { _, active in if !active { cancel() } }
-        .onDisappear { disappear() }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(node.title)
         .accessibilityValue(selected ? "Selected" : "Not selected")

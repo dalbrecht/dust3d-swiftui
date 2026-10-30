@@ -1,6 +1,7 @@
 import Dust3DDocument
+import Foundation
 
-/// Orders transient canvas callbacks without relying on reset and completion callback ordering.
+/// Coordinates transient node gestures by their pointer activation identity.
 public struct NodeDragLifecycle: Sendable {
     /// Current baseline and displacement while a gesture is active.
     public struct Preview: Sendable {
@@ -8,49 +9,58 @@ public struct NodeDragLifecycle: Sendable {
         public let translation: CanvasPoint
     }
 
+    private var token: UUID?
     private var retained: Preview?
-    private var canBegin = true
     private var invalidated = false
     /// Only an active, valid gesture is displayed.
-    public var preview: Preview? { canBegin || invalidated ? nil : retained }
-    /// Identity of the node whose gesture remains eligible for completion.
-    public var anchorID: String? { retained?.baseline.anchorID }
+    public var preview: Preview? { invalidated ? nil : retained }
 
     public init() {}
 
-    /// Capture a baseline at the first update and retain it for the entire gesture.
+    /// Keep canvas rendering in the gesture's coordinate system until it ends.
+    public func displayProjection(fallback: CanvasProjection) -> CanvasProjection {
+        preview?.baseline.projection ?? fallback
+    }
+
+    /// Capture a new pointer activation, replacing any previous gesture.
     /// - Throws: The original anchor validation error.
-    public mutating func update(
-        anchorID: String, snapshot: EditorSnapshot, projection: CanvasProjection, translation: CanvasPoint
-    ) throws {
-        if canBegin {
-            retained = Preview(
-                baseline: try NodeDrag(anchorID: anchorID, snapshot: snapshot, projection: projection),
-                translation: translation)
-            invalidated = false
-            canBegin = false
-            return
-        }
-        guard !invalidated, let current = retained else { return }
-        guard current.baseline.anchorID == anchorID, current.baseline.isCurrent(in: snapshot) else {
+    public mutating func begin(token: UUID, anchorID: String, snapshot: EditorSnapshot, projection: CanvasProjection)
+        throws
+    {
+        self.token = nil
+        retained = nil
+        invalidated = false
+        let baseline = try NodeDrag(anchorID: anchorID, snapshot: snapshot, projection: projection)
+        self.token = token
+        retained = Preview(baseline: baseline, translation: .init(x: 0, y: 0))
+    }
+
+    /// Update only the activation that created the current baseline.
+    public mutating func update(token: UUID, snapshot: EditorSnapshot, translation: CanvasPoint) {
+        guard self.token == token, !invalidated, let current = retained else { return }
+        guard current.baseline.isCurrent(in: snapshot) else {
             invalidate()
             return
         }
         retained = Preview(baseline: current.baseline, translation: translation)
     }
 
-    /// Suppress preview and reject completion while the current gesture remains active.
+    /// Suppress preview and reject completion of the current gesture.
     public mutating func invalidate() { invalidated = true }
 
-    /// Hide a completed or cancelled preview while retaining the baseline for a later completion callback.
-    public mutating func gestureBecameInactive() { canBegin = true }
-
-    /// Consume a valid baseline regardless of whether the inactive callback arrived first.
-    public mutating func finish() -> NodeDrag? {
-        let result = invalidated ? nil : retained?.baseline
+    /// Cancel only the activation that owns the current baseline.
+    public mutating func cancel(token: UUID) {
+        guard self.token == token else { return }
+        self.token = nil
         retained = nil
         invalidated = false
-        canBegin = true
+    }
+
+    /// Consume a valid baseline only for the matching pointer activation.
+    public mutating func finish(token: UUID) -> NodeDrag? {
+        guard self.token == token else { return nil }
+        let result = invalidated ? nil : retained?.baseline
+        cancel(token: token)
         return result
     }
 }
