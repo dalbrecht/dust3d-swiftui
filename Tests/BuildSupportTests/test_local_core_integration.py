@@ -123,10 +123,64 @@ class LocalCoreIntegrationTests(unittest.TestCase):
         (source / 'original').write_text('safe')
         (source / 'link').symlink_to(source / 'original')
         with patch.object(module.build_identity, 'git', return_value=b'link\0original\0'):
-            with self.assertRaisesRegex(ValueError, 'Absolute'):
+            with self.assertRaisesRegex(ValueError, 'symlink'):
                 module.copy_source(source, target, {})
         self.assertEqual((source / 'original').read_text(), 'safe')
         self.assertFalse((target / 'link').is_symlink())
+
+    def test_reentering_relative_app_link_is_rejected(self):
+        from unittest.mock import patch
+        source, target = self.root.resolve() / 'source', self.root.resolve() / 'copy'
+        source.mkdir()
+        (source / 'original').write_text('safe')
+        # Relative, but climbs to filesystem root before re-entering this checkout.
+        reentry = '../' * len(source.parts) + str(source / 'original').lstrip('/')
+        (source / 'link').symlink_to(reentry)
+        self.assertEqual((source / 'link').resolve(), source / 'original')
+        with patch.object(module.build_identity, 'git', return_value=b'link\0original\0'):
+            with self.assertRaisesRegex(ValueError, 'symlink'):
+                module.copy_source(source, target, {})
+        self.assertFalse((target / 'link').is_symlink())
+
+    def test_core_symlinked_external_or_ignored_input_is_rejected(self):
+        from unittest.mock import patch
+        core = self.root / 'core'
+        core.mkdir()
+        hidden = self.root / 'ignored-target'
+        hidden.write_text('first')
+        (core / 'source.cc').symlink_to(hidden)
+        with patch.object(module.build_identity, 'git', return_value=b'source.cc\0'):
+            with self.assertRaisesRegex(ValueError, 'symlink'):
+                module.verify_no_input_symlinks(core)
+            hidden.write_text('second')
+            with self.assertRaisesRegex(ValueError, 'symlink'):
+                module.verify_no_input_symlinks(core)
+
+    def test_core_input_under_symlinked_parent_is_rejected(self):
+        from unittest.mock import patch
+        core, outside = self.root / 'core', self.root / 'outside'
+        core.mkdir()
+        outside.mkdir()
+        (outside / 'source.cc').write_text('code')
+        (core / 'linked').symlink_to(outside, target_is_directory=True)
+        with patch.object(module.build_identity, 'git', return_value=b'linked/source.cc\0'):
+            with self.assertRaisesRegex(ValueError, 'symlink'):
+                module.verify_no_input_symlinks(core)
+
+    def test_core_ignored_swift_input_is_rejected(self):
+        import subprocess
+        core = self.root / 'real-core'
+        core.mkdir()
+        subprocess.run(['git', 'init', '-q', str(core)], check=True)
+        (core / '.gitignore').write_text('ignored.swift\n')
+        (core / 'ignored.swift').write_text('let hidden = 1\n')
+        with self.assertRaisesRegex(ValueError, 'ignored'):
+            module.verify_core_inputs(core)
+        (core / 'ignored.swift').unlink()
+        module.verify_core_inputs(core)
+        (core / 'ignored.swift').write_text('let hidden = 2\n')
+        with self.assertRaisesRegex(ValueError, 'ignored'):
+            module.verify_core_inputs(core)
 
     def test_corrupt_workspace_state_fails_closed(self):
         state = self.root / 'workspace-state.json'
