@@ -179,3 +179,5 @@ with actor-built owned resources, sRGB color/emission maps, linear normal/scalar
 maps, GGX direct lighting and camera-sorted transparency. Both app viewports now adopt this encoder asynchronously, retaining ordinary
 geometry while baking and on optional material failures. See [ownership and limitations](docs/adr/0064-owned-metal-material-renderer.md)
 and [GPU verification](docs/metal-material-renderer-verification.md).
+
+For isolated paired app/core development, see [local core integration](docs/local-core-integration.md).
