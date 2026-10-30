@@ -146,6 +146,12 @@ the reviewed core upgrade; see ADR 0087 and #177.
 snapshot via an injected `DocumentExportEncoding` implementation. For example,
 `try await service.export(document, format: .obj, to: output, sourceURL: source)`.
 It preserves the source/savepoint and returns owned bytes with the diagnostic.
+`exportReceipt` additionally reports the actual coordinated destination. Each
+request waits for macOS file-presenter access off the document actor, stages on
+the admitted destination volume, and checks cancellation and source aliases
+before the revision-guarded rename. A committed receipt remains successful after
+late cancellation. File coordination does not bound native generation latency;
+signed sandbox and cloud-provider behavior remain separately unverified.
 `NativeOBJExportEncoder()` binds original procedural OBJ output to the reviewed
 pinned core ABI, copying bytes and warning before destroying the native owner.
 The default output payload quota is 64 MiB; this is not an RSS/workspace bound.

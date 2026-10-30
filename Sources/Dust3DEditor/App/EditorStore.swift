@@ -313,13 +313,14 @@ final class EditorStore {
         operationRequestID = requestID
         isWorking = true
         let task = Task { [session] in
-            let output = try await exportService.export(
+            let receipt = try await exportService.exportReceipt(
                 snapshot.document, format: format, to: destination, sourceURL: sourceURL,
                 validateSnapshot: { try await session.validateExport(target) },
                 publish: { commit in try await session.publishExport(target, publication: commit) })
             return EditorExportReceipt(
                 documentIdentity: snapshot.documentIdentity, documentRevision: snapshot.documentRevision,
-                destination: destination, format: format, byteCount: output.bytes.count, warning: output.warning)
+                destination: receipt.destination, format: format, byteCount: receipt.artifact.bytes.count,
+                warning: receipt.artifact.warning)
         }
         exportTask = task
         defer {
