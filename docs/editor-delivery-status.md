@@ -48,6 +48,13 @@ acceptance. Earlier broad CTest selection included excluded legacy fixtures and
 must not be treated as a quarantine-compliant gate. No excluded legacy suite is
 required by the focused local integration test above.
 
+Local follow-ups `c21ee368` and `e781c631` preserve the padded-atlas cause when a
+base-atlas retry fails with a generic exception, including the nested original
+exception. The native engine build, quarantine source guard and two audited
+synthetic targets passed. Allocation failures retain the limit-exceeded mapping
+by source inspection; no allocation-failure probe was run, and diagnostic
+construction cannot guarantee recovery under actual memory exhaustion.
+
 Hollow thickness (#96) remains incomplete. Historical builder evidence establishes
 an inward shell and terminal rims, including collapsed inner geometry at thickness
 one; it does not establish compatibility with the current position-keyed UV/source
