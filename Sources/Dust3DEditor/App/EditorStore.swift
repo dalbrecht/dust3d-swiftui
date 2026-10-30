@@ -683,6 +683,10 @@ final class EditorStore {
     func toggleSelection(_ id: String) { perform(commits: false) { try await $0.toggleSelection(id) } }
     func selectAll() { perform(commits: false) { try await $0.selectAll() } }
     func move(id: String, to position: NodePosition) { perform { try await $0.move(id: id, to: position) } }
+
+    func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) {
+        perform { try await $0.commitNodeDrag(drag, translation: translation) }
+    }
     func moveSelection(by delta: NodePosition) { perform { try await $0.moveSelection(by: delta) } }
     func scaleSelection(positionFactor: Double, radiusFactor: Double) {
         perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
@@ -1100,6 +1104,7 @@ final class EditorStore {
             case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."
             case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
+            case .staleNodeDrag: return "Node drag cancelled because the document, selection or constraints changed."
             case .staleAnimationTarget:
                 return "The document changed. Select the animation again before editing."
             case .staleExport:

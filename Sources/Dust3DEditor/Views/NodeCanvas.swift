@@ -4,7 +4,7 @@ import SwiftUI
 
 struct NodeCanvas: View {
     let store: EditorStore
-    @State private var drag: SelectionDrag?
+    @State private var nodeDrag = NodeDragLifecycle()
 
     var body: some View {
         GeometryReader { geometry in
@@ -60,15 +60,20 @@ struct NodeCanvas: View {
                         enabled: !store.isWorking && !store.isMovingOrigin,
                         select: { store.select(node.id) },
                         toggle: { store.toggleSelection(node.id) },
+                        cancel: {
+                            if nodeDrag.anchorID == node.id { nodeDrag.gestureBecameInactive() }
+                        },
+                        disappear: {
+                            if nodeDrag.anchorID == node.id { nodeDrag.invalidate() }
+                        },
                         drag: { translation in
-                            drag = SelectionDrag(
-                                anchorID: node.id, translation: translation, revision: store.snapshot?.documentRevision)
+                            guard let snapshot = store.snapshot else { return }
+                            try? nodeDrag.update(
+                                anchorID: node.id, snapshot: snapshot, projection: projection, translation: translation)
                         },
                         move: { translation in
-                            drag = nil
-                            store.move(
-                                id: node.id,
-                                to: projection.moving(node.value.position, by: translation, locks: store.locks))
+                            guard let baseline = nodeDrag.finish() else { return }
+                            store.commitNodeDrag(baseline, translation: translation)
                         }
                     )
                     .allowsHitTesting(!store.isMovingOrigin)
@@ -87,20 +92,27 @@ struct NodeCanvas: View {
             }
             .coordinateSpace(name: "node-canvas")
             .clipped()
-            .onChange(of: store.isMovingOrigin) { _, _ in drag = nil }
-            .onChange(of: geometry.size) { _, _ in store.cancelOriginDrag() }
-            .onChange(of: store.isWorking) { _, working in if working { drag = nil } }
+            .onChange(of: store.isMovingOrigin) { _, _ in invalidateNodeDrag() }
+            .onChange(of: store.plane) { _, _ in invalidateNodeDrag() }
+            .onChange(of: geometry.size) { _, _ in
+                invalidateNodeDrag()
+                store.cancelOriginDrag()
+            }
+            .onChange(of: store.isWorking) { _, working in if working { invalidateNodeDrag() } }
         }
         .background(.background)
     }
+    private func invalidateNodeDrag() { nodeDrag.invalidate() }
+
     private func previewPosition(_ node: DocumentNode, projection: CanvasProjection) -> NodePosition {
-        guard let drag, drag.revision == store.snapshot?.documentRevision, node.isEditable else {
+        guard let drag = nodeDrag.preview, let snapshot = store.snapshot, drag.baseline.isCurrent(in: snapshot),
+            node.isEditable
+        else {
             return node.value.position
         }
-        let ids = store.snapshot?.selectedIDs ?? []
-        let participates = ids.contains(drag.anchorID) ? ids.contains(node.id) : drag.anchorID == node.id
+        let participates = drag.baseline.includes(node.id)
         return participates
-            ? projection.moving(node.value.position, by: drag.translation, locks: store.locks)
+            ? drag.baseline.position(of: node.value.position, by: drag.translation)
             : node.value.position
     }
 
@@ -114,8 +126,11 @@ private struct NodeHandle: View {
     let enabled: Bool
     let select: () -> Void
     let toggle: () -> Void
+    let cancel: () -> Void
+    let disappear: () -> Void
     let drag: (CanvasPoint) -> Void
     let move: (CanvasPoint) -> Void
+    @GestureState private var isDragging = false
 
     var body: some View {
         let point = projection.point(for: position)
@@ -136,17 +151,18 @@ private struct NodeHandle: View {
         .highPriorityGesture(TapGesture().modifiers(.command).onEnded { if enabled { toggle() } })
         .gesture(
             DragGesture(minimumDistance: 3, coordinateSpace: .named("node-canvas"))
+                .updating($isDragging) { _, state, _ in state = true }
                 .onChanged { value in
                     if enabled && node.isEditable {
                         drag(.init(x: value.translation.width, y: value.translation.height))
                     }
                 }
                 .onEnded { value in
-                    if enabled && node.isEditable {
-                        move(.init(x: value.translation.width, y: value.translation.height))
-                    }
+                    move(.init(x: value.translation.width, y: value.translation.height))
                 }
         )
+        .onChange(of: isDragging) { _, active in if !active { cancel() } }
+        .onDisappear { disappear() }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(node.title)
         .accessibilityValue(selected ? "Selected" : "Not selected")
@@ -154,12 +170,6 @@ private struct NodeHandle: View {
         .accessibilityAction { select() }
         .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked, hidden or disabled part")")
     }
-}
-
-private struct SelectionDrag {
-    let anchorID: String
-    let translation: CanvasPoint
-    let revision: Int?
 }
 
 private struct MarqueeSurface: View {
