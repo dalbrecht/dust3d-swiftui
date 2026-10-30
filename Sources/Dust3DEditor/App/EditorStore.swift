@@ -78,6 +78,7 @@ final class EditorStore {
     private(set) var isMovingOrigin = false
     private(set) var originDragPosition: NodePosition?
     private var originDrag: OriginDrag?
+    private var originDragToken: UUID?
     var isWireframe = false
     var cameraReset = 0
     private(set) var referenceImage: CGImage?
@@ -484,13 +485,27 @@ final class EditorStore {
     func cancelOriginDrag() {
         isMovingOrigin = false
         originDrag = nil
+        originDragToken = nil
         originDragPosition = nil
     }
 
-    func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+    func beginOriginDrag(token: UUID, projection: CanvasProjection) {
         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
         do {
-            let baseline = try originDrag ?? OriginDrag(snapshot: snapshot, projection: projection)
+            originDrag = try OriginDrag(snapshot: snapshot, projection: projection)
+            originDragToken = token
+            originDragPosition = nil
+        } catch {
+            cancelOriginDrag()
+            errorMessage = Self.message(error)
+        }
+    }
+
+    func updateOriginDrag(token: UUID, translation: CanvasPoint) {
+        guard isMovingOrigin, !isWorking, !stopped, token == originDragToken,
+            let snapshot, let baseline = originDrag
+        else { return }
+        do {
             guard baseline.isCurrent(in: snapshot) else {
                 cancelOriginDrag()
                 return
@@ -499,7 +514,6 @@ final class EditorStore {
             guard [translation.x, translation.y, position.x, position.y, position.z].allSatisfy(\.isFinite),
                 [position.x, position.y, position.z].allSatisfy({ abs($0) <= 1_000_000 })
             else { throw DocumentError.invalidOrigin }
-            originDrag = baseline
             originDragPosition = position
         } catch {
             cancelOriginDrag()
@@ -507,9 +521,21 @@ final class EditorStore {
         }
     }
 
-    func finishOriginDrag(translation: CanvasPoint) {
-        guard isMovingOrigin, let baseline = originDrag else { return }
+    func finishOriginDrag(token: UUID, translation: CanvasPoint) {
+        guard isMovingOrigin, token == originDragToken, let baseline = originDrag else { return }
         perform { try await $0.commitOriginDrag(baseline, translation: translation) }
+    }
+
+    func cancelOriginDrag(token: UUID) {
+        guard token == originDragToken else { return }
+        cancelOriginDrag()
+    }
+
+    func endOriginClick(token: UUID) {
+        guard token == originDragToken else { return }
+        originDrag = nil
+        originDragToken = nil
+        originDragPosition = nil
     }
 
     func setLock(_ constraint: EditingConstraint, isLocked: Bool) {
