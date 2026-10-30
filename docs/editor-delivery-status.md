@@ -72,6 +72,20 @@ at each admitted level and fractional transitions after releasing archive bytes.
 This establishes one synthetic mixed-archive case, not GPU sampling, production
 documents, general topology or full material parity.
 
+One experimental app test subsequently passed against clean local core
+`3b7f4302`, using app `fcf46d5a` plus a saved test-only patch. It uses the same
+tiny owned fixture, explicitly requests mips, verifies retained Swift bytes after
+a second load, compares every uploaded color mip with those bytes, and renders
+both source colors in disjoint projected regions through the default production
+Metal builder/encoder. The linked XCTest image matched all 334 identity bytes
+(app dirty test-only digest `6da537349d5f7d5cd33c9e24b8ff6554f2d28063630aa2be1f8e6cef3de1f501`).
+The single test ran without a skip; original manifest/resolved bytes stayed
+unchanged and the core remained clean. Solid chart colors cannot distinguish
+which mip the GPU selected, so this does not prove actual nonzero LOD selection.
+It is not a pinned gate, production-policy change or full #180 acceptance. The
+test patch and log remain in the local recovery checkpoint for later reviewed
+dependency adoption.
+
 Hollow thickness (#96) remains incomplete. Historical builder evidence establishes
 an inward shell and terminal rims, including collapsed inner geometry at thickness
 one; it does not establish compatibility with the current position-keyed UV/source
