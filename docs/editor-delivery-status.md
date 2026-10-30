@@ -79,6 +79,16 @@ historical process/signal tests rerun as current acceptance. The pinned original
 OBJ bridge rejects imported models; a procedural-only CLI would not complete the
 issue's imported/mixed requirement.
 
+Core #63 now has a separate local indexed-mesh formatter at `e9c869cf`, based on
+core master `a4a23b37`. Its additive API consumes an existing immutable indexed
+owner and emits positions, normals and one-based triangle faces, with independent
+owned output, checked retained quota and cooperative cancellation. The existing
+original-double polygon exporter is unchanged. Five source-audited Debug
+contracts passed, including a procedural Capsule round-trip and C ABI check;
+the pure formatter contract also passed fresh ASan/UBSan. This does not enable
+archive import or update the Apple SDK/pin. Source-aware SDK adoption, imported
+archive generation and headless export acceptance remain separate work.
+
 The independent gesture delivery branch at `f558b4f4` contains the same gesture
 source as combined `010a1ed7`, without the unrelated mip/warning or local-core
 tooling changes. Its full `make ci` passed 45 build-support and 1,126 XCTest
