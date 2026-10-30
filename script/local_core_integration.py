@@ -74,9 +74,29 @@ def indexed_gitlinks(root):
     return result
 
 
+def verify_no_input_symlinks(root, names=None):
+    if names is None:
+        names = build_identity.git(root, 'ls-files', '--cached', '--others', '--exclude-standard', '-z').split(b'\0')
+    for name in set(names) - {b''}:
+        relative = Path(os.fsdecode(name))
+        current = root
+        for component in relative.parts:
+            current = current / component
+            if current.is_symlink():
+                raise ValueError(f'Input symlink is unsupported: {relative}')
+
+
+def verify_core_inputs(root):
+    verify_no_input_symlinks(root)
+    ignored = build_identity.git(root, 'ls-files', '--others', '--ignored', '--exclude-standard', '-z').split(b'\0')
+    if any(ignored):
+        raise ValueError('Local core checkout contains ignored files; use a clean dedicated checkout')
+
+
 def copy_source(root, destination, gitlinks):
-    destination.mkdir()
     names = build_identity.git(root, 'ls-files', '--cached', '--others', '--exclude-standard', '-z').split(b'\0')
+    verify_no_input_symlinks(root, names)
+    destination.mkdir()
     for name in sorted(set(names) - {b''}):
         relative = Path(os.fsdecode(name))
         source = root / relative
@@ -85,14 +105,6 @@ def copy_source(root, destination, gitlinks):
             if source.is_symlink() or (source.exists() and not source.is_dir()):
                 raise ValueError(f'Invalid gitlink: {relative}')
             target.mkdir(parents=True, exist_ok=True)
-        elif source.is_symlink():
-            if os.path.isabs(os.readlink(source)):
-                raise ValueError(f'Absolute source symlink is unsupported: {relative}')
-            resolved = source.resolve()
-            if not resolved.is_relative_to(root):
-                raise ValueError(f'Source symlink escapes checkout: {relative}')
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.symlink_to(os.readlink(source))
         elif source.is_file():
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
@@ -161,6 +173,7 @@ def run(app, core, root, arguments):
     app, core, root = app.resolve(), core.resolve(), root.resolve()
     if root.is_relative_to(app) or root.is_relative_to(core) or app.is_relative_to(root) or core.is_relative_to(root):
         raise ValueError('Build root and source trees must be disjoint')
+    verify_core_inputs(core)
     before_app, before_core = identity(app), identity(core)
     root.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix='local-core-', dir=root))
@@ -170,6 +183,7 @@ def run(app, core, root, arguments):
     copy_source(app, snapshot_app, gitlinks)
     names = set(build_identity.git(app, 'ls-files', '--cached', '--others', '--exclude-standard', '-z').split(b'\0')) - {b''}
     verify_snapshot(app, snapshot_app, names, gitlinks)
+    verify_core_inputs(core)
     if identity(app) != before_app or identity(core) != before_core:
         raise ValueError('Source changed while preparing snapshot')
     resolved = snapshot_app / 'Package.resolved'
@@ -200,6 +214,7 @@ def run(app, core, root, arguments):
         verify_snapshot(app, snapshot_app, names, gitlinks)
         if metadata.read_bytes() != metadata_bytes:
             raise ValueError('Build identity changed during SwiftPM execution')
+        verify_core_inputs(core)
         if indexed_gitlinks(app) != gitlinks or identity(app) != before_app or identity(core) != before_core:
             raise ValueError('Source identity changed during SwiftPM execution')
     run_guarded(lambda: swift(*arguments, '--build-system', 'native', *options, '-j',
