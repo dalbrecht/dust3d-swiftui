@@ -29,6 +29,7 @@ struct EditorGeometryExportStatusView: View {
                     }
                     if !receipt.warning.isEmpty {
                         Text("Export warning: \(receipt.warning)").textSelection(.enabled)
+                            .id(receipt.warning)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
