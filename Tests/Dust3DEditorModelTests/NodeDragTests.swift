@@ -179,43 +179,70 @@ final class NodeDragTests: XCTestCase {
 }
 
 extension NodeDragTests {
-    func testGestureResetAndCompletionOrderingAndCancellation() async throws {
+    func testDragDisplayProjectionRemainsFixedWhenFitBoundsChange() async throws {
         let session = EditorSession()
         let snapshot = try await session.open(data: data())
-        let projection = CanvasProjection(bounds: .init(nodes: snapshot.nodes), plane: .front, width: 472, height: 472)
-        for resetFirst in [false, true] {
-            var lifecycle = NodeDragLifecycle()
-            try lifecycle.update(
-                anchorID: "a", snapshot: snapshot, projection: projection, translation: .init(x: 10, y: 10))
-            if resetFirst { lifecycle.gestureBecameInactive() }
-            XCTAssertNotNil(lifecycle.finish())
-            if !resetFirst { lifecycle.gestureBecameInactive() }
-            XCTAssertNil(lifecycle.preview)
-        }
-        var cancelled = NodeDragLifecycle()
-        try cancelled.update(
-            anchorID: "a", snapshot: snapshot, projection: projection, translation: .init(x: 10, y: 10))
-        cancelled.gestureBecameInactive()
-        XCTAssertNil(cancelled.preview)
-        try cancelled.update(
-            anchorID: "b", snapshot: snapshot, projection: projection, translation: .init(x: 20, y: 20))
-        XCTAssertEqual(cancelled.finish()?.anchorID, "b")
+        let original = CanvasProjection(bounds: .init(nodes: snapshot.nodes), plane: .front, width: 472, height: 472)
+        let refitted = CanvasProjection(
+            bounds: .init(nodes: snapshot.nodes, referenceImageAspectRatio: 4), plane: .front, width: 472, height: 472)
+        var lifecycle = NodeDragLifecycle()
+        let token = UUID()
+        try lifecycle.begin(token: token, anchorID: "a", snapshot: snapshot, projection: original)
+        lifecycle.update(token: token, snapshot: snapshot, translation: .init(x: 10, y: 0))
+        let node = try XCTUnwrap(snapshot.nodes.first { $0.id == "a" })
+        XCTAssertNotEqual(original.point(for: node.value.position), refitted.point(for: node.value.position))
+        XCTAssertEqual(
+            lifecycle.displayProjection(fallback: refitted).point(for: node.value.position),
+            original.point(for: node.value.position))
+        lifecycle.cancel(token: token)
+        XCTAssertEqual(
+            lifecycle.displayProjection(fallback: refitted).point(for: node.value.position),
+            refitted.point(for: node.value.position))
     }
 
-    func testInvalidationDoesNotRestartUntilGestureEnds() async throws {
+    func testLateEndAndCancelCannotConsumeOrResetNewGesture() async throws {
+        let session = EditorSession()
+        let snapshot = try await session.open(data: data())
+        let original = CanvasProjection(bounds: .init(nodes: snapshot.nodes), plane: .front, width: 472, height: 472)
+        let different = CanvasProjection(bounds: .init(nodes: snapshot.nodes), plane: .side, width: 472, height: 472)
+        var lifecycle = NodeDragLifecycle()
+        let old = UUID()
+        let current = UUID()
+        try lifecycle.begin(token: old, anchorID: "a", snapshot: snapshot, projection: original)
+        lifecycle.cancel(token: old)
+        try lifecycle.begin(token: current, anchorID: "b", snapshot: snapshot, projection: original)
+        XCTAssertNil(lifecycle.finish(token: old))
+        lifecycle.cancel(token: old)
+        XCTAssertEqual(lifecycle.preview?.baseline.anchorID, "b")
+        XCTAssertEqual(lifecycle.finish(token: current)?.anchorID, "b")
+        let first = UUID()
+        let second = UUID()
+        try lifecycle.begin(token: first, anchorID: "a", snapshot: snapshot, projection: original)
+        lifecycle.cancel(token: first)
+        try lifecycle.begin(token: second, anchorID: "a", snapshot: snapshot, projection: original)
+        lifecycle.cancel(token: first)
+        lifecycle.update(token: second, snapshot: snapshot, translation: .init(x: 30, y: 0))
+        let node = try XCTUnwrap(snapshot.nodes.first { $0.id == "a" })
+        XCTAssertEqual(
+            lifecycle.preview?.baseline.position(by: .init(x: 30, y: 0)),
+            original.moving(node.value.position, by: .init(x: 30, y: 0)))
+        XCTAssertNotEqual(
+            lifecycle.displayProjection(fallback: different).point(for: node.value.position),
+            different.point(for: node.value.position))
+    }
+
+    func testInvalidationDoesNotRestartUntilNewGesture() async throws {
         let session = EditorSession()
         let snapshot = try await session.open(data: data())
         let projection = CanvasProjection(bounds: .init(nodes: snapshot.nodes), plane: .front, width: 472, height: 472)
         var lifecycle = NodeDragLifecycle()
-        try lifecycle.update(
-            anchorID: "a", snapshot: snapshot, projection: projection, translation: .init(x: 10, y: 10))
+        let old = UUID()
+        let fresh = UUID()
+        try lifecycle.begin(token: old, anchorID: "a", snapshot: snapshot, projection: projection)
         lifecycle.invalidate()
-        try lifecycle.update(
-            anchorID: "a", snapshot: snapshot, projection: projection, translation: .init(x: 20, y: 20))
-        XCTAssertNil(lifecycle.finish())
-        lifecycle.gestureBecameInactive()
-        try lifecycle.update(
-            anchorID: "a", snapshot: snapshot, projection: projection, translation: .init(x: 10, y: 10))
-        XCTAssertNotNil(lifecycle.finish())
+        lifecycle.update(token: old, snapshot: snapshot, translation: .init(x: 20, y: 20))
+        XCTAssertNil(lifecycle.finish(token: old))
+        try lifecycle.begin(token: fresh, anchorID: "a", snapshot: snapshot, projection: projection)
+        XCTAssertNotNil(lifecycle.finish(token: fresh))
     }
 }

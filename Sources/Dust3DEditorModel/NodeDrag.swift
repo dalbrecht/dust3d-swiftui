@@ -12,7 +12,8 @@ public struct NodeDrag: Sendable {
     private let selectedPartID: String?
     private let selectedComponentIDs: Set<String>
     private let locks: Set<EditingConstraint>
-    private let projection: CanvasProjection
+    /// The fixed coordinate system captured when the gesture began.
+    public let projection: CanvasProjection
     private let origin: NodePosition
     /// The editable node that anchors the gesture.
     public let anchorID: String
