@@ -39,7 +39,7 @@ The following October 30 results distinguish public delivery from local work:
 | Export warning identity (#235), opt-in owned source mip copying (#179) | Draft [PR #288](https://github.com/dalbrecht/dust3d-swiftui/pull/288), head `5b43ed72`; all three hosted checks succeeded at that head. Ordinary source loads remain base-only. | Review and merge decisions; native warning/VoiceOver acceptance; broader mip integration. |
 | Node drag admission (#245) | Two local commits capture document/revision, selection generation, locks, projection and pointer identity; [verification](node-drag-verification.md). The combined app gate at `8fe106f1` passed 1,124 XCTest cases, coverage, Qt-free linkage and signed bundle rebuild. | Physical pointer routing, held-gesture cancellation and VoiceOver on the final implementation. Local commits are not merged. |
 | Origin drag callback ownership (#45/#245) | Local `010a1ed7` rejects old update/end/cancel callbacks after a new pointer activation. Owned-view tests cover the 44-point target and Escape; clicks retain Move Origin mode. Its full pinned gate passed 60 build-support and 1,130 XCTest cases, coverage, Qt-free linkage and signed bundle rebuild. | Physical event delivery, held-gesture acceptance in the running app and VoiceOver; publication/review. |
-| Local core integration (#178) | [Isolated tooling](local-core-integration.md), local commits `df3c6b48` and `3c23d54c`. Pinned `make ci` passed 1,102 XCTest cases before the final Python-only hardening; all 15 final orchestration tests and the linked-identity executable fixture passed afterward. | Publication/review; this tool does not replace the pinned gate or authorize a dependency update. |
+| Local core integration (#178) | [Isolated tooling](local-core-integration.md), local commits `df3c6b48` and `3c23d54c`. Final pinned `make ci` at `3c23d54c` passed 60 build-support and 1,102 XCTest cases, coverage, Qt-free linkage and signed bundle rebuild. The 15 focused orchestration tests and linked-identity executable fixture also passed. | Publication/review; this tool does not replace the pinned gate or authorize a dependency update. |
 | App/core mip interoperability (#179/core #59) | Local combined app `010a1ed7` and core `e781c631` passed exactly `SourceBakedLoaderTests.testOptInMipBakeCopiesOwnedLevelsAndEnforcesCopyBudget` using the licensed procedural Capsule. The linked XCTest image matched all 335 generated identity bytes, including both revisions and source digests; both inputs were clean and the production manifest/pin stayed unchanged. | Mixed imported/procedural documents, useful mip retention through app state and GPU sampling, export parity, core review and exact dependency update. This single test does not enable #180. |
 
 Core mip corrections through local `83be6278` have five audited synthetic CTest
@@ -72,6 +72,12 @@ source can inform later work, but the checkpoint must not be cherry-picked or it
 historical process/signal tests rerun as current acceptance. The pinned original
 OBJ bridge rejects imported models; a procedural-only CLI would not complete the
 issue's imported/mixed requirement.
+
+The independent gesture delivery branch at `f558b4f4` contains the same gesture
+source as combined `010a1ed7`, without the unrelated mip/warning or local-core
+tooling changes. Its full `make ci` passed 45 build-support and 1,126 XCTest
+cases, coverage, Qt-free linkage and signed bundle rebuild. Both standalone app
+branches are clean and await separate publishing decisions.
 
 ## Milestone evidence and gaps
 
