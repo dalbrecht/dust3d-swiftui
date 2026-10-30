@@ -33,8 +33,8 @@ and core repositories. The estimates remain rough ranges, with no committed due
 dates. A milestone assignment does not mean its acceptance has passed.
 
 The saved [Modeling beta board](https://github.com/users/dalbrecht/projects/5/views/2)
-contains 29 milestone issues across both repositories. Six are marked In Progress:
-Apple #45, #178, #179, #235 and #245, plus core #59. These statuses reflect ongoing
+contains 29 milestone issues across both repositories. Seven are marked In Progress:
+Apple #45, #178, #179, #235 and #245, plus core #59 and #63. These statuses reflect ongoing
 implementation/acceptance; they do not mark the local changes merged or the issues
 complete. The tooling issue #178 was added explicitly after its milestone assignment.
 
