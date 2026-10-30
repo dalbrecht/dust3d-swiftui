@@ -20,6 +20,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case staleComponentMove
     case staleColorImageTarget
     case staleOriginDrag
+    case staleNodeDrag
     case staleExport
     case staleAnimationTarget
 }
@@ -76,6 +77,8 @@ public struct EditorSnapshot: Sendable {
     public let previewIdentity: DocumentPreviewIdentity
     /// Monotonic interaction epoch, including lock toggles that later restore the same values.
     public let constraintRevision: Int
+    /// Monotonic epoch for changes to the transient selection.
+    public let selectionRevision: Int
 
     /// Descendant rotation needs a single editable pivot and an explicit supported origin.
     public var canRotateDescendants: Bool {
@@ -199,6 +202,7 @@ public struct EditorState: Sendable {
     private var locks: Set<EditingConstraint> = []
     private var revision = 0
     private var constraintRevision = 0
+    private var selectionRevision = 0
 
     /// Parse graph metadata. Throws DocumentError for invalid or oversized graphs.
     public init(document: Dust3DDocument) throws {
@@ -220,7 +224,9 @@ public struct EditorState: Sendable {
             selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
-            documentRevision: revision, previewIdentity: history.previewIdentity, constraintRevision: constraintRevision
+            documentRevision: revision, previewIdentity: history.previewIdentity,
+            constraintRevision: constraintRevision,
+            selectionRevision: selectionRevision
         )
     }
 
@@ -233,6 +239,9 @@ public struct EditorState: Sendable {
     public mutating func select(_ ids: Set<String>) throws {
         let existing = Set(contents.nodes.map(\.id))
         if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingNode(missing) }
+        if ids != selectedIDs || selectedEdgeID != nil || selectedPartID != nil || !selectedComponentIDs.isEmpty {
+            selectionRevision += 1
+        }
         selectedIDs = ids
         selectedID = contents.nodes.first { ids.contains($0.id) }?.id
         selectedEdgeID = nil
@@ -243,6 +252,9 @@ public struct EditorState: Sendable {
     /// Inspect an existing edge or clear selection. Invalid IDs throw DocumentError.invalidNode atomically.
     public mutating func selectEdge(_ id: String?) throws {
         if let id, !contents.edges.contains(where: { $0.id == id }) { throw DocumentError.invalidNode }
+        if id != selectedEdgeID || selectedPartID != nil || !selectedComponentIDs.isEmpty || !selectedIDs.isEmpty {
+            selectionRevision += 1
+        }
         selectedEdgeID = id
         selectedPartID = nil
         selectedComponentIDs = []
@@ -253,6 +265,9 @@ public struct EditorState: Sendable {
     /// Inspect an existing part or clear selection. Missing IDs throw DocumentError.missingPart atomically.
     public mutating func selectPart(_ id: String?) throws {
         if let id, !contents.parts.contains(where: { $0.id == id }) { throw DocumentError.missingPart(id) }
+        if id != selectedPartID || selectedEdgeID != nil || !selectedComponentIDs.isEmpty || !selectedIDs.isEmpty {
+            selectionRevision += 1
+        }
         selectedPartID = id
         selectedComponentIDs = []
         selectedEdgeID = nil
@@ -273,6 +288,9 @@ public struct EditorState: Sendable {
     public mutating func selectComponents(_ ids: Set<String>) throws {
         let existing = Set(componentTree.rows.map(\.id))
         if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingComponent(missing) }
+        if ids != selectedComponentIDs || selectedPartID != nil || selectedEdgeID != nil || !selectedIDs.isEmpty {
+            selectionRevision += 1
+        }
         selectedComponentIDs = ids
         selectedPartID = nil
         selectedEdgeID = nil
@@ -307,10 +325,14 @@ public struct EditorState: Sendable {
 
     /// Include all nodes, including read-only nodes for inspection.
     public mutating func selectAll() {
+        let allIDs = Set(contents.nodes.map(\.id))
+        if selectedIDs != allIDs || selectedEdgeID != nil || selectedPartID != nil || !selectedComponentIDs.isEmpty {
+            selectionRevision += 1
+        }
         selectedEdgeID = nil
         selectedPartID = nil
         selectedComponentIDs = []
-        selectedIDs = Set(contents.nodes.map(\.id))
+        selectedIDs = allIDs
         selectedID = contents.nodes.first?.id
     }
 
