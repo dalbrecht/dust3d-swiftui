@@ -1,5 +1,7 @@
+import Darwin
 import Dust3DDocument
 import Foundation
+import os
 
 /// Formats supported by the original-geometry export boundary; no imported/rigged paths implied.
 public enum DocumentExportFormat: String, Sendable { case obj, fbx }
@@ -38,13 +40,33 @@ public enum DocumentExportError: LocalizedError, Sendable, Equatable {
     }
 }
 
+/// Committed output and the actual coordinated destination.
+public struct DocumentExportReceipt: Sendable {
+    public let artifact: DocumentExportArtifact
+    public let destination: URL
+}
+
 /// Off-main export publication, independent of the document's savepoint and undo history.
 public actor DocumentExportFileService {
     private let encoder: any DocumentExportEncoding
+    private let coordinator: any DocumentExportCoordinating
+    private let didCreateStaging: @Sendable (URL) -> Void
     private static let maximumBytes = 256 * 1024 * 1024
 
     /// Inject the reviewed native encoder; no fallback preview-based encoder is installed.
-    public init(encoder: any DocumentExportEncoding) { self.encoder = encoder }
+    public init(encoder: any DocumentExportEncoding) {
+        self.encoder = encoder
+        coordinator = NativeDocumentExportCoordinator()
+        didCreateStaging = { _ in }
+    }
+    init(
+        encoder: any DocumentExportEncoding, coordinator: any DocumentExportCoordinating,
+        didCreateStaging: @escaping @Sendable (URL) -> Void = { _ in }
+    ) {
+        self.encoder = encoder
+        self.coordinator = coordinator
+        self.didCreateStaging = didCreateStaging
+    }
 
     /// Encode a captured current document and atomically replace a distinct output file.
     /// - Parameters:
@@ -64,8 +86,27 @@ public actor DocumentExportFileService {
     public func export(
         _ document: Dust3DDocument, format: DocumentExportFormat, to destination: URL, sourceURL: URL?,
         validateSnapshot: @Sendable () async throws -> Void = {},
-        publish: @Sendable (_ commit: @Sendable () throws -> Void) async throws -> Void = { commit in try commit() }
+        publish: @escaping @Sendable (_ commit: @Sendable () throws -> Void) async throws -> Void = { commit in
+            try commit()
+        }
     ) async throws -> DocumentExportArtifact {
+        try await exportReceipt(
+            document, format: format, to: destination, sourceURL: sourceURL,
+            validateSnapshot: validateSnapshot, publish: publish
+        ).artifact
+    }
+
+    /// Export with the actual URL admitted by file coordination.
+    /// - Parameters: The document, format, paths and publication closures have the same meaning as `export`.
+    /// - Returns: The owned artifact and the coordinated destination after a successful rename.
+    /// - Throws: Admission, cancellation, coordinator, encoding or filesystem errors before commit.
+    public func exportReceipt(
+        _ document: Dust3DDocument, format: DocumentExportFormat, to destination: URL, sourceURL: URL?,
+        validateSnapshot: @Sendable () async throws -> Void = {},
+        publish: @escaping @Sendable (_ commit: @Sendable () throws -> Void) async throws -> Void = { commit in
+            try commit()
+        }
+    ) async throws -> DocumentExportReceipt {
         try Task.checkCancellation()
         let scoped = destination.startAccessingSecurityScopedResource()
         defer { if scoped { destination.stopAccessingSecurityScopedResource() } }
@@ -81,12 +122,42 @@ public actor DocumentExportFileService {
         }
         try await validateSnapshot()
         try Task.checkCancellation()
-        try await publish {
-            try Task.checkCancellation()
-            try Self.validate(destination, format: format, source: sourceURL)
-            try output.bytes.write(to: destination, options: .atomic)
+        let didCreateStaging = self.didCreateStaging
+        let admitted = try await coordinator.coordinate(destination: destination) { admitted, check in
+            try check()
+            let admittedScoped = admitted.startAccessingSecurityScopedResource()
+            defer { if admittedScoped { admitted.stopAccessingSecurityScopedResource() } }
+            try Self.validate(admitted, format: format, source: sourceURL)
+            try check()
+            let staging = try FileManager.default.url(
+                for: .itemReplacementDirectory, in: .userDomainMask,
+                appropriateFor: admitted, create: true)
+            defer {
+                do { try FileManager.default.removeItem(at: staging) } catch {
+                    Logger(subsystem: "org.dust3d.export", category: "cleanup")
+                        .error("Export staging cleanup failed: \(error.localizedDescription, privacy: .private)")
+                }
+            }
+            didCreateStaging(staging)
+            let staged = staging.appendingPathComponent("output." + format.rawValue)
+            try output.bytes.write(to: staged, options: .withoutOverwriting)
+            try check()
+            try await publish {
+                try check()
+                try Self.validate(admitted, format: format, source: sourceURL)
+                try check()
+                try staged.withUnsafeFileSystemRepresentation { source in
+                    try admitted.withUnsafeFileSystemRepresentation { target in
+                        guard let source, let target else { throw DocumentExportError.invalidDestination }
+                        if Darwin.rename(source, target) != 0 {
+                            throw NSError(
+                                domain: NSPOSIXErrorDomain, code: Int(errno), userInfo: [NSURLErrorKey: admitted])
+                        }
+                    }
+                }
+            }
         }
-        return output
+        return DocumentExportReceipt(artifact: output, destination: admitted)
     }
 
     private static func validate(_ destination: URL, format: DocumentExportFormat, source: URL?) throws {

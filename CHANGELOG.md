@@ -10,6 +10,8 @@
 
 - Reject node-canvas drag commits when the document, selection, or interaction locks changed during the gesture, preserving newer edits and undo history (#245).
 
+- Coordinate OBJ and FBX file publication with macOS file presenters, preserving cancellation and source protection (#185).
+
 - Add original procedural FBX export beside OBJ in the editor’s Export menu, with shared source-bound atomic publication, preserved diagnostics and independent Capsule re-import verification (#286).
 
 - Add catalog-backed stored animation creation, type changes, timing/dynamic/surface parameter drafts and explicit defaults, with source-bound atomic Undo/Redo and lossless Save (#283).
