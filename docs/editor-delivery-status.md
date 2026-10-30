@@ -46,6 +46,7 @@ The following October 30 results distinguish public delivery from local work:
 | Node drag admission (#245) | Two local commits capture document/revision, selection generation, locks, projection and pointer identity; [verification](node-drag-verification.md). The combined app gate at `8fe106f1` passed 1,124 XCTest cases, coverage, Qt-free linkage and signed bundle rebuild. | Physical pointer routing, held-gesture cancellation and VoiceOver on the final implementation. Local commits are not merged. |
 | Origin drag callback ownership (#45/#245) | Local `010a1ed7` rejects old update/end/cancel callbacks after a new pointer activation. Owned-view tests cover the 44-point target and Escape; clicks retain Move Origin mode. Its full pinned gate passed 60 build-support and 1,130 XCTest cases, coverage, Qt-free linkage and signed bundle rebuild. | Physical event delivery, held-gesture acceptance in the running app and VoiceOver; publication/review. |
 | Local core integration (#178) | [Isolated tooling](local-core-integration.md), local commits `df3c6b48` and `3c23d54c`. Final pinned `make ci` at `3c23d54c` passed 60 build-support and 1,102 XCTest cases, coverage, Qt-free linkage and signed bundle rebuild. The 15 focused orchestration tests and linked-identity executable fixture also passed. | Publication/review; this tool does not replace the pinned gate or authorize a dependency update. |
+| Coordinated export publication (#185) | Local `c49d6432` passed 27 focused contracts and its full gate (45 build-support, 1,110 XCTest cases). A per-request lease keeps native access active through the session's revision-guarded commit, preserves caller task context, reports the admitted URL, and stages on the destination volume before rename. Healthy held-reader cancellation, independent destinations, stale edit/undo, redirected aliases and late cancellation after commit passed. | Publication/review; live panel interaction, signed sandbox and cloud-provider behavior. |
 | App/core mip interoperability (#179/core #59) | Local combined app `010a1ed7` and core `e781c631` passed exactly `SourceBakedLoaderTests.testOptInMipBakeCopiesOwnedLevelsAndEnforcesCopyBudget` using the licensed procedural Capsule. The linked XCTest image matched all 335 generated identity bytes, including both revisions and source digests; both inputs were clean and the production manifest/pin stayed unchanged. | Mixed imported/procedural documents, useful mip retention through app state and GPU sampling, export parity, core review and exact dependency update. This single test does not enable #180. |
 
 Core mip corrections through local `83be6278` have five audited synthetic CTest
@@ -61,6 +62,15 @@ exception. The native engine build, quarantine source guard and two audited
 synthetic targets passed. Allocation failures retain the limit-exceeded mapping
 by source inspection; no allocation-failure probe was run, and diagnostic
 construction cannot guarantee recovery under actual memory exhaustion.
+
+Local core `3b7f4302` adds one source-audited mixed-source C ABI test on that mip
+branch. It constructs a tiny GLB triangle and a disjoint procedural tube in memory,
+without the inherited archive writer or legacy imported fixtures. The fresh build,
+quarantine guard and single registered target passed. Both source classes retain
+known UVs and positive admitted LOD; independent CPU sampling checks their colors
+at each admitted level and fractional transitions after releasing archive bytes.
+This establishes one synthetic mixed-archive case, not GPU sampling, production
+documents, general topology or full material parity.
 
 Hollow thickness (#96) remains incomplete. Historical builder evidence establishes
 an inward shell and terminal rims, including collapsed inner geometry at thickness
@@ -94,6 +104,17 @@ source as combined `010a1ed7`, without the unrelated mip/warning or local-core
 tooling changes. Its full `make ci` passed 45 build-support and 1,126 XCTest
 cases, coverage, Qt-free linkage and signed bundle rebuild. Both standalone app
 branches are clean and await separate publishing decisions.
+
+The combined local candidate at `fcf46d5a` also includes coordinated exports. Its
+full `make ci` passed 60 build-support and 1,139 XCTest cases, coverage, Qt-free
+linkage and isolated signed bundle rebuild. Measured lines were 3543/3593 for the
+Swift mesh library, 4018/4114 documents, 2138/2153 editor model, 570/570 pure editor
+state, 121/121 undo and 33/33 orbit camera; these do not measure inherited C++ or
+establish physical UI acceptance. Validation used a temporary worktree at the same
+commit, with full source digest `766bd805f9ba18a42b7e928b8701802312b22632d47dbfe318a040fd45961e95`
+matching the durable source. The staged QA bundle's embedded identity matches that
+commit/digest, its local signature verifies, and the reviewed core pin remains
+`48b0ce2d`. The bundle was not launched and no protected QA process was contacted.
 
 ## Milestone evidence and gaps
 
