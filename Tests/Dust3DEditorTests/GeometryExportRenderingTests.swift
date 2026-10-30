@@ -1,3 +1,4 @@
+import AppKit
 import Dust3DKit
 import Foundation
 import SwiftUI
@@ -7,6 +8,54 @@ import XCTest
 
 @MainActor
 final class GeometryExportRenderingTests: XCTestCase {
+    func testAccessibilityReplacesSelectableExportWarning() async throws {
+        _ = NSApplication.shared
+        let receipt = EditorExportReceipt(
+            documentIdentity: UUID(), documentRevision: 7,
+            destination: URL(fileURLWithPath: "/owned/Capsule.obj"),
+            format: .obj, byteCount: 5143, warning: "Geometry only")
+        let secondReceipt = EditorExportReceipt(
+            documentIdentity: UUID(), documentRevision: 8,
+            destination: URL(fileURLWithPath: "/owned/Capsule.fbx"),
+            format: .fbx, byteCount: 5144, warning: "Textures omitted")
+        let host = NSHostingView(
+            rootView: EditorGeometryExportStatusView(
+                phase: .completed(receipt), onCancel: {}, onDismiss: {}))
+        let window = NSWindow(
+            contentRect: NSRect(x: -10000, y: -10000, width: 640, height: 100),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        window.orderBack(nil)
+        defer { window.close() }
+
+        func strings() -> [String] {
+            host.layoutSubtreeIfNeeded()
+            var visited = Set<ObjectIdentifier>()
+            return accessibilityStrings(window, visited: &visited)
+        }
+        for _ in 0..<100 where !strings().contains(where: { $0.contains("Geometry only") }) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(strings().contains(where: { $0.contains("Geometry only") }))
+        host.rootView = EditorGeometryExportStatusView(phase: .completed(secondReceipt), onCancel: {}, onDismiss: {})
+        for _ in 0..<100 where !strings().contains(where: { $0.contains("Textures omitted") }) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let completed = strings()
+        XCTAssertTrue(completed.contains(where: { $0.contains("Textures omitted") }), "\(completed)")
+        XCTAssertFalse(completed.contains(where: { $0.contains("Geometry only") }), "\(completed)")
+    }
+
+    private func accessibilityStrings(_ object: Any, visited: inout Set<ObjectIdentifier>) -> [String] {
+        guard let element = object as? any NSAccessibilityProtocol,
+            visited.count < 512, visited.insert(ObjectIdentifier(element)).inserted
+        else { return [] }
+        let own = [element.accessibilityLabel(), element.accessibilityValue() as? String].compactMap { $0 }
+        let children = (element.accessibilityChildren() ?? []) + ((object as? NSView)?.subviews ?? [])
+        return own + children.flatMap { accessibilityStrings($0, visited: &visited) }
+    }
+
     func testActualFormatMenuAndStatusesRenderOffscreenWithoutPublishing() throws {
         var publications = 0
         let receipt = EditorExportReceipt(

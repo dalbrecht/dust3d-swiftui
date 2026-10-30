@@ -133,14 +133,16 @@ geometry when an optional bake fails. See ADR 0078 and issue #165.
 sampling cap. Checked copying preserves original accessor failures and cancellation,
 charges aggregate copied/native bytes, and shares its image primitive with the
 current source-bake path. Base-only loading rejects positive LOD even if image
-dimensions could support hypothetical mipmaps. Actual native mip accessors and GPU
-adoption await the reviewed core upgrade; see ADR 0085 and #175.
+dimensions could support hypothetical mipmaps. See ADR 0085 and #175.
 
 `SourceBakedMesh.mipmaps` retains immutable optional chains by material role.
 Existing base-only native loading leaves these empty; copied-output root accounting
 includes the actual source-result layout. The shared renderer consumes result-owned
-chains without a caller override. Native count/level binding and generation await
-the reviewed core upgrade; see ADR 0087 and #177.
+chains without a caller override. Set `SourceMeshBakeOptions.maximumMipLevels`
+to 1–14 to opt into native chart-isolated generation and checked owned copies;
+zero preserves the base-only default. The producer can return fewer levels,
+including only the base, when chart isolation cannot be proven. The base maps
+and mip chains share immutable Swift pixel storage. See ADR 0087 and #177.
 
 `DocumentExportFileService(encoder:)` publishes an immutable current document
 snapshot via an injected `DocumentExportEncoding` implementation. For example,
