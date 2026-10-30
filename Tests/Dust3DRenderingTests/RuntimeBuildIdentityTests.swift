@@ -13,6 +13,19 @@ final class RuntimeBuildIdentityTests: XCTestCase {
         XCTAssertEqual(identity.summary, "Modified source tree")
     }
 
+    func testShouldExposeValidatedLocalCoreIdentity() throws {
+        var payload = try XCTUnwrap(JSONSerialization.jsonObject(with: metadata()) as? [String: Any])
+        payload["coreDigest"] = String(repeating: "d", count: 64)
+        payload["coreIsDirty"] = true
+        let identity = try BuildIdentityMetadata(data: JSONSerialization.data(withJSONObject: payload))
+        XCTAssertEqual(identity.coreDigest, String(repeating: "d", count: 64))
+        XCTAssertEqual(identity.coreIsDirty, true)
+        payload["coreDigest"] = "invalid"
+        XCTAssertThrowsError(try BuildIdentityMetadata(data: JSONSerialization.data(withJSONObject: payload)))
+        payload.removeValue(forKey: "coreDigest")
+        XCTAssertThrowsError(try BuildIdentityMetadata(data: JSONSerialization.data(withJSONObject: payload)))
+    }
+
     func testShouldRejectMalformedOversizedAndUnsupportedIdentity() throws {
         for data in [
             Data(), Data("{}".utf8), Data(repeating: 32, count: 4097),
