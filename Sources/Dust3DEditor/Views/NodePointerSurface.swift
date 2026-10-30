@@ -12,6 +12,8 @@ struct NodePointerSurface: NSViewRepresentable {
     let cancel: (UUID) -> Void
     let select: () -> Void
     let toggle: () -> Void
+    var isRectangular = false
+    var clickCancel: ((UUID) -> Void)? = nil
 
     func makeNSView(context: Context) -> NodePointerView { NodePointerView() }
     func updateNSView(_ view: NodePointerView, context: Context) {
@@ -23,6 +25,8 @@ struct NodePointerSurface: NSViewRepresentable {
         view.cancel = cancel
         view.select = select
         view.toggle = toggle
+        view.isRectangular = isRectangular
+        view.clickCancel = clickCancel
     }
 }
 
@@ -35,6 +39,8 @@ final class NodePointerView: NSView {
     var cancel: (UUID) -> Void = { _ in }
     var select: () -> Void = {}
     var toggle: () -> Void = {}
+    var isRectangular = false
+    var clickCancel: ((UUID) -> Void)?
     private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, isCommand: Bool)?
     private weak var previousResponder: NSResponder?
 
@@ -43,6 +49,7 @@ final class NodePointerView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
         guard enabled, bounds.contains(local) else { return nil }
+        if isRectangular { return self }
         let dx = local.x - bounds.midX
         let dy = local.y - bounds.midY
         return dx * dx + dy * dy <= 18 * 18 ? self : nil
@@ -87,7 +94,7 @@ final class NodePointerView: NSView {
         if current.isDragging && canDrag {
             finish(current.token, displacement(from: current.origin, to: event.locationInWindow))
         } else {
-            cancel(current.token)
+            if let clickCancel { clickCancel(current.token) } else { cancel(current.token) }
             if current.isCommand { toggle() } else { select() }
         }
     }

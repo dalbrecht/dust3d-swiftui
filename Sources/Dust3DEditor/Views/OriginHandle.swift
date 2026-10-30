@@ -18,19 +18,17 @@ struct OriginHandle: View {
                 Text(store.isMovingOrigin ? "Move Origin · Esc cancels" : "Origin")
                     .font(.caption2).fixedSize().offset(y: 8).accessibilityHidden(true)
             }
+            .overlay {
+                NodePointerSurface(
+                    enabled: store.isMovingOrigin && !store.isWorking, canDrag: true,
+                    begin: { store.beginOriginDrag(token: $0, projection: projection) },
+                    update: { store.updateOriginDrag(token: $0, translation: $1) },
+                    finish: { store.finishOriginDrag(token: $0, translation: $1) },
+                    cancel: { store.cancelOriginDrag(token: $0) }, select: {}, toggle: {},
+                    isRectangular: true, clickCancel: { store.endOriginClick(token: $0) }
+                )
+            }
             .position(x: point.x, y: point.y)
-            .gesture(
-                DragGesture(minimumDistance: 3, coordinateSpace: .named("node-canvas"))
-                    .onChanged { value in
-                        store.updateOriginDrag(
-                            translation: .init(x: value.translation.width, y: value.translation.height),
-                            projection: projection)
-                    }
-                    .onEnded { value in
-                        store.finishOriginDrag(
-                            translation: .init(x: value.translation.width, y: value.translation.height))
-                    }
-            )
             .allowsHitTesting(store.isMovingOrigin && !store.isWorking)
             .accessibilityLabel("Document origin")
             .accessibilityValue("X \(String(origin.x)), Y \(String(origin.y)), Z \(String(origin.z))")

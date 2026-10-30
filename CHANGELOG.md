@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Bind origin-move callbacks to their pointer gesture so cancelled drags cannot affect a later gesture; Escape prioritizes origin mode over a concurrent export (#45).
+
 - Add opt-in owned source-bake mip copying with bounded levels and aggregate copy quotas; app defaults remain base-only (#179).
 
 - Refresh selectable export-warning accessibility text when the result changes (#235).

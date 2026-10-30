@@ -84,6 +84,25 @@ final class NodePointerViewTests: XCTestCase {
         XCTAssertNil(view.hitTest(.init(x: 38, y: 48)))
     }
 
+    func testRectangularTargetIncludes44PointCornersAndClickHasDistinctCancellation() throws {
+        let parent = NSView(frame: .init(x: 0, y: 0, width: 100, height: 100))
+        let view = NodePointerView(frame: .init(x: 20, y: 30, width: 44, height: 44))
+        parent.addSubview(view)
+        view.enabled = true
+        view.canDrag = true
+        view.isRectangular = true
+        XCTAssertTrue(view.hitTest(.init(x: 20, y: 30)) === view)
+        XCTAssertTrue(view.hitTest(.init(x: 63, y: 73)) === view)
+        var clicks = 0
+        var interruptions = 0
+        view.clickCancel = { _ in clicks += 1 }
+        view.cancel = { _ in interruptions += 1 }
+        view.mouseDown(with: try event(.leftMouseDown, x: 10, y: 10))
+        view.mouseUp(with: try event(.leftMouseUp, x: 10, y: 10))
+        XCTAssertEqual(clicks, 1)
+        XCTAssertEqual(interruptions, 0)
+    }
+
     func testEscapeDuringDragCancelsOnceWithoutFinishing() throws {
         let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
         view.enabled = true
@@ -201,6 +220,45 @@ final class NodePointerViewTests: XCTestCase {
         let moved = try XCTUnwrap(store.snapshot?.nodes.first)
         XCTAssertGreaterThan(moved.value.position.x, node.value.position.x)
         XCTAssertTrue(store.canUndo)
+    }
+
+    func testHostedOriginPointerInvokesDragAndEscapeWithoutTouchingArchive() async throws {
+        let original = Dust3DDocument.emptyArchive()
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: original)
+        for _ in 0..<300 {
+            if !store.isWorking && !store.isLoadingReferenceImage { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let origin = try XCTUnwrap(store.snapshot?.origin)
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 472, height: 472)
+        store.setMovingOrigin(true)
+        let window = NSWindow(
+            contentRect: .init(x: 0, y: 0, width: 472, height: 472),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let host = NSHostingView(rootView: OriginHandle(store: store, origin: origin, projection: projection))
+        host.frame = .init(x: 0, y: 0, width: 472, height: 472)
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        let point = projection.point(for: origin)
+        let start = NSPoint(x: point.x, y: 472 - point.y)
+        let hit = try XCTUnwrap(host.hitTest(start) as? NodePointerView)
+        hit.mouseDown(with: try event(.leftMouseDown, x: start.x, y: start.y))
+        hit.mouseDragged(with: try event(.leftMouseDragged, x: start.x + 40, y: start.y))
+        XCTAssertNotNil(store.originDragPosition)
+        let escape = try XCTUnwrap(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                windowNumber: 0, context: nil, characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}",
+                isARepeat: false, keyCode: 53))
+        hit.keyDown(with: escape)
+        hit.mouseUp(with: try event(.leftMouseUp, x: start.x + 40, y: start.y))
+        XCTAssertFalse(store.isMovingOrigin)
+        XCTAssertNil(store.originDragPosition)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
     }
 }
 
