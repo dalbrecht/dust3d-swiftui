@@ -103,6 +103,44 @@ final class EditorPreviewServiceTests: XCTestCase {
         }
     }
 
+    func testReplacedWaitingPreviewCancelsBeforeActiveGenerationFinishes() async throws {
+        let data = try archive()
+        let result = try await MeshGenerationSession().generateSourcedIndexed(data: data)
+        let worker = SuspendedMeshGenerator(result: result)
+        let service = EditorPreviewService(makeSession: { _ in worker })
+        let scope = UUID()
+        let active = Task { try await service.generate(data, scopeID: scope) }
+        defer { Task { await worker.finishAll() } }
+        for _ in 0..<300 {
+            if await worker.hasStarted { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let started = await worker.hasStarted
+        XCTAssertTrue(started)
+        let probe = PreviewCancellationProbe()
+        let waiting = Task {
+            do {
+                _ = try await service.generate(data, scopeID: scope)
+                probe.completedWithoutCancellation = true
+            } catch is CancellationError {
+                probe.cancelled = true
+            }
+        }
+        // The actor is free while the controlled backend suspends; give submission a turn.
+        try await Task.sleep(for: .milliseconds(30))
+        let newest = Task { try await service.generate(data, scopeID: scope) }
+        for _ in 0..<100 {
+            if probe.cancelled { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(probe.cancelled, "Replaced waiting work must return without waiting for active native generation")
+        XCTAssertFalse(probe.completedWithoutCancellation)
+        await worker.finishAll()
+        _ = try await active.value
+        _ = try await newest.value
+        try await waiting.value
+    }
+
     private func archive() throws -> Data {
         let xml = """
             <canvas originX='.5' originY='.5' originZ='.5'><nodes><node id='{00001000-0000-4000-8000-000000001000}'
@@ -140,11 +178,13 @@ private actor SuspendedMeshGenerator: EditorMeshGenerating {
     let result: SourcedMeshGenerationResult
     private var continuation: CheckedContinuation<SourcedMeshGenerationResult, Never>?
     private(set) var hasStarted = false
+    private var shouldFinishAll = false
     init(result: SourcedMeshGenerationResult) { self.result = result }
     func generateSourcedIndexed(data: Data, maximumPayloadBytes: Int, maximumSourcePayloadBytes: Int) async throws
         -> SourcedMeshGenerationResult
     {
-        await withCheckedContinuation { continuation in
+        if shouldFinishAll { return result }
+        return await withCheckedContinuation { continuation in
             self.continuation = continuation
             hasStarted = true
         }
@@ -153,6 +193,10 @@ private actor SuspendedMeshGenerator: EditorMeshGenerating {
         throw UnexpectedPreviewBackendCall.fallback
     }
     func reset() async throws {}
+    func finishAll() {
+        shouldFinishAll = true
+        finish()
+    }
     func finish() {
         continuation?.resume(returning: result)
         continuation = nil
@@ -160,3 +204,9 @@ private actor SuspendedMeshGenerator: EditorMeshGenerating {
 }
 
 private enum UnexpectedPreviewBackendCall: Error { case fallback }
+
+@MainActor
+private final class PreviewCancellationProbe {
+    var cancelled = false
+    var completedWithoutCancellation = false
+}
