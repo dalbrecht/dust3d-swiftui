@@ -62,6 +62,17 @@ one; it does not establish compatibility with the current position-keyed UV/sour
 pipeline. The policy for unrepresentable inner geometry remains a user decision.
 No working hollow control or production dependency change has been introduced.
 
+Headless source-aware OBJ (#186) also remains dependent on the core export
+contract. Historical app checkpoint `72a2a174` is recoverable in the original
+checkout, but is not an implementation at the current pin: its exporter rebuilds
+indexed float geometry through the imported-surface path, and its file writer
+predates current source-alias protections. Its manifest pins `41af7d4c`; its ADR
+records testing with a different local core (`5eb6db7a`). Parser and process-boundary
+source can inform later work, but the checkpoint must not be cherry-picked or its
+historical process/signal tests rerun as current acceptance. The pinned original
+OBJ bridge rejects imported models; a procedural-only CLI would not complete the
+issue's imported/mixed requirement.
+
 ## Milestone evidence and gaps
 
 | Milestone | Evidence established | Acceptance still open |
