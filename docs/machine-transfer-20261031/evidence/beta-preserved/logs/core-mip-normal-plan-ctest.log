@@ -1,0 +1,15 @@
+Test project /private/tmp/dust3d-core-mip-mapping-build
+    Start  20: source_mip_padded_atlas_contracts
+1/5 Test  #20: source_mip_padded_atlas_contracts .....   Passed    0.57 sec
+    Start  21: source_mip_warning_contracts
+2/5 Test  #21: source_mip_warning_contracts ..........   Passed    0.33 sec
+    Start  22: source_mip_fallback_contracts
+3/5 Test  #22: source_mip_fallback_contracts .........   Passed    0.01 sec
+    Start  23: source_mip_base_isolation_contracts
+4/5 Test  #23: source_mip_base_isolation_contracts ...   Passed    0.29 sec
+    Start 171: source_mip_uv_packing_contracts
+5/5 Test #171: source_mip_uv_packing_contracts .......   Passed    0.01 sec
+
+100% tests passed out of 5
+
+Total Test time (real) =   1.21 sec

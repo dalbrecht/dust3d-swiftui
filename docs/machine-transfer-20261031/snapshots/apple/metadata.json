@@ -1,0 +1,9 @@
+{
+  "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/apple",
+  "head": "2d24e720f2dade64d70c4b2defa3b0d2cd0a7c40",
+  "branch": "codex/editor-obj-export",
+  "untracked": [
+    "Tests/Dust3DKitTests/NativeOBJExportEncoderTests.swift"
+  ],
+  "patch_bytes": 0
+}

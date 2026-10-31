@@ -1,0 +1,9 @@
+{
+  "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple",
+  "head": "bf33b8d335f90a04af748822772444842ea3a2b3",
+  "untracked": [
+    ".codex/config.toml",
+    ".codex/hooks.json"
+  ],
+  "note": "Tracked diff saved; some status reads timed out. Original preview-test stash is separately checkpointed."
+}

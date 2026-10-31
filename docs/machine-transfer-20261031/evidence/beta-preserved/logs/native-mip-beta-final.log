@@ -1,0 +1,628 @@
+Isolated build: /private/tmp/dust3d-native-mip-acceptance/local-core-58pie6q5
+Fetching https://github.com/dalbrecht/dust3d-core.git
+[1/37932] Fetching dust3d-core
+Fetched https://github.com/dalbrecht/dust3d-core.git (5.04s)
+Creating working copy for https://github.com/dalbrecht/dust3d-core.git
+Working copy of https://github.com/dalbrecht/dust3d-core.git resolved at 48b0ce2d6d61cf58731bb0c3e14ef5965a686d68
+Building for debugging...
+[0/223] /private/tmp/dust3d-native-mip-acceptance/local-core-58pie6q5/build/arm64-apple-macosx/debug/Dust3DNativePackageTests.derived/runner.swift
+[1/223] Write sources
+[8/223] Write swift-version--58304C5D6DBC2206.txt
+[9/223] Compiling WorkerReplyBridge.cc
+[10/223] Compiling WorkerSessionBridge.cc
+[10/223] Compiling WorkerRequestBridge.cc
+[10/223] Compiling WorkerResourcesBridge.cc
+[10/223] Compiling WorkerResourcesUnixBridge.cc
+[14/223] Compiling WorkerRuntimeBridge.cc
+[15/223] Compiling WorkerSessionOutputBridge.cc
+[16/223] Compiling WorkerImageDecoder.cc
+[17/223] Compiling WorkerImportedDecodedBridge.cc
+[18/223] Compiling WorkerPreviewArchiveBridge.cc
+[19/223] Compiling WorkerPreviewSessionBridge.cc
+[20/223] Compiling WorkerBakedDecodedBridge.cc
+[21/223] Compiling TriangleIntersection tri_tri_intersect.c
+[22/223] Compiling WorkerQueueBridge.cc
+[23/223] Compiling WorkerDecodedBridge.cc
+[24/223] Compiling WorkerUvMesh.cc
+[25/223] Compiling WorkerUvRequest.cc
+[26/223] Compiling WorkerUnixResources.cc
+[27/223] Compiling WorkerUvOperation.cc
+[28/223] Compiling WorkerSourcedMesh.cc
+[29/223] Compiling WorkerSourceRequest.cc
+[30/223] Compiling WorkerUv.cc
+[31/223] Compiling WorkerSourceProducer.cc
+[32/223] Compiling WorkerSourceProducerNative.cc
+[33/223] Compiling WorkerSourceHintValidation.cc
+[34/223] Compiling WorkerSourceHints.cc
+[35/223] Compiling WorkerSourceOperation.cc
+[36/223] Compiling WorkerSourceBakeRequest.cc
+[37/223] Compiling WorkerSourceBakedCopy.cc
+[38/223] Compiling WorkerSourceBaked.cc
+[39/223] Compiling WorkerSessionOutputValidation.cc
+[40/223] Compiling WorkerSourceBakeOperation.cc
+[41/223] Compiling WorkerResources.cc
+[42/223] Compiling WorkerSessionOutput.cc
+[43/223] Compiling WorkerResourceSetup.cc
+[44/223] Compiling WorkerSessionOperation.cc
+[45/223] Compiling WorkerSessionOutputCopy.cc
+[46/223] Compiling WorkerResourceLaunch.cc
+[47/223] Compiling WorkerReplyCollector.cc
+[48/223] Compiling WorkerProtocol.cc
+[49/223] Compiling WorkerQueue.cc
+[50/223] Compiling WorkerPreviewSourceCopy.cc
+[51/223] Compiling WorkerPreviewSessionIO.cc
+[52/223] Compiling WorkerProceduralImages.cc
+[53/223] Compiling WorkerProceduralImagesNative.cc
+[54/223] Compiling WorkerPreviewSession.cc
+[55/223] Compiling WorkerPreviewRange.cc
+[56/223] Compiling WorkerPreviewFailure.cc
+[57/223] Compiling WorkerPreviewChunkStream.cc
+[58/223] Compiling WorkerPreviewChunk.cc
+[59/223] Compiling WorkerPreviewArchive.cc
+[60/223] Compiling WorkerPreviewArchiveIO.cc
+[61/223] Compiling WorkerOperation.cc
+[62/223] Compiling WorkerMeshCopyInspection.cc
+[63/223] Compiling WorkerMesh.cc
+[64/223] Compiling WorkerLegacyRequest.cc
+[65/223] Compiling WorkerNativeSession.cc
+[66/223] Compiling WorkerLegacyProducer.cc
+[67/223] Compiling WorkerLegacyProducerNative.cc
+[68/223] Compiling WorkerLegacyBakedCopy.cc
+[69/223] Compiling WorkerLegacyOperation.cc
+[70/223] Compiling WorkerIndexedSources.cc
+[71/223] Compiling WorkerLegacyBaked.cc
+[72/223] Compiling WorkerJobIO.cc
+[73/223] Compiling WorkerIndexedCopyBudget.cc
+[74/223] Compiling WorkerIndexedMesh.cc
+[75/223] Compiling WorkerIndexedSourceOperation.cc
+[76/223] Compiling WorkerImportedSurfaceCopy.cc
+[77/223] Compiling WorkerImportedRequest.cc
+[78/223] Compiling WorkerImportedSurface.cc
+[79/223] Compiling WorkerImportedProducerNative.cc
+[80/223] Compiling WorkerImportedRender.cc
+[81/223] Compiling WorkerImportedMaterialsCopy.cc
+[82/223] Compiling WorkerImportedOperation.cc
+[83/223] Compiling WorkerImportedProducer.cc
+[84/223] Write Dust3DViewer-entitlement.plist
+[84/223] Write Dust3DThumbnailExtension-entitlement.plist
+[84/223] Write Dust3DQuickLookExtension-entitlement.plist
+[87/223] Copying Shaders.metal
+[88/223] Copying Fixtures
+[88/223] Write sources
+[91/223] Compiling WorkerGenerationStatisticsCopy.cc
+[92/223] Compiling WorkerGenerationStatistics.cc
+[93/223] Compiling WorkerFailure.cc
+[94/223] Compiling WorkerImportedMaterials.cc
+[95/223] Compiling WorkerConnectionSession.cc
+[96/223] Compiling WorkerBakedTextures.cc
+[97/223] Compiling WorkerAdmission.cc
+[98/223] Compiling Dust3DEngine RigTransformValidation.cc
+[99/223] Compiling Dust3DEngine RetainedPayload.cc
+[100/223] Compiling Dust3DEngine SnapshotValidator.cc
+[101/223] Compiling Dust3DEngine SnapshotInvalidation.cc
+[102/223] Compiling Dust3DEngine UvMetadata.cc
+[103/223] Compiling Dust3DEngine SourceProvenance.cc
+[104/223] Compiling Dust3DEngine PngEncoding.cc
+[105/223] Compiling Dust3DEngine ObjGeometryPlan.cc
+[106/223] Compiling Dust3DEngine IndexedMesh.cc
+[107/223] Compiling Dust3DEngine ObjExportBridge.cc
+[108/223] Compiling Dust3DEngine ObjDocument.cc
+[109/223] Compiling Dust3DEngine SourceBakedMesh.cc
+[110/223] Compiling Dust3DEngine FbxPropertyBlock.cc
+[111/223] Compiling Dust3DEngine ImportedModels.cc
+[112/223] Compiling Dust3DEngine ImportedSurface.cc
+[113/223] Compiling Dust3DEngine ImportedAssets.cc
+[114/223] Compiling Dust3DEngine FbxNode.cc
+[115/223] Compiling Dust3DEngine FbxMeshScenePlan.cc
+[116/223] Compiling Dust3DEngine FbxMaterialImagePlan.cc
+[117/223] Compiling Dust3DEngine FbxDocument.cc
+[118/223] Compiling Dust3DEngine GenerationSession.cc
+[119/223] Compiling Dust3DEngine FbxMeshScene.cc
+[120/223] Compiling Dust3DEngine FbxBakedMaterial.cc
+[121/223] Compiling Dust3DEngine EngineSupport.cc
+In file included from /Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/native/Engine/GlbReader.cc:7:
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/third_party/json/json.hpp:17287:35: warning: identifier '_json' preceded by whitespace in a literal operator declaration is deprecated [-Wdeprecated-literal-operator]
+ 17287 | inline nlohmann::json operator "" _json(const char* s, std::size_t n)
+       |                       ~~~~~~~~~~~~^~~~~
+       |                       operator""_json
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/third_party/json/json.hpp:17305:49: warning: identifier '_json_pointer' preceded by whitespace in a literal operator declaration is deprecated [-Wdeprecated-literal-operator]
+ 17305 | inline nlohmann::json::json_pointer operator "" _json_pointer(const char* s, std::size_t n)
+       |                                     ~~~~~~~~~~~~^~~~~~~~~~~~~
+       |                                     operator""_json_pointer
+2 warnings generated.
+[122/223] Compiling Dust3DEngine GlbReader.cc
+[123/223] Compiling Dust3DEngine FbxGeometrySelection.cc
+[124/223] Compiling Dust3DEngine FbxAnimationMath.cc
+[124/223] Write sources
+[129/223] Write Dust3DEditor-entitlement.plist
+[129/223] Write sources
+[132/223] Compiling Dust3DEngine FbxExportBridge.cc
+[133/259] Compiling Dust3DEngine FbxAtlasGeometry.cc
+[134/259] Compiling Dust3DEngine Cancellation.cc
+[135/259] Compiling Dust3DEngine AnimationCatalogBridge.cc
+[136/259] Compiling uv_map_packer.cc
+[137/259] Compiling Dust3DEngine DocumentReader.cc
+[138/259] Compiling Dust3DEngine Dust3DBridge.cc
+[139/259] Compiling surface_pattern.cc
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/dust3d/uv/max_rectangles.cc:123:30: warning: implicit truncation from 'int' to a one-bit wide bit-field changes value from 1 to -1 [-Wsingle-bit-bitfield-constant-conversion]
+  123 |         rect->inFreeRectLink = 1;
+      |                              ^ ~
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/dust3d/uv/max_rectangles.cc:132:30: warning: implicit truncation from 'int' to a one-bit wide bit-field changes value from 1 to -1 [-Wsingle-bit-bitfield-constant-conversion]
+  132 |         rect->inUsedRectLink = 1;
+      |                              ^ ~
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/dust3d/uv/max_rectangles.cc:139:31: warning: implicit truncation from 'int' to a one-bit wide bit-field changes value from 1 to -1 [-Wsingle-bit-bitfield-constant-conversion]
+  139 |         rect->inInputRectLink = 1;
+      |                               ^ ~
+3 warnings generated.
+[140/259] Compiling max_rectangles.cc
+[141/259] Compiling Dust3DEngine BakedMesh.cc
+[142/259] Compiling uv_atlas_builder.cc
+[143/259] Compiling texture_baker.cc
+[144/259] Compiling chart_packer.cc
+[145/259] Compiling source_uv_atlas.cc
+[146/259] Compiling color_texture_sampler.cc
+[147/259] Compiling source_texture_baker.cc
+[148/259] Compiling trim_vertices.cc
+[150/259] Emitting module Dust3DDocument
+[150/263] Compiling triangulate.cc
+[151/263] Compiling tube_mesh_builder.cc
+[152/263] Compiling cloth_folds.cc
+[153/263] Compiling stitch_mesh_builder.cc
+[154/263] Compiling solid_mesh.cc
+[155/263] Compiling smooth_normal.cc
+[156/263] Compiling rig_generator.cc
+[158/263] Compiling Dust3DDocument EdgeBoneBinding.swift
+[159/263] Compiling Dust3DDocument EmptyPartCleanup.swift
+[160/263] Compiling Dust3DDocument EngineScalar.swift
+[161/263] Compiling Dust3DDocument JPEGContainerMetadata.swift
+[162/263] Compiling Dust3DDocument NodeClipboard.swift
+[163/263] Compiling Dust3DDocument AnimationAuthoringCatalog.swift
+[164/263] Compiling Dust3DDocument AnimationControlDefinition.swift
+[165/263] Compiling Dust3DDocument AnimationMetadata.swift
+[166/263] Compiling Dust3DDocument BoneNameIdentity.swift
+[167/263] Compiling Dust3DDocument ComponentColor.swift
+[168/263] Compiling Dust3DDocument PartMaterial.swift
+[169/263] Compiling Dust3DDocument PartModifiers.swift
+[170/263] Compiling Dust3DDocument PartSplitting.swift
+[171/263] Compiling Dust3DDocument PartTarget.swift
+[172/263] Compiling Dust3DDocument ComponentColorImage.swift
+[173/263] Compiling Dust3DDocument ComponentColorImageXML.swift
+[174/263] Compiling Dust3DDocument ComponentColorXML.swift
+[175/263] Compiling Dust3DDocument ComponentCombination.swift
+[176/263] Compiling Dust3DDocument ComponentReordering.swift
+[177/263] Compiling Dust3DDocument ComponentSmoothing.swift
+[178/263] Compiling Dust3DDocument ComponentStitching.swift
+[179/263] Compiling Dust3DDocument ComponentStructure.swift
+[180/263] Compiling Dust3DDocument ComponentWrapping.swift
+[181/263] Compiling Dust3DDocument CutFaceLinks.swift
+[182/263] Compiling Dust3DDocument DocumentAnimation.swift
+[183/263] Compiling Dust3DDocument DocumentColorImageAsset.swift
+[184/263] Compiling Dust3DDocument DocumentComponent.swift
+[185/263] Compiling Dust3DDocument DocumentFileService.swift
+[186/263] Compiling Dust3DDocument DocumentHistory.swift
+[187/263] Compiling Dust3DDocument PNGContainerMetadata.swift
+[188/263] Compiling Dust3DDocument PartCutFace.swift
+[189/263] Compiling Dust3DDocument PartDeformation.swift
+[190/263] Compiling Dust3DDocument PartJoining.swift
+[191/263] Compiling Dust3DDocument PartLoopInterior.swift
+[191/263] Compiling section_remesher.cc
+[192/263] Compiling solid_mesh_boolean_operation.cc
+[193/263] Compiling rope_mesh.cc
+[195/263] Compiling Dust3DDocument DocumentPart.swift
+[196/263] Compiling Dust3DDocument DocumentRigSettings.swift
+[197/263] Compiling Dust3DDocument DocumentTextureImages.swift
+[198/263] Compiling Dust3DDocument DocumentXML.swift
+[199/263] Compiling Dust3DDocument Dust3DDocument.swift
+[199/263] Compiling stitch_loop_mesh_builder.cc
+[200/304] Compiling resolve_triangle_tangent.cc
+[201/304] Compiling retained_payload.cc
+[202/332] Compiling wrap_mesh_builder.cc
+[204/367] Compiling Dust3DDocumentTests JPEGContainerMetadataTests.swift
+[205/367] Compiling Dust3DDocumentTests LegacySurfaceMetadataTests.swift
+[206/367] Compiling Dust3DDocumentTests NamespaceTransferTests.swift
+[207/367] Compiling Dust3DDocumentTests NodeClipboardTests.swift
+[208/370] Compiling Dust3DDocumentTests DocumentTests.swift
+[209/370] Compiling Dust3DDocumentTests EdgeBoneBindingTests.swift
+[210/370] Compiling Dust3DDocumentTests EmptyPartCleanupTests.swift
+[211/370] Emitting module Dust3DEditorModel
+[212/370] Compiling Dust3DDocumentTests ColorImageInventoryTests.swift
+[213/370] Compiling Dust3DDocumentTests PartSplittingTests.swift
+[214/370] Compiling Dust3DDocumentTests PartStateTests.swift
+[215/370] Compiling Dust3DDocumentTests PartTargetTests.swift
+[215/370] Compiling re_triangulator.cc
+[217/370] Compiling Dust3DDocumentTests ComponentCombinationTests.swift
+[218/370] Compiling Dust3DDocumentTests ComponentHierarchyTests.swift
+[219/370] Compiling Dust3DDocumentTests ComponentOrderTests.swift
+[220/370] Compiling Dust3DDocumentTests DocumentRigSettingsTests.swift
+[221/370] Compiling Dust3DDocumentTests AnimationAuthoringCatalogTests.swift
+[222/370] Compiling Dust3DDocumentTests AnimationControlDefinitionTests.swift
+[223/370] Compiling Dust3DDocumentTests AnimationDocumentTests.swift
+[224/370] Compiling Dust3DDocumentTests ClipboardPartitionTests.swift
+[224/370] Compiling mesh_state.cc
+[226/370] Compiling Dust3DDocumentTests ComponentWrappingTests.swift
+[227/370] Compiling Dust3DDocumentTests DocumentOriginTests.swift
+[228/370] Compiling Dust3DDocumentTests ComponentColorImageTests.swift
+[229/370] Compiling Dust3DDocumentTests ComponentColorTests.swift
+[230/370] Compiling Dust3DEditorModel ReferenceCompositionTarget.swift
+[231/370] Compiling Dust3DEditorModel ReferenceCropProjection.swift
+[232/370] Compiling Dust3DEditorModel SelectionTransform.swift
+[232/370] Compiling mesh_recombiner.cc
+[233/370] Compiling mesh_combiner.cc
+[235/370] Compiling Dust3DDocumentTests PreviewSourceHistoryTests.swift
+[236/370] Compiling Dust3DDocumentTests ComponentSmoothingTests.swift
+[237/370] Compiling Dust3DDocumentTests ComponentStitchingTests.swift
+[238/370] Compiling Dust3DDocumentTests ComponentStructureTests.swift
+[238/370] Compiling hole_stitcher.cc
+[240/420] Compiling Dust3DEditorModelTests EmptyPartSessionTests.swift
+[241/420] Compiling Dust3DEditorModelTests GraphTransformTests.swift
+[242/420] Compiling Dust3DEditorModelTests JoiningAvailabilityTests.swift
+[243/420] Compiling Dust3DEditorModelTests MeshPreviewStateTests.swift
+[244/420] Compiling Dust3DEditorModelTests NodeDragTests.swift
+[245/420] Compiling Dust3DEditorModelTests OriginDragTests.swift
+[246/420] Compiling Dust3DEditorModelTests OriginEditorTests.swift
+[247/420] Compiling Dust3DEditorModelTests OriginProjectionTests.swift
+[248/420] Compiling Dust3DEditorModelTests AnimationAuthoringSessionTests.swift
+[249/420] Compiling Dust3DEditorModelTests AnimationEditTargetTests.swift
+[250/420] Compiling Dust3DEditorModelTests AnimationParameterDraftTests.swift
+[251/420] Compiling Dust3DEditorModelTests AnimationSessionTests.swift
+[251/425] Compiling centripetal_catmull_rom_spline.cc
+[252/425] Compiling hole_wrapper.cc
+[253/425] Compiling base_normal.cc
+[254/425] Compiling vector3.cc
+[255/425] Compiling texture_type.cc
+[257/425] Emitting module Dust3DKit
+[258/425] Compiling Dust3DEditorModelTests ComponentColorDraftTests.swift
+[259/425] Compiling Dust3DEditorModelTests ComponentColorImagePresentationTests.swift
+[260/425] Compiling Dust3DEditorModelTests ComponentColorImageSessionTests.swift
+[261/425] Compiling Dust3DEditorModelTests ComponentCombinationSessionTests.swift
+[262/425] Compiling Dust3DEditorModelTests ComponentOrderSessionTests.swift
+[263/425] Compiling Dust3DEditorModelTests ComponentTreeTests.swift
+[264/425] Compiling Dust3DEditorModelTests ComponentWrappingPresentationTests.swift
+[265/425] Compiling Dust3DEditorModelTests ComponentWrappingSessionTests.swift
+[266/425] Compiling Dust3DEditorModelTests DescendantRotationTests.swift
+[267/425] Compiling Dust3DEditorModelTests PartTargetPreviewTests.swift
+[268/425] Compiling Dust3DEditorModelTests PreviewEmptyDescriptionTests.swift
+[269/425] Compiling Dust3DEditorModelTests QtClipboardPayloadTests.swift
+[270/425] Compiling Dust3DEditorModelTests QtClipboardSessionTests.swift
+[271/425] Compiling Dust3DEditorModelTests RecoveryCopyPlanTests.swift
+[272/425] Compiling Dust3DEditorModelTests ReferenceCompositionCommitTests.swift
+[273/425] Compiling Dust3DEditorModelTests ReferenceCompositionTests.swift
+[274/425] Compiling Dust3DEditorModelTests AnimationTimelineTests.swift
+[275/425] Compiling Dust3DEditorModelTests ClipboardPayloadTests.swift
+[276/425] Compiling Dust3DEditorModelTests ClipboardSessionTests.swift
+[277/425] Compiling Dust3DEditorModelTests ComponentSessionTests.swift
+[278/425] Compiling Dust3DEditorModelTests ComponentSmoothingSessionTests.swift
+[279/425] Compiling Dust3DEditorModelTests ComponentStructureSessionTests.swift
+[280/425] Compiling Dust3DEditorModelTests EdgeBoneBindingSessionTests.swift
+[281/425] Compiling Dust3DEditorModelTests EdgeSelectionTests.swift
+[282/425] Compiling Dust3DEditorModelTests EditorConstraintsTests.swift
+[283/425] Compiling Dust3DEditorModelTests EditorExportTargetTests.swift
+[284/425] Compiling Dust3DEditorModelTests EditorSelectionTests.swift
+[285/425] Compiling Dust3DEditorModelTests EditorStateTests.swift
+[285/425] Compiling uuid.cc
+[287/425] Compiling Dust3DKit SourceMeshBakeInput.swift
+[288/425] Compiling Dust3DKit SourceMeshBakingService.swift
+[289/425] Compiling Dust3DKit TextureMipChain.swift
+[290/425] Compiling Dust3DKit TextureMipChainCopy.swift
+[291/425] Compiling Dust3DKit WorkerRequestEncoder.swift
+[291/425] Compiling string.cc
+[292/451] Compiling snapshot_xml_writer.cc
+[293/492] Compiling retained_payload.cc
+[294/492] Compiling position_key.cc
+[295/492] Compiling snapshot_xml.cc
+[296/492] Compiling part_target.cc
+[297/492] Compiling combine_mode.cc
+[298/492] Compiling mesh_generator.cc
+[299/492] Compiling cut_face.cc
+[300/492] Compiling spring_step_admission.cc
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/dust3d/base/ds3_file.cc:186:40: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  186 |     int firstLineSizeExcludeSizeSelf = sprintf(firstLine, "%s %s %s ",
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/dust3d/base/ds3_file.cc:192:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  192 |     sprintf(headerSizeString, "%010u\r\n", headerSize);
+      |     ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/dust3d/base/ds3_file.cc:210:40: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  210 |     int firstLineSizeExcludeSizeSelf = sprintf(firstLine, "%s %s %s ",
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mip-retry/dust3d/base/ds3_file.cc:216:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  216 |     sprintf(headerSizeString, "%010u\r\n", headerSize);
+      |     ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+4 warnings generated.
+[301/492] Compiling ds3_file.cc
+[302/492] Compiling surface_material.cc
+[303/492] Compiling axis_aligned_bounding_box_tree.cc
+[304/492] Compiling clip_metadata.cc
+[305/492] Compiling animation_defaults.cc
+[306/492] Compiling parameter_catalog.cc
+[308/492] Emitting module Dust3DRendering
+[308/495] Compiling animation_catalog.cc
+[310/495] Compiling Dust3DKitTests NativeOBJExportIntegrationTests.swift
+[311/495] Compiling Dust3DKitTests ImportedSurfaceLoaderTests.swift
+[312/495] Compiling Dust3DKitTests IndexedMeshLoaderTests.swift
+[313/495] Compiling Dust3DKitTests MaterialPreviewWarningTests.swift
+[314/495] Emitting module Dust3DKitTests
+[314/500] Compiling isotropicremesher.cpp
+[316/500] Compiling Dust3DRendering TexturedRenderGeometry.swift
+[317/500] Compiling Dust3DRendering TexturedRenderMetadata.swift
+[318/500] Compiling Dust3DRendering resource_bundle_accessor.swift
+[318/500] Compiling axisalignedboundingboxtree.cpp
+[319/500] Compiling isotropichalfedgemesh.cpp
+[321/500] Compiling Dust3DKitTests MeshLoaderTests.swift
+[322/500] Compiling Dust3DKitTests MeshPNGDecoderTests.swift
+[323/500] Compiling Dust3DKitTests MeshSourceCopyTests.swift
+[324/500] Compiling Dust3DKitTests QtClipboardCompatibilityTests.swift
+[325/500] Compiling Dust3DKitTests NativeFBXExportEncoderTests.swift
+[326/500] Compiling Dust3DKitTests NativeFBXExportIntegrationTests.swift
+[327/500] Compiling Dust3DKitTests NativeGeometryExportEncoderTests.swift
+[328/500] Compiling Dust3DKitTests NativeOBJExportEncoderTests.swift
+[334/500] Compiling Dust3DKitTests MeshBakingServiceTests.swift
+[335/500] Compiling Dust3DKitTests MeshFileServiceTests.swift
+[336/500] Compiling Dust3DKitTests MeshGenerationSessionTests.swift
+[339/500] Emitting module Dust3DDocumentTests
+[340/504] Compiling Dust3DDocumentTests ReferenceImageTests.swift
+[341/504] Compiling Dust3DDocumentTests SnapshotXMLTests.swift
+[342/504] Compiling Dust3DDocumentTests TextureImageReferenceTests.swift
+[343/504] Compiling Dust3DDocumentTests TopologyTests.swift
+[344/504] Compiling Dust3DKitTests NativeAnimationCatalogIntegrationTests.swift
+[345/504] Compiling Dust3DKitTests NativeAnimationCatalogLoaderTests.swift
+[346/504] Compiling Dust3DKitTests DocumentCompatibilityTests.swift
+[347/504] Compiling Dust3DKitTests DocumentExportFileServiceTests.swift
+[348/504] Compiling Dust3DKitTests ImportedImageDecoderTests.swift
+[349/504] Compiling Dust3DKitTests ImportedMaterialCopyTests.swift
+[350/504] Compiling Dust3DKitTests ImportedMaterialLoaderTests.swift
+[351/504] Compiling Dust3DKitTests ImportedSurfaceCopyTests.swift
+[360/504] Compiling Dust3DKitTests TextureMipChainTests.swift
+[361/504] Compiling Dust3DKitTests WorkerRequestEncoderTests.swift
+[362/504] Compiling Dust3DKitTests resource_bundle_accessor.swift
+[363/504] Compiling Dust3DEditorModelTests PartDeformationSessionTests.swift
+[364/504] Compiling Dust3DEditorModelTests PartProfileOptionsTests.swift
+[365/504] Compiling Dust3DEditorModelTests PartSelectionTests.swift
+[366/504] Compiling Dust3DEditorModelTests PartSplitSessionTests.swift
+[372/504] Compiling Dust3DKitTests SourceMeshBakingServiceTests.swift
+[373/504] Compiling Dust3DKitTests SourcedMeshGenerationTests.swift
+[385/510] Compiling Dust3DKitTests SourceBakedCopyTests.swift
+[386/510] Compiling Dust3DKitTests SourceBakedLoaderTests.swift
+[387/510] Compiling Dust3DKitTests SourceBakedMipmapsTests.swift
+[388/510] Compiling Dust3DKitTests SourceMeshBakeErrorTests.swift
+[397/510] Compiling surfacemesh.cpp
+[399/510] Compiling Dust3DKitTests ArchiveImportedMaterialTests.swift
+[400/510] Compiling Dust3DKitTests ArchiveSourceTextureBakingTests.swift
+[401/510] Compiling Dust3DKitTests ArchiveTextureBakingServiceTests.swift
+[402/510] Compiling Dust3DKitTests ComponentStructureCompatibilityTests.swift
+[403/510] Compiling Dust3DKitTests ComponentWrappingCompatibilityTests.swift
+[404/510] Compiling Dust3DKitTests DescendantRotationCompatibilityTests.swift
+[421/510] Emitting module Dust3DEditorModelTests
+[466/510] Compiling singularitysimplifier.cpp
+[468/510] Compiling Dust3DEditorModelTests ReferenceCropAdjustmentTests.swift
+[469/510] Compiling Dust3DEditorModelTests ReferenceCropProjectionTests.swift
+[470/510] Compiling Dust3DEditorModelTests ReferenceImageProjectionTests.swift
+[471/510] Compiling Dust3DEditorModelTests ReferenceImageSessionTests.swift
+[472/510] Compiling Dust3DEditorModelTests RigParameterSessionTests.swift
+[473/510] Compiling Dust3DEditorModelTests SelectionToolsTests.swift
+[477/516] Compiling quadparameterizer.cpp
+[479/545] Emitting module Dust3DViewer
+[479/545] Compiling positionkey.cpp
+[487/610] Compiling Dust3DViewer ViewerStore.swift
+[488/610] Compiling Dust3DViewer Dust3DViewerApp.swift
+[489/610] Compiling Dust3DViewer ContentView.swift
+[490/610] Compiling Dust3DEditor ExactBoneNameField.swift
+[491/610] Compiling Dust3DEditor InspectorNodeDraft.swift
+[492/610] Compiling Dust3DEditor MeshPreviewPlaceholder.swift
+[492/613] Compiling parameterizer.cpp
+[494/613] Emitting module Dust3DRenderingTests
+[495/613] Compiling Dust3DEditor EditorRecoveryCopies.swift
+[496/613] Compiling Dust3DEditor EditorRecoveryCopyFileService.swift
+[497/613] Compiling Dust3DEditor EditorRecoveryDispatchPlan.swift
+[498/613] Compiling Dust3DEditor EditorRecoveryRequestChannel.swift
+[499/613] Compiling Dust3DEditor EditorClipboardCommands.swift
+[500/613] Compiling Dust3DEditor EditorGeometryExportCommands.swift
+[501/613] Compiling Dust3DEditor NodeClipboardPasteButton.swift
+[502/613] Compiling Dust3DEditor ColorImageService.swift
+[503/613] Compiling Dust3DEditor ReferenceCompositionRaster.swift
+[504/613] Compiling Dust3DEditor ReferenceCompositionService.swift
+[505/613] Compiling Dust3DEditor EditorStore.swift
+[506/613] Compiling Dust3DEditor ReferenceCompositionDraft.swift
+[507/613] Compiling Dust3DEditor EditorSaveState.swift
+[508/613] Compiling Dust3DEditor NativeUndoCommandState.swift
+[509/613] Compiling Dust3DEditor NodeClipboardDataProvider.swift
+[509/613] Compiling mixedintegerleastsquares.cpp
+[511/613] Compiling Dust3DEditor EditorExportWindowAnchor.swift
+[512/613] Compiling Dust3DEditor EditorGeometryExportMenu.swift
+[513/613] Compiling Dust3DEditor EditorGeometryExportStatusView.swift
+[514/613] Compiling Dust3DEditor EditorRootView.swift
+[515/613] Compiling Dust3DEditor EditorGeometryExportDestinationService.swift
+[516/613] Compiling Dust3DEditor EditorPasteboard.swift
+[517/613] Compiling Dust3DEditor EditorPreviewService.swift
+[518/613] Compiling Dust3DEditor EdgeSidebar.swift
+[518/613] Compiling meshseparator.cpp
+[519/613] Compiling quadextractor.cpp
+[521/613] Emitting module Dust3DEditor
+[521/622] Compiling isotropicremesher.cpp
+[523/622] Compiling Dust3DRenderingTests SourceMipRoutingTests.swift
+[524/622] Compiling Dust3DRenderingTests TexturedMetalRenderingTests.swift
+[525/622] Compiling Dust3DRenderingTests TexturedRenderGeometryTests.swift
+[526/622] Compiling Dust3DEditor ComponentReparentControls.swift
+[527/622] Compiling Dust3DEditor ComponentSidebar.swift
+[528/622] Compiling Dust3DEditor ComponentSmoothingControls.swift
+[529/622] Compiling Dust3DEditor ComponentStitchingControls.swift
+[530/622] Compiling Dust3DEditor ComponentWrappingControls.swift
+[531/622] Compiling Dust3DEditor DescendantRotationMenu.swift
+[532/622] Compiling Dust3DEditor DocumentColorPresentation.swift
+[533/622] Compiling Dust3DEditor EdgeBoneBindingControls.swift
+[534/622] Compiling Dust3DEditor EdgeInspector.swift
+[535/622] Compiling Dust3DEditor Dust3DEditorApp.swift
+[536/622] Compiling Dust3DEditor EditorAnimationAuthoringWorkflow.swift
+[537/622] Compiling Dust3DEditor EditorAnimationCatalogState.swift
+[538/622] Compiling Dust3DEditor EditorCommandScope.swift
+[539/622] Compiling Dust3DEditor EditorCompositionRecovery.swift
+[540/622] Compiling Dust3DEditor EditorExportReceipt.swift
+[541/622] Compiling Dust3DEditor EditorFileDocument.swift
+[542/622] Compiling Dust3DEditor EditorGeometryExportPhase.swift
+[543/622] Compiling Dust3DEditor EditorGeometryExportWorkflow.swift
+[544/622] Compiling Dust3DEditor EditorLaunchDocument.swift
+[545/622] Compiling Dust3DEditor NodeInspector.swift
+[546/622] Compiling Dust3DEditor NodePointerSurface.swift
+[547/622] Compiling Dust3DEditor OriginControls.swift
+[548/622] Compiling Dust3DEditor OriginHandle.swift
+[549/622] Compiling Dust3DEditor PartCutFaceControls.swift
+[550/622] Compiling Dust3DEditor PartDeformationControls.swift
+[551/622] Compiling Dust3DEditor PartInspector.swift
+[552/622] Compiling Dust3DEditor PartLoopInteriorControls.swift
+[553/622] Compiling Dust3DEditor PartMaterialControls.swift
+[553/622] Compiling framefield.cpp
+[584/622] Compiling Dust3DEditor AnimationAuthoringControls.swift
+[585/622] Compiling Dust3DEditor AnimationNameField.swift
+[586/622] Compiling Dust3DEditor AnimationPanel.swift
+[587/622] Compiling Dust3DEditor ComponentColorControls.swift
+[588/622] Compiling Dust3DEditor ComponentColorImageControls.swift
+[589/622] Compiling Dust3DEditor ComponentInspector.swift
+[590/622] Compiling Dust3DEditor ComponentOrderMenu.swift
+[591/622] Compiling Dust3DEditor PartModifierControls.swift
+[592/622] Compiling Dust3DEditor PartProfileChooser.swift
+[593/622] Compiling Dust3DEditor PartSidebar.swift
+[594/622] Compiling Dust3DEditor PartTargetControls.swift
+[595/622] Compiling Dust3DEditor PreviewDiagnosticNotice.swift
+[596/622] Compiling Dust3DEditor ReferenceCompositionSheet.swift
+[597/622] Compiling Dust3DEditor ReferenceImageControls.swift
+[598/622] Compiling Dust3DEditor RigSettingsControls.swift
+[599/622] Compiling Dust3DEditor SelectableNodeIdentifier.swift
+[600/622] Compiling Dust3DThumbnailExtension ThumbnailProvider.swift
+[601/622] Emitting module Dust3DThumbnailExtension
+[602/622] Emitting module Dust3DQuickLookExtension
+[603/622] Compiling Dust3DQuickLookExtension PreviewViewController.swift
+[603/622] Compiling constrainedleastsquares.cpp
+[604/622] Write Objects.LinkFileList
+[610/622] Archiving libDust3DEngine.a
+[611/622] Archiving libDust3DWorkerRuntime.a
+[612/622] Linking Dust3DViewer
+[613/622] Linking Dust3DThumbnailExtension
+[614/622] Applying Dust3DViewer
+[615/622] Applying Dust3DThumbnailExtension
+[616/622] Linking Dust3DQuickLookExtension
+[617/626] Applying Dust3DQuickLookExtension
+[618/626] Linking Dust3DEditor
+[619/626] Applying Dust3DEditor
+[621/696] Compiling Dust3DViewerTests ViewerSourceBakedMaterialTests.swift
+[622/696] Compiling Dust3DViewerTests ViewerImportedMaterialTests.swift
+[623/696] Emitting module Dust3DViewerTests
+[624/696] Compiling Dust3DViewerTests ViewerMaterialTests.swift
+[625/696] Emitting module Dust3DEditorTests
+[626/705] Compiling Dust3DEditorTests ComponentCombineStoreTests.swift
+[627/705] Compiling Dust3DEditorTests ComponentGroupingStoreTests.swift
+[628/705] Compiling Dust3DEditorTests ComponentOrderStoreTests.swift
+[629/705] Compiling Dust3DEditorTests ComponentReparentStoreTests.swift
+[630/705] Compiling Dust3DEditorTests ComponentSmoothingStoreTests.swift
+[631/705] Compiling Dust3DEditorTests ComponentStitchingRenderingTests.swift
+[632/705] Compiling Dust3DEditorTests ComponentStitchingStoreTests.swift
+[633/705] Compiling Dust3DEditorTests ComponentStoreTests.swift
+[634/705] Compiling Dust3DEditorTests ComponentWrappingRenderingTests.swift
+[635/705] Compiling Dust3DEditorTests ComponentWrappingStoreTests.swift
+[636/705] Compiling Dust3DEditorTests QtClipboardStoreTests.swift
+[637/705] Compiling Dust3DEditorTests RecoveryCopyFileTests.swift
+[638/705] Compiling Dust3DEditorTests RecoveryCopyRegistryTests.swift
+[639/705] Compiling Dust3DEditorTests RecoverySnapshotTests.swift
+[640/705] Compiling Dust3DEditorTests ReferenceCompositionDraftTests.swift
+[641/705] Compiling Dust3DEditorTests ReferenceCompositionPresentationTests.swift
+[642/705] Compiling Dust3DEditorTests ReferenceCompositionRasterTests.swift
+[643/705] Compiling Dust3DEditorTests ReferenceCompositionStoreTests.swift
+[644/705] Compiling Dust3DEditorTests ReferenceCropPreviewRenderingTests.swift
+[645/705] Compiling Dust3DEditorTests EmptyPartStoreTests.swift
+[646/705] Compiling Dust3DEditorTests GeometryExportRenderingTests.swift
+[647/705] Compiling Dust3DEditorTests InspectorIdentityTests.swift
+[648/705] Compiling Dust3DEditorTests InspectorResetTests.swift
+[649/705] Compiling Dust3DEditorTests NativeUndoCommandStateTests.swift
+[650/705] Compiling Dust3DEditorTests NodePointerViewTests.swift
+[651/705] Compiling Dust3DEditorTests OriginControlStoreTests.swift
+[652/705] Compiling Dust3DEditorTests OriginDragStoreTests.swift
+[653/705] Compiling Dust3DEditorTests OriginSettlementStoreTests.swift
+[654/705] Compiling Dust3DEditorTests PartControlStoreTests.swift
+[655/705] Compiling Dust3DEditorTests AnimationAuthoringStoreTests.swift
+[656/705] Compiling Dust3DEditorTests AnimationPanelTests.swift
+[657/705] Compiling Dust3DEditorTests AnimationStoreTests.swift
+[658/705] Compiling Dust3DEditorTests BoneBindingErrorMessageTests.swift
+[659/705] Compiling Dust3DEditorTests ColorImageCodecTests.swift
+[660/705] Compiling Dust3DEditorTests ComponentColorImageRenderingTests.swift
+[661/705] Compiling Dust3DEditorTests ComponentColorImageStoreTests.swift
+[662/705] Compiling Dust3DEditorTests ComponentColorPresentationTests.swift
+[663/705] Compiling Dust3DEditorTests ComponentColorRenderingTests.swift
+[664/705] Compiling Dust3DEditorTests ComponentColorStoreTests.swift
+[665/705] Compiling Dust3DEditorTests PartCutFaceStoreTests.swift
+[666/705] Compiling Dust3DEditorTests PartDeformationStoreTests.swift
+[667/705] Compiling Dust3DEditorTests PartLoopInteriorStoreTests.swift
+[668/705] Compiling Dust3DEditorTests PartMaterialStoreTests.swift
+[669/705] Compiling Dust3DEditorTests PartModifierRenderingTests.swift
+[670/705] Compiling Dust3DEditorTests PartModifierStoreTests.swift
+[671/705] Compiling Dust3DEditorTests PartTargetStoreTests.swift
+[672/705] Compiling Dust3DEditorTests PreviewDiagnosticNoticeRenderingTests.swift
+[673/705] Compiling Dust3DEditorTests PreviewSourceHistoryStoreTests.swift
+[674/705] Compiling Dust3DEditorTests QtClipboardProviderTests.swift
+[675/705] Compiling Dust3DEditorTests ReferenceImageCodecTests.swift
+[676/705] Compiling Dust3DEditorTests ReferenceImageCompletionTests.swift
+[677/705] Compiling Dust3DEditorTests ReferenceImageStoreTests.swift
+[678/705] Compiling Dust3DEditorTests RigSettingsStoreTests.swift
+[679/705] Compiling Dust3DEditorTests ScopedPreviewQueueTests.swift
+[680/705] Compiling Dust3DEditorTests SelectableNodeIdentifierTests.swift
+[681/705] Compiling Dust3DEditorTests InspectorRenderer.swift
+[682/705] Compiling Dust3DEditorTests StitchingFixture.swift
+[683/705] Compiling Dust3DEditorTests WrappingFixture.swift
+[684/705] Compiling Dust3DEditorTests EditorPreviewFallbackContractTests.swift
+[685/705] Compiling Dust3DEditorTests EditorPreviewFallbackTests.swift
+[686/705] Compiling Dust3DEditorTests EditorPreviewScopeSchedulingTests.swift
+[687/705] Compiling Dust3DEditorTests EditorPreviewServiceTests.swift
+[688/705] Compiling Dust3DEditorTests EditorPreviewSessionStoreTests.swift
+[689/705] Compiling Dust3DEditorTests EditorPreviewSourceTests.swift
+[690/705] Compiling Dust3DEditorTests EditorRecoveryDispatchTests.swift
+[691/705] Compiling Dust3DEditorTests EditorRecoveryTests.swift
+[692/705] Compiling Dust3DEditorTests EditorSaveSnapshotTests.swift
+[693/705] Compiling Dust3DEditorTests EditorSourceBakedMaterialTests.swift
+[694/705] Compiling Dust3DEditorTests DescendantRotationStoreTests.swift
+[695/705] Compiling Dust3DEditorTests EdgeBoneBindingStoreTests.swift
+[696/705] Compiling Dust3DEditorTests EditorAnimationAuthoringWorkflowTests.swift
+[697/705] Compiling Dust3DEditorTests EditorAnimationCatalogStateTests.swift
+[698/705] Compiling Dust3DEditorTests EditorExportWorkflowTests.swift
+[699/705] Compiling Dust3DEditorTests EditorGeometryExportDestinationTests.swift
+[700/705] Compiling Dust3DEditorTests EditorGeometryExportWorkflowTests.swift
+[701/705] Compiling Dust3DEditorTests EditorImportedMaterialTests.swift
+[702/705] Compiling Dust3DEditorTests EditorLaunchDocumentTests.swift
+[703/705] Compiling Dust3DEditorTests EditorMaterialPreviewTests.swift
+[704/707] Emitting module Dust3DNativePackageTests
+[705/707] Compiling Dust3DNativePackageTests runner.swift
+[705/707] Write Objects.LinkFileList
+[706/707] Linking Dust3DNativePackageTests
+Build complete! (68.15s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+Test Suite 'Selected tests' started at 2026-10-30 18:36:14.219.
+Test Suite 'Dust3DNativePackageTests.xctest' started at 2026-10-30 18:36:14.221.
+Test Suite 'SourceBakedLoaderTests' started at 2026-10-30 18:36:14.221.
+Test Case '-[Dust3DKitTests.SourceBakedLoaderTests testOptInMipBakeCopiesOwnedLevelsAndEnforcesCopyBudget]' started.
+Test Case '-[Dust3DKitTests.SourceBakedLoaderTests testOptInMipBakeCopiesOwnedLevelsAndEnforcesCopyBudget]' passed (0.765 seconds).
+Test Suite 'SourceBakedLoaderTests' passed at 2026-10-30 18:36:14.987.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.765 (0.766) seconds
+Test Suite 'Dust3DNativePackageTests.xctest' passed at 2026-10-30 18:36:14.987.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.765 (0.766) seconds
+Test Suite 'Selected tests' passed at 2026-10-30 18:36:14.987.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.765 (0.767) seconds

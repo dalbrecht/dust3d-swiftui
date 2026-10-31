@@ -1,0 +1,259 @@
+[0/1] Planning build
+Building for debugging...
+[0/28] Write sources
+[12/28] Copying Fixtures
+[13/28] Write swift-version--58304C5D6DBC2206.txt
+[15/36] Compiling Dust3DDocument PartCutFace.swift
+[16/36] Compiling Dust3DDocument ComponentColorImage.swift
+[17/36] Compiling Dust3DDocument ComponentColorImageXML.swift
+[18/36] Compiling Dust3DDocument ComponentColor.swift
+[19/36] Compiling Dust3DDocument DocumentColorImageAsset.swift
+[20/36] Compiling Dust3DDocument DocumentAnimation.swift
+[21/36] Compiling Dust3DDocument BoneNameIdentity.swift
+[22/37] Emitting module Dust3DDocument
+[23/37] Compiling Dust3DDocument PartDeformation.swift
+[24/71] Compiling Dust3DKit SourceMeshBakingService.swift
+[25/72] Compiling Dust3DKit MeshSourceCopy.swift
+[26/72] Compiling Dust3DKit ImportedMaterials.swift
+[27/72] Compiling Dust3DKit TextureMipChain.swift
+[28/72] Compiling Dust3DEditorModel EditorSession.swift
+[29/72] Compiling Dust3DEditorModel GraphCommandPreparation.swift
+[30/72] Compiling Dust3DDocumentTests ClipboardPartitionTests.swift
+[31/72] Compiling Dust3DDocumentTests ColorImageInventoryTests.swift
+[32/72] Compiling Dust3DEditorModel MeshPreviewState.swift
+[33/72] Compiling Dust3DEditorModel NodeClipboardPayload.swift
+[34/72] Compiling Dust3DDocumentTests AnimationAuthoringCatalogTests.swift
+[35/72] Compiling Dust3DDocumentTests AnimationDocumentTests.swift
+[36/72] Compiling Dust3DDocumentTests ComponentColorImageTests.swift
+[37/72] Compiling Dust3DDocumentTests ComponentHierarchyTests.swift
+[38/72] Compiling Dust3DEditorModel CanvasProjection.swift
+[39/72] Compiling Dust3DEditorModel ComponentColorDraft.swift
+[40/72] Emitting module Dust3DEditorModel
+[41/72] Compiling Dust3DEditorModel OriginDrag.swift
+[42/72] Compiling Dust3DEditorModel ReferenceCompositionTarget.swift
+[43/73] Compiling Dust3DKit DocumentExportFileService.swift
+[44/73] Compiling Dust3DKit ArchiveSourceImagePreparation.swift
+[45/73] Compiling Dust3DKit DocumentExportCoordination.swift
+[46/73] Compiling Dust3DKit ArchiveImportedMaterialService.swift
+[47/76] Compiling Dust3DEditorModel ReferenceCropProjection.swift
+[48/76] Emitting module Dust3DKit
+[49/76] Compiling Dust3DKit NativeOBJExportEncoder.swift
+[50/76] Compiling Dust3DDocumentTests ComponentSmoothingTests.swift
+[51/76] Compiling Dust3DDocumentTests ComponentStructureTests.swift
+[54/76] Compiling Dust3DDocumentTests ComponentStitchingTests.swift
+[55/76] Compiling Dust3DDocumentTests ComponentOrderTests.swift
+[60/76] Emitting module Dust3DDocumentTests
+[61/99] Compiling Dust3DKit NativeGeometryExportEncoder.swift
+[62/99] Compiling Dust3DKit NativeFBXExportEncoder.swift
+[63/165] Compiling Dust3DKitTests ImportedSurfaceCopyTests.swift
+[64/165] Compiling Dust3DKitTests ImportedSurfaceLoaderTests.swift
+[65/165] Compiling Dust3DKitTests IndexedMeshLoaderTests.swift
+[66/168] Emitting module Dust3DEditorModelTests
+[67/168] Compiling Dust3DKitTests MeshSourceHintsTests.swift
+[68/168] Compiling Dust3DKitTests MeshUvCopyTests.swift
+[69/168] Compiling Dust3DKitTests MeshUvLoaderTests.swift
+[70/168] Compiling Dust3DDocumentTests PNGContainerMetadataTests.swift
+[71/168] Compiling Dust3DKitTests MaterialPreviewWarningTests.swift
+[72/168] Compiling Dust3DKitTests MaterialSourceCapabilitiesTests.swift
+[73/168] Compiling Dust3DKitTests MeshBakedCopyTests.swift
+[74/168] Compiling Dust3DKitTests NativeOBJExportIntegrationTests.swift
+[75/168] Compiling Dust3DKitTests QtClipboardCompatibilityTests.swift
+[76/168] Compiling Dust3DKitTests SourceBakedCopyTests.swift
+[77/168] Compiling Dust3DKitTests SourceBakedLoaderTests.swift
+[78/168] Compiling Dust3DKitTests SourceBakedMipmapsTests.swift
+[79/168] Compiling Dust3DKitTests MeshSourceCopyTests.swift
+[80/168] Compiling Dust3DKitTests ArchiveSourceTextureBakingTests.swift
+[81/168] Compiling Dust3DKitTests ArchiveTextureBakingServiceTests.swift
+[82/168] Compiling Dust3DKitTests ComponentStructureCompatibilityTests.swift
+[83/168] Compiling Dust3DKitTests MeshUvMetadataTests.swift
+[84/168] Compiling Dust3DKitTests NativeAnimationCatalogIntegrationTests.swift
+[85/168] Compiling Dust3DKitTests ArchiveImportedMaterialTests.swift
+[90/171] Compiling Dust3DEditorModelTests PartDeformationSessionTests.swift
+[91/171] Compiling Dust3DEditorModelTests ReferenceCompositionTests.swift
+[92/171] Compiling Dust3DEditorModelTests ReferenceCropAdjustmentTests.swift
+[93/171] Emitting module Dust3DRendering
+[105/171] Emitting module Dust3DKitTests
+[126/176] Compiling Dust3DRendering TexturedMetalResources.swift
+[127/176] Compiling Dust3DRendering TexturedRenderGeometry.swift
+[128/176] Compiling Dust3DRendering TexturedRenderMetadata.swift
+[134/176] Write Objects.LinkFileList
+[142/264] Compiling Dust3DEditor EdgeInspector.swift
+[143/264] Compiling Dust3DEditor EdgeSidebar.swift
+[144/264] Compiling Dust3DEditor EditorGeometryExportMenu.swift
+[145/264] Compiling Dust3DEditor EditorGeometryExportStatusView.swift
+[146/264] Compiling Dust3DEditor EditorRootView.swift
+[147/264] Compiling Dust3DEditor NodeClipboardDataProvider.swift
+[148/264] Compiling Dust3DEditor ReferenceCompositionRaster.swift
+[149/264] Compiling Dust3DEditor ReferenceImageService.swift
+[150/264] Compiling Dust3DEditor ScopedPreviewQueue.swift
+[151/264] Compiling Dust3DEditor AnimationAuthoringControls.swift
+[152/264] Compiling Dust3DEditor AnimationNameField.swift
+[153/264] Compiling Dust3DEditor AnimationPanel.swift
+[154/264] Compiling Dust3DEditor ComponentColorControls.swift
+[155/264] Compiling Dust3DEditor ComponentColorImageControls.swift
+[156/264] Compiling Dust3DEditor ComponentInspector.swift
+[157/264] Compiling Dust3DEditor ComponentOrderMenu.swift
+[158/264] Compiling Dust3DEditor ComponentReparentControls.swift
+[159/264] Compiling Dust3DEditor ComponentSidebar.swift
+[160/264] Compiling Dust3DEditor ComponentSmoothingControls.swift
+[161/264] Compiling Dust3DEditor ComponentStitchingControls.swift
+[162/264] Compiling Dust3DEditor ComponentWrappingControls.swift
+[163/264] Compiling Dust3DEditor EdgeBoneBindingControls.swift
+[164/264] Compiling Dust3DThumbnailExtension ThumbnailProvider.swift
+[165/264] Emitting module Dust3DThumbnailExtension
+[165/264] Write Objects.LinkFileList
+[167/264] Emitting module Dust3DRenderingTests
+[168/267] Compiling Dust3DEditor EditorRecoveryRequestChannel.swift
+[169/267] Compiling Dust3DEditor EditorSaveState.swift
+[170/267] Compiling Dust3DEditor NativeUndoCommandState.swift
+[171/267] Compiling Dust3DViewer ContentView.swift
+[172/267] Compiling Dust3DViewer ViewerStore.swift
+[173/267] Emitting module Dust3DViewer
+[174/267] Compiling Dust3DViewer Dust3DViewerApp.swift
+[174/267] Write Objects.LinkFileList
+[176/267] Compiling Dust3DEditor EditorPreviewService.swift
+[177/267] Compiling Dust3DEditor EditorRecoveryCopies.swift
+[178/267] Compiling Dust3DEditor EditorRecoveryCopyFileService.swift
+[179/267] Compiling Dust3DEditor EditorRecoveryDispatchPlan.swift
+[183/267] Compiling Dust3DEditor Dust3DEditorApp.swift
+[184/267] Compiling Dust3DEditor EditorAnimationAuthoringWorkflow.swift
+[185/267] Compiling Dust3DEditor EditorAnimationCatalogState.swift
+[186/267] Compiling Dust3DEditor EditorCompositionRecovery.swift
+[195/274] Compiling Dust3DEditor EditorStore.swift
+[196/274] Compiling Dust3DEditor ReferenceCompositionDraft.swift
+[197/274] Compiling Dust3DEditor EditorClipboardCommands.swift
+[198/274] Compiling Dust3DEditor EditorGeometryExportCommands.swift
+[199/274] Compiling Dust3DEditor EditorExportReceipt.swift
+[200/274] Compiling Dust3DEditor EditorGeometryExportPhase.swift
+[201/274] Compiling Dust3DEditor EditorGeometryExportWorkflow.swift
+[202/274] Compiling Dust3DEditor EditorLaunchDocument.swift
+[203/274] Compiling Dust3DEditor NodeClipboardPasteButton.swift
+[204/274] Compiling Dust3DEditor ColorImageService.swift
+[205/274] Compiling Dust3DEditor EditorGeometryExportDestinationService.swift
+[206/274] Compiling Dust3DEditor EditorPasteboard.swift
+[207/274] Emitting module Dust3DEditor
+[208/274] Compiling Dust3DRenderingTests SourceMipRoutingTests.swift
+[209/274] Compiling Dust3DRenderingTests TexturedMetalRenderingTests.swift
+[210/274] Compiling Dust3DRenderingTests TexturedRenderGeometryTests.swift
+[219/274] Compiling Dust3DEditor NodeInspector.swift
+[220/274] Compiling Dust3DEditor OriginControls.swift
+[221/274] Compiling Dust3DEditor PartCutFaceControls.swift
+[222/274] Compiling Dust3DEditor PartDeformationControls.swift
+[223/274] Compiling Dust3DEditor PartInspector.swift
+[224/274] Compiling Dust3DEditor PartMaterialControls.swift
+[225/274] Compiling Dust3DEditor PartProfileChooser.swift
+[225/274] Linking Dust3DQuickLookExtension
+[226/274] Applying Dust3DQuickLookExtension
+[233/274] Compiling Dust3DEditor ExactBoneNameField.swift
+[234/274] Compiling Dust3DEditor NodeCanvas.swift
+[251/274] Compiling Dust3DEditor PartSidebar.swift
+[252/274] Compiling Dust3DEditor PartTargetControls.swift
+[253/274] Compiling Dust3DEditor PreviewDiagnosticNotice.swift
+[254/274] Compiling Dust3DEditor ReferenceCompositionSheet.swift
+[255/274] Compiling Dust3DEditor ReferenceImageControls.swift
+[256/274] Compiling Dust3DEditor RigSettingsControls.swift
+[257/274] Compiling Dust3DEditor SelectableNodeIdentifier.swift
+[265/274] Write Objects.LinkFileList
+[266/274] Linking Dust3DThumbnailExtension
+[267/274] Applying Dust3DThumbnailExtension
+[268/274] Linking Dust3DViewer
+[269/274] Applying Dust3DViewer
+[271/278] Compiling Dust3DViewerTests ViewerImportedMaterialTests.swift
+[272/278] Compiling Dust3DViewerTests ViewerMaterialTests.swift
+[273/278] Emitting module Dust3DViewerTests
+[274/278] Compiling Dust3DViewerTests ViewerSourceBakedMaterialTests.swift
+[274/278] Linking Dust3DEditor
+[275/278] Applying Dust3DEditor
+[277/345] Compiling Dust3DEditorTests EmptyPartStoreTests.swift
+[278/345] Compiling Dust3DEditorTests GeometryExportRenderingTests.swift
+[279/345] Compiling Dust3DEditorTests InspectorIdentityTests.swift
+[280/345] Compiling Dust3DEditorTests InspectorResetTests.swift
+[281/345] Compiling Dust3DEditorTests NativeUndoCommandStateTests.swift
+[282/345] Compiling Dust3DEditorTests OriginControlStoreTests.swift
+[283/345] Compiling Dust3DEditorTests OriginDragStoreTests.swift
+[284/345] Compiling Dust3DEditorTests OriginSettlementStoreTests.swift
+[285/345] Compiling Dust3DEditorTests PartControlStoreTests.swift
+[286/345] Compiling Dust3DEditorTests QtClipboardProviderTests.swift
+[287/345] Compiling Dust3DEditorTests QtClipboardStoreTests.swift
+[288/345] Compiling Dust3DEditorTests RecoveryCopyFileTests.swift
+[289/345] Compiling Dust3DEditorTests RecoveryCopyRegistryTests.swift
+[290/345] Compiling Dust3DEditorTests RecoverySnapshotTests.swift
+[291/345] Compiling Dust3DEditorTests ReferenceCompositionDraftTests.swift
+[292/345] Compiling Dust3DEditorTests ReferenceCompositionPresentationTests.swift
+[293/345] Compiling Dust3DEditorTests ReferenceCompositionRasterTests.swift
+[294/345] Compiling Dust3DEditorTests ReferenceCompositionStoreTests.swift
+[295/354] Compiling Dust3DEditorTests ComponentGroupingStoreTests.swift
+[296/354] Compiling Dust3DEditorTests ComponentOrderStoreTests.swift
+[297/354] Compiling Dust3DEditorTests ComponentReparentStoreTests.swift
+[298/354] Compiling Dust3DEditorTests ComponentSmoothingStoreTests.swift
+[299/354] Compiling Dust3DEditorTests ComponentStitchingRenderingTests.swift
+[300/354] Compiling Dust3DEditorTests ComponentStitchingStoreTests.swift
+[301/354] Compiling Dust3DEditorTests ComponentStoreTests.swift
+[302/354] Compiling Dust3DEditorTests ComponentWrappingRenderingTests.swift
+[303/354] Compiling Dust3DEditorTests ComponentWrappingStoreTests.swift
+[304/354] Compiling Dust3DEditorTests DescendantRotationStoreTests.swift
+[305/354] Compiling Dust3DEditorTests AnimationAuthoringStoreTests.swift
+[306/354] Compiling Dust3DEditorTests AnimationPanelTests.swift
+[307/354] Compiling Dust3DEditorTests AnimationStoreTests.swift
+[308/354] Compiling Dust3DEditorTests BoneBindingErrorMessageTests.swift
+[309/354] Compiling Dust3DEditorTests ColorImageCodecTests.swift
+[310/354] Compiling Dust3DEditorTests ComponentColorImageRenderingTests.swift
+[311/354] Compiling Dust3DEditorTests ComponentColorImageStoreTests.swift
+[312/354] Compiling Dust3DEditorTests ComponentColorRenderingTests.swift
+[313/354] Compiling Dust3DEditorTests ComponentColorStoreTests.swift
+[314/354] Compiling Dust3DEditorTests ComponentCombineStoreTests.swift
+[315/354] Emitting module Dust3DEditorTests
+[316/354] Compiling Dust3DEditorTests PartCutFaceStoreTests.swift
+[317/354] Compiling Dust3DEditorTests PartDeformationStoreTests.swift
+[318/354] Compiling Dust3DEditorTests PartLoopInteriorStoreTests.swift
+[319/354] Compiling Dust3DEditorTests PartMaterialStoreTests.swift
+[320/354] Compiling Dust3DEditorTests PartModifierRenderingTests.swift
+[321/354] Compiling Dust3DEditorTests PartModifierStoreTests.swift
+[322/354] Compiling Dust3DEditorTests PartTargetStoreTests.swift
+[323/354] Compiling Dust3DEditorTests PreviewDiagnosticNoticeRenderingTests.swift
+[324/354] Compiling Dust3DEditorTests PreviewSourceHistoryStoreTests.swift
+[325/354] Compiling Dust3DEditorTests EditorPreviewFallbackTests.swift
+[326/354] Compiling Dust3DEditorTests EditorPreviewScopeSchedulingTests.swift
+[327/354] Compiling Dust3DEditorTests EditorPreviewServiceTests.swift
+[328/354] Compiling Dust3DEditorTests EditorPreviewSessionStoreTests.swift
+[329/354] Compiling Dust3DEditorTests EditorPreviewSourceTests.swift
+[330/354] Compiling Dust3DEditorTests EditorRecoveryDispatchTests.swift
+[331/354] Compiling Dust3DEditorTests EditorRecoveryTests.swift
+[332/354] Compiling Dust3DEditorTests EditorSaveSnapshotTests.swift
+[333/354] Compiling Dust3DEditorTests EditorSourceBakedMaterialTests.swift
+[334/354] Compiling Dust3DEditorTests EdgeBoneBindingStoreTests.swift
+[335/354] Compiling Dust3DEditorTests EditorAnimationAuthoringWorkflowTests.swift
+[336/354] Compiling Dust3DEditorTests EditorAnimationCatalogStateTests.swift
+[337/354] Compiling Dust3DEditorTests EditorExportWorkflowTests.swift
+[338/354] Compiling Dust3DEditorTests EditorGeometryExportDestinationTests.swift
+[339/354] Compiling Dust3DEditorTests EditorGeometryExportWorkflowTests.swift
+[340/354] Compiling Dust3DEditorTests EditorImportedMaterialTests.swift
+[341/354] Compiling Dust3DEditorTests EditorLaunchDocumentTests.swift
+[342/354] Compiling Dust3DEditorTests EditorMaterialPreviewTests.swift
+[343/354] Compiling Dust3DEditorTests EditorPreviewFallbackContractTests.swift
+[344/354] Compiling Dust3DEditorTests ReferenceCropPreviewRenderingTests.swift
+[345/354] Compiling Dust3DEditorTests ReferenceImageCodecTests.swift
+[346/354] Compiling Dust3DEditorTests ReferenceImageCompletionTests.swift
+[347/354] Compiling Dust3DEditorTests ReferenceImageStoreTests.swift
+[348/354] Compiling Dust3DEditorTests RigSettingsStoreTests.swift
+[349/354] Compiling Dust3DEditorTests ScopedPreviewQueueTests.swift
+[350/354] Compiling Dust3DEditorTests SelectableNodeIdentifierTests.swift
+[351/354] Compiling Dust3DEditorTests InspectorRenderer.swift
+[352/354] Compiling Dust3DEditorTests StitchingFixture.swift
+[352/354] Write Objects.LinkFileList
+[353/354] Linking Dust3DNativePackageTests
+Build complete! (12.63s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+Test Suite 'Selected tests' started at 2026-10-30 19:14:25.525.
+Test Suite 'Dust3DNativePackageTests.xctest' started at 2026-10-30 19:14:25.526.
+Test Suite 'CoordinatedDocumentExportTests' started at 2026-10-30 19:14:25.526.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedDestinationIsWrittenAndReported]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedDestinationIsWrittenAndReported]' passed (0.007 seconds).
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedSourceAliasDoesNotReplaceSource]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedSourceAliasDoesNotReplaceSource]' passed (0.002 seconds).
+Test Suite 'CoordinatedDocumentExportTests' passed at 2026-10-30 19:14:25.536.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.009 (0.009) seconds
+Test Suite 'Dust3DNativePackageTests.xctest' passed at 2026-10-30 19:14:25.536.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.009 (0.009) seconds
+Test Suite 'Selected tests' passed at 2026-10-30 19:14:25.536.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.009 (0.011) seconds

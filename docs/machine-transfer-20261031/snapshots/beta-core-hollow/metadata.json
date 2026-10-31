@@ -1,0 +1,10 @@
+{
+  "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-hollow",
+  "head": "a4a23b37baec95b877ca7a4915c9569e26d3e37b",
+  "untracked": [
+    "tests/core/tube_mesh_hollow_tests.cc"
+  ],
+  "targeted_capture": [
+    "CMakeLists.txt"
+  ]
+}

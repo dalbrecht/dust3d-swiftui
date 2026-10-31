@@ -1,0 +1,11 @@
+{
+  "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-durable",
+  "head": "ac74a5a9cb9d285c9c62508b5cafcb92b2a5c24f",
+  "untracked": [
+    "tests/core/tube_mesh_baseline_tests.cc"
+  ],
+  "targeted_capture": [
+    "CMakeLists.txt",
+    "tests/core/worker_legacy_job_tests.cc"
+  ]
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "repository": "dalbrecht/dust3d-core",
+    "expected": 10,
+    "verified": 10,
+    "missing": {}
+  },
+  {
+    "repository": "dalbrecht/dust3d-swiftui",
+    "expected": 67,
+    "verified": 67,
+    "missing": {}
+  }
+]

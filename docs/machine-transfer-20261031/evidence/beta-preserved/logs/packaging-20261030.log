@@ -1,0 +1,404 @@
+./script/check_app_bundle_rebuild.sh
+Fetching https://github.com/dalbrecht/dust3d-core.git
+[1/37932] Fetching dust3d-core
+Fetched https://github.com/dalbrecht/dust3d-core.git (4.92s)
+Creating working copy for https://github.com/dalbrecht/dust3d-core.git
+Working copy of https://github.com/dalbrecht/dust3d-core.git resolved at 48b0ce2d6d61cf58731bb0c3e14ef5965a686d68
+Building for debugging...
+[0/129] Write Dust3DEditor-entitlement.plist
+[1/129] Write swift-version--58304C5D6DBC2206.txt
+[2/129] Compiling clip_metadata.cc
+[3/129] Compiling animation_defaults.cc
+[4/129] Compiling snapshot_xml.cc
+[5/129] Compiling WorkerRuntimeBridge.cc
+[6/129] Compiling WorkerRequestBridge.cc
+[7/129] Compiling WorkerReplyBridge.cc
+[8/129] Compiling TriangleIntersection tri_tri_intersect.c
+[9/129] Compiling WorkerQueueBridge.cc
+[10/129] Compiling WorkerDecodedBridge.cc
+[11/129] Compiling WorkerUvRequest.cc
+[12/129] Compiling WorkerUvOperation.cc
+[13/129] Compiling WorkerUvMesh.cc
+[14/129] Compiling WorkerReplyCollector.cc
+[15/129] Compiling WorkerUv.cc
+[16/129] Compiling WorkerQueue.cc
+[17/129] Compiling WorkerProtocol.cc
+[18/129] Compiling WorkerOperation.cc
+[19/129] Compiling WorkerMesh.cc
+[20/129] Write sources
+[21/129] Copying Shaders.metal
+[22/129] Write sources
+[23/129] Compiling WorkerJobIO.cc
+[24/129] Compiling WorkerFailure.cc
+[25/129] Compiling WorkerAdmission.cc
+[26/129] Compiling Dust3DEngine SnapshotValidator.cc
+[27/129] Compiling Dust3DEngine UvMetadata.cc
+[28/129] Compiling Dust3DEngine SourceProvenance.cc
+[29/129] Compiling Dust3DEngine RigTransformValidation.cc
+[30/129] Compiling Dust3DEngine RetainedPayload.cc
+[31/129] Compiling Dust3DEngine SnapshotInvalidation.cc
+[32/129] Compiling Dust3DEngine SourceBakedMesh.cc
+[33/129] Compiling Dust3DEngine PngEncoding.cc
+[34/129] Compiling Dust3DEngine ObjGeometryPlan.cc
+[35/129] Compiling Dust3DEngine ObjDocument.cc
+[36/129] Compiling Dust3DEngine ObjExportBridge.cc
+[37/129] Compiling Dust3DEngine IndexedMesh.cc
+[38/129] Compiling Dust3DEngine ImportedSurface.cc
+[39/129] Compiling Dust3DEngine ImportedModels.cc
+[40/129] Compiling Dust3DEngine ImportedAssets.cc
+[41/129] Compiling Dust3DEngine FbxPropertyBlock.cc
+[42/129] Compiling Dust3DEngine FbxNode.cc
+[43/129] Compiling Dust3DEngine GlbReader.cc
+[44/129] Compiling Dust3DEngine FbxMeshScenePlan.cc
+[45/129] Compiling Dust3DEngine GenerationSession.cc
+[46/129] Compiling Dust3DEngine FbxMaterialImagePlan.cc
+[47/129] Compiling Dust3DEngine FbxMeshScene.cc
+[48/129] Compiling Dust3DEngine FbxDocument.cc
+[49/129] Compiling Dust3DEngine FbxGeometrySelection.cc
+[50/129] Compiling Dust3DEngine FbxBakedMaterial.cc
+[51/129] Compiling Dust3DEngine FbxExportBridge.cc
+[52/129] Compiling Dust3DEngine FbxAnimationMath.cc
+[53/129] Compiling Dust3DEngine EngineSupport.cc
+[54/129] Compiling Dust3DEngine FbxAtlasGeometry.cc
+[55/129] Compiling Dust3DEngine Cancellation.cc
+[56/129] Compiling Dust3DEngine AnimationCatalogBridge.cc
+[57/129] Write sources
+[60/129] Compiling Dust3DEngine DocumentReader.cc
+[61/129] Compiling Dust3DEngine Dust3DBridge.cc
+[62/160] Compiling Dust3DEngine BakedMesh.cc
+[63/160] Compiling uv_map_packer.cc
+[64/160] Compiling surface_pattern.cc
+[65/160] Compiling uv_atlas_builder.cc
+[66/160] Compiling texture_baker.cc
+[67/160] Compiling max_rectangles.cc
+[68/160] Compiling source_uv_atlas.cc
+[69/160] Compiling source_texture_baker.cc
+[70/160] Compiling color_texture_sampler.cc
+[71/160] Compiling chart_packer.cc
+[73/160] Emitting module Dust3DDocument
+[74/169] Compiling Dust3DDocument ComponentSmoothing.swift
+[75/169] Compiling Dust3DDocument ComponentStitching.swift
+[76/169] Compiling Dust3DDocument ComponentStructure.swift
+[77/169] Compiling Dust3DDocument ComponentWrapping.swift
+[78/169] Compiling Dust3DDocument CutFaceLinks.swift
+[79/169] Compiling Dust3DDocument DocumentAnimation.swift
+[80/169] Compiling Dust3DDocument DocumentColorImageAsset.swift
+[81/169] Compiling Dust3DDocument DocumentComponent.swift
+[82/169] Compiling Dust3DDocument DocumentFileService.swift
+[83/169] Compiling Dust3DDocument DocumentHistory.swift
+[84/169] Compiling Dust3DDocument AnimationAuthoringCatalog.swift
+[85/169] Compiling Dust3DDocument AnimationControlDefinition.swift
+[86/169] Compiling Dust3DDocument AnimationMetadata.swift
+[87/169] Compiling Dust3DDocument BoneNameIdentity.swift
+[88/169] Compiling Dust3DDocument ComponentColor.swift
+[89/169] Compiling Dust3DDocument ComponentColorImage.swift
+[90/169] Compiling Dust3DDocument ComponentColorImageXML.swift
+[91/169] Compiling Dust3DDocument ComponentColorXML.swift
+[92/169] Compiling Dust3DDocument ComponentCombination.swift
+[93/169] Compiling Dust3DDocument ComponentReordering.swift
+[94/169] Compiling Dust3DDocument DocumentPart.swift
+[95/169] Compiling Dust3DDocument DocumentRigSettings.swift
+[96/169] Compiling Dust3DDocument DocumentTextureImages.swift
+[97/169] Compiling Dust3DDocument DocumentXML.swift
+[98/169] Compiling Dust3DDocument Dust3DDocument.swift
+[99/169] Compiling Dust3DDocument EdgeBoneBinding.swift
+[100/169] Compiling Dust3DDocument EmptyPartCleanup.swift
+[101/169] Compiling Dust3DDocument EngineScalar.swift
+[102/169] Compiling Dust3DDocument JPEGContainerMetadata.swift
+[103/169] Compiling Dust3DDocument NodeClipboard.swift
+[103/169] Compiling cloth_folds.cc
+[105/169] Compiling Dust3DDocument PNGContainerMetadata.swift
+[106/169] Compiling Dust3DDocument PartCutFace.swift
+[107/169] Compiling Dust3DDocument PartDeformation.swift
+[108/169] Compiling Dust3DDocument PartJoining.swift
+[109/169] Compiling Dust3DDocument PartLoopInterior.swift
+[110/169] Compiling Dust3DDocument PartMaterial.swift
+[111/169] Compiling Dust3DDocument PartModifiers.swift
+[112/169] Compiling Dust3DDocument PartSplitting.swift
+[113/169] Compiling Dust3DDocument PartTarget.swift
+[113/169] Compiling rig_generator.cc
+[114/204] Compiling tube_mesh_builder.cc
+[115/204] Compiling trim_vertices.cc
+[117/226] Emitting module Dust3DEditorModel
+[118/233] Compiling Dust3DEditorModel AnimationCreationTarget.swift
+[119/233] Compiling Dust3DEditorModel AnimationEditTarget.swift
+[120/233] Compiling Dust3DEditorModel AnimationListPresentation.swift
+[121/233] Compiling Dust3DEditorModel AnimationParameterDraft.swift
+[122/233] Compiling Dust3DEditorModel AnimationTimeline.swift
+[123/233] Compiling Dust3DEditorModel CanvasProjection.swift
+[124/233] Compiling Dust3DEditorModel ComponentColorDraft.swift
+[125/233] Compiling Dust3DEditorModel PartCutFaceOptions.swift
+[126/233] Compiling Dust3DEditorModel PartProfileOptions.swift
+[127/233] Compiling Dust3DEditorModel RecoveryCopyPlan.swift
+[128/233] Compiling Dust3DEditorModel ReferenceComposition.swift
+[129/233] Compiling Dust3DEditorModel ReferenceCompositionTarget.swift
+[130/233] Compiling Dust3DEditorModel ReferenceCropProjection.swift
+[131/233] Compiling Dust3DEditorModel SelectionTransform.swift
+[131/233] Compiling wrap_mesh_builder.cc
+[132/233] Compiling triangulate.cc
+[134/233] Emitting module Dust3DKit
+[135/244] Compiling Dust3DEditorModel EditorSession.swift
+[136/244] Compiling Dust3DEditorModel EditorState.swift
+[137/244] Compiling Dust3DEditorModel GraphCommandPreparation.swift
+[138/244] Compiling Dust3DEditorModel MeshPreviewState.swift
+[139/244] Compiling Dust3DEditorModel NodeClipboardPayload.swift
+[140/244] Compiling Dust3DEditorModel OriginDrag.swift
+[141/244] Compiling Dust3DEditorModel OriginSettlement.swift
+[142/244] Compiling Dust3DEditorModel ComponentColorImagePresentation.swift
+[143/244] Compiling Dust3DEditorModel ComponentParent.swift
+[144/244] Compiling Dust3DEditorModel ComponentSelectionTarget.swift
+[145/244] Compiling Dust3DEditorModel ComponentTree.swift
+[146/244] Compiling Dust3DEditorModel ComponentWrappingPresentation.swift
+[147/244] Compiling Dust3DEditorModel DescendantRotation.swift
+[148/244] Compiling Dust3DEditorModel EditorExportTarget.swift
+[148/244] Compiling stitch_mesh_builder.cc
+[150/244] Compiling Dust3DKit NativeGeometryExportEncoder.swift
+[151/244] Compiling Dust3DKit NativeOBJExportEncoder.swift
+[152/244] Compiling Dust3DKit SourceBakedCopy.swift
+[153/244] Compiling Dust3DKit SourceBakedLoader.swift
+[154/244] Compiling Dust3DKit SourceBakedMesh.swift
+[155/244] Compiling Dust3DKit SourceBakedMipmaps.swift
+[156/244] Compiling Dust3DKit SourceMeshBakeInput.swift
+[157/244] Compiling Dust3DKit SourceMeshBakingService.swift
+[158/244] Compiling Dust3DKit TextureMipChain.swift
+[159/244] Compiling Dust3DKit TextureMipChainCopy.swift
+[160/244] Compiling Dust3DKit WorkerRequestEncoder.swift
+[178/244] Compiling Dust3DKit ImageSampleLayout.swift
+[179/244] Compiling Dust3DKit ImportedImageDecoder.swift
+[180/244] Compiling Dust3DKit ImportedMaterialCopy.swift
+[181/244] Compiling Dust3DKit ImportedMaterialLoader.swift
+[182/244] Compiling Dust3DKit ImportedMaterialRenderData.swift
+[183/244] Compiling Dust3DKit ImportedMaterials.swift
+[194/244] Compiling solid_mesh.cc
+[195/266] Compiling solid_mesh_boolean_operation.cc
+[196/266] Compiling stitch_loop_mesh_builder.cc
+[197/266] Compiling smooth_normal.cc
+[198/266] Compiling section_remesher.cc
+[199/266] Compiling rope_mesh.cc
+[200/266] Compiling resolve_triangle_tangent.cc
+[201/266] Compiling retained_payload.cc
+[202/266] Compiling re_triangulator.cc
+[203/266] Compiling mesh_state.cc
+[204/266] Compiling mesh_recombiner.cc
+[206/266] Emitting module Dust3DRendering
+[207/266] Compiling Dust3DRendering AlphaMaskThreshold.swift
+[208/266] Compiling Dust3DRendering ArchiveMaterialPreparationService.swift
+[209/266] Compiling Dust3DRendering BakedMetalUploadPlan.swift
+[210/266] Compiling Dust3DRendering BakedTriangleOrder.swift
+[211/266] Compiling Dust3DRendering BuildDiagnosticsView.swift
+[212/266] Compiling Dust3DRendering BuildIdentityLogging.swift
+[213/266] Compiling Dust3DRendering BuildIdentityMetadata.swift
+[214/273] Compiling Dust3DRendering ImportedMetalResources.swift
+[215/273] Compiling Dust3DRendering ImportedRenderGeometry.swift
+[216/273] Compiling Dust3DRendering ImportedSamplerPlan.swift
+[217/273] Compiling Dust3DRendering ImportedTriangleOrder.swift
+[218/273] Compiling Dust3DRendering MeshRenderer.swift
+[219/273] Compiling Dust3DRendering MeshViewport.swift
+[220/273] Compiling Dust3DRendering OrbitCamera.swift
+[221/273] Compiling Dust3DRendering BuildIdentityPresentation.swift
+[222/273] Compiling Dust3DRendering FilePreviewDocumentService.swift
+[223/273] Compiling Dust3DRendering FilePreviewImage.swift
+[224/273] Compiling Dust3DRendering FilePreviewRenderPolicy.swift
+[225/273] Compiling Dust3DRendering FilePreviewRenderer.swift
+[226/273] Compiling Dust3DRendering FilePreviewView.swift
+[227/273] Compiling Dust3DRendering ImportedMeshRenderer.swift
+[227/273] Compiling mesh_combiner.cc
+[228/273] Compiling hole_wrapper.cc
+[229/273] Compiling hole_stitcher.cc
+[231/273] Compiling Dust3DRendering RenderGeometry.swift
+[232/273] Compiling Dust3DRendering RuntimeBuildIdentity.swift
+[233/273] Compiling Dust3DRendering TexturedMeshRenderer.swift
+[234/273] Compiling Dust3DRendering TexturedMetalResources.swift
+[235/273] Compiling Dust3DRendering TexturedRenderGeometry.swift
+[236/273] Compiling Dust3DRendering TexturedRenderMetadata.swift
+[237/273] Compiling Dust3DRendering resource_bundle_accessor.swift
+[237/273] Compiling centripetal_catmull_rom_spline.cc
+[238/273] Compiling base_normal.cc
+[239/328] Compiling vector3.cc
+[240/328] Compiling uuid.cc
+[241/328] Compiling texture_type.cc
+[242/328] Compiling string.cc
+[243/328] Compiling snapshot_xml_writer.cc
+[244/328] Compiling mesh_generator.cc
+[245/328] Compiling part_target.cc
+[247/328] Emitting module Dust3DEditor
+[247/346] Compiling retained_payload.cc
+[248/346] Compiling position_key.cc
+[249/346] Compiling combine_mode.cc
+[250/346] Compiling cut_face.cc
+[251/346] Compiling ds3_file.cc
+[252/346] Compiling spring_step_admission.cc
+[253/346] Compiling surface_material.cc
+[254/346] Compiling axis_aligned_bounding_box_tree.cc
+[255/346] Compiling animation_catalog.cc
+[256/346] Compiling isotropicremesher.cpp
+[257/346] Compiling parameter_catalog.cc
+[258/346] Compiling axisalignedboundingboxtree.cpp
+[259/346] Compiling isotropichalfedgemesh.cpp
+[261/346] Compiling Dust3DEditor ComponentOrderMenu.swift
+[262/346] Compiling Dust3DEditor ComponentReparentControls.swift
+[263/346] Compiling Dust3DEditor ComponentSidebar.swift
+[264/346] Compiling Dust3DEditor ComponentSmoothingControls.swift
+[265/346] Compiling Dust3DEditor ComponentStitchingControls.swift
+[266/346] Compiling Dust3DEditor ComponentWrappingControls.swift
+[267/346] Compiling Dust3DEditor DescendantRotationMenu.swift
+[268/346] Compiling Dust3DEditor DocumentColorPresentation.swift
+[269/346] Compiling Dust3DEditor EdgeBoneBindingControls.swift
+[270/346] Compiling Dust3DEditor EdgeInspector.swift
+[271/346] Compiling Dust3DEditor EdgeSidebar.swift
+[272/346] Compiling Dust3DEditor EditorExportWindowAnchor.swift
+[273/346] Compiling Dust3DEditor EditorGeometryExportMenu.swift
+[274/346] Compiling Dust3DEditor EditorGeometryExportStatusView.swift
+[275/346] Compiling Dust3DEditor EditorRootView.swift
+[276/346] Compiling Dust3DEditor ExactBoneNameField.swift
+[277/346] Compiling Dust3DEditor InspectorNodeDraft.swift
+[278/346] Compiling Dust3DEditor MeshPreviewPlaceholder.swift
+[279/346] Compiling Dust3DEditor Dust3DEditorApp.swift
+[280/346] Compiling Dust3DEditor EditorAnimationAuthoringWorkflow.swift
+[281/346] Compiling Dust3DEditor EditorAnimationCatalogState.swift
+[282/346] Compiling Dust3DEditor EditorCommandScope.swift
+[283/346] Compiling Dust3DEditor EditorCompositionRecovery.swift
+[284/346] Compiling Dust3DEditor EditorExportReceipt.swift
+[285/346] Compiling Dust3DEditor EditorFileDocument.swift
+[286/346] Compiling Dust3DEditor EditorGeometryExportPhase.swift
+[287/346] Compiling Dust3DEditor EditorGeometryExportWorkflow.swift
+[288/346] Compiling Dust3DEditor EditorLaunchDocument.swift
+[289/346] Compiling Dust3DEditor EditorStore.swift
+[290/346] Compiling Dust3DEditor ReferenceCompositionDraft.swift
+[291/346] Compiling Dust3DEditor EditorClipboardCommands.swift
+[292/346] Compiling Dust3DEditor EditorGeometryExportCommands.swift
+[293/346] Compiling Dust3DEditor NodeClipboardPasteButton.swift
+[294/346] Compiling Dust3DEditor ColorImageService.swift
+[295/346] Compiling Dust3DEditor EditorGeometryExportDestinationService.swift
+[296/346] Compiling Dust3DEditor EditorPasteboard.swift
+[297/346] Compiling Dust3DEditor EditorPreviewService.swift
+[298/346] Compiling Dust3DEditor EditorRecoveryCopies.swift
+[299/346] Compiling Dust3DEditor EditorRecoveryCopyFileService.swift
+[300/346] Compiling Dust3DEditor EditorRecoveryDispatchPlan.swift
+[301/346] Compiling Dust3DEditor EditorRecoveryRequestChannel.swift
+[302/346] Compiling Dust3DEditor EditorSaveState.swift
+[303/346] Compiling Dust3DEditor NativeUndoCommandState.swift
+[304/346] Compiling Dust3DEditor NodeClipboardDataProvider.swift
+[305/346] Compiling Dust3DEditor ReferenceCompositionRaster.swift
+[306/346] Compiling Dust3DEditor ReferenceCompositionService.swift
+[307/346] Compiling Dust3DEditor ReferenceImageService.swift
+[308/346] Compiling Dust3DEditor ScopedPreviewQueue.swift
+[309/346] Compiling Dust3DEditor AnimationAuthoringControls.swift
+[310/346] Compiling Dust3DEditor AnimationNameField.swift
+[311/346] Compiling Dust3DEditor AnimationPanel.swift
+[312/346] Compiling Dust3DEditor ComponentColorControls.swift
+[313/346] Compiling Dust3DEditor ComponentColorImageControls.swift
+[314/346] Compiling Dust3DEditor ComponentInspector.swift
+[314/346] Compiling surfacemesh.cpp
+[315/346] Compiling singularitysimplifier.cpp
+[316/346] Compiling quadparameterizer.cpp
+[318/346] Compiling Dust3DEditor NodeCanvas.swift
+[319/346] Compiling Dust3DEditor NodeInspector.swift
+[320/346] Compiling Dust3DEditor OriginControls.swift
+[321/346] Compiling Dust3DEditor OriginHandle.swift
+[322/346] Compiling Dust3DEditor PartCutFaceControls.swift
+[323/346] Compiling Dust3DEditor PartDeformationControls.swift
+[324/346] Compiling Dust3DEditor PartInspector.swift
+[325/346] Compiling Dust3DEditor PartLoopInteriorControls.swift
+[326/346] Compiling Dust3DEditor PartMaterialControls.swift
+[327/346] Compiling Dust3DEditor PartModifierControls.swift
+[328/346] Compiling Dust3DEditor PartProfileChooser.swift
+[329/346] Compiling Dust3DEditor PartSidebar.swift
+[330/346] Compiling Dust3DEditor PartTargetControls.swift
+[331/346] Compiling Dust3DEditor PreviewDiagnosticNotice.swift
+[332/346] Compiling Dust3DEditor ReferenceCompositionSheet.swift
+[333/346] Compiling Dust3DEditor ReferenceImageControls.swift
+[334/346] Compiling Dust3DEditor RigSettingsControls.swift
+[335/346] Compiling Dust3DEditor SelectableNodeIdentifier.swift
+[335/346] Compiling positionkey.cpp
+[336/346] Compiling parameterizer.cpp
+[337/346] Compiling meshseparator.cpp
+[338/346] Compiling mixedintegerleastsquares.cpp
+[339/346] Compiling quadextractor.cpp
+[340/346] Compiling isotropicremesher.cpp
+[341/346] Compiling framefield.cpp
+[342/346] Compiling constrainedleastsquares.cpp
+[343/346] Write Objects.LinkFileList
+[344/346] Linking Dust3DEditor
+[345/346] Applying Dust3DEditor
+Build of product 'Dust3DEditor' complete! (96.59s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+[0/1] Planning build
+Building for debugging...
+[0/5] Write sources
+[0/6] Write Dust3DQuickLookExtension-entitlement.plist
+[2/6] Write swift-version--58304C5D6DBC2206.txt
+[4/8] Emitting module Dust3DQuickLookExtension
+[5/8] Compiling Dust3DQuickLookExtension PreviewViewController.swift
+[5/8] Write Objects.LinkFileList
+[6/8] Linking Dust3DQuickLookExtension
+[7/8] Applying Dust3DQuickLookExtension
+Build of product 'Dust3DQuickLookExtension' complete! (7.20s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+Building for debugging...
+[0/7] Write sources
+[0/6] Write Dust3DThumbnailExtension-entitlement.plist
+[2/6] Write swift-version--58304C5D6DBC2206.txt
+[4/8] Emitting module Dust3DThumbnailExtension
+[5/8] Compiling Dust3DThumbnailExtension ThumbnailProvider.swift
+[5/8] Write Objects.LinkFileList
+[6/8] Linking Dust3DThumbnailExtension
+[7/8] Applying Dust3DThumbnailExtension
+Build of product 'Dust3DThumbnailExtension' complete! (3.97s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DEditor.app/Contents/PlugIns/Dust3DQuickLookExtension.appex: replacing existing signature
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DEditor.app/Contents/PlugIns/Dust3DThumbnailExtension.appex: replacing existing signature
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DEditor.app: replacing existing signature
+Dust3DQuickLookExtension: metadata, shader resources, entry point, readonly sandbox and signature verified
+Dust3DThumbnailExtension: metadata, shader resources, entry point, readonly sandbox and signature verified
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DEditor.app
+Building for debugging...
+[0/3] Write swift-version--58304C5D6DBC2206.txt
+Build of product 'Dust3DEditor' complete! (0.21s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+Building for debugging...
+[0/3] Write swift-version--58304C5D6DBC2206.txt
+Build of product 'Dust3DQuickLookExtension' complete! (0.20s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+Building for debugging...
+[0/3] Write swift-version--58304C5D6DBC2206.txt
+Build of product 'Dust3DThumbnailExtension' complete! (0.20s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DEditor.app/Contents/PlugIns/Dust3DQuickLookExtension.appex: replacing existing signature
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DEditor.app/Contents/PlugIns/Dust3DThumbnailExtension.appex: replacing existing signature
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DEditor.app: replacing existing signature
+Dust3DQuickLookExtension: metadata, shader resources, entry point, readonly sandbox and signature verified
+Dust3DThumbnailExtension: metadata, shader resources, entry point, readonly sandbox and signature verified
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DEditor.app
+Dust3DEditor.app: rebuilt directory timestamp includes current plist and icon
+Building for debugging...
+[0/5] Write sources
+[0/5] Write Dust3DViewer-entitlement.plist
+[2/6] Write swift-version--58304C5D6DBC2206.txt
+[4/10] Emitting module Dust3DViewer
+[5/10] Compiling Dust3DViewer ContentView.swift
+[6/10] Compiling Dust3DViewer ViewerStore.swift
+[7/10] Compiling Dust3DViewer Dust3DViewerApp.swift
+[7/10] Write Objects.LinkFileList
+[8/10] Linking Dust3DViewer
+[9/10] Applying Dust3DViewer
+Build of product 'Dust3DViewer' complete! (4.10s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DViewer.app: replacing existing signature
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DViewer.app
+Building for debugging...
+[0/3] Write swift-version--58304C5D6DBC2206.txt
+Build of product 'Dust3DViewer' complete! (0.20s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DViewer.app: replacing existing signature
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/Dust3DViewer.app
+Dust3DViewer.app: rebuilt directory timestamp includes current plist and icon
+[0/1] Planning build
+Building for debugging...
+[0/3] Write swift-version--58304C5D6DBC2206.txt
+Build of product 'Dust3DEditor' complete! (0.39s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/qa/Dust3DEditor.app: replacing existing signature
+/var/folders/k_/hbdwxx_s2017v4p6v_ttx1d40000gn/T//dust3d-bundle-rebuild.XsQuoB/qa/Dust3DEditor.app
+QA bundle reuses the existing identity and has no preview providers
+Rebuild regression leaves default archives unchanged and packages only isolated archives.

@@ -1,0 +1,7 @@
+[  0%] Built target dust3d_triangle
+[ 16%] Built target dust3d_remesher
+[ 66%] Built target dust3d_core
+[100%] Built target dust3d_engine
+[100%] Building CXX object CMakeFiles/dust3d_indexed_obj_export_tests.dir/tests/core/indexed_obj_export_tests.cc.o
+[100%] Linking CXX executable dust3d_indexed_obj_export_tests
+[100%] Built target dust3d_indexed_obj_export_tests

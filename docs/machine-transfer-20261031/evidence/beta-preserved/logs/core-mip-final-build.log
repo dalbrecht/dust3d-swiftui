@@ -1,0 +1,193 @@
+[  0%] Building C object CMakeFiles/dust3d_triangle.dir/third_party/GuigueDevillers03/tri_tri_intersect.c.o
+[  8%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/isotropicremesher.cpp.o
+[  8%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/framefield.cpp.o
+[  8%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/constrainedleastsquares.cpp.o
+[  8%] Linking C static library libdust3d_triangle.a
+[  8%] Built target dust3d_triangle
+[  8%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/meshseparator.cpp.o
+[  8%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/mixedintegerleastsquares.cpp.o
+[  8%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/parameterizer.cpp.o
+[  8%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/positionkey.cpp.o
+[  8%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/quadextractor.cpp.o
+[ 16%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/quadparameterizer.cpp.o
+[ 16%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/singularitysimplifier.cpp.o
+[ 16%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/src/AutoRemesher/surfacemesh.cpp.o
+[ 16%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/thirdparty/isotropicremesher/axisalignedboundingboxtree.cpp.o
+[ 16%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/thirdparty/isotropicremesher/isotropichalfedgemesh.cpp.o
+[ 16%] Building CXX object CMakeFiles/dust3d_remesher.dir/third_party/autoremesher/thirdparty/isotropicremesher/isotropicremesher.cpp.o
+[ 25%] Linking CXX static library libdust3d_remesher.a
+[ 25%] Built target dust3d_remesher
+[ 25%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/animation/animation_defaults.cc.o
+[ 33%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/animation/spring_step_admission.cc.o
+[ 33%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/animation/surface_material.cc.o
+[ 33%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/animation/animation_catalog.cc.o
+[ 33%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/animation/parameter_catalog.cc.o
+[ 33%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/animation/biped/clip_metadata.cc.o
+[ 41%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/axis_aligned_bounding_box_tree.cc.o
+[ 41%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/combine_mode.cc.o
+[ 41%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/cut_face.cc.o
+[ 41%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/ds3_file.cc.o
+[ 41%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/part_target.cc.o
+[ 41%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/position_key.cc.o
+[ 41%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/snapshot_xml.cc.o
+[ 50%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/snapshot_xml_writer.cc.o
+/private/tmp/dust3d-mip-final-src/dust3d/base/ds3_file.cc:186:40: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  186 |     int firstLineSizeExcludeSizeSelf = sprintf(firstLine, "%s %s %s ",
+      |                                        ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/dust3d-mip-final-src/dust3d/base/ds3_file.cc:192:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  192 |     sprintf(headerSizeString, "%010u\r\n", headerSize);
+      |     ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/dust3d-mip-final-src/dust3d/base/ds3_file.cc:210:40: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  210 |     int firstLineSizeExcludeSizeSelf = sprintf(firstLine, "%s %s %s ",
+      |                                        ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/dust3d-mip-final-src/dust3d/base/ds3_file.cc:216:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  216 |     sprintf(headerSizeString, "%010u\r\n", headerSize);
+      |     ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+4 warnings generated.
+[ 50%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/string.cc.o
+[ 50%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/texture_type.cc.o
+[ 50%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/retained_payload.cc.o
+[ 50%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/uuid.cc.o
+[ 50%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/base/vector3.cc.o
+[ 58%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/base_normal.cc.o
+[ 58%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/centripetal_catmull_rom_spline.cc.o
+[ 58%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/hole_stitcher.cc.o
+[ 58%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/hole_wrapper.cc.o
+[ 58%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/mesh_combiner.cc.o
+[ 58%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/mesh_generator.cc.o
+[ 66%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/mesh_recombiner.cc.o
+[ 66%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/retained_payload.cc.o
+[ 66%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/mesh_state.cc.o
+[ 66%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/re_triangulator.cc.o
+[ 66%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/resolve_triangle_tangent.cc.o
+[ 66%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/rope_mesh.cc.o
+[ 66%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/section_remesher.cc.o
+[ 75%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/smooth_normal.cc.o
+[ 75%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/solid_mesh.cc.o
+[ 75%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/solid_mesh_boolean_operation.cc.o
+[ 75%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/stitch_loop_mesh_builder.cc.o
+[ 75%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/stitch_mesh_builder.cc.o
+[ 75%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/triangulate.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/trim_vertices.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/tube_mesh_builder.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/mesh/wrap_mesh_builder.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/rig/rig_generator.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/chart_packer.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/color_texture_sampler.cc.o
+[ 91%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/cloth_folds.cc.o
+[ 91%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/max_rectangles.cc.o
+/private/tmp/dust3d-mip-final-src/dust3d/uv/max_rectangles.cc:123:30: warning: implicit truncation from 'int' to a one-bit wide bit-field changes value from 1 to -1 [-Wsingle-bit-bitfield-constant-conversion]
+  123 |         rect->inFreeRectLink = 1;
+      |                              ^ ~
+/private/tmp/dust3d-mip-final-src/dust3d/uv/max_rectangles.cc:132:30: warning: implicit truncation from 'int' to a one-bit wide bit-field changes value from 1 to -1 [-Wsingle-bit-bitfield-constant-conversion]
+  132 |         rect->inUsedRectLink = 1;
+      |                              ^ ~
+/private/tmp/dust3d-mip-final-src/dust3d/uv/max_rectangles.cc:139:31: warning: implicit truncation from 'int' to a one-bit wide bit-field changes value from 1 to -1 [-Wsingle-bit-bitfield-constant-conversion]
+  139 |         rect->inInputRectLink = 1;
+      |                               ^ ~
+3 warnings generated.
+[ 91%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/source_texture_baker.cc.o
+[ 91%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/source_uv_atlas.cc.o
+[ 91%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/surface_pattern.cc.o
+[ 91%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/texture_baker.cc.o
+[ 91%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/uv_atlas_builder.cc.o
+[100%] Building CXX object CMakeFiles/dust3d_core.dir/dust3d/uv/uv_map_packer.cc.o
+[100%] Linking CXX static library libdust3d_core.a
+[100%] Built target dust3d_core
+[100%] Building CXX object CMakeFiles/dust3d_source_mip_fallback_tests.dir/tests/core/source_mip_fallback_tests.cc.o
+[100%] Linking CXX executable dust3d_source_mip_fallback_tests
+[100%] Built target dust3d_source_mip_fallback_tests
+[  0%] Built target dust3d_triangle
+[ 23%] Built target dust3d_remesher
+[ 92%] Built target dust3d_core
+[ 92%] Building CXX object CMakeFiles/dust3d_source_mip_uv_packing_tests.dir/tests/core/source_mip_uv_packing_tests.cc.o
+[100%] Linking CXX executable dust3d_source_mip_uv_packing_tests
+[100%] Built target dust3d_source_mip_uv_packing_tests
+[  0%] Built target dust3d_triangle
+[ 23%] Built target dust3d_remesher
+[ 92%] Built target dust3d_core
+[100%] Building CXX object CMakeFiles/dust3d_source_mip_base_isolation_tests.dir/tests/core/source_mip_base_isolation_tests.cc.o
+[100%] Linking CXX executable dust3d_source_mip_base_isolation_tests
+[100%] Built target dust3d_source_mip_base_isolation_tests
+[  0%] Built target dust3d_triangle
+[ 25%] Built target dust3d_remesher
+[100%] Built target dust3d_core
+[100%] Building CXX object CMakeFiles/dust3d_source_mip_padded_atlas_tests.dir/tests/core/source_mip_padded_atlas_tests.cc.o
+[100%] Linking CXX executable dust3d_source_mip_padded_atlas_tests
+[100%] Built target dust3d_source_mip_padded_atlas_tests
+[  0%] Built target dust3d_triangle
+[ 16%] Built target dust3d_remesher
+[ 66%] Built target dust3d_core
+[ 66%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/ObjGeometryPlan.cc.o
+[ 66%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/EngineSupport.cc.o
+[ 66%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/AnimationCatalogBridge.cc.o
+[ 72%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/ObjDocument.cc.o
+[ 72%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/ObjExportBridge.cc.o
+[ 72%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxExportBridge.cc.o
+[ 72%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/PngEncoding.cc.o
+[ 72%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxBakedMaterial.cc.o
+[ 77%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxAtlasGeometry.cc.o
+[ 77%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxGeometrySelection.cc.o
+[ 77%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxMaterialImagePlan.cc.o
+[ 77%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxMeshScene.cc.o
+[ 77%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxMeshScenePlan.cc.o
+[ 77%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxDocument.cc.o
+[ 77%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxNode.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxPropertyBlock.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/FbxAnimationMath.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/RigTransformValidation.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/SourceBakedMesh.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/ImportedSurface.cc.o
+[ 83%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/ImportedAssets.cc.o
+[ 88%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/ImportedModels.cc.o
+[ 88%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/GlbReader.cc.o
+[ 88%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/BakedMesh.cc.o
+[ 88%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/Cancellation.cc.o
+[ 88%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/UvMetadata.cc.o
+[ 88%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/GenerationSession.cc.o
+In file included from /private/tmp/dust3d-mip-final-src/native/Engine/GlbReader.cc:7:
+/private/tmp/dust3d-mip-final-src/third_party/json/json.hpp:17287:35: warning: identifier '_json' preceded by whitespace in a literal operator declaration is deprecated [-Wdeprecated-literal-operator]
+ 17287 | inline nlohmann::json operator "" _json(const char* s, std::size_t n)
+       |                       ~~~~~~~~~~~~^~~~~
+       |                       operator""_json
+/private/tmp/dust3d-mip-final-src/third_party/json/json.hpp:17305:49: warning: identifier '_json_pointer' preceded by whitespace in a literal operator declaration is deprecated [-Wdeprecated-literal-operator]
+ 17305 | inline nlohmann::json::json_pointer operator "" _json_pointer(const char* s, std::size_t n)
+       |                                     ~~~~~~~~~~~~^~~~~~~~~~~~~
+       |                                     operator""_json_pointer
+[ 94%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/Dust3DBridge.cc.o
+[ 94%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/SourceProvenance.cc.o
+2 warnings generated.
+[ 94%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/IndexedMesh.cc.o
+[ 94%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/RetainedPayload.cc.o
+[ 94%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/SnapshotInvalidation.cc.o
+[ 94%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/DocumentReader.cc.o
+[100%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/SnapshotValidator.cc.o
+[100%] Linking CXX static library libdust3d_engine.a
+[100%] Built target dust3d_engine
+[100%] Building CXX object CMakeFiles/dust3d_source_mip_warning_tests.dir/tests/core/source_mip_warning_tests.cc.o
+[100%] Linking CXX executable dust3d_source_mip_warning_tests
+[100%] Built target dust3d_source_mip_warning_tests

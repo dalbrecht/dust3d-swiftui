@@ -1,0 +1,20 @@
+warning: '--skip-update' option is deprecated and will be removed in a future release
+[0/1] Planning build
+Building for debugging...
+[0/11] Write sources
+[1/11] Write swift-version--58304C5D6DBC2206.txt
+[3/5] Emitting module Dust3DEditorTests
+[4/5] Compiling Dust3DEditorTests NodePointerViewTests.swift
+[4/6] Write Objects.LinkFileList
+[5/6] Linking Dust3DNativePackageTests
+Build complete! (3.23s)
+error: Process '/Applications/Xcode.app/Contents/Developer/usr/bin/xctest -XCTest Dust3DEditorTests.NodePointerViewTests/testHostedCanvasRoutesWindowMouseEventsToNodeDrag /private/tmp/dust3d-beta-modeling/.build/arm64-apple-macosx/debug/Dust3DNativePackageTests.xctest' exited with unexpected signal code 11
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+Test Suite 'Selected tests' started at 2026-10-30 17:58:11.092.
+Test Suite 'Dust3DNativePackageTests.xctest' started at 2026-10-30 17:58:11.092.
+Test Suite 'NodePointerViewTests' started at 2026-10-30 17:58:11.092.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedCanvasRoutesWindowMouseEventsToNodeDrag]' started.
+/private/tmp/dust3d-beta-modeling/Tests/Dust3DEditorTests/NodePointerViewTests.swift:190: error: -[Dust3DEditorTests.NodePointerViewTests testHostedCanvasRoutesWindowMouseEventsToNodeDrag] : XCTAssertGreaterThan failed: ("0.0") is not greater than ("0.0")
+/private/tmp/dust3d-beta-modeling/Tests/Dust3DEditorTests/NodePointerViewTests.swift:191: error: -[Dust3DEditorTests.NodePointerViewTests testHostedCanvasRoutesWindowMouseEventsToNodeDrag] : XCTAssertTrue failed
+Note: Some test targets reported failures:
+  - Dust3DNativePackageTests (XCTest)

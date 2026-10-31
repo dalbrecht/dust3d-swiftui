@@ -1,0 +1,48 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/dalbrecht/.local/share/uv/tools/thewariend-musclememory/bin/python -m musclememory hooks receive --client codex --config /Users/dalbrecht/.musclememory/hooks/codex.json",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/dalbrecht/.local/share/uv/tools/thewariend-musclememory/bin/python -m musclememory hooks receive --client codex --config /Users/dalbrecht/.musclememory/hooks/codex.json",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/dalbrecht/.local/share/uv/tools/thewariend-musclememory/bin/python -m musclememory hooks receive --client codex --config /Users/dalbrecht/.musclememory/hooks/codex.json",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/dalbrecht/.local/share/uv/tools/thewariend-musclememory/bin/python -m musclememory hooks receive --client codex --config /Users/dalbrecht/.musclememory/hooks/codex.json",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

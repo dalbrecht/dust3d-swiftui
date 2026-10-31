@@ -1,0 +1,93 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 48335a2f..2264e253 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -269,6 +269,10 @@ if(BUILD_TESTING)
+     add_test(NAME worker_resource_contracts COMMAND dust3d_worker_resource_tests)
+     set_tests_properties(worker_resource_contracts PROPERTIES TIMEOUT 30)
+ 
++    add_executable(dust3d_tube_mesh_baseline_tests tests/core/tube_mesh_baseline_tests.cc)
++    target_link_libraries(dust3d_tube_mesh_baseline_tests PRIVATE dust3d_core)
++    add_test(NAME tube_mesh_baseline_contracts COMMAND dust3d_tube_mesh_baseline_tests)
++
+     add_executable(dust3d_source_mip_padded_atlas_tests tests/core/source_mip_padded_atlas_tests.cc)
+     target_link_libraries(dust3d_source_mip_padded_atlas_tests PRIVATE dust3d_core)
+     add_test(NAME source_mip_padded_atlas_contracts COMMAND dust3d_source_mip_padded_atlas_tests)
+diff --git a/tests/core/worker_legacy_job_tests.cc b/tests/core/worker_legacy_job_tests.cc
+index f9c66fd8..bb84f328 100644
+--- a/tests/core/worker_legacy_job_tests.cc
++++ b/tests/core/worker_legacy_job_tests.cc
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: MIT
+ #include <Dust3DWorkerImageDecoder.h>
+ #include <Dust3DWorkerRuntime.h>
++#include <array>
+ #include <cstdio>
+ #include <fstream>
+ #include <iostream>
+@@ -18,15 +19,19 @@ void require(bool value, const char* cause)
+     if (!value)
+         throw std::runtime_error(cause);
+ }
++struct DecoderFixture {
++    size_t calls = 0;
++    std::array<uint8_t, 4> pixel { 17, 23, 41, 0 };
++};
+ Dust3DWorkerImage* decode(void* context, const Dust3DWorkerImageInput* input, Dust3DWorkerImageResult* result)
+ {
+-    ++*static_cast<size_t*>(context);
++    auto& fixture = *static_cast<DecoderFixture*>(context);
++    ++fixture.calls;
+     if (!input || !input->encoded_count || !input->model_count || input->maximum_decoded_bytes < 4) {
+         *result = dust3d_worker_image_error_create(DUST3D_WORKER_IMAGE_INVALID_INPUT, 17, nullptr, 0);
+         return nullptr;
+     }
+-    const uint8_t pixels[] = { 17, 23, 41, 0 };
+-    return dust3d_worker_image_create(1, 1, pixels, 4, input->maximum_decoded_bytes, result);
++    return dust3d_worker_image_create(1, 1, fixture.pixel.data(), fixture.pixel.size(), input->maximum_decoded_bytes, result);
+ }
+ Frame invoke(const char* fixtures, const char* build, const char* name, const Dust3DWorkerDecoders* decoder)
+ {
+@@ -76,17 +81,37 @@ int main(int argc, char** argv)
+ {
+     try {
+         require(argc == 3, "Existing fixture and shared-build directories required");
+-        size_t calls = 0;
+-        size_t importedCalls = 0;
++        DecoderFixture procedural;
++        DecoderFixture imported;
+         Dust3DWorkerDecoders configuration {};
+         configuration.struct_size = sizeof(configuration);
+-        configuration.imported = { sizeof(Dust3DWorkerImageDecoder), &importedCalls, decode };
+-        configuration.procedural = { sizeof(Dust3DWorkerImageDecoder), &calls, decode };
++        configuration.imported = { sizeof(Dust3DWorkerImageDecoder), &imported, decode };
++        configuration.procedural = { sizeof(Dust3DWorkerImageDecoder), &procedural, decode };
+         const auto rendered = invoke(argv[1], argv[2], "ProceduralImage.ds3", &configuration);
+-        require(rendered.header.kind == FrameKind::response && calls == 1 && !importedCalls,
++        require(rendered.header.kind == FrameKind::response && procedural.calls == 1 && !imported.calls,
+             "Legacy job invokes only the explicit procedural callback slot");
+         const auto value = decodeLegacyBakedPayload(rendered.payload.data(), rendered.payload.size(), {});
+         require(!value.geometry.vertices.empty() && !value.textures.maps[0].empty(), "Complete owned legacy pixels and geometry traverse descriptor job output");
++        procedural.pixel = { 255, 0, 0, 255 };
++        const auto redReply = invoke(argv[1], argv[2], "ProceduralImage.ds3", &configuration);
++        require(redReply.header.kind == FrameKind::response && procedural.calls == 2 && !imported.calls,
++            "Opaque red procedural image is decoded by the matching provider");
++        const auto redValue = decodeLegacyBakedPayload(redReply.payload.data(), redReply.payload.size(), {});
++        require(!redValue.textures.maps[0].empty(), "Red worker reply contains a color level");
++        const auto red = redValue.textures.maps[0][0].pixels;
++        procedural.pixel = { 0, 0, 255, 255 };
++        const auto blueReply = invoke(argv[1], argv[2], "ProceduralImage.ds3", &configuration);
++        require(blueReply.header.kind == FrameKind::response && procedural.calls == 3 && !imported.calls,
++            "Opaque blue procedural image is decoded by the matching provider");
++        const auto blueValue = decodeLegacyBakedPayload(blueReply.payload.data(), blueReply.payload.size(), {});
++        require(!blueValue.textures.maps[0].empty(), "Blue worker reply contains a color level");
++        const auto blue = blueValue.textures.maps[0][0].pixels;
++        require(red.size() == blue.size() && red.size() == 8 * 8 * 4, "Both small color maps retain their expected RGBA layout");
++        bool foundContrast = false;
++        for (size_t index = 0; index < red.size(); index += 4) {
++            foundContrast |= red[index] > red[index + 2] && blue[index + 2] > blue[index];
++        }
++        require(foundContrast, "Independent opaque red and blue input pixels reach the same baked worker texel");
+         const auto plain = invoke(argv[1], argv[2], "Capsule.ds3", nullptr);
+         require(plain.header.kind == FrameKind::response, "Untextured legacy job needs no platform decoder");
+         const auto unavailable = invoke(argv[1], argv[2], "ProceduralImage.ds3", nullptr);

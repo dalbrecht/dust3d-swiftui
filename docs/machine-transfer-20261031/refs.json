@@ -1,0 +1,429 @@
+[
+  {
+    "store": "app-local",
+    "local_path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple",
+    "repository": "dalbrecht/dust3d-swiftui",
+    "refs": [
+      {
+        "sha": "95597598d14a93d1357a8aa76101f24af079d444",
+        "original_ref": "refs/heads/codex/animation-batch-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-batch-delivery"
+      },
+      {
+        "sha": "cec50eb39cb55b32fee395336361d482fdfcb628",
+        "original_ref": "refs/heads/codex/animation-creation-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-creation-delivery"
+      },
+      {
+        "sha": "91fc7c834145a9f622274d7a3d1659b6963b9336",
+        "original_ref": "refs/heads/codex/animation-document-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-document-delivery"
+      },
+      {
+        "sha": "ec026ae8000dcfc8140b20fafcacbd03c2636adb",
+        "original_ref": "refs/heads/codex/animation-document-management",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-document-management"
+      },
+      {
+        "sha": "8a1da903f7cbc7ea14389707baf3dd5c9f40beda",
+        "original_ref": "refs/heads/codex/animation-panel-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-panel-delivery"
+      },
+      {
+        "sha": "d20fef138b3b2991d69548eb1b2432f6c0b36d64",
+        "original_ref": "refs/heads/codex/animation-parameter-addition",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-parameter-addition"
+      },
+      {
+        "sha": "dccc42c84c8a2a7a4426d0dd636671c51b0788c2",
+        "original_ref": "refs/heads/codex/animation-parameter-addition-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-parameter-addition-delivery"
+      },
+      {
+        "sha": "ed7a8f5ff60a149aea7ed2848a46ba762a823915",
+        "original_ref": "refs/heads/codex/animation-record-creation",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-record-creation"
+      },
+      {
+        "sha": "9cdf02328661d2997a8fa8ef90a7b580f3e35464",
+        "original_ref": "refs/heads/codex/animation-session-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-session-delivery"
+      },
+      {
+        "sha": "6e431fd858e894fcf92fd3253dc36a8978247973",
+        "original_ref": "refs/heads/codex/animation-session-presentation",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-session-presentation"
+      },
+      {
+        "sha": "ba796f6b794fb4df1deedbd66f12d4f66e439ae4",
+        "original_ref": "refs/heads/codex/animation-store-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-store-delivery"
+      },
+      {
+        "sha": "81cd4f93b79513553c01278df19676563c656ba8",
+        "original_ref": "refs/heads/codex/animation-store-workflow",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-store-workflow"
+      },
+      {
+        "sha": "27388cc119496806867f7f3ceb781b27fe193389",
+        "original_ref": "refs/heads/codex/animation-stored-value-controls",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-stored-value-controls"
+      },
+      {
+        "sha": "99dfd417211e63421bd979ca7f8b903d2071460a",
+        "original_ref": "refs/heads/codex/animation-values-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/animation-values-delivery"
+      },
+      {
+        "sha": "ddc3f3af08dcf0589c60d5066f906995c0d68cc9",
+        "original_ref": "refs/heads/codex/atomic-animation-edits",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/atomic-animation-edits"
+      },
+      {
+        "sha": "5ae3bee4007caea1e9e8543dd1b4065dbcfa85a8",
+        "original_ref": "refs/heads/codex/beta-candidate",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/beta-candidate"
+      },
+      {
+        "sha": "f558b4f4d3299f1ca87d6fc7f66096a929926fa3",
+        "original_ref": "refs/heads/codex/beta-gesture-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/beta-gesture-delivery"
+      },
+      {
+        "sha": "bf33b8d335f90a04af748822772444842ea3a2b3",
+        "original_ref": "refs/heads/codex/bounded-preview-queue",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/bounded-preview-queue"
+      },
+      {
+        "sha": "c49d6432aa9dd9e2a6513f2c3ff7548cc9589daf",
+        "original_ref": "refs/heads/codex/coordinated-exports",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/coordinated-exports"
+      },
+      {
+        "sha": "155f6d7e408fe40bf5b674524652744494548f90",
+        "original_ref": "refs/heads/codex/document-export-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/document-export-delivery"
+      },
+      {
+        "sha": "d7ed2dada245aeba21ddf7c53feab7a6bb7f06e5",
+        "original_ref": "refs/heads/codex/document-export-service",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/document-export-service"
+      },
+      {
+        "sha": "d26cb400ebb50e98a95a4ab4637da9d13e51f0ec",
+        "original_ref": "refs/heads/codex/editor-clipboard",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/editor-clipboard"
+      },
+      {
+        "sha": "f86b1a21529cdfc6940e90f78aaae8bac6699fad",
+        "original_ref": "refs/heads/codex/editor-export-workflow",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/editor-export-workflow"
+      },
+      {
+        "sha": "a8eff564708f3837f08b4c53a6e04e9572414d64",
+        "original_ref": "refs/heads/codex/editor-export-workflow-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/editor-export-workflow-delivery"
+      },
+      {
+        "sha": "77a752a9cc4298d51669f96dc684fe51b9352175",
+        "original_ref": "refs/heads/codex/editor-next-stage",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/editor-next-stage"
+      },
+      {
+        "sha": "f29aae9e978ea9a9574cb1a770e674c6100a994f",
+        "original_ref": "refs/heads/codex/editor-part-splitting",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/editor-part-splitting"
+      },
+      {
+        "sha": "4ef8cdc36c358a2c1da37f5374928fbf5fe76da0",
+        "original_ref": "refs/heads/codex/editor-topology",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/editor-topology"
+      },
+      {
+        "sha": "84a1ff73c7aea60778707cb4fadfbc1fa031d1e9",
+        "original_ref": "refs/heads/codex/export-admission-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/export-admission-delivery"
+      },
+      {
+        "sha": "c7df651d235c101b4fc6ce3b2e214bec395e2cc9",
+        "original_ref": "refs/heads/codex/export-publication-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/export-publication-delivery"
+      },
+      {
+        "sha": "98b79773651def3504eca56daeb47dc281272404",
+        "original_ref": "refs/heads/codex/export-revision-admission",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/export-revision-admission"
+      },
+      {
+        "sha": "47a2ec120ae9086ca7c9d3a68731abb1c03225c4",
+        "original_ref": "refs/heads/codex/export-serialized-publication",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/export-serialized-publication"
+      },
+      {
+        "sha": "b4e6c367a57d72d8b5f8d167ef2131b7118c3b98",
+        "original_ref": "refs/heads/codex/export-source-symlink-guard",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/export-source-symlink-guard"
+      },
+      {
+        "sha": "3e1c0635f83e0acbcdbbd863b7569d63c1c658f4",
+        "original_ref": "refs/heads/codex/helper-signature-policy",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/helper-signature-policy"
+      },
+      {
+        "sha": "4ff6dce880925d5013b3f39a596b33d51c94cc92",
+        "original_ref": "refs/heads/codex/isolated-launch-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/isolated-launch-delivery"
+      },
+      {
+        "sha": "f45080de305e799f2588fd95937be59c75f4d928",
+        "original_ref": "refs/heads/codex/isolated-qa-launch",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/isolated-qa-launch"
+      },
+      {
+        "sha": "8e3a0c849f21d1f6c058f4b871dcb2abb53cc343",
+        "original_ref": "refs/heads/codex/isolated-worker-delivery-plan",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/isolated-worker-delivery-plan"
+      },
+      {
+        "sha": "3c23d54c7b8df8d2fa75584cd4707cdb1ab45f54",
+        "original_ref": "refs/heads/codex/local-core-integration",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/local-core-integration"
+      },
+      {
+        "sha": "79013ddc1abf19aa81e70a77b773bd9eb0dfd3a5",
+        "original_ref": "refs/heads/codex/native-animation-panel",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/native-animation-panel"
+      },
+      {
+        "sha": "fca91f93d80e0c9084b3a75e2e40bc733ceb352c",
+        "original_ref": "refs/heads/codex/node-drag-cancellation",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/node-drag-cancellation"
+      },
+      {
+        "sha": "7f302f8afb027151eccca9e1e6fbf97136c3a40b",
+        "original_ref": "refs/heads/codex/persistent-service-plan",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/persistent-service-plan"
+      },
+      {
+        "sha": "2cb28df023fe14cacb6e1eaaa693fcfed3dfdba3",
+        "original_ref": "refs/heads/codex/recovery-copies-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/recovery-copies-delivery"
+      },
+      {
+        "sha": "bc6aeb7348bfc079fdb2afeba610a4b525262699",
+        "original_ref": "refs/heads/codex/service-admission-plan",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/service-admission-plan"
+      },
+      {
+        "sha": "8ba61facadcff8a6f6403bb71a573e53dded48a7",
+        "original_ref": "refs/heads/codex/service-queue-plan",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/service-queue-plan"
+      },
+      {
+        "sha": "86caf3a745143b1c46eb5d06cd4b50d9e15dd291",
+        "original_ref": "refs/heads/codex/shared-build-artifacts",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/shared-build-artifacts"
+      },
+      {
+        "sha": "5d0190b7fadd591aa9af8149d59d3b2421aa728e",
+        "original_ref": "refs/heads/codex/source-alias-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/source-alias-delivery"
+      },
+      {
+        "sha": "405f9f929285e3e44a43d83cadcdd98df55cf6b9",
+        "original_ref": "refs/heads/codex/targeted-composition-recovery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/targeted-composition-recovery"
+      },
+      {
+        "sha": "5c934cfd35e79123bf4aaaffe80b56785d5c107d",
+        "original_ref": "refs/heads/codex/targeted-recovery-copies",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/targeted-recovery-copies"
+      },
+      {
+        "sha": "ae6e68e705d3c48b8ceb8ef6c6b5acdd2d607168",
+        "original_ref": "refs/heads/codex/targeted-recovery-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/targeted-recovery-delivery"
+      },
+      {
+        "sha": "13780a24b1b65a9a9eee6df9b00af98332b20627",
+        "original_ref": "refs/heads/codex/xpc-admission-plan",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/xpc-admission-plan"
+      },
+      {
+        "sha": "445034d537e5614f21fa70f1f6b8c8ade9860604",
+        "original_ref": "refs/heads/codex/xpc-peer-requirements",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/codex/xpc-peer-requirements"
+      },
+      {
+        "sha": "0233c0b74549ba3e2ad1af12cf5c36de6f558c29",
+        "original_ref": "refs/heads/master",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/heads/master"
+      },
+      {
+        "sha": "f1c3aa688bbd584e823485a0aa997e4ee9419673",
+        "original_ref": "refs/stash",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-local/stash/saved"
+      }
+    ]
+  },
+  {
+    "store": "app-recovery",
+    "local_path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-recovery",
+    "repository": "dalbrecht/dust3d-swiftui",
+    "refs": [
+      {
+        "sha": "a816a853b56db34907e3f45f8c1f838ab790d7ee",
+        "original_ref": "refs/heads/codex/beta-canvas-recovered",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/beta-canvas-recovered"
+      },
+      {
+        "sha": "8fe106f121f5b7e1d3ccde4cccfc96496cbea7a7",
+        "original_ref": "refs/heads/codex/beta-combined-local",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/beta-combined-local"
+      },
+      {
+        "sha": "5ae3bee4007caea1e9e8543dd1b4065dbcfa85a8",
+        "original_ref": "refs/heads/codex/beta-delivery-evidence",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/beta-delivery-evidence"
+      },
+      {
+        "sha": "f558b4f4d3299f1ca87d6fc7f66096a929926fa3",
+        "original_ref": "refs/heads/codex/beta-gesture-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/beta-gesture-delivery"
+      },
+      {
+        "sha": "5b43ed726f416007e47a526490a1899ea4cd5f2a",
+        "original_ref": "refs/heads/codex/beta-integration-recovered",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/beta-integration-recovered"
+      },
+      {
+        "sha": "bf33b8d335f90a04af748822772444842ea3a2b3",
+        "original_ref": "refs/heads/codex/beta-materials-recovered",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/beta-materials-recovered"
+      },
+      {
+        "sha": "c49d6432aa9dd9e2a6513f2c3ff7548cc9589daf",
+        "original_ref": "refs/heads/codex/coordinated-exports",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/coordinated-exports"
+      },
+      {
+        "sha": "3c23d54c7b8df8d2fa75584cd4707cdb1ab45f54",
+        "original_ref": "refs/heads/codex/local-core-integration",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/local-core-integration"
+      },
+      {
+        "sha": "fcf46d5a9d8934c6420f2689592dce9c64764c1a",
+        "original_ref": "refs/heads/codex/local-mixed-mip-render",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/local-mixed-mip-render"
+      },
+      {
+        "sha": "3336c8df8e79e49f9dc098023bba56b9e2ea104a",
+        "original_ref": "refs/heads/codex/native-mip-acceptance",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/native-mip-acceptance"
+      },
+      {
+        "sha": "010a1ed72d2d9ff6bbf91d70c1c94c614b9a2334",
+        "original_ref": "refs/heads/codex/origin-pointer-identity",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/codex/origin-pointer-identity"
+      },
+      {
+        "sha": "bf33b8d335f90a04af748822772444842ea3a2b3",
+        "original_ref": "refs/heads/master",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-recovery/heads/master"
+      }
+    ]
+  },
+  {
+    "store": "app-obj",
+    "local_path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/apple",
+    "repository": "dalbrecht/dust3d-swiftui",
+    "refs": [
+      {
+        "sha": "2d24e720f2dade64d70c4b2defa3b0d2cd0a7c40",
+        "original_ref": "refs/heads/codex/editor-obj-export",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-obj/heads/codex/editor-obj-export"
+      },
+      {
+        "sha": "2d24e720f2dade64d70c4b2defa3b0d2cd0a7c40",
+        "original_ref": "refs/heads/codex/editor-obj-export-delivery",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-obj/heads/codex/editor-obj-export-delivery"
+      },
+      {
+        "sha": "0233c0b74549ba3e2ad1af12cf5c36de6f558c29",
+        "original_ref": "refs/heads/master",
+        "checkpoint_ref": "refs/tags/handoff/20261031/app-obj/heads/master"
+      }
+    ]
+  },
+  {
+    "store": "core-recovery",
+    "local_path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-recovery",
+    "repository": "dalbrecht/dust3d-core",
+    "refs": [
+      {
+        "sha": "ac74a5a9cb9d285c9c62508b5cafcb92b2a5c24f",
+        "original_ref": "refs/heads/codex/beta-core-durable",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-recovery/heads/codex/beta-core-durable"
+      },
+      {
+        "sha": "a4a23b37baec95b877ca7a4915c9569e26d3e37b",
+        "original_ref": "refs/heads/codex/hollow-thickness",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-recovery/heads/codex/hollow-thickness"
+      },
+      {
+        "sha": "e9c869cfe4c3acfcf329b034de00f46d89352a97",
+        "original_ref": "refs/heads/codex/indexed-obj-export",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-recovery/heads/codex/indexed-obj-export"
+      },
+      {
+        "sha": "e781c63192d0e1bdbe9fa5187da51c31d401e9d2",
+        "original_ref": "refs/heads/codex/mip-retry-cause",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-recovery/heads/codex/mip-retry-cause"
+      },
+      {
+        "sha": "3b7f4302bedc50446407965b171a2b15f24a511a",
+        "original_ref": "refs/heads/codex/mixed-mip-acceptance",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-recovery/heads/codex/mixed-mip-acceptance"
+      },
+      {
+        "sha": "a4a23b37baec95b877ca7a4915c9569e26d3e37b",
+        "original_ref": "refs/heads/master",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-recovery/heads/master"
+      }
+    ]
+  },
+  {
+    "store": "core-local",
+    "local_path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/core",
+    "repository": "dalbrecht/dust3d-core",
+    "refs": [
+      {
+        "sha": "17b41eba6f2242685b5f66fee8b4b4faee24f608",
+        "original_ref": "refs/heads/master",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-local/heads/master"
+      }
+    ]
+  },
+  {
+    "store": "core-package",
+    "local_path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/dust3d-core",
+    "repository": "dalbrecht/dust3d-core",
+    "refs": [
+      {
+        "sha": "66685bf2168992e20afb2490d9dbb2a17935f48a",
+        "original_ref": "refs/heads/codex/swiftpm-package",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-package/heads/codex/swiftpm-package"
+      },
+      {
+        "sha": "e9edb9da5d99251d870facb7810ef4a93b7d33b5",
+        "original_ref": "refs/heads/master",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-package/heads/master"
+      },
+      {
+        "sha": "3fbcaa7a3e8792d1c2ca31ca2ade442dcd21b222",
+        "original_ref": "refs/heads/upstream-sync",
+        "checkpoint_ref": "refs/tags/handoff/20261031/core-package/heads/upstream-sync"
+      }
+    ]
+  }
+]

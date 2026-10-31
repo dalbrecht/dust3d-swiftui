@@ -1,0 +1,6 @@
+[  0%] Built target dust3d_triangle
+[ 25%] Built target dust3d_remesher
+[100%] Built target dust3d_core
+[100%] Building CXX object CMakeFiles/dust3d_source_mip_padded_atlas_tests.dir/tests/core/source_mip_padded_atlas_tests.cc.o
+[100%] Linking CXX executable dust3d_source_mip_padded_atlas_tests
+[100%] Built target dust3d_source_mip_padded_atlas_tests

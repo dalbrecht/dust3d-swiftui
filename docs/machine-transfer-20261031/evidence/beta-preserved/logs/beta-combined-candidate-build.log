@@ -1,0 +1,7 @@
+[0/1] Planning build
+Building for debugging...
+[0/3] Write swift-version--58304C5D6DBC2206.txt
+Build of product 'Dust3DEditor' complete! (0.33s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+/private/tmp/dust3d-beta-candidate/Dust3DEditor.app: replacing existing signature
+/private/tmp/dust3d-beta-candidate/Dust3DEditor.app

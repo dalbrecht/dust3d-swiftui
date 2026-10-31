@@ -1,0 +1,110 @@
+[0/1] Planning build
+Building for debugging...
+[0/16] Write sources
+[1/16] Write swift-version--58304C5D6DBC2206.txt
+[3/27] Emitting module Dust3DViewer
+[3/27] Write Objects.LinkFileList
+[5/27] Emitting module Dust3DRenderingTests
+[6/27] Compiling Dust3DKitTests CoordinatedDocumentExportTests.swift
+[7/27] Emitting module Dust3DKitTests
+[8/27] Compiling Dust3DEditor ComponentColorImageControls.swift
+[9/28] Compiling Dust3DEditor ReferenceImageControls.swift
+[10/28] Compiling Dust3DEditor Dust3DEditorApp.swift
+[11/28] Compiling Dust3DEditor EditorAnimationAuthoringWorkflow.swift
+[12/28] Compiling Dust3DEditor EditorGeometryExportWorkflow.swift
+[13/28] Compiling Dust3DEditor EditorRootView.swift
+[14/28] Compiling Dust3DEditor AnimationPanel.swift
+[15/28] Emitting module Dust3DEditor
+[16/28] Compiling Dust3DEditor AnimationAuthoringControls.swift
+[17/28] Compiling Dust3DEditor EditorStore.swift
+[17/28] Write Objects.LinkFileList
+[18/28] Linking Dust3DThumbnailExtension
+[18/28] Linking Dust3DQuickLookExtension
+[20/28] Applying Dust3DThumbnailExtension
+[20/28] Applying Dust3DQuickLookExtension
+[22/28] Linking Dust3DViewer
+[23/28] Applying Dust3DViewer
+[25/29] Emitting module Dust3DViewerTests
+[25/29] Linking Dust3DEditor
+[26/29] Applying Dust3DEditor
+[28/39] Compiling Dust3DEditorTests QtClipboardStoreTests.swift
+[29/40] Compiling Dust3DEditorTests PartDeformationStoreTests.swift
+[30/40] Compiling Dust3DEditorTests AnimationAuthoringStoreTests.swift
+[31/40] Compiling Dust3DEditorTests ComponentCombineStoreTests.swift
+[32/40] Compiling Dust3DEditorTests EditorPreviewSessionStoreTests.swift
+[33/40] Compiling Dust3DEditorTests EditorGeometryExportWorkflowTests.swift
+[34/40] Compiling Dust3DEditorTests DescendantRotationStoreTests.swift
+[35/40] Compiling Dust3DEditorTests EditorExportWorkflowTests.swift
+[36/40] Compiling Dust3DEditorTests EmptyPartStoreTests.swift
+[37/40] Emitting module Dust3DEditorTests
+[38/40] Compiling Dust3DEditorTests ReferenceImageCompletionTests.swift
+[38/40] Write Objects.LinkFileList
+[39/40] Linking Dust3DNativePackageTests
+Build complete! (7.46s)
+Test Suite 'Selected tests' started at 2026-10-30 19:18:33.928.
+Test Suite 'Dust3DNativePackageTests.xctest' started at 2026-10-30 19:18:33.929.
+Test Suite 'CoordinatedDocumentExportTests' started at 2026-10-30 19:18:33.929.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testCancellationBeforeCommitPreservesOldBytesAndRemovesStage]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testCancellationBeforeCommitPreservesOldBytesAndRemovesStage]' passed (0.006 seconds).
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testCoordinatorFailurePreservesCauseAndOldBytes]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testCoordinatorFailurePreservesCauseAndOldBytes]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testHeldReaderCancellationAndIndependentDestination]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testHeldReaderCancellationAndIndependentDestination]' passed (0.005 seconds).
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testHeldReaderReleaseAllowsPublication]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testHeldReaderReleaseAllowsPublication]' passed (0.003 seconds).
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testNativeCoordinationRetainsCallingTaskContextThroughPublication]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testNativeCoordinationRetainsCallingTaskContextThroughPublication]' passed (0.002 seconds).
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedDestinationIsWrittenAndReported]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedDestinationIsWrittenAndReported]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedHardLinkToSourceIsRejected]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedHardLinkToSourceIsRejected]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedSourceAliasDoesNotReplaceSource]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRedirectedSourceAliasDoesNotReplaceSource]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRevisionChangeWhileCoordinationWaitsRejectsPublication]' started.
+Test Case '-[Dust3DKitTests.CoordinatedDocumentExportTests testRevisionChangeWhileCoordinationWaitsRejectsPublication]' passed (0.002 seconds).
+Test Suite 'CoordinatedDocumentExportTests' passed at 2026-10-30 19:18:33.952.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.023 (0.023) seconds
+Test Suite 'DocumentExportFileServiceTests' started at 2026-10-30 19:18:33.952.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testCancellationAfterSerializedCommitStillReturnsPublishedSuccess]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testCancellationAfterSerializedCommitStillReturnsPublishedSuccess]' passed (0.002 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testCancellationDuringEncodingPreservesPreviousOutput]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testCancellationDuringEncodingPreservesPreviousOutput]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testCreatesNewOutputAndRejectsSameSourcePathAndNondirectoryParent]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testCreatesNewOutputAndRejectsSameSourcePathAndNondirectoryParent]' passed (0.002 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testCurrentExportAdmissionIgnoresTransientLocksAndPreservesDiagnostic]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testCurrentExportAdmissionIgnoresTransientLocksAndPreservesDiagnostic]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testCurrentSerializedPublicationRetainsBytesWarningAndUndoState]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+testCurrentSerializedPublicationRetainsBytesWarningAndUndoState]' passed (0.002 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testEditAfterFinalAdmissionIsRejectedAtSerializedPublication]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testEditAfterFinalAdmissionIsRejectedAtSerializedPublication]' passed (0.002 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testEmptyOutputPreservesPreviousFile]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testEmptyOutputPreservesPreviousFile]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testEncoderErrorPreservesOriginalCauseAndPreviousOutput]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testEncoderErrorPreservesOriginalCauseAndPreviousOutput]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testOriginalPublicationFailurePreservesExistingOutput]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testOriginalPublicationFailurePreservesExistingOutput]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testPrecancelledExportDoesNotCallEncoderOrPublish]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testPrecancelledExportDoesNotCallEncoderOrPublish]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testPublishesCapturedDocumentAndPreservesSourceAndDiagnostic]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testPublishesCapturedDocumentAndPreservesSourceAndDiagnostic]' passed (0.003 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testRejectsDestinationAliasingSourceBeforeEncoding]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testRejectsDestinationAliasingSourceBeforeEncoding]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testRejectsHardlinkToSourceOpenedThroughSymlinkBeforeEncoding]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testRejectsHardlinkToSourceOpenedThroughSymlinkBeforeEncoding]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testRejectsWrongExtensionAndSymlinkWithoutCallingEncoder]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testRejectsWrongExtensionAndSymlinkWithoutCallingEncoder]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testReopenedDocumentRejectsOldExportBeforeEncoding]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testReopenedDocumentRejectsOldExportBeforeEncoding]' passed (0.001 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testRevalidatesSourceInodeAliasAfterEncoding]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testRevalidatesSourceInodeAliasAfterEncoding]' passed (0.002 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testSerializedPublicationRechecksNewSourceAliasInsideCommit]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testSerializedPublicationRechecksNewSourceAliasInsideCommit]' passed (0.002 seconds).
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testStaleRevisionAfterEncodingPreservesOutputIncludingEditUndoCycle]' started.
+Test Case '-[Dust3DKitTests.DocumentExportFileServiceTests testStaleRevisionAfterEncodingPreservesOutputIncludingEditUndoCycle]' passed (0.001 seconds).
+Test Suite 'DocumentExportFileServiceTests' passed at 2026-10-30 19:18:33.979.
+	 Executed 18 tests, with 0 failures (0 unexpected) in 0.026 (0.027) seconds
+Test Suite 'Dust3DNativePackageTests.xctest' passed at 2026-10-30 19:18:33.979.
+	 Executed 27 tests, with 0 failures (0 unexpected) in 0.049 (0.050) seconds
+Test Suite 'Selected tests' passed at 2026-10-30 19:18:33.979.
+	 Executed 27 tests, with 0 failures (0 unexpected) in 0.049 (0.051) seconds

@@ -1,0 +1,27 @@
+warning: '--skip-update' option is deprecated and will be removed in a future release
+warning: /Users/dalbrecht/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
+warning: /Users/dalbrecht/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
+warning: /Users/dalbrecht/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
+warning: 'dust3d-beta-modeling': failed storing manifest for 'dust3d-beta-modeling' in cache: attempt to write a readonly database
+warning: 'dust3d-core': failed storing manifest for 'dust3d-core' in cache: attempt to write a readonly database
+[0/1] Planning build
+Building for debugging...
+[0/11] Write sources
+[1/11] Write swift-version--58304C5D6DBC2206.txt
+[3/5] Compiling Dust3DEditorTests NodePointerViewTests.swift
+[4/5] Emitting module Dust3DEditorTests
+[4/6] Write Objects.LinkFileList
+[5/6] Linking Dust3DNativePackageTests
+Build complete! (3.32s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+Test Suite 'Selected tests' started at 2026-10-30 18:00:25.842.
+Test Suite 'Dust3DNativePackageTests.xctest' started at 2026-10-30 18:00:25.843.
+Test Suite 'NodePointerViewTests' started at 2026-10-30 18:00:25.843.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedCanvasHitTargetInvokesNodeDrag]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedCanvasHitTargetInvokesNodeDrag]' passed (0.331 seconds).
+Test Suite 'NodePointerViewTests' passed at 2026-10-30 18:00:26.174.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.331 (0.331) seconds
+Test Suite 'Dust3DNativePackageTests.xctest' passed at 2026-10-30 18:00:26.174.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.331 (0.331) seconds
+Test Suite 'Selected tests' passed at 2026-10-30 18:00:26.174.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.331 (0.332) seconds

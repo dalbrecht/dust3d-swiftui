@@ -1,0 +1,79 @@
+[0/1] Planning build
+Building for debugging...
+[0/17] Write sources
+[2/17] Write swift-version--58304C5D6DBC2206.txt
+[4/17] Compiling Dust3DEditor EditorCommandScope.swift
+[5/17] Emitting module Dust3DEditor
+[6/17] Compiling Dust3DEditor EditorRootView.swift
+[6/20] Linking Dust3DViewer
+[7/20] Linking Dust3DThumbnailExtension
+[8/20] Linking Dust3DQuickLookExtension
+[9/20] Applying Dust3DViewer
+[10/20] Applying Dust3DThumbnailExtension
+[11/20] Applying Dust3DQuickLookExtension
+[13/20] Compiling Dust3DEditor EditorClipboardCommands.swift
+[14/20] Compiling Dust3DEditor Dust3DEditorApp.swift
+[15/20] Compiling Dust3DEditor NodeClipboardPasteButton.swift
+[15/20] Write Objects.LinkFileList
+[16/20] Linking Dust3DEditor
+[17/20] Applying Dust3DEditor
+[19/23] Compiling Dust3DEditorTests OriginDragStoreTests.swift
+[20/23] Compiling Dust3DEditorTests AnimationPanelTests.swift
+[21/23] Emitting module Dust3DEditorTests
+[21/23] Write Objects.LinkFileList
+[22/23] Linking Dust3DNativePackageTests
+Build complete! (8.48s)
+Test Suite 'Selected tests' started at 2026-10-30 18:30:33.780.
+Test Suite 'Dust3DNativePackageTests.xctest' started at 2026-10-30 18:30:33.781.
+Test Suite 'NodePointerViewTests' started at 2026-10-30 18:30:33.781.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testClickCommandClickAndReadonlySelection]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testClickCommandClickAndReadonlySelection]' passed (0.003 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testDragRestoresPriorResponderAndWindowResignCancels]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testDragRestoresPriorResponderAndWindowResignCancels]' passed (0.169 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testEachDragCarriesItsOwnTokenAndWindowCoordinates]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testEachDragCarriesItsOwnTokenAndWindowCoordinates]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testEscapeDuringDragCancelsOnceWithoutFinishing]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testEscapeDuringDragCancelsOnceWithoutFinishing]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHitTestingUsesCircularTargetAndRespectsEnabledState]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHitTestingUsesCircularTargetAndRespectsEnabledState]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedCanvasHitTargetInvokesNodeDrag]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedCanvasHitTargetInvokesNodeDrag]' passed (0.213 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedOriginPointerInvokesDragAndEscapeWithoutTouchingArchive]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedOriginPointerInvokesDragAndEscapeWithoutTouchingArchive]' passed (0.025 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testRectangularTargetIncludes44PointCornersAndClickHasDistinctCancellation]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testRectangularTargetIncludes44PointCornersAndClickHasDistinctCancellation]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testRemovalCancelsOwnedActivation]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testRemovalCancelsOwnedActivation]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testResponderDenialCancelsRatherThanCommittingDrag]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testResponderDenialCancelsRatherThanCommittingDrag]' passed (0.002 seconds).
+Test Suite 'NodePointerViewTests' passed at 2026-10-30 18:30:34.194.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.412 (0.413) seconds
+Test Suite 'OriginDragStoreTests' started at 2026-10-30 18:30:34.194.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testEscapePrioritizesOriginModeOverConcurrentExport]' started.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testEscapePrioritizesOriginModeOverConcurrentExport]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testLateCallbacksCannotChangeNewOriginGesture]' started.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testLateCallbacksCannotChangeNewOriginGesture]' passed (0.036 seconds).
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testLockPlaneLoadAndStopCancelGestureWithoutSaving]' started.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testLockPlaneLoadAndStopCancelGestureWithoutSaving]' passed (0.037 seconds).
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testOriginClickEndsOnlyItsOwnDraftAndKeepsMode]' started.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testOriginClickEndsOnlyItsOwnDraftAndKeepsMode]' passed (0.012 seconds).
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testTransientPreviewCancelCommitUndoAndWindowIsolation]' started.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testTransientPreviewCancelCommitUndoAndWindowIsolation]' passed (0.046 seconds).
+Test Suite 'Orwarning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+iginDragStoreTests' passed at 2026-10-30 18:30:34.326.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.131 (0.132) seconds
+Test Suite 'ReferenceImageCompletionTests' started at 2026-10-30 18:30:34.326.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testCompositionCannotReuseCachedImageWhileReplacementDecodeIsPending]' started.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testCompositionCannotReuseCachedImageWhileReplacementDecodeIsPending]' passed (0.041 seconds).
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testDelayedAbsentImageCompletionDoesNotResetCameraAfterOriginEdit]' started.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testDelayedAbsentImageCompletionDoesNotResetCameraAfterOriginEdit]' passed (0.064 seconds).
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testPendingImageFitKeepsNodeGestureDisplayProjectionStable]' started.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testPendingImageFitKeepsNodeGestureDisplayProjectionStable]' passed (0.015 seconds).
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testRemovalFitsImmediatelyAndCachedUndoRefitsBeforeObsoleteAbsenceCompletes]' started.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testRemovalFitsImmediatelyAndCachedUndoRefitsBeforeObsoleteAbsenceCompletes]' passed (0.040 seconds).
+Test Suite 'ReferenceImageCompletionTests' passed at 2026-10-30 18:30:34.487.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.160 (0.161) seconds
+Test Suite 'Dust3DNativePackageTests.xctest' passed at 2026-10-30 18:30:34.487.
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.704 (0.706) seconds
+Test Suite 'Selected tests' passed at 2026-10-30 18:30:34.487.
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.704 (0.707) seconds

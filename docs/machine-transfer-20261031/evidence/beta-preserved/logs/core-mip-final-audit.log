@@ -1,0 +1,14 @@
+Committed source archive: 2d4dceaf
+Source audit: five explicitly selected C++ test files; no document or GLB file paths, file streams, or process launches found.
+
+tests/core/source_mip_fallback_tests.cc: no audit terms
+tests/core/source_mip_uv_packing_tests.cc: no audit terms
+tests/core/source_mip_base_isolation_tests.cc: no audit terms
+tests/core/source_mip_padded_atlas_tests.cc: no audit terms
+tests/core/source_mip_warning_tests.cc: no audit terms
+
+Durable worktree status (unrelated changes excluded from git archive):
+ M CMakeLists.txt
+ M tests/core/worker_legacy_job_tests.cc
+?? docs/adr/0196-hollow-thickness-investigation.md
+?? tests/core/tube_mesh_baseline_tests.cc

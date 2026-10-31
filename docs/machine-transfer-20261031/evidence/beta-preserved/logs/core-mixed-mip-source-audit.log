@@ -1,0 +1,5 @@
+Reviewed target: source_mip_mixed_synthetic_contracts
+Source: /Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-core-mixed-mip-clean/tests/core/source_mip_mixed_synthetic_tests.cc
+Banned source markers: []
+Fixture: in-memory DS3 XML and one in-memory constant-blue GLB triangle, explicit UVs.
+Native entry: dust3d_source_baked_mesh_load_with_mips.

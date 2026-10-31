@@ -1,0 +1,15 @@
+Test project /private/tmp/dust3d-indexed-obj-build
+    Start 21: indexed_obj_c_api_contracts
+1/5 Test #21: indexed_obj_c_api_contracts ............   Passed    0.17 sec
+    Start 22: indexed_obj_export_contracts
+2/5 Test #22: indexed_obj_export_contracts ...........   Passed    0.15 sec
+    Start 23: indexed_obj_export_capsule_contracts
+3/5 Test #23: indexed_obj_export_capsule_contracts ...   Passed    0.02 sec
+    Start 24: obj_document_contracts
+4/5 Test #24: obj_document_contracts .................   Passed    0.12 sec
+    Start 25: obj_export_api_contracts
+5/5 Test #25: obj_export_api_contracts ...............   Passed    0.12 sec
+
+100% tests passed out of 5
+
+Total Test time (real) =   0.59 sec

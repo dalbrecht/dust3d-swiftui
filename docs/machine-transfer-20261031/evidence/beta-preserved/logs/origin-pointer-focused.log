@@ -1,0 +1,165 @@
+[0/1] Planning build
+Building for debugging...
+[0/13] Write sources
+[2/17] Write swift-version--58304C5D6DBC2206.txt
+[4/18] Compiling Dust3DEditor OriginHandle.swift
+[5/18] Compiling Dust3DEditor NodePointerSurface.swift
+[6/19] Compiling Dust3DEditor NodeCanvas.swift
+[7/19] Emitting module Dust3DEditor
+[8/19] Compiling Dust3DEditor EditorStore.swift
+[8/56] Linking Dust3DThumbnailExtension
+[9/56] Applying Dust3DThumbnailExtension
+[10/56] Linking Dust3DViewer
+[11/56] Linking Dust3DQuickLookExtension
+[12/56] Applying Dust3DViewer
+[13/56] Applying Dust3DQuickLookExtension
+[15/56] Compiling Dust3DEditor PartMaterialControls.swift
+[16/56] Compiling Dust3DEditor PartModifierControls.swift
+[17/56] Compiling Dust3DEditor PartProfileChooser.swift
+[18/56] Compiling Dust3DEditor PartSidebar.swift
+[19/56] Compiling Dust3DEditor ComponentColorImageControls.swift
+[20/56] Compiling Dust3DEditor ComponentInspector.swift
+[21/56] Compiling Dust3DEditor ComponentOrderMenu.swift
+[22/56] Compiling Dust3DEditor ComponentReparentControls.swift
+[23/56] Compiling Dust3DEditor ComponentSidebar.swift
+[24/56] Compiling Dust3DEditor PartTargetControls.swift
+[25/56] Compiling Dust3DEditor ReferenceCompositionSheet.swift
+[26/56] Compiling Dust3DEditor ReferenceImageControls.swift
+[27/56] Compiling Dust3DEditor RigSettingsControls.swift
+[28/56] Compiling Dust3DEditor Dust3DEditorApp.swift
+[29/56] Compiling Dust3DEditor EditorAnimationAuthoringWorkflow.swift
+[30/56] Compiling Dust3DEditor EditorCompositionRecovery.swift
+[31/56] Compiling Dust3DEditor EditorGeometryExportWorkflow.swift
+[32/56] Compiling Dust3DEditor ReferenceCompositionDraft.swift
+[33/56] Compiling Dust3DEditor ComponentSmoothingControls.swift
+[34/56] Compiling Dust3DEditor ComponentStitchingControls.swift
+[35/56] Compiling Dust3DEditor ComponentWrappingControls.swift
+[36/56] Compiling Dust3DEditor DescendantRotationMenu.swift
+[37/56] Compiling Dust3DEditor EdgeBoneBindingControls.swift
+[38/56] Compiling Dust3DEditor EditorClipboardCommands.swift
+[39/56] Compiling Dust3DEditor NodeClipboardPasteButton.swift
+[40/56] Compiling Dust3DEditor AnimationAuthoringControls.swift
+[41/56] Compiling Dust3DEditor AnimationPanel.swift
+[42/56] Compiling Dust3DEditor ComponentColorControls.swift
+[43/56] Compiling Dust3DEditor PartCutFaceControls.swift
+[44/56] Compiling Dust3DEditor PartDeformationControls.swift
+[45/56] Compiling Dust3DEditor PartInspector.swift
+[46/56] Compiling Dust3DEditor PartLoopInteriorControls.swift
+[47/56] Compiling Dust3DEditor EdgeInspector.swift
+[48/56] Compiling Dust3DEditor EdgeSidebar.swift
+[49/56] Compiling Dust3DEditor EditorRootView.swift
+[50/56] Compiling Dust3DEditor NodeInspector.swift
+[51/56] Compiling Dust3DEditor OriginControls.swift
+[51/56] Write Objects.LinkFileList
+[52/56] Linking Dust3DEditor
+[53/56] Applying Dust3DEditor
+[55/105] Compiling Dust3DEditorTests ComponentColorStoreTests.swift
+[56/105] Compiling Dust3DEditorTests ComponentCombineStoreTests.swift
+[57/105] Compiling Dust3DEditorTests ComponentGroupingStoreTests.swift
+[58/105] Compiling Dust3DEditorTests ComponentOrderStoreTests.swift
+[59/105] Compiling Dust3DEditorTests ComponentReparentStoreTests.swift
+[60/105] Compiling Dust3DEditorTests ComponentSmoothingStoreTests.swift
+[61/105] Compiling Dust3DEditorTests ComponentStitchingRenderingTests.swift
+[62/105] Compiling Dust3DEditorTests PartLoopInteriorStoreTests.swift
+[63/105] Compiling Dust3DEditorTests PartMaterialStoreTests.swift
+[64/105] Compiling Dust3DEditorTests PartModifierRenderingTests.swift
+[65/105] Compiling Dust3DEditorTests PartModifierStoreTests.swift
+[66/105] Compiling Dust3DEditorTests PartTargetStoreTests.swift
+[67/105] Compiling Dust3DEditorTests PreviewSourceHistoryStoreTests.swift
+[68/111] Compiling Dust3DEditorTests ComponentStitchingStoreTests.swift
+[69/111] Compiling Dust3DEditorTests ComponentStoreTests.swift
+[70/111] Compiling Dust3DEditorTests ComponentWrappingRenderingTests.swift
+[71/111] Compiling Dust3DEditorTests ComponentWrappingStoreTests.swift
+[72/111] Compiling Dust3DEditorTests DescendantRotationStoreTests.swift
+[73/111] Compiling Dust3DEditorTests EdgeBoneBindingStoreTests.swift
+[74/111] Compiling Dust3DEditorTests EditorAnimationAuthoringWorkflowTests.swift
+[75/111] Compiling Dust3DEditorTests EditorAnimationCatalogStateTests.swift
+[76/111] Compiling Dust3DEditorTests EditorExportWorkflowTests.swift
+[77/111] Compiling Dust3DEditorTests EditorGeometryExportWorkflowTests.swift
+[78/111] Compiling Dust3DEditorTests EditorImportedMaterialTests.swift
+[79/111] Compiling Dust3DEditorTests EditorMaterialPreviewTests.swift
+[80/111] Compiling Dust3DEditorTests EditorPreviewSessionStoreTests.swift
+[81/111] Compiling Dust3DEditorTests EditorPreviewSourceTests.swift
+[82/111] Compiling Dust3DEditorTests EditorSaveSnapshotTests.swift
+[83/111] Compiling Dust3DEditorTests EditorSourceBakedMaterialTests.swift
+[84/111] Compiling Dust3DEditorTests EmptyPartStoreTests.swift
+[85/111] Compiling Dust3DEditorTests GeometryExportRenderingTests.swift
+[86/111] Compiling Dust3DEditorTests InspectorIdentityTests.swift
+[87/111] Compiling Dust3DEditorTests InspectorResetTests.swift
+[88/111] Compiling Dust3DEditorTests NativeUndoCommandStateTests.swift
+[89/111] Emitting module Dust3DEditorTests
+[90/111] Compiling Dust3DEditorTests AnimationAuthoringStoreTests.swift
+[91/111] Compiling Dust3DEditorTests AnimationPanelTests.swift
+[92/111] Compiling Dust3DEditorTests AnimationStoreTests.swift
+[93/111] Compiling Dust3DEditorTests BoneBindingErrorMessageTests.swift
+[94/111] Compiling Dust3DEditorTests ComponentColorImageRenderingTests.swift
+[95/111] Compiling Dust3DEditorTests ComponentColorImageStoreTests.swift
+[96/111] Compiling Dust3DEditorTests ComponentColorRenderingTests.swift
+[97/111] Compiling Dust3DEditorTests NodePointerViewTests.swift
+[98/111] Compiling Dust3DEditorTests OriginControlStoreTests.swift
+[99/111] Compiling Dust3DEditorTests OriginDragStoreTests.swift
+[100/111] Compiling Dust3DEditorTests OriginSettlementStoreTests.swift
+[101/111] Compiling Dust3DEditorTests PartControlStoreTests.swift
+[102/111] Compiling Dust3DEditorTests PartCutFaceStoreTests.swift
+[103/111] Compiling Dust3DEditorTests PartDeformationStoreTests.swift
+[104/111] Compiling Dust3DEditorTests QtClipboardStoreTests.swift
+[105/111] Compiling Dust3DEditorTests RecoverySnapshotTests.swift
+[106/111] Compiling Dust3DEditorTests ReferenceCompositionStoreTests.swift
+[107/111] Compiling Dust3DEditorTests ReferenceImageCompletionTests.swift
+[108/111] Compiling Dust3DEditorTests ReferenceImageStoreTests.swift
+[109/111] Compiling Dust3DEditorTests RigSettingsStoreTests.swift
+[110/113] Emitting module Dust3DNativePackageTests
+[111/113] Compiling Dust3DNativePackageTests runner.swift
+[111/113] Write Objects.LinkFileList
+[112/113] Linking Dust3DNativePackageTests
+Build complete! (15.32s)
+Test Suite 'Selected tests' started at 2026-10-30 18:28:33.825.
+Test Suite 'Dust3DNativePackageTests.xctest' started at 2026-10-30 18:28:33.827.
+Test Suite 'NodePointerViewTests' started at 2026-10-30 18:28:33.827.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testClickCommandClickAndReadonlySelection]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testClickCommandClickAndReadonlySelection]' passed (0.006 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testDragRestoresPriorResponderAndWindowResignCancels]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testDragRestoresPriorResponderAndWindowResignCancels]' passed (0.208 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testEachDragCarriesItsOwnTokenAndWindowCoordinates]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testEachDragCarriesItsOwnTokenAndWindowCoordinates]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testEscapeDuringDragCancelsOnceWithoutFinishing]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testEscapeDuringDragCancelsOnceWithoutFinishing]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHitTestingUsesCircularTargetAndRespectsEnabledState]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHitTestingUsesCircularTargetAndRespectsEnabledState]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedCanvasHitTargetInvokesNodeDrag]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedCanvasHitTargetInvokesNodeDrag]' passed (0.230 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedOriginPointerInvokesDragAndEscapeWithoutTouchingArchive]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testHostedOriginPointerInvokesDragAndEscapeWithoutTouchingArchive]' passed (0.035 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testRectangularTargetIncludes44PointCornersAndClickHasDistinctCancellation]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testRectangularTargetIncludes44PointCornersAndClickHasDistinctCancellation]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testRemovalCancelsOwnedActivation]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testRemovalCancelsOwnedActivation]' passed (0.000 seconds).
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testResponderDenialCancelsRatherThanCommittingDrag]' started.
+Test Case '-[Dust3DEditorTests.NodePointerViewTests testResponderDenialCancelsRatherThanCommittingDrag]' passed (0.002 seconds).
+Test Suite 'NodePointerViewTests' passed at 2026-10-30 18:28:34.309.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.481 (0.482) seconds
+Test Suite 'OriginDragStoreTests' started at 2026-10-30 18:28:34.309.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testLateCallbacksCannotChangeNewOriginGesture]' started.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testLateCallbacksCannotChangeNewOriginGesture]' passed (0.032 seconds).
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testLockPlaneLoadAndStopCancelGestureWithoutSaving]' started.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testLockPlaneLoadAndStopCancelGestureWithoutSaving]' passed (0.033 seconds).
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testTransientPreviewCancelCommitUndoAndWindowIsolation]' started.
+Test Case '-[Dust3DEditorTests.OriginDragStoreTests testTransientPreviewCancelCommitUndoAndWindowIsolation]' passed (0.046 seconds).
+Test Suite 'OriginDragStoreTests' passed at 2026-10-30 18:28:34.421.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.112 (0.112) seconds
+Test Suite 'ReferenceImageCompletionTests' started at 2026-10-30 18:28:34.421.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testCompositionCannotReuseCachedImageWhileReplacementDecodeIsPending]' started.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testCompositionCannotReuseCachedImageWhileReplacementDecodeIsPendingwarning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+]' passed (0.039 seconds).
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testDelayedAbsentImageCompletionDoesNotResetCameraAfterOriginEdit]' started.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testDelayedAbsentImageCompletionDoesNotResetCameraAfterOriginEdit]' passed (0.058 seconds).
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testPendingImageFitKeepsNodeGestureDisplayProjectionStable]' started.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testPendingImageFitKeepsNodeGestureDisplayProjectionStable]' passed (0.012 seconds).
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testRemovalFitsImmediatelyAndCachedUndoRefitsBeforeObsoleteAbsenceCompletes]' started.
+Test Case '-[Dust3DEditorTests.ReferenceImageCompletionTests testRemovalFitsImmediatelyAndCachedUndoRefitsBeforeObsoleteAbsenceCompletes]' passed (0.038 seconds).
+Test Suite 'ReferenceImageCompletionTests' passed at 2026-10-30 18:28:34.569.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.147 (0.148) seconds
+Test Suite 'Dust3DNativePackageTests.xctest' passed at 2026-10-30 18:28:34.569.
+	 Executed 17 tests, with 0 failures (0 unexpected) in 0.741 (0.742) seconds
+Test Suite 'Selected tests' passed at 2026-10-30 18:28:34.569.
+	 Executed 17 tests, with 0 failures (0 unexpected) in 0.741 (0.744) seconds

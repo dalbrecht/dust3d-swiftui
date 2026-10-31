@@ -1,0 +1,51 @@
+[
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/core/docs/adr/0089-owned-static-fbx-c-api.md",
+    "head": "a4a23b37baec95b877ca7a4915c9569e26d3e37b",
+    "blob": "a14dfe1b35e1dcc9afeaee8ffc88ef984b0d9bc4",
+    "matches_committed": true,
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/core/docs/adr/0090-qt-free-static-export-cli.md",
+    "head": "a4a23b37baec95b877ca7a4915c9569e26d3e37b",
+    "blob": "f8b5aab2be99e00d5a1d9c0c38c482588f159565",
+    "matches_committed": true,
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/core/docs/adr/0091-original-polygon-obj-encoding.md",
+    "head": "a4a23b37baec95b877ca7a4915c9569e26d3e37b",
+    "blob": "3a557ae83a007c8433bf88e48ce6fa36cfe333a6",
+    "matches_committed": true,
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/core/docs/adr/0092-original-export-preparation.md",
+    "head": "a4a23b37baec95b877ca7a4915c9569e26d3e37b",
+    "blob": "c94dc1a4110a910b76ead417e60188a7ba97cd48",
+    "matches_committed": true,
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/core/docs/adr/0093-owned-obj-export-api.md",
+    "head": "a4a23b37baec95b877ca7a4915c9569e26d3e37b",
+    "blob": "6e6865cd01b6d7d99ceb714900d923e5d2cdb239",
+    "matches_committed": true,
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/Tests/Dust3DEditorTests/EditorPreviewScopeSchedulingTests.swift",
+    "head": "bf33b8d335f90a04af748822772444842ea3a2b3",
+    "blob": "869cc09aa77aef00180c56abc9540e7740e13087",
+    "matches_committed": true,
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/Tests/Dust3DEditorTests/EditorPreviewServiceTests.swift",
+    "head": "bf33b8d335f90a04af748822772444842ea3a2b3",
+    "blob": "7565bea141967fb156b893c417b1783b21a285a8",
+    "matches_committed": true,
+    "saved": true
+  }
+]

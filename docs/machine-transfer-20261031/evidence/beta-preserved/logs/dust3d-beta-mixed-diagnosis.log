@@ -1,0 +1,582 @@
+[0/1] Planning build
+Building for debugging...
+[0/17] Write sources
+[2/17] Write swift-version--58304C5D6DBC2206.txt
+[4/15] Emitting module Dust3DRenderingTests
+[5/15] Compiling Dust3DRenderingTests SourceFilePreviewTests.swift
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Foundation-24LYWIP48SHNP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Foundation-24LYWIP48SHNP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation1-2YSBQADOLX02V.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation1-2YSBQADOLX02V.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ObjectiveC-1G8H182PQX3QE.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ObjectiveC-1G8H182PQX3QE.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation2-3J4ZFA06I5V1P.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation2-3J4ZFA06I5V1P.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreFoundation-16SA8WK3L6MQN.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreFoundation-16SA8WK3L6MQN.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreGraphics-1PSDCAYCIV3T9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreGraphics-1PSDCAYCIV3T9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Darwin-1FXX23EKWOBA9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Darwin-1FXX23EKWOBA9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ApplicationServices-3NXEUUZF9JJBD.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ApplicationServices-3NXEUUZF9JJBD.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/IOKit-1IAL9NTK1TABA.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/IOKit-1IAL9NTK1TABA.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_limits-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_limits-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreText-3FAL1B4J38DIR.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreText-3FAL1B4J38DIR.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreData-1KHK1L2CYC2N6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreData-1KHK1L2CYC2N6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreImage-39ZO87840M5PP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreImage-39ZO87840M5PP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreServices-39NCTJOEW7PQ2.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreServices-39NCTJOEW7PQ2.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Symbols-3KC1789KJFX94.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Symbols-3KC1789KJFX94.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/OpenGL-H89XJT7GTCP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/OpenGL-H89XJT7GTCP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/QuartzCore-39A8LQKF980J1.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/QuartzCore-39A8LQKF980J1.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreVideo-DBBGB2LXU3HG.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreVideo-DBBGB2LXU3HG.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdint-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdint-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ptrauth-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ptrauth-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stddef-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stddef-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Dispatch-R76HXUP80TVL.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Dispatch-R76HXUP80TVL.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Security-3QCVXOV25KK54.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Security-3QCVXOV25KK54.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/XPC-T0ZXCAST7PE3.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/XPC-T0ZXCAST7PE3.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/QuickLook-1F5ET509814CZ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/QuickLook-1F5ET509814CZ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/AppKit-2VI8NB39I5AT6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/AppKit-2VI8NB39I5AT6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/UniformTypeIdentifiers-1OLJP4K3PLM48.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/UniformTypeIdentifiers-1OLJP4K3PLM48.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/PDFKit-FTXXL1FCFMYT.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/PDFKit-FTXXL1FCFMYT.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_float-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_float-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation3-2NSGASPTSNBVQ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation3-2NSGASPTSNBVQ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm
+[5/15] Linking Dust3DQuickLookExtension
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation1-2YSBQADOLX02V.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation1-2YSBQADOLX02V.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Foundation-24LYWIP48SHNP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Foundation-24LYWIP48SHNP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreGraphics-1PSDCAYCIV3T9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreGraphics-1PSDCAYCIV3T9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ObjectiveC-1G8H182PQX3QE.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ObjectiveC-1G8H182PQX3QE.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreFoundation-16SA8WK3L6MQN.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreFoundation-16SA8WK3L6MQN.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/UniformTypeIdentifiers-1OLJP4K3PLM48.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/UniformTypeIdentifiers-1OLJP4K3PLM48.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation2-3J4ZFA06I5V1P.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation2-3J4ZFA06I5V1P.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_float-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_float-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_limits-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_limits-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation3-2NSGASPTSNBVQ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_DarwinFoundation3-2NSGASPTSNBVQ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stddef-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stddef-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdint-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdint-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Darwin-1FXX23EKWOBA9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Darwin-1FXX23EKWOBA9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ptrauth-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/ptrauth-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Dispatch-R76HXUP80TVL.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Dispatch-R76HXUP80TVL.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Security-3QCVXOV25KK54.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/Security-3QCVXOV25KK54.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreServices-39NCTJOEW7PQ2.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/CoreServices-39NCTJOEW7PQ2.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/XPC-T0ZXCAST7PE3.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/XPC-T0ZXCAST7PE3.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/MachO-20RPYVQSX341K.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/MachO-20RPYVQSX341K.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/os_object-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/os_object-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/os_workgroup-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/os_workgroup-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/IOKit-1IAL9NTK1TABA.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/IOKit-1IAL9NTK1TABA.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/SwiftShims-2IMTS4WWRU7VJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/3CW10RHH5HN56/SwiftShims-2IMTS4WWRU7VJ.pcm
+[6/15] Linking Dust3DThumbnailExtension
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm
+[7/15] Linking Dust3DViewer
+[8/15] Applying Dust3DThumbnailExtension
+[8/15] Applying Dust3DQuickLookExtension
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm
+[10/15] Linking Dust3DEditor
+[11/15] Applying Dust3DViewer
+[12/17] Applying Dust3DEditor
+[14/17] Compiling Dust3DViewerTests ViewerSourceBakedMaterialTests.swift
+[15/17] Emitting module Dust3DViewerTests
+[15/17] Write Objects.LinkFileList
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreFoundation-16SA8WK3L6MQN.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation1-2YSBQADOLX02V.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ObjectiveC-1G8H182PQX3QE.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdarg-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdint-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_limits-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ptrauth-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stddef-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation2-3J4ZFA06I5V1P.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Darwin-1FXX23EKWOBA9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Dispatch-R76HXUP80TVL.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Security-3QCVXOV25KK54.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreServices-39NCTJOEW7PQ2.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XPC-T0ZXCAST7PE3.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Foundation-24LYWIP48SHNP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XCUIAutomation-32USULGCX4UAI.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/XCUIAutomation-32USULGCX4UAI.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/AppKit-2VI8NB39I5AT6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreGraphics-1PSDCAYCIV3T9.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ApplicationServices-3NXEUUZF9JJBD.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOKit-1IAL9NTK1TABA.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreText-3FAL1B4J38DIR.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreData-1KHK1L2CYC2N6.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreImage-39ZO87840M5PP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Symbols-3KC1789KJFX94.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/OpenGL-H89XJT7GTCP.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/QuartzCore-39A8LQKF980J1.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/CoreVideo-DBBGB2LXU3HG.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdbool-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_float-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_stdatomic-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/MachO-20RPYVQSX341K.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_DarwinFoundation3-2NSGASPTSNBVQ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_object-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/os_workgroup-2MV8OP7R98AN8.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_inttypes-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/SwiftShims-2IMTS4WWRU7VJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/_Builtin_tgmath-2OQWMRBVRD4OJ.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/IOSurface-26455DPS9NDS0.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/Metal-1GCZV9N85NJOH.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/ModelIO-1RZXABDLQ0P85.pcm
+warning: /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm: No such file or directory
+note: while processing /private/tmp/dust3d-beta-materials/-gate/build/arm64-apple-macosx/debug/ModuleCache/1F1JZODR4RMPC/simd-KY25Q80SBOHY.pcm
+[16/17] Linking Dust3DNativePackageTests
+Build complete! (39.61s)
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+Test Suite 'Selected tests' started at 2026-10-29 20:25:00.374.
+Test Suite 'Dust3DNativePackageTests.xctest' started at 2026-10-29 20:25:00.395.
+Test Suite 'SourceFilePreviewTests' started at 2026-10-29 20:25:00.395.
+Test Case '-[Dust3DRenderingTests.SourceFilePreviewTests testPreparesMixedFileReadOnlyAndClearsOnlyCurrentMaterialNotices]' started.
+/private/tmp/dust3d-beta-materials/Tests/Dust3DRenderingTests/SourceFilePreviewTests.swift:32: error: -[Dust3DRenderingTests.SourceFilePreviewTests testPreparesMixedFileReadOnlyAndClearsOnlyCurrentMaterialNotices] : XCTUnwrap failed: expected non-nil value of type "SourceBakedMesh" - Optional(Dust3DKit.MeshLoadingError(status: 1, message: "Known procedural mip triangle has no single owning island"))
+Test Case '-[Dust3DRenderingTests.SourceFilePreviewTests testPreparesMixedFileReadOnlyAndClearsOnlyCurrentMaterialNotices]' failed (4.380 seconds).
+Test Suite 'SourceFilePreviewTests' failed at 2026-10-29 20:25:04.777.
+	 Executed 1 test, with 1 failure (0 unexpected) in 4.380 (4.382) seconds
+Test Suite 'ViewerSourceBakedMaterialTests' started at 2026-10-29 20:25:04.777.
+Test Case '-[Dust3DViewerTests.ViewerSourceBakedMaterialTests testPreparesBothMixedSurfaceKindsAndWaitsForMatchingGpuFrame]' started.
+/private/tmp/dust3d-beta-materials/Tests/Dust3DViewerTests/ViewerSourceBakedMaterialTests.swift:21: error: -[Dust3DViewerTests.ViewerSourceBakedMaterialTests testPreparesBothMixedSurfaceKindsAndWaitsForMatchingGpuFrame] : XCTUnwrap failed: expected non-nil value of type "SourceBakedMesh" - Optional("Known procedural mip triangle has no single owning island")
+Test Case '-[Dust3DViewerTests.ViewerSourceBakedMaterialTests testPreparesBothMixedSurfaceKindsAndWaitsForMatchingGpuFrame]' failed (0.623 seconds).
+Test Suite 'ViewerSourceBakedMaterialTests' failed at 2026-10-29 20:25:05.400.
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.623 (0.623) seconds
+Test Suite 'Dust3DNativePackageTests.xctest' failed at 2026-10-29 20:25:05.400.
+	 Executed 2 tests, with 2 failures (0 unexpected) in 5.003 (5.005) seconds
+Test Suite 'Selected tests' failed at 2026-10-29 20:25:05.400.
+	 Executed 2 tests, with 2 failures (0 unexpected) in 5.003 (5.027) seconds
+Note: Some test targets reported failures:
+  - Dust3DNativePackageTests (XCTest)

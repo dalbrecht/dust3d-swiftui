@@ -1,0 +1,1604 @@
+Building for debugging...
+[0/159] /private/tmp/dust3d-origin-pointer-ci/build/arm64-apple-macosx/debug/Dust3DNativePackageTests.derived/runner.swift
+[1/159] Write sources
+[2/159] Write swift-version--58304C5D6DBC2206.txt
+[3/159] Compiling WorkerReplyBridge.cc
+[4/159] Compiling WorkerQueueBridge.cc
+[5/159] Compiling WorkerRequestBridge.cc
+[6/159] Compiling WorkerRuntimeBridge.cc
+[7/159] Compiling WorkerDecodedBridge.cc
+[7/159] Compiling WorkerUvRequest.cc
+[9/159] Compiling WorkerUvOperation.cc
+[10/159] Compiling WorkerUvMesh.cc
+[11/159] Compiling WorkerQueue.cc
+[12/159] Compiling WorkerReplyCollector.cc
+[13/159] Compiling WorkerProtocol.cc
+[14/159] Write sources
+[15/159] Write Dust3DViewer-entitlement.plist
+[16/159] Write sources
+[17/159] Write Dust3DThumbnailExtension-entitlement.plist
+[18/159] Write sources
+[21/159] Write Dust3DQuickLookExtension-entitlement.plist
+[22/159] Copying Shaders.metal
+[23/159] Copying Fixtures
+[24/159] Write sources
+[27/159] Compiling WorkerOperation.cc
+[28/159] Compiling WorkerUv.cc
+[29/159] Compiling WorkerMesh.cc
+[30/159] Compiling WorkerFailure.cc
+[31/159] Compiling WorkerJobIO.cc
+[32/159] Compiling WorkerAdmission.cc
+[33/159] Compiling TriangleIntersection tri_tri_intersect.c
+[34/159] Compiling Dust3DEngine RigTransformValidation.cc
+[35/159] Compiling Dust3DEngine RetainedPayload.cc
+[36/159] Compiling Dust3DEngine SnapshotValidator.cc
+[37/159] Compiling Dust3DEngine SnapshotInvalidation.cc
+[38/159] Compiling Dust3DEngine PngEncoding.cc
+[39/159] Compiling Dust3DEngine SourceProvenance.cc
+[40/159] Compiling Dust3DEngine UvMetadata.cc
+[41/159] Compiling Dust3DEngine ObjGeometryPlan.cc
+[42/159] Compiling Dust3DEngine IndexedMesh.cc
+[43/159] Compiling Dust3DEngine ObjDocument.cc
+[44/159] Compiling Dust3DEngine ObjExportBridge.cc
+[45/159] Compiling Dust3DEngine SourceBakedMesh.cc
+[46/159] Compiling Dust3DEngine FbxNode.cc
+[47/159] Compiling Dust3DEngine FbxPropertyBlock.cc
+[48/159] Compiling Dust3DEngine ImportedSurface.cc
+[49/159] Compiling Dust3DEngine ImportedModels.cc
+[50/159] Compiling Dust3DEngine ImportedAssets.cc
+[51/159] Compiling Dust3DEngine FbxMeshScenePlan.cc
+[52/159] Compiling Dust3DEngine FbxMaterialImagePlan.cc
+[53/159] Compiling Dust3DEngine FbxDocument.cc
+[54/159] Compiling Dust3DEngine GenerationSession.cc
+[55/159] Compiling Dust3DEngine FbxMeshScene.cc
+[56/159] Compiling Dust3DEngine EngineSupport.cc
+[57/159] Compiling Dust3DEngine FbxBakedMaterial.cc
+[58/159] Compiling Dust3DEngine FbxGeometrySelection.cc
+[59/159] Compiling Dust3DEngine GlbReader.cc
+[60/159] Compiling Dust3DEngine FbxAnimationMath.cc
+[61/159] Write sources
+[65/159] Write Dust3DEditor-entitlement.plist
+[66/159] Write sources
+[68/159] Compiling Dust3DEngine FbxExportBridge.cc
+[69/159] Compiling Dust3DEngine FbxAtlasGeometry.cc
+[70/195] Compiling Dust3DEngine Cancellation.cc
+[71/195] Compiling Dust3DEngine AnimationCatalogBridge.cc
+[72/195] Compiling uv_map_packer.cc
+[73/195] Compiling Dust3DEngine DocumentReader.cc
+[74/195] Compiling Dust3DEngine Dust3DBridge.cc
+[75/195] Compiling max_rectangles.cc
+[76/195] Compiling surface_pattern.cc
+[77/195] Compiling Dust3DEngine BakedMesh.cc
+[78/195] Compiling uv_atlas_builder.cc
+[79/195] Compiling chart_packer.cc
+[80/195] Compiling texture_baker.cc
+[81/195] Compiling source_uv_atlas.cc
+[82/195] Compiling color_texture_sampler.cc
+[83/195] Compiling source_texture_baker.cc
+[84/195] Compiling trim_vertices.cc
+[85/195] Compiling triangulate.cc
+[86/195] Compiling cloth_folds.cc
+[87/195] Compiling tube_mesh_builder.cc
+[88/195] Compiling stitch_mesh_builder.cc
+[89/195] Compiling solid_mesh.cc
+[90/195] Compiling smooth_normal.cc
+[91/195] Compiling rig_generator.cc
+[92/195] Compiling section_remesher.cc
+[94/195] Compiling Dust3DDocument AnimationAuthoringCatalog.swift
+[95/195] Compiling Dust3DDocument AnimationControlDefinition.swift
+[96/195] Compiling Dust3DDocument AnimationMetadata.swift
+[97/195] Compiling Dust3DDocument BoneNameIdentity.swift
+[98/195] Compiling Dust3DDocument ComponentColor.swift
+[99/195] Emitting module Dust3DDocument
+[100/199] Compiling Dust3DDocument EdgeBoneBinding.swift
+[101/199] Compiling Dust3DDocument EmptyPartCleanup.swift
+[102/199] Compiling Dust3DDocument EngineScalar.swift
+[103/199] Compiling Dust3DDocument JPEGContainerMetadata.swift
+[104/199] Compiling Dust3DDocument NodeClipboard.swift
+[105/199] Compiling Dust3DDocument PNGContainerMetadata.swift
+[106/199] Compiling Dust3DDocument PartCutFace.swift
+[107/199] Compiling Dust3DDocument PartDeformation.swift
+[108/199] Compiling Dust3DDocument PartJoining.swift
+[109/199] Compiling Dust3DDocument PartLoopInterior.swift
+[109/199] Compiling solid_mesh_boolean_operation.cc
+[110/199] Compiling rope_mesh.cc
+[112/199] Compiling Dust3DDocument DocumentAnimation.swift
+[113/199] Compiling Dust3DDocument DocumentColorImageAsset.swift
+[114/199] Compiling Dust3DDocument DocumentComponent.swift
+[115/199] Compiling Dust3DDocument DocumentFileService.swift
+[116/199] Compiling Dust3DDocument DocumentHistory.swift
+[117/199] Compiling Dust3DDocument ComponentColorImage.swift
+[118/199] Compiling Dust3DDocument ComponentColorImageXML.swift
+[119/199] Compiling Dust3DDocument ComponentColorXML.swift
+[120/199] Compiling Dust3DDocument ComponentCombination.swift
+[121/199] Compiling Dust3DDocument ComponentReordering.swift
+[122/199] Compiling Dust3DDocument ComponentSmoothing.swift
+[123/199] Compiling Dust3DDocument ComponentStitching.swift
+[124/199] Compiling Dust3DDocument ComponentStructure.swift
+[125/199] Compiling Dust3DDocument ComponentWrapping.swift
+[126/199] Compiling Dust3DDocument CutFaceLinks.swift
+[127/199] Compiling Dust3DDocument DocumentPart.swift
+[128/199] Compiling Dust3DDocument DocumentRigSettings.swift
+[129/199] Compiling Dust3DDocument DocumentTextureImages.swift
+[130/199] Compiling Dust3DDocument DocumentXML.swift
+[131/199] Compiling Dust3DDocument Dust3DDocument.swift
+[131/199] Compiling stitch_loop_mesh_builder.cc
+[132/199] Compiling resolve_triangle_tangent.cc
+[134/199] Compiling Dust3DDocument PartMaterial.swift
+[135/199] Compiling Dust3DDocument PartModifiers.swift
+[136/199] Compiling Dust3DDocument PartSplitting.swift
+[137/199] Compiling Dust3DDocument PartTarget.swift
+[137/199] Compiling retained_payload.cc
+[138/199] Compiling wrap_mesh_builder.cc
+[139/199] Compiling re_triangulator.cc
+[140/233] Compiling mesh_state.cc
+[141/303] Compiling mesh_combiner.cc
+[142/303] Compiling mesh_recombiner.cc
+[144/303] Compiling Dust3DDocumentTests ComponentSmoothingTests.swift
+[145/303] Compiling Dust3DDocumentTests ComponentStitchingTests.swift
+[146/303] Compiling Dust3DDocumentTests ComponentStructureTests.swift
+[147/303] Compiling Dust3DDocumentTests ComponentWrappingTests.swift
+[148/303] Emitting module Dust3DEditorModel
+[149/306] Compiling Dust3DDocumentTests PartModifierTests.swift
+[150/306] Compiling Dust3DDocumentTests LegacySurfaceMetadataTests.swift
+[151/306] Compiling Dust3DDocumentTests NamespaceTransferTests.swift
+[152/306] Compiling Dust3DDocumentTests EmptyPartCleanupTests.swift
+[153/306] Compiling Dust3DDocumentTests JPEGContainerMetadataTests.swift
+[154/306] Compiling Dust3DDocumentTests ComponentColorImageTests.swift
+[155/306] Compiling Dust3DDocumentTests ComponentColorTests.swift
+[155/306] Compiling hole_stitcher.cc
+[157/306] Compiling Dust3DDocumentTests DocumentOriginTests.swift
+[158/306] Compiling Dust3DDocumentTests DocumentRigSettingsTests.swift
+[159/306] Compiling Dust3DDocumentTests DocumentTests.swift
+[160/306] Compiling Dust3DDocumentTests EdgeBoneBindingTests.swift
+[161/306] Compiling Dust3DDocumentTests AnimationControlDefinitionTests.swift
+[162/306] Compiling Dust3DDocumentTests AnimationDocumentTests.swift
+[163/306] Compiling Dust3DDocumentTests ClipboardPartitionTests.swift
+[164/306] Compiling Dust3DDocumentTests ColorImageInventoryTests.swift
+[165/306] Compiling Dust3DDocumentTests PartDeformationTests.swift
+[166/306] Compiling Dust3DDocumentTests PartJoiningTests.swift
+[167/306] Compiling Dust3DDocumentTests PartLoopInteriorTests.swift
+[168/306] Compiling Dust3DDocumentTests PartMaterialTests.swift
+[169/306] Compiling Dust3DEditorModel ReferenceCompositionTarget.swift
+[170/306] Compiling Dust3DEditorModel ReferenceCropProjection.swift
+[171/306] Compiling Dust3DEditorModel SelectionTransform.swift
+[171/306] Compiling hole_wrapper.cc
+[172/306] Compiling centripetal_catmull_rom_spline.cc
+[173/306] Compiling base_normal.cc
+[174/306] Compiling vector3.cc
+[176/306] Compiling Dust3DDocumentTests ComponentCombinationTests.swift
+[177/306] Compiling Dust3DDocumentTests ComponentHierarchyTests.swift
+[178/306] Compiling Dust3DDocumentTests ComponentOrderTests.swift
+[179/306] Compiling Dust3DDocumentTests AnimationAuthoringCatalogTests.swift
+[179/306] Compiling texture_type.cc
+[180/306] Compiling uuid.cc
+[181/356] Compiling string.cc
+[183/356] Compiling Dust3DEditorModelTests ComponentReparentTests.swift
+[184/356] Compiling Dust3DEditorModelTests ComponentSelectionTests.swift
+[185/356] Compiling Dust3DEditorModelTests ComponentSessionTests.swift
+[186/356] Compiling Dust3DEditorModelTests ComponentSmoothingSessionTests.swift
+[187/356] Compiling Dust3DEditorModelTests ComponentStructureSessionTests.swift
+[188/356] Compiling Dust3DEditorModelTests ComponentTreeTests.swift
+[188/361] Compiling snapshot_xml_writer.cc
+[190/361] Compiling Dust3DEditorModelTests NodeDragTests.swift
+[191/361] Compiling Dust3DEditorModelTests OriginDragTests.swift
+[192/361] Compiling Dust3DEditorModelTests OriginEditorTests.swift
+[193/361] Compiling Dust3DEditorModelTests OriginProjectionTests.swift
+[194/361] Compiling Dust3DEditorModelTests OriginSettlementTests.swift
+[195/361] Emitting module Dust3DKit
+[196/361] Compiling Dust3DEditorModelTests AnimationAuthoringSessionTests.swift
+[197/361] Compiling Dust3DEditorModelTests AnimationEditTargetTests.swift
+[198/361] Compiling Dust3DEditorModelTests AnimationParameterDraftTests.swift
+[199/361] Compiling Dust3DEditorModelTests AnimationSessionTests.swift
+[200/361] Compiling Dust3DEditorModelTests AnimationTimelineTests.swift
+[201/361] Compiling Dust3DEditorModelTests ClipboardPayloadTests.swift
+[201/361] Compiling snapshot_xml.cc
+[202/361] Compiling part_target.cc
+[203/361] Compiling retained_payload.cc
+[204/361] Compiling position_key.cc
+[206/361] Compiling Dust3DEditorModelTests ClipboardSessionTests.swift
+[207/361] Compiling Dust3DEditorModelTests ComponentColorDraftTests.swift
+[208/361] Compiling Dust3DEditorModelTests ComponentColorImagePresentationTests.swift
+[209/361] Compiling Dust3DEditorModelTests ComponentColorImageSessionTests.swift
+[210/361] Compiling Dust3DEditorModelTests ComponentCombinationSessionTests.swift
+[211/361] Compiling Dust3DEditorModelTests ComponentOrderSessionTests.swift
+[212/361] Compiling Dust3DEditorModelTests ComponentWrappingPresentationTests.swift
+[213/361] Compiling Dust3DEditorModelTests ComponentWrappingSessionTests.swift
+[214/361] Compiling Dust3DEditorModelTests DescendantRotationTests.swift
+[215/361] Compiling Dust3DEditorModelTests GraphTransformTests.swift
+[216/361] Compiling Dust3DEditorModelTests JoiningAvailabilityTests.swift
+[217/361] Compiling Dust3DEditorModelTests MeshPreviewStateTests.swift
+[218/361] Compiling Dust3DEditorModelTests PartCutFaceOptionsTests.swift
+[219/361] Compiling Dust3DEditorModelTests PartCutFaceSessionTests.swift
+[220/361] Compiling Dust3DEditorModelTests PartDeformationSessionTests.swift
+[221/361] Compiling Dust3DEditorModelTests PartProfileOptionsTests.swift
+[222/361] Compiling Dust3DEditorModelTests PartSelectionTests.swift
+[223/361] Compiling Dust3DEditorModelTests PartSplitSessionTests.swift
+[224/361] Compiling Dust3DEditorModelTests EdgeBoneBindingSessionTests.swift
+[225/361] Compiling Dust3DEditorModelTests EdgeSelectionTests.swift
+[226/361] Compiling Dust3DEditorModelTests EditorConstraintsTests.swift
+[227/361] Compiling Dust3DEditorModelTests EditorExportTargetTests.swift
+[228/361] Compiling Dust3DEditorModelTests EditorSelectionTests.swift
+[229/361] Compiling Dust3DKit SourceMeshBakeInput.swift
+[230/361] Compiling Dust3DKit SourceMeshBakingService.swift
+[231/361] Compiling Dust3DKit TextureMipChain.swift
+[232/361] Compiling Dust3DKit TextureMipChainCopy.swift
+[233/361] Compiling Dust3DKit WorkerRequestEncoder.swift
+[233/361] Compiling combine_mode.cc
+[234/387] Compiling cut_face.cc
+[235/387] Compiling axis_aligned_bounding_box_tree.cc
+[236/387] Compiling surface_material.cc
+[237/387] Compiling spring_step_admission.cc
+[238/387] Compiling ds3_file.cc
+[239/428] Compiling mesh_generator.cc
+[240/428] Compiling clip_metadata.cc
+[241/428] Compiling animation_defaults.cc
+[242/428] Compiling parameter_catalog.cc
+[243/428] Compiling animation_catalog.cc
+[244/428] Compiling isotropicremesher.cpp
+[245/428] Compiling axisalignedboundingboxtree.cpp
+[246/428] Compiling isotropichalfedgemesh.cpp
+[247/428] Compiling surfacemesh.cpp
+[249/428] Emitting module Dust3DKitTests
+[249/433] Compiling singularitysimplifier.cpp
+[251/433] Compiling Dust3DKitTests ComponentWrappingCompatibilityTests.swift
+[252/433] Compiling Dust3DKitTests DescendantRotationCompatibilityTests.swift
+[253/433] Compiling Dust3DKitTests DocumentCompatibilityTests.swift
+[254/436] Compiling Dust3DKitTests QtClipboardCompatibilityTests.swift
+[255/436] Compiling Dust3DKitTests SourceBakedCopyTests.swift
+[256/436] Compiling Dust3DKitTests SourceBakedLoaderTests.swift
+[257/436] Compiling Dust3DKitTests SourceBakedMipmapsTests.swift
+[258/436] Compiling Dust3DKitTests SourceMeshBakeErrorTests.swift
+[259/436] Compiling Dust3DKitTests ImportedSurfaceLoaderTests.swift
+[260/436] Compiling Dust3DKitTests IndexedMeshLoaderTests.swift
+[261/436] Compiling Dust3DKitTests MaterialPreviewWarningTests.swift
+[262/436] Compiling Dust3DKitTests MaterialSourceCapabilitiesTests.swift
+[263/436] Compiling Dust3DKitTests MeshBakedCopyTests.swift
+[264/436] Compiling Dust3DKitTests MeshBakedLoaderTests.swift
+[265/436] Compiling Dust3DKitTests MeshSourceHintsTests.swift
+[266/436] Compiling Dust3DRendering TexturedRenderGeometry.swift
+[267/436] Compiling Dust3DRendering TexturedRenderMetadata.swift
+[268/436] Compiling Dust3DRendering resource_bundle_accessor.swift
+[269/436] Compiling Dust3DKitTests NativeAnimationCatalogIntegrationTests.swift
+[270/436] Compiling Dust3DKitTests NativeAnimationCatalogLoaderTests.swift
+[271/436] Compiling Dust3DKitTests ImportedMaterialLoaderTests.swift
+[272/436] Compiling Dust3DKitTests ImportedSurfaceCopyTests.swift
+[276/440] Emitting module Dust3DDocumentTests
+[279/440] Compiling Dust3DKitTests DocumentExportFileServiceTests.swift
+[280/440] Compiling Dust3DKitTests ImportedImageDecoderTests.swift
+[281/440] Compiling Dust3DKitTests ImportedMaterialCopyTests.swift
+[281/440] Compiling quadparameterizer.cpp
+[283/440] Compiling Dust3DKitTests TextureMipChainTests.swift
+[284/440] Compiling Dust3DKitTests WorkerRequestEncoderTests.swift
+[285/440] Compiling Dust3DKitTests resource_bundle_accessor.swift
+[286/440] Compiling Dust3DEditorModelTests QtClipboardSessionTests.swift
+[287/440] Compiling Dust3DEditorModelTests RecoveryCopyPlanTests.swift
+[288/440] Compiling Dust3DEditorModelTests ReferenceCompositionCommitTests.swift
+[289/440] Compiling Dust3DEditorModelTests ReferenceCompositionTests.swift
+[290/446] Compiling Dust3DKitTests NativeFBXExportEncoderTests.swift
+[291/446] Compiling Dust3DKitTests NativeFBXExportIntegrationTests.swift
+[292/446] Compiling Dust3DKitTests NativeGeometryExportEncoderTests.swift
+[293/446] Compiling Dust3DKitTests NativeOBJExportEncoderTests.swift
+[294/446] Compiling Dust3DDocumentTests ReferenceImageTests.swift
+[302/446] Compiling Dust3DKitTests ArchiveImportedMaterialTests.swift
+[303/446] Compiling Dust3DKitTests ArchiveSourceTextureBakingTests.swift
+[304/446] Compiling Dust3DKitTests ArchiveTextureBakingServiceTests.swift
+[305/446] Compiling Dust3DKitTests ComponentStructureCompatibilityTests.swift
+[306/446] Emitting module Dust3DRendering
+[307/446] Compiling Dust3DKitTests MeshGenerationSessionTests.swift
+[308/446] Compiling Dust3DKitTests MeshLoaderTests.swift
+[309/446] Compiling Dust3DKitTests MeshPNGDecoderTests.swift
+[310/446] Compiling Dust3DKitTests MeshSourceCopyTests.swift
+[315/446] Compiling Dust3DKitTests MeshBakingServiceTests.swift
+[316/446] Compiling Dust3DKitTests MeshFileServiceTests.swift
+[339/446] Compiling positionkey.cpp
+[348/446] Compiling Dust3DDocumentTests SnapshotXMLTests.swift
+[349/446] Compiling Dust3DDocumentTests TextureImageReferenceTests.swift
+[350/446] Compiling Dust3DDocumentTests TopologyTests.swift
+[353/446] Compiling Dust3DKitTests SourceMeshBakingServiceTests.swift
+[354/446] Compiling Dust3DKitTests SourcedMeshGenerationTests.swift
+[398/446] Emitting module Dust3DEditorModelTests
+[405/446] Compiling mixedintegerleastsquares.cpp
+[407/446] Compiling Dust3DEditorModelTests ReferenceCropAdjustmentTests.swift
+[408/446] Compiling Dust3DEditorModelTests ReferenceCropProjectionTests.swift
+[409/446] Compiling Dust3DEditorModelTests ReferenceImageProjectionTests.swift
+[410/446] Compiling Dust3DEditorModelTests ReferenceImageSessionTests.swift
+[411/446] Compiling Dust3DEditorModelTests RigParameterSessionTests.swift
+[412/446] Compiling Dust3DEditorModelTests SelectionToolsTests.swift
+[412/446] Compiling meshseparator.cpp
+[413/450] Compiling parameterizer.cpp
+[419/546] Compiling Dust3DEditor PartInspector.swift
+[420/546] Compiling Dust3DEditor PartLoopInteriorControls.swift
+[421/546] Compiling Dust3DEditor PartMaterialControls.swift
+[422/546] Compiling Dust3DEditor ComponentReparentControls.swift
+[423/546] Compiling Dust3DEditor ComponentSidebar.swift
+[424/546] Compiling Dust3DEditor ComponentSmoothingControls.swift
+[424/546] Compiling quadextractor.cpp
+[426/546] Emitting module Dust3DViewer
+[427/546] Compiling Dust3DViewer Dust3DViewerApp.swift
+[428/546] Compiling Dust3DViewer ViewerStore.swift
+[429/546] Compiling Dust3DViewer ContentView.swift
+[430/546] Emitting module Dust3DRenderingTests
+[431/546] Compiling Dust3DEditor NodeInspector.swift
+[432/546] Compiling Dust3DEditor NodePointerSurface.swift
+[433/546] Compiling Dust3DEditor OriginControls.swift
+[434/546] Compiling Dust3DEditor OriginHandle.swift
+[434/549] Compiling isotropicremesher.cpp
+[436/549] Compiling Dust3DEditor ScopedPreviewQueue.swift
+[437/549] Compiling Dust3DEditor AnimationAuthoringControls.swift
+[438/549] Compiling Dust3DEditor AnimationNameField.swift
+[439/549] Compiling Dust3DEditor AnimationPanel.swift
+[440/549] Compiling Dust3DEditor ComponentColorControls.swift
+[441/549] Compiling Dust3DEditor ComponentColorImageControls.swift
+[442/549] Compiling Dust3DEditor ComponentInspector.swift
+[443/549] Compiling Dust3DEditor DocumentColorPresentation.swift
+[444/549] Compiling Dust3DEditor EdgeBoneBindingControls.swift
+[445/549] Compiling Dust3DEditor EdgeInspector.swift
+[446/549] Compiling Dust3DEditor ReferenceImageService.swift
+[452/549] Compiling Dust3DEditor ComponentStitchingControls.swift
+[453/549] Compiling Dust3DEditor ComponentWrappingControls.swift
+[454/549] Compiling Dust3DEditor DescendantRotationMenu.swift
+[455/549] Compiling Dust3DEditor PartCutFaceControls.swift
+[456/549] Compiling Dust3DEditor PartDeformationControls.swift
+[458/549] Emitting module Dust3DEditor
+[458/558] Compiling framefield.cpp
+[460/558] Compiling Dust3DRenderingTests SourceMipRoutingTests.swift
+[461/558] Compiling Dust3DRenderingTests TexturedMetalRenderingTests.swift
+[462/558] Compiling Dust3DRenderingTests TexturedRenderGeometryTests.swift
+[481/558] Compiling Dust3DEditor EditorRecoveryCopies.swift
+[482/558] Compiling Dust3DEditor EditorRecoveryCopyFileService.swift
+[483/558] Compiling Dust3DEditor EditorRecoveryDispatchPlan.swift
+[484/558] Compiling Dust3DEditor EditorRecoveryRequestChannel.swift
+[485/558] Compiling Dust3DEditor EditorSaveState.swift
+[486/558] Compiling Dust3DEditor NativeUndoCommandState.swift
+[487/558] Compiling Dust3DEditor NodeClipboardDataProvider.swift
+[488/558] Compiling Dust3DEditor ReferenceCompositionRaster.swift
+[489/558] Compiling Dust3DEditor ReferenceCompositionService.swift
+[490/558] Compiling Dust3DEditor EditorStore.swift
+[491/558] Compiling Dust3DEditor ReferenceCompositionDraft.swift
+[492/558] Compiling Dust3DEditor EditorClipboardCommands.swift
+[493/558] Compiling Dust3DEditor EditorGeometryExportCommands.swift
+[494/558] Compiling Dust3DEditor NodeClipboardPasteButton.swift
+[495/558] Compiling Dust3DEditor ColorImageService.swift
+[496/558] Compiling Dust3DEditor EditorGeometryExportDestinationService.swift
+[497/558] Compiling Dust3DEditor EditorPasteboard.swift
+[498/558] Compiling Dust3DEditor EditorPreviewService.swift
+[501/558] Compiling Dust3DEditor EditorAnimationCatalogState.swift
+[502/558] Compiling Dust3DEditor EditorCommandScope.swift
+[503/558] Compiling Dust3DEditor EditorCompositionRecovery.swift
+[504/558] Compiling Dust3DEditor EditorExportReceipt.swift
+[505/558] Compiling Dust3DEditor EditorFileDocument.swift
+[506/558] Compiling Dust3DEditor EditorGeometryExportPhase.swift
+[507/558] Compiling Dust3DEditor EditorGeometryExportWorkflow.swift
+[508/558] Compiling Dust3DEditor EditorLaunchDocument.swift
+[509/558] Compiling Dust3DEditor EdgeSidebar.swift
+[510/558] Compiling Dust3DEditor EditorExportWindowAnchor.swift
+[511/558] Compiling Dust3DEditor EditorGeometryExportMenu.swift
+[512/558] Compiling Dust3DEditor EditorGeometryExportStatusView.swift
+[513/558] Compiling Dust3DEditor EditorRootView.swift
+[514/558] Compiling Dust3DEditor ExactBoneNameField.swift
+[515/558] Compiling Dust3DEditor InspectorNodeDraft.swift
+[516/558] Compiling Dust3DEditor MeshPreviewPlaceholder.swift
+[517/558] Compiling Dust3DEditor NodeCanvas.swift
+[527/558] Compiling Dust3DEditor PartModifierControls.swift
+[528/558] Compiling Dust3DEditor PartProfileChooser.swift
+[529/558] Compiling Dust3DEditor PartSidebar.swift
+[530/558] Compiling Dust3DEditor PartTargetControls.swift
+[531/558] Compiling Dust3DEditor PreviewDiagnosticNotice.swift
+[532/558] Compiling Dust3DEditor ReferenceCompositionSheet.swift
+[533/558] Compiling Dust3DEditor ReferenceImageControls.swift
+[534/558] Compiling Dust3DEditor RigSettingsControls.swift
+[535/558] Compiling Dust3DEditor SelectableNodeIdentifier.swift
+[535/558] Compiling constrainedleastsquares.cpp
+[536/558] Write Objects.LinkFileList
+[541/558] Compiling Dust3DThumbnailExtension ThumbnailProvider.swift
+[542/558] Emitting module Dust3DThumbnailExtension
+[542/558] Archiving libDust3DWorkerRuntime.a
+[543/558] Write Objects.LinkFileList
+[544/558] Archiving libDust3DEngine.a
+[546/558] Compiling Dust3DQuickLookExtension PreviewViewController.swift
+[547/558] Emitting module Dust3DQuickLookExtension
+[547/558] Write Objects.LinkFileList
+[548/558] Linking Dust3DViewer
+[549/558] Applying Dust3DViewer
+[550/562] Linking Dust3DEditor
+[551/562] Applying Dust3DEditor
+[552/562] Linking Dust3DThumbnailExtension
+[553/632] Applying Dust3DThumbnailExtension
+[554/632] Linking Dust3DQuickLookExtension
+[555/632] Applying Dust3DQuickLookExtension
+[557/632] Compiling Dust3DViewerTests ViewerSourceBakedMaterialTests.swift
+[558/632] Compiling Dust3DViewerTests ViewerImportedMaterialTests.swift
+[559/632] Emitting module Dust3DViewerTests
+[560/632] Compiling Dust3DViewerTests ViewerMaterialTests.swift
+[561/632] Compiling Dust3DEditorTests EmptyPartStoreTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[562/632] Compiling Dust3DEditorTests GeometryExportRenderingTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[563/632] Compiling Dust3DEditorTests InspectorIdentityTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[564/632] Compiling Dust3DEditorTests InspectorResetTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[565/632] Compiling Dust3DEditorTests NativeUndoCommandStateTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[566/632] Compiling Dust3DEditorTests NodePointerViewTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[567/632] Compiling Dust3DEditorTests OriginControlStoreTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[568/632] Compiling Dust3DEditorTests OriginDragStoreTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[569/632] Compiling Dust3DEditorTests OriginSettlementStoreTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[570/632] Compiling Dust3DEditorTests PartControlStoreTests.swift
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:19:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 17 |         let first = UUID(), second = UUID()
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+ 21 |         store.cancelOriginDrag()
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:39: error: extra argument 'token' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                       `- error: extra argument 'token' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:20:44: error: missing argument for parameter 'projection' in call
+ 18 |         store.setMovingOrigin(true)
+ 19 |         store.beginOriginDrag(token: first, projection: projection)
+ 20 |         store.updateOriginDrag(token: first, translation: .init(x: 10, y: 20))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:23:15: error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 21 |         store.cancelOriginDrag()
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+    |               `- error: value of type 'EditorStore' has no member 'beginOriginDrag'
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:39: error: extra argument 'token' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:24:45: error: missing argument for parameter 'projection' in call
+ 22 |         store.setMovingOrigin(true)
+ 23 |         store.beginOriginDrag(token: second, projection: projection)
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                             `- error: missing argument for parameter 'projection' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:39: error: extra argument 'token' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:26:44: error: missing argument for parameter 'projection' in call
+ 24 |         store.updateOriginDrag(token: second, translation: .init(x: 30, y: 40))
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                            `- error: missing argument for parameter 'projection' in call
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Sources/Dust3DEditor/App/EditorStore.swift:490:10: note: 'updateOriginDrag(translation:projection:)' declared here
+ 488 |     }
+ 489 | 
+ 490 |     func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+     |          `- note: 'updateOriginDrag(translation:projection:)' declared here
+ 491 |         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+ 492 |         do {
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:27:39: error: extra argument 'token' in call
+ 25 |         let preview = store.originDragPosition
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+    |                                       `- error: extra argument 'token' in call
+ 28 |         store.cancelOriginDrag(token: first)
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:28:39: error: argument passed to call that takes no arguments
+ 26 |         store.updateOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 27 |         store.finishOriginDrag(token: first, translation: .init(x: 80, y: 90))
+ 28 |         store.cancelOriginDrag(token: first)
+    |                                       `- error: argument passed to call that takes no arguments
+ 29 |         XCTAssertEqual(store.originDragPosition, preview)
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-origin-pointer/Tests/Dust3DEditorTests/OriginDragStoreTests.swift:32:39: error: extra argument 'token' in call
+ 30 |         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+ 31 |         XCTAssertFalse(store.canUndo)
+ 32 |         store.finishOriginDrag(token: second, translation: .init(x: 30, y: 40))
+    |                                       `- error: extra argument 'token' in call
+ 33 |         try await settle(store)
+ 34 |         XCTAssertEqual(store.snapshot?.origin, preview)
+[571/641] Emitting module Dust3DEditorTests
+[572/641] Compiling Dust3DEditorTests ComponentCombineStoreTests.swift
+[573/641] Compiling Dust3DEditorTests ComponentGroupingStoreTests.swift
+[574/641] Compiling Dust3DEditorTests ComponentOrderStoreTests.swift
+[575/641] Compiling Dust3DEditorTests ComponentReparentStoreTests.swift
+[576/641] Compiling Dust3DEditorTests ComponentSmoothingStoreTests.swift
+[577/641] Compiling Dust3DEditorTests ComponentStitchingRenderingTests.swift
+[578/641] Compiling Dust3DEditorTests ComponentStitchingStoreTests.swift
+[579/641] Compiling Dust3DEditorTests ComponentStoreTests.swift
+[580/641] Compiling Dust3DEditorTests ComponentWrappingRenderingTests.swift
+[581/641] Compiling Dust3DEditorTests ComponentWrappingStoreTests.swift
+[582/641] Compiling Dust3DEditorTests AnimationAuthoringStoreTests.swift
+[583/641] Compiling Dust3DEditorTests AnimationPanelTests.swift
+[584/641] Compiling Dust3DEditorTests AnimationStoreTests.swift
+[585/641] Compiling Dust3DEditorTests BoneBindingErrorMessageTests.swift
+[586/641] Compiling Dust3DEditorTests ColorImageCodecTests.swift
+[587/641] Compiling Dust3DEditorTests ComponentColorImageRenderingTests.swift
+[588/641] Compiling Dust3DEditorTests ComponentColorImageStoreTests.swift
+[589/641] Compiling Dust3DEditorTests ComponentColorPresentationTests.swift
+[590/641] Compiling Dust3DEditorTests ComponentColorRenderingTests.swift
+[591/641] Compiling Dust3DEditorTests ComponentColorStoreTests.swift
+[592/641] Compiling Dust3DEditorTests PartCutFaceStoreTests.swift
+[593/641] Compiling Dust3DEditorTests PartDeformationStoreTests.swift
+[594/641] Compiling Dust3DEditorTests PartLoopInteriorStoreTests.swift
+[595/641] Compiling Dust3DEditorTests PartMaterialStoreTests.swift
+[596/641] Compiling Dust3DEditorTests PartModifierRenderingTests.swift
+[597/641] Compiling Dust3DEditorTests PartModifierStoreTests.swift
+[598/641] Compiling Dust3DEditorTests PartTargetStoreTests.swift
+[599/641] Compiling Dust3DEditorTests PreviewDiagnosticNoticeRenderingTests.swift
+[600/641] Compiling Dust3DEditorTests PreviewSourceHistoryStoreTests.swift
+[601/641] Compiling Dust3DEditorTests QtClipboardProviderTests.swift
+[602/641] Compiling Dust3DEditorTests ReferenceImageCodecTests.swift
+[603/641] Compiling Dust3DEditorTests ReferenceImageCompletionTests.swift
+[604/641] Compiling Dust3DEditorTests ReferenceImageStoreTests.swift
+[605/641] Compiling Dust3DEditorTests RigSettingsStoreTests.swift
+[606/641] Compiling Dust3DEditorTests ScopedPreviewQueueTests.swift
+[607/641] Compiling Dust3DEditorTests SelectableNodeIdentifierTests.swift
+[608/641] Compiling Dust3DEditorTests InspectorRenderer.swift
+[609/641] Compiling Dust3DEditorTests StitchingFixture.swift
+[610/641] Compiling Dust3DEditorTests WrappingFixture.swift
+[611/641] Compiling Dust3DEditorTests QtClipboardStoreTests.swift
+[612/641] Compiling Dust3DEditorTests RecoveryCopyFileTests.swift
+[613/641] Compiling Dust3DEditorTests RecoveryCopyRegistryTests.swift
+[614/641] Compiling Dust3DEditorTests RecoverySnapshotTests.swift
+[615/641] Compiling Dust3DEditorTests ReferenceCompositionDraftTests.swift
+[616/641] Compiling Dust3DEditorTests ReferenceCompositionPresentationTests.swift
+[617/641] Compiling Dust3DEditorTests ReferenceCompositionRasterTests.swift
+[618/641] Compiling Dust3DEditorTests ReferenceCompositionStoreTests.swift
+[619/641] Compiling Dust3DEditorTests ReferenceCropPreviewRenderingTests.swift
+[620/641] Compiling Dust3DEditorTests EditorPreviewFallbackContractTests.swift
+[621/641] Compiling Dust3DEditorTests EditorPreviewFallbackTests.swift
+[622/641] Compiling Dust3DEditorTests EditorPreviewScopeSchedulingTests.swift
+[623/641] Compiling Dust3DEditorTests EditorPreviewServiceTests.swift
+[624/641] Compiling Dust3DEditorTests EditorPreviewSessionStoreTests.swift
+[625/641] Compiling Dust3DEditorTests EditorPreviewSourceTests.swift
+[626/641] Compiling Dust3DEditorTests EditorRecoveryDispatchTests.swift
+[627/641] Compiling Dust3DEditorTests EditorRecoveryTests.swift
+[628/641] Compiling Dust3DEditorTests EditorSaveSnapshotTests.swift
+[629/641] Compiling Dust3DEditorTests EditorSourceBakedMaterialTests.swift
+[630/641] Compiling Dust3DEditorTests DescendantRotationStoreTests.swift
+[631/641] Compiling Dust3DEditorTests EdgeBoneBindingStoreTests.swift
+[632/641] Compiling Dust3DEditorTests EditorAnimationAuthoringWorkflowTests.swift
+[633/641] Compiling Dust3DEditorTests EditorAnimationCatalogStateTests.swift
+[634/641] Compiling Dust3DEditorTests EditorExportWorkflowTests.swift
+[635/641] Compiling Dust3DEditorTests EditorGeometryExportDestinationTests.swift
+[636/641] Compiling Dust3DEditorTests EditorGeometryExportWorkflowTests.swift
+[637/641] Compiling Dust3DEditorTests EditorImportedMaterialTests.swift
+[638/641] Compiling Dust3DEditorTests EditorLaunchDocumentTests.swift
+[639/641] Compiling Dust3DEditorTests EditorMaterialPreviewTests.swift
+warning: '--build-system native' has been deprecated and will be removed in a future release; please report an issue at https://github.com/swiftlang/swift-package-manager/issues if you are unable to adopt the default build system.
+error: fatalError

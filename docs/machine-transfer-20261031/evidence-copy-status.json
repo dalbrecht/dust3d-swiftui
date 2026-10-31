@@ -1,0 +1,46 @@
+[
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/canvas/Sources/Dust3DEditorModel/EditorState.swift",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/canvas/Sources/Dust3DEditorModel/NodeDrag.swift",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/canvas/Sources/Dust3DEditor/App/EditorStore.swift",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/canvas/Sources/Dust3DEditor/Views/NodeCanvas.swift",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/canvas/Tests/Dust3DEditorModelTests/NodeDragTests.swift",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/core/dust3d/uv/source_texture_baker.cc",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/core/docs/adr/0196-hollow-thickness-investigation.md",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/core/docs/adr/0197-unproven-mip-ownership.md",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/core/tests/core/source_texture_mip_tests.cc",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/core/tests/core/worker_legacy_job_tests.cc",
+    "saved": true
+  },
+  {
+    "path": "/Users/dalbrecht/Documents/ChatGPT/dust3d-apple/.workspaces/beta-preserved/core/tests/core/tube_mesh_baseline_tests.cc",
+    "saved": true
+  }
+]

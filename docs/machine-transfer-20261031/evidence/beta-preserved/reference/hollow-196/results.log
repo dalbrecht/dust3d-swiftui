@@ -1,0 +1,5 @@
+t=0.00 success=1 vertices=8 faces=6 zeroArea=0 nonmanifoldEdges=0 maxPairError=0 maxInnerDistance=0
+t=0.25 success=1 vertices=16 faces=16 zeroArea=0 nonmanifoldEdges=0 maxPairError=0 maxInnerDistance=1.0606601
+t=0.50 success=1 vertices=16 faces=16 zeroArea=0 nonmanifoldEdges=0 maxPairError=0 maxInnerDistance=0.70710677
+t=0.99 success=1 vertices=16 faces=16 zeroArea=0 nonmanifoldEdges=0 maxPairError=0 maxInnerDistance=0.014142122
+t=1.00 success=1 vertices=16 faces=16 zeroArea=4 nonmanifoldEdges=0 maxPairError=0 maxInnerDistance=0

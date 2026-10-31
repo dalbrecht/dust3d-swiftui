@@ -1,0 +1,263 @@
+diff --git a/Sources/Dust3DKit/README.md b/Sources/Dust3DKit/README.md
+index 932449dc..4dfe3af5 100644
+--- a/Sources/Dust3DKit/README.md
++++ b/Sources/Dust3DKit/README.md
+@@ -133,14 +133,16 @@ geometry when an optional bake fails. See ADR 0078 and issue #165.
+ sampling cap. Checked copying preserves original accessor failures and cancellation,
+ charges aggregate copied/native bytes, and shares its image primitive with the
+ current source-bake path. Base-only loading rejects positive LOD even if image
+-dimensions could support hypothetical mipmaps. Actual native mip accessors and GPU
+-adoption await the reviewed core upgrade; see ADR 0085 and #175.
++dimensions could support hypothetical mipmaps. See ADR 0085 and #175.
+ 
+ `SourceBakedMesh.mipmaps` retains immutable optional chains by material role.
+ Existing base-only native loading leaves these empty; copied-output root accounting
+ includes the actual source-result layout. The shared renderer consumes result-owned
+-chains without a caller override. Native count/level binding and generation await
+-the reviewed core upgrade; see ADR 0087 and #177.
++chains without a caller override. Set `SourceMeshBakeOptions.maximumMipLevels`
++to 1–14 to opt into native chart-isolated generation and checked owned copies;
++zero preserves the base-only default. The producer can return fewer levels,
++including only the base, when chart isolation cannot be proven. The base maps
++and mip chains share immutable Swift pixel storage. See ADR 0087 and #177.
+ 
+ `DocumentExportFileService(encoder:)` publishes an immutable current document
+ snapshot via an injected `DocumentExportEncoding` implementation. For example,
+diff --git a/Sources/Dust3DKit/SourceBakedCopy.swift b/Sources/Dust3DKit/SourceBakedCopy.swift
+index d4132d17..7e6c4f77 100644
+--- a/Sources/Dust3DKit/SourceBakedCopy.swift
++++ b/Sources/Dust3DKit/SourceBakedCopy.swift
+@@ -112,6 +112,27 @@ enum SourceBakedCopy {
+         return try TextureMipChainCopy.image(view, nativeRemaining: &nativeRemaining, budget: &budget)
+     }
+ 
++    static func mipChain(
++        _ owner: OpaquePointer, map: Dust3DTextureMap, required: Bool, lod: Double, maximumLevels: Int,
++        nativeRemaining: inout Int, budget: inout SourceBakeCopyBudget
++    ) throws -> TextureMipChain? {
++        let count = dust3d_source_baked_mesh_texture_level_count(owner, map.rawValue)
++        guard count <= maximumLevels else { throw TextureMipChainError.invalidLevelCount }
++        return try TextureMipChainCopy.copy(
++            count: count, required: required, maximumSamplingLod: lod,
++            nativeRemaining: &nativeRemaining, budget: &budget
++        ) { level in
++            let view = dust3d_source_baked_mesh_texture_level(owner, map.rawValue, level)
++            if level == 0 {
++                let base = dust3d_source_baked_mesh_texture(owner, map.rawValue)
++                guard view.pixels == base.pixels, view.width == base.width, view.height == base.height,
++                    view.row_stride == base.row_stride, view.byte_count == base.byte_count
++                else { throw TextureMipChainError.invalidImage }
++            }
++            return view
++        }
++    }
++
+     static func copy(_ owner: OpaquePointer, options: SourceMeshBakeOptions) throws -> SourceBakedMesh {
+         guard let geometry = dust3d_source_baked_mesh_geometry(owner),
+             let source = dust3d_source_baked_mesh_triangles(owner)
+@@ -163,23 +184,53 @@ enum SourceBakedCopy {
+             try Task.checkCancellation()
+             records.append(try triangle(source[index], models: models, components: components))
+         }
+-        guard
+-            let color = try image(
+-                owner, map: DUST3D_TEXTURE_COLOR, required: true, nativeRemaining: &remaining, budget: &budget)
+-        else {
+-            throw SourceMeshBakeError.invalidNativeCounts
++        let lod = dust3d_source_baked_mesh_maximum_sampling_lod(owner)
++        let mipmaps: SourceBakedMipmaps
++        let maps: MeshTextureMaps
++        if options.maximumMipLevels > 0 {
++            let color = try mipChain(
++                owner, map: DUST3D_TEXTURE_COLOR, required: true, lod: lod, maximumLevels: options.maximumMipLevels,
++                nativeRemaining: &remaining, budget: &budget)
++            let normal = try mipChain(
++                owner, map: DUST3D_TEXTURE_NORMAL, required: false, lod: lod, maximumLevels: options.maximumMipLevels,
++                nativeRemaining: &remaining, budget: &budget)
++            let metallic = try mipChain(
++                owner, map: DUST3D_TEXTURE_METALLIC, required: true, lod: lod, maximumLevels: options.maximumMipLevels,
++                nativeRemaining: &remaining, budget: &budget)
++            let roughness = try mipChain(
++                owner, map: DUST3D_TEXTURE_ROUGHNESS, required: true, lod: lod, maximumLevels: options.maximumMipLevels,
++                nativeRemaining: &remaining, budget: &budget)
++            let emissive = try mipChain(
++                owner, map: DUST3D_TEXTURE_EMISSIVE, required: true, lod: lod, maximumLevels: options.maximumMipLevels,
++                nativeRemaining: &remaining, budget: &budget)
++            guard let color, let metallic, let roughness, let emissive else {
++                throw SourceMeshBakeError.invalidNativeCounts
++            }
++            mipmaps = SourceBakedMipmaps(
++                color: color, normal: normal, metallic: metallic, roughness: roughness, emissive: emissive)
++            maps = MeshTextureMaps(
++                color: color.levels[0], normal: normal?.levels[0], metallic: metallic.levels[0],
++                roughness: roughness.levels[0], emissive: emissive.levels[0])
++        } else {
++            guard
++                let color = try image(
++                    owner, map: DUST3D_TEXTURE_COLOR, required: true, nativeRemaining: &remaining, budget: &budget)
++            else {
++                throw SourceMeshBakeError.invalidNativeCounts
++            }
++            maps = try MeshTextureMaps(
++                color: color,
++                normal: image(
++                    owner, map: DUST3D_TEXTURE_NORMAL, required: false, nativeRemaining: &remaining, budget: &budget),
++                metallic: image(
++                    owner, map: DUST3D_TEXTURE_METALLIC, required: true, nativeRemaining: &remaining, budget: &budget),
++                roughness: image(
++                    owner, map: DUST3D_TEXTURE_ROUGHNESS, required: true, nativeRemaining: &remaining, budget: &budget),
++                emissive: image(
++                    owner, map: DUST3D_TEXTURE_EMISSIVE, required: true, nativeRemaining: &remaining, budget: &budget))
++            _ = try samplingLod(lod, maps: maps)
++            mipmaps = SourceBakedMipmaps()
+         }
+-        let maps = try MeshTextureMaps(
+-            color: color,
+-            normal: image(
+-                owner, map: DUST3D_TEXTURE_NORMAL, required: false, nativeRemaining: &remaining, budget: &budget),
+-            metallic: image(
+-                owner, map: DUST3D_TEXTURE_METALLIC, required: true, nativeRemaining: &remaining, budget: &budget),
+-            roughness: image(
+-                owner, map: DUST3D_TEXTURE_ROUGHNESS, required: true, nativeRemaining: &remaining, budget: &budget),
+-            emissive: image(
+-                owner, map: DUST3D_TEXTURE_EMISSIVE, required: true, nativeRemaining: &remaining, budget: &budget))
+-        let lod = try samplingLod(dust3d_source_baked_mesh_maximum_sampling_lod(owner), maps: maps)
+         try Task.checkCancellation()
+         let mesh = try MeshLoader.copyNativeMesh(geometry)
+         try budget.charge(mesh.vertices.capacity - vertices, width: MemoryLayout<MeshVertex>.stride)
+@@ -187,6 +238,6 @@ enum SourceBakedCopy {
+         try Task.checkCancellation()
+         return SourceBakedMesh(
+             geometry: mesh, triangles: records, modelIDs: modelIDs, components: catalog, textures: maps,
+-            maximumSamplingLod: lod, nativePayloadBytes: payload, copiedPayloadBytes: budget.used)
++            mipmaps: mipmaps, maximumSamplingLod: lod, nativePayloadBytes: payload, copiedPayloadBytes: budget.used)
+     }
+ }
+diff --git a/Sources/Dust3DKit/SourceBakedLoader.swift b/Sources/Dust3DKit/SourceBakedLoader.swift
+index 2b1193b0..87249e09 100644
+--- a/Sources/Dust3DKit/SourceBakedLoader.swift
++++ b/Sources/Dust3DKit/SourceBakedLoader.swift
+@@ -56,8 +56,15 @@ extension MeshLoader {
+                     native.model_images = modelViews.baseAddress
+                     native.model_image_count = modelViews.count
+                     return data.withUnsafeBytes {
+-                        dust3d_source_baked_mesh_load(
+-                            $0.bindMemory(to: UInt8.self).baseAddress, $0.count, &native, &error)
++                        let bytes = $0.bindMemory(to: UInt8.self).baseAddress
++                        if options.maximumMipLevels == 0 {
++                            return dust3d_source_baked_mesh_load(bytes, $0.count, &native, &error)
++                        }
++                        var mip = Dust3DSourceBakeMipOptions()
++                        mip.struct_size = MemoryLayout<Dust3DSourceBakeMipOptions>.size
++                        mip.source = native
++                        mip.maximum_levels = options.maximumMipLevels
++                        return dust3d_source_baked_mesh_load_with_mips(bytes, $0.count, &mip, &error)
+                     }
+                 }
+             }
+diff --git a/Sources/Dust3DKit/SourceBakedMesh.swift b/Sources/Dust3DKit/SourceBakedMesh.swift
+index 61c8e9ef..e2f32601 100644
+--- a/Sources/Dust3DKit/SourceBakedMesh.swift
++++ b/Sources/Dust3DKit/SourceBakedMesh.swift
+@@ -91,6 +91,7 @@ public struct SourceMeshBakeOptions: Sendable {
+     public let maximumInputImageBytes: Int
+     public let maximumChartCount: Int
+     public let maximumRasterSamples: Int
++    public let maximumMipLevels: Int
+ 
+     /// Configure source baking; all values are checked before native conversion.
+     /// - Parameters:
+@@ -102,11 +103,12 @@ public struct SourceMeshBakeOptions: Sendable {
+     ///   - maximumInputImageBytes: Positive aggregate decoded storage quota, at most 256 MiB.
+     ///   - maximumChartCount: Zero selects 50000; maximum 100000.
+     ///   - maximumRasterSamples: Zero selects 250 million; maximum one billion.
++    ///   - maximumMipLevels: Zero keeps base-only loading; 1...14 opts into isolated mip baking.
+     public init(
+         bake: MeshBakeOptions = MeshBakeOptions(), maximumSamplerPayloadBytes: Int = 0,
+         maximumAtlasPayloadBytes: Int = 0, maximumNativePayloadBytes: Int = 0,
+         maximumCopiedPayloadBytes: Int = 256 * 1024 * 1024, maximumInputImageBytes: Int = 64 * 1024 * 1024,
+-        maximumChartCount: Int = 0, maximumRasterSamples: Int = 0
++        maximumChartCount: Int = 0, maximumRasterSamples: Int = 0, maximumMipLevels: Int = 0
+     ) {
+         self.bake = bake
+         self.maximumSamplerPayloadBytes = maximumSamplerPayloadBytes
+@@ -116,6 +118,7 @@ public struct SourceMeshBakeOptions: Sendable {
+         self.maximumInputImageBytes = maximumInputImageBytes
+         self.maximumChartCount = maximumChartCount
+         self.maximumRasterSamples = maximumRasterSamples
++        self.maximumMipLevels = maximumMipLevels
+     }
+ }
+ 
+diff --git a/Sources/Dust3DKit/SourceMeshBakeInput.swift b/Sources/Dust3DKit/SourceMeshBakeInput.swift
+index 2905cbdd..15010a76 100644
+--- a/Sources/Dust3DKit/SourceMeshBakeInput.swift
++++ b/Sources/Dust3DKit/SourceMeshBakeInput.swift
+@@ -12,7 +12,8 @@ enum SourceMeshBakeInput {
+             (1...maximum).contains(options.maximumCopiedPayloadBytes),
+             (1...maximum).contains(options.maximumInputImageBytes),
+             (0...100_000).contains(options.maximumChartCount),
+-            (0...1_000_000_000).contains(options.maximumRasterSamples)
++            (0...1_000_000_000).contains(options.maximumRasterSamples),
++            (0...14).contains(options.maximumMipLevels)
+         else { throw SourceMeshBakeError.invalidLimits }
+         try MeshBakedInput.validate(dataCount: dataCount, options: options.bake)
+     }
+diff --git a/Tests/Dust3DKitTests/SourceBakedLoaderTests.swift b/Tests/Dust3DKitTests/SourceBakedLoaderTests.swift
+index ee6948fa..71367b4e 100644
+--- a/Tests/Dust3DKitTests/SourceBakedLoaderTests.swift
++++ b/Tests/Dust3DKitTests/SourceBakedLoaderTests.swift
+@@ -6,6 +6,44 @@ import XCTest
+ @testable import Dust3DKit
+ 
+ final class SourceBakedLoaderTests: XCTestCase {
++    func testOptInMipBakeCopiesOwnedLevelsAndEnforcesCopyBudget() throws {
++        let archive = try fixture("Capsule")
++        let bake = MeshBakeOptions(colorSize: 256, normalSize: 128, materialSize: 256, atlasTextureSize: 256)
++        let options = SourceMeshBakeOptions(bake: bake, maximumMipLevels: 4)
++        let result = try MeshLoader.loadSourceBaked(data: archive, options: options)
++        let color = try XCTUnwrap(result.mipmaps.color)
++        XCTAssertGreaterThan(color.levels.count, 1)
++        XCTAssertEqual(color.levels[0], result.textures.color)
++        XCTAssertGreaterThan(result.maximumSamplingLod, 0)
++        let pixels = color.levels.map(\.pixels)
++        _ = try MeshLoader.loadSourceBaked(data: archive, options: options)
++        XCTAssertEqual(color.levels.map(\.pixels), pixels)
++        let exact = SourceMeshBakeOptions(
++            bake: bake, maximumCopiedPayloadBytes: result.copiedPayloadBytes, maximumMipLevels: 4)
++        XCTAssertEqual(
++            try MeshLoader.loadSourceBaked(data: archive, options: exact).copiedPayloadBytes, result.copiedPayloadBytes)
++        let short = SourceMeshBakeOptions(
++            bake: bake, maximumCopiedPayloadBytes: result.copiedPayloadBytes - 1, maximumMipLevels: 4)
++        XCTAssertThrowsError(try MeshLoader.loadSourceBaked(data: archive, options: short)) {
++            XCTAssertEqual($0 as? SourceMeshBakeError, .copyLimitExceeded)
++        }
++    }
++
++    func testOptInMipBakeRetainsImportedMaterialPolicy() throws {
++        let archive = try fixture("ImportedSurface")
++        let definition = try XCTUnwrap(ImportedMaterialLoader.load(data: archive).models.first)
++        let image = SourceMeshBakeImage(
++            decodedImage: try ImportedImageDecoder.decode(
++                try XCTUnwrap(definition.image), modelID: definition.id))
++        let bake = MeshBakeOptions(colorSize: 256, normalSize: 128, materialSize: 256, atlasTextureSize: 256)
++        let output = try MeshLoader.loadSourceBaked(
++            data: archive, modelImages: [image], options: SourceMeshBakeOptions(bake: bake, maximumMipLevels: 4))
++        let levels = try XCTUnwrap(output.mipmaps.color).levels
++        XCTAssertGreaterThanOrEqual(levels.count, 1)
++        XCTAssertLessThanOrEqual(output.maximumSamplingLod, Double(levels.count - 1))
++        XCTAssertEqual(output.triangles.first?.policy?.alphaMode, definition.alphaMode)
++        XCTAssertEqual(output.mipmaps.color?.levels.first, output.textures.color)
++    }
+     func testPinsProceduralImagesAndCopiesStraightAlphaRows() throws {
+         let imageID = "{iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii}"
+         let part = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
+@@ -135,6 +173,8 @@ final class SourceBakedLoaderTests: XCTestCase {
+             SourceMeshBakeOptions(maximumInputImageBytes: Int.max),
+             SourceMeshBakeOptions(maximumChartCount: 100001),
+             SourceMeshBakeOptions(maximumRasterSamples: -1),
++            SourceMeshBakeOptions(maximumMipLevels: -1),
++            SourceMeshBakeOptions(maximumMipLevels: 15),
+         ] {
+             XCTAssertThrowsError(try SourceMeshBakeInput.validate(dataCount: 1, options: options)) {
+                 XCTAssertEqual($0 as? SourceMeshBakeError, .invalidLimits)

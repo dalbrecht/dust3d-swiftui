@@ -1,0 +1,469 @@
+Test project /private/tmp/dust3d-core-beta-validation
+        Start   1: spring_step_admission_contracts
+  1/232 Test   #1: spring_step_admission_contracts ...................   Passed    0.01 sec
+        Start   2: animation_audio_metadata_contracts
+  2/232 Test   #2: animation_audio_metadata_contracts ................   Passed    0.01 sec
+        Start   3: animation_timing_api_contracts
+  3/232 Test   #3: animation_timing_api_contracts ....................   Passed    0.01 sec
+        Start   4: animation_control_api_contracts
+  4/232 Test   #4: animation_control_api_contracts ...................   Passed    0.01 sec
+        Start   5: animation_timing_controls_contracts
+  5/232 Test   #5: animation_timing_controls_contracts ...............   Passed    0.01 sec
+        Start   6: animation_parameter_catalog_contracts
+  6/232 Test   #6: animation_parameter_catalog_contracts .............   Passed    0.01 sec
+        Start   7: animation_defaults_contracts
+  7/232 Test   #7: animation_defaults_contracts ......................   Passed    0.01 sec
+        Start   8: animation_catalog_api_contracts
+  8/232 Test   #8: animation_catalog_api_contracts ...................   Passed    0.01 sec
+        Start   9: animation_reference_source_contracts
+  9/232 Test   #9: animation_reference_source_contracts ..............   Passed    0.03 sec
+        Start  10: animation_catalog_metadata_contracts
+ 10/232 Test  #10: animation_catalog_metadata_contracts ..............   Passed    0.01 sec
+        Start  11: worker_resource_observation_contracts
+ 11/232 Test  #11: worker_resource_observation_contracts .............   Passed    0.01 sec
+        Start  12: worker_resource_launch_contracts
+ 12/232 Test  #12: worker_resource_launch_contracts ..................   Passed    0.01 sec
+        Start  13: worker_resource_setup_contracts
+ 13/232 Test  #13: worker_resource_setup_contracts ...................   Passed    0.01 sec
+        Start  14: worker_service_resource_bridge_contracts
+ 14/232 Test  #14: worker_service_resource_bridge_contracts ..........   Passed    0.00 sec
+        Start  15: worker_service_resource_helper_readback
+ 15/232 Test  #15: worker_service_resource_helper_readback ...........   Passed    0.00 sec
+        Start  16: worker_attempt_contracts
+ 16/232 Test  #16: worker_attempt_contracts ..........................   Passed    0.01 sec
+        Start  17: worker_cleanup_contracts
+ 17/232 Test  #17: worker_cleanup_contracts ..........................   Passed    0.00 sec
+        Start  18: worker_resource_contracts
+ 18/232 Test  #18: worker_resource_contracts .........................   Passed    0.00 sec
+        Start  19: tube_mesh_baseline_contracts
+ 19/232 Test  #19: tube_mesh_baseline_contracts ......................   Passed    0.07 sec
+        Start  20: snapshot_writer_contracts
+ 20/232 Test  #20: snapshot_writer_contracts .........................   Passed    0.06 sec
+        Start  21: original_export_preparation_contracts
+ 21/232 Test  #21: original_export_preparation_contracts .............   Passed    0.19 sec
+        Start  22: obj_document_contracts
+ 22/232 Test  #22: obj_document_contracts ............................   Passed    0.19 sec
+        Start  23: obj_export_api_contracts
+ 23/232 Test  #23: obj_export_api_contracts ..........................   Passed    0.19 sec
+        Start  24: fbx_export_api_contracts
+ 24/232 Test  #24: fbx_export_api_contracts ..........................   Passed    0.20 sec
+        Start  25: fbx_baked_material_contracts
+ 25/232 Test  #25: fbx_baked_material_contracts ......................   Passed    0.12 sec
+        Start  26: png_encoding_contracts
+ 26/232 Test  #26: png_encoding_contracts ............................   Passed    0.06 sec
+        Start  27: fbx_generation_geometry_contracts
+ 27/232 Test  #27: fbx_generation_geometry_contracts .................   Passed    0.24 sec
+        Start  28: fbx_geometry_selection_contracts
+ 28/232 Test  #28: fbx_geometry_selection_contracts ..................   Passed    0.06 sec
+        Start  29: fbx_material_scene_contracts
+ 29/232 Test  #29: fbx_material_scene_contracts ......................   Passed    0.06 sec
+        Start  30: fbx_mesh_scene_contracts
+ 30/232 Test  #30: fbx_mesh_scene_contracts ..........................   Passed    0.06 sec
+        Start  31: worker_xpc_entitlement_policy
+ 31/232 Test  #31: worker_xpc_entitlement_policy .....................   Passed    0.30 sec
+        Start  32: worker_xpc_entitlement_policy_optimized
+ 32/232 Test  #32: worker_xpc_entitlement_policy_optimized ...........   Passed    1.24 sec
+        Start  33: generated_obj_verifier_contracts
+ 33/232 Test  #33: generated_obj_verifier_contracts ..................   Passed    1.20 sec
+        Start  34: generated_obj_verifier_optimized_contracts
+ 34/232 Test  #34: generated_obj_verifier_optimized_contracts ........   Passed    2.18 sec
+        Start  35: static_export_benchmark_contracts
+ 35/232 Test  #35: static_export_benchmark_contracts .................   Passed    1.38 sec
+        Start  36: static_export_benchmark_optimized_contracts
+ 36/232 Test  #36: static_export_benchmark_optimized_contracts .......   Passed    2.16 sec
+        Start  37: obj_scene_verifier_contracts
+ 37/232 Test  #37: obj_scene_verifier_contracts ......................   Passed    3.64 sec
+        Start  38: obj_scene_verifier_optimized_contracts
+ 38/232 Test  #38: obj_scene_verifier_optimized_contracts ............   Passed    1.40 sec
+        Start  39: export_cli_contracts
+ 39/232 Test  #39: export_cli_contracts ..............................   Passed    2.94 sec
+        Start  40: fbx_baked_scene_verifier_contracts
+ 40/232 Test  #40: fbx_baked_scene_verifier_contracts ................   Passed    1.62 sec
+        Start  41: fbx_baked_scene_verifier_optimized_contracts
+ 41/232 Test  #41: fbx_baked_scene_verifier_optimized_contracts ......   Passed    1.56 sec
+        Start  42: png_encoding_independent_contracts
+ 42/232 Test  #42: png_encoding_independent_contracts ................   Passed    0.63 sec
+        Start  43: fbx_mesh_scene_verifier_contracts
+ 43/232 Test  #43: fbx_mesh_scene_verifier_contracts .................   Passed    1.61 sec
+        Start  44: fbx_mesh_scene_verifier_optimized_contracts
+ 44/232 Test  #44: fbx_mesh_scene_verifier_optimized_contracts .......   Passed    1.39 sec
+        Start  45: fbx_material_scene_verifier_contracts
+ 45/232 Test  #45: fbx_material_scene_verifier_contracts .............   Passed    0.50 sec
+        Start  46: fbx_material_scene_verifier_optimized_contracts
+ 46/232 Test  #46: fbx_material_scene_verifier_optimized_contracts ...   Passed    1.18 sec
+        Start  47: fbx_reference_contracts
+ 47/232 Test  #47: fbx_reference_contracts ...........................   Passed    0.08 sec
+        Start  48: fbx_document_contracts
+ 48/232 Test  #48: fbx_document_contracts ............................   Passed    0.07 sec
+        Start  49: fbx_node_contracts
+ 49/232 Test  #49: fbx_node_contracts ................................   Passed    0.08 sec
+        Start  50: fbx_property_block_contracts
+ 50/232 Test  #50: fbx_property_block_contracts ......................   Passed    0.10 sec
+        Start  51: fbx_transform_contracts
+ 51/232 Test  #51: fbx_transform_contracts ...........................   Passed    0.07 sec
+        Start  52: fbx_animation_math_contracts
+ 52/232 Test  #52: fbx_animation_math_contracts ......................   Passed    0.07 sec
+        Start  53: worker_lifetime_contracts
+ 53/232 Test  #53: worker_lifetime_contracts .........................   Passed    0.02 sec
+        Start  54: worker_queue_contracts
+ 54/232 Test  #54: worker_queue_contracts ............................   Passed    0.04 sec
+        Start  55: worker_uv_visual_contracts
+ 55/232 Test  #55: worker_uv_visual_contracts ........................   Passed    2.89 sec
+        Start  56: worker_uv_dispatch_contracts
+ 56/232 Test  #56: worker_uv_dispatch_contracts ......................   Passed    0.99 sec
+        Start  57: worker_transport_contracts
+ 57/232 Test  #57: worker_transport_contracts ........................   Passed    1.51 sec
+        Start  58: worker_uv_admission_contracts
+ 58/232 Test  #58: worker_uv_admission_contracts .....................   Passed    0.02 sec
+        Start  59: worker_admission_contracts
+ 59/232 Test  #59: worker_admission_contracts ........................   Passed    0.02 sec
+        Start  60: worker_source_bake_request_bridge_contracts
+ 60/232 Test  #60: worker_source_bake_request_bridge_contracts .......   Passed    0.10 sec
+        Start  61: worker_legacy_request_bridge_contracts
+ 61/232 Test  #61: worker_legacy_request_bridge_contracts ............   Passed    0.12 sec
+        Start  62: worker_source_baked_decoded_contracts
+ 62/232 Test  #62: worker_source_baked_decoded_contracts .............   Passed    0.11 sec
+        Start  63: worker_legacy_decoded_contracts
+ 63/232 Test  #63: worker_legacy_decoded_contracts ...................   Passed    0.22 sec
+        Start  64: worker_source_bake_job_contracts
+ 64/232 Test  #64: worker_source_bake_job_contracts ..................   Passed    0.42 sec
+        Start  65: worker_legacy_job_contracts
+ 65/232 Test  #65: worker_legacy_job_contracts .......................   Passed    0.45 sec
+        Start  66: worker_procedural_decoder_contracts
+ 66/232 Test  #66: worker_procedural_decoder_contracts ...............   Passed    0.34 sec
+        Start  67: worker_imported_request_bridge_contracts
+ 67/232 Test  #67: worker_imported_request_bridge_contracts ..........   Passed    0.08 sec
+        Start  68: worker_imported_decoded_contracts
+ 68/232 Test  #68: worker_imported_decoded_contracts .................   Passed    0.09 sec
+        Start  69: worker_imported_job_contracts
+ 69/232 Test  #69: worker_imported_job_contracts .....................   Passed    0.37 sec
+        Start  70: worker_image_decoder_contracts
+ 70/232 Test  #70: worker_image_decoder_contracts ....................   Passed    0.07 sec
+        Start  71: worker_image_decoder_c_contract
+ 71/232 Test  #71: worker_image_decoder_c_contract ...................   Passed    0.07 sec
+        Start  72: worker_indexed_runtime_contracts
+ 72/232 Test  #72: worker_indexed_runtime_contracts ..................   Passed    0.38 sec
+        Start  73: worker_source_runtime_contracts
+ 73/232 Test  #73: worker_source_runtime_contracts ...................   Passed    0.39 sec
+        Start  74: worker_request_bridge_contracts
+ 74/232 Test  #74: worker_request_bridge_contracts ...................   Passed    0.08 sec
+        Start  75: worker_request_c_contracts
+ 75/232 Test  #75: worker_request_c_contracts ........................   Passed    0.09 sec
+        Start  76: worker_service_queue_contracts
+ 76/232 Test  #76: worker_service_queue_contracts ....................   Passed    0.09 sec
+        Start  77: worker_service_queue_c_contracts
+ 77/232 Test  #77: worker_service_queue_c_contracts ..................   Passed    0.09 sec
+        Start  78: worker_decoded_bridge_contracts
+ 78/232 Test  #78: worker_decoded_bridge_contracts ...................   Passed    0.09 sec
+        Start  79: worker_decoded_c_contracts
+ 79/232 Test  #79: worker_decoded_c_contracts ........................   Passed    0.35 sec
+        Start  80: worker_reply_bridge_contracts
+ 80/232 Test  #80: worker_reply_bridge_contracts .....................   Passed    0.06 sec
+        Start  81: worker_reply_c_contracts
+ 81/232 Test  #81: worker_reply_c_contracts ..........................   Passed    0.06 sec
+        Start  82: worker_runtime_c_contracts
+ 82/232 Test  #82: worker_runtime_c_contracts ........................   Passed    0.35 sec
+        Start  83: worker_runtime_bridge_contracts
+ 83/232 Test  #83: worker_runtime_bridge_contracts ...................   Passed    0.35 sec
+        Start  84: worker_job_io_contracts
+ 84/232 Test  #84: worker_job_io_contracts ...........................   Passed    0.38 sec
+        Start  85: worker_uv_operation_contracts
+ 85/232 Test  #85: worker_uv_operation_contracts .....................   Passed    0.34 sec
+        Start  86: worker_source_operation_contracts
+ 86/232 Test  #86: worker_source_operation_contracts .................   Passed    0.33 sec
+        Start  87: worker_operation_contracts
+ 87/232 Test  #87: worker_operation_contracts ........................   Passed    0.41 sec
+        Start  88: worker_process_contracts
+ 88/232 Test  #88: worker_process_contracts ..........................   Passed    2.28 sec
+        Start  89: worker_resource_process_contracts
+ 89/232 Test  #89: worker_resource_process_contracts .................   Passed    0.59 sec
+        Start  90: worker_failure_details_contracts
+ 90/232 Test  #90: worker_failure_details_contracts ..................   Passed    0.01 sec
+        Start  91: worker_failure_contracts
+ 91/232 Test  #91: worker_failure_contracts ..........................   Passed    0.44 sec
+        Start  92: worker_uv_request_contracts
+ 92/232 Test  #92: worker_uv_request_contracts .......................   Passed    0.02 sec
+        Start  93: worker_uv_copy_budget_contracts
+ 93/232 Test  #93: worker_uv_copy_budget_contracts ...................   Passed    0.01 sec
+        Start  94: worker_source_hints_contracts
+ 94/232 Test  #94: worker_source_hints_contracts .....................   Passed    0.02 sec
+        Start  95: worker_indexed_sources_contracts
+ 95/232 Test  #95: worker_indexed_sources_contracts ..................   Passed    0.02 sec
+        Start  96: worker_indexed_source_operation_contracts
+ 96/232 Test  #96: worker_indexed_source_operation_contracts .........   Passed    0.71 sec
+        Start  97: worker_legacy_images_contracts
+ 97/232 Test  #97: worker_legacy_images_contracts ....................   Passed    0.02 sec
+        Start  98: worker_legacy_admission_contracts
+ 98/232 Test  #98: worker_legacy_admission_contracts .................   Passed    0.05 sec
+        Start  99: worker_legacy_runtime_contracts
+ 99/232 Test  #99: worker_legacy_runtime_contracts ...................   Passed    0.40 sec
+        Start 100: worker_legacy_request_contracts
+100/232 Test #100: worker_legacy_request_contracts ...................   Passed    0.03 sec
+        Start 101: worker_legacy_producer_contracts
+101/232 Test #101: worker_legacy_producer_contracts ..................   Passed    0.43 sec
+        Start 102: worker_procedural_images_contracts
+102/232 Test #102: worker_procedural_images_contracts ................   Passed    0.08 sec
+        Start 103: worker_procedural_images_native_contracts
+103/232 Test #103: worker_procedural_images_native_contracts .........   Passed    0.14 sec
+        Start 104: worker_imported_request_contracts
+104/232 Test #104: worker_imported_request_contracts .................   Passed    0.09 sec
+        Start 105: worker_imported_admission_contracts
+105/232 Test #105: worker_imported_admission_contracts ...............   Passed    0.08 sec
+        Start 106: worker_imported_runtime_contracts
+106/232 Test #106: worker_imported_runtime_contracts .................   Passed    0.40 sec
+        Start 107: worker_imported_producer_contracts
+107/232 Test #107: worker_imported_producer_contracts ................   Passed    0.07 sec
+        Start 108: worker_imported_producer_native_contracts
+108/232 Test #108: worker_imported_producer_native_contracts .........   Passed    0.37 sec
+        Start 109: worker_imported_render_contracts
+109/232 Test #109: worker_imported_render_contracts ..................   Passed    0.03 sec
+        Start 110: worker_imported_surface_contracts
+110/232 Test #110: worker_imported_surface_contracts .................   Passed    0.02 sec
+        Start 111: worker_imported_surface_copy_contracts
+111/232 Test #111: worker_imported_surface_copy_contracts ............   Passed    0.35 sec
+        Start 112: worker_imported_materials_contracts
+112/232 Test #112: worker_imported_materials_contracts ...............   Passed    0.02 sec
+        Start 113: worker_imported_materials_copy_contracts
+113/232 Test #113: worker_imported_materials_copy_contracts ..........   Passed    0.10 sec
+        Start 114: worker_legacy_baked_contracts
+114/232 Test #114: worker_legacy_baked_contracts .....................   Passed    0.04 sec
+        Start 115: worker_legacy_baked_copy_contracts
+115/232 Test #115: worker_legacy_baked_copy_contracts ................   Passed    0.35 sec
+        Start 116: worker_preview_serve_contracts
+116/232 Test #116: worker_preview_serve_contracts ....................   Passed    0.48 sec
+        Start 117: worker_preview_session_channel_contracts
+117/232 Test #117: worker_preview_session_channel_contracts ..........   Passed    0.17 sec
+        Start 118: worker_preview_session_c_contracts
+118/232 Test #118: worker_preview_session_c_contracts ................   Passed    0.38 sec
+        Start 119: worker_preview_archive_c_contracts
+119/232 Test #119: worker_preview_archive_c_contracts ................   Passed    0.39 sec
+        Start 120: worker_preview_archive_channel_contracts
+120/232 Test #120: worker_preview_archive_channel_contracts ..........   Passed    0.40 sec
+        Start 121: worker_preview_archive_contracts
+121/232 Test #121: worker_preview_archive_contracts ..................   Passed    0.02 sec
+        Start 122: worker_preview_stream_contracts
+122/232 Test #122: worker_preview_stream_contracts ...................   Passed    0.02 sec
+        Start 123: worker_preview_chunk_contracts
+123/232 Test #123: worker_preview_chunk_contracts ....................   Passed    0.01 sec
+        Start 124: worker_preview_session_contracts
+124/232 Test #124: worker_preview_session_contracts ..................   Passed    0.20 sec
+        Start 125: worker_preview_range_contracts
+125/232 Test #125: worker_preview_range_contracts ....................   Passed    0.14 sec
+        Start 126: worker_source_baked_copy_contracts
+126/232 Test #126: worker_source_baked_copy_contracts ................   Passed    2.48 sec
+        Start 127: worker_source_baked_contracts
+127/232 Test #127: worker_source_baked_contracts .....................   Passed    0.04 sec
+        Start 128: worker_baked_textures_contracts
+128/232 Test #128: worker_baked_textures_contracts ...................   Passed    0.03 sec
+        Start 129: worker_indexed_mesh_contracts
+129/232 Test #129: worker_indexed_mesh_contracts .....................   Passed    0.02 sec
+        Start 130: worker_sourced_mesh_contracts
+130/232 Test #130: worker_sourced_mesh_contracts .....................   Passed    0.04 sec
+        Start 131: worker_uv_mesh_contracts
+131/232 Test #131: worker_uv_mesh_contracts ..........................   Passed    0.11 sec
+        Start 132: worker_uv_payload_contracts
+132/232 Test #132: worker_uv_payload_contracts .......................   Passed    0.02 sec
+        Start 133: worker_uv_owner_contracts
+133/232 Test #133: worker_uv_owner_contracts .........................   Passed    0.34 sec
+        Start 134: worker_mesh_contracts
+134/232 Test #134: worker_mesh_contracts .............................   Passed    0.39 sec
+        Start 135: worker_reply_collector_contracts
+135/232 Test #135: worker_reply_collector_contracts ..................   Passed    0.02 sec
+        Start 136: worker_protocol_contracts
+136/232 Test #136: worker_protocol_contracts .........................   Passed    0.02 sec
+        Start 137: worker_client_swiftpm
+137/232 Test #137: worker_client_swiftpm .............................   Passed   73.68 sec
+        Start 138: worker_service_bundle_staging
+138/232 Test #138: worker_service_bundle_staging .....................   Passed    2.81 sec
+        Start 139: worker_service_bundle_product
+139/232 Test #139: worker_service_bundle_product .....................   Passed   76.21 sec
+        Start 140: worker_runtime_swift
+140/232 Test #140: worker_runtime_swift ..............................   Passed    0.58 sec
+        Start 141: worker_preview_serve_swift
+141/232 Test #141: worker_preview_serve_swift ........................   Passed    0.47 sec
+        Start 142: worker_preview_session_swift
+142/232 Test #142: worker_preview_session_swift ......................   Passed    0.46 sec
+        Start 143: worker_preview_archive_swift
+143/232 Test #143: worker_preview_archive_swift ......................   Passed    0.41 sec
+        Start 144: worker_session_swift
+144/232 Test #144: worker_session_swift ..............................   Passed    0.50 sec
+        Start 145: worker_apple_image_samples
+145/232 Test #145: worker_apple_image_samples ........................   Passed    0.59 sec
+        Start 146: worker_apple_image_provenance
+146/232 Test #146: worker_apple_image_provenance .....................   Passed    1.07 sec
+        Start 147: worker_session_lifetime_swift
+147/232 Test #147: worker_session_lifetime_swift .....................   Passed    0.06 sec
+        Start 148: worker_service_queue_swift
+148/232 Test #148: worker_service_queue_swift ........................   Passed    0.21 sec
+        Start 149: worker_channel_metadata
+149/232 Test #149: worker_channel_metadata ...........................   Passed    0.05 sec
+        Start 150: worker_admission_values
+150/232 Test #150: worker_admission_values ...........................   Passed    0.04 sec
+        Start 151: worker_outcome_values
+151/232 Test #151: worker_outcome_values .............................   Passed    0.02 sec
+        Start 152: worker_preview_admission
+152/232 Test #152: worker_preview_admission ..........................   Passed    0.02 sec
+        Start 153: worker_preview_queue
+153/232 Test #153: worker_preview_queue ..............................   Passed    0.04 sec
+        Start 154: worker_preview_source
+154/232 Test #154: worker_preview_source .............................   Passed    0.17 sec
+        Start 155: worker_xpc_static_mesh
+155/232 Test #155: worker_xpc_static_mesh ............................   Passed    2.60 sec
+        Start 156: worker_xpc_uv_mesh
+156/232 Test #156: worker_xpc_uv_mesh ................................   Passed    1.77 sec
+        Start 157: worker_xpc_socket_mesh
+157/232 Test #157: worker_xpc_socket_mesh ............................   Passed    1.78 sec
+        Start 158: worker_xpc_socket_uv_mesh
+158/232 Test #158: worker_xpc_socket_uv_mesh .........................   Passed    2.41 sec
+        Start 159: worker_xpc_session_cache
+159/232 Test #159: worker_xpc_session_cache ..........................   Passed    1.43 sec
+        Start 160: worker_xpc_procedural_png
+160/232 Test #160: worker_xpc_procedural_png .........................   Passed    2.21 sec
+        Start 161: worker_preview_executor_product
+161/232 Test #161: worker_preview_executor_product ...................   Passed   19.52 sec
+        Start 162: source_baked_mip_swift
+162/232 Test #162: source_baked_mip_swift ............................   Passed    7.71 sec
+        Start 163: fbx_export_swift
+163/232 Test #163: fbx_export_swift ..................................   Passed    0.37 sec
+        Start 164: obj_export_swift
+164/232 Test #164: obj_export_swift ..................................   Passed    0.34 sec
+        Start 165: source_baked_mip_contracts
+165/232 Test #165: source_baked_mip_contracts ........................   Passed    7.75 sec
+        Start 166: source_texture_mip_contracts
+166/232 Test #166: source_texture_mip_contracts ......................   Passed    0.12 sec
+        Start 167: contract_snapshot_numeric
+167/232 Test #167: contract_snapshot_numeric .........................   Passed    0.02 sec
+        Start 168: contract_glb_catalog_quarantine
+168/232 Test #168: contract_glb_catalog_quarantine ...................   Passed    1.85 sec
+        Start 169: contract_json_comparison
+169/232 Test #169: contract_json_comparison ..........................   Passed    0.01 sec
+        Start 170: source_bake_composition
+170/232 Test #170: source_bake_composition ...........................   Passed    0.87 sec
+        Start 171: source_baked_c_consumer
+171/232 Test #171: source_baked_c_consumer ...........................   Passed    0.44 sec
+        Start 172: source_texture_baker_contracts
+172/232 Test #172: source_texture_baker_contracts ....................   Passed    0.60 sec
+        Start 173: source_uv_atlas_contracts
+173/232 Test #173: source_uv_atlas_contracts .........................   Passed    0.50 sec
+        Start 174: color_texture_sampler_contracts
+174/232 Test #174: color_texture_sampler_contracts ...................   Passed    0.09 sec
+        Start 175: contract_position_quantization
+175/232 Test #175: contract_position_quantization ....................   Passed    0.30 sec
+        Start 176: contract_spine_deformation
+176/232 Test #176: contract_spine_deformation ........................   Passed    0.22 sec
+        Start 177: baked_mesh_contracts
+177/232 Test #177: baked_mesh_contracts ..............................   Passed    0.69 sec
+        Start 178: texture_baker_contracts
+178/232 Test #178: texture_baker_contracts ...........................   Passed    1.62 sec
+        Start 179: uv_metadata_contracts
+179/232 Test #179: uv_metadata_contracts .............................   Passed    1.34 sec
+        Start 180: uv_packer_numeric_contracts
+180/232 Test #180: uv_packer_numeric_contracts .......................   Passed    0.21 sec
+        Start 181: uv_atlas_contracts
+181/232 Test #181: uv_atlas_contracts ................................   Passed    0.52 sec
+        Start 182: contract_null_handles
+182/232 Test #182: contract_null_handles .............................   Passed    0.33 sec
+        Start 183: contract_invalid_archive
+183/232 Test #183: contract_invalid_archive ..........................   Passed    0.03 sec
+        Start 184: contract_input_limit
+184/232 Test #184: contract_input_limit ..............................   Passed    0.02 sec
+        Start 185: contract_capsule
+185/232 Test #185: contract_capsule ..................................   Passed    0.03 sec
+        Start 186: contract_sword
+186/232 Test #186: contract_sword ....................................   Passed    0.07 sec
+        Start 187: contract_ownership
+187/232 Test #187: contract_ownership ................................   Passed    0.09 sec
+        Start 188: contract_rounded_crossing
+188/232 Test #188: contract_rounded_crossing .........................   Passed    0.07 sec
+        Start 189: contract_boolean_boundaries
+189/232 Test #189: contract_boolean_boundaries .......................   Passed    0.15 sec
+        Start 190: boolean_weld_zero_bucket
+190/232 Test #190: boolean_weld_zero_bucket ..........................   Passed    0.72 sec
+        Start 191: contract_numeric_decimals
+191/232 Test #191: contract_numeric_decimals .........................   Passed    0.62 sec
+        Start 192: contract_successful_empty
+192/232 Test #192: contract_successful_empty .........................   Passed    2.68 sec
+        Start 193: contract_stitching_lines
+193/232 Test #193: contract_stitching_lines ..........................   Passed    0.89 sec
+        Start 194: contract_stitching_loops
+194/232 Test #194: contract_stitching_loops ..........................   Passed    0.06 sec
+        Start 195: contract_stitching_fill
+195/232 Test #195: contract_stitching_fill ...........................   Passed    0.06 sec
+        Start 196: contract_stitching_output_containment
+196/232 Test #196: contract_stitching_output_containment .............   Passed    0.06 sec
+        Start 197: contract_wrapping_angles
+197/232 Test #197: contract_wrapping_angles ..........................   Passed    0.41 sec
+        Start 198: contract_wrapping_openings
+198/232 Test #198: contract_wrapping_openings ........................   Passed   13.52 sec
+        Start 199: contract_wrapping_precision
+199/232 Test #199: contract_wrapping_precision .......................   Passed    0.03 sec
+        Start 200: contract_indexed_null_handles
+200/232 Test #200: contract_indexed_null_handles .....................   Passed    0.45 sec
+        Start 201: contract_indexed_reconstruction
+201/232 Test #201: contract_indexed_reconstruction ...................   Passed    0.08 sec
+        Start 202: contract_indexed_ownership
+202/232 Test #202: contract_indexed_ownership ........................   Passed    0.15 sec
+        Start 203: contract_indexed_budget
+203/232 Test #203: contract_indexed_budget ...........................   Passed    0.16 sec
+        Start 204: contract_indexed_attribute_seams
+204/232 Test #204: contract_indexed_attribute_seams ..................   Passed    0.06 sec
+        Start 205: contract_indexed_invalid_attributes
+205/232 Test #205: contract_indexed_invalid_attributes ...............   Passed    0.05 sec
+        Start 206: contract_indexed_concurrent
+206/232 Test #206: contract_indexed_concurrent .......................   Passed    0.04 sec
+        Start 207: contract_snapshot_invalidation
+207/232 Test #207: contract_snapshot_invalidation ....................   Passed    0.22 sec
+        Start 208: contract_retained_payload
+208/232 Test #208: contract_retained_payload .........................   Passed    0.94 sec
+        Start 209: contract_generation_sessions
+209/232 Test #209: contract_generation_sessions ......................   Passed   43.34 sec
+        Start 210: contract_source_provenance
+210/232 Test #210: contract_source_provenance ........................   Passed    2.09 sec
+        Start 211: contract_c_consumer
+211/232 Test #211: contract_c_consumer ...............................   Passed    1.17 sec
+        Start 212: worker_source_producer_contracts
+212/232 Test #212: worker_source_producer_contracts ..................   Passed    0.02 sec
+        Start 213: worker_source_producer_native_contracts
+213/232 Test #213: worker_source_producer_native_contracts ...........   Passed    1.40 sec
+        Start 214: worker_source_bake_request_contracts
+214/232 Test #214: worker_source_bake_request_contracts ..............   Passed    0.01 sec
+        Start 215: worker_source_bake_admission_contracts
+215/232 Test #215: worker_source_bake_admission_contracts ............   Passed    0.01 sec
+        Start 216: worker_generation_statistics_contracts
+216/232 Test #216: worker_generation_statistics_contracts ............   Passed    0.01 sec
+        Start 217: worker_generation_statistics_copy_contracts
+217/232 Test #217: worker_generation_statistics_copy_contracts .......   Passed    1.64 sec
+        Start 218: worker_preview_failure_contracts
+218/232 Test #218: worker_preview_failure_contracts ..................   Passed    0.02 sec
+        Start 219: worker_native_session_contracts
+219/232 Test #219: worker_native_session_contracts ...................   Passed    0.82 sec
+        Start 220: worker_session_result_contracts
+220/232 Test #220: worker_session_result_contracts ...................   Passed    0.01 sec
+        Start 221: worker_session_scope_contracts
+221/232 Test #221: worker_session_scope_contracts ....................   Passed    0.01 sec
+        Start 222: worker_connection_session_contracts
+222/232 Test #222: worker_connection_session_contracts ...............   Passed    1.16 sec
+        Start 223: worker_session_output_contracts
+223/232 Test #223: worker_session_output_contracts ...................   Passed    0.02 sec
+        Start 224: worker_session_output_copy_contracts
+224/232 Test #224: worker_session_output_copy_contracts ..............   Passed    1.18 sec
+        Start 225: worker_session_operation_contracts
+225/232 Test #225: worker_session_operation_contracts ................   Passed    1.44 sec
+        Start 226: worker_session_output_c_contracts
+226/232 Test #226: worker_session_output_c_contracts .................   Passed    1.47 sec
+        Start 227: worker_session_output_c_consumer
+227/232 Test #227: worker_session_output_c_consumer ..................   Passed    1.09 sec
+        Start 228: worker_session_admission_contracts
+228/232 Test #228: worker_session_admission_contracts ................   Passed    0.01 sec
+        Start 229: worker_session_admission_c_contracts
+229/232 Test #229: worker_session_admission_c_contracts ..............   Passed    0.94 sec
+        Start 230: worker_session_lifecycle_c_contracts
+230/232 Test #230: worker_session_lifecycle_c_contracts ..............   Passed    0.85 sec
+        Start 231: worker_session_serving_c_contracts
+231/232 Test #231: worker_session_serving_c_contracts ................   Passed    1.33 sec
+        Start 232: worker_job_expectation_contracts
+232/232 Test #232: worker_job_expectation_contracts ..................   Passed    0.37 sec
+
+100% tests passed out of 232
+
+Total Test time (real) = 349.37 sec

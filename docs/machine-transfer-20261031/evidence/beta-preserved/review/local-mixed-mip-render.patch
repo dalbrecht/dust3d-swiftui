@@ -1,0 +1,125 @@
+diff --git a/Tests/Dust3DRenderingTests/TexturedMetalRenderingTests.swift b/Tests/Dust3DRenderingTests/TexturedMetalRenderingTests.swift
+index 04ddb8a6..885b85dc 100644
+--- a/Tests/Dust3DRenderingTests/TexturedMetalRenderingTests.swift
++++ b/Tests/Dust3DRenderingTests/TexturedMetalRenderingTests.swift
+@@ -393,6 +393,120 @@ final class TexturedMetalRenderingTests: XCTestCase {
+         XCTAssertGreaterThan(Int(original[center + 2]), Int(original[center]) + 50, "Base-only rendering remains red")
+     }
+ 
++    // Experimental local-core acceptance: solid chart colors cannot distinguish selected LOD.
++    func testExperimentalNativeMixedMipProductionRender() async throws {
++        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
++        let options = SourceMeshBakeOptions(
++            bake: MeshBakeOptions(colorSize: 256, normalSize: 256, materialSize: 256, atlasTextureSize: 256,
++                maximumMetadataPayloadBytes: 16 * 1024 * 1024, maximumBakePayloadBytes: 16 * 1024 * 1024),
++            maximumSamplerPayloadBytes: 16 * 1024 * 1024, maximumAtlasPayloadBytes: 16 * 1024 * 1024,
++            maximumNativePayloadBytes: 32 * 1024 * 1024, maximumChartCount: 100,
++            maximumRasterSamples: 10_000_000, maximumMipLevels: 8)
++        let source = try MeshLoader.loadSourceBaked(data: mixedMipArchive(), options: options)
++        XCTAssertEqual(source.modelIDs.count, 1)
++        XCTAssertTrue(source.triangles.contains { $0.modelIndex == nil })
++        XCTAssertTrue(source.triangles.contains { $0.modelIndex == 0 })
++        XCTAssertTrue(source.triangles.allSatisfy { $0.packedUVs != nil && $0.policy != nil })
++        XCTAssertGreaterThanOrEqual(source.maximumSamplingLod, 1)
++        let chain = try XCTUnwrap(source.mipmaps.color)
++        XCTAssertGreaterThanOrEqual(chain.levels.count, 2)
++        XCTAssertLessThanOrEqual(chain.levels.count, 8)
++        XCTAssertEqual(chain.maximumSamplingLod, source.maximumSamplingLod)
++        XCTAssertLessThan(source.maximumSamplingLod, Double(chain.levels.count))
++        let savedLevels = chain.levels.map { [UInt8]($0.pixels) }
++        _ = try MeshLoader.loadSourceBaked(data: mixedMipArchive(), options: options)
++        XCTAssertEqual(chain.levels.map { [UInt8]($0.pixels) }, savedLevels)
++        // The triangle normal is proportional to (+1,-1,0). An oblique view
++        // retains both its face and the fixture's horizontal component separation.
++        let camera = OrbitCamera(yaw: -.pi / 4, pitch: -.pi / 4, distance: 3)
++        guard source.triangles.count <= Int.max / 3,
++            source.geometry.vertices.count == source.triangles.count * 3
++        else {
++            XCTFail("Source geometry must contain three vertices per triangle")
++            return
++        }
++        let bounds = try RenderBounds(vertices: source.geometry.vertices)
++        func projectedBounds(imported: Bool) throws -> (minX: Int, maxX: Int, minY: Int, maxY: Int) {
++            var points: [SIMD2<Float>] = []
++            for (index, triangle) in source.triangles.enumerated() where (triangle.modelIndex != nil) == imported {
++                for corner in 0..<3 {
++                    let position = source.geometry.vertices[index * 3 + corner].position
++                    let normalized = (position - bounds.center) / bounds.radius
++                    let clip = camera.transform(aspect: 1) * SIMD4(normalized, 1)
++                    guard clip.w > 0 else { throw RendererError.unavailable("Fixture projects behind camera") }
++                    points.append(SIMD2((clip.x / clip.w + 1) * 64, (1 - clip.y / clip.w) * 64))
++                }
++            }
++            let first = try XCTUnwrap(points.first)
++            let minimum = points.reduce(first) { simd_min($0, $1) }
++            let maximum = points.reduce(first) { simd_max($0, $1) }
++            return (max(0, Int(floor(minimum.x))), min(127, Int(ceil(maximum.x))),
++                    max(0, Int(floor(minimum.y))), min(127, Int(ceil(maximum.y))))
++        }
++        let blueRegion = try projectedBounds(imported: true)
++        let redRegion = try projectedBounds(imported: false)
++        XCTAssertTrue(blueRegion.maxX < redRegion.minX || redRegion.maxX < blueRegion.minX,
++                      "Projected source regions must be disjoint")
++        let owner = try await TexturedMetalResourcesBuilder().make(bakedMesh: source, device: device, camera: camera)
++        let texture = owner.textures[0]
++        guard texture.mipmapLevelCount == chain.levels.count else {
++            XCTFail("Metal texture level count must equal the retained chain")
++            return
++        }
++        for (index, level) in chain.levels.enumerated() {
++            var bytes = [UInt8](repeating: 0, count: level.pixels.count)
++            texture.getBytes(&bytes, bytesPerRow: level.rowStride,
++                from: MTLRegionMake2D(0, 0, level.width, level.height), mipmapLevel: index)
++            XCTAssertEqual(Data(bytes), level.pixels, "Uploaded color mip \(index) must match owned native output")
++        }
++        let output = try await pixels(TexturedMeshRenderer(resources: owner), device: device)
++        func containsColor(_ region: (minX: Int, maxX: Int, minY: Int, maxY: Int), channel: Int) -> Bool {
++            guard region.minX <= region.maxX, region.minY <= region.maxY else { return false }
++            for y in region.minY...region.maxY {
++                for x in region.minX...region.maxX {
++                    let offset = (y * 128 + x) * 4
++                    if output[offset + 3] == 255 && output[offset + channel] > output[offset + (2 - channel)]
++                        && output[offset + channel] > output[offset + 1] { return true }
++                }
++            }
++            return false
++        }
++        XCTAssertTrue(containsColor(redRegion, channel: 2), "Opaque red in projected tube region")
++        XCTAssertTrue(containsColor(blueRegion, channel: 0), "Opaque blue in projected imported region")
++    }
++
++    private func mixedMipArchive() -> Data {
++        func word(_ value: UInt32) -> Data {
++            var value = value.littleEndian
++            return withUnsafeBytes(of: &value) { Data($0) }
++        }
++        var binary = Data()
++        for value: Float in [-0.5, 0, 0, 0.5, 1, 0, 0, 0.5, 0.5, 0, 0, 1, 0, 0.5, 1] {
++            binary.append(word(value.bitPattern))
++        }
++        var json = Data(#"{"asset":{"version":"2.0"},"buffers":[{"byteLength":60}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36},{"buffer":0,"byteOffset":36,"byteLength":24}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[-0.5,0,0],"max":[0.5,1,0.5]},{"bufferView":1,"componentType":5126,"count":3,"type":"VEC2"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"material":0}]}],"materials":[{"pbrMetallicRoughness":{"baseColorFactor":[0,0,1,1]}}]}"#.utf8)
++        while json.count % 4 != 0 { json.append(32) }
++        var glb = Data()
++        for value: UInt32 in [0x46546c67, 2, UInt32(28 + json.count + binary.count), UInt32(json.count), 0x4e4f534a] { glb.append(word(value)) }
++        glb.append(json)
++        glb.append(word(UInt32(binary.count)))
++        glb.append(word(0x004e4942))
++        glb.append(binary)
++        let imported = "{00000100-0000-4000-8000-000000000100}"
++        let procedural = "{00000101-0000-4000-8000-000000000101}"
++        let model = "{00000300-0000-4000-8000-000000000300}"
++        let xml = """
++        <canvas originX='.5' originY='.5' originZ='.5'><nodes><node id='{00001000-0000-4000-8000-000000001000}' partId='\(imported)' x='.5' y='.2' z='.5' radius='.15'/><node id='{00001001-0000-4000-8000-000000001001}' partId='\(imported)' x='.5' y='.8' z='.5' radius='.15'/><node id='{00001002-0000-4000-8000-000000001002}' partId='\(procedural)' x='2' y='.2' z='.5' radius='.15'/><node id='{00001003-0000-4000-8000-000000001003}' partId='\(procedural)' x='2' y='.8' z='.5' radius='.15'/></nodes><edges><edge id='{00002000-0000-4000-8000-000000002000}' partId='\(imported)' from='{00001000-0000-4000-8000-000000001000}' to='{00001001-0000-4000-8000-000000001001}'/><edge id='{00002001-0000-4000-8000-000000002001}' partId='\(procedural)' from='{00001002-0000-4000-8000-000000001002}' to='{00001003-0000-4000-8000-000000001003}'/></edges><parts><part id='\(imported)' target='ImportedModel' importedModelId='\(model)' interpolated='false'/><part id='\(procedural)' interpolated='false'/></parts><components><component id='{00000200-0000-4000-8000-000000000200}' linkDataType='partId' linkData='\(imported)' combineMode='Uncombined'/><component id='{00000201-0000-4000-8000-000000000201}' linkDataType='partId' linkData='\(procedural)' color='#ff0000' combineMode='Uncombined'/></components></canvas>
++        """
++        let xmlBytes = Data(xml.utf8)
++        let header = "<ds3><model name='model.xml' offset='0' size='\(xmlBytes.count)'/><asset name='models/\(model).glb' offset='\(xmlBytes.count)' size='\(glb.count)'/></ds3>"
++        let prefix = "DUST3D 1.0 xml "
++        var archive = Data((prefix + String(format: "%010d", prefix.utf8.count + 12 + header.utf8.count) + "\r\n" + header).utf8)
++        archive.append(xmlBytes)
++        archive.append(glb)
++        return archive
++    }
++
+     private func render(_ mesh: MeshWithBakedTextures) async throws -> [UInt8] {
+         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+         let owner = try await TexturedMetalResourcesBuilder().make(

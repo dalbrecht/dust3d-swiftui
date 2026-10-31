@@ -1,0 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4e04d8e5..c7ed94f9 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -254,6 +254,10 @@ if(BUILD_TESTING)
+             set_tests_properties(worker_service_resource_helper_readback PROPERTIES TIMEOUT 30)
+         endif()
+     endif()
++    add_executable(dust3d_tube_mesh_hollow_tests tests/core/tube_mesh_hollow_tests.cc)
++    target_link_libraries(dust3d_tube_mesh_hollow_tests PRIVATE dust3d_core)
++    add_test(NAME tube_mesh_hollow_contracts COMMAND dust3d_tube_mesh_hollow_tests)
++
+     add_executable(dust3d_worker_attempt_tests tests/core/worker_attempt_tests.cc)
+     target_link_libraries(dust3d_worker_attempt_tests PRIVATE dust3d_worker_protocol)
+     add_test(NAME worker_attempt_contracts COMMAND dust3d_worker_attempt_tests)

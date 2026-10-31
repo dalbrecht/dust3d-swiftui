@@ -1,0 +1,371 @@
+# Changelog
+
+## Unreleased
+
+- Preserve base textures with a zero mip sampling limit when procedural triangle ownership cannot be proven (#59).
+
+- Require sealed schema-3 per-job wall budgets and enforce scheduler-owned service watchdogs independently of native work, retaining original deadline causes (#304).
+
+- Require explicit bounded pre-job XPC handshake waits in the transport and preview executor, preserving attempt/deadline causes and preventing job creation after failure (#302).
+
+- Require an explicit own-bundle lifetime resource policy and verified four-limit startup receipt before XPC listener work; preserve original setup failures and reject legacy schema-1 bundles (#300).
+
+- Correlate registered XPC process-exit observation with fresh service-incarnation handshakes, explicit phase budgets and original failure retention (#298).
+
+- Add the owned preview executor with authenticated channel creation, joined streaming phases, copied output lifetime, monotonic reset and original failure retention (#296).
+
+- Bind authenticated worker identity before job channels with a scalar handshake that preserves original ownership status without consuming native leases or request IDs (#294).
+
+- Add an async preview coordinator with newest-waiting replacement, drain-preserving cancellation, original completion admission and bounded retirement (#292).
+
+- Add the thin XPC service executable and non-overwriting unsigned bundle stager with explicit bundle trust metadata, sandbox-only entitlements and document-safe typed diagnostics (#290).
+
+- Expose the service-side SwiftPM library with explicit host trust, checked sandbox preflight and injected retirement, keeping QA signing pins and process exit outside the reusable module (#270).
+
+- Expose the shared XPC contract and async connection adapter with explicit trust configuration, fixed lifetime/peer correlation, original receipt domains and fake-tested once-only completion (#270).
+
+- Expose the tested scheduling/source-ownership foundation as the dependency-free Dust3DWorkerClient SwiftPM library, with public XCTest and XPC module-import validation (#270).
+
+- Retain immutable preview archive/policy snapshots for active and newest waiting work, releasing displaced or drained owners without invalidating isolated consumers (#270).
+
+- Queue segmented preview publication by immutable identity, retaining newest waiting work across stale or failed transport completion without interrupting native work (#270).
+
+- Add an explicit segmented-preview development XPC endpoint with shared session cache, original typed RPC receipts and EOF/peer/current-identity publication checks (#270).
+
+- Add an opt-in Swift session backend sharing one cache and replay history across legacy and segmented preview profiles, with distinct original receipts (#270).
+
+- Serve segmented archive previews through existing document sessions, preserving EOF-before-admission, replay consumption, cache observations and original typed receipts without switching active routes (#270).
+
+- Receive segmented preview sessions through actual EOF into the existing immutable C output owner, preserving native-range values and typed receipts with strict Swift copied-value lifetime verification (#270).
+
+- Generate borrowed native-budget previews in serialized document sessions, preserving typed source/fallback failures, replay admission and actual optional cache statistics without activating a transport route (#270).
+
+- Copy native indexed/source preview pairs under independent native policies, validating original identities and associations before retention without a duplicate wire buffer (#270).
+
+- Copy ordinary native preview geometry under its original indexed budget without legacy count caps or a duplicate wire buffer; session dispatch and app adoption remain separate (#270).
+
+- Stream complete preview session values under independent native budgets, preserving original source fallback, warning/text, optional real statistics and one-time EOF-gated ownership without changing legacy caps (#270).
+
+- Transfer segmented preview archives through bounded borrowed channels and immutable C owners, with strict Swift copied-value/actor verification and original typed receipts (#270).
+
+- Own segmented preview archives only after captured metadata, exact framing and real EOF agree, preserving native request policies without widening legacy envelope caps (#270).
+
+- Add incremental bounded preview byte readers/writers with exact span handling, sealed decode/callback failures and original-cause retention; native dispatch and app adoption remain separate (#270).
+
+- Add bounded preview chunk headers, checked physical framing charges and failure-sealed identity/order/EOF state without enabling a new native transport route (#270).
+
+- Add checked scalar preview accounting for independent native, serialized and retained budgets, preserving explicit indexed policies and successful emptiness without changing active transport caps (#270).
+
+- Decode procedural PNGs inside the healthy sandboxed worker fixture and admit copied baked maps after actual EOF and independent peer observation; imported decoding stays disabled (#267).
+
+- Add an Apple-only worker PNG/JPEG callback product with shared Foundation-only envelope metadata, straight source samples and purpose-specific transparency (#267).
+
+- Route explicit authenticated worker-session reset through ordered admission and verify actual cache rebuilding without changing geometry (#251).
+
+- Exercise authenticated sandboxed retained-session RPCs with cache reuse, explicit close, owned descriptor lifetimes and correlated parent admission (#251).
+
+- Reject session request headers that differ from independent host-admitted operation/document/request/revision before reading or retaining their bodies (#251).
+
+- Drain accepted worker jobs before session cleanup and preserve original cleanup results through service retirement (#251).
+
+- Add lazy Swift worker-session lifetime coordination with immutable scope, serialized reset/close and original typed diagnostic copies (#251).
+
+- Export worker-session APIs explicitly to Swift consumers and verify copied session output/cache observations across Swift6 actor ownership (#251).
+
+- Serve explicit session requests through retained C worker owners and shared bounded channel framing, preserving actual cache observations across requests (#251).
+
+- Expose exclusive C worker-session lifecycle ownership with host scope, reset/close semantics and preserved original diagnostics (#251).
+
+- Admit correlated session envelopes through shared service/queue gates and dedicated C owners, preserving one-shot retirement and newer waiting work (#251).
+
+- Add immutable C ownership and borrowed geometry/diagnostic/statistics views for decoded session output values; authenticated host admission remains separate (#251).
+
+- Add an explicit correlated session-generation producer with diagnostic reservation and host-quota truncation; legacy serving/admission remains unsupported (#251).
+
+- Preserve worker session outcome, fallback diagnostics and actual optional statistics together in a bounded owned result envelope (#251).
+
+- Bind worker cache ownership to host document/connection lifetimes, preserve replay protection through reset, and release native state on close (#251).
+
+- Retain worker-owned document generation caches with same-call owned indexed/source output, native statistics, and in-worker ordinary fallback (#251).
+
+- Preserve optional actual generation-cache statistics in bounded worker values with exact native snapshot copying; persistent worker sessions remain separate (#251).
+
+- Add explicit source-bake worker production, request/admission and owned C surface/catalog/mip output with contextual original image diagnostics; validation and Apple adoption remain separate (#249).
+
+- Route complete legacy bakes through budgeted worker requests, distinct procedural decoding, native production, child/service/queue admission and owned C UV/tangent/map output (#247).
+
+- Prepare independently owned referenced procedural image bytes through bounded metadata admission and the validated native archive reader, without decoding imported GLB payloads (#245).
+
+- Route complete imported rendering through explicit decoder-equipped worker jobs, child/service/queue admission and owned C getters, preserving request budgets and detailed original failures (#243).
+
+- Add explicit C image ownership and bounded callback diagnostics for worker-side platform decoding, with a portable producer adapter; runtime/Apple activation remains separate (#241).
+
+- Prepare imported rendering values from one unchanged archive through an explicit injected image decoder, preserving ordered definitions, original causes and layered quotas; platform/runtime adoption remains separate (#239).
+
+- Join imported geometry/source records, ordered material definitions and owned source pixels under complete cross-catalog and aggregate validation; producer/transport adoption remains separate (#237).
+
+- Preserve authored imported UVs, vertex colors, encoding and exact identity catalogs with matching geometry in bounded worker values; transport/editor adoption remains separate (#235).
+
+- Preserve authored imported material factors, sampler/filter presence, encoded image declarations and instance bindings in bounded worker facts with shared native-copy validation; rendering/transport adoption remains separate (#233).
+
+- Preserve complete legacy baked geometry, UV charts/gradients, tangent frames and base maps in coherent worker values, sharing native preflight rules; runtime/editor adoption remains separate (#231).
+
+- Preserve coherent source-baked geometry, triangle policies, catalogs and texture/mip values in worker codecs, with preflighted copying from one native owner; runtime/editor adoption remains separate (#229).
+
+- Preserve exact baked texture pixels, optional maps, mip chains and producer sampling caps in bounded portable worker values; runtime/editor binding remains separate (#227).
+
+- Route indexed geometry with optional source hints through worker requests, generation, admission and owned C index output; editor adoption remains separate (#225).
+
+- Pair indexed geometry with source hints under aggregate admission and copy both from one native generation, with a pure bounded index-export policy; runtime adoption remains separate (#223).
+
+- Preserve indexed vertex tables, triangle-corner index order and source counts in a bounded worker geometry codec sharing existing mesh validation; runtime adoption remains separate (#221).
+
+- Route source-aware worker requests through native generation, child/service/queue admission and independently owned C source output; editor adoption remains separate (#219).
+
+- Copy source-associated native geometry into independently owned worker values with preflight copy quotas; runtime opcode/editor activation remain separate (#217).
+
+- Pair owned worker geometry/source values with shared inspection, matching source counts and aggregate admission before decoded output; operation and C ABI activation remain separate (#215).
+
+- Add a bounded owned worker source-hint value codec preserving exact identity aliases, corner associations and unnormalized weights; operation/C ABI adoption remains separate (#213).
+
+- Admit healthy development XPC base/UV replies through the queue-authoritative C coordinator with a non-Sendable Swift collecting-thread owner (#188).
+
+- Expose the bounded persistent-service coordinator through C with queue-authoritative source admission, borrowed framing and independently owned decoded values (#183).
+
+- Reuse the bounded request queue for persistent-service completion, with frozen connection generations, source retirement and cross-mode rejection (#182).
+
+- Verify healthy isolated XPC mesh/UV replies through the generation-bound C admission gate with actor-owned OS-peer observations and retained multi-reader completion (#181).
+
+- Expose generation-bound service collectors and single-use C reply admission, with raw receipt opcode validation and independent decoded ownership (#180).
+
+- Add single-use persistent-service reply admission with current-source, peer, receipt, EOF and semantic correlation; child-process exit admission remains separate (#179).
+
+- Route development queued cancellation by owning connection and nonreused caller request identity (#178).
+
+- Add connection-owned withdrawal of queued development worker jobs before native entry, with recorded cancellation/retirement ordering (#177).
+
+- Scope development XPC worker retirement and native admission to the first method-invoking connection (#176).
+
+- Bound development XPC native admission to one invocation before queueing, with stale-lease protection and ordered retirement (#175).
+
+- Verify concurrent bounded descriptor transfer for healthy development XPC base/UV jobs, with explicit EOF and owned endpoint cleanup (#174).
+
+- Verify exact signed sandbox entitlements and service self-entitlement receipts for healthy development XPC base/UV jobs (#173).
+
+- Encode owned base/UV worker requests through shared C codecs and verify both operations through the isolated development XPC fixture (#172).
+
+- Verify an ordinary static mesh job in a separately running development XPC service with peer hash requirements and bounded C reply decoding (#171).
+
+- Decode framed worker base/UV/failure replies into independent C semantic owners with bounded value copies and preserved native cause bytes (#170).
+
+- Expose an opaque bounded parent reply C owner with explicit EOF, copied diagnostics and borrowed completed-frame bytes for Swift hosts (#169).
+
+- Share bounded incremental worker reply framing across parent transports, validating correlation and quotas before retaining body bytes (#168).
+
+- Expose a self-owned, caught-exception descriptor worker C interface and separate SwiftPM runtime product, retaining original diagnostics and channel ownership (#167).
+
+- Share descriptor-based single-job worker I/O between hosts while preserving channel ownership and reporting the actual validated operation (#166).
+
+- Build the development base/UV worker as an explicit SwiftPM executable product from the maintained engine and helper sources (#165).
+
+- Dispatch versioned UV worker jobs and admit paired replies against current-source identity and observed child completion (#164).
+
+- Admit component keys and chart image identities against one text quota before copying native UV results (#190).
+
+- Generate worker geometry and UV metadata from one native owner before bounded independent result copies (#164).
+
+- Encode bounded UV worker requests with independently owned archive bytes, resolved image dimensions and retained-metadata options (#164).
+
+- Atomically validate paired worker geometry/UV responses under aggregate output quotas before retained decoding (#163).
+
+- Add a bounded versioned worker UV metadata codec preserving binary64 corners, component association, charts and gradients (#162).
+
+- Preserve bounded partial worker reply/diagnostic bytes on collector errors while retaining the original exception (#123).
+
+- Retain independent supervised worker cleanup diagnostics without replacing the primary transport exception (#123).
+
+- Reject linearly unstable SpiderWalk/SpiderRun spring intervals before reference pose allocation; pure admission tests only, core #95 remains unresolved.
+
+- Share reference audio surface identities without linking sound synthesis, with owned C catalog names and Swift 6 copied-value verification ([Apple #145](https://github.com/dalbrecht/dust3d-swiftui/issues/145)).
+
+- Expose common timing limits and precision-preserving checked edits through C, verified by a Swift 6 value-copy consumer ([Apple #145](https://github.com/dalbrecht/dust3d-swiftui/issues/145)).
+
+- Share reference animation timing limits and validate explicit timing edits without rounding stored duration or evaluating frames ([Apple #145](https://github.com/dalbrecht/dust3d-swiftui/issues/145)).
+
+- Expose owned animation control descriptors and checked conversion through the C API, with Swift 6 owned-copy verification ([Apple #145](https://github.com/dalbrecht/dust3d-swiftui/issues/145)).
+
+- Port ordered reference animation controls to value-only portable metadata with finite/representability/range-checked conversion and a reference compatibility adapter ([Apple #145](https://github.com/dalbrecht/dust3d-swiftui/issues/145)).
+
+- Separate inherited preset construction from sampler linkage and restore qmake metadata source dependencies, with reference-manifest regression coverage ([Apple #145](https://github.com/dalbrecht/dust3d-swiftui/issues/145)).
+
+- Add an independently owned animation catalog C API with bounded view access and Swift 6 copy/lifetime verification; sampling remains quarantined ([Apple #145](https://github.com/dalbrecht/dust3d-swiftui/issues/145)).
+
+- Compile inherited animation catalog metadata without generator linkage, sharing biped declarations and preserving aliases/defaults; animation sampling remains quarantined ([Apple #145](https://github.com/dalbrecht/dust3d-swiftui/issues/145)).
+
+- Add serial known-positive static-export timing receipts with executable/input hashes and explicit acceptance limits (#99).
+
+- Accept bounded upstream-style single-source -o/-output expansion with recoverable per-target failures and legacy aggregate exit status (#99).
+
+- Add bounded serial OBJ/FBX batch exports with cross-job source protection,
+  per-job diagnostics and recoverable partial failures. Preserve committed files
+  when later output names resolve to the same filesystem identity (#99).
+
+- Export original OBJ polygons through the Qt-free command with atomic publication and verify Swift 6 owned copies (#99).
+
+- Expose owned original-double OBJ polygon bytes through a sized, quota-bounded C API with cooperative cancellation (#99).
+
+- Prepare original OBJ/FBX exports independently of float preview conversion, preserving double geometry and avoiding preview vertex allocation (#99).
+
+- Add bounded original-double OBJ polygon encoding and all-or-nothing generation export hooks, preserving source quads and vertex identities (#99).
+
+- Add a Qt-free static FBX export command with procedural baked-atlas mode, source-alias protection and atomic Unix output publication (#99).
+
+- Expose owned static geometry/baked-atlas FBX bytes through a sized C API with explicit quotas, cancellation and Swift 6 owned-copy verification (#99).
+
+- Connect baked RGBA maps to owned FBX atlas materials with aggregate PNG capacity admission and independent generated-scene pixel/geometry verification (#99).
+
+- Add bounded portable RGBA PNG encoding through system zlib for baked export maps, with independent pixel/alpha/CRC verification (#99).
+
+- Align opt-in original FBX geometry with complete packed procedural atlas UVs, rejecting unknown mappings explicitly (#99).
+
+- Add an opt-in original double-geometry generation output for static FBX, preserving prior ownership on rejection (#99).
+
+- Add bounded owned static FBX face selections with source correspondence, double-precision positions and optional replacement atlas UVs (#99).
+
+- Restore static FBX atlas materials and six embedded PNG channels with pure image-byte admission and optimization-safe material verification (#99).
+
+- Restore geometry-only FBX scene encoding with indexed positions, corner normals/UVs, pure staging admission and optimization-safe importer verification (#99).
+
+- Restore bounded owned FBX7400 container encoding and known-positive structural compatibility tests against the existing reference codec (#99).
+
+- Restore immutable owned FBX node trees with checked depth, count, retained capacity and encoded-size metadata (#99).
+
+- Restore bounded, owned FBX7400 property encoding with explicit little-endian bytes and append-state preservation (#99).
+
+- Restore checked rigid-transform validation and FBX XYZ Euler extraction as pure value operations, with explicit column-major matrix ownership (#99).
+
+- Restore source-audited, bounded FBX time and Euler-angle conventions independently of serializers and quarantined animation evaluation (#99).
+
+- Bound snapshot XML component traversal and encoded output, preserve ordinary bytes, and stage writes before publication; quarantined writer failure fixtures remain disabled (#83).
+
+- Add parent-side supervised resource launch and bounded report admission with owned original completion errors; Apple adoption and strong containment remain pending (#123).
+
+- Add an explicit versioned helper resource launch with compiled-runtime checks, helper-only limit installation/readback and ordinary fixture acceptance; production profiles and Apple adoption remain pending (#123).
+
+- Add private worker resource setup and checked Unix conversion libraries with original OS-error preservation; helper activation remains pending (#123).
+
+- Add pure worker resource-profile planning with explicit finite units, inherited-limit preservation and sanitizer compatibility checks; OS application and production adoption remain pending (#123).
+
+- Add an opt-in supervised Unix operation with pre-start cancellation and retained retirement outcomes; active OS termination remains unverified and production adoption is pending (#123).
+
+- Add a pure bounded worker-lifetime decision policy with single-use stop/drain actions and publication retirement; process integration remains pending (#123).
+
+- Bound worker scheduling to one active request and one latest waiting archive, retiring stale completions before typed reply admission (#115).
+
+- Add a development Unix parent transport with concurrent bounded channel transfer, original diagnostics and observed process completion (#114). Production lifecycle policy remains pending.
+
+- Add single-use worker completion admission requiring clean exit, current identity and validated owned payloads (#113).
+
+- Add a Unix single-job native helper with bounded framed input, isolated binary output and separately testable native execution/status mapping (#112). Parent transport and production containment remain pending; pins and quarantines are unchanged.
+
+- Add typed worker non-success payloads that preserve bounded original diagnostic bytes, including non-UTF-8 causes, and distinguish no-geometry/cancellation outcomes (#111). Process transport remains pending; pins and quarantines are unchanged.
+
+- Add explicit owned worker base-mesh payload encoding and semantic admission for geometry, source counts and bounded UTF-8 warnings (#110). Process transport and source-aware results remain separate; no pin or quarantine changes.
+
+- Add a separately tested portable worker frame codec with versioned byte order, bounded lengths and document/request/revision checks (#109). Process isolation and result-schema admission remain pending; quarantines and pins are unchanged.
+
+- Stop debug stitching generation from automatically creating or overwriting a global SVG outside caller-owned outputs (#101). Geometry and explicit exports are unchanged.
+
+- Expose opt-in owned native atlas mip levels with borrowed per-level views, preserved procedural island ownership and aggregate output accounting (#59). The existing loader stays base-only; Apple adoption remains pending.
+
+- Add opt-in owned atlas mip chains with isolated imported and procedural islands, linear-light color filtering, normalized normals, actual per-map LOD admission and cumulative quotas (#59). Existing native sampling limits and Apple pins remain unchanged.
+
+- Preserve typed invalid-document errors, geometry field names and original numeric conversion diagnostics for malformed or out-of-range scalar metadata (#104).
+
+- Quarantine standalone and embedded allocation-failure probes from default builds, retaining ordinary ownership checks and non-injecting JSON comparison contracts with compile-time signature checks (#84).
+
+- Propagate allocation failure from glTF JSON parsing and string comparisons instead of terminating the process. Object, array, and string payloads are published before their type, and string literals are no longer no-throw numeric scalars (#69).
+
+- Block accidental restoration of the quarantined experimental GLB material C API, including its SwiftPM and CMake source-list entries, during configuration (#69).
+
+- Preserve the full finite nonnegative glTF alpha-cutoff range in source baking, including mask cutoffs above one, while retaining raw combined alpha and exact owned policy metadata (#61).
+
+- Add an owned opt-in native source-bake C API with caller-decoded imported images, exact final geometry/UV/material alignment, procedural composition, bounded ownership and explicit atlas LOD metadata. Existing load/bake contracts and Apple pins remain unchanged (#58).
+
+- Add owned CPU source-aware atlas baking with linear imported color factors, derivative mip selection, per-triangle alpha/sidedness policies, PBR maps and legacy-map composition. Isolate chart gutters, require bilinear padding and expose the output LOD-zero limit; chart-isolated atlas mips remain #59. Native/Apple adoption remains pending (#56).
+
+- Add ordinal imported atlas layout with independent authored UVs, exact model/component identities, geometry-derived non-overlapping charts and a separate procedural atlas transform. Native bake adoption remains pending (#54).
+
+- Add bounded, owned CPU sRGB color sampling with authored wrapping, all glTF filter modes, straight alpha and odd-dimension mip reduction as an imported-baking foundation. Atlas/bake integration remains pending (#52).
+
+- Add an owned C surface-source API with float-retained triangle alignment, authored repeat UVs, straight RGBA with explicit linear/sRGB encoding, resolved model/component catalogs and bounded retained ownership. Atlas sampling, baking and Apple adoption remain separate.
+
+- Preserve imported per-corner UV seams and resolved model ownership through spine deformation, mirrored winding, Boolean clipping, recombination, previews and retained caches. Public imported UV/bake rendering integration remains pending.
+
+- Add an opt-in owned C material/image inspection API for required imported models,
+  preserving original instance bindings, glTF factors/samplers and encoded storage
+  under a separate output quota; pixel decoding and application adoption remain
+  subsequent stages.
+
+
+- Sweep imported geometry across circular spines' closing edges with periodic cross-section frames and matching normal derivatives.
+
+- Apply authored-versus-smoothed imported normals per component instance, including coincident instances sharing the same part.
+
+- Reject nonfinite/out-of-range position quantization before integer conversion, and preserve distinct imported component fallback colors when multiple instances share one part.
+
+- Preserve imported vertex-color seams, per-node directional scales and component-scoped source hints, including distinct original component aliases.
+
+- Preserve imported colors and normals per owning component through Boolean/cache aggregation, including coincident uncombined parts, component-color fallback and group previews.
+
+- Transform imported normals with the local spine Jacobian, including cut rotation, nonuniform scales and taper; singular deformations retain geometry-derived normals.
+
+- Keep imported-model spine width and thickness scales independent, so zero width produces finite flattened geometry without a division by zero.
+
+- Resolve required embedded GLB assets for expanded/sourced/session geometry previews with an aggregate decoded-owner quota, independent outputs, same-UUID cache invalidation and explicit material limitations; UV/bake and Apple adoption remain separate.
+
+- Add a private bounded Qt-free GLB mesh/material decoder with owned image bytes and malformed-layout contracts; embedded `.ds3` model generation and Apple adoption remain separate stages.
+
+- Add an opt-in owned C baked-mesh boundary with borrowed RGBA8 views, float-aligned tangent records, independent UV/bake quotas, legacy comma-decimal settings and one-shot cooperative cancellation; Apple renderer adoption remains separate.
+
+- Add borrowed fold-evaluation checkpoints so dense overlapping segment queries and all normal derivative samples can cooperate with cancellation while preserving original evaluation APIs.
+
+- Add opt-in synchronous construction checkpoints to fold and surface-pattern kernels; portable baking can cancel preparation, grid insertion/sorting and covariance work while legacy constructors remain available.
+
+- Add a portable C++ CPU texture-bake API with owned RGBA8 maps, explicit image views, material scalars, world-space patterns/fold normals and triangle tangents; C/Swift adoption and renderer integration remain separate.
+
+- Add optional isolated offscreen Qt bake reference probes, including numerical portable UV comparison, procedural maps and explicit alpha/material observations; native targets remain Qt-free.
+
+- Add opt-in owned C UV metadata with float-retained triangle alignment, original component identities, explicit ambiguity, bounded resolved image descriptors and strict Swift 6 copy consumers; baking and Apple app adoption remain separate.
+
+- Add owned portable C++ UV atlas metadata with explicit missing mappings, seam-gradient descriptors, cyclic corner ordering and checked logical output budgets; pixel baking and C/Swift adoption follow separately.
+
+- Fix UV rectangle area/contact-score overflow, validate quantized chart dimensions before conversion, reject charts lost to padding precision, and clear stale layouts after packing failure.
+
+- Add sourced generation-session loads with actual component cache reuse, current original identities, independent output budgets/lifetimes and preserved cache-only fallback diagnostics.
+
+- Add opt-in bounded per-corner source hints with original opaque document keys, complete wrapping weights, explicit unknown/ambiguous identities, independent geometry ownership and C/Swift consumers.
+
+- Add optional bounded generation-session C owners with semantic invalidation, exact asset revisions, actual cache reuse metrics, independent mesh lifetime, and fresh fallback for cache-only failures.
+
+- Add checked retained-payload accounting for actual geometry/cache owners, reserved buffers, nested metadata and wrapping results, with explicit borrowed-view handling before persistent sessions are enabled.
+
+- Add a portable semantic snapshot-invalidation foundation for native component caches, deriving old/new ownership and dependency changes without trusting saved dirty flags. Persistent cache activation follows separately.
+
+- Add optional independently owned indexed C ABI buffers with full-attribute sharing, copied source metadata, explicit payload budgets and portable lifetime/seam/concurrency contracts.
+
+- Omit triangles that collapse at exported float precision, preserve configured Cloth opening topology, and report a specific generation failure when an entire mesh becomes unrepresentable.
+
+- Keep parallel/near-parallel vector angles finite at floating-point dot-product boundaries, repairing Cloth opening and straight-profile normal generation without weakening native finite-output validation.
+
+- Reject malformed and nonfinite values for every wrapping scalar at the native archive boundary, preserving finite legacy values and inherited generator clamping.
+
+- Extend portable C ABI contracts for configured stitching closures, segment counts, loop caps and isolated/connected fill behavior across the existing Linux/macOS sanitizer matrix.
+
+- Distinguish successful generation with no geometry from genuine generation failures through an explicit C API status and portable ownership/error regression tests.
+
+- Accept legacy comma-decimal numeric attributes at the C boundary while retaining strict input and geometry validation.
+
+- Fix procedural boolean generation where intersection loops share a vertex, including rounded crossing parts.
+- Weld original and cut vertices consistently around position-grid boundaries, preventing collapsed sliver triangles.
+- Add closed-edge and connected-surface regression checks for union, difference, translation, hard joins and nearby separated parts.

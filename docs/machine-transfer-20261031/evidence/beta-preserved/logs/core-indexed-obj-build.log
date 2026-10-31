@@ -1,0 +1,32 @@
+[  0%] Built target dust3d_triangle
+[ 17%] Built target dust3d_remesher
+[ 64%] Built target dust3d_core
+[ 64%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/ObjExportBridge.cc.o
+[ 64%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/ObjDocument.cc.o
+[ 64%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/ObjGeometryPlan.cc.o
+[ 64%] Building CXX object CMakeFiles/dust3d_engine.dir/native/Engine/Dust3DBridge.cc.o
+[ 64%] Linking CXX static library libdust3d_engine.a
+[100%] Built target dust3d_engine
+[100%] Building C object CMakeFiles/dust3d_indexed_obj_c_api_tests.dir/tests/core/indexed_obj_c_api_tests.c.o
+[100%] Linking CXX executable dust3d_indexed_obj_c_api_tests
+[100%] Built target dust3d_indexed_obj_c_api_tests
+[  0%] Built target dust3d_triangle
+[ 16%] Built target dust3d_remesher
+[ 61%] Built target dust3d_core
+[ 94%] Built target dust3d_engine
+[100%] Building CXX object CMakeFiles/dust3d_indexed_obj_export_tests.dir/tests/core/indexed_obj_export_tests.cc.o
+[100%] Linking CXX executable dust3d_indexed_obj_export_tests
+[100%] Built target dust3d_indexed_obj_export_tests
+[  0%] Built target dust3d_triangle
+[ 16%] Built target dust3d_remesher
+[ 61%] Built target dust3d_core
+[ 94%] Built target dust3d_engine
+[100%] Building CXX object CMakeFiles/dust3d_obj_document_tests.dir/tests/core/obj_document_tests.cc.o
+[100%] Linking CXX executable dust3d_obj_document_tests
+[100%] Built target dust3d_obj_document_tests
+[  0%] Built target dust3d_triangle
+[ 17%] Built target dust3d_remesher
+[ 64%] Built target dust3d_core
+[100%] Built target dust3d_engine
+[100%] Linking CXX executable dust3d_obj_export_api_tests
+[100%] Built target dust3d_obj_export_api_tests
