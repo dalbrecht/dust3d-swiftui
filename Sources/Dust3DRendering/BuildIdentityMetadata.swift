@@ -6,6 +6,8 @@ public struct BuildIdentityMetadata: Equatable, Sendable {
     public let coreRevision: String
     public let sourceDigest: String
     public let isDirty: Bool
+    public let coreDigest: String?
+    public let coreIsDirty: Bool?
     public var summary: String { isDirty ? "Modified source tree" : "Clean source tree" }
 
     /// Decode bounded linker metadata. Missing or invalid identities must remain explicitly unavailable.
@@ -29,6 +31,18 @@ public struct BuildIdentityMetadata: Equatable, Sendable {
                 })
             else { throw BuildIdentityError.invalidField(name) }
         }
+        guard (payload.coreDigest == nil) == (payload.coreIsDirty == nil) else {
+            throw BuildIdentityError.invalidField("localCoreIdentity")
+        }
+        if let digest = payload.coreDigest {
+            guard digest.utf8.count == 64,
+                digest.utf8.allSatisfy({
+                    (48...57).contains($0) || (97...102).contains($0)
+                })
+            else { throw BuildIdentityError.invalidField("coreDigest") }
+        }
+        coreDigest = payload.coreDigest
+        coreIsDirty = payload.coreIsDirty
         sourceRevision = payload.sourceRevision
         coreRevision = payload.coreRevision
         sourceDigest = payload.sourceDigest
@@ -41,6 +55,8 @@ public struct BuildIdentityMetadata: Equatable, Sendable {
         let coreRevision: String
         let sourceDigest: String
         let isDirty: Bool
+        let coreDigest: String?
+        let coreIsDirty: Bool?
     }
 }
 
