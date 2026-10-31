@@ -78,6 +78,7 @@ final class EditorStore {
     private(set) var isMovingOrigin = false
     private(set) var originDragPosition: NodePosition?
     private var originDrag: OriginDrag?
+    private var originDragToken: UUID?
     var isWireframe = false
     var cameraReset = 0
     private(set) var referenceImage: CGImage?
@@ -484,13 +485,27 @@ final class EditorStore {
     func cancelOriginDrag() {
         isMovingOrigin = false
         originDrag = nil
+        originDragToken = nil
         originDragPosition = nil
     }
 
-    func updateOriginDrag(translation: CanvasPoint, projection: CanvasProjection) {
+    func beginOriginDrag(token: UUID, projection: CanvasProjection) {
         guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
         do {
-            let baseline = try originDrag ?? OriginDrag(snapshot: snapshot, projection: projection)
+            originDrag = try OriginDrag(snapshot: snapshot, projection: projection)
+            originDragToken = token
+            originDragPosition = nil
+        } catch {
+            cancelOriginDrag()
+            errorMessage = Self.message(error)
+        }
+    }
+
+    func updateOriginDrag(token: UUID, translation: CanvasPoint) {
+        guard isMovingOrigin, !isWorking, !stopped, token == originDragToken,
+            let snapshot, let baseline = originDrag
+        else { return }
+        do {
             guard baseline.isCurrent(in: snapshot) else {
                 cancelOriginDrag()
                 return
@@ -499,7 +514,6 @@ final class EditorStore {
             guard [translation.x, translation.y, position.x, position.y, position.z].allSatisfy(\.isFinite),
                 [position.x, position.y, position.z].allSatisfy({ abs($0) <= 1_000_000 })
             else { throw DocumentError.invalidOrigin }
-            originDrag = baseline
             originDragPosition = position
         } catch {
             cancelOriginDrag()
@@ -507,9 +521,21 @@ final class EditorStore {
         }
     }
 
-    func finishOriginDrag(translation: CanvasPoint) {
-        guard isMovingOrigin, let baseline = originDrag else { return }
+    func finishOriginDrag(token: UUID, translation: CanvasPoint) {
+        guard isMovingOrigin, token == originDragToken, let baseline = originDrag else { return }
         perform { try await $0.commitOriginDrag(baseline, translation: translation) }
+    }
+
+    func cancelOriginDrag(token: UUID) {
+        guard token == originDragToken else { return }
+        cancelOriginDrag()
+    }
+
+    func endOriginClick(token: UUID) {
+        guard token == originDragToken else { return }
+        originDrag = nil
+        originDragToken = nil
+        originDragPosition = nil
     }
 
     func setLock(_ constraint: EditingConstraint, isLocked: Bool) {
@@ -683,6 +709,10 @@ final class EditorStore {
     func toggleSelection(_ id: String) { perform(commits: false) { try await $0.toggleSelection(id) } }
     func selectAll() { perform(commits: false) { try await $0.selectAll() } }
     func move(id: String, to position: NodePosition) { perform { try await $0.move(id: id, to: position) } }
+
+    func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) {
+        perform { try await $0.commitNodeDrag(drag, translation: translation) }
+    }
     func moveSelection(by delta: NodePosition) { perform { try await $0.moveSelection(by: delta) } }
     func scaleSelection(positionFactor: Double, radiusFactor: Double) {
         perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
@@ -1100,6 +1130,7 @@ final class EditorStore {
             case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."
             case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
+            case .staleNodeDrag: return "Node drag cancelled because the document, selection or constraints changed."
             case .staleAnimationTarget:
                 return "The document changed. Select the animation again before editing."
             case .staleExport:

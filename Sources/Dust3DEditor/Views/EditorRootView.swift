@@ -227,7 +227,9 @@ struct EditorRootView: View {
             await store.load(data: file.data, fileIdentity: identifier)
         }
         .onExitCommand {
-            if exportWorkflow.canCancel { exportWorkflow.cancel() } else { store.cancelOriginDrag() }
+            EditorCommandScope.routeEscape(
+                isMovingOrigin: store.isMovingOrigin, canCancelExport: exportWorkflow.canCancel,
+                cancelOrigin: { store.cancelOriginDrag() }, cancelExport: { exportWorkflow.cancel() })
         }
         .onDisappear {
             if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
