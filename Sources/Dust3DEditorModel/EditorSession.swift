@@ -295,6 +295,12 @@ public actor EditorSession {
     public func insertSelectedEdgeMidpoint() throws -> EditorSnapshot {
         try update { try $0.insertSelectedEdgeMidpoint(nodeID: Self.identifier(), edgeID: Self.identifier()) }
     }
+    /// Reduce the full node selection against the evolving graph in one history transaction.
+    /// - Returns: Committed snapshot retaining only surviving selected nodes.
+    /// - Throws: Load, cancellation or original document validation errors atomically.
+    public func reduceSelectedNodes() throws -> EditorSnapshot {
+        try update { try $0.reduceSelectedNodes() }
+    }
     public func move(id: String, to position: NodePosition) throws -> EditorSnapshot {
         try update { try $0.move(id: id, to: position) }
     }

@@ -122,6 +122,8 @@ public struct EditorSnapshot: Sendable {
         guard canEditSelectedEdge, let selectedEdgeID else { return false }
         return document.canInsertEdgeMidpoint(id: selectedEdgeID)
     }
+    /// Whether the full selection contains a reducible node in a valid editable graph.
+    public var canReduceSelectedNodes: Bool { document.canReduceNodes(Array(selectedIDs)) }
     /// Copy can include read-only nodes, but every copied node must belong to a part.
     public var canCopyNodes: Bool {
         let selected = selectedNodes
@@ -472,6 +474,13 @@ public struct EditorState: Sendable {
         try apply([.insertEdgeMidpoint(id: edge.id, nodeID: nodeID, edgeID: edgeID)])
     }
 
+    /// Reduce degree-two nodes in the full selection as one undo step.
+    /// Degree-ineligible nodes remain selected; removed nodes are pruned from selection.
+    /// - Throws: Document validation or read-only errors atomically.
+    public mutating func reduceSelectedNodes() throws {
+        try apply([.reduceNodes(Array(selectedIDs))])
+    }
+
     /// Drag an anchor, retaining its group if selected; otherwise select only the anchor.
     public mutating func move(id: String, to position: NodePosition) throws {
         guard let node = contents.nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
@@ -594,7 +603,7 @@ public struct EditorState: Sendable {
     }
 
     private mutating func publish(_ next: DocumentHistory) throws {
-        guard next.document.encoded() != history.document.encoded() else { return }
+        guard !next.document.hasSameEditingState(as: history.document) else { return }
         let nextContents = try next.document.editorContents()
         let nextTree = ComponentTree(document: next.document)
         contents = nextContents
