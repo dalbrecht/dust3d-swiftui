@@ -17,6 +17,7 @@ struct NodeCanvas: View {
                         width: geometry.size.width, height: geometry.size.height))
             let nodes = store.snapshot?.nodes ?? []
             let addModeID = store.addModeID
+            let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
             ZStack {
                 if store.showsReferenceImage, let image = store.referenceImage {
                     let aspect = Double(image.width) / Double(image.height)
@@ -30,7 +31,7 @@ struct NodeCanvas: View {
                         .accessibilityHidden(true)
                 }
                 CanvasPointerSurface(
-                    enabled: !store.isWorking && !store.isMovingOrigin,
+                    enabled: store.canPickGraph && !store.isMovingOrigin,
                     select: { rectangle, mode in
                         guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else { return }
                         store.selectMarquee(rectangle, projection: projection, mode: mode)
@@ -51,6 +52,11 @@ struct NodeCanvas: View {
                     wheel: { input in
                         guard store.addModeID == addModeID else { return false }
                         return store.handleCanvasWheel(input)
+                    },
+                    doubleClick: { point in
+                        guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin, let partContext
+                        else { return }
+                        store.selectWholePart(at: point, projection: projection, context: partContext)
                     },
                     isAddingNodes: store.isAddingNodes,
                     addPress: { store.placeAddNode(at: $0, modeID: addModeID) },
@@ -106,7 +112,15 @@ struct NodeCanvas: View {
                         node: node, projection: projection,
                         position: previewPosition(node, projection: projection),
                         selected: store.snapshot?.selectedIDs.contains(node.id) == true,
-                        enabled: !store.isWorking && !store.isMovingOrigin && !store.isAddingNodes,
+                        enabled: store.canPickGraph && !store.isMovingOrigin && !store.isAddingNodes,
+                        canDrag: !store.isWorking && node.isEditable,
+                        canSelectWholePart: store.canSelectWholePart(.node(node.id)),
+                        doubleClick: {
+                            guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
+                                return
+                            }
+                            store.selectWholePart(.node(node.id), context: partContext)
+                        },
                         select: { if store.addModeID == addModeID && !store.isAddingNodes { store.select(node.id) } },
                         toggle: {
                             if store.addModeID == addModeID && !store.isAddingNodes { store.toggleSelection(node.id) }
@@ -240,6 +254,9 @@ private struct NodeHandle: View {
     let position: NodePosition
     let selected: Bool
     let enabled: Bool
+    let canDrag: Bool
+    let canSelectWholePart: Bool
+    let doubleClick: () -> Void
     let select: () -> Void
     let toggle: () -> Void
     let add: () -> Void
@@ -261,9 +278,9 @@ private struct NodeHandle: View {
             Circle().fill(selected ? Color.accentColor : (node.isEditable ? .primary : .secondary))
                 .frame(width: 12, height: 12)
             NodePointerSurface(
-                enabled: enabled, canDrag: node.isEditable, begin: begin, update: update, finish: finish,
+                enabled: enabled, canDrag: canDrag, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle, add: add, wheel: wheel
+                select: select, toggle: toggle, add: add, wheel: wheel, doubleClick: doubleClick
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
@@ -273,6 +290,8 @@ private struct NodeHandle: View {
         .accessibilityValue(selected ? "Selected" : "Not selected")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { select() }
+        .accessibilityAction(named: Text("Select Whole Part")) { if canSelectWholePart { doubleClick() } }
+        .contextMenu { Button("Select Whole Part", action: doubleClick).disabled(!canSelectWholePart) }
         .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked, hidden or disabled part")")
     }
 }

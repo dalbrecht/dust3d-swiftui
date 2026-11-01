@@ -37,6 +37,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let rectangle: (CanvasSelectionRectangle?) -> Void
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    var doubleClick: ((CanvasPoint) -> Void)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
@@ -54,6 +55,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.rectangle = rectangle
         view.hover = hover
         view.wheel = wheel
+        view.doubleClick = doubleClick
         if view.isAddingNodes != isAddingNodes { view.cancelActivation() }
         view.isAddingNodes = isAddingNodes
         view.addPress = addPress
@@ -68,6 +70,7 @@ final class CanvasPointerView: NSView {
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var doubleClick: ((CanvasPoint) -> Void)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
@@ -99,6 +102,11 @@ final class CanvasPointerView: NSView {
         window?.makeFirstResponder(self)
         if isAddingNodes {
             addPress(point(event))
+            return
+        }
+        if event.clickCount == 2, let doubleClick {
+            cancelActivation()
+            doubleClick(point(event))
             return
         }
         let mode: GraphSelectionMode =

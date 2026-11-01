@@ -483,3 +483,11 @@ Ghost radius defaults to 32 scene points, has a one-point minimum, and is retain
 Extensions preserve hidden depth and follow live incident edge direction. New parts use supported document origin, otherwise 0.5, for hidden depth and attach to the selected group/component context. This native single-plane policy differs from Qt’s paired-profile width/4 seed. Geometry/plane/document replacement, undo and window lifecycle changes cancel stale placement contexts. Two-dimensional bounds stay fixed during a chain, then refit on exit.
 
 Each placement/connection is one undo step. Preview movement/radius and cancellation create none. If cancellation arrives after a same-request graph commit, its receipt still publishes the document while the cancelled chain remains stopped. Accessible controls provide preview positioning/placement and status; hosted tests do not establish physical pointer, keyboard or VoiceOver acceptance.
+
+## Select Whole Part
+
+Select Whole Part selects the target part's explicit nodes and edges, including disconnected islands, so batch reverse and midpoint commands can act on the whole part. Use the part inspector, node/edge inspector or context action, or double-click a visible node/edge in Select mode. Select Part Nodes remains a separately named nodes-only convenience. Blank canvas never falls back to an arbitrary part; Add-mode press placement keeps precedence over double-click selection.
+
+The owning component is revealed by expanding ancestors and scrolling its row into view, without replacing graph selection with component selection. This changes neither document bytes nor undo/preview state. Hidden/read-only parts remain inspectable; mutation controls still enforce their restrictions.
+
+Targeted actions capture their rendered document context, so retained menus/views cannot select reused identities in a replacement document. A whole-part double-click arriving during a pending pure graph pick waits as one latest intent and then validates the same document; it is not queued through edits or reloads. Native physical double-click/focus and VoiceOver acceptance remain separate from hosted event and sidebar tests.

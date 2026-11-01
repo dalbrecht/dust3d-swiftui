@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct PartInspector: View {
@@ -25,10 +26,10 @@ struct PartInspector: View {
             Toggle("Visible in canvas", isOn: state(.visible, value: part.isVisible))
             Toggle("Locked", isOn: state(.locked, value: part.isLocked))
             Toggle("Disabled in mesh", isOn: state(.disabled, value: part.isDisabled))
-            Button("Select Part Nodes") {
-                store.select(Set((store.snapshot?.nodes ?? []).filter { $0.partID == part.id }.map(\.id)))
-            }
-            .disabled(store.snapshot?.nodes.contains(where: { $0.partID == part.id }) != true)
+            Button("Select Whole Part", action: store.wholePartSelectionAction(.part(part.id)))
+                .disabled(!store.canSelectWholePart(.part(part.id)))
+            Button("Select Part Nodes", action: store.partNodesSelectionAction(part.id))
+                .disabled(store.snapshot?.nodes.contains(where: { $0.partID == part.id }) != true)
             Text(
                 "Visibility hides editing overlays. Disabled parts are excluded from the mesh. These controls remain available to restore hidden, locked or disabled parts. Each change is one undo step."
             )

@@ -14,6 +14,7 @@ struct NodePointerSurface: NSViewRepresentable {
     let toggle: () -> Void
     var add: () -> Void = {}
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var doubleClick: (() -> Void)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)? = nil
 
@@ -29,6 +30,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.toggle = toggle
         view.add = add
         view.wheel = wheel
+        view.doubleClick = doubleClick
         view.isRectangular = isRectangular
         view.clickCancel = clickCancel
     }
@@ -45,6 +47,7 @@ final class NodePointerView: NSView {
     var toggle: () -> Void = {}
     var add: () -> Void = {}
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var doubleClick: (() -> Void)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)?
     private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, isCommand: Bool, isShift: Bool)?
@@ -69,6 +72,11 @@ final class NodePointerView: NSView {
     override func mouseDown(with event: NSEvent) {
         guard enabled else { return }
         if activation != nil { cancelActivation() }
+        if event.clickCount == 2, let doubleClick {
+            window?.makeFirstResponder(self)
+            doubleClick()
+            return
+        }
         let token = UUID()
         activation = (
             token, event.locationInWindow, false, event.modifierFlags.contains(.command),

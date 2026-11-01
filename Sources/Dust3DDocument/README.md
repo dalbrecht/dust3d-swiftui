@@ -286,3 +286,8 @@ The singular midpoint command uses the same implementation.
 creation direction. It reads the immutable process-local graph ordering restored
 with undo/redo; saving/reloading reconstructs that order from raw edge IDs as Qt
 does. The query never rewrites archive XML or assets.
+
+`DocumentEdge.partID` retains the edge's actual optional `partId` attribute,
+including absent, empty and unsupported owner references for lossless inspection.
+It is not inferred from endpoints. The public snapshot initializer defaults this
+field to nil for legacy callers; edge equality includes the retained owner.

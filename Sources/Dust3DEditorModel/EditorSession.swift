@@ -195,6 +195,20 @@ public actor EditorSession {
     public func selectGraph(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
         try update { try $0.selectGraph(nodes: nodes, edges: edges) }
     }
+    /// Select a target part's complete owned graph and request an independent owning-component reveal.
+    /// - Parameters: `target` is a part/node/edge; `context` captures the originating document epoch.
+    /// - Returns: Unchanged archive/history with atomic explicit graph selection and reveal metadata.
+    /// - Throws: Missing, invalid-owner or stale-target errors without changing selection.
+    public func selectWholePart(_ target: PartGraphTarget, context: PartGraphSelectionContext? = nil) throws
+        -> EditorSnapshot
+    {
+        try update { try $0.selectWholePart(target, context: context) }
+    }
+    /// Select only the captured existing part's nodes without edge inference, history or reveal side effects.
+    /// - Throws: Missing-part or stale-document errors without changing the current selection.
+    public func selectPartNodes(_ partID: String, context: PartGraphSelectionContext? = nil) throws -> EditorSnapshot {
+        try update { try $0.selectPartNodes(partID, context: context) }
+    }
     /// Add graph picks atomically while preserving existing explicit nodes/edges.
     public func addToSelection(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
         try update { try $0.addToSelection(nodes: nodes, edges: edges) }

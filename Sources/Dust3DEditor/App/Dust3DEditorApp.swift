@@ -80,6 +80,10 @@ struct Dust3DEditorApp: App {
                 Button("Select All Nodes") { store?.selectAllNodes() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
+                Button("Select Whole Part") {
+                    if let target = store?.wholePartActionTarget { store?.selectWholePart(target) }
+                }
+                .disabled(store?.wholePartActionTarget.map { store?.canSelectWholePart($0) == true } != true)
                 Button("Clear Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 Menu("Transform Selection") {

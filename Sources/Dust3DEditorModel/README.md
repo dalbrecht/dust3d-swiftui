@@ -283,3 +283,20 @@ validates the inverse mapping. This explicit native depth policy does not claim
 Qt's dual-profile quarter-width seed-coordinate equivalence; ordinary native
 editing retains access to all three coordinates. Immediate Add Node/New Part
 commands remain separate.
+
+`selectWholePart(_:context:)` accepts an explicit `PartGraphTarget.part`, `.node`
+or `.edge`. It selects every node whose stored part ID matches and every edge
+whose own stored `partId` matches, including disconnected islands. Edge ownership
+is never inferred from endpoint membership. Missing targets/owners and stale
+`PartGraphSelectionContext` document epochs reject atomically. Targeted selection
+is independent of intervening selection, and hidden/read-only graphs remain
+inspectable without enabling their mutation commands.
+
+The snapshot's `componentRevealHint` requests expansion of owning-component
+ancestors and scrolling to that row without selecting the component or replacing
+the graph sets. A separate reveal revision supports repeated reveal actions while
+unchanged graph selection preserves its selection epoch. Ordinary selection and
+document edits clear stale reveal hints. No selection/reveal action changes the
+archive, undo/redo or preview inputs. The native `selectPartNodes(_:context:)` convenience
+uses the same captured-document validation before node-only replacement; whole-part actions immediately expose the
+explicit owned edges to batch midpoint/reverse commands.

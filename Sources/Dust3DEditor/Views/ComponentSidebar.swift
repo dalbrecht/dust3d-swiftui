@@ -3,7 +3,12 @@ import SwiftUI
 
 struct ComponentSidebar: View {
     let store: EditorStore
-    @State private var collapsedIDs: Set<String> = []
+    @State private var disclosure: ComponentSidebarDisclosure
+
+    init(store: EditorStore, disclosure: ComponentSidebarDisclosure = ComponentSidebarDisclosure()) {
+        self.store = store
+        _disclosure = State(initialValue: disclosure)
+    }
 
     var body: some View {
         Group {
@@ -30,17 +35,21 @@ struct ComponentSidebar: View {
                             .disabled(!store.canUngroupComponent)
                         Divider()
                         Button("Collapse Selected Group") {
-                            if let id = store.snapshot?.selectedComponentID { collapsedIDs.insert(id) }
+                            if let id = store.snapshot?.selectedComponentID { disclosure.collapsedIDs.insert(id) }
                         }
                         .disabled(
                             store.snapshot?.selectedComponent?.childIDs.isEmpty != false
-                                || store.snapshot?.selectedComponentID.map { collapsedIDs.contains($0) } != false)
+                                || store.snapshot?.selectedComponentID.map { disclosure.collapsedIDs.contains($0) }
+                                    != false
+                        )
                         Button("Expand Selected Group") {
-                            if let id = store.snapshot?.selectedComponentID { collapsedIDs.remove(id) }
+                            if let id = store.snapshot?.selectedComponentID { disclosure.collapsedIDs.remove(id) }
                         }
                         .disabled(
                             store.snapshot?.selectedComponent?.childIDs.isEmpty != false
-                                || store.snapshot?.selectedComponentID.map { collapsedIDs.contains($0) } != true)
+                                || store.snapshot?.selectedComponentID.map { disclosure.collapsedIDs.contains($0) }
+                                    != true
+                        )
                     } label: {
                         Image(systemName: "ellipsis")
                     }
@@ -58,47 +67,77 @@ struct ComponentSidebar: View {
                     )
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12).padding(.bottom, 12)
                 } else {
-                    List(
-                        selection: Binding(
-                            get: { store.snapshot?.selectedComponentIDs ?? [] }, set: { store.selectComponents($0) })
-                    ) {
-                        ForEach(tree.visibleRows(collapsing: collapsedIDs)) { row in
-                            HStack(spacing: 4) {
-                                if row.hasChildren {
-                                    Button {
-                                        if collapsedIDs.contains(row.id) {
-                                            collapsedIDs.remove(row.id)
-                                        } else {
-                                            collapsedIDs.insert(row.id)
-                                        }
-                                    } label: {
-                                        Image(
-                                            systemName: collapsedIDs.contains(row.id) ? "chevron.right" : "chevron.down"
-                                        )
-                                    }
-                                    .frame(width: 12)
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel(
-                                        "\(collapsedIDs.contains(row.id) ? "Expand" : "Collapse") \(row.title)")
-                                } else {
-                                    Color.clear.frame(width: 12, height: 1).accessibilityHidden(true)
+                    ScrollViewReader { proxy in
+                        let revealKey = revealScrollKey(tree: tree)
+                        let documentIdentity = store.snapshot?.documentIdentity
+                        List(
+                            selection: Binding(
+                                get: { store.snapshot?.selectedComponentIDs ?? [] },
+                                set: {
+                                    if $0 != store.snapshot?.selectedComponentIDs { store.selectComponents($0) }
                                 }
-                                Label(row.title, systemImage: row.hasChildren ? "folder" : "square.stack.3d.up")
-                                    .lineLimit(1)
+                            )
+                        ) {
+                            ForEach(tree.visibleRows(collapsing: disclosure.collapsedIDs)) { row in
+                                HStack(spacing: 4) {
+                                    if row.hasChildren {
+                                        Button {
+                                            if disclosure.collapsedIDs.contains(row.id) {
+                                                disclosure.collapsedIDs.remove(row.id)
+                                            } else {
+                                                disclosure.collapsedIDs.insert(row.id)
+                                            }
+                                        } label: {
+                                            Image(
+                                                systemName: disclosure.collapsedIDs.contains(row.id)
+                                                    ? "chevron.right" : "chevron.down"
+                                            )
+                                        }
+                                        .frame(width: 12)
+                                        .buttonStyle(.plain)
+                                        .accessibilityLabel(
+                                            "\(disclosure.collapsedIDs.contains(row.id) ? "Expand" : "Collapse") \(row.title)"
+                                        )
+                                    } else {
+                                        Color.clear.frame(width: 12, height: 1).accessibilityHidden(true)
+                                    }
+                                    Label(row.title, systemImage: row.hasChildren ? "folder" : "square.stack.3d.up")
+                                        .lineLimit(1)
+                                }
+                                .padding(.leading, CGFloat(min(row.depth, 6) * 10))
+                                .tag(row.id)
+                                .id(row.id)
+                                .accessibilityElement(children: .contain)
+                                .accessibilityLabel("Component \(row.title)")
+                                .help("\(row.title) · \(row.id)")
                             }
-                            .padding(.leading, CGFloat(min(row.depth, 6) * 10))
-                            .tag(row.id)
-                            .accessibilityElement(children: .contain)
-                            .accessibilityLabel("Component \(row.title)")
-                            .help("\(row.title) · \(row.id)")
+                        }
+                        .listStyle(.sidebar)
+                        .frame(maxHeight: 120)
+                        .disabled(store.isWorking)
+                        .onChange(of: store.snapshot?.componentRevealHint?.revision, initial: true) { _, _ in
+                            guard let snapshot = store.snapshot, let hint = snapshot.componentRevealHint else { return }
+                            disclosure.reveal(hint)
+                        }
+                        .task(id: revealKey) { @MainActor in
+                            guard revealKey != nil, let hint = store.snapshot?.componentRevealHint else { return }
+                            await Task.yield()
+                            guard !Task.isCancelled, store.snapshot?.documentIdentity == documentIdentity,
+                                store.snapshot?.componentRevealHint?.revision == hint.revision
+                            else { return }
+                            proxy.scrollTo(hint.componentID, anchor: .center)
                         }
                     }
-                    .listStyle(.sidebar)
-                    .frame(maxHeight: 120)
-                    .disabled(store.isWorking)
                 }
             }
         }
-        .onChange(of: store.snapshot?.documentIdentity) { _, _ in collapsedIDs = [] }
+        .onChange(of: store.snapshot?.documentIdentity) { _, _ in disclosure.collapsedIDs = [] }
     }
+    private func revealScrollKey(tree: ComponentTree) -> String? {
+        guard let snapshot = store.snapshot, let hint = snapshot.componentRevealHint,
+            tree.visibleRows(collapsing: disclosure.collapsedIDs).contains(where: { $0.id == hint.componentID })
+        else { return nil }
+        return "\(snapshot.documentIdentity)-\(hint.revision)"
+    }
+
 }

@@ -23,6 +23,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case staleNodeDrag
     case staleCanvasAdjustment
     case staleAddPlacement
+    case stalePartGraphSelection
     case invalidAddPlacement
     case staleExport
     case staleAnimationTarget
@@ -43,6 +44,8 @@ public struct EditorSnapshot: Sendable {
     public let colorImageAssets: [DocumentColorImageAsset]
     /// All selected component identities, independent of graph selection and history.
     public let selectedComponentIDs: Set<String>
+    /// Scroll/expand association for the last whole-part action, without selecting the owning component.
+    public let componentRevealHint: ComponentRevealHint?
     /// A single component is inspectable only when the selection is unambiguous.
     public var selectedComponentID: String? { selectedComponentIDs.count == 1 ? selectedComponentIDs.first : nil }
 
@@ -242,6 +245,8 @@ public struct EditorState: Sendable {
     private var contents: DocumentContents
     private var componentTree: ComponentTree
     private var selectedComponentIDs: Set<String> = []
+    private var componentRevealHint: ComponentRevealHint?
+    private var componentRevealRevision = 0
     private var selectedID: String?
     private var selectedIDs: Set<String> = []
     private var selectedEdgeIDs: Set<String> = []
@@ -265,7 +270,7 @@ public struct EditorState: Sendable {
             edges: contents.edges, parts: contents.parts,
             componentTree: componentTree, rigSettings: contents.rigSettings,
             colorImageAssets: history.document.colorImageAssets(),
-            selectedComponentIDs: selectedComponentIDs,
+            selectedComponentIDs: selectedComponentIDs, componentRevealHint: componentRevealHint,
             origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeIDs: selectedEdgeIDs,
             canInsertSelectedEdgeMidpoints: !selectedEdgeIDs.isEmpty
@@ -295,6 +300,7 @@ public struct EditorState: Sendable {
         let existing = Set(contents.nodes.map(\.id))
         if let missing = nodes.subtracting(existing).sorted().first { throw DocumentError.missingNode(missing) }
         guard edges.isSubset(of: Set(contents.edges.map(\.id))) else { throw DocumentError.invalidNode }
+        componentRevealHint = nil
         if nodes != selectedIDs || edges != selectedEdgeIDs || selectedPartID != nil || !selectedComponentIDs.isEmpty {
             selectionRevision += 1
         }
@@ -303,6 +309,30 @@ public struct EditorState: Sendable {
         selectedEdgeIDs = edges
         selectedPartID = nil
         selectedComponentIDs = []
+    }
+
+    /// Select every explicitly owned node and edge of a targeted part, including disconnected and read-only objects.
+    /// - Parameters: `target` resolves actual stored ownership; `context` optionally rejects queued stale-document actions.
+    /// - Throws: Missing/owner errors or `stalePartGraphSelection` atomically; no archive/history/preview changes occur.
+    /// - Note: Repeat graph selection is a selection-epoch no-op, but publishes a fresh independent reveal hint.
+    public mutating func selectWholePart(_ target: PartGraphTarget, context: PartGraphSelectionContext? = nil) throws {
+        if let context, !context.isCurrent(in: snapshot) { throw EditorError.stalePartGraphSelection }
+        let partID = try snapshot.resolvedPartGraphID(for: target)
+        let nodes = Set(contents.nodes.filter { $0.partID == partID }.map(\.id))
+        let edges = Set(contents.edges.filter { $0.partID == partID }.map(\.id))
+        try selectGraph(nodes: nodes, edges: edges)
+        componentRevealRevision += 1
+        componentRevealHint = ComponentRevealHint.make(
+            partID: partID, tree: componentTree, revision: componentRevealRevision)
+    }
+
+    /// Select only a targeted part's owned nodes, preserving the separate node-only convenience.
+    /// - Parameters: `partID` is an existing part; `context` captures the originating document epoch.
+    /// - Throws: Missing-part or `stalePartGraphSelection` errors atomically. Edges and reveal hints are cleared.
+    public mutating func selectPartNodes(_ partID: String, context: PartGraphSelectionContext? = nil) throws {
+        if let context, !context.isCurrent(in: snapshot) { throw EditorError.stalePartGraphSelection }
+        let resolved = try snapshot.resolvedPartGraphID(for: .part(partID))
+        try select(Set(contents.nodes.filter { $0.partID == resolved }.map(\.id)))
     }
 
     /// Add independent graph identities in one selection epoch; validation matches `selectGraph(nodes:edges:)`.
@@ -332,6 +362,7 @@ public struct EditorState: Sendable {
     /// Inspect an existing part or clear selection. Missing IDs throw DocumentError.missingPart atomically.
     public mutating func selectPart(_ id: String?) throws {
         if let id, !contents.parts.contains(where: { $0.id == id }) { throw DocumentError.missingPart(id) }
+        componentRevealHint = nil
         if id != selectedPartID || !selectedEdgeIDs.isEmpty || !selectedComponentIDs.isEmpty || !selectedIDs.isEmpty {
             selectionRevision += 1
         }
@@ -355,6 +386,7 @@ public struct EditorState: Sendable {
     public mutating func selectComponents(_ ids: Set<String>) throws {
         let existing = Set(componentTree.rows.map(\.id))
         if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingComponent(missing) }
+        componentRevealHint = nil
         if ids != selectedComponentIDs || selectedPartID != nil || !selectedEdgeIDs.isEmpty || !selectedIDs.isEmpty {
             selectionRevision += 1
         }
@@ -390,6 +422,7 @@ public struct EditorState: Sendable {
 
     /// Include every explicit graph object, including read-only objects for inspection.
     public mutating func selectAll() {
+        componentRevealHint = nil
         let nodes = Set(contents.nodes.map(\.id))
         let edges = Set(contents.edges.map(\.id))
         if selectedIDs != nodes || selectedEdgeIDs != edges || selectedPartID != nil || !selectedComponentIDs.isEmpty {
@@ -404,6 +437,7 @@ public struct EditorState: Sendable {
 
     /// Replace graph selection with every node only, retaining the explicit Select All Nodes convenience.
     public mutating func selectAllNodes() {
+        componentRevealHint = nil
         let nodes = Set(contents.nodes.map(\.id))
         if selectedIDs != nodes || !selectedEdgeIDs.isEmpty || selectedPartID != nil || !selectedComponentIDs.isEmpty {
             selectionRevision += 1
@@ -842,6 +876,7 @@ public struct EditorState: Sendable {
         guard !next.document.hasSameEditingState(as: history.document) else { return }
         let nextContents = try next.document.editorContents()
         let nextTree = ComponentTree(document: next.document)
+        componentRevealHint = nil
         contents = nextContents
         componentTree = nextTree
         let previousNodes = selectedIDs
