@@ -67,15 +67,15 @@ struct Dust3DEditorApp: App {
                     .keyboardShortcut(.escape, modifiers: [])
                     .disabled(store?.isMovingOrigin != true)
                 Divider()
-                Button("Select All Nodes") { store?.selectAll() }
+                Button("Select All Nodes") { store?.selectAllNodes() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 Button("Clear Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
-                Menu("Transform Selected Nodes") {
+                Menu("Transform Selection") {
                     ForEach(SelectionTransform.allCases, id: \.self) { transform in
                         Button(transform.rawValue) { store?.transformSelection(transform) }
-                            .disabled(transform.usesOrigin && store?.snapshot?.origin == nil)
+                            .disabled(store?.canTransformSelection(transform) != true)
                     }
                 }
                 .disabled(store?.canTransform != true)
@@ -85,19 +85,17 @@ struct Dust3DEditorApp: App {
                     .accessibilityLabel("Reduce Selected Nodes")
                 Button("Reverse Edges Between Selected Nodes") { store?.reverseSelectedEdges() }
                     .disabled(store?.isWorking != false || store?.snapshot?.reversibleEdges.isEmpty != false)
-                Button("Insert Midpoint") { store?.insertSelectedEdgeMidpoint() }
+                Button("Insert Midpoints on Selected Edges") { store?.insertSelectedEdgeMidpoints() }
                     .disabled(store?.canInsertEdgeMidpoint != true)
-                    .accessibilityLabel("Insert Midpoint")
-                Button("Reverse Selected Edge") {
-                    if let id = store?.snapshot?.selectedEdgeID { store?.reverseEdge(id) }
-                }
-                .disabled(store?.isWorking != false || store?.snapshot?.canEditSelectedEdge != true)
-                Button("Delete Selected Edge") { store?.deleteSelection() }
+                    .accessibilityLabel("Insert Midpoints on Selected Edges")
+                Button("Reverse Selected Edges") { store?.reverseExplicitlySelectedEdges() }
+                    .disabled(store?.canReverseSelectedEdges != true)
+                Button("Delete Graph Selection") { store?.deleteSelection() }
                     .keyboardShortcut(.delete, modifiers: [])
                     .disabled(
                         !EditorCommandScope.allowsGraphShortcuts(
                             animationFocus: isAnimationFocused == true, nativeTextFocus: isEditingText == true)
-                            || store?.isWorking != false || store?.snapshot?.canEditSelectedEdge != true)
+                            || store?.canDeleteGraphSelection != true)
                 Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
                     Toggle(

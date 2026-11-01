@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select nodes and edges together, with explicit graph editing modes and one-step batch midpoint insertion.
+
 - Reduce eligible selected nodes and reconnect their neighbors in one Undo step while preserving graph order.
 
 - Add Insert Midpoint to the edge inspector and Canvas menu, with one-step Undo and preserved edge direction.

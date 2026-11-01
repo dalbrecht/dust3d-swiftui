@@ -25,15 +25,10 @@ struct NodeCanvas: View {
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
-                MarqueeSurface(enabled: !store.isWorking && !store.isMovingOrigin) { rectangle, additive in
-                    let ids = projection.nodeIDs(in: rectangle, nodes: nodes)
-                    store.select(additive ? ids.union(store.snapshot?.selectedIDs ?? []) : ids)
-                } tap: { point in
-                    if let edgeID = projection.edgeID(near: point, nodes: nodes, edges: store.snapshot?.edges ?? []) {
-                        store.selectEdge(edgeID)
-                    } else {
-                        store.select(nil)
-                    }
+                MarqueeSurface(enabled: !store.isWorking && !store.isMovingOrigin) { rectangle, mode in
+                    store.selectMarquee(rectangle, projection: projection, mode: mode)
+                } tap: { point, mode in
+                    store.pickEdge(at: point, projection: projection, mode: mode)
                 }
                 Canvas { context, _ in
                     let positions = Dictionary(
@@ -45,7 +40,7 @@ struct NodeCanvas: View {
                             var path = Path()
                             path.move(to: CGPoint(x: from.x, y: from.y))
                             path.addLine(to: CGPoint(x: to.x, y: to.y))
-                            let selected = store.snapshot?.selectedEdgeID == edge.id
+                            let selected = store.snapshot?.selectedEdgeIDs.contains(edge.id) == true
                             context.stroke(
                                 path, with: .color(selected ? .accentColor : .secondary.opacity(0.5)),
                                 lineWidth: selected ? 4 : 2)
@@ -61,6 +56,7 @@ struct NodeCanvas: View {
                         enabled: !store.isWorking && !store.isMovingOrigin,
                         select: { store.select(node.id) },
                         toggle: { store.toggleSelection(node.id) },
+                        add: { store.selectGraph(nodes: [node.id], edges: [], mode: .add) },
                         begin: { token in
                             guard let snapshot = store.snapshot else { return }
                             try? nodeDrag.begin(
@@ -126,6 +122,7 @@ private struct NodeHandle: View {
     let enabled: Bool
     let select: () -> Void
     let toggle: () -> Void
+    let add: () -> Void
     let begin: (UUID) -> Void
     let update: (UUID, CanvasPoint) -> Void
     let finish: (UUID, CanvasPoint) -> Void
@@ -145,7 +142,7 @@ private struct NodeHandle: View {
             NodePointerSurface(
                 enabled: enabled, canDrag: node.isEditable, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle
+                select: select, toggle: toggle, add: add
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
@@ -161,8 +158,8 @@ private struct NodeHandle: View {
 
 private struct MarqueeSurface: View {
     let enabled: Bool
-    let select: (CanvasSelectionRectangle, Bool) -> Void
-    let tap: (CanvasPoint) -> Void
+    let select: (CanvasSelectionRectangle, GraphSelectionMode) -> Void
+    let tap: (CanvasPoint, GraphSelectionMode) -> Void
     @GestureState private var rectangle: CanvasSelectionRectangle?
 
     var body: some View {
@@ -179,23 +176,32 @@ private struct MarqueeSurface: View {
                 }
             }
             .onTapGesture(coordinateSpace: .named("node-canvas")) { point in
-                if enabled { tap(.init(x: point.x, y: point.y)) }
+                if enabled { tap(.init(x: point.x, y: point.y), .replace) }
             }
-            .gesture(selectionGesture(additive: false))
-            .highPriorityGesture(selectionGesture(additive: true).modifiers(.shift))
+            .highPriorityGesture(tapGesture(mode: .add).modifiers(.shift))
+            .highPriorityGesture(tapGesture(mode: .toggle).modifiers(.command))
+            .gesture(selectionGesture(mode: .replace))
+            .highPriorityGesture(selectionGesture(mode: .add).modifiers(.shift))
+            .highPriorityGesture(selectionGesture(mode: .toggle).modifiers(.command))
             .accessibilityLabel("Marquee selection canvas")
             .help(
-                "Click an edge to inspect it. Drag empty canvas to select node centers. Shift-drag adds to the selection."
+                "Click to select. Shift-click adds nodes or edges; Command-click toggles them. Drag empty canvas to select node centers. Shift-drag adds; Command-drag toggles."
             )
     }
 
-    private func selectionGesture(additive: Bool) -> some Gesture {
+    private func tapGesture(mode: GraphSelectionMode) -> some Gesture {
+        SpatialTapGesture(coordinateSpace: .named("node-canvas")).onEnded { value in
+            if enabled { tap(.init(x: value.location.x, y: value.location.y), mode) }
+        }
+    }
+
+    private func selectionGesture(mode: GraphSelectionMode) -> some Gesture {
         DragGesture(minimumDistance: 3, coordinateSpace: .named("node-canvas"))
             .updating($rectangle) { value, state, _ in
                 if enabled { state = bounds(value) }
             }
             .onEnded { value in
-                if enabled { select(bounds(value), additive) }
+                if enabled { select(bounds(value), mode) }
             }
     }
 

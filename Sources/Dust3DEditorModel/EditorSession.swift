@@ -191,6 +191,24 @@ public actor EditorSession {
 
     public func select(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.select(ids) } }
     /// Select one edge without dirtying the document or creating an undo entry.
+    /// Atomically replace independent explicit node/edge sets; invalid identities preserve prior selection.
+    public func selectGraph(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
+        try update { try $0.selectGraph(nodes: nodes, edges: edges) }
+    }
+    /// Add graph picks atomically while preserving existing explicit nodes/edges.
+    public func addToSelection(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
+        try update { try $0.addToSelection(nodes: nodes, edges: edges) }
+    }
+    /// Toggle each supplied graph pick once in one selection epoch.
+    public func toggleGraphSelection(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
+        try update { try $0.toggleGraphSelection(nodes: nodes, edges: edges) }
+    }
+    /// Replace selection with an explicit edge set, clearing node/component/part selection.
+    public func selectEdges(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.selectEdges(ids) } }
+    /// Toggle one explicit edge while preserving the other graph selections.
+    public func toggleEdgeSelection(_ id: String) throws -> EditorSnapshot {
+        try update { try $0.toggleEdgeSelection(id) }
+    }
     public func selectEdge(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectEdge(id) } }
     /// Inspect a part without changing document bytes or undo history.
     /// Wrap explicit sibling identities in a fresh group and inspect that group in one atomic publication.
@@ -251,6 +269,8 @@ public actor EditorSession {
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
+    /// Replace selection with all explicit nodes and no explicit edges.
+    public func selectAllNodes() throws -> EditorSnapshot { try update { $0.selectAllNodes() } }
     /// Explicitly center origin on all node radius bounds, honoring axis locks in one history transaction.
     /// - Returns: The committed snapshot, or unchanged history for an already-centered origin.
     /// - Throws: Load, cancellation, geometry or unavailable-origin errors without partial publication.
@@ -289,6 +309,19 @@ public actor EditorSession {
     public func reverseSelectedEdges() throws -> EditorSnapshot {
         try update { try $0.reverseSelectedEdges() }
     }
+    /// Reverse captured explicit edges only, ordered by Qt UUID, in one history transaction.
+    public func reverseExplicitlySelectedEdges() throws -> EditorSnapshot {
+        try update { try $0.reverseExplicitlySelectedEdges() }
+    }
+    /// Split all explicit selected edges with fresh identities in one atomic history step.
+    public func insertSelectedEdgeMidpoints() throws -> EditorSnapshot {
+        try update { state in
+            let identities = GraphSelectionOrder.sorted(state.snapshot.selectedEdgeIDs).map {
+                EdgeMidpointIdentity(originalEdgeID: $0, nodeID: Self.identifier(), edgeID: Self.identifier())
+            }
+            try state.insertSelectedEdgeMidpoints(identities: identities)
+        }
+    }
     /// Insert a midpoint on the selected editable edge using fresh UUID identities.
     /// - Returns: One undoable snapshot retaining the original selected edge.
     /// - Throws: Load, cancellation, selection, editability or document validation errors atomically.
@@ -320,16 +353,8 @@ public actor EditorSession {
 
     public func deleteSelection() throws -> EditorSnapshot {
         try update { state in
-            if let edge = state.snapshot.selectedEdge {
-                guard state.snapshot.canEditSelectedEdge else { throw EditorError.readOnlyNode }
-                let commands = try GraphCommandPreparation.normalizingDeletions(
-                    [.removeEdge(id: edge.id)], document: state.snapshot.document)
-                try state.apply(commands)
-                return
-            }
-            let ids = state.snapshot.selectedNodes.filter(\.isEditable).map(\.id)
             let commands = try GraphCommandPreparation.normalizingDeletions(
-                [.removeNodes(ids)], document: state.snapshot.document)
+                state.selectionDeletionCommands(), document: state.snapshot.document)
             try state.apply(commands)
         }
     }
@@ -367,6 +392,11 @@ public actor EditorSession {
     public func copySelection(onlyEditable: Bool = false) throws -> NodeClipboard {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
+        if onlyEditable {
+            guard state.snapshot.canCutNodes else { throw EditorError.readOnlyNode }
+            _ = try GraphCommandPreparation.normalizingDeletions(
+                state.selectionDeletionCommands(), document: state.snapshot.document)
+        }
         let nodes = state.snapshot.selectedNodes.filter { !onlyEditable || $0.isEditable }
         let fragment = try state.snapshot.document.copyingNodes(Set(nodes.map(\.id)))
         try Task.checkCancellation()

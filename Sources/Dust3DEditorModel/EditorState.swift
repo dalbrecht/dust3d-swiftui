@@ -67,7 +67,10 @@ public struct EditorSnapshot: Sendable {
     public let origin: NodePosition?
     public let selectedID: String?
     public let selectedIDs: Set<String>
-    public let selectedEdgeID: String?
+    /// Explicit selected edges, independent of explicit selected node identities.
+    public let selectedEdgeIDs: Set<String>
+    /// Compatibility accessor for exactly one explicit edge.
+    public var selectedEdgeID: String? { selectedEdgeIDs.count == 1 ? selectedEdgeIDs.first : nil }
     public let selectedPartID: String?
     public let canUndo: Bool
     public let canRedo: Bool
@@ -87,6 +90,30 @@ public struct EditorSnapshot: Sendable {
 
     public var selectedNodes: [DocumentNode] { nodes.filter { selectedIDs.contains($0.id) } }
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
+    /// Explicit edges in archive presentation order; this never infers edges from selected endpoint nodes.
+    public var selectedEdges: [DocumentEdge] { edges.filter { selectedEdgeIDs.contains($0.id) } }
+    /// Unique nodes used by ordinary transforms: explicit nodes plus both endpoints of every explicit edge.
+    public var transformNodeIDs: Set<String> {
+        selectedEdges.reduce(into: selectedIDs) { $0.formUnion([$1.fromID, $1.toID]) }
+    }
+    /// Transform participants in document order, retaining read-only rows for inspection.
+    public var transformNodes: [DocumentNode] {
+        let ids = transformNodeIDs
+        return nodes.filter { ids.contains($0.id) }
+    }
+    /// All explicit edges must have editable endpoints before a batch edge command can run.
+    public var canEditSelectedEdges: Bool {
+        !selectedEdgeIDs.isEmpty && selectedEdgeIDs.isSubset(of: Set(editableEdges.map(\.id)))
+    }
+    /// Full batch midpoint eligibility, including the aggregate graph quota.
+    public var canInsertSelectedEdgeMidpoints: Bool {
+        document.canInsertEdgeMidpoints(ids: Array(selectedEdgeIDs))
+    }
+    /// Combined delete consumes explicit picks; read-only nodes are skipped, read-only edges reject the batch.
+    public var canDeleteSelection: Bool {
+        (selectedEdgeIDs.isEmpty || canEditSelectedEdges)
+            && (!selectedEdgeIDs.isEmpty || selectedNodes.contains(where: \.isEditable))
+    }
     /// A single edge is selected independently of nodes, without changing document history.
     public var selectedEdge: DocumentEdge? { edges.first { $0.id == selectedEdgeID } }
     /// A selected part remains inspectable even when hidden, locked or disabled.
@@ -133,6 +160,7 @@ public struct EditorSnapshot: Sendable {
     public var canCutNodes: Bool {
         let editable = selectedNodes.filter(\.isEditable)
         return !editable.isEmpty && editable.allSatisfy { $0.partID != nil }
+            && (selectedEdgeIDs.isEmpty || canEditSelectedEdges)
     }
     /// Edges whose endpoints both belong to editable parts, independent of selection.
     public var editableEdges: [DocumentEdge] {
@@ -154,7 +182,8 @@ public struct EditorSnapshot: Sendable {
     }
     /// Empty selection creates a part; one editable endpoint extends it. Groups need an explicit New Part.
     public var canAddNode: Bool {
-        guard selectedComponentIDs.isEmpty, selectedPartID == nil, selectedEdgeID == nil, selectedIDs.count <= 1 else {
+        guard selectedComponentIDs.isEmpty, selectedPartID == nil, selectedEdgeIDs.isEmpty, selectedIDs.count <= 1
+        else {
             return false
         }
         guard let selected = selectedNode else { return true }
@@ -204,7 +233,7 @@ public struct EditorState: Sendable {
     private var selectedComponentIDs: Set<String> = []
     private var selectedID: String?
     private var selectedIDs: Set<String> = []
-    private var selectedEdgeID: String?
+    private var selectedEdgeIDs: Set<String> = []
     private var selectedPartID: String?
     private var locks: Set<EditingConstraint> = []
     private var revision = 0
@@ -227,7 +256,7 @@ public struct EditorState: Sendable {
             colorImageAssets: history.document.colorImageAssets(),
             selectedComponentIDs: selectedComponentIDs,
             origin: contents.origin,
-            selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
+            selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeIDs: selectedEdgeIDs,
             selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
@@ -242,42 +271,59 @@ public struct EditorState: Sendable {
         try select(id.map { Set([$0]) } ?? [])
     }
 
-    /// Replace selection atomically; primary selection follows document order.
-    public mutating func select(_ ids: Set<String>) throws {
+    /// Replace explicit nodes while clearing edges, parts and components. Invalid identities reject atomically.
+    public mutating func select(_ ids: Set<String>) throws { try selectGraph(nodes: ids, edges: []) }
+
+    /// Replace both explicit graph sets atomically; invalid nodes/edges never change the prior selection.
+    /// - Parameters: `nodes` and `edges` are independent existing identities; endpoint nodes are never inferred.
+    /// - Throws: `missingNode` or `invalidNode`. Example: `try state.selectGraph(nodes: ["a"], edges: ["edge"])`.
+    public mutating func selectGraph(nodes: Set<String>, edges: Set<String>) throws {
         let existing = Set(contents.nodes.map(\.id))
-        if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingNode(missing) }
-        if ids != selectedIDs || selectedEdgeID != nil || selectedPartID != nil || !selectedComponentIDs.isEmpty {
+        if let missing = nodes.subtracting(existing).sorted().first { throw DocumentError.missingNode(missing) }
+        guard edges.isSubset(of: Set(contents.edges.map(\.id))) else { throw DocumentError.invalidNode }
+        if nodes != selectedIDs || edges != selectedEdgeIDs || selectedPartID != nil || !selectedComponentIDs.isEmpty {
             selectionRevision += 1
         }
-        selectedIDs = ids
-        selectedID = contents.nodes.first { ids.contains($0.id) }?.id
-        selectedEdgeID = nil
+        selectedIDs = nodes
+        selectedID = contents.nodes.first { nodes.contains($0.id) }?.id
+        selectedEdgeIDs = edges
         selectedPartID = nil
         selectedComponentIDs = []
     }
 
-    /// Inspect an existing edge or clear selection. Invalid IDs throw DocumentError.invalidNode atomically.
-    public mutating func selectEdge(_ id: String?) throws {
-        if let id, !contents.edges.contains(where: { $0.id == id }) { throw DocumentError.invalidNode }
-        if id != selectedEdgeID || selectedPartID != nil || !selectedComponentIDs.isEmpty || !selectedIDs.isEmpty {
-            selectionRevision += 1
-        }
-        selectedEdgeID = id
-        selectedPartID = nil
-        selectedComponentIDs = []
-        selectedID = nil
-        selectedIDs = []
+    /// Add independent graph identities in one selection epoch; validation matches `selectGraph(nodes:edges:)`.
+    public mutating func addToSelection(nodes: Set<String>, edges: Set<String>) throws {
+        try selectGraph(nodes: selectedIDs.union(nodes), edges: selectedEdgeIDs.union(edges))
     }
+
+    /// Toggle each independent graph identity once, preserving the other picks; invalid identities reject atomically.
+    public mutating func toggleGraphSelection(nodes: Set<String>, edges: Set<String>) throws {
+        guard nodes.isSubset(of: Set(contents.nodes.map(\.id))), edges.isSubset(of: Set(contents.edges.map(\.id)))
+        else {
+            throw DocumentError.invalidNode
+        }
+        try selectGraph(
+            nodes: selectedIDs.symmetricDifference(nodes), edges: selectedEdgeIDs.symmetricDifference(edges))
+    }
+
+    /// Replace selection with explicit edges; nodes, parts and components are cleared.
+    public mutating func selectEdges(_ ids: Set<String>) throws { try selectGraph(nodes: [], edges: ids) }
+
+    /// Inspect an existing edge or clear the full graph selection; invalid identities reject atomically.
+    public mutating func selectEdge(_ id: String?) throws { try selectEdges(id.map { Set([$0]) } ?? []) }
+
+    /// Toggle one explicit edge while retaining explicit nodes and other edges.
+    public mutating func toggleEdgeSelection(_ id: String) throws { try toggleGraphSelection(nodes: [], edges: [id]) }
 
     /// Inspect an existing part or clear selection. Missing IDs throw DocumentError.missingPart atomically.
     public mutating func selectPart(_ id: String?) throws {
         if let id, !contents.parts.contains(where: { $0.id == id }) { throw DocumentError.missingPart(id) }
-        if id != selectedPartID || selectedEdgeID != nil || !selectedComponentIDs.isEmpty || !selectedIDs.isEmpty {
+        if id != selectedPartID || !selectedEdgeIDs.isEmpty || !selectedComponentIDs.isEmpty || !selectedIDs.isEmpty {
             selectionRevision += 1
         }
         selectedPartID = id
         selectedComponentIDs = []
-        selectedEdgeID = nil
+        selectedEdgeIDs = []
         selectedID = nil
         selectedIDs = []
     }
@@ -295,12 +341,12 @@ public struct EditorState: Sendable {
     public mutating func selectComponents(_ ids: Set<String>) throws {
         let existing = Set(componentTree.rows.map(\.id))
         if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingComponent(missing) }
-        if ids != selectedComponentIDs || selectedPartID != nil || selectedEdgeID != nil || !selectedIDs.isEmpty {
+        if ids != selectedComponentIDs || selectedPartID != nil || !selectedEdgeIDs.isEmpty || !selectedIDs.isEmpty {
             selectionRevision += 1
         }
         selectedComponentIDs = ids
         selectedPartID = nil
-        selectedEdgeID = nil
+        selectedEdgeIDs = []
         selectedID = nil
         selectedIDs = []
     }
@@ -325,28 +371,40 @@ public struct EditorState: Sendable {
 
     /// Toggle a node without modifying document data or history.
     public mutating func toggleSelection(_ id: String) throws {
-        var next = selectedIDs
-        if next.contains(id) { next.remove(id) } else { next.insert(id) }
-        try select(next)
+        try toggleGraphSelection(nodes: [id], edges: [])
     }
 
-    /// Include all nodes, including read-only nodes for inspection.
+    /// Include every explicit graph object, including read-only objects for inspection.
     public mutating func selectAll() {
-        let allIDs = Set(contents.nodes.map(\.id))
-        if selectedIDs != allIDs || selectedEdgeID != nil || selectedPartID != nil || !selectedComponentIDs.isEmpty {
+        let nodes = Set(contents.nodes.map(\.id))
+        let edges = Set(contents.edges.map(\.id))
+        if selectedIDs != nodes || selectedEdgeIDs != edges || selectedPartID != nil || !selectedComponentIDs.isEmpty {
             selectionRevision += 1
         }
-        selectedEdgeID = nil
+        selectedIDs = nodes
+        selectedEdgeIDs = edges
+        selectedID = contents.nodes.first?.id
         selectedPartID = nil
         selectedComponentIDs = []
-        selectedIDs = allIDs
+    }
+
+    /// Replace graph selection with every node only, retaining the explicit Select All Nodes convenience.
+    public mutating func selectAllNodes() {
+        let nodes = Set(contents.nodes.map(\.id))
+        if selectedIDs != nodes || !selectedEdgeIDs.isEmpty || selectedPartID != nil || !selectedComponentIDs.isEmpty {
+            selectionRevision += 1
+        }
+        selectedIDs = nodes
+        selectedEdgeIDs = []
         selectedID = contents.nodes.first?.id
+        selectedPartID = nil
+        selectedComponentIDs = []
     }
 
     /// Translate editable selected nodes as one atomic undo step. Read-only nodes stay fixed.
     public mutating func moveSelection(by delta: NodePosition) throws {
         guard [delta.x, delta.y, delta.z].allSatisfy(\.isFinite) else { throw DocumentError.invalidNode }
-        let updates = snapshot.selectedNodes.filter(\.isEditable).map { node in
+        let updates = snapshot.transformNodes.filter(\.isEditable).map { node in
             let position = node.value.position
             return NodeUpdate(
                 id: node.id,
@@ -363,7 +421,7 @@ public struct EditorState: Sendable {
         guard positionFactor.isFinite, radiusFactor.isFinite, positionFactor > 0, radiusFactor > 0 else {
             throw EditorError.invalidScale
         }
-        let nodes = snapshot.selectedNodes.filter(\.isEditable)
+        let nodes = snapshot.transformNodes.filter(\.isEditable)
         guard !nodes.isEmpty else { return }
         let count = Double(nodes.count)
         let center = NodePosition(
@@ -423,7 +481,7 @@ public struct EditorState: Sendable {
 
     /// Apply a basic transform as one atomic undo step, retaining selection and radii.
     public mutating func transformSelection(_ transform: SelectionTransform) throws {
-        let nodes = snapshot.selectedNodes.filter(\.isEditable)
+        let nodes = (transform == .exchangeXZ ? snapshot.selectedNodes : snapshot.transformNodes).filter(\.isEditable)
         guard !nodes.isEmpty else { return }
         let count = Double(nodes.count)
         let center: NodePosition
@@ -463,6 +521,29 @@ public struct EditorState: Sendable {
         try apply([.reverseEdges(snapshot.reversibleEdges.map(\.id))])
     }
 
+    /// Reverse only the captured explicit edge set in Qt UUID order, as one atomic history step.
+    /// - Throws: Read-only or document validation errors; empty selection is a no-op.
+    public mutating func reverseExplicitlySelectedEdges() throws {
+        guard selectedEdgeIDs.isEmpty || snapshot.canEditSelectedEdges else { throw EditorError.readOnlyNode }
+        try apply([.reverseEdges(GraphSelectionOrder.sorted(selectedEdgeIDs))])
+    }
+
+    /// Split every captured explicit edge with caller-supplied fresh identities, in Qt UUID order.
+    /// - Parameter identities: Exactly one midpoint/new-edge identity tuple for each selected original edge.
+    /// - Throws: Selection, identity, ownership, quota or read-only errors atomically. Original edges remain selected.
+    public mutating func insertSelectedEdgeMidpoints(identities: [EdgeMidpointIdentity]) throws {
+        guard identities.count == selectedEdgeIDs.count,
+            Set(identities.map(\.originalEdgeID)) == selectedEdgeIDs
+        else { throw DocumentError.invalidNode }
+        guard selectedEdgeIDs.isEmpty || snapshot.canEditSelectedEdges else { throw EditorError.readOnlyNode }
+        try apply([
+            .insertEdgeMidpoints(
+                identities.map {
+                    EdgeMidpointInsertion(originalEdgeID: $0.originalEdgeID, nodeID: $0.nodeID, edgeID: $0.edgeID)
+                })
+        ])
+    }
+
     /// Split the selected editable edge in one undo step, retaining its selection.
     /// - Parameters:
     ///   - nodeID: Fresh midpoint node identity.
@@ -486,7 +567,7 @@ public struct EditorState: Sendable {
         guard let node = contents.nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
         guard node.isEditable else { throw EditorError.readOnlyNode }
         var next = self
-        if !selectedIDs.contains(id) { try next.select(id) }
+        if !snapshot.transformNodeIDs.contains(id) { try next.select(id) }
         let original = node.value.position
         try next.moveSelection(
             by: .init(x: position.x - original.x, y: position.y - original.y, z: position.z - original.z))
@@ -496,12 +577,20 @@ public struct EditorState: Sendable {
     /// Low-level deletion without allocating identities. App callers use EditorSession.deleteSelection,
     /// which composes explicit split commands with removal in the same undo transaction.
     public mutating func deleteSelection() throws {
-        if let edge = snapshot.selectedEdge {
-            guard snapshot.canEditSelectedEdge else { throw EditorError.readOnlyNode }
-            try apply([.removeEdge(id: edge.id)])
-            return
-        }
-        try apply([.removeNodes(snapshot.selectedNodes.filter(\.isEditable).map(\.id))])
+        try apply(selectionDeletionCommands())
+    }
+
+    /// Capture combined removals once; edges incident to removed nodes are removed by the node command.
+    /// - Returns: Deduplicated explicit-edge removals followed by one explicit-node removal.
+    /// - Throws: `readOnlyNode` when any explicitly selected edge is read-only; read-only nodes remain fixed.
+    public func selectionDeletionCommands() throws -> [DocumentCommand] {
+        guard selectedEdgeIDs.isEmpty || snapshot.canEditSelectedEdges else { throw EditorError.readOnlyNode }
+        let removed = Set(snapshot.selectedNodes.filter(\.isEditable).map(\.id))
+        let edges = snapshot.selectedEdges.filter { !removed.contains($0.fromID) && !removed.contains($0.toID) }
+        let edgeIDs = Set(edges.map(\.id))
+        var commands = GraphSelectionOrder.sorted(edgeIDs).map { DocumentCommand.removeEdge(id: $0) }
+        if !removed.isEmpty { commands.append(.removeNodes(GraphSelectionOrder.sorted(removed))) }
+        return commands
     }
 
     /// Change an interaction lock without dirtying the document or changing history.
@@ -608,14 +697,22 @@ public struct EditorState: Sendable {
         let nextTree = ComponentTree(document: next.document)
         contents = nextContents
         componentTree = nextTree
+        let previousNodes = selectedIDs
+        let previousEdges = selectedEdgeIDs
+        let previousComponents = selectedComponentIDs
+        let previousPart = selectedPartID
         selectedComponentIDs.formIntersection(nextTree.rows.map(\.id))
         selectedIDs.formIntersection(contents.nodes.map(\.id))
+        selectedEdgeIDs.formIntersection(contents.edges.map(\.id))
         selectedID = contents.nodes.first { selectedIDs.contains($0.id) }?.id
-        if let selectedEdgeID, !contents.edges.contains(where: { $0.id == selectedEdgeID }) {
-            self.selectedEdgeID = nil
-        }
         if let selectedPartID, !contents.parts.contains(where: { $0.id == selectedPartID }) {
             self.selectedPartID = nil
+        }
+        if previousNodes != selectedIDs || previousEdges != selectedEdgeIDs
+            || previousComponents != selectedComponentIDs
+            || previousPart != selectedPartID
+        {
+            selectionRevision += 1
         }
         history = next
         revision += 1

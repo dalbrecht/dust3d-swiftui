@@ -23,6 +23,10 @@ struct NodeInspector: View {
                 ComponentInspector(store: store, component: component)
             } else if let part = store.snapshot?.selectedPart {
                 PartInspector(store: store, part: part)
+            } else if store.snapshot?.selectedEdgeIDs.isEmpty == false
+                && (store.snapshot?.selectedIDs.isEmpty == false || (store.snapshot?.selectedEdgeIDs.count ?? 0) > 1)
+            {
+                GraphSelectionInspector(store: store)
             } else if let edge = store.snapshot?.selectedEdge {
                 EdgeInspector(store: store, edge: edge)
             } else if (store.snapshot?.selectedIDs.count ?? 0) > 1 {
@@ -158,7 +162,7 @@ private struct SelectionTransformMenu: View {
         Menu("Transform Selected Nodes") {
             ForEach(SelectionTransform.allCases, id: \.self) { transform in
                 Button(transform.rawValue) { store.transformSelection(transform) }
-                    .disabled(transform.usesOrigin && store.snapshot?.origin == nil)
+                    .disabled(!store.canTransformSelection(transform))
             }
         }
         .disabled(!store.canTransform)

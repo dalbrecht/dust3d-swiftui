@@ -22,9 +22,9 @@ Both `edit` and batched set-node commands honor them after validating the input.
 Undo/redo restores committed snapshots regardless of current locks. Creation,
 deletion, archive bytes and history are unaffected by changing a lock.
 
-Multi-node selection is transient and per window. Use sidebar Command/Shift selection, canvas Command-click, or Canvas → Select All Nodes (Command-Shift-A). Drag a selected node to move its editable group, or enter relative offsets in the group inspector. Group deletion removes incident edges; movement and deletion each take one undo step. Read-only nodes remain unchanged. See [selection verification](../../docs/selection-verification.md). Drag empty canvas to marquee-select visible node centers; Shift-drag adds to selection. The group inspector scales positions around the editable-node centroid and radii independently using positive factors. Identity scaling preserves original geometry exactly. Native clipboard orchestration is described below; remaining transforms stay in the port plan. See [tools verification](../../docs/selection-tools-verification.md) for evidence and the unverified Shift-drag routing check.
+Graph selection is transient and per window, with independent explicit node and edge sets. Command-click toggles membership; Shift-click or Shift-marquee adds. A marquee selects visible node centers and intersecting native edge strokes, including crossing edges whose endpoints lie outside the box. Edit → Select All selects the full graph; Canvas → Select All Nodes (Command-Shift-A) remains node-only. Most transforms and endpoint drags use the deduplicated union of explicit nodes and selected-edge endpoints; X/Z exchange, copy and node reduction use explicit nodes only. Read-only graph elements remain inspectable but mutation availability enforces editability. Physical modifier/keyboard and VoiceOver acceptance remain separate from hosted tests.
 
-Canvas and inspector transform menus provide Front/Side quarter turns, X/Y/Z flips, and X/Z exchange. Rotations/flips honor movement locks; the explicit X/Z exchange ignores axis locks, matching Qt, and retains part read-only protection. Reverse Selected Edges acts on edges with both endpoints selected/editable. The single-node inspector shows directed edge menus with Reverse/Disconnect actions. See [transform verification](../../docs/graph-transform-verification.md).
+Canvas and inspector transform menus provide Front/Side quarter turns, X/Y/Z flips, and X/Z exchange. Rotations/flips honor movement locks; X/Z exchange ignores axis locks, matching Qt, and requires explicit editable nodes. Reverse Selected Edges uses explicit selected edges. Reverse Edges Between Selected Nodes remains a separately named convenience using endpoint membership. Batch midpoint insertion captures original selected edges, allocates distinct identities in UUID order, and commits one undo step; new segments are outside the captured selection.
 
 `EditorSession.apply` normalizes affected disconnected parts after graph removals, and `deleteSelection` uses that same path. The actor preflights the batch and injects UUIDs into explicit split commands, publishing one undo transaction. Direct document commands and `EditorState.deleteSelection` remain low-level building blocks without identity allocation; app callers use the session for complete removal behavior. See [splitting decision](../../docs/adr/0009-disconnected-part-splitting.md).
 
@@ -230,3 +230,16 @@ phase, wraps looping clips, and clamps nonlooping clips to a finished endpoint.
 `scrub(to:)` accepts the closed clip interval, including the last sample of a
 loop. Invalid metadata/times throw `AnimationTimelineError`. The model neither
 generates native frames nor owns a clock, player, UI task or document mutation.
+
+Graph selection keeps `selectedIDs` (explicit nodes) and `selectedEdgeIDs`
+independent. `selectGraph(nodes:edges:)` replaces both sets atomically;
+`addToSelection` and `toggleGraphSelection` preserve the other picks. A single
+edge compatibility accessor is available only for exactly one explicit edge.
+Global `selectAll()` selects both sets; `selectAllNodes()` is node-only.
+
+Move, scale, ordinary transforms and drags use the deduplicated union of explicit
+nodes and selected-edge endpoints. Exchange X/Z, Copy and Reduce consume explicit
+nodes only. Batch midpoint and explicit Reverse consume explicit edges in UUID
+order. `reverseSelectedEdges()` remains the inferred-edge convenience.
+Combined Delete (and mixed Cut after copying explicit editable nodes) normalizes
+all removals once in one history transaction. Edge-only Cut stays unavailable.

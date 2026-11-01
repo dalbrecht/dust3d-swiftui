@@ -12,6 +12,7 @@ struct NodePointerSurface: NSViewRepresentable {
     let cancel: (UUID) -> Void
     let select: () -> Void
     let toggle: () -> Void
+    var add: () -> Void = {}
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)? = nil
 
@@ -25,6 +26,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.cancel = cancel
         view.select = select
         view.toggle = toggle
+        view.add = add
         view.isRectangular = isRectangular
         view.clickCancel = clickCancel
     }
@@ -39,9 +41,10 @@ final class NodePointerView: NSView {
     var cancel: (UUID) -> Void = { _ in }
     var select: () -> Void = {}
     var toggle: () -> Void = {}
+    var add: () -> Void = {}
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)?
-    private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, isCommand: Bool)?
+    private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, isCommand: Bool, isShift: Bool)?
     private weak var previousResponder: NSResponder?
 
     override var acceptsFirstResponder: Bool { true }
@@ -59,7 +62,10 @@ final class NodePointerView: NSView {
         guard enabled else { return }
         if activation != nil { cancelActivation() }
         let token = UUID()
-        activation = (token, event.locationInWindow, false, event.modifierFlags.contains(.command))
+        activation = (
+            token, event.locationInWindow, false, event.modifierFlags.contains(.command),
+            event.modifierFlags.contains(.shift)
+        )
         if canDrag { begin(token) }
     }
 
@@ -95,7 +101,7 @@ final class NodePointerView: NSView {
             finish(current.token, displacement(from: current.origin, to: event.locationInWindow))
         } else {
             if let clickCancel { clickCancel(current.token) } else { cancel(current.token) }
-            if current.isCommand { toggle() } else { select() }
+            if current.isCommand { toggle() } else if current.isShift { add() } else { select() }
         }
     }
 

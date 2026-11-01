@@ -546,6 +546,33 @@ final class EditorStore {
 
     func select(_ ids: Set<String>) { perform(commits: false) { try await $0.select(ids) } }
     func selectEdge(_ id: String?) { perform(commits: false) { try await $0.selectEdge(id) } }
+    func selectGraph(nodes: Set<String>, edges: Set<String>, mode: GraphSelectionMode = .replace) {
+        perform(commits: false) { session in
+            switch mode {
+            case .replace: try await session.selectGraph(nodes: nodes, edges: edges)
+            case .add: try await session.addToSelection(nodes: nodes, edges: edges)
+            case .toggle: try await session.toggleGraphSelection(nodes: nodes, edges: edges)
+            }
+        }
+    }
+    func selectEdges(_ ids: Set<String>) { perform(commits: false) { try await $0.selectEdges(ids) } }
+    func toggleEdgeSelection(_ id: String) { perform(commits: false) { try await $0.toggleEdgeSelection(id) } }
+    func pickEdge(at point: CanvasPoint, projection: CanvasProjection, mode: GraphSelectionMode) {
+        guard !isWorking, let snapshot else { return }
+        if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: snapshot.edges) {
+            selectGraph(nodes: [], edges: [edge], mode: mode)
+        } else if mode == .replace {
+            selectGraph(nodes: [], edges: [])
+        }
+    }
+    func selectMarquee(_ rectangle: CanvasSelectionRectangle, projection: CanvasProjection, mode: GraphSelectionMode) {
+        guard !isWorking, let snapshot else { return }
+        selectGraph(
+            nodes: projection.nodeIDs(in: rectangle, nodes: snapshot.nodes),
+            edges: projection.edgeIDs(
+                in: rectangle, nodes: snapshot.nodes, edges: snapshot.edges, selectedEdgeIDs: snapshot.selectedEdgeIDs),
+            mode: mode)
+    }
     func selectComponent(_ id: String?) { perform(commits: false) { try await $0.selectComponent(id) } }
     func selectComponents(_ ids: Set<String>) { perform(commits: false) { try await $0.selectComponents(ids) } }
     func selectOnlyComponent(_ id: String) {
@@ -707,6 +734,7 @@ final class EditorStore {
         }
     }
     func toggleSelection(_ id: String) { perform(commits: false) { try await $0.toggleSelection(id) } }
+    func selectAllNodes() { perform(commits: false) { try await $0.selectAllNodes() } }
     func selectAll() { perform(commits: false) { try await $0.selectAll() } }
     func move(id: String, to position: NodePosition) { perform { try await $0.move(id: id, to: position) } }
 
@@ -717,7 +745,12 @@ final class EditorStore {
     func scaleSelection(positionFactor: Double, radiusFactor: Double) {
         perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
     }
-    var canTransform: Bool { !isWorking && snapshot?.selectedNodes.contains(where: \.isEditable) == true }
+    var canTransform: Bool { !isWorking && snapshot?.transformNodes.contains(where: \.isEditable) == true }
+    func canTransformSelection(_ transform: SelectionTransform) -> Bool {
+        guard !isWorking, let snapshot, !transform.usesOrigin || snapshot.origin != nil else { return false }
+        let nodes = transform == .exchangeXZ ? snapshot.selectedNodes : snapshot.transformNodes
+        return nodes.contains(where: \.isEditable)
+    }
     var canRotateDescendants: Bool { !isWorking && snapshot?.canRotateDescendants == true }
     func rotateDescendants(_ rotation: DescendantRotation) { perform { try await $0.rotateDescendants(rotation) } }
     func transformSelection(_ transform: SelectionTransform) { perform { try await $0.transformSelection(transform) } }
@@ -728,7 +761,18 @@ final class EditorStore {
         perform { try await $0.reduceSelectedNodes() }
     }
 
-    var canInsertEdgeMidpoint: Bool { !isWorking && snapshot?.canInsertSelectedEdgeMidpoint == true }
+    var canInsertEdgeMidpoint: Bool { !isWorking && snapshot?.canInsertSelectedEdgeMidpoints == true }
+    var canReverseSelectedEdges: Bool { !isWorking && snapshot?.canEditSelectedEdges == true }
+    var canDeleteGraphSelection: Bool { !isWorking && snapshot?.canDeleteSelection == true }
+
+    func insertSelectedEdgeMidpoints() {
+        guard canInsertEdgeMidpoint else { return }
+        perform { try await $0.insertSelectedEdgeMidpoints() }
+    }
+    func reverseExplicitlySelectedEdges() {
+        guard canReverseSelectedEdges else { return }
+        perform { try await $0.reverseExplicitlySelectedEdges() }
+    }
 
     func insertSelectedEdgeMidpoint() {
         guard canInsertEdgeMidpoint else { return }
@@ -742,7 +786,7 @@ final class EditorStore {
     var canCutNodes: Bool { !isWorking && snapshot?.canCutNodes == true }
 
     /// Clipboard promise registration succeeds before a Cut can mutate the document.
-    func copyNodes(cut: Bool = false, to pasteboard: EditorPasteboard) {
+    func copyNodes(cut: Bool = false, to pasteboard: any EditorClipboardWriting) {
         guard cut ? canCutNodes : canCopyNodes, !stopped else { return }
         cancelColorImagePreparation()
         cancelOriginDrag()

@@ -2,8 +2,13 @@ import AppKit
 import Combine
 import Observation
 
+/// Clipboard registration must succeed before a Cut can remove graph elements.
+@MainActor protocol EditorClipboardWriting {
+    func write(_ data: Data, snapshotXML: Data) throws
+}
+
 /// App-wide write/text-validation boundary; SwiftUI handles asynchronous paste transfer.
-@MainActor @Observable final class EditorPasteboard {
+@MainActor @Observable final class EditorPasteboard: EditorClipboardWriting {
     private static let type = NSPasteboard.PasteboardType(NodeClipboardTransfer.contentType.identifier)
     private let pasteboard = NSPasteboard.general
     private(set) var textSelectionRevision = 0
