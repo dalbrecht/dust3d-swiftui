@@ -5,6 +5,7 @@ import SwiftUI
 struct NodeCanvas: View {
     let store: EditorStore
     @State private var nodeDrag = NodeDragLifecycle()
+    @State private var marquee: CanvasSelectionRectangle?
 
     var body: some View {
         GeometryReader { geometry in
@@ -25,10 +26,26 @@ struct NodeCanvas: View {
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
-                MarqueeSurface(enabled: !store.isWorking && !store.isMovingOrigin) { rectangle, mode in
-                    store.selectMarquee(rectangle, projection: projection, mode: mode)
-                } tap: { point, mode in
-                    store.pickEdge(at: point, projection: projection, mode: mode)
+                CanvasPointerSurface(
+                    enabled: !store.isWorking && !store.isMovingOrigin,
+                    select: { rectangle, mode in store.selectMarquee(rectangle, projection: projection, mode: mode) },
+                    tap: { point, mode in store.pickEdge(at: point, projection: projection, mode: mode) },
+                    rectangle: { marquee = $0 },
+                    hover: { store.updateCanvasHover(at: $0, projection: projection) },
+                    wheel: { store.handleCanvasWheel($0) }
+                )
+                .id(
+                    "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)"
+                )
+                .accessibilityLabel("Marquee selection canvas")
+                if let marquee {
+                    let frame = CGRect(
+                        x: marquee.minimum.x, y: marquee.minimum.y,
+                        width: marquee.maximum.x - marquee.minimum.x, height: marquee.maximum.y - marquee.minimum.y)
+                    Path { $0.addRect(frame) }.fill(Color.accentColor.opacity(0.12)).allowsHitTesting(false)
+                    Path { $0.addRect(frame) }.stroke(
+                        Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [4, 3])
+                    ).allowsHitTesting(false)
                 }
                 Canvas { context, _ in
                     let positions = Dictionary(
@@ -57,6 +74,10 @@ struct NodeCanvas: View {
                         select: { store.select(node.id) },
                         toggle: { store.toggleSelection(node.id) },
                         add: { store.selectGraph(nodes: [node.id], edges: [], mode: .add) },
+                        wheel: { input in
+                            store.setHoveredNode(node.id)
+                            return store.handleCanvasWheel(input)
+                        },
                         begin: { token in
                             guard let snapshot = store.snapshot else { return }
                             try? nodeDrag.begin(
@@ -86,15 +107,41 @@ struct NodeCanvas: View {
                     .allowsHitTesting(false)
                 }
             }
+            .onAppear { store.setCanvasHeight(geometry.size.height) }
+            .onChange(of: geometry.size.height) { _, height in store.setCanvasHeight(height) }
+            .onDisappear {
+                store.setCanvasHeight(0)
+                store.clearCanvasHover()
+                marquee = nil
+            }
             .coordinateSpace(name: "node-canvas")
             .clipped()
-            .onChange(of: store.isMovingOrigin) { _, _ in invalidateNodeDrag() }
-            .onChange(of: store.plane) { _, _ in invalidateNodeDrag() }
+            .onChange(of: store.isMovingOrigin) { _, _ in
+                invalidateNodeDrag()
+                marquee = nil
+                store.clearCanvasHover()
+            }
+            .onChange(of: store.plane) { _, _ in
+                invalidateNodeDrag()
+                marquee = nil
+                store.clearCanvasHover()
+            }
+            .onChange(of: store.snapshot?.documentIdentity) { _, _ in
+                marquee = nil
+                store.clearCanvasHover()
+            }
             .onChange(of: geometry.size) { _, _ in
+                marquee = nil
+                store.clearCanvasHover()
                 invalidateNodeDrag()
                 store.cancelOriginDrag()
             }
-            .onChange(of: store.isWorking) { _, working in if working { invalidateNodeDrag() } }
+            .onChange(of: store.isWorking) { _, working in
+                if working {
+                    invalidateNodeDrag()
+                    marquee = nil
+                }
+            }
         }
         .background(.background)
     }
@@ -123,6 +170,7 @@ private struct NodeHandle: View {
     let select: () -> Void
     let toggle: () -> Void
     let add: () -> Void
+    let wheel: (CanvasWheelInput) -> Bool
     let begin: (UUID) -> Void
     let update: (UUID, CanvasPoint) -> Void
     let finish: (UUID, CanvasPoint) -> Void
@@ -142,7 +190,7 @@ private struct NodeHandle: View {
             NodePointerSurface(
                 enabled: enabled, canDrag: node.isEditable, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle, add: add
+                select: select, toggle: toggle, add: add, wheel: wheel
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
@@ -153,61 +201,5 @@ private struct NodeHandle: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { select() }
         .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked, hidden or disabled part")")
-    }
-}
-
-private struct MarqueeSurface: View {
-    let enabled: Bool
-    let select: (CanvasSelectionRectangle, GraphSelectionMode) -> Void
-    let tap: (CanvasPoint, GraphSelectionMode) -> Void
-    @GestureState private var rectangle: CanvasSelectionRectangle?
-
-    var body: some View {
-        Rectangle().fill(.clear).contentShape(Rectangle())
-            .overlay {
-                if let rectangle {
-                    let frame = CGRect(
-                        x: rectangle.minimum.x, y: rectangle.minimum.y,
-                        width: rectangle.maximum.x - rectangle.minimum.x,
-                        height: rectangle.maximum.y - rectangle.minimum.y)
-                    Path { $0.addRect(frame) }.fill(Color.accentColor.opacity(0.12))
-                    Path { $0.addRect(frame) }.stroke(
-                        Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                }
-            }
-            .onTapGesture(coordinateSpace: .named("node-canvas")) { point in
-                if enabled { tap(.init(x: point.x, y: point.y), .replace) }
-            }
-            .highPriorityGesture(tapGesture(mode: .add).modifiers(.shift))
-            .highPriorityGesture(tapGesture(mode: .toggle).modifiers(.command))
-            .gesture(selectionGesture(mode: .replace))
-            .highPriorityGesture(selectionGesture(mode: .add).modifiers(.shift))
-            .highPriorityGesture(selectionGesture(mode: .toggle).modifiers(.command))
-            .accessibilityLabel("Marquee selection canvas")
-            .help(
-                "Click to select. Shift-click adds nodes or edges; Command-click toggles them. Drag empty canvas to select node centers. Shift-drag adds; Command-drag toggles."
-            )
-    }
-
-    private func tapGesture(mode: GraphSelectionMode) -> some Gesture {
-        SpatialTapGesture(coordinateSpace: .named("node-canvas")).onEnded { value in
-            if enabled { tap(.init(x: value.location.x, y: value.location.y), mode) }
-        }
-    }
-
-    private func selectionGesture(mode: GraphSelectionMode) -> some Gesture {
-        DragGesture(minimumDistance: 3, coordinateSpace: .named("node-canvas"))
-            .updating($rectangle) { value, state, _ in
-                if enabled { state = bounds(value) }
-            }
-            .onEnded { value in
-                if enabled { select(bounds(value), mode) }
-            }
-    }
-
-    private func bounds(_ value: DragGesture.Value) -> CanvasSelectionRectangle {
-        .init(
-            from: .init(x: value.startLocation.x, y: value.startLocation.y),
-            to: .init(x: value.location.x, y: value.location.y))
     }
 }

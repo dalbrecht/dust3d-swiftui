@@ -9,8 +9,64 @@ import os
 
 @MainActor @Observable
 final class EditorStore {
-    private(set) var snapshot: EditorSnapshot?
-    private(set) var isWorking = false { didSet { onEditingChanged?(isWorking) } }
+    private(set) var snapshot: EditorSnapshot? {
+        didSet {
+            if oldValue?.documentIdentity != snapshot?.documentIdentity { clearCanvasHover() }
+            if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
+                clearCanvasHover()
+            }
+        }
+    }
+    private(set) var canvasHeight: Double = 0
+    private(set) var hoveredNodeID: String?
+    func setCanvasHeight(_ height: Double) { canvasHeight = height.isFinite && height > 0 ? height : 0 }
+    func setHoveredNode(_ id: String?) {
+        hoveredNodeID = snapshot?.nodes.first(where: { $0.id == id && $0.isVisible })?.id
+    }
+    func clearCanvasHover() { hoveredNodeID = nil }
+    func updateCanvasHover(at point: CanvasPoint?, projection: CanvasProjection) {
+        guard let point else {
+            clearCanvasHover()
+            return
+        }
+        let node = snapshot?.nodes.last(where: {
+            let center = projection.point(for: $0.value.position)
+            return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
+        })
+        setHoveredNode(node?.id)
+    }
+    var canAdjustSelectionRadius: Bool {
+        !isWorking && !stopped && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
+    }
+    func adjustSelectionRadius(direction: Double) {
+        guard canAdjustSelectionRadius, direction.isFinite, direction != 0, let snapshot else { return }
+        let delta = (direction > 0 ? 1.0 : -1.0) / canvasHeight
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        perform { try await $0.adjustSelectionRadius(by: delta, target: target) }
+    }
+    func handleCanvasWheel(_ input: CanvasWheelInput) -> Bool {
+        guard input.isSupported, !isWorking, !stopped, canvasHeight > 0, let snapshot else { return false }
+        let step = (input.verticalDelta > 0 ? 1.0 : -1.0) / canvasHeight
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let hasGraphSelection = !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
+        if hasGraphSelection && input.modifiers.contains(.command) {
+            guard canTransform else { return false }
+            perform { try await $0.scaleSelection(positionFactor: 1 + step, radiusFactor: 1, target: target) }
+        } else if hasGraphSelection && canAdjustSelectionRadius {
+            perform { try await $0.adjustSelectionRadius(by: step, target: target) }
+        } else if let hoveredNodeID, snapshot.canAdjustNodeRadius(id: hoveredNodeID) {
+            perform { try await $0.adjustNodeRadius(id: hoveredNodeID, by: step, target: target) }
+        } else {
+            return false
+        }
+        return true
+    }
+    private(set) var isWorking = false {
+        didSet {
+            if isWorking { clearCanvasHover() }
+            onEditingChanged?(isWorking)
+        }
+    }
     private(set) var previewState = MeshPreviewState<EditorPreviewOutput>()
     var mesh: IndexedMesh? { previewState.value?.mesh }
     var previewSourceHints: MeshSourceHints? {
@@ -74,8 +130,15 @@ final class EditorStore {
     var errorMessage: String?
     var renderError: String?
     var bounds = CanvasBounds(nodes: [])
-    var plane = EditingPlane.front { didSet { if plane != oldValue { cancelOriginDrag() } } }
-    private(set) var isMovingOrigin = false
+    var plane = EditingPlane.front {
+        didSet {
+            if plane != oldValue {
+                cancelOriginDrag()
+                clearCanvasHover()
+            }
+        }
+    }
+    private(set) var isMovingOrigin = false { didSet { if isMovingOrigin { clearCanvasHover() } } }
     private(set) var originDragPosition: NodePosition?
     private var originDrag: OriginDrag?
     private var originDragToken: UUID?
@@ -1188,6 +1251,8 @@ final class EditorStore {
             case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."
             case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
+            case .staleCanvasAdjustment:
+                return "Canvas adjustment cancelled because the document, selection or constraints changed."
             case .staleNodeDrag: return "Node drag cancelled because the document, selection or constraints changed."
             case .staleAnimationTarget:
                 return "The document changed. Select the animation again before editing."

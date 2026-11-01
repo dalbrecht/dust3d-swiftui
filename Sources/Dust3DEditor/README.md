@@ -462,3 +462,13 @@ without requesting materials, textures, imported assets, rig or animation work.
 The ordinary Capsule output has independent Assimp re-import evidence; this does
 not establish broader export, worker isolation or M7 acceptance. See
 [FBX verification](../../docs/fbx-export-verification.md) and ADR 0121.
+
+## Additive radius input
+
+Increase/Decrease Radius in the Canvas menu and radius controls add the same signed radius increment to each editable selected node and selected-edge endpoint, deduplicating overlaps. Bare `=` and `-` provide the same actions outside native text editing and animation focus. The step is one canvas point divided by the current canvas height, independent of fit zoom. Radius locks/read-only ownership apply, positions and explicit selection are retained, and edited radii clamp to 0.001...1. Imported values are preserved until an actual edit; clamped no-ops do not add history.
+
+Ordinary canvas wheel changes the selected radii, or a hovered node when transient selection is empty. Command-wheel scales selected positions around their centroid without changing radii; with empty selection it still adjusts a hovered node radius. Physical Control alone follows ordinary radius behavior. Zero vertical movement, momentum-only and unsupported phase events pass through as native safeguards. Each accepted event captures its height/target and produces one undoable edit; stale document/selection/constraint contexts reject atomically.
+
+The local AppKit canvas boundary handles pointer, marquee, hover and wheel input without a global monitor. Focus loss, Escape, disablement, window removal, plane/document replacement and resize cancel stale marquee activations. Model state remains in SwiftUI/session; view-update cancellation does not synchronously write SwiftUI state.
+
+Qt Add-mode ghost-cursor radius/placement remains separate open parity work. Physical keyboard, trackpad/momentum, native clipboard and VoiceOver acceptance are not established by hosted tests or rendered screenshots. No production core dependency change is required by these controls.

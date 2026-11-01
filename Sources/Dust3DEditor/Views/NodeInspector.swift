@@ -61,6 +61,7 @@ struct NodeInspector: View {
                     .buttonStyle(.borderedProminent)
                 }
                 .disabled(store.isWorking || !node.isEditable)
+                NodeRadiusAdjustmentControls(store: store)
                 NodeReductionControls(store: store)
                 SelectionTransformMenu(store: store)
                 DescendantRotationMenu(store: store)
@@ -143,6 +144,7 @@ private struct GroupInspector: View {
             }
             Text("Positive factors. 1 keeps the current size. The center uses editable nodes only.")
                 .font(.caption).foregroundStyle(.secondary)
+            NodeRadiusAdjustmentControls(store: store)
             NodeReductionControls(store: store)
             SelectionTransformMenu(store: store)
             Button("Reverse Selected Edges") { store.reverseSelectedEdges() }

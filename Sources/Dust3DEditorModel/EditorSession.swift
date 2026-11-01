@@ -280,8 +280,22 @@ public actor EditorSession {
     public func moveSelection(by delta: NodePosition) throws -> EditorSnapshot {
         try update { try $0.moveSelection(by: delta) }
     }
-    public func scaleSelection(positionFactor: Double, radiusFactor: Double) throws -> EditorSnapshot {
-        try update { try $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
+    /// Scale the effective graph selection; an optional captured target rejects queued inputs from stale windows/epochs.
+    public func scaleSelection(positionFactor: Double, radiusFactor: Double, target: CanvasAdjustmentTarget? = nil)
+        throws -> EditorSnapshot
+    {
+        try update { try $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor, target: target) }
+    }
+    /// Apply an already-converted additive radius delta to the selected graph union as one undoable input activation.
+    public func adjustSelectionRadius(by delta: Double, target: CanvasAdjustmentTarget? = nil) throws -> EditorSnapshot
+    {
+        try update { try $0.adjustSelectionRadius(by: delta, target: target) }
+    }
+    /// Adjust one captured hovered node without selecting it; every selection context must remain empty.
+    public func adjustNodeRadius(id: String, by delta: Double, target: CanvasAdjustmentTarget? = nil) throws
+        -> EditorSnapshot
+    {
+        try update { try $0.adjustNodeRadius(id: id, by: delta, target: target) }
     }
     /// Commit prepared reference composition output to its captured target in one undo step.
     /// - Parameters:
