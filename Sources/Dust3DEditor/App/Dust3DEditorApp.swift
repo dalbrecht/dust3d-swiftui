@@ -82,6 +82,9 @@ struct Dust3DEditorApp: App {
                 DescendantRotationMenu(store: store)
                 Button("Reverse Edges Between Selected Nodes") { store?.reverseSelectedEdges() }
                     .disabled(store?.isWorking != false || store?.snapshot?.reversibleEdges.isEmpty != false)
+                Button("Insert Midpoint") { store?.insertSelectedEdgeMidpoint() }
+                    .disabled(store?.canInsertEdgeMidpoint != true)
+                    .accessibilityLabel("Insert Midpoint")
                 Button("Reverse Selected Edge") {
                     if let id = store?.snapshot?.selectedEdgeID { store?.reverseEdge(id) }
                 }

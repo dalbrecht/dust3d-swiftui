@@ -117,6 +117,11 @@ public struct EditorSnapshot: Sendable {
         guard let selectedEdgeID else { return false }
         return editableEdges.contains { $0.id == selectedEdgeID }
     }
+    /// Midpoint insertion also requires a non-loop edge with consistent part ownership.
+    public var canInsertSelectedEdgeMidpoint: Bool {
+        guard canEditSelectedEdge, let selectedEdgeID else { return false }
+        return document.canInsertEdgeMidpoint(id: selectedEdgeID)
+    }
     /// Copy can include read-only nodes, but every copied node must belong to a part.
     public var canCopyNodes: Bool {
         let selected = selectedNodes
@@ -454,6 +459,17 @@ public struct EditorState: Sendable {
     /// Reverse edges whose endpoints are both selected and editable, as one undo step.
     public mutating func reverseSelectedEdges() throws {
         try apply([.reverseEdges(snapshot.reversibleEdges.map(\.id))])
+    }
+
+    /// Split the selected editable edge in one undo step, retaining its selection.
+    /// - Parameters:
+    ///   - nodeID: Fresh midpoint node identity.
+    ///   - edgeID: Fresh identity for the second edge segment.
+    /// - Throws: Invalid selection, read-only endpoint, or document validation errors atomically.
+    public mutating func insertSelectedEdgeMidpoint(nodeID: String, edgeID: String) throws {
+        guard let edge = snapshot.selectedEdge else { throw DocumentError.invalidNode }
+        guard snapshot.canEditSelectedEdge else { throw EditorError.readOnlyNode }
+        try apply([.insertEdgeMidpoint(id: edge.id, nodeID: nodeID, edgeID: edgeID)])
     }
 
     /// Drag an anchor, retaining its group if selected; otherwise select only the anchor.

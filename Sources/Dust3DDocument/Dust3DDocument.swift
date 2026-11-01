@@ -200,6 +200,11 @@ public enum DocumentCommand: Sendable {
     case setNodes([NodeUpdate])
     case addNode(id: String, partID: String, componentID: String?, position: NodePosition, radius: Double)
     case addEdge(id: String, from: String, to: String)
+    /// Atomically split an editable edge at the average endpoint position and radius.
+    /// - Parameters: `id` retains the first segment; `nodeID` and `edgeID` are fresh identities (1...128 UTF-8 bytes).
+    /// - Throws: `invalidNode` for invalid identities, geometry or ownership; `limitExceeded` for graph bounds.
+    /// - Example: `.insertEdgeMidpoint(id: "edge", nodeID: "middle", edgeID: "second")`.
+    case insertEdgeMidpoint(id: String, nodeID: String, edgeID: String)
     case joinNodes(id: String, from: String, to: String)
     case removeNode(id: String)
     case removeNodes([String])
@@ -750,6 +755,43 @@ public struct Dust3DDocument: Sendable {
                 })
             else { throw DocumentError.invalidNode }
             container("edges").addChild(element("edge", [("id", id), ("partId", partID), ("from", from), ("to", to)]))
+        case .insertEdgeMidpoint(let id, let nodeID, let edgeID):
+            let (edge, source, target, sourceElement, partID) = try Self.midpointSource(
+                id: id, model: model, contents: contents)
+            let fresh = [nodeID, edgeID]
+            let keys = fresh.map { CutFaceLinks.canonicalID($0) ?? $0 }
+            let existing = Set(
+                NodeClipboardMutation.semanticElements(model).compactMap {
+                    $0.attribute(forName: "id")?.stringValue
+                }.map { CutFaceLinks.canonicalID($0) ?? $0 })
+            guard
+                fresh.allSatisfy({
+                    !$0.isEmpty && $0.utf8.count <= 128
+                        && !$0.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) })
+                }),
+                Set(keys).count == 2, existing.isDisjoint(with: keys)
+            else { throw DocumentError.invalidNode }
+            let first = source.value
+            let second = target.value
+            let position = NodePosition(
+                x: first.position.x / 2 + second.position.x / 2,
+                y: first.position.y / 2 + second.position.y / 2,
+                z: first.position.z / 2 + second.position.z / 2)
+            let radius = first.radius / 2 + second.radius / 2
+            guard EditableNode(position: position, radius: radius).isValid else { throw DocumentError.invalidNode }
+            container("nodes").addChild(
+                element(
+                    "node",
+                    [
+                        ("id", nodeID), ("partId", partID), ("x", String(position.x)),
+                        ("y", String(position.y)), ("z", String(position.z)), ("radius", String(radius)),
+                    ]))
+            sourceElement.attribute(forName: "to")?.stringValue = nodeID
+            var attributes = [("id", edgeID), ("partId", partID), ("from", nodeID), ("to", edge.toID)]
+            for name in ["name", "boneName"] {
+                if let value = sourceElement.attribute(forName: name)?.stringValue { attributes.append((name, value)) }
+            }
+            container("edges").addChild(element("edge", attributes))
         case .joinNodes(let id, let from, let to):
             try PartJoining.apply(id: id, from: from, to: to, model: model, contents: contents)
         case .removeNode(let id):
@@ -1137,6 +1179,36 @@ public struct Dust3DDocument: Sendable {
         let offset = start.count + 12 + header.count
         guard offset <= 256 * 1024 * 1024 - payload.count else { throw DocumentError.limitExceeded }
         return try Dust3DDocument(data: start + Data(String(format: "%010d\r\n", offset).utf8) + header + payload)
+    }
+
+    /// Whether an edge can currently accept a midpoint, without allocating identities or changing the archive.
+    /// - Parameter id: Exact retained edge identity.
+    /// - Returns: False for malformed geometry, read-only ownership, invalid topology or exhausted graph quotas.
+    /// - Example: `document.canInsertEdgeMidpoint(id: "edge")`.
+    public func canInsertEdgeMidpoint(id: String) -> Bool {
+        do {
+            let contents = try editorContents()
+            let model = try Self.xml(modelXML, root: "canvas")
+            _ = try Self.midpointSource(id: id, model: model, contents: contents)
+            return true
+        } catch { return false }
+    }
+
+    private static func midpointSource(id: String, model: XMLDocument, contents: DocumentContents) throws
+        -> (DocumentEdge, DocumentNode, DocumentNode, XMLElement, String)
+    {
+        guard contents.nodes.count < 10_000, contents.edges.count < 20_000 else {
+            throw DocumentError.limitExceeded
+        }
+        guard let edge = contents.edges.first(where: { $0.id == id }), edge.fromID != edge.toID,
+            let source = contents.nodes.first(where: { $0.id == edge.fromID }), source.isEditable,
+            let target = contents.nodes.first(where: { $0.id == edge.toID }), target.isEditable,
+            let partID = source.partID, target.partID == partID,
+            let sourceElement = model.rootElement()?.elements(forName: "edges").first?.elements(forName: "edge")
+                .first(where: { $0.attribute(forName: "id")?.stringValue == id }),
+            sourceElement.attribute(forName: "partId")?.stringValue == partID
+        else { throw DocumentError.invalidNode }
+        return (edge, source, target, sourceElement, partID)
     }
 
     /// Inspect the editable graph once, retaining source ordering and stable IDs.

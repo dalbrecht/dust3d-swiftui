@@ -18,6 +18,9 @@ struct EdgeInspector: View {
             Text("Direction: \(from) → \(to)").font(.caption)
             Button("Select Endpoints") { store.select([edge.fromID, edge.toID]) }
                 .disabled(store.isWorking)
+            Button("Insert Midpoint") { store.insertSelectedEdgeMidpoint() }
+                .disabled(!store.canInsertEdgeMidpoint)
+                .accessibilityLabel("Insert Midpoint")
             Button("Reverse Edge") { store.reverseEdge(edge.id) }
                 .disabled(store.isWorking || store.snapshot?.canEditSelectedEdge != true)
             Button("Delete Edge", role: .destructive) { store.deleteSelection() }
@@ -26,7 +29,7 @@ struct EdgeInspector: View {
                 Label("Locked, hidden or disabled endpoint", systemImage: "lock").font(.caption)
             }
             Text(
-                "Reversing or deleting an edge is one undo step. Deleting an edge keeps its nodes and splits disconnected parts."
+                "Inserting a midpoint, reversing or deleting an edge is one undo step. Deleting an edge keeps its nodes and splits disconnected parts."
             )
             .font(.caption).foregroundStyle(.secondary)
             Divider()
