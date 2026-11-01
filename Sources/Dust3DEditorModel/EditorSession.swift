@@ -502,6 +502,25 @@ public actor EditorSession {
         return next
     }
 
+    /// Atomically place/connect one captured visible ghost with fresh identities and return its chaining receipt.
+    /// - Parameter request: Pure Add-mode click captured after pointer preview became visible.
+    /// - Returns: One accepted snapshot/outcome; duplicates preserve document/history and selection.
+    /// - Throws: Cancellation, load, stale or typed placement validation errors without publication.
+    public func placeAddNode(_ request: AddPlacementRequest) throws -> AddPlacementReceipt {
+        try Task.checkCancellation()
+        guard var next = state else { throw EditorError.notLoaded }
+        let result = try next.placeAddNode(
+            request,
+            identities: .init(
+                nodeID: Self.identifier(), partID: Self.identifier(),
+                componentID: Self.identifier(), edgeID: Self.identifier()))
+        try Task.checkCancellation()
+        state = next
+        return AddPlacementReceipt(
+            snapshot: next.snapshot, outcome: result.outcome, contextID: request.contextID,
+            connectionFallbackReason: result.connectionFallbackReason)
+    }
+
     private static func identifier() -> String { "{\(UUID().uuidString.lowercased())}" }
 
     public func undo() throws -> EditorSnapshot { try update { try $0.undo() } }

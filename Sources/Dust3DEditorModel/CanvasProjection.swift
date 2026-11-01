@@ -71,7 +71,7 @@ public struct CanvasProjection: Sendable {
     private let center: CanvasPoint
     private let width: Double
     private let height: Double
-    private let plane: EditingPlane
+    public let plane: EditingPlane
     public let scale: Double
 
     public init(bounds: CanvasBounds, plane: EditingPlane, width: Double, height: Double) {
@@ -90,6 +90,24 @@ public struct CanvasProjection: Sendable {
         CanvasPoint(
             x: width / 2 + ((plane == .front ? position.x : position.z) - center.x) * scale,
             y: height / 2 + (position.y - center.y) * scale)
+    }
+
+    /// Convert absolute canvas coordinates to a bounded document position using an explicit hidden-axis value.
+    /// - Parameters: `point` is canvas-local; `hiddenCoordinate` is Z in Front and X in Side.
+    /// - Throws: `invalidNode` for nonfinite/invalid projection or coordinates outside the document boundary.
+    /// - Note: Native one-plane placement does not reproduce Qt's dual-profile quarter-width seed offset.
+    public func position(at point: CanvasPoint, hiddenCoordinate: Double) throws -> NodePosition {
+        guard [point.x, point.y, hiddenCoordinate, width, height, center.x, center.y, scale].allSatisfy(\.isFinite),
+            scale > 0
+        else { throw DocumentError.invalidNode }
+        let horizontal = center.x + (point.x - width / 2) / scale
+        let vertical = center.y + (point.y - height / 2) / scale
+        let position =
+            plane == .front
+            ? NodePosition(x: horizontal, y: vertical, z: hiddenCoordinate)
+            : NodePosition(x: hiddenCoordinate, y: vertical, z: horizontal)
+        guard EditableNode(position: position, radius: 0).isValid else { throw DocumentError.invalidNode }
+        return position
     }
 
     /// Select visible node centers, including centers on the rectangle boundary.

@@ -37,9 +37,15 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let rectangle: (CanvasSelectionRectangle?) -> Void
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    var isAddingNodes = false
+    var addPress: (CanvasPoint) -> Void = { _ in }
+    var cancelInput: () -> Void = {}
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
-    static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) { view.cancelActivation() }
+    static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
+        view.cancelActivation()
+        view.enabled = false
+    }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         if !enabled { view.cancelActivation() }
         view.enabled = enabled
@@ -48,6 +54,10 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.rectangle = rectangle
         view.hover = hover
         view.wheel = wheel
+        if view.isAddingNodes != isAddingNodes { view.cancelActivation() }
+        view.isAddingNodes = isAddingNodes
+        view.addPress = addPress
+        view.cancelInput = cancelInput
     }
 }
 
@@ -58,6 +68,9 @@ final class CanvasPointerView: NSView {
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var isAddingNodes = false
+    var addPress: (CanvasPoint) -> Void = { _ in }
+    var cancelInput: () -> Void = {}
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var tracking: NSTrackingArea?
     private var hasHover = false
@@ -84,11 +97,20 @@ final class CanvasPointerView: NSView {
             return
         }
         window?.makeFirstResponder(self)
+        if isAddingNodes {
+            addPress(point(event))
+            return
+        }
         let mode: GraphSelectionMode =
             event.modifierFlags.contains(.command) ? .toggle : event.modifierFlags.contains(.shift) ? .add : .replace
         start = (point(event), mode)
     }
     override func mouseDragged(with event: NSEvent) {
+        if enabled && isAddingNodes {
+            hasHover = true
+            hover(point(event))
+            return
+        }
         guard enabled, let start else { return }
         let end = point(event)
         if hypot(end.x - start.point.x, end.y - start.point.y) >= 3 {
@@ -140,9 +162,17 @@ final class CanvasPointerView: NSView {
         hasMarquee = false
         hasHover = false
     }
-    @objc private func windowResigned() { invalidate() }
+    @objc private func windowResigned() {
+        invalidate()
+        if isAddingNodes { cancelInput() }
+    }
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53, start != nil { invalidate() } else { super.keyDown(with: event) }
+        if event.keyCode == 53, start != nil || isAddingNodes {
+            invalidate()
+            if isAddingNodes { cancelInput() }
+        } else {
+            super.keyDown(with: event)
+        }
     }
     override func viewWillMove(toWindow newWindow: NSWindow?) {
         if let window {

@@ -1205,6 +1205,21 @@ public struct Dust3DDocument: Sendable {
         return result
     }
 
+    /// Read the first live incident edge in Qt's process-local ordering, independently of archive XML order.
+    /// - Parameter nodeID: Existing exact node identity.
+    /// - Returns: Nil for an isolated node; retained edge metadata otherwise.
+    /// - Throws: `missingNode` or invalid graph errors. Example: `try document.firstIncidentEdge(nodeID: anchorID)`.
+    public func firstIncidentEdge(nodeID: String) throws -> DocumentEdge? {
+        let contents = try editorContents()
+        guard contents.nodes.contains(where: { $0.id == nodeID }) else { throw DocumentError.missingNode(nodeID) }
+        guard let first = graphOrder.incident[nodeID]?.first else { return nil }
+        guard let edge = contents.edges.first(where: { $0.id == first }), edge.fromID == nodeID || edge.toID == nodeID
+        else {
+            throw DocumentError.invalidNode
+        }
+        return edge
+    }
+
     /// Whether this full selection produces at least one safe reduction against the evolving graph.
     /// - Parameter ids: Exact selected identities; degree-ineligible and absent nodes are skipped.
     /// - Returns: False for a no-op or a batch rejected by the same validation as execution. Archive bytes are unchanged.

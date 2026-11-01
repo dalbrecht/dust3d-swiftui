@@ -12,9 +12,123 @@ final class EditorStore {
     private(set) var snapshot: EditorSnapshot? {
         didSet {
             if oldValue?.documentIdentity != snapshot?.documentIdentity { clearCanvasHover() }
+            if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode(refit: false) }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
                 clearCanvasHover()
             }
+        }
+    }
+    private(set) var addPlacement = AddPlacementState()
+    private(set) var addModeID = UUID()
+    private var canvasWidth: Double = 0
+    private var isPlacingAddNode = false
+    private(set) var addPlacementNotice: String?
+    private let addPlacements: any AddPlacementServing
+    var isAddingNodes: Bool { addPlacement.isActive }
+    var addGhostPoint: CanvasPoint? { addPlacement.ghostPoint }
+    var addGhostRadius: Double { addPlacement.sceneRadius }
+    var addGhostModelRadius: Double {
+        addPlacement.canvasHeight > 0 ? addPlacement.sceneRadius / addPlacement.canvasHeight : 0
+    }
+    var addRadiusLimitNotice: String? {
+        guard let committed = addPlacement.wouldCommitRadius, committed != addGhostModelRadius else { return nil }
+        return "Node radius will be limited to \(committed.formatted(.number.precision(.fractionLength(0...4))))."
+    }
+    var addGhostDisplayDiameter: Double {
+        guard let projection = frozenAddProjection else { return 0 }
+        return max(8, min(addGhostModelRadius * projection.scale * 2, 600))
+    }
+    var addAnchorIsReadOnly: Bool {
+        guard let anchor = addPlacement.anchorID else { return false }
+        return snapshot?.nodes.first { $0.id == anchor }?.isEditable != true
+    }
+    var frozenAddProjection: CanvasProjection? { addPlacement.isActive ? addPlacement.projection : nil }
+    var addAnchorPosition: NodePosition? { snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.value.position }
+    var canBeginAddMode: Bool {
+        !isWorking && !stopped && snapshot != nil && canvasWidth > 0 && canvasHeight > 0
+    }
+    var canPlaceAddGhost: Bool {
+        guard isAddingNodes, !isWorking, addGhostPoint != nil else { return false }
+        return addPlacement.anchorID == nil
+            || snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.isEditable == true
+    }
+    func setCanvasContext(projection: CanvasProjection, width: Double, height: Double) {
+        if isAddingNodes && (canvasWidth != width || canvasHeight != height) { cancelAddMode() }
+        canvasWidth = width
+        setCanvasHeight(height)
+        // Mode entry rebuilds against current bounds/plane, which may change before SwiftUI renders again.
+        if !projection.scale.isFinite { canvasWidth = 0 }
+    }
+    func beginAddMode() {
+        guard canBeginAddMode, let snapshot else { return }
+        let currentCanvasProjection = CanvasProjection(
+            bounds: bounds, plane: plane, width: canvasWidth, height: canvasHeight)
+        cancelOriginDrag()
+        isMovingOrigin = false
+        do {
+            addPlacementNotice = nil
+            try addPlacement.begin(
+                snapshot: snapshot, projection: currentCanvasProjection, canvasHeight: canvasHeight, parentID: nil)
+            addModeID = UUID()
+        } catch { errorMessage = Self.message(error) }
+    }
+    func cancelAddMode(refit: Bool = true) {
+        guard isAddingNodes else { return }
+        if isPlacingAddNode { operation?.cancel() }
+        addPlacement.cancel()
+        addPlacementNotice = nil
+        addModeID = UUID()
+        if refit { fitCanvas() }
+    }
+    func previewAddAtCanvasCenter() {
+        updateAddPointer(at: .init(x: canvasWidth / 2, y: canvasHeight / 2), modeID: addModeID)
+    }
+    func nudgeAddPreview(x: Double, y: Double) {
+        guard let point = addGhostPoint else { return }
+        updateAddPointer(at: .init(x: point.x + x, y: point.y + y), modeID: addModeID)
+    }
+    var canAdjustRadiusInput: Bool { isAddingNodes ? !isWorking && addGhostPoint != nil : canAdjustSelectionRadius }
+    func updateAddPointer(at point: CanvasPoint?, modeID: UUID) {
+        guard isAddingNodes, modeID == addModeID else { return }
+        guard let point else {
+            addPlacement.hideGhost()
+            return
+        }
+        do { try addPlacement.updatePointer(point) } catch { errorMessage = Self.message(error) }
+    }
+    func placeAddNode(at point: CanvasPoint, modeID: UUID) {
+        guard modeID == addModeID, canPlaceAddGhost, let snapshot, let projection = frozenAddProjection else { return }
+        do {
+            try addPlacement.updatePointer(point)
+            let candidate = snapshot.nodes.last(where: {
+                let center = projection.point(for: $0.value.position)
+                return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
+            })?.id
+            guard let request = addPlacement.request(connectingTo: candidate) else { return }
+            isPlacingAddNode = true
+            let service = addPlacements
+            perform(
+                acceptCommittedCancellation: true,
+                completion: { [weak self] _ in
+                    self?.isPlacingAddNode = false
+                    if self?.isAddingNodes == false { self?.fitCanvas() }
+                },
+                { [weak self] session in
+                    let receipt = try await service.place(request, in: session)
+                    await self?.acceptAddPlacement(receipt, modeID: modeID)
+                    return receipt.snapshot
+                })
+        } catch { errorMessage = Self.message(error) }
+    }
+    private func acceptAddPlacement(_ receipt: AddPlacementReceipt, modeID: UUID) {
+        guard isAddingNodes, modeID == addModeID else { return }
+        do {
+            try addPlacement.accept(receipt)
+            addPlacementNotice = receipt.connectionFallbackReason
+            if !isAddingNodes { addModeID = UUID() }
+        } catch {
+            cancelAddMode(refit: false)
+            errorMessage = Self.message(error)
         }
     }
     private(set) var canvasHeight: Double = 0
@@ -39,12 +153,24 @@ final class EditorStore {
         !isWorking && !stopped && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
     }
     func adjustSelectionRadius(direction: Double) {
+        if isAddingNodes {
+            guard !isWorking, direction.isFinite, direction != 0 else { return }
+            do { try addPlacement.adjustRadius(by: direction > 0 ? 1 : -1) } catch {
+                errorMessage = Self.message(error)
+            }
+            return
+        }
         guard canAdjustSelectionRadius, direction.isFinite, direction != 0, let snapshot else { return }
         let delta = (direction > 0 ? 1.0 : -1.0) / canvasHeight
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         perform { try await $0.adjustSelectionRadius(by: delta, target: target) }
     }
     func handleCanvasWheel(_ input: CanvasWheelInput) -> Bool {
+        if isAddingNodes {
+            guard input.isSupported, !isWorking, addGhostPoint != nil else { return false }
+            adjustSelectionRadius(direction: input.verticalDelta)
+            return true
+        }
         guard input.isSupported, !isWorking, !stopped, canvasHeight > 0, let snapshot else { return false }
         let step = (input.verticalDelta > 0 ? 1.0 : -1.0) / canvasHeight
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
@@ -133,6 +259,7 @@ final class EditorStore {
     var plane = EditingPlane.front {
         didSet {
             if plane != oldValue {
+                cancelAddMode()
                 cancelOriginDrag()
                 clearCanvasHover()
             }
@@ -207,8 +334,10 @@ final class EditorStore {
         importedMaterialLoader: any ArchiveImportedMaterialLoading = ArchiveImportedMaterialService(),
         sourceMaterialBaker: any ArchiveSourceTextureBaking = ArchiveSourceTextureBakingService(),
         exportService: DocumentExportFileService? = nil,
-        animationCatalog: (any AnimationCatalogLoading)? = nil
+        animationCatalog: (any AnimationCatalogLoading)? = nil,
+        addPlacements: any AddPlacementServing = AddPlacementService()
     ) {
+        self.addPlacements = addPlacements
         authoringCatalog = EditorAnimationCatalogState(service: animationCatalog)
         self.exportService = exportService
         self.colorImages = colorImages
@@ -441,6 +570,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        cancelAddMode(refit: false)
         cancelAnimationQuery()
         cancelExport()
         cancelColorImagePreparation()
@@ -541,6 +671,7 @@ final class EditorStore {
     }
 
     func setMovingOrigin(_ enabled: Bool) {
+        if enabled { cancelAddMode() }
         cancelOriginDrag()
         isMovingOrigin = enabled && !isWorking && !stopped && snapshot?.origin != nil
     }
@@ -927,8 +1058,14 @@ final class EditorStore {
 
     private static func identifier() -> String { "{\(UUID().uuidString.lowercased())}" }
 
-    func undo() { perform(reloadReferenceImage: true) { try await $0.undo() } }
-    func redo() { perform(reloadReferenceImage: true) { try await $0.redo() } }
+    func undo() {
+        cancelAddMode()
+        perform(reloadReferenceImage: true) { try await $0.undo() }
+    }
+    func redo() {
+        cancelAddMode()
+        perform(reloadReferenceImage: true) { try await $0.redo() }
+    }
 
     /// The sheet waits for publication before dismissing; validation errors keep its draft available.
     func applyReferenceComposition(
@@ -964,12 +1101,14 @@ final class EditorStore {
     }
 
     private func fitCanvas() {
+        guard !isAddingNodes else { return }
         cancelOriginDrag()
         let aspect = showsReferenceImage ? referenceImage.map { Double($0.width) / Double($0.height) } : nil
         bounds = CanvasBounds(nodes: snapshot?.nodes ?? [], referenceImageAspectRatio: aspect, origin: snapshot?.origin)
     }
 
     func stop() {
+        cancelAddMode(refit: false)
         authoringCatalog.stop()
         cancelAnimationQuery()
         cancelExport()
@@ -988,7 +1127,7 @@ final class EditorStore {
     }
 
     private func perform(
-        commits: Bool = true, reloadReferenceImage: Bool = false,
+        commits: Bool = true, reloadReferenceImage: Bool = false, acceptCommittedCancellation: Bool = false,
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
@@ -1009,7 +1148,10 @@ final class EditorStore {
             }
             do {
                 let next = try await action(session)
-                guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
+                guard !Task.isCancelled || acceptCommittedCancellation, !stopped, operationRequestID == requestID else {
+                    return
+                }
+                if acceptCommittedCancellation && next.documentIdentity != snapshot?.documentIdentity { return }
                 let changed = next.documentRevision != snapshot?.documentRevision
                 let previousPreviewIdentity = snapshot?.previewIdentity
                 // Visibility changes need fitting even when topology is unchanged; movements keep stable drag bounds.
@@ -1020,9 +1162,9 @@ final class EditorStore {
                         $0.id == $1.id && $0.isVisible == $1.isVisible
                     }
                 snapshot = next
-                if countChanged {
+                if countChanged && !isAddingNodes {
                     fit()
-                } else if needsFit {
+                } else if needsFit && !isAddingNodes {
                     fitCanvas()
                 }
                 errorMessage = nil
@@ -1251,6 +1393,9 @@ final class EditorStore {
             case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."
             case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
+            case .staleAddPlacement:
+                return "Add placement cancelled because the document, selection or constraints changed."
+            case .invalidAddPlacement: return "Move the add cursor to a valid canvas position."
             case .staleCanvasAdjustment:
                 return "Canvas adjustment cancelled because the document, selection or constraints changed."
             case .staleNodeDrag: return "Node drag cancelled because the document, selection or constraints changed."

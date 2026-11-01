@@ -16,6 +16,7 @@ struct NodeInspector: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Selection inspector").font(.headline)
+            AddModeControls(store: store)
             OriginControls(store: store)
             RigSettingsControls(store: store)
             NodeClipboardMenu(store: store)
