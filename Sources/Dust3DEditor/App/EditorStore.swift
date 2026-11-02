@@ -860,6 +860,22 @@ final class EditorStore {
             mode: mode)
     }
     func selectComponent(_ id: String?) { perform(commits: false) { try await $0.selectComponent(id) } }
+    func canEditComponentMeshSettings(_ target: ComponentMeshSelectionTarget) -> Bool {
+        !stopped && !isWorking && target.count > 1 && snapshot.map { target.isCurrent(in: $0) } == true
+    }
+    func componentMeshAction(_ edit: ComponentMeshEdit, target: ComponentMeshSelectionTarget) -> @MainActor () -> Void {
+        guard canEditComponentMeshSettings(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canEditComponentMeshSettings(target) else { return }
+            self.perform(acceptCommittedCancellation: true) {
+                try await $0.editSelectedComponentMeshSettings(edit, target: target)
+            }
+        }
+    }
+    func componentMeshSmoothingAction(_ text: String, target: ComponentMeshSelectionTarget) -> @MainActor () -> Void {
+        guard let value = ComponentMeshSmoothingInput.value(text) else { return {} }
+        return componentMeshAction(.smoothCutoffDegrees(value), target: target)
+    }
     func selectComponents(_ ids: Set<String>) { perform(commits: false) { try await $0.selectComponents(ids) } }
     func selectOnlyComponent(_ id: String) {
         guard snapshot?.selectedComponentIDs.contains(id) == true else { return }
@@ -1417,6 +1433,9 @@ final class EditorStore {
     }
 
     static func message(_ error: Error) -> String {
+        if error is ComponentMeshSelectionError {
+            return "The component settings selection changed. Choose the edit again."
+        }
         if let image = error as? ReferenceImageError {
             switch image {
             case .invalidImage:

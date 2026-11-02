@@ -125,6 +125,9 @@ public enum DocumentCommand: Sendable {
     /// Pixel/CRC validation is a platform import responsibility; this validates the PNG envelope.
     /// Example: `.importComponentColorImage(id: componentID, imageID: freshID, png: bytes)`.
     case importComponentColorImage(id: String, imageID: String, png: Data)
+    /// Replace one mesh setting across literal component IDs in one indexed transaction.
+    /// All roles and links are eligible. Invalid IDs or cutoff reject atomically. Empty arrays are no-ops.
+    case editComponentMeshSettings(ids: [String], edit: ComponentMeshEdit)
     /// Set one component combination mode, clearing legacy component inversion on a semantic change.
     /// Unknown unrelated XML/assets stay intact; semantic no-ops preserve original archive bytes.
     case setComponentCombineMode(id: String, mode: ComponentCombineMode)
@@ -516,7 +519,7 @@ public struct Dust3DDocument: Sendable {
         case .createAnimation, .setAnimationName, .setAnimationType, .setAnimationParameter, .duplicateAnimation,
             .deleteAnimation, .setRigType, .setHeadHasEyelids, .setNode, .setNodes, .setReferenceImagePNG, .setOrigin,
             .setComponentName,
-            .setComponentCombineMode,
+            .setComponentCombineMode, .editComponentMeshSettings,
             .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
             .setComponentWrapKeepChildren, .setComponentWrapFaces,
             .reorderComponent,
@@ -608,6 +611,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .reorderComponent(let id, let direction):
             guard try ComponentReordering.apply(model, id: id, direction: direction) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .editComponentMeshSettings(let ids, let edit):
+            guard try ComponentMeshBatch.apply(model, ids: ids, edit: edit) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentSmoothCutoffDegrees(let id, let degrees):
             guard try ComponentSmoothing.set(model, id: id, degrees: degrees) else { return self }

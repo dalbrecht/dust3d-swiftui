@@ -242,6 +242,17 @@ public actor EditorSession {
         }
     }
 
+    /// Atomically replace one mesh setting on the captured component selection.
+    /// - Returns: The unchanged snapshot for semantic no-ops, or one undoable publication.
+    public func editSelectedComponentMeshSettings(
+        _ edit: ComponentMeshEdit, target: ComponentMeshSelectionTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            try state.editSelectedComponentMeshSettings(edit, target: target)
+            try Task.checkCancellation()
+        }
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }

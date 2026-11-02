@@ -300,3 +300,9 @@ document edits clear stale reveal hints. No selection/reveal action changes the
 archive, undo/redo or preview inputs. The native `selectPartNodes(_:context:)` convenience
 uses the same captured-document validation before node-only replacement; whole-part actions immediately expose the
 explicit owned edges to batch midpoint/reverse commands.
+
+
+`ComponentMeshSelectionTarget` captures exact selected rows and all document,
+selection and constraint epochs. `editSelectedComponentMeshSettings` stages one
+atomic Undo and checks cancellation before publication. Presentation distinguishes
+uniform/mixed/unsupported values without authoring guesses. See ADR0146.

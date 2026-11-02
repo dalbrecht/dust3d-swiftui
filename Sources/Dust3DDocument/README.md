@@ -291,3 +291,9 @@ does. The query never rewrites archive XML or assets.
 including absent, empty and unsupported owner references for lossless inspection.
 It is not inferred from endpoints. The public snapshot initializer defaults this
 field to nil for legacy callers; edge equality includes the retained owner.
+
+
+`.editComponentMeshSettings(ids:edit:)` replaces combine mode or finite 0...180
+smoothing on exact explicit component rows in one indexed transaction. Defaults,
+legacy inverse/no-op spellings, assets and unselected descendants remain intact.
+Empty arrays are no-ops; invalid nonempty batches reject atomically. See ADR0146.
