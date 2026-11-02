@@ -498,3 +498,9 @@ Each explicit change applies only to the selected rows in one Undo step. Invalid
 smoothing drafts cannot apply; Reset Draft and Set Sharp (0°) are distinct actions.
 The smoothing control is hidden when the selected rows directly link to exactly
 one CutFace part. Stored cutoff values are preserved. See ADR0146.
+
+Component management exposes Delete Component and Contents for selected subtrees
+and contextual rows. It removes hidden/disabled/locked owned graph parts only when
+no other component instance refers to them. One Undo restores the document; assets
+and incoming references remain preserved. This intentional management operation
+differs from ordinary graph editing locks. See ADR0142.

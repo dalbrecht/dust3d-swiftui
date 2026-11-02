@@ -859,6 +859,18 @@ final class EditorStore {
                 in: rectangle, nodes: snapshot.nodes, edges: snapshot.edges, selectedEdgeIDs: snapshot.selectedEdgeIDs),
             mode: mode)
     }
+    func canDeleteComponentSubtrees(_ target: ComponentDeletionTarget) -> Bool {
+        guard !isWorking, !stopped, let snapshot else { return false }
+        return target.isCurrent(in: snapshot)
+    }
+    func componentDeletionAction(_ target: ComponentDeletionTarget) -> @MainActor () -> Void {
+        guard canDeleteComponentSubtrees(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canDeleteComponentSubtrees(target) else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.deleteComponentSubtrees(target: target) }
+        }
+    }
+
     func selectComponent(_ id: String?) { perform(commits: false) { try await $0.selectComponent(id) } }
     func canEditComponentMeshSettings(_ target: ComponentMeshSelectionTarget) -> Bool {
         !stopped && !isWorking && target.count > 1 && snapshot.map { target.isCurrent(in: $0) } == true
@@ -1447,6 +1459,9 @@ final class EditorStore {
     }
 
     static func message(_ error: Error) -> String {
+        if error is ComponentDeletionError {
+            return "The component deletion target changed. Choose the components again."
+        }
         if error is ComponentUngroupSelectionError {
             return "The component Ungroup target changed. Choose the components again."
         }

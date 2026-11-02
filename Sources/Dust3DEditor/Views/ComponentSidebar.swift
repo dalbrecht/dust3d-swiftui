@@ -11,7 +11,8 @@ struct ComponentSidebar: View {
     }
 
     var body: some View {
-        Group {
+        let deletionSnapshot = store.snapshot
+        return Group {
             if let tree = store.snapshot?.componentTree, !tree.rows.isEmpty || tree.failureDescription != nil {
                 Divider()
                 HStack {
@@ -26,6 +27,10 @@ struct ComponentSidebar: View {
                             }
                         }
                         .disabled(store.snapshot?.selectedComponentIDs.count ?? 0 < 2)
+                        if let deletionSnapshot {
+                            ComponentDeletionButton(
+                                store: store, target: ComponentDeletionTarget(snapshot: deletionSnapshot))
+                        }
                         Button("Clear Component Selection") { store.clearComponentSelection() }
                             .disabled(store.snapshot?.selectedComponentIDs.isEmpty != false)
                         Divider()
@@ -122,6 +127,9 @@ struct ComponentSidebar: View {
                                 !ids.isEmpty
                             {
                                 selectInCanvasButton(snapshot: snapshot, ids: ids)
+                                ComponentDeletionButton(
+                                    store: store,
+                                    target: ComponentDeletionTarget(snapshot: snapshot, componentIDs: Array(ids)))
                                 ComponentUngroupButton(
                                     store: store,
                                     target: ComponentUngroupTarget(snapshot: snapshot, componentIDs: Array(ids)))
@@ -137,6 +145,11 @@ struct ComponentSidebar: View {
                                 store.selectComponentGraph(
                                     ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids))
                             }
+                        }
+                        .focusedValue(\.editorComponentSidebarFocus, true)
+                        .onDeleteCommand {
+                            guard let deletionSnapshot else { return }
+                            store.componentDeletionAction(ComponentDeletionTarget(snapshot: deletionSnapshot))()
                         }
                         .listStyle(.sidebar)
                         .frame(maxHeight: 120)

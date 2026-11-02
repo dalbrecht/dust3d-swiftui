@@ -222,6 +222,11 @@ public enum DocumentCommand: Sendable {
     /// - Throws: `invalidNode` for unsafe ownership/topology/read-only candidates; `limitExceeded` above 10,000 selections.
     /// - Example: `.reduceNodes([firstNodeID, secondNodeID])` creates one atomic history edit.
     case reduceNodes([String])
+    /// Delete explicit XML subtrees and graph parts only when no known component reference survives.
+    /// Opaque links, incoming profile/wrapping references, assets and unrelated metadata are retained.
+    /// Throws missingComponent, invalidComponentStructure or limitExceeded atomically.
+    /// Example: `.removeComponentSubtrees([groupID, leafID])` uses one undo step.
+    case removeComponentSubtrees([String])
     case removeNode(id: String)
     case removeNodes([String])
     /// Remove explicitly empty editable parts and their references; retain nested content and all assets.
@@ -807,6 +812,8 @@ public struct Dust3DDocument: Sendable {
             guard try NodeReduction.apply(ids, model: model, contents: contents, order: &nextGraphOrder) else {
                 return self
             }
+        case .removeComponentSubtrees(let ids):
+            guard try ComponentSubtreeDeletion.apply(model, contents: contents, ids: ids) else { return self }
         case .removeNode(let id):
             return try applying(.removeNodes([id]))
         case .removeNodes(let ids):
