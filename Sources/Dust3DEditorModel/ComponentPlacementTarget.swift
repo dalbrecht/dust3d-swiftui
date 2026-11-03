@@ -22,6 +22,13 @@ public struct ComponentPlacementTarget: Sendable {
             ? Array(snapshot.selectedComponentIDs) : [grabbedID]
     }
 
+    public func canPlace(at placement: ComponentDropPlacement, in snapshot: EditorSnapshot) -> Bool {
+        guard isCurrent(in: snapshot) else { return false }
+        let plan = try? ComponentDropPlacementPlan(
+            components: snapshot.componentTree.rows.map(\.component), ids: ids, placement: placement)
+        return plan?.changesOrder == true
+    }
+
     public func isCurrent(in snapshot: EditorSnapshot) -> Bool {
         context.isCurrent(in: snapshot)
     }

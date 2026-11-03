@@ -38,6 +38,9 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertFalse(store.canReorderComponent(.down))
         let camera = store.cameraReset
         let preview = store.previewRevision
+        let noop = try XCTUnwrap(store.beginComponentDrag(grabbedID: last))
+        XCTAssertFalse(store.dropComponents(token: noop, at: .after(last)))
+        XCTAssertFalse(store.dropComponents(token: noop, at: .before(first)))
         let token = try XCTUnwrap(store.beginComponentDrag(grabbedID: last))
         XCTAssertFalse(store.dropComponents(token: UUID(), at: .before(first)))
         XCTAssertTrue(store.dropComponents(token: token, at: .before(first)))
