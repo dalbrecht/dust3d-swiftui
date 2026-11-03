@@ -952,11 +952,24 @@ final class EditorStore {
     }
 
     func dropComponents(token: UUID, at placement: ComponentDropPlacement) -> Bool {
-        guard let drag = pendingComponentDrag, drag.token == token else { return false }
-        pendingComponentDrag = nil
-        guard !stopped, !isWorking, let snapshot, drag.target.isCurrent(in: snapshot) else { return false }
-        placeComponents(at: placement, target: drag.target)
+        guard let target = consumeComponentDrag(token) else { return false }
+        placeComponents(at: placement, target: target)
         return true
+    }
+
+    func dropComponents(token: UUID, in parent: ComponentParent) -> Bool {
+        guard let target = consumeComponentDrag(token) else { return false }
+        perform(acceptCommittedCancellation: true) {
+            try await $0.placeComponents(in: parent, target: target)
+        }
+        return true
+    }
+
+    private func consumeComponentDrag(_ token: UUID) -> ComponentPlacementTarget? {
+        guard let drag = pendingComponentDrag, drag.token == token else { return nil }
+        pendingComponentDrag = nil
+        guard !stopped, !isWorking, let snapshot, drag.target.isCurrent(in: snapshot) else { return nil }
+        return drag.target
     }
 
     func placeComponents(at placement: ComponentDropPlacement, target: ComponentPlacementTarget) {

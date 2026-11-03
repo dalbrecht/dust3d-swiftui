@@ -16,7 +16,10 @@ struct ComponentSidebar: View {
             if let tree = store.snapshot?.componentTree, !tree.rows.isEmpty || tree.failureDescription != nil {
                 Divider()
                 HStack {
-                    Text("Components").font(.headline)
+                    ComponentParentDropZone(store: store, parent: .root) {
+                        Text("Components").font(.headline)
+                    }
+                    .help("Drop here to move components to the document root.")
                     Spacer()
                     Menu {
                         Menu("Select Only…") {
@@ -115,7 +118,7 @@ struct ComponentSidebar: View {
                                         .lineLimit(1)
                                 }
                                 .padding(.leading, CGFloat(min(row.depth, 6) * 10))
-                                .modifier(ComponentRowDrag(store: store, id: row.id))
+                                .modifier(ComponentRowDrag(store: store, id: row.id, isGroup: row.component.isGroup))
                                 .tag(row.id)
                                 .id(row.id)
                                 .accessibilityElement(children: .contain)

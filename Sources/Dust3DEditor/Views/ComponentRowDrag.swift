@@ -1,11 +1,13 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 import UniformTypeIdentifiers
 
 struct ComponentRowDrag: ViewModifier {
     let store: EditorStore
     let id: String
-    private static let tokenType = UTType(exportedAs: "com.dalbrecht.dust3d.component-drag")
+    let isGroup: Bool
+    fileprivate static let tokenType = UTType(exportedAs: "com.dalbrecht.dust3d.component-drag")
 
     func body(content: Content) -> some View {
         content
@@ -26,6 +28,9 @@ struct ComponentRowDrag: ViewModifier {
             .background {
                 VStack(spacing: 0) {
                     dropZone(.before(id), alignment: .top)
+                    if isGroup {
+                        ComponentParentDropZone(store: store, parent: .component(id)) { Color.clear }
+                    }
                     dropZone(.after(id), alignment: .bottom)
                 }
                 .accessibilityHidden(true)
@@ -33,34 +38,59 @@ struct ComponentRowDrag: ViewModifier {
     }
 
     private func dropZone(_ placement: ComponentDropPlacement, alignment: Alignment) -> some View {
-        ComponentInsertionZone(alignment: alignment, type: Self.tokenType) { providers in
-            guard providers.count == 1, let provider = providers.first else { return false }
-            provider.loadDataRepresentation(forTypeIdentifier: Self.tokenType.identifier) { data, _ in
-                guard let data, data.count == 36, let token = UUID(uuidString: String(decoding: data, as: UTF8.self))
-                else { return }
-                Task { @MainActor in
-                    _ = store.dropComponents(token: token, at: placement)
-                }
-            }
-            return true
-        }
+        ComponentDropZone(
+            alignment: alignment,
+            receive: { token in
+                _ = store.dropComponents(token: token, at: placement)
+            },
+            content: { Color.clear }
+        )
     }
 }
 
-private struct ComponentInsertionZone: View {
-    let alignment: Alignment
-    let type: UTType
-    let receive: ([NSItemProvider]) -> Bool
+struct ComponentParentDropZone<Content: View>: View {
+    let store: EditorStore
+    let parent: ComponentParent
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ComponentDropZone(
+            alignment: nil,
+            receive: { token in
+                _ = store.dropComponents(token: token, in: parent)
+            }, content: content)
+    }
+}
+
+private struct ComponentDropZone<Content: View>: View {
+    let alignment: Alignment?
+    let receive: @MainActor @Sendable (UUID) -> Void
+    @ViewBuilder let content: () -> Content
     @State private var targeted = false
 
     var body: some View {
-        Rectangle().fill(.clear)
-            .overlay(alignment: alignment) {
+        content()
+            .overlay(alignment: alignment ?? .center) {
                 if targeted {
-                    Rectangle().fill(Color.accentColor).frame(height: 2)
+                    if alignment != nil {
+                        Rectangle().fill(Color.accentColor).frame(height: 2)
+                    } else {
+                        RoundedRectangle(cornerRadius: 4).strokeBorder(Color.accentColor, lineWidth: 2)
+                    }
                 }
             }
             .contentShape(Rectangle())
-            .onDrop(of: [type], isTargeted: $targeted, perform: receive)
+            .onDrop(of: [ComponentRowDrag.tokenType], isTargeted: $targeted, perform: loadToken)
+    }
+
+    private func loadToken(_ providers: [NSItemProvider]) -> Bool {
+        guard providers.count == 1, let provider = providers.first else { return false }
+        let receive = receive
+        provider.loadDataRepresentation(forTypeIdentifier: ComponentRowDrag.tokenType.identifier) { data, _ in
+            guard let data, data.count == 36, let token = UUID(uuidString: String(decoding: data, as: UTF8.self))
+            else { return }
+            Task { @MainActor in receive(token) }
+        }
+        return true
     }
 }
