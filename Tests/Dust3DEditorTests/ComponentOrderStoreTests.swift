@@ -38,8 +38,9 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertFalse(store.canReorderComponent(.down))
         let camera = store.cameraReset
         let preview = store.previewRevision
-        let target = try XCTUnwrap(store.snapshot.flatMap(ComponentPlacementTarget.init(snapshot:)))
-        store.placeComponents(at: .before(first), target: target)
+        let token = try XCTUnwrap(store.beginComponentDrag(grabbedID: last))
+        XCTAssertFalse(store.dropComponents(token: UUID(), at: .before(first)))
+        XCTAssertTrue(store.dropComponents(token: token, at: .before(first)))
         try await settle(store)
         XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), [last, first])
         XCTAssertEqual(store.snapshot?.selectedComponentID, last)
@@ -49,7 +50,7 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertEqual(store.mesh?.triangleCount, 32)
         let edited = store.snapshot?.document.encoded()
         let completedPreview = store.previewRevision
-        store.placeComponents(at: .after(first), target: target)
+        XCTAssertFalse(store.dropComponents(token: token, at: .after(first)))
         try await settle(store)
         XCTAssertEqual(publications, 1)
         XCTAssertEqual(store.previewRevision, completedPreview)

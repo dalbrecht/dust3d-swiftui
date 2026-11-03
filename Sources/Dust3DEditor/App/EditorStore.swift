@@ -656,6 +656,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        pendingComponentDrag = nil
         pendingWholePartPick = nil
         isSelectingGraph = false
         cancelAddMode(refit: false)
@@ -938,6 +939,26 @@ final class EditorStore {
             try await $0.reparentComponents(to: parent, target: target)
         }
     }
+    @ObservationIgnored private var pendingComponentDrag: (token: UUID, target: ComponentPlacementTarget)?
+
+    func beginComponentDrag(grabbedID: String) -> UUID? {
+        pendingComponentDrag = nil
+        guard !stopped, !isWorking, let snapshot,
+            let target = ComponentPlacementTarget(snapshot: snapshot, grabbedID: grabbedID)
+        else { return nil }
+        let token = UUID()
+        pendingComponentDrag = (token, target)
+        return token
+    }
+
+    func dropComponents(token: UUID, at placement: ComponentDropPlacement) -> Bool {
+        guard let drag = pendingComponentDrag, drag.token == token else { return false }
+        pendingComponentDrag = nil
+        guard !stopped, !isWorking, let snapshot, drag.target.isCurrent(in: snapshot) else { return false }
+        placeComponents(at: placement, target: drag.target)
+        return true
+    }
+
     func placeComponents(at placement: ComponentDropPlacement, target: ComponentPlacementTarget) {
         guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot) else { return }
         perform(acceptCommittedCancellation: true) {
@@ -1264,6 +1285,7 @@ final class EditorStore {
     }
 
     func stop() {
+        pendingComponentDrag = nil
         pendingWholePartPick = nil
         isSelectingGraph = false
         cancelAddMode(refit: false)
