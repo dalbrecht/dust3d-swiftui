@@ -35,16 +35,14 @@ struct ComponentBatchOrderMenu: View {
     var body: some View {
         if let target = ComponentPlacementTarget(snapshot: snapshot) {
             let components = snapshot.componentTree.rows.map(\.component)
-            let ids = Array(snapshot.selectedComponentIDs)
             if let firstSelected = components.first(where: { snapshot.selectedComponentIDs.contains($0.id) }),
                 let firstSibling = components.first(where: { $0.parentID == firstSelected.parentID })
             {
                 let top = ComponentDropPlacement.before(firstSibling.id)
                 let bottom = ComponentDropPlacement.end(parentID: firstSelected.parentID)
                 Menu("Reorder Selected Components") {
-                    placementButton("Move to Top", placement: top, target: target, components: components, ids: ids)
-                    placementButton(
-                        "Move to Bottom", placement: bottom, target: target, components: components, ids: ids)
+                    placementButton("Move to Top", placement: top, target: target)
+                    placementButton("Move to Bottom", placement: bottom, target: target)
                 }
                 .disabled(store.isWorking)
                 .help("Moves the selected components together within their parent.")
@@ -53,11 +51,9 @@ struct ComponentBatchOrderMenu: View {
     }
 
     private func placementButton(
-        _ title: LocalizedStringKey, placement: ComponentDropPlacement, target: ComponentPlacementTarget,
-        components: [DocumentComponent], ids: [String]
+        _ title: LocalizedStringKey, placement: ComponentDropPlacement, target: ComponentPlacementTarget
     ) -> some View {
-        let plan = try? ComponentDropPlacementPlan(components: components, ids: ids, placement: placement)
-        return Button(title) { store.placeComponents(at: placement, target: target) }
-            .disabled(plan?.changesOrder != true)
+        Button(title) { store.placeComponents(at: placement, target: target) }
+            .disabled(!target.canPlace(at: placement, in: snapshot))
     }
 }
