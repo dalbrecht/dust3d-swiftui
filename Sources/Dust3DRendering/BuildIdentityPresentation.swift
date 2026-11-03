@@ -34,6 +34,10 @@ public struct BuildIdentityPresentation: Sendable {
                 Row(label: "Source digest", value: metadata.sourceDigest),
                 Row(label: "Core revision", value: metadata.coreRevision),
             ]
+            if let digest = metadata.coreDigest, let isDirty = metadata.coreIsDirty {
+                result.append(Row(label: "Core digest", value: digest))
+                result.append(Row(label: "Core state", value: isDirty ? "Modified" : "Clean"))
+            }
         case .failure(let cause):
             status = "Build identity unavailable"
             failureDescription = cause.localizedDescription
