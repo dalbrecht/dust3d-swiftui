@@ -76,3 +76,26 @@ struct ComponentColorControls: View {
         store.setComponentColor(component.id, value: draft.text)
     }
 }
+
+struct ComponentBatchColorControls: View {
+    let store: EditorStore
+    let selection: Set<String>
+    @State private var color = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Selected Component Colors").font(.headline)
+            TextField("Hex color", text: $color, prompt: Text("#RRGGBB"))
+            HStack {
+                Button("Apply Color") { store.setSelectedComponentColors(selection, value: color) }
+                    .disabled(DocumentColor(archiveValue: color) == nil)
+                    .accessibilityLabel("Apply color to selected components")
+                Button("Clear Colors") { store.setSelectedComponentColors(selection, value: nil) }
+                    .accessibilityLabel("Clear colors from selected components")
+            }
+            Text("Changes apply to selected component rows.").font(.caption)
+        }
+        .disabled(store.isWorking)
+        .accessibilityElement(children: .contain)
+    }
+}

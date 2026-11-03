@@ -26,6 +26,8 @@ struct NodeInspector: View {
                 ComponentReparentControls(store: store, selection: snapshot.selectedComponentIDs)
                 if snapshot.selectedComponentIDs.count > 1 {
                     ComponentBatchOrderMenu(store: store, snapshot: snapshot)
+                    ComponentBatchColorControls(store: store, selection: snapshot.selectedComponentIDs)
+                        .id(snapshot.selectedComponentIDs)
                 }
             }
             ComponentMeshSelectionControls(store: store)
