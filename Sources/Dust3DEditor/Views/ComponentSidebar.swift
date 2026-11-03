@@ -115,6 +115,7 @@ struct ComponentSidebar: View {
                                         .lineLimit(1)
                                 }
                                 .padding(.leading, CGFloat(min(row.depth, 6) * 10))
+                                .modifier(ComponentRowDrag(store: store, id: row.id))
                                 .tag(row.id)
                                 .id(row.id)
                                 .accessibilityElement(children: .contain)
