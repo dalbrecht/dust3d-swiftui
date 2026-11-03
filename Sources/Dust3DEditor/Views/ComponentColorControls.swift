@@ -79,7 +79,7 @@ struct ComponentColorControls: View {
 
 struct ComponentBatchColorControls: View {
     let store: EditorStore
-    let selection: Set<String>
+    let target: ComponentMeshSelectionTarget
     @State private var draft = ComponentColorDraft(source: .unset)
 
     var body: some View {
@@ -104,17 +104,17 @@ struct ComponentBatchColorControls: View {
                 Button("Apply Color", action: apply)
                     .disabled(!draft.canApply)
                     .accessibilityLabel("Apply color to selected components")
-                Button("Clear Colors") { store.setSelectedComponentColors(selection, value: nil) }
+                Button("Clear Colors") { store.setSelectedComponentColors(target, value: nil) }
                     .accessibilityLabel("Clear colors from selected components")
             }
             Text("Changes apply to selected component rows.").font(.caption)
         }
-        .disabled(store.isWorking)
+        .disabled(!store.canEditComponentMeshSettings(target))
         .accessibilityElement(children: .contain)
     }
     private func apply() {
         guard draft.canApply else { return }
-        store.setSelectedComponentColors(selection, value: draft.text)
+        store.setSelectedComponentColors(target, value: draft.text)
     }
 
 }
