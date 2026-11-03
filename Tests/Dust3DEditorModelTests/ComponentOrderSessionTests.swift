@@ -65,3 +65,23 @@ extension ComponentOrderSessionTests {
         XCTAssertEqual(redone.document.encoded(), moved.document.encoded())
     }
 }
+
+extension ComponentOrderSessionTests {
+    func testContextualPlacementMovesGrabbedRowWithoutChangingSelection() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><components><component id='a'/><component id='b'/><component id='c'/></components></canvas>"
+                    .utf8))
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let selected = try await session.selectComponents(["a", "b"])
+        XCTAssertNil(ComponentPlacementTarget(snapshot: selected, grabbedID: "missing"))
+        let target = try XCTUnwrap(ComponentPlacementTarget(snapshot: selected, grabbedID: "c"))
+        let moved = try await session.placeComponents(at: .before("a"), target: target)
+        XCTAssertEqual(moved.componentTree.rows.map(\.id), ["c", "a", "b"])
+        XCTAssertEqual(moved.selectedComponentIDs, ["a", "b"])
+        let group = try XCTUnwrap(ComponentPlacementTarget(snapshot: moved, grabbedID: "b"))
+        let reordered = try await session.placeComponents(at: .before("c"), target: group)
+        XCTAssertEqual(reordered.componentTree.rows.map(\.id), ["a", "b", "c"])
+    }
+}
