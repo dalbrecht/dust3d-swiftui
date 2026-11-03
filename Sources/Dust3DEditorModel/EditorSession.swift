@@ -325,6 +325,16 @@ public actor EditorSession {
             try Task.checkCancellation()
         }
     }
+    /// Validate and place the captured components in one undoable transaction.
+    public func placeComponents(
+        at placement: ComponentDropPlacement, target: ComponentPlacementTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            try Task.checkCancellation()
+            guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleComponentMove }
+            try state.apply([.placeComponents(ids: target.ids, placement: placement)])
+        }.snapshot
+    }
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
