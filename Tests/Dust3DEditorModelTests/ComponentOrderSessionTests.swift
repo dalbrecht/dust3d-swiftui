@@ -85,3 +85,28 @@ extension ComponentOrderSessionTests {
         XCTAssertEqual(reordered.componentTree.rows.map(\.id), ["a", "b", "c"])
     }
 }
+
+extension ComponentOrderSessionTests {
+    func testContextualDropIntoGroupAndBackToRoot() async throws {
+        let xml =
+            "<canvas><components><component id='group'><component id='a'/></component>"
+            + "<component id='b'/></components></canvas>"
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8))
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let selected = try await session.selectComponent("a")
+        let target = try XCTUnwrap(ComponentPlacementTarget(snapshot: selected, grabbedID: "b"))
+        let grouped = try await session.placeComponents(in: .component("group"), target: target)
+        XCTAssertEqual(grouped.componentTree.rows.map(\.depth), [0, 1, 1])
+        XCTAssertEqual(grouped.selectedComponentID, "a")
+
+        let nestedTarget = try XCTUnwrap(ComponentPlacementTarget(snapshot: grouped, grabbedID: "b"))
+        let rooted = try await session.placeComponents(in: .root, target: nestedTarget)
+        XCTAssertEqual(rooted.componentTree.rows.map(\.depth), [0, 1, 0])
+        XCTAssertEqual(rooted.selectedComponentID, "a")
+        let firstUndo = try await session.undo()
+        XCTAssertEqual(firstUndo.document.encoded(), grouped.document.encoded())
+        let secondUndo = try await session.undo()
+        XCTAssertEqual(secondUndo.document.encoded(), original.encoded())
+    }
+}
