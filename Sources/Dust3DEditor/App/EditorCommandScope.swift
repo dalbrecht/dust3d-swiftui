@@ -7,4 +7,10 @@ enum EditorCommandScope {
     static func routeUndo(hasNativeEditor: Bool, nativeAction: () -> Void, documentAction: () -> Void) {
         if hasNativeEditor { nativeAction() } else { documentAction() }
     }
+
+    static func routeEscape(
+        isMovingOrigin: Bool, canCancelExport: Bool, cancelOrigin: () -> Void, cancelExport: () -> Void
+    ) {
+        if isMovingOrigin { cancelOrigin() } else if canCancelExport { cancelExport() }
+    }
 }

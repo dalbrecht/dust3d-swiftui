@@ -292,6 +292,20 @@ public actor EditorSession {
     public func move(id: String, to position: NodePosition) throws -> EditorSnapshot {
         try update { try $0.move(id: id, to: position) }
     }
+    /// Commit a canvas drag only while its captured document, selection and constraints remain current.
+    /// - Parameters:
+    ///   - drag: The immutable gesture baseline.
+    ///   - translation: Total displacement in screen points.
+    /// - Returns: The resulting snapshot as one undoable edit.
+    /// - Throws: `EditorError.staleNodeDrag` or the original geometry and state error.
+    public func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) throws -> EditorSnapshot {
+        try update { state in
+            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
+            guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidNode }
+            try state.move(id: drag.anchorID, to: drag.position(by: translation))
+        }
+    }
+
     public func deleteSelection() throws -> EditorSnapshot {
         try update { state in
             if let edge = state.snapshot.selectedEdge {
