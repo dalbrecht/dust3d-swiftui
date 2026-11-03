@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move selected components to a new parent in one Undo step while preserving hierarchy order.
+
 - Add explicit component subtree deletion with shared-instance preservation, captured contextual targets and one-step Undo.
 
 - Ungroup multiple selected components in one undoable operation while preserving their children and order.

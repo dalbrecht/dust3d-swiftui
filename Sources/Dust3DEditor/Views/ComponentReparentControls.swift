@@ -3,13 +3,13 @@ import SwiftUI
 
 struct ComponentReparentControls: View {
     let store: EditorStore
-    let componentID: String
-    @State private var target: ComponentReparentTarget?
+    let selection: Set<String>
+    @State private var target: ComponentBatchReparentTarget?
     @State private var query = ""
     @State private var parent: ComponentParent?
 
     private var options: [ComponentParentOption] {
-        store.snapshot?.componentTree.parentOptions(for: componentID, matching: query) ?? []
+        target?.parentOptions(matching: query) ?? []
     }
     private var isCurrent: Bool {
         guard let target, let snapshot = store.snapshot else { return false }
@@ -44,29 +44,30 @@ struct ComponentReparentControls: View {
                     Spacer()
                     Button("Move") {
                         guard let parent else { return }
-                        store.reparentComponent(to: parent, target: target) { succeeded in
+                        store.reparentComponents(to: parent, target: target) { succeeded in
                             if succeeded { self.target = nil }
                         }
                     }
-                    .disabled(!isCurrent || parent == nil)
-                    .accessibilityLabel("Move component to selected parent")
+                    .disabled(!isCurrent || !options.contains { $0.id == parent })
+                    .accessibilityLabel("Move selected components to the chosen parent")
                 }
                 Text(
-                    "Appends the complete subtree in one undo step. Self, descendants and the current parent are excluded."
+                    "Appends selected subtrees in document order. Existing children stay in place. One Undo restores the move."
                 )
                 .font(.caption).foregroundStyle(.secondary)
             } else {
                 Button("Move to Parent…") { reset() }
-                    .accessibilityLabel("Choose a new parent for this component")
+                    .accessibilityLabel("Choose a new parent for the selected components")
             }
         }
         .disabled(store.isWorking)
-        .onChange(of: componentID) { _, _ in target = nil }
+        .onChange(of: selection) { _, _ in target = nil }
         .onChange(of: query) { _, _ in parent = nil }
     }
 
     private func reset() {
-        target = store.snapshot.flatMap(ComponentReparentTarget.init(snapshot:))
+        guard let snapshot = store.snapshot, snapshot.selectedComponentIDs == selection else { return }
+        target = ComponentBatchReparentTarget(snapshot: snapshot)
         query = ""
         parent = nil
     }

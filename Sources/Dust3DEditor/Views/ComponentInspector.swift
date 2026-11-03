@@ -48,7 +48,6 @@ struct ComponentInspector: View {
                 ComponentStitchingControls(store: store, component: component)
             }
             ComponentOrderMenu(store: store)
-            ComponentReparentControls(store: store, componentID: component.id)
             if let parent = component.parentID {
                 Text("Parent: \(parent)").font(.caption).textSelection(.enabled)
                     // Recreate the native selectable text when its identity changes; AppKit otherwise retains its old AX text.

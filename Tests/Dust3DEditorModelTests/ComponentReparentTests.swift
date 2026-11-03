@@ -73,4 +73,28 @@ final class ComponentReparentTests: XCTestCase {
         let undone = try await session.undo()
         XCTAssertEqual(undone.document.encoded(), original.encoded())
     }
+    func testBatchActorRetainsSelectionAndUndoRejectsOldCapture() async throws {
+        let session = EditorSession()
+        let original = try document()
+        _ = try await session.open(data: original.encoded())
+        let selected = try await session.selectComponents(["source", "child", "sibling"])
+        let target = try XCTUnwrap(ComponentBatchReparentTarget(snapshot: selected))
+        _ = try await session.selectComponents(["other"])
+        let selectedAgain = try await session.selectComponents(["source", "child", "sibling"])
+        do {
+            _ = try await session.reparentComponents(to: .component("other"), target: target)
+            XCTFail("Selection ABA must invalidate the captured action")
+        } catch {
+            XCTAssertEqual(error as? EditorError, .staleComponentMove)
+        }
+        let current = try XCTUnwrap(ComponentBatchReparentTarget(snapshot: selectedAgain))
+        let moved = try await session.reparentComponents(to: .component("other"), target: current)
+        XCTAssertEqual(moved.selectedComponentIDs, selected.selectedComponentIDs)
+        XCTAssertEqual(moved.componentTree.rows.first { $0.id == "other" }?.component.childIDs, ["source", "sibling"])
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), original.encoded())
+        XCTAssertFalse(undone.canUndo)
+        XCTAssertFalse(current.isCurrent(in: undone))
+    }
+
 }

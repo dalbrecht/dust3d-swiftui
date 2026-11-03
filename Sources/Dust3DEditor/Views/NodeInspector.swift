@@ -23,6 +23,9 @@ struct NodeInspector: View {
             if let snapshot = store.snapshot, !snapshot.selectedComponentIDs.isEmpty {
                 ComponentDeletionButton(store: store, target: ComponentDeletionTarget(snapshot: snapshot))
                 ComponentUngroupButton(store: store, target: ComponentUngroupTarget(snapshot: snapshot))
+                if snapshot.selectedComponentIDs.count > 1 {
+                    ComponentReparentControls(store: store, selection: snapshot.selectedComponentIDs)
+                }
             }
             ComponentMeshSelectionControls(store: store)
             if let component = store.snapshot?.selectedComponent {

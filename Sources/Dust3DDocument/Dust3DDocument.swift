@@ -166,6 +166,8 @@ public enum DocumentCommand: Sendable {
     case ungroupComponent(id: String)
     /// Append one subtree to an unlinked group or to the document root; cycles reject atomically.
     case reparentComponent(id: String, parentID: String?)
+    /// Append selected subtree roots in document order as one atomic move.
+    case reparentComponents(ids: [String], parentID: String?)
     /// Change one procedural part flag, preserving all other metadata, source graph and assets.
     /// Part locks constrain node editing; modifier metadata remains editable as in the inherited app.
     case setPartModifier(id: String, property: PartModifierProperty, value: Bool)
@@ -531,7 +533,7 @@ public struct Dust3DDocument: Sendable {
             .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
             .setComponentWrapKeepChildren, .setComponentWrapFaces,
             .reorderComponent,
-            .groupComponents, .ungroupComponent, .ungroupComponents, .reparentComponent:
+            .groupComponents, .ungroupComponent, .ungroupComponents, .reparentComponent, .reparentComponents:
             contents = DocumentContents(nodes: [], edges: [])
         default: contents = try editorContents()
         }
@@ -616,6 +618,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .ungroupComponent(let id):
             guard try ComponentStructure.ungroup(model, id: id) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .reparentComponents(let ids, let parentID):
+            guard try ComponentReparentBatch.apply(model, ids: ids, parentID: parentID) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .reparentComponent(let id, let parentID):
             guard try ComponentStructure.reparent(model, id: id, parentID: parentID) else { return self }

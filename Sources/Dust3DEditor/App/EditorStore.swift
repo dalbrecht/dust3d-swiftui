@@ -924,6 +924,20 @@ final class EditorStore {
     ) {
         perform(completion: completion) { try await $0.reparentComponent(to: parent, target: target) }
     }
+    func reparentComponents(
+        to parent: ComponentParent, target: ComponentBatchReparentTarget,
+        completion: (@MainActor (Bool) -> Void)? = nil
+    ) {
+        guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot),
+            target.parentOptions().contains(where: { $0.id == parent })
+        else {
+            completion?(false)
+            return
+        }
+        perform(acceptCommittedCancellation: true, completion: completion) {
+            try await $0.reparentComponents(to: parent, target: target)
+        }
+    }
     func canReorderComponent(_ direction: ComponentOrderMove) -> Bool {
         !isWorking && !stopped && snapshot?.availableComponentOrderMoves.contains(direction) == true
     }
@@ -1459,6 +1473,9 @@ final class EditorStore {
     }
 
     static func message(_ error: Error) -> String {
+        if case .inheritedContext(let id, let attribute) = error as? ComponentReparentError {
+            return "Cannot move \(id) without changing inherited \(attribute). The source is unchanged."
+        }
         if error is ComponentDeletionError {
             return "The component deletion target changed. Choose the components again."
         }
