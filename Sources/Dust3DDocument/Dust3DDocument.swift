@@ -159,6 +159,9 @@ public enum DocumentCommand: Sendable {
     case reorderComponent(id: String, direction: ComponentOrderMove)
     /// Wrap nonempty, unique siblings in a fresh unlinked group, retaining their source order.
     case groupComponents(ids: [String], groupID: String)
+    /// Ungroup every explicit eligible wrapper in one atomic indexed transaction; selected leaves are no-ops.
+    /// Loaded linked/opaque wrappers with component children are supported. XML-context changes may reject.
+    case ungroupComponents(ids: [String])
     /// Remove an unlinked nonempty group and its settings, promoting all child XML at its position.
     case ungroupComponent(id: String)
     /// Append one subtree to an unlinked group or to the document root; cycles reject atomically.
@@ -523,7 +526,7 @@ public struct Dust3DDocument: Sendable {
             .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
             .setComponentWrapKeepChildren, .setComponentWrapFaces,
             .reorderComponent,
-            .groupComponents, .ungroupComponent, .reparentComponent:
+            .groupComponents, .ungroupComponent, .ungroupComponents, .reparentComponent:
             contents = DocumentContents(nodes: [], edges: [])
         default: contents = try editorContents()
         }
@@ -602,6 +605,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .groupComponents(let ids, let groupID):
             try ComponentStructure.group(model, ids: ids, groupID: groupID)
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .ungroupComponents(let ids):
+            guard try ComponentUngroupBatch.apply(model, ids: ids) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .ungroupComponent(let id):
             guard try ComponentStructure.ungroup(model, id: id) else { return self }

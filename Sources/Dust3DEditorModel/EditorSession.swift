@@ -253,6 +253,14 @@ public actor EditorSession {
         }
     }
 
+    /// Publish one atomic Ungroup for the exact originating row context, preserving graph/resources.
+    public func ungroupComponents(target: ComponentUngroupTarget) throws -> EditorSnapshot {
+        try update { state in
+            try state.ungroupComponents(target: target)
+            try Task.checkCancellation()
+        }
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }
