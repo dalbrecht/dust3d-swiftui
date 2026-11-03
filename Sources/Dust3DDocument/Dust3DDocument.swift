@@ -156,6 +156,7 @@ public enum DocumentCommand: Sendable {
     /// Example: `.setComponentTargetSegments(id: id, segments: 12)`.
     case setComponentTargetSegments(id: String, segments: Int)
     /// Move a component within its current siblings, preserving its entire subtree and all assets.
+    case placeComponents(ids: [String], placement: ComponentDropPlacement)
     case reorderComponent(id: String, direction: ComponentOrderMove)
     /// Wrap nonempty, unique siblings in a fresh unlinked group, retaining their source order.
     case groupComponents(ids: [String], groupID: String)
@@ -532,7 +533,7 @@ public struct Dust3DDocument: Sendable {
             .setComponentCombineMode, .editComponentMeshSettings,
             .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
             .setComponentWrapKeepChildren, .setComponentWrapFaces,
-            .reorderComponent,
+            .reorderComponent, .placeComponents,
             .groupComponents, .ungroupComponent, .ungroupComponents, .reparentComponent, .reparentComponents:
             contents = DocumentContents(nodes: [], edges: [])
         default: contents = try editorContents()
@@ -624,6 +625,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .reparentComponent(let id, let parentID):
             guard try ComponentStructure.reparent(model, id: id, parentID: parentID) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .placeComponents(let ids, let placement):
+            guard try ComponentReordering.apply(model, ids: ids, placement: placement) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .reorderComponent(let id, let direction):
             guard try ComponentReordering.apply(model, id: id, direction: direction) else { return self }

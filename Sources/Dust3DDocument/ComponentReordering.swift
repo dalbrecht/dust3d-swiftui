@@ -41,6 +41,28 @@ enum ComponentReordering {
         guard let destination = direction.destinationIndex(from: index, count: siblings.count) else { return false }
         var reordered = siblings
         reordered.insert(reordered.remove(at: index), at: destination)
+        replaceSlots(in: parent, with: reordered)
+        return true
+    }
+
+    static func apply(_ model: XMLDocument, ids: [String], placement: ComponentDropPlacement) throws -> Bool {
+        let plan = try ComponentDropPlacementPlan(
+            components: ComponentHierarchy.read(model), ids: ids, placement: placement)
+        guard plan.changesOrder else { return false }
+        let elements = Dictionary(uniqueKeysWithValues: PartSplitting.componentElements(model).compactMap { element in
+            element.attribute(forName: "id")?.stringValue.map { (Data($0.utf8), element) }
+        })
+        let reordered = plan.orderedSiblingIDs.compactMap { elements[Data($0.utf8)] }
+        guard reordered.count == plan.orderedSiblingIDs.count,
+            let parent = reordered.first?.parent as? XMLElement,
+            DocumentXML.childElements(parent, named: "component").count == reordered.count,
+            reordered.allSatisfy({ $0.parent === parent })
+        else { throw DocumentError.invalidComponentStructure }
+        replaceSlots(in: parent, with: reordered)
+        return true
+    }
+
+    private static func replaceSlots(in parent: XMLElement, with reordered: [XMLElement]) {
         let original = parent.children ?? []
         for child in original { child.detach() }
         var componentIndex = 0
@@ -52,6 +74,5 @@ enum ComponentReordering {
                 parent.addChild(child)
             }
         }
-        return true
     }
 }
