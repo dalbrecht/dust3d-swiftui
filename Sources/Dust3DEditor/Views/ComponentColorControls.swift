@@ -80,15 +80,29 @@ struct ComponentColorControls: View {
 struct ComponentBatchColorControls: View {
     let store: EditorStore
     let selection: Set<String>
-    @State private var color = ""
+    @State private var draft = ComponentColorDraft(source: .unset)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Selected Component Colors").font(.headline)
-            TextField("Hex color", text: $color, prompt: Text("#RRGGBB"))
+            ColorPicker("Color draft", selection: Binding(
+                get: { DocumentColorPresentation.color(draft.pickerColor) },
+                set: { draft = draft.choosing(DocumentColorPresentation.value(from: $0)) }
+            ), supportsOpacity: true)
+            TextField("Hex color", text: Binding(
+                get: { draft.text },
+                set: { draft = draft.editing($0) }
+            ), prompt: Text("#RRGGBB or #AARRGGBB"))
+                .accessibilityLabel("Selected components’ hex color, alpha first")
+                .focusedValue(\.editorTextEditing, true)
+                .onSubmit { apply() }
+                .onExitCommand { draft = ComponentColorDraft(source: .unset) }
+            if let conversionIssue = draft.conversionIssue {
+                Text(conversionIssue.message).font(.caption)
+            }
             HStack {
-                Button("Apply Color") { store.setSelectedComponentColors(selection, value: color) }
-                    .disabled(DocumentColor(archiveValue: color) == nil)
+                Button("Apply Color", action: apply)
+                    .disabled(!draft.canApply)
                     .accessibilityLabel("Apply color to selected components")
                 Button("Clear Colors") { store.setSelectedComponentColors(selection, value: nil) }
                     .accessibilityLabel("Clear colors from selected components")
@@ -98,4 +112,9 @@ struct ComponentBatchColorControls: View {
         .disabled(store.isWorking)
         .accessibilityElement(children: .contain)
     }
+    private func apply() {
+        guard draft.canApply else { return }
+        store.setSelectedComponentColors(selection, value: draft.text)
+    }
+
 }
