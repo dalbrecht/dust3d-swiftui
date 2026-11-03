@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import XCTest
 
 @testable import Dust3DEditor
@@ -37,7 +38,8 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertFalse(store.canReorderComponent(.down))
         let camera = store.cameraReset
         let preview = store.previewRevision
-        store.reorderComponent(.first)
+        let target = try XCTUnwrap(store.snapshot.flatMap(ComponentPlacementTarget.init(snapshot:)))
+        store.placeComponents(at: .before(first), target: target)
         try await settle(store)
         XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), [last, first])
         XCTAssertEqual(store.snapshot?.selectedComponentID, last)
@@ -47,7 +49,7 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertEqual(store.mesh?.triangleCount, 32)
         let edited = store.snapshot?.document.encoded()
         let completedPreview = store.previewRevision
-        store.reorderComponent(.up)
+        store.placeComponents(at: .after(first), target: target)
         try await settle(store)
         XCTAssertEqual(publications, 1)
         XCTAssertEqual(store.previewRevision, completedPreview)

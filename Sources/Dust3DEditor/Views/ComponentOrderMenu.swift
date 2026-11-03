@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct ComponentOrderMenu: View {
@@ -23,5 +24,40 @@ struct ComponentOrderMenu: View {
         case .first: "Move to Top"
         case .last: "Move to Bottom"
         }
+    }
+}
+
+/// Keyboard-accessible placement at either boundary of the current sibling list.
+struct ComponentBatchOrderMenu: View {
+    let store: EditorStore
+    let snapshot: EditorSnapshot
+
+    var body: some View {
+        if let target = ComponentPlacementTarget(snapshot: snapshot) {
+            let components = snapshot.componentTree.rows.map(\.component)
+            let ids = Array(snapshot.selectedComponentIDs)
+            if let firstSelected = components.first(where: { snapshot.selectedComponentIDs.contains($0.id) }),
+                let firstSibling = components.first(where: { $0.parentID == firstSelected.parentID })
+            {
+                let top = ComponentDropPlacement.before(firstSibling.id)
+                let bottom = ComponentDropPlacement.end(parentID: firstSelected.parentID)
+                Menu("Reorder Selected Components") {
+                    placementButton("Move to Top", placement: top, target: target, components: components, ids: ids)
+                    placementButton(
+                        "Move to Bottom", placement: bottom, target: target, components: components, ids: ids)
+                }
+                .disabled(store.isWorking)
+                .help("Moves the selected components together within their parent.")
+            }
+        }
+    }
+
+    private func placementButton(
+        _ title: LocalizedStringKey, placement: ComponentDropPlacement, target: ComponentPlacementTarget,
+        components: [DocumentComponent], ids: [String]
+    ) -> some View {
+        let plan = try? ComponentDropPlacementPlan(components: components, ids: ids, placement: placement)
+        return Button(title) { store.placeComponents(at: placement, target: target) }
+            .disabled(plan?.changesOrder != true)
     }
 }

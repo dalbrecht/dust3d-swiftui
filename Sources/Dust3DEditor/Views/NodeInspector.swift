@@ -25,6 +25,9 @@ struct NodeInspector: View {
                 ComponentUngroupButton(store: store, target: ComponentUngroupTarget(snapshot: snapshot))
                 if snapshot.selectedComponentIDs.count > 1 {
                     ComponentReparentControls(store: store, selection: snapshot.selectedComponentIDs)
+                    if snapshot.selectedComponentIDs.count > 1 {
+                        ComponentBatchOrderMenu(store: store, snapshot: snapshot)
+                    }
                 }
             }
             ComponentMeshSelectionControls(store: store)

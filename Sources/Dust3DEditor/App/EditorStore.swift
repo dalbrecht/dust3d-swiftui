@@ -938,6 +938,12 @@ final class EditorStore {
             try await $0.reparentComponents(to: parent, target: target)
         }
     }
+    func placeComponents(at placement: ComponentDropPlacement, target: ComponentPlacementTarget) {
+        guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot) else { return }
+        perform(acceptCommittedCancellation: true) {
+            try await $0.placeComponents(at: placement, target: target)
+        }
+    }
     func canReorderComponent(_ direction: ComponentOrderMove) -> Bool {
         !isWorking && !stopped && snapshot?.availableComponentOrderMoves.contains(direction) == true
     }
