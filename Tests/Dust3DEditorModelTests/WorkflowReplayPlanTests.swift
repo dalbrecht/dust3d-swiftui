@@ -45,5 +45,14 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(final.nodes, try document.editorContents().nodes)
         XCTAssertEqual(final.edges, try document.editorContents().edges)
         XCTAssertEqual(final.edges.first?.fromID, "middle")
+        let partialArchive = try plan.previewDocument(after: 3, source: document)
+        let partialGraph = try partialArchive.editorContents()
+        XCTAssertEqual(partialGraph.nodes.map(\.id), partial.nodes.map(\.id))
+        XCTAssertEqual(partialGraph.nodes.map(\.value), partial.nodes.map(\.value))
+        XCTAssertEqual(partialGraph.edges, partial.edges)
+        XCTAssertEqual(partialGraph.parts.map(\.id), ["loop"])
+        XCTAssertEqual(try partialArchive.components().map(\.id), ["loopComponent"])
+        XCTAssertEqual(try plan.previewDocument(after: plan.steps.count, source: document).encoded(), document.encoded())
+
     }
 }

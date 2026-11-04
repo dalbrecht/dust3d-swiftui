@@ -27,6 +27,12 @@ package struct WorkflowReplayPlan: Sendable {
     }
 
 
+    package func previewDocument(after completedSteps: Int, source: Dust3DDocument) throws -> Dust3DDocument {
+        guard completedSteps < steps.count else { return source }
+        let visible = frame(after: completedSteps)
+        return try source.replayFrame(nodeIDs: Set(visible.nodes.map(\.id)), edgeIDs: Set(visible.edges.map(\.id)))
+    }
+
     package init(document: Dust3DDocument) throws {
         let graph = try document.editorContents()
         let components = try document.components()

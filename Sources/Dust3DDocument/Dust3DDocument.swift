@@ -1146,6 +1146,55 @@ public struct Dust3DDocument: Sendable {
         return try canonical(modelXML) == canonical(other.modelXML)
     }
 
+    /// Produce a transient archive for a replay frame, retaining source assets and metadata.
+    package func replayFrame(nodeIDs: Set<String>, edgeIDs: Set<String>) throws -> Dust3DDocument {
+        let model = try Self.xml(modelXML, root: "canvas")
+        guard let root = model.rootElement() else { throw DocumentError.invalidNode }
+        var retainedParts = Set<String>()
+        for node in try Self.nodes(model) {
+            guard let id = node.attribute(forName: "id")?.stringValue, nodeIDs.contains(id) else {
+                node.detach()
+                continue
+            }
+            if let part = node.attribute(forName: "partId")?.stringValue { retainedParts.insert(part) }
+        }
+        for edge in root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] {
+            guard let id = edge.attribute(forName: "id")?.stringValue, edgeIDs.contains(id),
+                let from = edge.attribute(forName: "from")?.stringValue, nodeIDs.contains(from),
+                let to = edge.attribute(forName: "to")?.stringValue, nodeIDs.contains(to)
+            else {
+                edge.detach()
+                continue
+            }
+        }
+        for part in root.elements(forName: "parts").first?.elements(forName: "part") ?? []
+        where !retainedParts.contains(part.attribute(forName: "id")?.stringValue ?? "") {
+            part.detach()
+        }
+        for entry in root.elements(forName: "partIdList").first?.elements(forName: "partId") ?? []
+        where !retainedParts.contains(entry.attribute(forName: "id")?.stringValue ?? "") {
+            entry.detach()
+        }
+        func pruneComponents(in parent: XMLElement) {
+            for component in parent.elements(forName: "component") {
+                pruneComponents(in: component)
+                guard component.attribute(forName: "linkDataType")?.stringValue == "partId",
+                    !retainedParts.contains(component.attribute(forName: "linkData")?.stringValue ?? "")
+                else { continue }
+                if component.elements(forName: "component").isEmpty {
+                    component.detach()
+                } else {
+                    component.removeAttribute(forName: "linkDataType")
+                    component.removeAttribute(forName: "linkData")
+                }
+            }
+        }
+        if let components = root.elements(forName: "components").first {
+            pruneComponents(in: components)
+        }
+        return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+    }
+
     private func replacingModel(_ model: Data) throws -> Dust3DDocument {
         guard model.count <= 16 * 1024 * 1024 else { throw DocumentError.limitExceeded }
         return try replacingItem(at: modelIndex, with: model)
