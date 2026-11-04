@@ -19,6 +19,23 @@ private actor WorkflowReplayMeshLoader {
     }
 }
 
+enum WorkflowReplayMeshStatus: Equatable {
+    case updating
+    case failed(String)
+    case empty
+    case ready
+
+    init(requestedStep: Int, displayedStep: Int?, hasMesh: Bool, failure: String?) {
+        if requestedStep != displayedStep {
+            self = .updating
+        } else if let failure {
+            self = .failed(failure)
+        } else {
+            self = hasMesh ? .ready : .empty
+        }
+    }
+}
+
 struct WorkflowReplayView: View {
     private enum Presentation: String, CaseIterable {
         case front = "Front (X/Y)"
@@ -62,24 +79,28 @@ struct WorkflowReplayView: View {
                     } else {
                         replayCanvas(plan, plane: presentation == .front ? .front : .side)
                     }
-                    Text("Step \(completedSteps) of \(plan.steps.count)")
-                        .monospacedDigit()
-                    if completedSteps > 0 {
-                        switch plan.steps[completedSteps - 1] {
-                        case .referenceImage: Text("Set Reference Image")
-                        case .property(let property): Text("Set \(property.title)").lineLimit(2)
-                        case .createGroup(_, let name):
-                            if name.isEmpty { Text("Create Group") } else { Text("Create Group: \(name)").lineLimit(2) }
-                        case .movePart(_, let groupName):
-                            if groupName.isEmpty {
-                                Text("Move Part into Group")
-                            } else {
-                                Text("Move Part into \(groupName)").lineLimit(2)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Step \(completedSteps) of \(plan.steps.count)")
+                            .monospacedDigit()
+                        if completedSteps > 0 {
+                            switch plan.steps[completedSteps - 1] {
+                            case .referenceImage: Text("Set Reference Image")
+                            case .property(let property): Text("Set \(property.title)").lineLimit(2)
+                            case .createGroup(_, let name):
+                                if name.isEmpty { Text("Create Group") } else { Text("Create Group: \(name)").lineLimit(2) }
+                            case .movePart(_, let groupName):
+                                if groupName.isEmpty {
+                                    Text("Move Part into Group")
+                                } else {
+                                    Text("Move Part into \(groupName)").lineLimit(2)
+                                }
+                            case .restoreEdgeDirections: Text("Restore Edge Directions")
+                            case .node: Text("Draw Node")
+                            case .edge: Text("Connect Nodes")
                             }
-                        case .restoreEdgeDirections: Text("Restore Edge Directions")
-                        case .node, .edge: EmptyView()
                         }
                     }
+                    .accessibilityElement(children: .combine)
                     if plan.showsReferenceImage(after: completedSteps), let referenceFailure {
                         Text(referenceFailure).foregroundStyle(.secondary).lineLimit(2)
                     }
@@ -93,7 +114,7 @@ struct WorkflowReplayView: View {
                             .disabled(completedSteps == plan.steps.count)
                         Button("Next Step") { advance(plan) }
                             .disabled(completedSteps == plan.steps.count || isPlaying)
-                            .keyboardShortcut(.rightArrow, modifiers: [])
+                            .keyboardShortcut(.rightArrow, modifiers: .option)
                     }
                     let seconds = Double(WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed))) / 1000
                     Slider(
@@ -179,19 +200,32 @@ struct WorkflowReplayView: View {
     }
 
     private var meshPreview: some View {
-        ZStack(alignment: .bottom) {
+        let status = WorkflowReplayMeshStatus(
+            requestedStep: completedSteps, displayedStep: meshStep, hasMesh: mesh != nil, failure: meshFailure)
+        return ZStack(alignment: .bottom) {
             if let mesh, let meshStep {
-                MeshViewport(mesh: mesh, isWireframe: false, cameraReset: 0, meshRevision: meshStep, materials: nil) {
-                    meshFailure = $0
+                MeshViewport(
+                    mesh: mesh, isWireframe: false, cameraReset: 0, meshRevision: meshStep,
+                    materials: nil, onMaterialError: { message in
+                        if requestedMeshStep == meshStep { meshFailure = message }
+                    }
+                ) { message in
+                    if requestedMeshStep == meshStep { meshFailure = message }
                 }
+                .opacity(status == .updating ? 0.35 : 1)
+                .allowsHitTesting(status != .updating)
+                .accessibilityHidden(status == .updating)
                 .accessibilityLabel("Reconstructed 3D mesh")
             }
-            if let meshFailure {
-                Text(meshFailure).padding(8).background(.regularMaterial)
-            } else if meshStep != completedSteps {
+            switch status {
+            case .updating:
                 ProgressView("Updating 3D preview…").padding(8).background(.regularMaterial)
-            } else if mesh == nil {
+            case .failed(let message):
+                Text(message).padding(8).background(.regularMaterial)
+            case .empty:
                 Text("No geometry at this step").padding(8)
+            case .ready:
+                EmptyView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
