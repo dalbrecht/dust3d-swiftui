@@ -338,11 +338,12 @@ public struct DocumentContents: Sendable {
 }
 
 package struct ReplayProperty: Equatable, Sendable {
-    package enum Owner: Hashable, Sendable { case part, component }
+    package enum Owner: Hashable, Sendable { case node, part, component }
     package let owner: Owner
     package let id: String
     package let attribute: String
     package let title: String
+    package let profilePartID: String?
 }
 
 /// Immutable archive value. Unchanged saves retain every input byte, including unknown assets.
@@ -1177,15 +1178,20 @@ public struct Dust3DDocument: Sendable {
             elements.flatMap { element -> [ReplayProperty] in
                 guard let id = element.attribute(forName: "id")?.stringValue else { return [] }
                 return rules.compactMap { attribute, label in
-                    guard element.attribute(forName: attribute) != nil else { return nil }
+                    guard let value = element.attribute(forName: attribute)?.stringValue else { return nil }
                     let name = element.attribute(forName: "name")?.stringValue ?? ""
+                    let profilePartID = attribute == "cutFace" && CutFaceLinks.canonicalID(value) != nil
+                        ? value : nil
                     return ReplayProperty(
                         owner: owner, id: id, attribute: attribute,
-                        title: name.isEmpty ? label : "\(name) — \(label)")
+                        title: name.isEmpty ? label : "\(name) — \(label)", profilePartID: profilePartID)
                 }
             }
         }
-        return properties(parts, owner: .part, rules: partRules)
+        return properties(
+            try Self.nodes(model), owner: .node, rules: [
+                ("cutFace", "Node Cut Face"), ("cutRotation", "Node Cut Rotation"),
+            ]) + properties(parts, owner: .part, rules: partRules)
             + properties(PartSplitting.componentElements(model), owner: .component, rules: componentRules)
     }
 
@@ -1265,6 +1271,7 @@ public struct Dust3DDocument: Sendable {
                 }
             }
         }
+        mask(try Self.nodes(model), owner: .node)
         mask(root.elements(forName: "parts").first?.elements(forName: "part") ?? [], owner: .part)
         mask(PartSplitting.componentElements(model), owner: .component)
         return try replacingModel(model.xmlData(options: [.nodePreserveAll]))

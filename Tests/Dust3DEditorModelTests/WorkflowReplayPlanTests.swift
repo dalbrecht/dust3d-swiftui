@@ -84,6 +84,35 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(plan.steps.last, .node(id: "nextNode", incomingEdgeID: nil))
     }
 
+    func testReplayStagesNodeCutFacesAndWaitsForLinkedProfiles() throws {
+        let profile = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
+        let source = try Dust3DDocument(snapshotXML: Data("""
+            <canvas>
+              <parts><part id="tube"/><part id="\(profile)" target="CutFace"/><part id="next"/></parts>
+              <nodes>
+                <node id="a" partId="tube" x="0" y="0" z="0" radius=".1" cutFace="Triangle"/>
+                <node id="b" partId="tube" x="0" y="1" z="0" radius=".1" cutFace="\(profile)" cutRotation=".25"/>
+                <node id="p" partId="\(profile)" x="1" y="0" z="0" radius=".1"/>
+                <node id="n" partId="next" x="2" y="0" z="0" radius=".1"/>
+              </nodes>
+              <edges><edge id="ab" partId="tube" from="a" to="b"/></edges>
+            </canvas>
+            """.utf8))
+        let plan = try WorkflowReplayPlan(document: source)
+        XCTAssertEqual(plan.steps.count, 7)
+        func xml(after step: Int) throws -> String {
+            String(decoding: try plan.previewDocument(after: step, source: source).modelXML, as: UTF8.self)
+        }
+        XCTAssertFalse(try xml(after: 2).contains("cutFace="))
+        XCTAssertFalse(try xml(after: 2).contains("cutRotation="))
+        XCTAssertTrue(try xml(after: 3).contains("cutFace=\"Triangle\""))
+        XCTAssertTrue(try xml(after: 4).contains("cutRotation=\".25\""))
+        XCTAssertFalse(try xml(after: 5).contains("cutFace=\"\(profile)\""))
+        XCTAssertTrue(try xml(after: 6).contains("cutFace=\"\(profile)\""))
+        XCTAssertEqual(plan.frame(after: 6).nodes.map(\.id), ["a", "b", "p"])
+        XCTAssertEqual(try plan.previewDocument(after: 7, source: source).encoded(), source.encoded())
+    }
+
     func testReplaySpeedUsesBoundedReferenceIntervals() {
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 1), 2995)
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 11), 1445)

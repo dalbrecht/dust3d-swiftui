@@ -92,16 +92,12 @@ package struct WorkflowReplayPlan: Sendable {
         }
 
         let properties = try document.replayProperties()
+        let nodeProperties = Dictionary(grouping: properties.filter { $0.owner == .node }, by: \.id)
         let partProperties = Dictionary(grouping: properties.filter { $0.owner == .part }, by: \.id)
         let componentProperties = Dictionary(grouping: properties.filter { $0.owner == .component }, by: \.id)
         let linkedComponents = Dictionary(grouping: components.compactMap { component in
             component.partID.map { (partID: $0, componentID: component.id) }
         }, by: \.partID)
-        var profileTargets: [String: String] = [:]
-        for part in graph.parts {
-            if case .linkedPart(let target) = part.cutFace { profileTargets[part.id] = target }
-        }
-
         var visitedParts = Set<String?>()
         var stagedComponents = Set<String>()
         var deferredProfiles: [String: [ReplayProperty]] = [:]
@@ -110,23 +106,36 @@ package struct WorkflowReplayPlan: Sendable {
         steps.reserveCapacity(graph.nodes.count + graph.edges.count + properties.count)
         let partOrder = components.compactMap(\.partID).map(Optional.some)
             + graph.parts.map { Optional($0.id) } + [nil]
+        func stage(_ property: ReplayProperty, for part: String?) {
+            // A linked cross-section needs the target geometry to exist in the frame.
+            guard let target = property.profilePartID else {
+                steps.append(.property(property))
+                return
+            }
+            if nodesByPart[target] == nil {
+                unresolvedProfiles.append(property)
+            } else if target == part || !visitedParts.contains(target) {
+                deferredProfiles[target, default: []].append(property)
+            } else {
+                steps.append(.property(property))
+            }
+        }
         for part in partOrder where visitedParts.insert(part).inserted {
+            let firstStep = steps.count
             Self.appendSteps(
                 nodes: nodesByPart[part] ?? [], edges: edgesByPart[part] ?? [], to: &steps)
+            let nodeIDs = steps[firstStep...].compactMap { step -> String? in
+                guard case .node(let id, _) = step else { return nil }
+                return id
+            }
+            for id in nodeIDs {
+                for property in nodeProperties[id] ?? [] {
+                    stage(property, for: part)
+                }
+            }
             guard let part else { continue }
             for property in partProperties[part] ?? [] {
-                // A linked cross-section needs the target geometry to exist in the frame.
-                guard property.attribute == "cutFace", let target = profileTargets[part] else {
-                    steps.append(.property(property))
-                    continue
-                }
-                if nodesByPart[target] == nil {
-                    unresolvedProfiles.append(property)
-                } else if target == part || !visitedParts.contains(target) {
-                    deferredProfiles[target, default: []].append(property)
-                } else {
-                    steps.append(.property(property))
-                }
+                stage(property, for: part)
             }
             for link in linkedComponents[part] ?? [] where stagedComponents.insert(link.componentID).inserted {
                 steps.append(contentsOf: (componentProperties[link.componentID] ?? []).map(Step.property))
