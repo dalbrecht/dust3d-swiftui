@@ -104,7 +104,8 @@ package struct WorkflowReplayPlan: Sendable {
 
         var visitedParts = Set<String?>()
         var stagedComponents = Set<String>()
-        var deferredProfiles: [ReplayProperty] = []
+        var deferredProfiles: [String: [ReplayProperty]] = [:]
+        var unresolvedProfiles: [ReplayProperty] = []
         var steps: [Step] = document.hasReferenceImage ? [.referenceImage] : []
         steps.reserveCapacity(graph.nodes.count + graph.edges.count + properties.count)
         let partOrder = components.compactMap(\.partID).map(Optional.some)
@@ -115,10 +116,14 @@ package struct WorkflowReplayPlan: Sendable {
             guard let part else { continue }
             for property in partProperties[part] ?? [] {
                 // A linked cross-section needs the target geometry to exist in the frame.
-                if property.attribute == "cutFace", let target = profileTargets[part],
-                    nodesByPart[target]?.isEmpty != false || !visitedParts.contains(target)
-                {
-                    deferredProfiles.append(property)
+                guard property.attribute == "cutFace", let target = profileTargets[part] else {
+                    steps.append(.property(property))
+                    continue
+                }
+                if nodesByPart[target] == nil {
+                    unresolvedProfiles.append(property)
+                } else if target == part || !visitedParts.contains(target) {
+                    deferredProfiles[target, default: []].append(property)
                 } else {
                     steps.append(.property(property))
                 }
@@ -126,9 +131,12 @@ package struct WorkflowReplayPlan: Sendable {
             for link in linkedComponents[part] ?? [] where stagedComponents.insert(link.componentID).inserted {
                 steps.append(contentsOf: (componentProperties[link.componentID] ?? []).map(Step.property))
             }
+            if let ready = deferredProfiles.removeValue(forKey: part) {
+                steps.append(contentsOf: ready.map(Step.property))
+            }
         }
         steps.append(contentsOf: crossPartEdges.map { .edge(id: $0.id) })
-        steps.append(contentsOf: deferredProfiles.map(Step.property))
+        steps.append(contentsOf: unresolvedProfiles.map(Step.property))
         let groupNames = Dictionary(uniqueKeysWithValues: components.filter(\.isGroup).map { ($0.id, $0.name) })
         for component in components {
             if component.isGroup {

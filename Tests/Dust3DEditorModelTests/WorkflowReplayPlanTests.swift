@@ -59,6 +59,31 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(try plan.previewDocument(after: 6, source: source).encoded(), source.encoded())
     }
 
+    func testLinkedCutFaceAppearsWhenItsProfileFinishes() throws {
+        let profile = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
+        let source = try Dust3DDocument(snapshotXML: Data("""
+            <canvas>
+              <parts>
+                <part id="tube" cutFace="\(profile)"/>
+                <part id="\(profile)" target="CutFace" rounded="true"/>
+                <part id="next"/>
+              </parts>
+              <nodes>
+                <node id="tubeNode" partId="tube" x="0" y="0" z="0" radius=".1"/>
+                <node id="profileNode" partId="\(profile)" x="1" y="0" z="0" radius=".1"/>
+                <node id="nextNode" partId="next" x="2" y="0" z="0" radius=".1"/>
+              </nodes>
+            </canvas>
+            """.utf8))
+        let plan = try WorkflowReplayPlan(document: source)
+        let beforeLink = try plan.previewDocument(after: 3, source: source).editorContents()
+        XCTAssertEqual(beforeLink.parts.first { $0.id == "tube" }?.cutFace, .preset(.quad))
+        let linked = try plan.previewDocument(after: 4, source: source).editorContents()
+        XCTAssertEqual(linked.parts.first { $0.id == "tube" }?.cutFace, .linkedPart(profile))
+        XCTAssertEqual(linked.nodes.map(\.id), ["tubeNode", "profileNode"])
+        XCTAssertEqual(plan.steps.last, .node(id: "nextNode", incomingEdgeID: nil))
+    }
+
     func testReplaySpeedUsesBoundedReferenceIntervals() {
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 1), 2995)
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 11), 1445)
