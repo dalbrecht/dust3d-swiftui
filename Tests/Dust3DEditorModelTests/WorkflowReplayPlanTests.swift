@@ -5,6 +5,20 @@ import XCTest
 @testable import Dust3DEditorModel
 
 final class WorkflowReplayPlanTests: XCTestCase {
+    func testReferenceOnlyReplayAppliesImageBeforeGraphAndPreservesBytes() throws {
+        let png = try XCTUnwrap(Data(base64Encoded:
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
+        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+            .applying(.setReferenceImagePNG(png))
+        let plan = try WorkflowReplayPlan(document: original)
+        XCTAssertEqual(plan.steps, [.referenceImage])
+        XCTAssertFalse(plan.showsReferenceImage(after: 0))
+        XCTAssertTrue(plan.showsReferenceImage(after: 1))
+        XCTAssertNil(try plan.previewDocument(after: 0, source: original).referenceImagePNG)
+        XCTAssertEqual(try plan.previewDocument(after: 1, source: original).encoded(), original.encoded())
+    }
+
+
     func testReplaySpeedUsesBoundedReferenceIntervals() {
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 1), 2995)
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 11), 1445)

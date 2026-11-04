@@ -1,3 +1,4 @@
+import CoreGraphics
 import Dust3DDocument
 import Dust3DEditorModel
 import Dust3DKit
@@ -36,6 +37,9 @@ struct WorkflowReplayView: View {
     @State private var mesh: IndexedMesh?
     @State private var meshStep: Int?
     @State private var meshFailure: String?
+    @State private var referenceImage: CGImage?
+    @State private var referenceBounds: CanvasBounds?
+    @State private var referenceFailure: String?
 
     private var playbackInterval: Int? {
         isPlaying ? WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed)) : nil
@@ -60,8 +64,15 @@ struct WorkflowReplayView: View {
                     }
                     Text("Step \(completedSteps) of \(plan.steps.count)")
                         .monospacedDigit()
-                    if completedSteps > 0, case .property(let property) = plan.steps[completedSteps - 1] {
-                        Text("Set \(property.title)").lineLimit(2)
+                    if completedSteps > 0 {
+                        switch plan.steps[completedSteps - 1] {
+                        case .referenceImage: Text("Set Reference Image")
+                        case .property(let property): Text("Set \(property.title)").lineLimit(2)
+                        case .node, .edge: EmptyView()
+                        }
+                    }
+                    if plan.showsReferenceImage(after: completedSteps), let referenceFailure {
+                        Text(referenceFailure).foregroundStyle(.secondary).lineLimit(2)
                     }
                     HStack {
                         Button("Reset") {
@@ -109,6 +120,18 @@ struct WorkflowReplayView: View {
             } catch {
                 guard !Task.isCancelled else { return }
                 failure = EditorStore.message(error)
+            }
+        }
+        .task(id: plan?.steps.first == .referenceImage) {
+            guard let plan, plan.steps.first == .referenceImage else { return }
+            do {
+                let result = try await ReferenceImageService().preview(document: document)
+                guard !Task.isCancelled, let image = result.image else { return }
+                referenceImage = image
+                referenceBounds = plan.bounds(referenceImageAspectRatio: Double(image.width) / Double(image.height))
+            } catch {
+                guard !Task.isCancelled else { return }
+                referenceFailure = EditorStore.message(error)
             }
         }
         .task(id: requestedMeshStep) {
@@ -169,7 +192,19 @@ struct WorkflowReplayView: View {
         let frame = plan.frame(after: completedSteps)
         let nodes = Dictionary(uniqueKeysWithValues: frame.nodes.filter(\.isVisible).map { ($0.id, $0) })
         return Canvas { context, size in
-            let projection = CanvasProjection(bounds: plan.bounds, plane: plane, width: size.width, height: size.height)
+            let projection = CanvasProjection(
+                bounds: referenceBounds ?? plan.bounds, plane: plane, width: size.width, height: size.height)
+            if plan.showsReferenceImage(after: completedSteps), let referenceImage {
+                let aspect = Double(referenceImage.width) / Double(referenceImage.height)
+                let center = projection.point(for: .init(x: aspect / 2, y: 0.5, z: aspect / 2))
+                let width = aspect * projection.scale
+                let height = projection.scale
+                var background = context
+                background.opacity = 0.55
+                background.draw(
+                    Image(decorative: referenceImage, scale: 1),
+                    in: CGRect(x: center.x - width / 2, y: center.y - height / 2, width: width, height: height))
+            }
             func point(_ node: DocumentNode) -> CGPoint {
                 let value = projection.point(for: node.value.position)
                 return CGPoint(x: value.x, y: value.y)

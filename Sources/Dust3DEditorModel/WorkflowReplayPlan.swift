@@ -14,6 +14,7 @@ package enum WorkflowReplaySpeed {
 /// Reconstruct the source graph in component order without mutating the source document.
 package struct WorkflowReplayPlan: Sendable {
     package enum Step: Equatable, Sendable {
+        case referenceImage
         case node(id: String, incomingEdgeID: String?)
         case edge(id: String)
         case property(ReplayProperty)
@@ -33,12 +34,20 @@ package struct WorkflowReplayPlan: Sendable {
                 if let incoming { edges.insert(incoming) }
             case .edge(let id):
                 edges.insert(id)
-            case .property: break
+            case .referenceImage, .property: break
             }
         }
         return (graph.nodes.filter { nodes.contains($0.id) }, graph.edges.filter { edges.contains($0.id) })
     }
 
+
+    package func showsReferenceImage(after completedSteps: Int) -> Bool {
+        completedSteps > 0 && steps.first == .referenceImage
+    }
+
+    package func bounds(referenceImageAspectRatio: Double) -> CanvasBounds {
+        CanvasBounds(nodes: graph.nodes, referenceImageAspectRatio: referenceImageAspectRatio, origin: graph.origin)
+    }
 
     package func previewDocument(after completedSteps: Int, source: Dust3DDocument) throws -> Dust3DDocument {
         guard completedSteps < steps.count else { return source }
@@ -47,9 +56,11 @@ package struct WorkflowReplayPlan: Sendable {
             guard case .property(let property) = step else { return nil }
             return property
         }
-        return try source.replayFrame(
+        let frame = try source.replayFrame(
             nodeIDs: Set(visible.nodes.map(\.id)), edgeIDs: Set(visible.edges.map(\.id)),
             pendingProperties: pending)
+        return frame.hasReferenceImage && !showsReferenceImage(after: completedSteps)
+            ? try frame.applying(.setReferenceImagePNG(nil)) : frame
     }
 
     package init(document: Dust3DDocument) throws {
@@ -71,7 +82,7 @@ package struct WorkflowReplayPlan: Sendable {
         }
 
         var visitedParts = Set<String?>()
-        var steps: [Step] = []
+        var steps: [Step] = document.hasReferenceImage ? [.referenceImage] : []
         steps.reserveCapacity(graph.nodes.count + graph.edges.count)
         let partOrder = components.compactMap(\.partID).map(Optional.some)
             + graph.parts.map { Optional($0.id) } + [nil]
