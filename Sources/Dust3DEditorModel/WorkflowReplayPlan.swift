@@ -81,17 +81,47 @@ package struct WorkflowReplayPlan: Sendable {
             }
         }
 
+        let properties = try document.replayProperties()
+        let partProperties = Dictionary(grouping: properties.filter { $0.owner == .part }, by: \.id)
+        let componentProperties = Dictionary(grouping: properties.filter { $0.owner == .component }, by: \.id)
+        let linkedComponents = Dictionary(grouping: components.compactMap { component in
+            component.partID.map { (partID: $0, componentID: component.id) }
+        }, by: \.partID)
+        var profileTargets: [String: String] = [:]
+        for part in graph.parts {
+            if case .linkedPart(let target) = part.cutFace { profileTargets[part.id] = target }
+        }
+
         var visitedParts = Set<String?>()
+        var stagedComponents = Set<String>()
+        var deferredProfiles: [ReplayProperty] = []
         var steps: [Step] = document.hasReferenceImage ? [.referenceImage] : []
-        steps.reserveCapacity(graph.nodes.count + graph.edges.count)
+        steps.reserveCapacity(graph.nodes.count + graph.edges.count + properties.count)
         let partOrder = components.compactMap(\.partID).map(Optional.some)
             + graph.parts.map { Optional($0.id) } + [nil]
         for part in partOrder where visitedParts.insert(part).inserted {
             Self.appendSteps(
                 nodes: nodesByPart[part] ?? [], edges: edgesByPart[part] ?? [], to: &steps)
+            guard let part else { continue }
+            for property in partProperties[part] ?? [] {
+                // A linked cross-section needs the target geometry to exist in the frame.
+                if property.attribute == "cutFace", let target = profileTargets[part],
+                    nodesByPart[target]?.isEmpty != false || !visitedParts.contains(target)
+                {
+                    deferredProfiles.append(property)
+                } else {
+                    steps.append(.property(property))
+                }
+            }
+            for link in linkedComponents[part] ?? [] where stagedComponents.insert(link.componentID).inserted {
+                steps.append(contentsOf: (componentProperties[link.componentID] ?? []).map(Step.property))
+            }
         }
         steps.append(contentsOf: crossPartEdges.map { .edge(id: $0.id) })
-        steps.append(contentsOf: try document.replayProperties().map(Step.property))
+        steps.append(contentsOf: deferredProfiles.map(Step.property))
+        steps.append(contentsOf: properties.filter {
+            $0.owner == .component && !stagedComponents.contains($0.id)
+        }.map(Step.property))
         self.steps = steps
         self.graph = graph
         bounds = CanvasBounds(nodes: graph.nodes, origin: graph.origin)

@@ -28,7 +28,7 @@ final class WorkflowReplayPlanTests: XCTestCase {
     }
 
 
-    func testReconstructsComponentOrderChainsAndLoopClosure() throws {
+    func testFinishesPartSettingsBeforeDrawingNextPart() throws {
         let document = try Dust3DDocument(snapshotXML: Data("""
             <canvas>
               <parts><part id="chain"/><part id="loop" rounded="true"/></parts>
@@ -54,11 +54,9 @@ final class WorkflowReplayPlanTests: XCTestCase {
             </canvas>
             """.utf8))
         let plan = try WorkflowReplayPlan(document: document)
-        XCTAssertEqual(Array(plan.steps.prefix(7)), [
+        XCTAssertEqual(Array(plan.steps.prefix(4)), [
             .node(id: "a", incomingEdgeID: nil), .node(id: "b", incomingEdgeID: "ab"),
             .node(id: "c", incomingEdgeID: "bc"), .edge(id: "ca"),
-            .node(id: "start", incomingEdgeID: nil), .node(id: "middle", incomingEdgeID: "backward"),
-            .node(id: "end", incomingEdgeID: "forward"),
         ])
         XCTAssertTrue(plan.frame(after: -1).nodes.isEmpty)
         let partial = plan.frame(after: 3)
@@ -76,12 +74,19 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(partialGraph.parts.map(\.id), ["loop"])
         XCTAssertEqual(try partialArchive.components().map(\.id), ["loopComponent"])
         XCTAssertEqual(plan.steps.count, 9)
-        let before = try plan.previewDocument(after: 7, source: document)
+        let before = try plan.previewDocument(after: 4, source: document)
         XCTAssertFalse(String(decoding: before.modelXML, as: UTF8.self).contains("rounded="))
         XCTAssertFalse(String(decoding: before.modelXML, as: UTF8.self).contains("color="))
-        let rounded = try plan.previewDocument(after: 8, source: document)
+        let rounded = try plan.previewDocument(after: 5, source: document)
         XCTAssertTrue(String(decoding: rounded.modelXML, as: UTF8.self).contains("rounded=\"true\""))
         XCTAssertFalse(String(decoding: rounded.modelXML, as: UTF8.self).contains("color="))
+        let colored = try plan.previewDocument(after: 6, source: document)
+        XCTAssertTrue(String(decoding: colored.modelXML, as: UTF8.self).contains("color="))
+        XCTAssertEqual(try colored.editorContents().parts.map(\.id), ["loop"])
+        XCTAssertEqual(Array(plan.steps.suffix(3)), [
+            .node(id: "start", incomingEdgeID: nil), .node(id: "middle", incomingEdgeID: "backward"),
+            .node(id: "end", incomingEdgeID: "forward"),
+        ])
         XCTAssertEqual(try plan.previewDocument(after: plan.steps.count, source: document).encoded(), document.encoded())
 
     }
