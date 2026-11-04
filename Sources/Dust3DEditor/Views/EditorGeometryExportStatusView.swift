@@ -7,6 +7,7 @@ struct EditorGeometryExportStatusView: View {
     var format: DocumentExportFormat = .obj
     let onCancel: () -> Void
     let onDismiss: () -> Void
+    let onReveal: (URL) -> Void
 
     @ViewBuilder var body: some View {
         switch phase {
@@ -23,6 +24,11 @@ struct EditorGeometryExportStatusView: View {
                         Text(ByteCountFormatter.string(fromByteCount: Int64(receipt.byteCount), countStyle: .file))
                             .monospacedDigit().foregroundStyle(.secondary).fixedSize()
                         Spacer(minLength: 8)
+                        Button(action: { onReveal(receipt.destination) }) {
+                            Text("Show in Finder").frame(minHeight: 40)
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityHint("Selects the exported file in Finder")
                         Button(action: onDismiss) { Text("Dismiss").frame(minHeight: 40) }
                             .buttonStyle(.borderless).accessibilityLabel(
                                 "Dismiss \(receipt.format.rawValue.uppercased()) export result")
