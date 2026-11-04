@@ -140,6 +140,32 @@ final class WorkflowReplayPlanTests: XCTestCase {
         }
     }
 
+    func testReplayAppliesGroupWrappingAsOneStep() throws {
+        let source = try Dust3DDocument(snapshotXML: Data("""
+            <canvas>
+              <components>
+                <component id="body"/>
+                <component id="cloth" name="Cloth" wrap="Cloth" wrapOffset=".025"
+                    wrapBindTo="body" wrapFuture="retained"/>
+                <component id="after"/>
+              </components>
+            </canvas>
+            """.utf8))
+        let plan = try WorkflowReplayPlan(document: source)
+        XCTAssertEqual(plan.steps.count, 4)
+        let before = try plan.previewDocument(after: 2, source: source)
+        XCTAssertEqual(try before.components().last?.wrapping.mode, .some(.none))
+        XCTAssertFalse(String(decoding: before.modelXML, as: UTF8.self).contains("wrap"))
+        let after = try plan.previewDocument(after: 3, source: source)
+        let cloth = try XCTUnwrap(try after.components().last)
+        XCTAssertEqual(cloth.id, "cloth")
+        XCTAssertEqual(cloth.wrapping.mode, .cloth)
+        XCTAssertEqual(cloth.wrapping.scalarValue(.offset), 0.025)
+        XCTAssertEqual(cloth.wrapping.binding, .stored("body"))
+        XCTAssertTrue(String(decoding: after.modelXML, as: UTF8.self).contains("wrapFuture=\"retained\""))
+        XCTAssertEqual(try plan.previewDocument(after: 4, source: source).encoded(), source.encoded())
+    }
+
     func testReplaySpeedUsesBoundedReferenceIntervals() {
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 1), 2995)
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 11), 1445)
