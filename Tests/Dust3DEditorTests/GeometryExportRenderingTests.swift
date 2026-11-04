@@ -11,7 +11,8 @@ final class GeometryExportRenderingTests: XCTestCase {
         let view = EditorGeometryExportStatusView(
             phase: .failed(DocumentExportError.sourceAlias), onCancel: {}, onDismiss: {})
 
-        XCTAssertEqual(view.statusAnnouncement,
+        XCTAssertEqual(
+            view.statusAnnouncement,
             "Export failed. Choose an export destination separate from the source document.")
     }
 
