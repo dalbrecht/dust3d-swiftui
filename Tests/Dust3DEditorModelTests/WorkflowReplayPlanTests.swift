@@ -198,6 +198,46 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(try plan.previewDocument(after: 6, source: source).encoded(), source.encoded())
     }
 
+    func testReplayRevealsStoredAnimationsAndParametersInOrder() throws {
+        let source = try Dust3DDocument(snapshotXML: Data("""
+            <canvas>
+              <parts><part id="p"/></parts>
+              <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
+              <animations>
+                <animation id="walk" name="Walk" type="Walk" speed=".5" duration="2"/>
+                <animation id="jump" name="Jump" type="Jump"/>
+              </animations>
+            </canvas>
+            """.utf8))
+        let plan = try WorkflowReplayPlan(document: source)
+        XCTAssertEqual(plan.steps.count, 5)
+        func animations(after step: Int) throws -> [DocumentAnimation] {
+            try plan.previewDocument(after: step, source: source).animations()
+        }
+        XCTAssertTrue(try animations(after: 1).isEmpty)
+        let added = try XCTUnwrap(try animations(after: 2).first)
+        XCTAssertEqual(added.id, "walk")
+        XCTAssertEqual(added.type, "Walk")
+        XCTAssertTrue(added.parameters.isEmpty)
+        XCTAssertEqual(try animations(after: 3).first?.parameters.map(\.name), ["duration"])
+        XCTAssertEqual(try animations(after: 4).first?.parameters.map(\.name), ["speed", "duration"])
+        XCTAssertEqual(try plan.previewDocument(after: 5, source: source).encoded(), source.encoded())
+    }
+
+    func testInvalidAnimationMetadataLeavesModelingReplayAvailable() throws {
+        let source = try Dust3DDocument(snapshotXML: Data("""
+            <canvas>
+              <parts><part id="p"/></parts>
+              <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
+              <animations><animation id="duplicate"/><animation id="duplicate"/></animations>
+            </canvas>
+            """.utf8))
+        let plan = try WorkflowReplayPlan(document: source)
+        XCTAssertEqual(plan.steps, [.node(id: "n", incomingEdgeID: nil)])
+        XCTAssertNotNil(plan.animationMetadataError)
+        XCTAssertEqual(try plan.previewDocument(after: 1, source: source).encoded(), source.encoded())
+    }
+
     func testReplaySpeedUsesBoundedReferenceIntervals() {
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 1), 2995)
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 11), 1445)

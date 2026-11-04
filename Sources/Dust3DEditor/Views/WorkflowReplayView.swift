@@ -97,6 +97,7 @@ struct WorkflowReplayView: View {
                             case .restoreEdgeDirections: Text("Restore Edge Directions")
                             case .node: Text("Draw Node")
                             case .edge: Text("Connect Nodes")
+                            case .addAnimation(_, let name): Text("Add Animation \(name)").lineLimit(2)
                             case .setRigType(let type): Text("Set Rig Type to \(type)")
                             case .assignBone(let name, _): Text("Assign Edges to \(name.rawValue)").lineLimit(2)
                             }
@@ -105,6 +106,10 @@ struct WorkflowReplayView: View {
                     .accessibilityElement(children: .combine)
                     if plan.showsReferenceImage(after: completedSteps), let referenceFailure {
                         Text(referenceFailure).foregroundStyle(.secondary).lineLimit(2)
+                    }
+                    if let animationMetadataError = plan.animationMetadataError {
+                        Text("Animation steps unavailable. \(animationMetadataError)")
+                            .foregroundStyle(.secondary)
                     }
                     HStack {
                         Button("Reset") {

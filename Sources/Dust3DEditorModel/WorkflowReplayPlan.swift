@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Foundation
 
 /// Qt's replay speed setting is linear in delay, from about three seconds to 50 ms.
 package enum WorkflowReplaySpeed {
@@ -21,12 +22,14 @@ package struct WorkflowReplayPlan: Sendable {
         case property(ReplayProperty)
         case createGroup(id: String, name: String)
         case movePart(id: String, groupName: String)
+        case addAnimation(id: String, name: String)
         case setRigType(String)
         case assignBone(name: BoneNameIdentity, edgeIDs: [String])
     }
 
     package let steps: [Step]
     package let bounds: CanvasBounds
+    package let animationMetadataError: String?
     private let graph: DocumentContents
 
     package func frame(after completedSteps: Int) -> (nodes: [DocumentNode], edges: [DocumentEdge]) {
@@ -40,7 +43,7 @@ package struct WorkflowReplayPlan: Sendable {
             case .edge(let id):
                 edges.insert(id)
             case .referenceImage, .property, .createGroup, .movePart, .restoreEdgeDirections,
-                 .setRigType, .assignBone: break
+                 .setRigType, .assignBone, .addAnimation: break
             }
         }
         let reversed = pendingReversals(after: completedSteps)
@@ -86,12 +89,14 @@ package struct WorkflowReplayPlan: Sendable {
         var pendingGroups = Set<String>()
         var pendingMoves = Set<String>()
         var pendingRigType = false
+        var pendingAnimationIDs = Set<[UInt8]>()
         for step in steps.dropFirst(max(0, completedSteps)) {
             switch step {
             case .property(let property): pendingProperties.append(property)
             case .createGroup(let id, _): pendingGroups.insert(id)
             case .movePart(let id, _): pendingMoves.insert(id)
             case .setRigType: pendingRigType = true
+            case .addAnimation(let id, _): pendingAnimationIDs.insert(Array(id.utf8))
             case .referenceImage, .node, .edge, .restoreEdgeDirections, .assignBone: break
             }
         }
@@ -99,7 +104,8 @@ package struct WorkflowReplayPlan: Sendable {
             nodeIDs: Set(visible.nodes.map(\.id)), edgeIDs: Set(visible.edges.map(\.id)),
             pendingProperties: pendingProperties, pendingGroupIDs: pendingGroups,
             pendingMoveIDs: pendingMoves, reversedEdgeIDs: pendingReversals(after: completedSteps),
-            hidesRigType: pendingRigType, unassignedBoneEdgeIDs: pendingBoneAssignments(after: completedSteps))
+            hidesRigType: pendingRigType, unassignedBoneEdgeIDs: pendingBoneAssignments(after: completedSteps),
+            pendingAnimationIDs: pendingAnimationIDs)
         return frame.hasReferenceImage && !showsReferenceImage(after: completedSteps)
             ? try frame.applying(.setReferenceImagePNG(nil)) : frame
     }
@@ -202,6 +208,23 @@ package struct WorkflowReplayPlan: Sendable {
                 guard let edge = group.first else { continue }
                 steps.append(.assignBone(name: BoneNameIdentity(edge.boneName), edgeIDs: group.map(\.id)))
             }
+        }
+        do {
+            for animation in try document.animations() {
+                let name = animation.name ?? animation.id
+                steps.append(.addAnimation(id: animation.id, name: name))
+                let parameters = animation.parameters.filter { $0.name != "surfaceMaterial" }.sorted {
+                    $0.name.utf8.lexicographicallyPrecedes($1.name.utf8)
+                }
+                for parameter in parameters {
+                    steps.append(.property(ReplayProperty(
+                        owner: .animation, id: animation.id, attributes: [parameter.name],
+                        title: "\(name) — \(parameter.name)", profilePartID: nil)))
+                }
+            }
+            animationMetadataError = nil
+        } catch {
+            animationMetadataError = error.localizedDescription
         }
         self.steps = steps
         self.graph = graph

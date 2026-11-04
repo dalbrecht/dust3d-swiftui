@@ -338,12 +338,20 @@ public struct DocumentContents: Sendable {
 }
 
 package struct ReplayProperty: Equatable, Sendable {
-    package enum Owner: Hashable, Sendable { case node, part, component }
+    package enum Owner: Hashable, Sendable { case node, part, component, animation }
     package let owner: Owner
     package let id: String
     package let attributes: [String]
     package let title: String
     package let profilePartID: String?
+
+    package init(owner: Owner, id: String, attributes: [String], title: String, profilePartID: String?) {
+        self.owner = owner
+        self.id = id
+        self.attributes = attributes
+        self.title = title
+        self.profilePartID = profilePartID
+    }
 }
 
 /// Immutable archive value. Unchanged saves retain every input byte, including unknown assets.
@@ -1215,7 +1223,7 @@ public struct Dust3DDocument: Sendable {
         nodeIDs: Set<String>, edgeIDs: Set<String>, pendingProperties: [ReplayProperty] = [],
         pendingGroupIDs: Set<String> = [], pendingMoveIDs: Set<String> = [],
         reversedEdgeIDs: Set<String> = [], hidesRigType: Bool = false,
-        unassignedBoneEdgeIDs: Set<String> = []
+        unassignedBoneEdgeIDs: Set<String> = [], pendingAnimationIDs: Set<[UInt8]> = []
     ) throws -> Dust3DDocument {
         let model = try Self.xml(modelXML, root: "canvas")
         guard let root = model.rootElement() else { throw DocumentError.invalidNode }
@@ -1286,10 +1294,10 @@ public struct Dust3DDocument: Sendable {
         }
         let pending = Dictionary(grouping: pendingProperties, by: \.owner)
         func mask(_ elements: [XMLElement], owner: ReplayProperty.Owner) {
-            let attributes = Dictionary(grouping: pending[owner] ?? [], by: \.id)
+            let attributes = Dictionary(grouping: pending[owner] ?? [], by: { Array($0.id.utf8) })
             for element in elements {
                 guard let id = element.attribute(forName: "id")?.stringValue else { continue }
-                for property in attributes[id] ?? [] {
+                for property in attributes[Array(id.utf8)] ?? [] {
                     for attribute in property.attributes { element.removeAttribute(forName: attribute) }
                 }
             }
@@ -1297,6 +1305,14 @@ public struct Dust3DDocument: Sendable {
         mask(try Self.nodes(model), owner: .node)
         mask(root.elements(forName: "parts").first?.elements(forName: "part") ?? [], owner: .part)
         mask(PartSplitting.componentElements(model), owner: .component)
+        if !pendingAnimationIDs.isEmpty || pending[.animation] != nil {
+            let animations = try AnimationMetadata.elements(root)
+            for animation in animations {
+                let id = animation.attribute(forName: "id")?.stringValue ?? ""
+                if pendingAnimationIDs.contains(Array(id.utf8)) { animation.detach() }
+            }
+            mask(animations, owner: .animation)
+        }
         return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
     }
 
