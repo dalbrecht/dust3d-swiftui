@@ -17,6 +17,7 @@ package struct WorkflowReplayPlan: Sendable {
         case referenceImage
         case node(id: String, incomingEdgeID: String?)
         case edge(id: String)
+        case restoreEdgeDirections(ids: [String])
         case property(ReplayProperty)
         case createGroup(id: String, name: String)
         case movePart(id: String, groupName: String)
@@ -36,12 +37,26 @@ package struct WorkflowReplayPlan: Sendable {
                 if let incoming { edges.insert(incoming) }
             case .edge(let id):
                 edges.insert(id)
-            case .referenceImage, .property, .createGroup, .movePart: break
+            case .referenceImage, .property, .createGroup, .movePart, .restoreEdgeDirections: break
             }
         }
-        return (graph.nodes.filter { nodes.contains($0.id) }, graph.edges.filter { edges.contains($0.id) })
+        let reversed = pendingReversals(after: completedSteps)
+        let visibleEdges = graph.edges.filter { edges.contains($0.id) }.map { edge in
+            guard reversed.contains(edge.id) else { return edge }
+            return DocumentEdge(
+                id: edge.id, fromID: edge.toID, toID: edge.fromID,
+                boneName: edge.boneName, partID: edge.partID)
+        }
+        return (graph.nodes.filter { nodes.contains($0.id) }, visibleEdges)
     }
 
+    private func pendingReversals(after completedSteps: Int) -> Set<String> {
+        var reversed = Set<String>()
+        for case .restoreEdgeDirections(let ids) in steps.dropFirst(max(0, completedSteps)) {
+            reversed.formUnion(ids)
+        }
+        return reversed
+    }
 
     package func showsReferenceImage(after completedSteps: Int) -> Bool {
         completedSteps > 0 && steps.first == .referenceImage
@@ -62,13 +77,13 @@ package struct WorkflowReplayPlan: Sendable {
             case .property(let property): pendingProperties.append(property)
             case .createGroup(let id, _): pendingGroups.insert(id)
             case .movePart(let id, _): pendingMoves.insert(id)
-            case .referenceImage, .node, .edge: break
+            case .referenceImage, .node, .edge, .restoreEdgeDirections: break
             }
         }
         let frame = try source.replayFrame(
             nodeIDs: Set(visible.nodes.map(\.id)), edgeIDs: Set(visible.edges.map(\.id)),
             pendingProperties: pendingProperties, pendingGroupIDs: pendingGroups,
-            pendingMoveIDs: pendingMoves)
+            pendingMoveIDs: pendingMoves, reversedEdgeIDs: pendingReversals(after: completedSteps))
         return frame.hasReferenceImage && !showsReferenceImage(after: completedSteps)
             ? try frame.applying(.setReferenceImagePNG(nil)) : frame
     }
@@ -122,7 +137,7 @@ package struct WorkflowReplayPlan: Sendable {
         }
         for part in partOrder where visitedParts.insert(part).inserted {
             let firstStep = steps.count
-            Self.appendSteps(
+            let reversals = Self.appendSteps(
                 nodes: nodesByPart[part] ?? [], edges: edgesByPart[part] ?? [], to: &steps)
             let nodeIDs = steps[firstStep...].compactMap { step -> String? in
                 guard case .node(let id, _) = step else { return nil }
@@ -133,6 +148,7 @@ package struct WorkflowReplayPlan: Sendable {
                     stage(property, for: part)
                 }
             }
+            if !reversals.isEmpty { steps.append(.restoreEdgeDirections(ids: reversals)) }
             guard let part else { continue }
             for property in partProperties[part] ?? [] {
                 stage(property, for: part)
@@ -163,32 +179,40 @@ package struct WorkflowReplayPlan: Sendable {
         bounds = CanvasBounds(nodes: graph.nodes, origin: graph.origin)
     }
 
-    private static func appendSteps(nodes: [DocumentNode], edges: [DocumentEdge], to steps: inout [Step]) {
+    private static func appendSteps(
+        nodes: [DocumentNode], edges: [DocumentEdge], to steps: inout [Step]
+    ) -> [String] {
         struct Arrival {
             let node: String
             let edge: String?
+            var reversesEdge = false
         }
 
         var adjacency: [String: [Arrival]] = [:]
         for edge in edges {
             adjacency[edge.fromID, default: []].append(Arrival(node: edge.toID, edge: edge.id))
-            adjacency[edge.toID, default: []].append(Arrival(node: edge.fromID, edge: edge.id))
+            adjacency[edge.toID, default: []].append(Arrival(node: edge.fromID, edge: edge.id, reversesEdge: true))
         }
         // A chain starts at its first stored endpoint. A loop has no endpoint.
         let endpoints = nodes.filter { adjacency[$0.id, default: []].count <= 1 }
         var visitedNodes = Set<String>()
         var traversedEdges = Set<String>()
+        var reversals: [String] = []
         for node in endpoints + nodes where !visitedNodes.contains(node.id) {
             var pending = [Arrival(node: node.id, edge: nil)]
             while let arrival = pending.popLast() {
                 guard visitedNodes.insert(arrival.node).inserted else { continue }
                 steps.append(.node(id: arrival.node, incomingEdgeID: arrival.edge))
-                if let edge = arrival.edge { traversedEdges.insert(edge) }
+                if let edge = arrival.edge {
+                    traversedEdges.insert(edge)
+                    if arrival.reversesEdge { reversals.append(edge) }
+                }
                 pending.append(contentsOf: adjacency[arrival.node, default: []].reversed())
             }
         }
         for edge in edges where !traversedEdges.contains(edge.id) {
             steps.append(.edge(id: edge.id))
         }
+        return reversals
     }
 }

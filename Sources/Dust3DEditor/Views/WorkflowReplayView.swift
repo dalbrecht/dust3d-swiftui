@@ -76,6 +76,7 @@ struct WorkflowReplayView: View {
                             } else {
                                 Text("Move Part into \(groupName)").lineLimit(2)
                             }
+                        case .restoreEdgeDirections: Text("Restore Edge Directions")
                         case .node, .edge: EmptyView()
                         }
                     }

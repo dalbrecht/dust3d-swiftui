@@ -167,7 +167,7 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(partialGraph.edges, partial.edges)
         XCTAssertEqual(partialGraph.parts.map(\.id), ["loop"])
         XCTAssertEqual(try partialArchive.components().map(\.id), ["loopComponent"])
-        XCTAssertEqual(plan.steps.count, 9)
+        XCTAssertEqual(plan.steps.count, 10)
         let before = try plan.previewDocument(after: 4, source: document)
         XCTAssertFalse(String(decoding: before.modelXML, as: UTF8.self).contains("rounded="))
         XCTAssertFalse(String(decoding: before.modelXML, as: UTF8.self).contains("color="))
@@ -177,10 +177,17 @@ final class WorkflowReplayPlanTests: XCTestCase {
         let colored = try plan.previewDocument(after: 6, source: document)
         XCTAssertTrue(String(decoding: colored.modelXML, as: UTF8.self).contains("color="))
         XCTAssertEqual(try colored.editorContents().parts.map(\.id), ["loop"])
-        XCTAssertEqual(Array(plan.steps.suffix(3)), [
+        XCTAssertEqual(Array(plan.steps.dropLast().suffix(3)), [
             .node(id: "start", incomingEdgeID: nil), .node(id: "middle", incomingEdgeID: "backward"),
             .node(id: "end", incomingEdgeID: "forward"),
         ])
+        let provisional = plan.frame(after: 9).edges.first { $0.id == "backward" }
+        XCTAssertEqual(provisional?.fromID, "start")
+        XCTAssertEqual(provisional?.toID, "middle")
+        let previewEdge = try plan.previewDocument(after: 9, source: document).editorContents().edges
+            .first { $0.id == "backward" }
+        XCTAssertEqual(previewEdge, provisional)
+        XCTAssertEqual(plan.frame(after: 10).edges.first { $0.id == "backward" }?.fromID, "middle")
         XCTAssertEqual(try plan.previewDocument(after: plan.steps.count, source: document).encoded(), document.encoded())
 
     }

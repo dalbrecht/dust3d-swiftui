@@ -1198,7 +1198,8 @@ public struct Dust3DDocument: Sendable {
     /// Produce a transient archive for a replay frame, retaining source assets and metadata.
     package func replayFrame(
         nodeIDs: Set<String>, edgeIDs: Set<String>, pendingProperties: [ReplayProperty] = [],
-        pendingGroupIDs: Set<String> = [], pendingMoveIDs: Set<String> = []
+        pendingGroupIDs: Set<String> = [], pendingMoveIDs: Set<String> = [],
+        reversedEdgeIDs: Set<String> = []
     ) throws -> Dust3DDocument {
         let model = try Self.xml(modelXML, root: "canvas")
         guard let root = model.rootElement() else { throw DocumentError.invalidNode }
@@ -1217,6 +1218,10 @@ public struct Dust3DDocument: Sendable {
             else {
                 edge.detach()
                 continue
+            }
+            if reversedEdgeIDs.contains(id) {
+                edge.attribute(forName: "from")?.stringValue = to
+                edge.attribute(forName: "to")?.stringValue = from
             }
         }
         for part in root.elements(forName: "parts").first?.elements(forName: "part") ?? []
