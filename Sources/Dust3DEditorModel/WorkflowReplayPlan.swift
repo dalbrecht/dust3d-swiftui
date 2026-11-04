@@ -18,6 +18,8 @@ package struct WorkflowReplayPlan: Sendable {
         case node(id: String, incomingEdgeID: String?)
         case edge(id: String)
         case property(ReplayProperty)
+        case createGroup(id: String, name: String)
+        case movePart(id: String, groupName: String)
     }
 
     package let steps: [Step]
@@ -34,7 +36,7 @@ package struct WorkflowReplayPlan: Sendable {
                 if let incoming { edges.insert(incoming) }
             case .edge(let id):
                 edges.insert(id)
-            case .referenceImage, .property: break
+            case .referenceImage, .property, .createGroup, .movePart: break
             }
         }
         return (graph.nodes.filter { nodes.contains($0.id) }, graph.edges.filter { edges.contains($0.id) })
@@ -52,13 +54,21 @@ package struct WorkflowReplayPlan: Sendable {
     package func previewDocument(after completedSteps: Int, source: Dust3DDocument) throws -> Dust3DDocument {
         guard completedSteps < steps.count else { return source }
         let visible = frame(after: completedSteps)
-        let pending = steps.dropFirst(max(0, completedSteps)).compactMap { step -> ReplayProperty? in
-            guard case .property(let property) = step else { return nil }
-            return property
+        var pendingProperties: [ReplayProperty] = []
+        var pendingGroups = Set<String>()
+        var pendingMoves = Set<String>()
+        for step in steps.dropFirst(max(0, completedSteps)) {
+            switch step {
+            case .property(let property): pendingProperties.append(property)
+            case .createGroup(let id, _): pendingGroups.insert(id)
+            case .movePart(let id, _): pendingMoves.insert(id)
+            case .referenceImage, .node, .edge: break
+            }
         }
         let frame = try source.replayFrame(
             nodeIDs: Set(visible.nodes.map(\.id)), edgeIDs: Set(visible.edges.map(\.id)),
-            pendingProperties: pending)
+            pendingProperties: pendingProperties, pendingGroupIDs: pendingGroups,
+            pendingMoveIDs: pendingMoves)
         return frame.hasReferenceImage && !showsReferenceImage(after: completedSteps)
             ? try frame.applying(.setReferenceImagePNG(nil)) : frame
     }
@@ -119,9 +129,18 @@ package struct WorkflowReplayPlan: Sendable {
         }
         steps.append(contentsOf: crossPartEdges.map { .edge(id: $0.id) })
         steps.append(contentsOf: deferredProfiles.map(Step.property))
-        steps.append(contentsOf: properties.filter {
-            $0.owner == .component && !stagedComponents.contains($0.id)
-        }.map(Step.property))
+        let groupNames = Dictionary(uniqueKeysWithValues: components.filter(\.isGroup).map { ($0.id, $0.name) })
+        for component in components {
+            if component.isGroup {
+                steps.append(.createGroup(id: component.id, name: component.name))
+            }
+            if !stagedComponents.contains(component.id) {
+                steps.append(contentsOf: (componentProperties[component.id] ?? []).map(Step.property))
+            }
+            if component.partID != nil, let parentID = component.parentID, let groupName = groupNames[parentID] {
+                steps.append(.movePart(id: component.id, groupName: groupName))
+            }
+        }
         self.steps = steps
         self.graph = graph
         bounds = CanvasBounds(nodes: graph.nodes, origin: graph.origin)

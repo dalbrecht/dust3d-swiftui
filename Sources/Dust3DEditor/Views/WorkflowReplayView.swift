@@ -68,6 +68,14 @@ struct WorkflowReplayView: View {
                         switch plan.steps[completedSteps - 1] {
                         case .referenceImage: Text("Set Reference Image")
                         case .property(let property): Text("Set \(property.title)").lineLimit(2)
+                        case .createGroup(_, let name):
+                            if name.isEmpty { Text("Create Group") } else { Text("Create Group: \(name)").lineLimit(2) }
+                        case .movePart(_, let groupName):
+                            if groupName.isEmpty {
+                                Text("Move Part into Group")
+                            } else {
+                                Text("Move Part into \(groupName)").lineLimit(2)
+                            }
                         case .node, .edge: EmptyView()
                         }
                     }

@@ -1191,7 +1191,8 @@ public struct Dust3DDocument: Sendable {
 
     /// Produce a transient archive for a replay frame, retaining source assets and metadata.
     package func replayFrame(
-        nodeIDs: Set<String>, edgeIDs: Set<String>, pendingProperties: [ReplayProperty] = []
+        nodeIDs: Set<String>, edgeIDs: Set<String>, pendingProperties: [ReplayProperty] = [],
+        pendingGroupIDs: Set<String> = [], pendingMoveIDs: Set<String> = []
     ) throws -> Dust3DDocument {
         let model = try Self.xml(modelXML, root: "canvas")
         guard let root = model.rootElement() else { throw DocumentError.invalidNode }
@@ -1236,6 +1237,23 @@ public struct Dust3DDocument: Sendable {
         }
         if let components = root.elements(forName: "components").first {
             pruneComponents(in: components)
+            if !pendingGroupIDs.isEmpty || !pendingMoveIDs.isEmpty {
+                let elements = PartSplitting.componentElements(model)
+                var namespaceBudget = DocumentXML.NamespaceBudget()
+                // Parts are initially at the root and must survive removal of their future groups.
+                for element in elements {
+                    guard let id = element.attribute(forName: "id")?.stringValue,
+                        pendingMoveIDs.contains(id) else { continue }
+                    try namespaceBudget.preserve(element, movingTo: components)
+                    element.detach()
+                    components.addChild(element)
+                }
+                for element in elements.reversed() {
+                    guard let id = element.attribute(forName: "id")?.stringValue,
+                        pendingGroupIDs.contains(id) else { continue }
+                    element.detach()
+                }
+            }
         }
         let pending = Dictionary(grouping: pendingProperties, by: \.owner)
         func mask(_ elements: [XMLElement], owner: ReplayProperty.Owner) {

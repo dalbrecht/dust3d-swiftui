@@ -19,6 +19,46 @@ final class WorkflowReplayPlanTests: XCTestCase {
     }
 
 
+    func testReplayBuildsGroupsAndMovesPartsAfterDrawing() throws {
+        let source = try Dust3DDocument(snapshotXML: Data("""
+            <canvas>
+              <parts><part id="p"/></parts>
+              <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
+              <components>
+                <component id="outer" name="Outer" color="#ff0000" xmlns:asset="urn:dust3d:test">
+                  <component id="inner" name="Inner">
+                    <component id="leaf" linkDataType="partId" linkData="p" asset:hint="keep"/>
+                  </component>
+                </component>
+                <component id="empty" name="Empty Group"/>
+              </components>
+            </canvas>
+            """.utf8))
+        let plan = try WorkflowReplayPlan(document: source)
+        XCTAssertEqual(plan.steps.count, 6)
+        func components(after step: Int) throws -> [DocumentComponent] {
+            try plan.previewDocument(after: step, source: source).components()
+        }
+        let drawn = try components(after: 1)
+        XCTAssertEqual(drawn.map(\.id), ["leaf"])
+        XCTAssertNil(drawn.first?.parentID)
+        let drawing = try plan.previewDocument(after: 1, source: source)
+        let xml = String(decoding: drawing.modelXML, as: UTF8.self)
+        XCTAssertTrue(xml.contains("xmlns:asset=\"urn:dust3d:test\"") || xml.contains("xmlns:asset='urn:dust3d:test'"), xml)
+        XCTAssertTrue(xml.contains("asset:hint=\"keep\""))
+        let outerCreated = try components(after: 2)
+        XCTAssertEqual(Set(outerCreated.map(\.id)), ["leaf", "outer"])
+        XCTAssertEqual(outerCreated.first { $0.id == "outer" }?.color, .some(.unset))
+        XCTAssertEqual(try components(after: 3).first { $0.id == "outer" }?.color,
+                       try source.components().first?.color)
+        let innerCreated = try components(after: 4)
+        XCTAssertEqual(innerCreated.first { $0.id == "inner" }?.parentID, "outer")
+        XCTAssertNil(innerCreated.first { $0.id == "leaf" }?.parentID)
+        XCTAssertEqual(try components(after: 5).first { $0.id == "leaf" }?.parentID, "inner")
+        XCTAssertFalse(try components(after: 5).contains { $0.id == "empty" })
+        XCTAssertEqual(try plan.previewDocument(after: 6, source: source).encoded(), source.encoded())
+    }
+
     func testReplaySpeedUsesBoundedReferenceIntervals() {
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 1), 2995)
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 11), 1445)
