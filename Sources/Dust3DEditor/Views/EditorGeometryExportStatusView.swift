@@ -1,3 +1,4 @@
+import Accessibility
 import Dust3DKit
 import Foundation
 import SwiftUI
@@ -8,7 +9,20 @@ struct EditorGeometryExportStatusView: View {
     let onCancel: () -> Void
     let onDismiss: () -> Void
 
-    @ViewBuilder var body: some View {
+    var body: some View {
+        content.onChange(of: statusAnnouncement) { _, announcement in
+            if let announcement {
+                AccessibilityNotification.Announcement(announcement).post()
+            }
+        }
+    }
+
+    var statusAnnouncement: String? {
+        guard case .failed(let error) = phase else { return nil }
+        return "Export failed. " + EditorStore.message(error)
+    }
+
+    @ViewBuilder private var content: some View {
         switch phase {
         case .idle, .failed: EmptyView()
         case .choosing: status { activity("Choose an export destination…") }
