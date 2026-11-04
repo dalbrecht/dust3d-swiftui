@@ -30,11 +30,16 @@ struct WorkflowReplayView: View {
     @State private var failure: String?
     @State private var completedSteps = 0
     @State private var isPlaying = false
+    @State private var speed = Double(WorkflowReplaySpeed.initial)
     @State private var presentation: Presentation = .front
     @State private var meshLoader = WorkflowReplayMeshLoader()
     @State private var mesh: IndexedMesh?
     @State private var meshStep: Int?
     @State private var meshFailure: String?
+
+    private var playbackInterval: Int? {
+        isPlaying ? WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed)) : nil
+    }
 
     private var requestedMeshStep: Int? {
         presentation == .mesh && plan != nil ? completedSteps : nil
@@ -70,6 +75,19 @@ struct WorkflowReplayView: View {
                             .disabled(completedSteps == plan.steps.count || isPlaying)
                             .keyboardShortcut(.rightArrow, modifiers: [])
                     }
+                    let seconds = Double(WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed))) / 1000
+                    Slider(
+                        value: $speed,
+                        in: Double(WorkflowReplaySpeed.range.lowerBound)...Double(WorkflowReplaySpeed.range.upperBound),
+                        step: 1
+                    ) {
+                        Text("Playback Speed")
+                    } minimumValueLabel: {
+                        Text("Slower")
+                    } maximumValueLabel: {
+                        Text("Faster")
+                    }
+                    .accessibilityValue(Text("\(seconds, format: .number.precision(.fractionLength(2))) seconds per step"))
                 }
                 .padding()
             } else if let failure {
@@ -113,10 +131,10 @@ struct WorkflowReplayView: View {
                 meshFailure = EditorStore.message(error)
             }
         }
-        .task(id: isPlaying) {
-            guard isPlaying, let plan else { return }
+        .task(id: playbackInterval) {
+            guard let interval = playbackInterval, let plan else { return }
             while !Task.isCancelled, completedSteps < plan.steps.count {
-                do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
+                do { try await Task.sleep(for: .milliseconds(interval)) } catch { return }
                 guard !Task.isCancelled else { return }
                 advance(plan)
             }

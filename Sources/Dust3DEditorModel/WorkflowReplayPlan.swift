@@ -1,5 +1,16 @@
 import Dust3DDocument
 
+/// Qt's replay speed setting is linear in delay, from about three seconds to 50 ms.
+package enum WorkflowReplaySpeed {
+    package static let range = 1...20
+    package static let initial = 11
+
+    package static func intervalMilliseconds(for setting: Int) -> Int {
+        let bounded = min(range.upperBound, max(range.lowerBound, setting))
+        return 3150 - bounded * 155
+    }
+}
+
 /// Reconstruct the source graph in component order without mutating the source document.
 package struct WorkflowReplayPlan: Sendable {
     package enum Step: Equatable, Sendable {

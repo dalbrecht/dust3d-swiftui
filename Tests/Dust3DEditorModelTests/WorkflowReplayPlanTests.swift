@@ -5,6 +5,15 @@ import XCTest
 @testable import Dust3DEditorModel
 
 final class WorkflowReplayPlanTests: XCTestCase {
+    func testReplaySpeedUsesBoundedReferenceIntervals() {
+        XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 1), 2995)
+        XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 11), 1445)
+        XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 20), 50)
+        XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: .min), 2995)
+        XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: .max), 50)
+    }
+
+
     func testReconstructsComponentOrderChainsAndLoopClosure() throws {
         let document = try Dust3DDocument(snapshotXML: Data("""
             <canvas>
