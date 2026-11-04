@@ -211,6 +211,10 @@ final class WorkflowReplayPlanTests: XCTestCase {
             """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
         XCTAssertEqual(plan.steps.count, 5)
+        XCTAssertEqual((0...5).map { plan.meshStep(after: $0) }, [0, 1, 1, 1, 1, 1])
+        let meshDocument = try plan.meshPreviewDocument(at: 1, source: source)
+        XCTAssertEqual(try meshDocument.editorContents().nodes.count, 1)
+        XCTAssertEqual(meshDocument.encoded(), source.encoded())
         func animations(after step: Int) throws -> [DocumentAnimation] {
             try plan.previewDocument(after: step, source: source).animations()
         }

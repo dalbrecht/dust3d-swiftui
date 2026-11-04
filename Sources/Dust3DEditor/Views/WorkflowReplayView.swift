@@ -13,7 +13,7 @@ struct WorkflowReplayRequest: Identifiable {
 private actor WorkflowReplayMeshLoader {
     func load(plan: WorkflowReplayPlan, document: Dust3DDocument, step: Int) throws -> IndexedMesh? {
         try Task.checkCancellation()
-        let frame = try plan.previewDocument(after: step, source: document)
+        let frame = try plan.meshPreviewDocument(at: step, source: document)
         try Task.checkCancellation()
         return try MeshLoader.loadIndexedIfPresent(data: frame.encoded(), maximumPayloadBytes: 64 * 1024 * 1024)
     }
@@ -80,7 +80,7 @@ struct WorkflowReplayView: View {
     }
 
     private var requestedMeshStep: Int? {
-        presentation == .mesh && plan != nil ? completedSteps : nil
+        presentation == .mesh ? plan?.meshStep(after: completedSteps) : nil
     }
 
     private var playbackPhase: WorkflowReplayPlaybackPhase? {
@@ -230,6 +230,7 @@ struct WorkflowReplayView: View {
             while !Task.isCancelled, completedSteps < plan.steps.count {
                 do { try await Task.sleep(for: .milliseconds(interval)) } catch { return }
                 guard !Task.isCancelled else { return }
+                if let requestedMeshStep, meshStep != requestedMeshStep { continue }
                 advance(plan)
             }
         }
@@ -242,7 +243,7 @@ struct WorkflowReplayView: View {
 
     private var meshPreview: some View {
         let status = WorkflowReplayMeshStatus(
-            requestedStep: completedSteps, displayedStep: meshStep, hasMesh: mesh != nil, failure: meshFailure)
+            requestedStep: requestedMeshStep ?? 0, displayedStep: meshStep, hasMesh: mesh != nil, failure: meshFailure)
         return ZStack(alignment: .bottom) {
             if let mesh, let meshStep {
                 MeshViewport(

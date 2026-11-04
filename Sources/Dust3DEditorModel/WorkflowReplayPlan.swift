@@ -31,6 +31,7 @@ package struct WorkflowReplayPlan: Sendable {
     package let bounds: CanvasBounds
     package let animationMetadataError: String?
     private let graph: DocumentContents
+    private let finalMeshStep: Int
 
     package func frame(after completedSteps: Int) -> (nodes: [DocumentNode], edges: [DocumentEdge]) {
         var nodes = Set<String>()
@@ -80,6 +81,16 @@ package struct WorkflowReplayPlan: Sendable {
 
     package func bounds(referenceImageAspectRatio: Double) -> CanvasBounds {
         CanvasBounds(nodes: graph.nodes, referenceImageAspectRatio: referenceImageAspectRatio, origin: graph.origin)
+    }
+
+    /// Animation metadata changes the replay narrative without changing the static preview.
+    package func meshStep(after completedSteps: Int) -> Int {
+        min(max(0, completedSteps), finalMeshStep)
+    }
+
+    package func meshPreviewDocument(at step: Int, source: Dust3DDocument) throws -> Dust3DDocument {
+        if step == finalMeshStep { return source }
+        return try previewDocument(after: step, source: source)
     }
 
     package func previewDocument(after completedSteps: Int, source: Dust3DDocument) throws -> Dust3DDocument {
@@ -209,6 +220,7 @@ package struct WorkflowReplayPlan: Sendable {
                 steps.append(.assignBone(name: BoneNameIdentity(edge.boneName), edgeIDs: group.map(\.id)))
             }
         }
+        finalMeshStep = steps.count
         do {
             for animation in try document.animations() {
                 let name = animation.name ?? animation.id
