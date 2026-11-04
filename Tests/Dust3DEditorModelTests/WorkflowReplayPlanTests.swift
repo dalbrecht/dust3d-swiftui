@@ -8,7 +8,7 @@ final class WorkflowReplayPlanTests: XCTestCase {
     func testReconstructsComponentOrderChainsAndLoopClosure() throws {
         let document = try Dust3DDocument(snapshotXML: Data("""
             <canvas>
-              <parts><part id="chain"/><part id="loop"/></parts>
+              <parts><part id="chain"/><part id="loop" rounded="true"/></parts>
               <nodes>
                 <node id="middle" partId="chain" x="0" y="0" z="0" radius=".1"/>
                 <node id="start" partId="chain" x="0" y="1" z="0" radius=".1"/>
@@ -25,13 +25,13 @@ final class WorkflowReplayPlanTests: XCTestCase {
                 <edge id="ca" partId="loop" from="c" to="a"/>
               </edges>
               <components>
-                <component id="loopComponent" linkDataType="partId" linkData="loop"/>
+                <component id="loopComponent" linkDataType="partId" linkData="loop" color="#ff0000"/>
                 <component id="chainComponent" linkDataType="partId" linkData="chain"/>
               </components>
             </canvas>
             """.utf8))
         let plan = try WorkflowReplayPlan(document: document)
-        XCTAssertEqual(plan.steps, [
+        XCTAssertEqual(Array(plan.steps.prefix(7)), [
             .node(id: "a", incomingEdgeID: nil), .node(id: "b", incomingEdgeID: "ab"),
             .node(id: "c", incomingEdgeID: "bc"), .edge(id: "ca"),
             .node(id: "start", incomingEdgeID: nil), .node(id: "middle", incomingEdgeID: "backward"),
@@ -52,6 +52,13 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(partialGraph.edges, partial.edges)
         XCTAssertEqual(partialGraph.parts.map(\.id), ["loop"])
         XCTAssertEqual(try partialArchive.components().map(\.id), ["loopComponent"])
+        XCTAssertEqual(plan.steps.count, 9)
+        let before = try plan.previewDocument(after: 7, source: document)
+        XCTAssertFalse(String(decoding: before.modelXML, as: UTF8.self).contains("rounded="))
+        XCTAssertFalse(String(decoding: before.modelXML, as: UTF8.self).contains("color="))
+        let rounded = try plan.previewDocument(after: 8, source: document)
+        XCTAssertTrue(String(decoding: rounded.modelXML, as: UTF8.self).contains("rounded=\"true\""))
+        XCTAssertFalse(String(decoding: rounded.modelXML, as: UTF8.self).contains("color="))
         XCTAssertEqual(try plan.previewDocument(after: plan.steps.count, source: document).encoded(), document.encoded())
 
     }

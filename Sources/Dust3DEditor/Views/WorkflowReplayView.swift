@@ -55,6 +55,9 @@ struct WorkflowReplayView: View {
                     }
                     Text("Step \(completedSteps) of \(plan.steps.count)")
                         .monospacedDigit()
+                    if completedSteps > 0, case .property(let property) = plan.steps[completedSteps - 1] {
+                        Text("Set \(property.title)").lineLimit(2)
+                    }
                     HStack {
                         Button("Reset") {
                             isPlaying = false

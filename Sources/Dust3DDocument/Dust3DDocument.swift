@@ -337,6 +337,14 @@ public struct DocumentContents: Sendable {
     }
 }
 
+package struct ReplayProperty: Equatable, Sendable {
+    package enum Owner: Hashable, Sendable { case part, component }
+    package let owner: Owner
+    package let id: String
+    package let attribute: String
+    package let title: String
+}
+
 /// Immutable archive value. Unchanged saves retain every input byte, including unknown assets.
 public struct Dust3DDocument: Sendable {
     private struct Item: Sendable {
@@ -1146,8 +1154,45 @@ public struct Dust3DDocument: Sendable {
         return try canonical(modelXML) == canonical(other.modelXML)
     }
 
+    package func replayProperties() throws -> [ReplayProperty] {
+        let model = try Self.xml(modelXML, root: "canvas")
+        let parts = model.rootElement()?.elements(forName: "parts").first?.elements(forName: "part") ?? []
+        let partRules = [
+            ("xMirrored", "X Mirror"), ("rounded", "Rounded Ends"), ("chamfered", "Chamfer"),
+            ("subdived", "Subdivision"), ("interpolated", "Interpolation"), ("hard", "Hard Join"),
+            ("fillLoopInterior", "Fill Loop Interior"), ("deformThickness", "Thickness"),
+            ("deformWidth", "Width"), ("deformUnified", "Unified Deformation"), ("cutFace", "Cut Face"),
+            ("cutRotation", "Cut Rotation"), ("hollowThickness", "Hollow Thickness"),
+            ("metallic", "Metallic"), ("roughness", "Roughness"), ("disabled", "Part Enabled State"),
+        ]
+        let componentRules = [
+            ("combineMode", "Combine Mode"), ("color", "Color"), ("colorImageId", "Color Image"),
+            ("sideClosed", "Close Sides"), ("frontClosed", "Close Front"), ("backClosed", "Close Back"),
+            ("backCloseDepthRatio", "Back Closure Depth"), ("backCloseSharpness", "Back Closure Sharpness"),
+            ("targetSegments", "Target Segments"), ("smoothCutoffDegrees", "Smoothing Cutoff"),
+        ]
+        func properties(
+            _ elements: [XMLElement], owner: ReplayProperty.Owner, rules: [(String, String)]
+        ) -> [ReplayProperty] {
+            elements.flatMap { element -> [ReplayProperty] in
+                guard let id = element.attribute(forName: "id")?.stringValue else { return [] }
+                return rules.compactMap { attribute, label in
+                    guard element.attribute(forName: attribute) != nil else { return nil }
+                    let name = element.attribute(forName: "name")?.stringValue ?? ""
+                    return ReplayProperty(
+                        owner: owner, id: id, attribute: attribute,
+                        title: name.isEmpty ? label : "\(name) — \(label)")
+                }
+            }
+        }
+        return properties(parts, owner: .part, rules: partRules)
+            + properties(PartSplitting.componentElements(model), owner: .component, rules: componentRules)
+    }
+
     /// Produce a transient archive for a replay frame, retaining source assets and metadata.
-    package func replayFrame(nodeIDs: Set<String>, edgeIDs: Set<String>) throws -> Dust3DDocument {
+    package func replayFrame(
+        nodeIDs: Set<String>, edgeIDs: Set<String>, pendingProperties: [ReplayProperty] = []
+    ) throws -> Dust3DDocument {
         let model = try Self.xml(modelXML, root: "canvas")
         guard let root = model.rootElement() else { throw DocumentError.invalidNode }
         var retainedParts = Set<String>()
@@ -1192,6 +1237,18 @@ public struct Dust3DDocument: Sendable {
         if let components = root.elements(forName: "components").first {
             pruneComponents(in: components)
         }
+        let pending = Dictionary(grouping: pendingProperties, by: \.owner)
+        func mask(_ elements: [XMLElement], owner: ReplayProperty.Owner) {
+            let attributes = Dictionary(grouping: pending[owner] ?? [], by: \.id)
+            for element in elements {
+                guard let id = element.attribute(forName: "id")?.stringValue else { continue }
+                for property in attributes[id] ?? [] {
+                    element.removeAttribute(forName: property.attribute)
+                }
+            }
+        }
+        mask(root.elements(forName: "parts").first?.elements(forName: "part") ?? [], owner: .part)
+        mask(PartSplitting.componentElements(model), owner: .component)
         return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
     }
 

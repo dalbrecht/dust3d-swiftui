@@ -5,6 +5,7 @@ package struct WorkflowReplayPlan: Sendable {
     package enum Step: Equatable, Sendable {
         case node(id: String, incomingEdgeID: String?)
         case edge(id: String)
+        case property(ReplayProperty)
     }
 
     package let steps: [Step]
@@ -21,6 +22,7 @@ package struct WorkflowReplayPlan: Sendable {
                 if let incoming { edges.insert(incoming) }
             case .edge(let id):
                 edges.insert(id)
+            case .property: break
             }
         }
         return (graph.nodes.filter { nodes.contains($0.id) }, graph.edges.filter { edges.contains($0.id) })
@@ -30,7 +32,13 @@ package struct WorkflowReplayPlan: Sendable {
     package func previewDocument(after completedSteps: Int, source: Dust3DDocument) throws -> Dust3DDocument {
         guard completedSteps < steps.count else { return source }
         let visible = frame(after: completedSteps)
-        return try source.replayFrame(nodeIDs: Set(visible.nodes.map(\.id)), edgeIDs: Set(visible.edges.map(\.id)))
+        let pending = steps.dropFirst(max(0, completedSteps)).compactMap { step -> ReplayProperty? in
+            guard case .property(let property) = step else { return nil }
+            return property
+        }
+        return try source.replayFrame(
+            nodeIDs: Set(visible.nodes.map(\.id)), edgeIDs: Set(visible.edges.map(\.id)),
+            pendingProperties: pending)
     }
 
     package init(document: Dust3DDocument) throws {
@@ -61,6 +69,7 @@ package struct WorkflowReplayPlan: Sendable {
                 nodes: nodesByPart[part] ?? [], edges: edgesByPart[part] ?? [], to: &steps)
         }
         steps.append(contentsOf: crossPartEdges.map { .edge(id: $0.id) })
+        steps.append(contentsOf: try document.replayProperties().map(Step.property))
         self.steps = steps
         self.graph = graph
         bounds = CanvasBounds(nodes: graph.nodes, origin: graph.origin)
