@@ -19,6 +19,23 @@ private actor WorkflowReplayMeshLoader {
     }
 }
 
+enum WorkflowReplayPlaybackPhase: Equatable {
+    case empty
+    case ready
+    case inProgress
+    case complete
+
+    init(completedSteps: Int, totalSteps: Int) {
+        if totalSteps == 0 {
+            self = .empty
+        } else if completedSteps == 0 {
+            self = .ready
+        } else {
+            self = completedSteps < totalSteps ? .inProgress : .complete
+        }
+    }
+}
+
 enum WorkflowReplayMeshStatus: Equatable {
     case updating
     case failed(String)
@@ -66,9 +83,23 @@ struct WorkflowReplayView: View {
         presentation == .mesh && plan != nil ? completedSteps : nil
     }
 
+    private var playbackPhase: WorkflowReplayPlaybackPhase? {
+        plan.map { WorkflowReplayPlaybackPhase(completedSteps: completedSteps, totalSteps: $0.steps.count) }
+    }
+
     var body: some View {
         Group {
-            if let plan {
+            if let plan, playbackPhase == .empty {
+                ContentUnavailableView {
+                    Label("No Replay Steps", systemImage: "play.rectangle")
+                } description: {
+                    if let animationMetadataError = plan.animationMetadataError {
+                        Text("Animation steps unavailable. \(animationMetadataError)")
+                    } else {
+                        Text("This document has no steps to replay.")
+                    }
+                }
+            } else if let plan, let phase = playbackPhase {
                 VStack(alignment: .leading) {
                     Picker("View", selection: $presentation) {
                         ForEach(Presentation.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -82,7 +113,10 @@ struct WorkflowReplayView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Step \(completedSteps) of \(plan.steps.count)")
                             .monospacedDigit()
-                        if completedSteps > 0 {
+                        if phase == .ready {
+                            Text("Ready to Replay")
+                        } else {
+                            if phase == .complete { Text("Replay Complete") }
                             switch plan.steps[completedSteps - 1] {
                             case .referenceImage: Text("Set Reference Image")
                             case .property(let property): Text("Set \(property.title)").lineLimit(2)
@@ -116,11 +150,11 @@ struct WorkflowReplayView: View {
                             isPlaying = false
                             completedSteps = 0
                         }
-                        .disabled(completedSteps == 0)
+                        .disabled(phase == .ready)
                         Button(isPlaying ? "Pause" : "Play") { isPlaying.toggle() }
-                            .disabled(completedSteps == plan.steps.count)
+                            .disabled(phase == .complete)
                         Button("Next Step") { advance(plan) }
-                            .disabled(completedSteps == plan.steps.count || isPlaying)
+                            .disabled(phase == .complete || isPlaying)
                             .keyboardShortcut(.rightArrow, modifiers: .option)
                     }
                     let seconds = Double(WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed))) / 1000

@@ -63,7 +63,7 @@ struct Dust3DEditorApp: App {
                     replayRequest = WorkflowReplayRequest(document: document)
                     openWindow(id: "workflow-replay")
                 }
-                .disabled(store?.snapshot?.nodes.isEmpty != false && store?.snapshot?.document.hasReferenceImage != true)
+                .disabled(store?.snapshot == nil)
             }
             CommandMenu("Canvas") {
                 Toggle(
