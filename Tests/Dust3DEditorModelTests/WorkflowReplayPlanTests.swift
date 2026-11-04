@@ -1,0 +1,42 @@
+import Dust3DDocument
+import Foundation
+import XCTest
+
+@testable import Dust3DEditorModel
+
+final class WorkflowReplayPlanTests: XCTestCase {
+    func testReconstructsComponentOrderChainsAndLoopClosure() throws {
+        let document = try Dust3DDocument(snapshotXML: Data("""
+            <canvas>
+              <parts><part id="chain"/><part id="loop"/></parts>
+              <nodes>
+                <node id="middle" partId="chain" x="0" y="0" z="0" radius=".1"/>
+                <node id="start" partId="chain" x="0" y="1" z="0" radius=".1"/>
+                <node id="end" partId="chain" x="0" y="2" z="0" radius=".1"/>
+                <node id="a" partId="loop" x="1" y="0" z="0" radius=".1"/>
+                <node id="b" partId="loop" x="1" y="1" z="0" radius=".1"/>
+                <node id="c" partId="loop" x="1" y="2" z="0" radius=".1"/>
+              </nodes>
+              <edges>
+                <edge id="backward" partId="chain" from="middle" to="start"/>
+                <edge id="forward" partId="chain" from="middle" to="end"/>
+                <edge id="ab" partId="loop" from="a" to="b"/>
+                <edge id="bc" partId="loop" from="b" to="c"/>
+                <edge id="ca" partId="loop" from="c" to="a"/>
+              </edges>
+              <components>
+                <component id="loopComponent" linkDataType="partId" linkData="loop"/>
+                <component id="chainComponent" linkDataType="partId" linkData="chain"/>
+              </components>
+            </canvas>
+            """.utf8))
+        let plan = try WorkflowReplayPlan(document: document)
+        XCTAssertEqual(plan.steps, [
+            .node(id: "a", incomingEdgeID: nil), .node(id: "b", incomingEdgeID: "ab"),
+            .node(id: "c", incomingEdgeID: "bc"), .edge(id: "ca"),
+            .node(id: "start", incomingEdgeID: nil), .node(id: "middle", incomingEdgeID: "backward"),
+            .node(id: "end", incomingEdgeID: "forward"),
+        ])
+        XCTAssertEqual(try document.editorContents().edges.first?.fromID, "middle")
+    }
+}
