@@ -36,6 +36,17 @@ enum WorkflowReplayPlaybackPhase: Equatable {
     }
 }
 
+enum WorkflowReplayReferenceState {
+    case loading
+    case ready(CGImage, CanvasBounds)
+    case unavailable(String)
+
+    func blocksAdvance(hasReferenceStep: Bool, completedSteps: Int) -> Bool {
+        guard hasReferenceStep, completedSteps == 0, case .loading = self else { return false }
+        return true
+    }
+}
+
 enum WorkflowReplayMeshStatus: Equatable {
     case updating
     case failed(String)
@@ -71,9 +82,12 @@ struct WorkflowReplayView: View {
     @State private var mesh: IndexedMesh?
     @State private var meshStep: Int?
     @State private var meshFailure: String?
-    @State private var referenceImage: CGImage?
-    @State private var referenceBounds: CanvasBounds?
-    @State private var referenceFailure: String?
+    @State private var referenceState = WorkflowReplayReferenceState.loading
+
+    private var waitsForReference: Bool {
+        referenceState.blocksAdvance(
+            hasReferenceStep: plan?.steps.first == .referenceImage, completedSteps: completedSteps)
+    }
 
     private var playbackInterval: Int? {
         isPlaying ? WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed)) : nil
@@ -138,8 +152,12 @@ struct WorkflowReplayView: View {
                         }
                     }
                     .accessibilityElement(children: .combine)
-                    if plan.showsReferenceImage(after: completedSteps), let referenceFailure {
-                        Text(referenceFailure).foregroundStyle(.secondary).lineLimit(2)
+                    if waitsForReference {
+                        ProgressView("Preparing reference image…")
+                    } else if plan.showsReferenceImage(after: completedSteps),
+                        case .unavailable(let message) = referenceState
+                    {
+                        Text(message).foregroundStyle(.secondary).lineLimit(2)
                     }
                     if let animationMetadataError = plan.animationMetadataError {
                         Text("Animation steps unavailable. \(animationMetadataError)")
@@ -154,7 +172,7 @@ struct WorkflowReplayView: View {
                         Button(isPlaying ? "Pause" : "Play") { isPlaying.toggle() }
                             .disabled(phase == .complete)
                         Button("Next Step") { advance(plan) }
-                            .disabled(phase == .complete || isPlaying)
+                            .disabled(phase == .complete || isPlaying || waitsForReference)
                             .keyboardShortcut(.rightArrow, modifiers: .option)
                     }
                     let seconds = Double(WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed))) / 1000
@@ -197,12 +215,16 @@ struct WorkflowReplayView: View {
             guard let plan, plan.steps.first == .referenceImage else { return }
             do {
                 let result = try await ReferenceImageService().preview(document: document)
-                guard !Task.isCancelled, let image = result.image else { return }
-                referenceImage = image
-                referenceBounds = plan.bounds(referenceImageAspectRatio: Double(image.width) / Double(image.height))
+                guard !Task.isCancelled else { return }
+                guard let image = result.image else {
+                    referenceState = .unavailable(String(localized: "The reference image is unavailable."))
+                    return
+                }
+                let bounds = plan.bounds(referenceImageAspectRatio: Double(image.width) / Double(image.height))
+                referenceState = .ready(image, bounds)
             } catch {
                 guard !Task.isCancelled else { return }
-                referenceFailure = EditorStore.message(error)
+                referenceState = .unavailable(EditorStore.message(error))
             }
         }
         .task(id: requestedMeshStep) {
@@ -237,6 +259,7 @@ struct WorkflowReplayView: View {
     }
 
     private func advance(_ plan: WorkflowReplayPlan) {
+        guard !waitsForReference else { return }
         completedSteps = min(completedSteps + 1, plan.steps.count)
         if completedSteps == plan.steps.count { isPlaying = false }
     }
@@ -277,9 +300,15 @@ struct WorkflowReplayView: View {
         let frame = plan.frame(after: completedSteps)
         let nodes = Dictionary(uniqueKeysWithValues: frame.nodes.filter(\.isVisible).map { ($0.id, $0) })
         return Canvas { context, size in
+            let reference: (image: CGImage, bounds: CanvasBounds)?
+            if plan.showsReferenceImage(after: completedSteps), case .ready(let image, let bounds) = referenceState {
+                reference = (image, bounds)
+            } else {
+                reference = nil
+            }
             let projection = CanvasProjection(
-                bounds: referenceBounds ?? plan.bounds, plane: plane, width: size.width, height: size.height)
-            if plan.showsReferenceImage(after: completedSteps), let referenceImage {
+                bounds: reference?.bounds ?? plan.bounds, plane: plane, width: size.width, height: size.height)
+            if let referenceImage = reference?.image {
                 let aspect = Double(referenceImage.width) / Double(referenceImage.height)
                 let center = projection.point(for: .init(x: aspect / 2, y: 0.5, z: aspect / 2))
                 let width = aspect * projection.scale
