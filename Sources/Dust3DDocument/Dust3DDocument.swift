@@ -1159,6 +1159,7 @@ public struct Dust3DDocument: Sendable {
         let model = try Self.xml(modelXML, root: "canvas")
         let parts = model.rootElement()?.elements(forName: "parts").first?.elements(forName: "part") ?? []
         let partRules = [
+            ("target", "Part Target"),
             ("xMirrored", "X Mirror"), ("rounded", "Rounded Ends"), ("chamfered", "Chamfer"),
             ("subdived", "Subdivision"), ("interpolated", "Interpolation"), ("hard", "Hard Join"),
             ("fillLoopInterior", "Fill Loop Interior"), ("deformThickness", "Thickness"),
@@ -1179,6 +1180,9 @@ public struct Dust3DDocument: Sendable {
                 guard let id = element.attribute(forName: "id")?.stringValue else { return [] }
                 return rules.compactMap { attribute, label in
                     guard let value = element.attribute(forName: attribute)?.stringValue else { return nil }
+                    if attribute == "target", value != "ImportedModel" {
+                        guard let target = PartTarget(rawValue: value), target != .model else { return nil }
+                    }
                     let name = element.attribute(forName: "name")?.stringValue ?? ""
                     let profilePartID = attribute == "cutFace" && CutFaceLinks.canonicalID(value) != nil
                         ? value : nil

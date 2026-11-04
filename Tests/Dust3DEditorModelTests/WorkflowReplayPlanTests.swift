@@ -76,9 +76,15 @@ final class WorkflowReplayPlanTests: XCTestCase {
             </canvas>
             """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
-        let beforeLink = try plan.previewDocument(after: 3, source: source).editorContents()
+        let drawn = try plan.previewDocument(after: 2, source: source).editorContents()
+        XCTAssertEqual(drawn.parts.first { $0.id == profile }?.target, .model)
+        let targeted = try plan.previewDocument(after: 3, source: source).editorContents()
+        XCTAssertEqual(targeted.parts.first { $0.id == profile }?.target, .cutFace)
+        let targetedXML = try plan.previewDocument(after: 3, source: source).modelXML
+        XCTAssertFalse(String(decoding: targetedXML, as: UTF8.self).contains("rounded="))
+        let beforeLink = try plan.previewDocument(after: 4, source: source).editorContents()
         XCTAssertEqual(beforeLink.parts.first { $0.id == "tube" }?.cutFace, .preset(.quad))
-        let linked = try plan.previewDocument(after: 4, source: source).editorContents()
+        let linked = try plan.previewDocument(after: 5, source: source).editorContents()
         XCTAssertEqual(linked.parts.first { $0.id == "tube" }?.cutFace, .linkedPart(profile))
         XCTAssertEqual(linked.nodes.map(\.id), ["tubeNode", "profileNode"])
         XCTAssertEqual(plan.steps.last, .node(id: "nextNode", incomingEdgeID: nil))
@@ -99,7 +105,7 @@ final class WorkflowReplayPlanTests: XCTestCase {
             </canvas>
             """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
-        XCTAssertEqual(plan.steps.count, 7)
+        XCTAssertEqual(plan.steps.count, 8)
         func xml(after step: Int) throws -> String {
             String(decoding: try plan.previewDocument(after: step, source: source).modelXML, as: UTF8.self)
         }
@@ -108,9 +114,30 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertTrue(try xml(after: 3).contains("cutFace=\"Triangle\""))
         XCTAssertTrue(try xml(after: 4).contains("cutRotation=\".25\""))
         XCTAssertFalse(try xml(after: 5).contains("cutFace=\"\(profile)\""))
-        XCTAssertTrue(try xml(after: 6).contains("cutFace=\"\(profile)\""))
-        XCTAssertEqual(plan.frame(after: 6).nodes.map(\.id), ["a", "b", "p"])
-        XCTAssertEqual(try plan.previewDocument(after: 7, source: source).encoded(), source.encoded())
+        XCTAssertTrue(try xml(after: 7).contains("cutFace=\"\(profile)\""))
+        XCTAssertEqual(plan.frame(after: 7).nodes.map(\.id), ["a", "b", "p"])
+        XCTAssertEqual(try plan.previewDocument(after: 8, source: source).encoded(), source.encoded())
+    }
+
+    func testReplayStagesStitchingAndImportedTargets() throws {
+        for target in ["StitchingLine", "StitchingLoop", "ImportedModel"] {
+            let source = try Dust3DDocument(snapshotXML: Data("""
+                <canvas>
+                  <parts><part id="p" target="\(target)" importedModelId="retained"/></parts>
+                  <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
+                  <components><component id="after"/></components>
+                </canvas>
+                """.utf8))
+            let plan = try WorkflowReplayPlan(document: source)
+            XCTAssertEqual(plan.steps.count, 3)
+            let before = try plan.previewDocument(after: 1, source: source)
+            XCTAssertEqual(try before.editorContents().parts.first?.target, .model)
+            let after = try plan.previewDocument(after: 2, source: source)
+            let xml = String(decoding: after.modelXML, as: UTF8.self)
+            XCTAssertTrue(xml.contains("target=\"\(target)\""))
+            XCTAssertTrue(xml.contains("importedModelId=\"retained\""))
+            XCTAssertEqual(try plan.previewDocument(after: 3, source: source).encoded(), source.encoded())
+        }
     }
 
     func testReplaySpeedUsesBoundedReferenceIntervals() {
