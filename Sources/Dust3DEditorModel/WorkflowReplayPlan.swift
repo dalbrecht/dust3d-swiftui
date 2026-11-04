@@ -8,6 +8,24 @@ package struct WorkflowReplayPlan: Sendable {
     }
 
     package let steps: [Step]
+    package let bounds: CanvasBounds
+    private let graph: DocumentContents
+
+    package func frame(after completedSteps: Int) -> (nodes: [DocumentNode], edges: [DocumentEdge]) {
+        var nodes = Set<String>()
+        var edges = Set<String>()
+        for step in steps.prefix(max(0, completedSteps)) {
+            switch step {
+            case .node(let id, let incoming):
+                nodes.insert(id)
+                if let incoming { edges.insert(incoming) }
+            case .edge(let id):
+                edges.insert(id)
+            }
+        }
+        return (graph.nodes.filter { nodes.contains($0.id) }, graph.edges.filter { edges.contains($0.id) })
+    }
+
 
     package init(document: Dust3DDocument) throws {
         let graph = try document.editorContents()
@@ -38,6 +56,8 @@ package struct WorkflowReplayPlan: Sendable {
         }
         steps.append(contentsOf: crossPartEdges.map { .edge(id: $0.id) })
         self.steps = steps
+        self.graph = graph
+        bounds = CanvasBounds(nodes: graph.nodes, origin: graph.origin)
     }
 
     private static func appendSteps(nodes: [DocumentNode], edges: [DocumentEdge], to steps: inout [Step]) {

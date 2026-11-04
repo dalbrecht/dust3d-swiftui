@@ -37,6 +37,13 @@ final class WorkflowReplayPlanTests: XCTestCase {
             .node(id: "start", incomingEdgeID: nil), .node(id: "middle", incomingEdgeID: "backward"),
             .node(id: "end", incomingEdgeID: "forward"),
         ])
-        XCTAssertEqual(try document.editorContents().edges.first?.fromID, "middle")
+        XCTAssertTrue(plan.frame(after: -1).nodes.isEmpty)
+        let partial = plan.frame(after: 3)
+        XCTAssertEqual(partial.nodes.map(\.id), ["a", "b", "c"])
+        XCTAssertEqual(partial.edges.map(\.id), ["ab", "bc"])
+        let final = plan.frame(after: plan.steps.count + 1)
+        XCTAssertEqual(final.nodes, try document.editorContents().nodes)
+        XCTAssertEqual(final.edges, try document.editorContents().edges)
+        XCTAssertEqual(final.edges.first?.fromID, "middle")
     }
 }
