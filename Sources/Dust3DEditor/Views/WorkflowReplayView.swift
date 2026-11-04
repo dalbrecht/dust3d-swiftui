@@ -97,6 +97,8 @@ struct WorkflowReplayView: View {
                             case .restoreEdgeDirections: Text("Restore Edge Directions")
                             case .node: Text("Draw Node")
                             case .edge: Text("Connect Nodes")
+                            case .setRigType(let type): Text("Set Rig Type to \(type)")
+                            case .assignBone(let name, _): Text("Assign Edges to \(name.rawValue)").lineLimit(2)
                             }
                         }
                     }

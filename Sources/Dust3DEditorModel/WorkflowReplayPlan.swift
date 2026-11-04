@@ -21,6 +21,8 @@ package struct WorkflowReplayPlan: Sendable {
         case property(ReplayProperty)
         case createGroup(id: String, name: String)
         case movePart(id: String, groupName: String)
+        case setRigType(String)
+        case assignBone(name: BoneNameIdentity, edgeIDs: [String])
     }
 
     package let steps: [Step]
@@ -37,15 +39,18 @@ package struct WorkflowReplayPlan: Sendable {
                 if let incoming { edges.insert(incoming) }
             case .edge(let id):
                 edges.insert(id)
-            case .referenceImage, .property, .createGroup, .movePart, .restoreEdgeDirections: break
+            case .referenceImage, .property, .createGroup, .movePart, .restoreEdgeDirections,
+                 .setRigType, .assignBone: break
             }
         }
         let reversed = pendingReversals(after: completedSteps)
+        let pendingBones = pendingBoneAssignments(after: completedSteps)
         let visibleEdges = graph.edges.filter { edges.contains($0.id) }.map { edge in
-            guard reversed.contains(edge.id) else { return edge }
+            let isReversed = reversed.contains(edge.id)
+            let boneName = pendingBones.contains(edge.id) ? "" : edge.boneName
             return DocumentEdge(
-                id: edge.id, fromID: edge.toID, toID: edge.fromID,
-                boneName: edge.boneName, partID: edge.partID)
+                id: edge.id, fromID: isReversed ? edge.toID : edge.fromID,
+                toID: isReversed ? edge.fromID : edge.toID, boneName: boneName, partID: edge.partID)
         }
         return (graph.nodes.filter { nodes.contains($0.id) }, visibleEdges)
     }
@@ -56,6 +61,14 @@ package struct WorkflowReplayPlan: Sendable {
             reversed.formUnion(ids)
         }
         return reversed
+    }
+
+    private func pendingBoneAssignments(after completedSteps: Int) -> Set<String> {
+        var pending = Set<String>()
+        for case .assignBone(_, let edgeIDs) in steps.dropFirst(max(0, completedSteps)) {
+            pending.formUnion(edgeIDs)
+        }
+        return pending
     }
 
     package func showsReferenceImage(after completedSteps: Int) -> Bool {
@@ -72,18 +85,21 @@ package struct WorkflowReplayPlan: Sendable {
         var pendingProperties: [ReplayProperty] = []
         var pendingGroups = Set<String>()
         var pendingMoves = Set<String>()
+        var pendingRigType = false
         for step in steps.dropFirst(max(0, completedSteps)) {
             switch step {
             case .property(let property): pendingProperties.append(property)
             case .createGroup(let id, _): pendingGroups.insert(id)
             case .movePart(let id, _): pendingMoves.insert(id)
-            case .referenceImage, .node, .edge, .restoreEdgeDirections: break
+            case .setRigType: pendingRigType = true
+            case .referenceImage, .node, .edge, .restoreEdgeDirections, .assignBone: break
             }
         }
         let frame = try source.replayFrame(
             nodeIDs: Set(visible.nodes.map(\.id)), edgeIDs: Set(visible.edges.map(\.id)),
             pendingProperties: pendingProperties, pendingGroupIDs: pendingGroups,
-            pendingMoveIDs: pendingMoves, reversedEdgeIDs: pendingReversals(after: completedSteps))
+            pendingMoveIDs: pendingMoves, reversedEdgeIDs: pendingReversals(after: completedSteps),
+            hidesRigType: pendingRigType, unassignedBoneEdgeIDs: pendingBoneAssignments(after: completedSteps))
         return frame.hasReferenceImage && !showsReferenceImage(after: completedSteps)
             ? try frame.applying(.setReferenceImagePNG(nil)) : frame
     }
@@ -172,6 +188,19 @@ package struct WorkflowReplayPlan: Sendable {
             }
             if component.partID != nil, let parentID = component.parentID, let groupName = groupNames[parentID] {
                 steps.append(.movePart(id: component.id, groupName: groupName))
+            }
+        }
+        let boneAssignments = Dictionary(
+            grouping: graph.edges.filter { !$0.boneName.isEmpty }, by: { Array($0.boneName.utf8) })
+        if !boneAssignments.isEmpty {
+            let rig = graph.rigSettings
+            steps.append(.setRigType(rig.rigType?.rawValue ?? rig.sourceRigType ?? DocumentRigType.disabled.rawValue))
+            let groups = boneAssignments.values.sorted {
+                ($0.first?.boneName ?? "").utf16.lexicographicallyPrecedes(($1.first?.boneName ?? "").utf16)
+            }
+            for group in groups {
+                guard let edge = group.first else { continue }
+                steps.append(.assignBone(name: BoneNameIdentity(edge.boneName), edgeIDs: group.map(\.id)))
             }
         }
         self.steps = steps

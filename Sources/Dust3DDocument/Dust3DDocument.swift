@@ -1214,10 +1214,12 @@ public struct Dust3DDocument: Sendable {
     package func replayFrame(
         nodeIDs: Set<String>, edgeIDs: Set<String>, pendingProperties: [ReplayProperty] = [],
         pendingGroupIDs: Set<String> = [], pendingMoveIDs: Set<String> = [],
-        reversedEdgeIDs: Set<String> = []
+        reversedEdgeIDs: Set<String> = [], hidesRigType: Bool = false,
+        unassignedBoneEdgeIDs: Set<String> = []
     ) throws -> Dust3DDocument {
         let model = try Self.xml(modelXML, root: "canvas")
         guard let root = model.rootElement() else { throw DocumentError.invalidNode }
+        if hidesRigType { root.removeAttribute(forName: "rigType") }
         var retainedParts = Set<String>()
         for node in try Self.nodes(model) {
             guard let id = node.attribute(forName: "id")?.stringValue, nodeIDs.contains(id) else {
@@ -1234,6 +1236,7 @@ public struct Dust3DDocument: Sendable {
                 edge.detach()
                 continue
             }
+            if unassignedBoneEdgeIDs.contains(id) { edge.removeAttribute(forName: "boneName") }
             if reversedEdgeIDs.contains(id) {
                 edge.attribute(forName: "from")?.stringValue = to
                 edge.attribute(forName: "to")?.stringValue = from

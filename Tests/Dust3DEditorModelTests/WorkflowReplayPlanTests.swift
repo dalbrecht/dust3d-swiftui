@@ -166,6 +166,38 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(try plan.previewDocument(after: 4, source: source).encoded(), source.encoded())
     }
 
+    func testReplayStagesRigBeforeByteDistinctBoneAssignments() throws {
+        let firstName = "Cafe\u{301}"
+        let secondName = "Caf\u{e9}"
+        let source = try Dust3DDocument(snapshotXML: Data("""
+            <canvas rigType="Biped">
+              <parts><part id="p"/></parts>
+              <nodes>
+                <node id="a" partId="p" x="0" y="0" z="0" radius=".1"/>
+                <node id="b" partId="p" x="0" y="1" z="0" radius=".1"/>
+                <node id="c" partId="p" x="0" y="2" z="0" radius=".1"/>
+              </nodes>
+              <edges>
+                <edge id="ab" from="a" to="b" boneName="\(firstName)"/>
+                <edge id="bc" from="b" to="c" boneName="\(secondName)"/>
+              </edges>
+            </canvas>
+            """.utf8))
+        let plan = try WorkflowReplayPlan(document: source)
+        XCTAssertEqual(plan.steps.count, 6)
+        let drawn = try plan.previewDocument(after: 3, source: source).editorContents()
+        XCTAssertEqual(drawn.rigSettings.rigType, .disabled)
+        XCTAssertEqual(drawn.edges.map(\.boneName), ["", ""])
+        let rigged = try plan.previewDocument(after: 4, source: source).editorContents()
+        XCTAssertEqual(rigged.rigSettings.rigType, .biped)
+        XCTAssertEqual(rigged.edges.map(\.boneName), ["", ""])
+        let partiallyBound = try plan.previewDocument(after: 5, source: source).editorContents()
+        XCTAssertTrue(partiallyBound.edges.first?.hasExactBoneName(firstName) == true)
+        XCTAssertEqual(partiallyBound.edges.last?.boneName, "")
+        XCTAssertEqual(plan.frame(after: 5).edges, partiallyBound.edges)
+        XCTAssertEqual(try plan.previewDocument(after: 6, source: source).encoded(), source.encoded())
+    }
+
     func testReplaySpeedUsesBoundedReferenceIntervals() {
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 1), 2995)
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: 11), 1445)
