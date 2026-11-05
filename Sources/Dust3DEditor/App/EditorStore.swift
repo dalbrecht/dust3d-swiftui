@@ -1196,18 +1196,20 @@ final class EditorStore {
         let commit = canvasRotationHandler()
         return { commit(degrees) }
     }
-    /// Retain rendered targeting while allowing a text draft to be validated at the actual submit event.
+    var canvasRotationContext: CanvasRotationContext? {
+        snapshot.map {
+            CanvasRotationContext(
+                target: CanvasAdjustmentTarget(snapshot: $0), plane: plane,
+                inputEpoch: rotationInputContextID, addModeEpoch: addModeID)
+        }
+    }
+
+    /// Retain the rendered context while validating the displayed angle at submit.
     func canvasRotationHandler() -> @MainActor (Double) -> Void {
-        let target = snapshot.map(CanvasAdjustmentTarget.init)
-        let capturedPlane = plane
-        let contextID = rotationInputContextID
-        let modeID = addModeID
+        let context = canvasRotationContext
         return { [weak self] degrees in
-            guard let self, let target, let snapshot = self.snapshot,
-                target.isCurrent(in: snapshot), self.rotationInputContextID == contextID,
-                self.addModeID == modeID, self.plane == capturedPlane
-            else { return }
-            self.rotateCanvasSelection(degrees: degrees, target: target, plane: capturedPlane)
+            guard let self, let context, self.canvasRotationContext == context else { return }
+            self.rotateCanvasSelection(degrees: degrees, target: context.target, plane: context.plane)
         }
     }
     func rotateCanvasSelection(degrees: Double, target: CanvasAdjustmentTarget? = nil, plane: EditingPlane? = nil) {
