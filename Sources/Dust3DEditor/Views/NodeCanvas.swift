@@ -147,6 +147,7 @@ struct NodeCanvas: View {
                         },
                         cancel: { token in nodeDrag.cancel(token: token) }
                     )
+                    .id(addModeID)
                     .allowsHitTesting(!store.isMovingOrigin && !store.isAddingNodes)
                 }
                 if let origin = store.originDragPosition ?? store.snapshot?.origin {
