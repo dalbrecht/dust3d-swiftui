@@ -133,21 +133,9 @@ struct Dust3DEditorApp: App {
                 }
                 .disabled(store?.canTransform != true)
                 Button("Decrease Radius") { store?.adjustSelectionRadius(direction: -1) }
-                    .keyboardShortcut("-", modifiers: [])
-                    .disabled(
-                        !EditorCommandScope.allowsGraphShortcuts(
-                            animationFocus: isAnimationFocused == true,
-                            nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
-                            || store?.canAdjustRadiusInput != true
-                    )
+                    .disabled(store?.canAdjustRadiusInput != true)
                 Button("Increase Radius") { store?.adjustSelectionRadius(direction: 1) }
-                    .keyboardShortcut("=", modifiers: [])
-                    .disabled(
-                        !EditorCommandScope.allowsGraphShortcuts(
-                            animationFocus: isAnimationFocused == true,
-                            nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
-                            || store?.canAdjustRadiusInput != true
-                    )
+                    .disabled(store?.canAdjustRadiusInput != true)
                 CanvasRotationMenuButtons(
                     store: store,
                     animationFocus: isAnimationFocused == true,

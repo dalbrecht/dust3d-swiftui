@@ -14,6 +14,7 @@ struct NodePointerSurface: NSViewRepresentable {
     let toggle: () -> Void
     var add: () -> Void = {}
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: (() -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isRectangular = false
@@ -39,6 +40,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.toggle = toggle
         view.add = add
         view.wheel = wheel
+        view.radiusKey = radiusKey
         view.doubleClick = doubleClick
         view.precisionKey = precisionKey
         view.isRectangular = isRectangular
@@ -58,6 +60,7 @@ final class NodePointerView: NSView {
     var toggle: () -> Void = {}
     var add: () -> Void = {}
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: (() -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isRectangular = false
@@ -159,6 +162,7 @@ final class NodePointerView: NSView {
         } else {
             if let clickCancel { clickCancel(current.token) } else { cancel(current.token) }
             if current.isCommand { toggle() } else if current.isShift { add() } else { select() }
+            window?.makeFirstResponder(self)
         }
     }
 
@@ -191,6 +195,13 @@ final class NodePointerView: NSView {
         }
     }
 
+    func routeRadiusKey(_ event: NSEvent) -> Bool {
+        guard enabled, activation == nil, window?.firstResponder === self,
+            let direction = CanvasRadiusKey.direction(for: event)
+        else { return false }
+        return radiusKey(direction)
+    }
+
     override func keyDown(with event: NSEvent) {
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if activation == nil, superview != nil, let window, window.firstResponder === self,
@@ -198,6 +209,7 @@ final class NodePointerView: NSView {
         {
             return
         }
+        if routeRadiusKey(event) { return }
         guard event.keyCode == 53, activation != nil else {
             super.keyDown(with: event)
             return

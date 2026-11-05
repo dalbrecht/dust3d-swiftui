@@ -86,4 +86,19 @@ final class ComponentWrappingSelectionTests: XCTestCase {
         XCTAssertEqual(state.snapshot.document.encoded(), source.encoded())
     }
 
+    func testDanglingAliasSelectionCannotAcquireWrappingTarget() throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts/><components><component id='cafe&#769;' wrap='Cloth'/></components></canvas>"
+                    .utf8))
+        var state = try EditorState(document: source)
+        try state.selectComponents(["caf\u{e9}"])
+        let target = ComponentWrappingSelectionTarget(snapshot: state.snapshot)
+        XCTAssertFalse(target.isCurrent(in: state.snapshot))
+        XCTAssertFalse(ComponentWrappingSelectionPresentation(snapshot: state.snapshot).isAvailable)
+        XCTAssertThrowsError(try state.editSelectedComponentWrapping(.mode(.skin), target: target))
+        XCTAssertEqual(state.snapshot.document.encoded(), source.encoded())
+        XCTAssertFalse(state.snapshot.canUndo)
+    }
+
 }
