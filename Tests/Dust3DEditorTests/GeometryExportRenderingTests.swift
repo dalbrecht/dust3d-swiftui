@@ -7,6 +7,15 @@ import XCTest
 
 @MainActor
 final class GeometryExportRenderingTests: XCTestCase {
+    func testFailedExportProvidesAnAccessibilityAnnouncement() {
+        let view = EditorGeometryExportStatusView(
+            phase: .failed(DocumentExportError.sourceAlias), onCancel: {}, onDismiss: {})
+
+        XCTAssertEqual(
+            view.statusAnnouncement,
+            "Export failed. Choose an export destination separate from the source document.")
+    }
+
     func testActualFormatMenuAndStatusesRenderOffscreenWithoutPublishing() throws {
         var publications = 0
         let receipt = EditorExportReceipt(
