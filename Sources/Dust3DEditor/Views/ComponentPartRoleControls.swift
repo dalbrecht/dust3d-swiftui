@@ -9,13 +9,11 @@ struct ComponentPartRoleMenu: View {
         let appliedRole = store.snapshot.flatMap(Self.appliedRole)
         Menu("Part Role") {
             ForEach(PartTarget.allCases, id: \.self) { role in
-                Button(action: store.componentPartRoleAction(role)) {
-                    if appliedRole == role {
-                        Label(title(role), systemImage: "checkmark")
-                    } else {
-                        Text(title(role))
-                    }
-                }
+                let apply = store.componentPartRoleAction(role)
+                Toggle(
+                    title(role),
+                    isOn: Binding(get: { appliedRole == role }, set: { _ in apply() })
+                )
                 .accessibilityValue(
                     appliedRole == role ? "Applied to all selected parts" : "Not applied to all selected parts"
                 )
