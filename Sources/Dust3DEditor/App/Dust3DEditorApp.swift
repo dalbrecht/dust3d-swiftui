@@ -80,19 +80,9 @@ struct Dust3DEditorApp: App {
                 }
                 .disabled(store?.canTransform != true)
                 Button("Decrease Radius") { store?.adjustSelectionRadius(direction: -1) }
-                    .keyboardShortcut("-", modifiers: [])
-                    .disabled(
-                        !EditorCommandScope.allowsGraphShortcuts(
-                            animationFocus: isAnimationFocused == true,
-                            nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
-                            || store?.canAdjustSelectionRadius != true)
+                    .disabled(store?.canAdjustSelectionRadius != true)
                 Button("Increase Radius") { store?.adjustSelectionRadius(direction: 1) }
-                    .keyboardShortcut("=", modifiers: [])
-                    .disabled(
-                        !EditorCommandScope.allowsGraphShortcuts(
-                            animationFocus: isAnimationFocused == true,
-                            nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
-                            || store?.canAdjustSelectionRadius != true)
+                    .disabled(store?.canAdjustSelectionRadius != true)
                 DescendantRotationMenu(store: store)
                 Button("Reduce Selected Nodes") { store?.reduceSelectedNodes() }
                     .disabled(store?.canReduceSelectedNodes != true)

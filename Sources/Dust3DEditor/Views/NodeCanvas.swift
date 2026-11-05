@@ -32,7 +32,8 @@ struct NodeCanvas: View {
                     tap: { point, mode in store.pickEdge(at: point, projection: projection, mode: mode) },
                     rectangle: { marquee = $0 },
                     hover: { store.updateCanvasHover(at: $0, projection: projection) },
-                    wheel: { store.handleCanvasWheel($0) }
+                    wheel: { store.handleCanvasWheel($0) },
+                    radiusKey: adjustRadius
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)"
@@ -78,6 +79,7 @@ struct NodeCanvas: View {
                             store.setHoveredNode(node.id)
                             return store.handleCanvasWheel(input)
                         },
+                        radiusKey: adjustRadius,
                         begin: { token in
                             guard let snapshot = store.snapshot else { return }
                             try? nodeDrag.begin(
@@ -145,6 +147,12 @@ struct NodeCanvas: View {
         }
         .background(.background)
     }
+    private func adjustRadius(_ direction: Int) -> Bool {
+        guard store.canAdjustSelectionRadius else { return false }
+        store.adjustSelectionRadius(direction: Double(direction))
+        return true
+    }
+
     private func invalidateNodeDrag() { nodeDrag.invalidate() }
 
     private func previewPosition(_ node: DocumentNode, projection: CanvasProjection) -> NodePosition {
@@ -171,6 +179,7 @@ private struct NodeHandle: View {
     let toggle: () -> Void
     let add: () -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    let radiusKey: (Int) -> Bool
     let begin: (UUID) -> Void
     let update: (UUID, CanvasPoint) -> Void
     let finish: (UUID, CanvasPoint) -> Void
@@ -190,7 +199,7 @@ private struct NodeHandle: View {
             NodePointerSurface(
                 enabled: enabled, canDrag: node.isEditable, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle, add: add, wheel: wheel
+                select: select, toggle: toggle, add: add, wheel: wheel, radiusKey: radiusKey
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)

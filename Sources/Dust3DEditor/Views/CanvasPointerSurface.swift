@@ -37,6 +37,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let rectangle: (CanvasSelectionRectangle?) -> Void
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    var radiusKey: (Int) -> Bool = { _ in false }
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) { view.cancelActivation() }
@@ -48,6 +49,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.rectangle = rectangle
         view.hover = hover
         view.wheel = wheel
+        view.radiusKey = radiusKey
     }
 }
 
@@ -58,6 +60,7 @@ final class CanvasPointerView: NSView {
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var radiusKey: (Int) -> Bool = { _ in false }
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var tracking: NSTrackingArea?
     private var hasHover = false
@@ -141,7 +144,14 @@ final class CanvasPointerView: NSView {
         hasHover = false
     }
     @objc private func windowResigned() { invalidate() }
+    func routeRadiusKey(_ event: NSEvent) -> Bool {
+        guard enabled, start == nil, window?.firstResponder === self,
+            let direction = CanvasRadiusKey.direction(for: event)
+        else { return false }
+        return radiusKey(direction)
+    }
     override func keyDown(with event: NSEvent) {
+        if routeRadiusKey(event) { return }
         if event.keyCode == 53, start != nil { invalidate() } else { super.keyDown(with: event) }
     }
     override func viewWillMove(toWindow newWindow: NSWindow?) {
