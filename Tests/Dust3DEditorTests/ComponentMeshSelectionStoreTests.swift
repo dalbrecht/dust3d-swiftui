@@ -93,6 +93,54 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertFalse(value.canUndo)
     }
 
+    func testBatchPartStateUsesDirectOwnersAndUpdatesPreviewOnlyWhenNeeded() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                ("<canvas><nodes/><edges/><parts><part id='p'/><part id='q'/><part id='r'/></parts><components>"
+                    + "<component id='a' linkDataType='partId' linkData='p'/>"
+                    + "<component id='alias' linkDataType='partId' linkData='p'/>"
+                    + "<component id='b' linkDataType='partId' linkData='q'/>"
+                    + "<component id='g'><component id='c' linkDataType='partId' linkData='r'/></component>"
+                    + "</components></canvas>").utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        let selection: Set<String> = ["a", "alias", "b", "g"]
+        value.selectComponents(selection)
+        try await settle(value)
+        let initial = try XCTUnwrap(value.snapshot)
+        let target = ComponentMeshSelectionTarget(snapshot: initial)
+        XCTAssertEqual(value.selectedParts(for: target).map(\.id), ["p", "q"])
+
+        value.setSelectedComponentPartState(.visible, value: true, target: target)
+        XCTAssertFalse(value.isWorking)
+        XCTAssertFalse(value.canUndo)
+        value.setSelectedComponentPartState(.visible, value: false, target: target)
+        try await settle(value)
+        let hidden = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(hidden.selectedComponentIDs, selection)
+        XCTAssertEqual(hidden.parts.map(\.isVisible), [false, false, true])
+        XCTAssertEqual(hidden.previewIdentity, initial.previewIdentity)
+        XCTAssertTrue(value.selectedParts(for: target).isEmpty)
+
+        value.setSelectedComponentPartState(.disabled, value: true, target: target)
+        XCTAssertFalse(value.isWorking)
+        value.setSelectedComponentPartState(
+            .disabled, value: true, target: ComponentMeshSelectionTarget(snapshot: hidden))
+        try await settle(value)
+        let disabled = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(disabled.parts.map(\.isDisabled), [true, true, false])
+        XCTAssertNotEqual(disabled.previewIdentity.geometry, hidden.previewIdentity.geometry)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), hidden.document.encoded())
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testActualBatchActionPublishesOncePreservesFlagsSelectionAndOtherWindowWithExactUndo() async throws {
         let original = try source()
         let value = store()
