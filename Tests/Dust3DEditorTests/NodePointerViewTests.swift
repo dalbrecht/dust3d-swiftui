@@ -232,6 +232,26 @@ final class NodePointerViewTests: XCTestCase {
         XCTAssertTrue(window.firstResponder === prior)
     }
 
+    func testCompletedNodeClickOwnsKeyboardFocus() throws {
+        let window = NSWindow(
+            contentRect: .init(x: -10000, y: -10000, width: 100, height: 100),
+            styleMask: [], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            window.contentView = nil
+            window.close()
+        }
+        let prior = ResponderView(frame: .init(x: 50, y: 50, width: 20, height: 20))
+        let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
+        window.contentView?.addSubview(prior)
+        window.contentView?.addSubview(view)
+        XCTAssertTrue(window.makeFirstResponder(prior))
+        view.enabled = true
+        view.mouseDown(with: try event(.leftMouseDown, x: 10, y: 10))
+        view.mouseUp(with: try event(.leftMouseUp, x: 10, y: 10))
+        XCTAssertTrue(window.firstResponder === view)
+    }
+
     func testResponderDenialCancelsRatherThanCommittingDrag() throws {
         let window = NSWindow(
             contentRect: .init(x: 0, y: 0, width: 100, height: 100),

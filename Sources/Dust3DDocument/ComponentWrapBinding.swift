@@ -57,24 +57,24 @@ public struct ComponentWrapBindingPlan: Sendable {
     public init(components: [DocumentComponent], ownerIDs: Set<String>) throws {
         guard components.count <= ComponentHierarchy.maximumCount else { throw DocumentError.limitExceeded }
         guard !ownerIDs.isEmpty else { throw DocumentError.invalidComponentWrapBinding }
-        var indexed: [String: DocumentComponent] = [:]
+        var indexed: [Data: DocumentComponent] = [:]
         for component in components {
-            guard indexed.updateValue(component, forKey: component.id) == nil else {
+            guard indexed.updateValue(component, forKey: Data(component.id.utf8)) == nil else {
                 throw DocumentError.invalidComponent
             }
         }
         for id in ownerIDs.sorted() {
-            guard let owner = indexed[id] else { throw DocumentError.missingComponent(id) }
+            guard let owner = indexed[Data(id.utf8)] else { throw DocumentError.missingComponent(id) }
             guard owner.isGroup else { throw DocumentError.invalidComponentWrapping }
         }
-        var excluded = Set<String>()
-        var pending = Array(ownerIDs)
+        var excluded = Set<Data>()
+        var pending = ownerIDs.map { Data($0.utf8) }
         while let id = pending.popLast() {
             guard excluded.insert(id).inserted else { continue }
             guard let component = indexed[id] else { throw DocumentError.invalidComponentStructure }
-            pending.append(contentsOf: component.childIDs)
+            pending.append(contentsOf: component.childIDs.map { Data($0.utf8) })
         }
-        candidates = components.filter { $0.isGroup && !excluded.contains($0.id) }
+        candidates = components.filter { $0.isGroup && !excluded.contains(Data($0.id.utf8)) }
     }
 
     /// Whether an authored choice satisfies group eligibility; bindings do not form a recursion graph here.
@@ -106,9 +106,9 @@ enum ComponentWrapBindingXML {
         let components = try ComponentHierarchy.read(model)
         let plan = try ComponentWrapBindingPlan(components: components, ownerIDs: [id])
         guard plan.allows(choice) else { throw DocumentError.invalidComponentWrapBinding }
-        guard let current = components.first(where: { $0.id == id }),
+        guard let current = components.first(where: { $0.id.utf8.elementsEqual(id.utf8) }),
             let element = PartSplitting.componentElements(model).first(where: {
-                $0.attribute(forName: "id")?.stringValue == id
+                $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(id.utf8) == true
             })
         else { throw DocumentError.missingComponent(id) }
         guard !isUnchanged(current.wrapping.binding, choice: choice) else { return false }
