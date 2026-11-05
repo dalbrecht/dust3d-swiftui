@@ -37,6 +37,36 @@ final class GraphReferenceColorPlanTests: XCTestCase {
                 height: 500))
     }
 
+    func testByteDistinctGraphSelectionChangesInvalidateCapturedColorActionsIncludingABA() throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes><node id='cafe&#769;' partId='p' x='.25' y='.5' z='.5' radius='.1'/><node id='b' partId='p' x='.75' y='.5' z='.5' radius='.1'/></nodes><edges><edge id='edge-cafe&#769;' partId='p' from='cafe&#769;' to='b'/></edges><parts><part id='p'/></parts><components><component id='cp' linkDataType='partId' linkData='p' color='#123456'/></components></canvas>"
+                    .utf8))
+        for changesNodes in [true, false] {
+            let nodes: Set<String> = changesNodes ? ["cafe\u{301}"] : ["b"]
+            let edges: Set<String> = changesNodes ? [] : ["edge-cafe\u{301}"]
+            var state = try EditorState(document: original)
+            try state.selectGraph(nodes: nodes, edges: edges)
+            let before = state.snapshot
+            let target = ReferenceColorTarget(snapshot: before)
+            let clearTarget = CanvasAdjustmentTarget(snapshot: before)
+            try state.selectGraph(
+                nodes: changesNodes ? ["caf\u{e9}"] : nodes,
+                edges: changesNodes ? edges : ["edge-caf\u{e9}"])
+            XCTAssertEqual(state.snapshot.selectionRevision, before.selectionRevision + 1)
+            XCTAssertFalse(target.isCurrent(in: state.snapshot))
+            try state.selectGraph(nodes: nodes, edges: edges)
+            XCTAssertEqual(state.snapshot.selectionRevision, before.selectionRevision + 2)
+            XCTAssertFalse(target.isCurrent(in: state.snapshot))
+            XCTAssertThrowsError(try state.clearSelectedPartColors(target: clearTarget)) {
+                XCTAssertEqual($0 as? EditorError, .staleReferenceColor)
+            }
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            XCTAssertEqual(state.snapshot.previewIdentity, before.previewIdentity)
+            XCTAssertFalse(state.snapshot.canUndo)
+        }
+    }
+
     func testColorPlansRequireLiteralOwnersAndIgnoreDanglingOwnerAliases() throws {
         for (nodeOwner, componentRows, rejectsOwner) in [
             ("caf&#233;", "<component id='cp' linkDataType='partId' linkData='cafe&#769;' color='#123456'/>", true),

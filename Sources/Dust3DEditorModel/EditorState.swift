@@ -311,7 +311,9 @@ public struct EditorState: Sendable {
         if let missing = nodes.subtracting(existing).sorted().first { throw DocumentError.missingNode(missing) }
         guard edges.isSubset(of: Set(contents.edges.map(\.id))) else { throw DocumentError.invalidNode }
         componentRevealHint = nil
-        if nodes != selectedIDs || edges != selectedEdgeIDs || selectedPartID != nil || !selectedComponentIDs.isEmpty {
+        let nodesChanged = Set(nodes.map { Data($0.utf8) }) != Set(selectedIDs.map { Data($0.utf8) })
+        let edgesChanged = Set(edges.map { Data($0.utf8) }) != Set(selectedEdgeIDs.map { Data($0.utf8) })
+        if nodesChanged || edgesChanged || selectedPartID != nil || !selectedComponentIDs.isEmpty {
             selectionRevision += 1
         }
         selectedIDs = nodes
