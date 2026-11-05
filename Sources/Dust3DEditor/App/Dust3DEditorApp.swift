@@ -65,11 +65,10 @@ struct Dust3DEditorApp: App {
                 }
                 .disabled(store?.snapshot == nil)
             }
-            CommandMenu("Preview") {
+            CommandGroup(after: .toolbar) {
                 PreviewCameraMenu(
-                    title: "Camera", move: { store?.movePreviewCamera($0) }, fit: { store?.fitPreviewCamera() }
-                )
-                .disabled(store?.canMovePreviewCamera != true)
+                    title: "Preview Camera", isEnabled: store?.canMovePreviewCamera == true,
+                    move: { store?.movePreviewCamera($0) }, fit: { store?.fitPreviewCamera() })
             }
             CommandMenu("Canvas") {
                 Toggle(
