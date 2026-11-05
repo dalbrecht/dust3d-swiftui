@@ -12,7 +12,8 @@ public struct DocumentPreviewIdentity: Equatable, Sendable {
             .duplicateAnimation, .deleteAnimation, .setRigType, .setHeadHasEyelids, .setEdgeBoneName,
             .setPartName, .setComponentName, .setReferenceImagePNG:
             break
-        case .setPartState(_, let property, _) where property != .disabled:
+        case .setPartState(_, let property, _) where property != .disabled,
+            .setPartsState(_, let property, _) where property != .disabled:
             break
         case .setPartMaterial, .setComponentColorImage, .importComponentColorImage:
             materials = UUID()

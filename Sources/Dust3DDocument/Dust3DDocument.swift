@@ -211,6 +211,8 @@ public enum DocumentCommand: Sendable {
     case setComponentPartRoles(componentIDs: [String], target: PartTarget, newGroupID: String?)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
+    /// Set one flag on a bounded set of parts and publish the result as one document edit.
+    case setPartsState(ids: [String], property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
     /// Full raster decoding/validation belongs at the platform import boundary.
     case setReferenceImagePNG(Data?)
@@ -540,6 +542,11 @@ public struct Dust3DDocument: Sendable {
             if updates.isEmpty { return self }
             try Task.checkCancellation()
         }
+        if case .setPartsState(let ids, _, _) = command {
+            guard ids.count <= ComponentHierarchy.maximumCount else { throw DocumentError.limitExceeded }
+            if ids.isEmpty { return self }
+            try Task.checkCancellation()
+        }
         let contents: DocumentContents
         var nextGraphOrder = graphOrder
         switch command {
@@ -571,6 +578,23 @@ public struct Dust3DDocument: Sendable {
                 result.addAttribute(attribute)
             }
             return result
+        }
+        func setPartFlag(
+            _ part: XMLElement, current: DocumentPart, property: PartStateProperty, value: Bool
+        ) -> Bool {
+            let previous: Bool
+            switch property {
+            case .visible: previous = current.isVisible
+            case .locked: previous = current.isLocked
+            case .disabled: previous = current.isDisabled
+            }
+            if previous == value { return false }
+            part.removeAttribute(forName: property.rawValue)
+            let attribute = XMLNode(kind: .attribute)
+            attribute.name = property.rawValue
+            attribute.stringValue = value ? "true" : "false"
+            part.addAttribute(attribute)
+            return true
         }
         func editable(_ id: String) throws -> DocumentNode {
             guard let node = contents.nodes.first(where: { $0.id == id }), node.isEditable else {
@@ -779,18 +803,21 @@ public struct Dust3DDocument: Sendable {
                     $0.attribute(forName: "id")?.stringValue == id
                 })
             else { throw DocumentError.missingPart(id) }
-            let previous: Bool
-            switch property {
-            case .visible: previous = current.isVisible
-            case .locked: previous = current.isLocked
-            case .disabled: previous = current.isDisabled
+            guard setPartFlag(part, current: current, property: property, value: value) else { return self }
+        case .setPartsState(let ids, let property, let value):
+            let current = Dictionary(contents.parts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            let elements = Dictionary(
+                (root.elements(forName: "parts").first?.elements(forName: "part") ?? []).compactMap { part in
+                    part.attribute(forName: "id")?.stringValue.map { ($0, part) }
+                }, uniquingKeysWith: { first, _ in first })
+            var changed = false
+            var seen = Set<String>()
+            for id in ids where seen.insert(id).inserted {
+                try Task.checkCancellation()
+                guard let part = elements[id], let metadata = current[id] else { throw DocumentError.missingPart(id) }
+                if setPartFlag(part, current: metadata, property: property, value: value) { changed = true }
             }
-            if previous == value { return self }
-            part.removeAttribute(forName: property.rawValue)
-            let attribute = XMLNode(kind: .attribute)
-            attribute.name = property.rawValue
-            attribute.stringValue = value ? "true" : "false"
-            part.addAttribute(attribute)
+            guard changed else { return self }
         case .addNode(let id, let partID, let componentID, let position, let radius):
             guard !id.isEmpty, !partID.isEmpty, !contents.nodes.contains(where: { $0.id == id }),
                 contents.nodes.count < 10_000,

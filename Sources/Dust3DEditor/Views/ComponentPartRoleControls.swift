@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 /// Shared captured actions for explicit sidebar rows and the multi-selection inspector.
@@ -38,5 +39,29 @@ struct ComponentPartRoleControls: View {
             .font(.caption)
         }
         .accessibilityElement(children: .contain)
+    }
+}
+
+struct ComponentBatchPartStateMenu: View {
+    let store: EditorStore
+    let target: ComponentMeshSelectionTarget
+
+    var body: some View {
+        Menu("Selected Part State") {
+            action("Show Parts", .visible, true)
+            action("Hide Parts", .visible, false)
+            Divider()
+            action("Lock Parts", .locked, true)
+            action("Unlock Parts", .locked, false)
+            Divider()
+            action("Enable Parts", .disabled, false)
+            action("Disable Parts", .disabled, true)
+        }
+        .disabled(!store.canSetSelectedComponentPartState(target))
+        .help("Changes apply to parts linked directly from selected rows.")
+    }
+
+    private func action(_ title: LocalizedStringKey, _ property: PartStateProperty, _ value: Bool) -> some View {
+        Button(title) { store.setSelectedComponentPartState(property, value: value, target: target) }
     }
 }

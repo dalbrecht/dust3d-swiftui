@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show, hide, lock, unlock, enable, or disable directly selected parts in one edit.
+
 - Add batch component part roles with atomic stitching grouping, shared-group reveal and one-step Undo (#45).
 
 - Apply or clear color across selected components with the native color picker and one-step Undo.
