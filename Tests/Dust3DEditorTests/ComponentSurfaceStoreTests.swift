@@ -99,9 +99,10 @@ import XCTest
         XCTAssertNil(store.bakedMesh?.textures.normal)
         let changed = try await change(store, edit: .scalar(.wrinkles, 1), expected: full)
         let normal = try XCTUnwrap(changed.textures.normal)
-        let nonflat = stride(from: 0, to: normal.pixels.count, by: 4).filter {
-            normal.pixels[$0 + 3] == 255
-                && (abs(Int(normal.pixels[$0]) - 128) > 2 || abs(Int(normal.pixels[$0 + 1]) - 128) > 2)
+        let nonflat = stride(from: 0, to: normal.pixels.count, by: 4).filter { (index: Int) -> Bool in
+            let redDeviation = abs(Int(normal.pixels[index]) - 128)
+            let greenDeviation = abs(Int(normal.pixels[index + 1]) - 128)
+            return normal.pixels[index + 3] == 255 && (redDeviation > 2 || greenDeviation > 2)
         }.count
         XCTAssertGreaterThan(nonflat, 0)
         store.undo()

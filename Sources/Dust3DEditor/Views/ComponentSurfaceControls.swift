@@ -108,7 +108,7 @@ struct SurfaceInkControls: View {
             )
             .id(draft.generation)
             .accessibilityIdentifier("component-surface-ink-picker")
-            TextField("Ink hex RGB", text: Binding(get: { draft.color.text }, set: edit))
+            TextField("Ink hex RGB", text: Binding(get: { draft.color.text }, set: { value in edit(value) }))
                 .accessibilityIdentifier("component-surface-ink-hex")
                 .focusedValue(\.editorTextEditing, true)
                 .onSubmit { commit() }
