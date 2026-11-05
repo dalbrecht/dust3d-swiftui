@@ -74,6 +74,8 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         value.setSelectedComponentColors(target, value: "#2255AA")
         try await settle(value)
         let colored = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(colored.selectedComponentIDs, selected)
+        XCTAssertNotEqual(target, ComponentMeshSelectionTarget(snapshot: colored))
         XCTAssertEqual(colored.selectedComponentRows.count, 2)
         XCTAssertTrue(colored.selectedComponentRows.allSatisfy { $0.component.color == .value(color) })
         value.setSelectedComponentColors(target, value: nil)
