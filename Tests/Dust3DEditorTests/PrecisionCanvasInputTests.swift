@@ -252,13 +252,44 @@ import XCTest
             if nodes(host).contains(where: { $0.isRectangular && $0.enabled && $0.precisionKey != nil }) { break }
             try await Task.sleep(for: .milliseconds(10))
         }
+        XCTAssertTrue(window.firstResponder === node)
+        XCTAssertFalse(node.enabled, "Origin mode suspends graph pointer input")
+        node.keyDown(with: try key(125, window: window))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.origin?.y ?? 0, 0.5 + 1 / store.canvasHeight, accuracy: 1e-12)
+        XCTAssertEqual(store.snapshot?.nodes.map(\.value), graph)
         let origin = try XCTUnwrap(nodes(host).first { $0.isRectangular && $0.enabled && $0.precisionKey != nil })
         try click(origin, window: window)
         XCTAssertTrue(window.firstResponder === origin)
         origin.keyDown(with: try key(125, window: window))
         try await settle(store)
         XCTAssertTrue(store.isMovingOrigin)
-        XCTAssertEqual(store.snapshot?.origin?.y ?? 0, 0.5 + 1 / store.canvasHeight, accuracy: 1e-12)
+        XCTAssertEqual(store.snapshot?.origin?.y ?? 0, 0.5 + 2 / store.canvasHeight, accuracy: 1e-12)
+        XCTAssertEqual(store.snapshot?.nodes.map(\.value), graph)
+
+        func canvases(_ view: NSView) -> [CanvasPointerView] {
+            (view as? CanvasPointerView).map { [$0] } ?? view.subviews.flatMap(canvases)
+        }
+        store.setMovingOrigin(false)
+        for _ in 0..<100 {
+            host.layoutSubtreeIfNeeded()
+            if canvases(host).first?.enabled == true { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let canvas = try XCTUnwrap(canvases(host).first)
+        XCTAssertTrue(window.makeFirstResponder(canvas))
+        store.setMovingOrigin(true)
+        for _ in 0..<100 {
+            host.layoutSubtreeIfNeeded()
+            if !canvas.enabled { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertFalse(canvas.enabled)
+        XCTAssertTrue(window.firstResponder === canvas)
+        canvas.keyDown(with: try key(123, window: window))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.origin?.x ?? 0, 0.5 - 1 / store.canvasHeight, accuracy: 1e-12)
+        XCTAssertTrue(store.isMovingOrigin)
         XCTAssertEqual(store.snapshot?.nodes.map(\.value), graph)
     }
     func testNativeTextTableAndMeshReceiversKeepTheirArrowKeys() throws {
