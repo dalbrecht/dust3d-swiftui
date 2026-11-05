@@ -39,6 +39,9 @@ struct Dust3DEditorApp: App {
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)…") { openWindow(id: "build-diagnostics") }
             }
+            CommandGroup(after: .help) {
+                Button("Keyboard Shortcuts") { openWindow(id: "keyboard-shortcuts") }
+            }
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
                     EditorCommandScope.routeUndo(
@@ -182,6 +185,10 @@ struct Dust3DEditorApp: App {
                 }
             }
         }
+        Window("Keyboard Shortcuts", id: "keyboard-shortcuts") {
+            KeyboardShortcutHelpView()
+        }
+        .defaultSize(width: 740, height: 620)
         Window("Replay Steps", id: "workflow-replay") {
             Group {
                 if let replayRequest {
