@@ -93,7 +93,9 @@ package struct WorkflowReplayPlan: Sendable {
     }
 
     package func bounds(referenceImageAspectRatio: Double) -> CanvasBounds {
-        CanvasBounds(nodes: graph.nodes, referenceImageAspectRatio: referenceImageAspectRatio, origin: graph.origin)
+        CanvasBounds(
+            nodes: graph.nodes.map { enabledNodes[$0.id] ?? $0 },
+            referenceImageAspectRatio: referenceImageAspectRatio, origin: graph.origin)
     }
 
     /// Animation metadata changes the replay narrative without changing the static preview.
@@ -258,15 +260,19 @@ package struct WorkflowReplayPlan: Sendable {
         self.steps = steps
         self.graph = graph
         let disabledParts = graph.parts.filter(\.isDisabled).map(\.id)
+        let enabled: [String: DocumentNode]
         if disabledParts.isEmpty {
-            enabledNodes = [:]
+            enabled = [:]
         } else {
             // Cache the staged default-enabled state once, retaining source visibility and locks.
-            let enabled = try document.applying(.setPartsState(ids: disabledParts, property: .disabled, value: false))
-                .editorContents().nodes
-            enabledNodes = Dictionary(uniqueKeysWithValues: enabled.map { ($0.id, $0) })
+            let initialNodes = try document.applying(
+                .setPartsState(ids: disabledParts, property: .disabled, value: false)
+            )
+            .editorContents().nodes
+            enabled = Dictionary(uniqueKeysWithValues: initialNodes.map { ($0.id, $0) })
         }
-        bounds = CanvasBounds(nodes: graph.nodes, origin: graph.origin)
+        enabledNodes = enabled
+        bounds = CanvasBounds(nodes: graph.nodes.map { enabled[$0.id] ?? $0 }, origin: graph.origin)
     }
 
     private static func appendSteps(
