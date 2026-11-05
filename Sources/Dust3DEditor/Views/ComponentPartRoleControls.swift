@@ -47,21 +47,25 @@ struct ComponentBatchPartStateMenu: View {
     let target: ComponentMeshSelectionTarget
 
     var body: some View {
+        let parts = store.selectedParts(for: target)
         Menu("Selected Part State") {
-            action("Show Parts", .visible, true)
-            action("Hide Parts", .visible, false)
+            action("Show Parts", .visible, true, parts: parts)
+            action("Hide Parts", .visible, false, parts: parts)
             Divider()
-            action("Lock Parts", .locked, true)
-            action("Unlock Parts", .locked, false)
+            action("Lock Parts", .locked, true, parts: parts)
+            action("Unlock Parts", .locked, false, parts: parts)
             Divider()
-            action("Enable Parts", .disabled, false)
-            action("Disable Parts", .disabled, true)
+            action("Enable Parts", .disabled, false, parts: parts)
+            action("Disable Parts", .disabled, true, parts: parts)
         }
-        .disabled(!store.canSetSelectedComponentPartState(target))
+        .disabled(parts.isEmpty)
         .help("Changes apply to parts linked directly from selected rows.")
     }
 
-    private func action(_ title: LocalizedStringKey, _ property: PartStateProperty, _ value: Bool) -> some View {
+    private func action(
+        _ title: LocalizedStringKey, _ property: PartStateProperty, _ value: Bool, parts: [DocumentPart]
+    ) -> some View {
         Button(title) { store.setSelectedComponentPartState(property, value: value, target: target) }
+            .disabled(!parts.contains { $0.state(property) != value })
     }
 }

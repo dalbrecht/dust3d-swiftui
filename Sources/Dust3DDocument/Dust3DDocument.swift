@@ -582,13 +582,7 @@ public struct Dust3DDocument: Sendable {
         func setPartFlag(
             _ part: XMLElement, current: DocumentPart, property: PartStateProperty, value: Bool
         ) -> Bool {
-            let previous: Bool
-            switch property {
-            case .visible: previous = current.isVisible
-            case .locked: previous = current.isLocked
-            case .disabled: previous = current.isDisabled
-            }
-            if previous == value { return false }
+            guard current.state(property) != value else { return false }
             part.removeAttribute(forName: property.rawValue)
             let attribute = XMLNode(kind: .attribute)
             attribute.name = property.rawValue
