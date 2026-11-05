@@ -1,7 +1,7 @@
 import Foundation
 
 /// One immutable context per structural element; relative base references retain their FULL ancestor chain.
-private struct UngroupContexts {
+struct ComponentXMLContexts {
     private struct BaseStep: Hashable {
         let parent: Int
         let reference: Data
@@ -16,14 +16,20 @@ private struct UngroupContexts {
     private var cached: [ObjectIdentifier: Context] = [:]
     private struct NamespaceFrame {
         let parent: Int?
+        let depth: Int
         let bindings: [Data: DocumentXML.NamespaceBinding]
     }
     private struct EnvironmentPair: Hashable {
         let source: Int
         let destination: Int
     }
-    private var frames = [NamespaceFrame(parent: nil, bindings: [Data(): ("", "")])]
+    private var frames = [NamespaceFrame(parent: nil, depth: 0, bindings: [Data(): ("", "")])]
     private var differences: [EnvironmentPair: [DocumentXML.NamespaceBinding]] = [:]
+    private struct ReparentDelta {
+        let bindings: [DocumentXML.NamespaceBinding]
+        let added: [DocumentXML.NamespaceBinding]
+    }
+    private var reparentDifferences: [EnvironmentPair: ReparentDelta] = [:]
     private var materializationBudget = DocumentXML.NamespaceBudget()
     // Explicit work units matching the 16 MiB model envelope; no unbounded namespace search.
     private var remainingNamespaceWork = 16 * 1024 * 1024
@@ -68,7 +74,10 @@ private struct UngroupContexts {
                     (Data(($0.name ?? "").utf8), (prefix: $0.name ?? "", uri: $0.stringValue ?? ""))
                 })
             if !local.isEmpty {
-                frames.append(NamespaceFrame(parent: parent.namespaceEnvironment, bindings: local))
+                frames.append(
+                    NamespaceFrame(
+                        parent: parent.namespaceEnvironment, depth: frames[parent.namespaceEnvironment].depth + 1,
+                        bindings: local))
                 value.namespaceEnvironment = frames.count - 1
             }
         }
@@ -131,6 +140,89 @@ private struct UngroupContexts {
         return candidates.filter { !local.contains(Data($0.prefix.utf8)) }
     }
 
+    mutating func reparentBindings(
+        _ element: XMLElement, to destination: XMLElement, id: String
+    ) throws -> [DocumentXML.NamespaceBinding] {
+        let before = original(element)
+        let destinationContext = original(destination)
+        let after = applying(element, to: destinationContext, namespaces: false)
+        for (attribute, matches) in [
+            ("xml:lang", before.language == after.language),
+            ("xml:space", before.space == after.space),
+            ("xml:base", before.base == after.base),
+        ] where !matches {
+            throw ComponentReparentError.inheritedContext(componentID: id, attribute: attribute)
+        }
+        let source = before.namespaceEnvironment
+        let target = destinationContext.namespaceEnvironment
+        let local = Set((element.namespaces ?? []).map { Data(($0.name ?? "").utf8) })
+        let pair = EnvironmentPair(source: source, destination: target)
+        let delta: ReparentDelta
+        if let cached = reparentDifferences[pair] {
+            delta = cached
+        } else {
+            let common = try commonNamespaceEnvironment(source, target)
+            let from = try localPrefixes(from: source, to: common)
+            let to = try localPrefixes(from: target, to: common)
+            var bindings: [DocumentXML.NamespaceBinding] = []
+            var added: [DocumentXML.NamespaceBinding] = []
+            let keys = from.union(to).sorted { $0.lexicographicallyPrecedes($1) }
+            for prefix in keys {
+                try consumeNamespaceWork()
+                let prefixText = String(decoding: prefix, as: UTF8.self)
+                let sourceURI = try lookup(prefix, in: source)
+                let targetURI = try lookup(prefix, in: target)
+                if let sourceURI, targetURI?.utf8.elementsEqual(sourceURI.utf8) != true {
+                    let binding = (prefix: prefixText, uri: sourceURI)
+                    try materializationBudget.reserve([binding])
+                    bindings.append(binding)
+                } else if sourceURI == nil, let targetURI {
+                    let binding = (prefix: prefixText, uri: targetURI)
+                    try materializationBudget.reserve([binding])
+                    added.append(binding)
+                }
+            }
+            delta = ReparentDelta(bindings: bindings, added: added)
+            reparentDifferences[pair] = delta
+        }
+        for binding in delta.added where !local.contains(Data(binding.prefix.utf8)) {
+            throw ComponentReparentError.inheritedContext(componentID: id, attribute: "xmlns:" + binding.prefix)
+        }
+        return delta.bindings.filter { !local.contains(Data($0.prefix.utf8)) }
+    }
+
+    private mutating func commonNamespaceEnvironment(_ first: Int, _ second: Int) throws -> Int {
+        var first = first
+        var second = second
+        while first != second {
+            try consumeNamespaceWork()
+            if frames[first].depth >= frames[second].depth {
+                guard let parent = frames[first].parent else { throw DocumentError.invalidComponentStructure }
+                first = parent
+            } else {
+                guard let parent = frames[second].parent else { throw DocumentError.invalidComponentStructure }
+                second = parent
+            }
+        }
+        return first
+    }
+
+    private mutating func localPrefixes(from start: Int, to ancestor: Int) throws -> Set<Data> {
+        var cursor = start
+        var bindings = Set<Data>()
+        while cursor != ancestor {
+            try consumeNamespaceWork()
+            let frame = frames[cursor]
+            for prefix in frame.bindings.keys {
+                try consumeNamespaceWork()
+                bindings.insert(prefix)
+            }
+            guard let parent = frame.parent else { throw DocumentError.invalidComponentStructure }
+            cursor = parent
+        }
+        return bindings
+    }
+
     private static func isAbsoluteReference(_ text: String) -> Bool {
         // Strict parsing must not percent-encode invalid source into a fabricated absolute reset.
         guard let uri = URLComponents(string: text, encodingInvalidCharacters: false),
@@ -168,7 +260,7 @@ enum ComponentUngroupBatch {
         guard let container = DocumentXML.childElements(model.rootElement(), named: "components").first else {
             throw DocumentError.invalidComponentStructure
         }
-        var contexts = UngroupContexts()
+        var contexts = ComponentXMLContexts()
         for element in [container] + elements { _ = contexts.original(element) }
         var updates: [Update] = []
         var moves: [Move] = []
@@ -201,8 +293,8 @@ enum ComponentUngroupBatch {
         for move in moves {
             guard let oldParent = move.node.parent as? XMLElement else { throw DocumentError.invalidComponentStructure }
             let destination = contexts.original(move.parent)
-            let before: UngroupContexts.Context
-            let after: UngroupContexts.Context
+            let before: ComponentXMLContexts.Context
+            let after: ComponentXMLContexts.Context
             if let element = move.node as? XMLElement {
                 before = contexts.original(element)
                 after = contexts.applying(element, to: destination, namespaces: false)

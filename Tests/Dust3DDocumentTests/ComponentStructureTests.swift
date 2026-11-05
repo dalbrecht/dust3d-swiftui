@@ -82,6 +82,42 @@ final class ComponentStructureTests: XCTestCase {
         XCTAssertThrowsError(try original.applying(.reparentComponent(id: "missing", parentID: nil)))
         XCTAssertEqual(original.encoded(), try document().encoded())
     }
+    func testBatchReparentPreservesDestinationOrderAndSelectedSubtrees() throws {
+        let original = try document(
+            "<component id='a'><component id='child'/></component><component id='b'><component id='stay'/></component><component id='c' linkDataType='future' linkData='opaque'/>"
+        )
+        let command = DocumentCommand.reparentComponents(ids: ["c", "child", "a", "stay", "c"], parentID: "b")
+        let changed = try original.applying(command)
+        XCTAssertEqual(try changed.components().map(\.id), ["b", "stay", "a", "child", "c"])
+        XCTAssertEqual(try changed.components().first { $0.id == "b" }?.childIDs, ["stay", "a", "c"])
+        XCTAssertEqual(try changed.components().first { $0.id == "a" }?.childIDs, ["child"])
+        XCTAssertEqual(changed.asset(named: "opaque.bin"), original.asset(named: "opaque.bin"))
+        XCTAssertEqual(try changed.applying(command).encoded(), changed.encoded())
+        var history = DocumentHistory(document: original)
+        try history.apply(command)
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+        XCTAssertTrue(history.redo())
+        XCTAssertEqual(history.document.encoded(), changed.encoded())
+    }
+
+    func testBatchReparentRejectsInvalidTargetAndRawAliasesAtomically() throws {
+        let original = try document(
+            "<component id='a'><component id='child'/></component><component id='b'/><component id='cafe\u{301}'/><component id='opaque' linkDataType='future' linkData='opaque'/>"
+        )
+        for (ids, target, error) in [
+            (["b", "a"], "child", DocumentError.invalidComponentStructure),
+            (["b", "a"], "a", .invalidComponentStructure),
+            (["a", "b"], "opaque", .invalidComponentStructure),
+            (["a", "b"], "missing", .missingComponent("missing")),
+            (["b", "cafe\u{301}", "caf\u{e9}"], "a", .missingComponent("caf\u{e9}")),
+        ] {
+            XCTAssertThrowsError(try original.applying(.reparentComponents(ids: ids, parentID: target))) {
+                XCTAssertEqual($0 as? DocumentError, error)
+            }
+        }
+    }
+
     func testInvalidGroupingAndUngroupTargetsRejectAtomically() throws {
         let original = try document()
         for ids in [[], ["a", "a"], ["a", "leaf"], ["a", "missing"]] {
@@ -330,4 +366,31 @@ final class ComponentStructureTests: XCTestCase {
         XCTAssertTrue(String(decoding: ungrouped.modelXML, as: UTF8.self).contains("preserved"))
         XCTAssertEqual(ungrouped.asset(named: "opaque.bin"), opaque.asset(named: "opaque.bin"))
     }
+    func testBatchReparentKeepsCrossBranchNamespacesAndLocalXMLOverrides() throws {
+        let original = try document(
+            "<component id='left' xmlns:q='urn:left' xml:lang='en' xml:base='https://left.invalid/'><component id='a' xml:lang='' xml:base='https://fixed.invalid/'><q:payload/></component><component id='b' xml:lang='' xml:base='https://fixed.invalid/'/></component><component id='right' xmlns:q='urn:right' xml:lang='fr' xml:base='https://right.invalid/'/>"
+        )
+        let changed = try original.applying(.reparentComponents(ids: ["b", "a"], parentID: "right"))
+        let model = try XMLDocument(data: changed.modelXML)
+        let a = try XCTUnwrap(
+            try model.nodes(forXPath: "//component[@id='right']/component[@id='a']").first as? XMLElement)
+        XCTAssertEqual(a.elements(forLocalName: "payload", uri: "urn:left").count, 1)
+    }
+
+    func testBatchReparentRefusesCrossBranchInheritedContextChanges() throws {
+        for (source, destination, attribute) in [
+            ("xml:lang='en'", "xml:lang='fr'", "xml:lang"),
+            ("xml:space='preserve'", "", "xml:space"),
+            ("xml:base='https://left.invalid/'", "xml:base='https://right.invalid/'", "xml:base"),
+            ("", "xmlns:q='urn:new'", "xmlns:q"),
+        ] {
+            let original = try document(
+                "<component id='left' \(source)><component id='a'/><component id='b'/></component><component id='right' \(destination)/>"
+            )
+            XCTAssertThrowsError(try original.applying(.reparentComponents(ids: ["a", "b"], parentID: "right"))) {
+                XCTAssertEqual($0 as? ComponentReparentError, .inheritedContext(componentID: "a", attribute: attribute))
+            }
+        }
+    }
+
 }

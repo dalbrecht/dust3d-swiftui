@@ -316,6 +316,15 @@ public actor EditorSession {
     {
         try update { try $0.reparentComponent(to: parent, target: target) }
     }
+    /// Publish one atomic move of the captured component selection.
+    public func reparentComponents(
+        to parent: ComponentParent, target: ComponentBatchReparentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            try state.reparentComponents(to: parent, target: target)
+            try Task.checkCancellation()
+        }
+    }
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
