@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Foundation
 
 /// A typed color override change; nil removes the explicit component color rather than assigning white.
 public struct ComponentColorUpdate: Equatable, Sendable {
@@ -33,7 +34,7 @@ public struct GraphReferenceColorPlan: Sendable {
         let ownership = Ownership(snapshot: snapshot)
         var components = Set<String>()
         var skipped = 0
-        for node in snapshot.selectedNodes {
+        for node in try selectedColorNodes(in: snapshot) {
             guard let componentID = try ownership.resolve(partID: node.partID, objectID: node.id) else {
                 skipped += 1
                 continue
@@ -53,7 +54,12 @@ public struct GraphReferenceColorPlan: Sendable {
         snapshot: EditorSnapshot, raster: ReferenceColorRaster, layout: ReferenceColorSamplingLayout
     ) throws -> Self {
         let ownership = Ownership(snapshot: snapshot)
-        let nodes = Dictionary(uniqueKeysWithValues: snapshot.nodes.map { ($0.id, $0) })
+        let nodes = Dictionary(uniqueKeysWithValues: snapshot.nodes.map { (Data($0.id.utf8), $0) })
+        let selectedEdges = Set(snapshot.selectedEdgeIDs.map { Data($0.utf8) })
+        let knownEdges = Set(snapshot.edges.map { Data($0.id.utf8) })
+        for id in snapshot.selectedEdgeIDs where !knownEdges.contains(Data(id.utf8)) {
+            throw ReferenceColorError.unresolvableOwner(id)
+        }
         var samples: [String: Set<UInt32>] = [:]
         var readOnly = 0
         var outside = 0
@@ -69,11 +75,13 @@ public struct GraphReferenceColorPlan: Sendable {
             let rgb = UInt32(color.red) << 16 | UInt32(color.green) << 8 | UInt32(color.blue)
             samples[componentID, default: []].insert(rgb)
         }
-        for node in snapshot.selectedNodes {
+        for node in try selectedColorNodes(in: snapshot) {
             try sample(partID: node.partID, objectID: node.id, position: node.value.position)
         }
-        for edge in snapshot.edges where snapshot.selectedEdgeIDs.contains(edge.id) {
-            guard let from = nodes[edge.fromID]?.value.position, let to = nodes[edge.toID]?.value.position else {
+        for edge in snapshot.edges where selectedEdges.contains(Data(edge.id.utf8)) {
+            guard let from = nodes[Data(edge.fromID.utf8)]?.value.position,
+                let to = nodes[Data(edge.toID.utf8)]?.value.position
+            else {
                 throw ReferenceColorError.unresolvableOwner(edge.id)
             }
             try sample(
@@ -100,27 +108,37 @@ public struct GraphReferenceColorPlan: Sendable {
     }
 }
 
+/// A color edit never resolves a byte-distinct selection alias through inspection equality.
+private func selectedColorNodes(in snapshot: EditorSnapshot) throws -> [DocumentNode] {
+    let selected = Set(snapshot.selectedIDs.map { Data($0.utf8) })
+    let known = Set(snapshot.nodes.map { Data($0.id.utf8) })
+    for id in snapshot.selectedIDs where !known.contains(Data(id.utf8)) {
+        throw ReferenceColorError.unresolvableOwner(id)
+    }
+    return snapshot.nodes.filter { selected.contains(Data($0.id.utf8)) }
+}
+
 private struct Ownership {
-    let parts: [String: DocumentPart]
-    let components: [String: [String]]
+    let parts: [Data: DocumentPart]
+    let components: [Data: [String]]
 
     init(snapshot: EditorSnapshot) {
-        parts = Dictionary(uniqueKeysWithValues: snapshot.parts.map { ($0.id, $0) })
-        var components: [String: [String]] = [:]
+        parts = Dictionary(uniqueKeysWithValues: snapshot.parts.map { (Data($0.id.utf8), $0) })
+        var components: [Data: [String]] = [:]
         for row in snapshot.componentTree.rows {
-            if let part = row.component.partID { components[part, default: []].append(row.id) }
+            if let part = row.component.partID { components[Data(part.utf8), default: []].append(row.id) }
         }
         self.components = components
     }
 
     func resolve(partID: String?, objectID: String) throws -> String? {
-        guard let partID, let part = parts[partID] else {
+        guard let partID, let part = parts[Data(partID.utf8)] else {
             throw ReferenceColorError.unresolvableOwner(objectID)
         }
         // Inspection can retain a locked/hidden/disabled part without an interpretable component link.
         // It cannot contribute a mutation, so do not require mutable ownership merely to skip it.
         guard part.isEditable else { return nil }
-        guard let owners = components[partID], !owners.isEmpty else {
+        guard let owners = components[Data(partID.utf8)], !owners.isEmpty else {
             throw ReferenceColorError.unresolvableOwner(objectID)
         }
         guard owners.count == 1, let componentID = owners.first else {
