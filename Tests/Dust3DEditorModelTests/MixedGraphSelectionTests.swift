@@ -17,6 +17,17 @@ final class MixedGraphSelectionTests: XCTestCase {
         return document
     }
 
+    func testEdgeOnlyDeletionCapturesOneOrderedBatchCommand() throws {
+        var state = try EditorState(document: chain())
+        try state.selectEdges(["cd", "ab"])
+        let commands = try state.selectionDeletionCommands()
+        XCTAssertEqual(commands.count, 1)
+        guard let first = commands.first, case .removeEdges(let ids) = first else {
+            return XCTFail("Bulk Delete must capture one edge batch, not one document mutation per edge")
+        }
+        XCTAssertEqual(ids, ["ab", "cd"])
+    }
+
     func testAtomicMixedSelectionAddToggleReplacementAndLegacySingleAccessor() throws {
         var state = try EditorState(document: chain())
         let original = state.snapshot.document.encoded()

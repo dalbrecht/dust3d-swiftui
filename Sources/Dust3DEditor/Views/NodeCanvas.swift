@@ -52,6 +52,7 @@ struct NodeCanvas: View {
                         guard store.addModeID == addModeID else { return false }
                         return store.handleCanvasWheel(input)
                     },
+                    radiusKey: adjustRadius,
                     isAddingNodes: store.isAddingNodes,
                     addPress: { store.placeAddNode(at: $0, modeID: addModeID) },
                     cancelInput: { if store.addModeID == addModeID { store.cancelAddMode() } }
@@ -121,6 +122,7 @@ struct NodeCanvas: View {
                             store.setHoveredNode(node.id)
                             return store.handleCanvasWheel(input)
                         },
+                        radiusKey: adjustRadius,
                         begin: { token in
                             guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
                                 return
@@ -218,6 +220,12 @@ struct NodeCanvas: View {
         }
         .background(.background)
     }
+    private func adjustRadius(_ direction: Int) -> Bool {
+        guard store.canAdjustRadiusInput else { return false }
+        store.adjustSelectionRadius(direction: Double(direction))
+        return true
+    }
+
     private func invalidateNodeDrag() { nodeDrag.invalidate() }
 
     private func previewPosition(_ node: DocumentNode, projection: CanvasProjection) -> NodePosition {
@@ -244,6 +252,7 @@ private struct NodeHandle: View {
     let toggle: () -> Void
     let add: () -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    let radiusKey: (Int) -> Bool
     let begin: (UUID) -> Void
     let update: (UUID, CanvasPoint) -> Void
     let finish: (UUID, CanvasPoint) -> Void
@@ -263,7 +272,7 @@ private struct NodeHandle: View {
             NodePointerSurface(
                 enabled: enabled, canDrag: node.isEditable, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle, add: add, wheel: wheel
+                select: select, toggle: toggle, add: add, wheel: wheel, radiusKey: radiusKey
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
@@ -273,6 +282,10 @@ private struct NodeHandle: View {
         .accessibilityValue(selected ? "Selected" : "Not selected")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { select() }
+        .accessibilityAction(named: Text("Add node to selection")) { add() }
+        .accessibilityAction(named: Text("Remove node from selection")) {
+            if selected { toggle() }
+        }
         .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked, hidden or disabled part")")
     }
 }
