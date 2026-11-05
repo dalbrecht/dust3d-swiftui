@@ -201,6 +201,7 @@ final class GraphReferenceColorPlanTests: XCTestCase {
             colorImageAssets: current.colorImageAssets, selectedComponentIDs: current.selectedComponentIDs,
             componentRevealHint: current.componentRevealHint, origin: current.origin, selectedID: current.selectedID,
             selectedIDs: current.selectedIDs, selectedEdgeIDs: current.selectedEdgeIDs,
+            canInsertSelectedEdgeMidpoints: false, canReduceSelectedNodes: false,
             selectedPartID: current.selectedPartID,
             canUndo: current.canUndo, canRedo: current.canRedo, locks: current.locks,
             documentRevision: current.documentRevision, previewIdentity: current.previewIdentity,
