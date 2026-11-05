@@ -115,7 +115,12 @@ enum NodeReduction {
             }
             let firstNeighbor = try neighbor(first)
             let secondNeighbor = try neighbor(second)
-            guard firstNeighbor != secondNeighbor else { throw DocumentError.invalidNode }
+            let alreadyConnected = order.incident[firstNeighbor, default: []].contains { edgeID in
+                guard let edge = edges[edgeID] else { return false }
+                return edge.attribute(forName: "from")?.stringValue == secondNeighbor
+                    || edge.attribute(forName: "to")?.stringValue == secondNeighbor
+            }
+            guard firstNeighbor != secondNeighbor, !alreadyConnected else { throw DocumentError.invalidNode }
             try order.replace(incident[1], with: incident[0], at: secondNeighbor)
             for name in ["from", "to"] where first.attribute(forName: name)?.stringValue == id {
                 first.attribute(forName: name)?.stringValue = secondNeighbor
