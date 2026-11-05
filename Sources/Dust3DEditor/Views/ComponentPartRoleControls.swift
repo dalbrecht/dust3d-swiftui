@@ -6,17 +6,37 @@ import SwiftUI
 struct ComponentPartRoleMenu: View {
     let store: EditorStore
     var body: some View {
+        let appliedRole = store.snapshot.flatMap(Self.appliedRole)
         Menu("Part Role") {
             ForEach(PartTarget.allCases, id: \.self) { role in
-                Button(title(role), action: store.componentPartRoleAction(role))
-                    .disabled(!store.canAssignComponentPartRole(role))
-                    .accessibilityLabel("Set selected component parts to \(title(role))")
+                Button(action: store.componentPartRoleAction(role)) {
+                    if appliedRole == role {
+                        Label(title(role), systemImage: "checkmark")
+                    } else {
+                        Text(title(role))
+                    }
+                }
+                .accessibilityValue(
+                    appliedRole == role ? "Applied to all selected parts" : "Not applied to all selected parts"
+                )
+                .disabled(!store.canAssignComponentPartRole(role))
+                .accessibilityLabel("Set selected component parts to \(title(role))")
             }
         }
         .accessibilityIdentifier("component-part-role-menu")
         .help(
             "Assign roles to directly selected part rows. Multiple stitching siblings share a group and one undo step.")
     }
+    static func appliedRole(_ snapshot: EditorSnapshot) -> PartTarget? {
+        let ids = Set(snapshot.selectedComponentRows.compactMap { $0.component.partID })
+        guard !ids.isEmpty else { return nil }
+        let parts = snapshot.parts.filter { ids.contains($0.id) }
+        guard parts.count == ids.count, let first = parts.first?.target,
+            parts.allSatisfy({ $0.target == first })
+        else { return nil }
+        return first
+    }
+
     private func title(_ role: PartTarget) -> String {
         switch role {
         case .model: return "Model"
