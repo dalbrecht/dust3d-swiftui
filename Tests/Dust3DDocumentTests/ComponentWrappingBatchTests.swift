@@ -168,4 +168,20 @@ final class ComponentWrappingBatchTests: XCTestCase {
         }
     }
 
+    func testBatchWrappingRejectsDanglingLiteralAliasWithoutHistoryChanges() throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts/><components><component id='cafe&#769;' wrap='Cloth'/><component id='other' wrap='Skin'/></components></canvas>"
+                    .utf8))
+        for edit: ComponentWrappingEdit in [
+            .mode(.skin), .scalar(.drape, 0.3), .keepChildren(false), .targetFaces(500), .surfacePattern(.spots),
+            .surfaceScalar(.wrinkles, 0.5), .surfaceInk(.init(red: 1, green: 2, blue: 3)),
+        ] {
+            var history = DocumentHistory(document: source)
+            XCTAssertThrowsError(try history.apply(.editComponentWrapping(ids: ["other", "caf\u{e9}"], edit: edit)))
+            XCTAssertEqual(history.document.encoded(), source.encoded())
+            XCTAssertFalse(history.canUndo)
+        }
+    }
+
 }

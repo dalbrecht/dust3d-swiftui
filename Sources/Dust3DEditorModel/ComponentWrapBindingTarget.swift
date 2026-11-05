@@ -23,7 +23,8 @@ public struct ComponentWrapBindingTarget: Sendable {
     /// - Parameter snapshot: Current actor or UI snapshot from the same window.
     /// - Returns: False after replacement, edits/Undo, selection or constraint away-and-back.
     public func isCurrent(in snapshot: EditorSnapshot) -> Bool {
-        componentID != nil && context.isCurrent(in: snapshot) && snapshot.selectedComponentID == componentID
+        guard let componentID, let selectedID = snapshot.selectedComponentID else { return false }
+        return context.isCurrent(in: snapshot) && selectedID.utf8.elementsEqual(componentID.utf8)
     }
 }
 

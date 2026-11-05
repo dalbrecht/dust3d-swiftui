@@ -96,8 +96,10 @@ import XCTest
             XCTFail("Invalid captured target")
         } catch { XCTAssertEqual(error as? ComponentDeletionError, .staleTarget) }
         let target = ComponentDeletionTarget(snapshot: selected)
-        let task = Task { try await session.deleteComponentSubtrees(target: target) }
-        task.cancel()
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await session.deleteComponentSubtrees(target: target)
+        }
         do {
             _ = try await task.value
             XCTFail("Cancelled deletion")
