@@ -10,6 +10,7 @@ struct GraphSelectionInspector: View {
             Text("Graph selection").font(.title3)
             Text(
                 "\(store.snapshot?.selectedIDs.count ?? 0) nodes · \(store.snapshot?.selectedEdgeIDs.count ?? 0) edges")
+            SelectionTransformControls(store: store)
             Button("Insert Midpoints on Selected Edges") { store.insertSelectedEdgeMidpoints() }
                 .disabled(!store.canInsertEdgeMidpoint)
                 .accessibilityLabel("Insert Midpoints on Selected Edges")

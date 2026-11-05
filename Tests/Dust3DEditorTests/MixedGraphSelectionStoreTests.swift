@@ -27,6 +27,87 @@ final class MixedGraphSelectionStoreTests: XCTestCase {
         return document
     }
 
+    func testMixedAndEdgeOnlyInspectorsExposeNumericTransformFields() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: try document().encoded())
+        try await settle(store)
+        for nodes in [Set([ids[0]]), Set<String>()] {
+            store.selectGraph(nodes: nodes, edges: Set(edges))
+            try await settle(store)
+            let (window, host) = hosted(GraphSelectionInspector(store: store).frame(width: 320, height: 900))
+            defer {
+                window.contentView = nil
+                window.close()
+            }
+            try await Task.sleep(for: .milliseconds(250))
+            host.layoutSubtreeIfNeeded()
+            var visited = Set<ObjectIdentifier>()
+            let elements = accessibilityElements(window, visited: &visited)
+            let labels = elements.flatMap {
+                [$0.accessibilityLabel(), $0.accessibilityTitle(), $0.accessibilityValue() as? String].compactMap { $0 }
+            }
+            guard labels.contains(where: { !$0.isEmpty }) else {
+                throw XCTSkip("Offscreen SwiftUI accessibility content is unavailable in this session")
+            }
+            // SwiftUI button titles are not exposed by this offscreen host. Numeric inputs are.
+            let fields = elements.filter { $0.accessibilityRole() == .textField }
+            XCTAssertGreaterThanOrEqual(fields.count, 5, "Missing move and scale inputs: \(labels)")
+            let values = fields.compactMap { $0.accessibilityValue() as? String }
+            XCTAssertTrue(values.contains("0"), "Missing initial move offset: \(values)")
+            XCTAssertTrue(values.contains("1"), "Missing initial scale factor: \(values)")
+        }
+    }
+
+    func testCanvasNodesAdvertiseAddRemoveSelectionActions() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: try document().encoded())
+        try await settle(store)
+        store.selectGraph(nodes: [ids[0]], edges: [edges[1]])
+        try await settle(store)
+        let title = try XCTUnwrap(store.snapshot?.nodes.first?.title)
+        let (window, host) = hosted(NodeCanvas(store: store).frame(width: 500, height: 360))
+        defer {
+            window.contentView = nil
+            window.close()
+        }
+        try await Task.sleep(for: .milliseconds(250))
+        host.layoutSubtreeIfNeeded()
+        var visited = Set<ObjectIdentifier>()
+        let elements = accessibilityElements(window, visited: &visited)
+        guard elements.contains(where: { $0.accessibilityLabel()?.isEmpty == false }) else {
+            throw XCTSkip("Offscreen SwiftUI accessibility content is unavailable in this session")
+        }
+        let node = try XCTUnwrap(elements.first { $0.accessibilityLabel() == title })
+        let names = node.accessibilityCustomActions()?.map(\.name) ?? []
+        XCTAssertTrue(names.contains("Add node to selection"), "Missing additive node action: \(names)")
+        XCTAssertTrue(names.contains("Remove node from selection"), "Missing removal node action: \(names)")
+    }
+
+    private func hosted<Content: View>(_ view: Content) -> (NSWindow, NSHostingView<Content>) {
+        _ = NSApplication.shared
+        let host = NSHostingView(rootView: view)
+        let window = NSWindow(
+            contentRect: NSRect(x: -10000, y: -10000, width: 800, height: 1000), styleMask: [.titled],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        window.orderBack(nil)
+        return (window, host)
+    }
+
+    // Read-only metadata inspection: no AX press/navigation action or existing app control.
+    private func accessibilityElements(_ object: Any, visited: inout Set<ObjectIdentifier>)
+        -> [any NSAccessibilityProtocol]
+    {
+        guard let element = object as? any NSAccessibilityProtocol,
+            visited.count < 512, visited.insert(ObjectIdentifier(element)).inserted
+        else { return [] }
+        let children = (element.accessibilityChildren() ?? []) + ((object as? NSView)?.subviews ?? [])
+        return [element] + children.flatMap { accessibilityElements($0, visited: &visited) }
+    }
+
     func testExplicitSubsetBatchCommandsRetainSelectionsAndOneHistoryStepPerWindow() async throws {
         let original = try document()
         let store = EditorStore()
