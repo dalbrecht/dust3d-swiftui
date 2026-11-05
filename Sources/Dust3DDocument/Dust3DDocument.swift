@@ -211,7 +211,7 @@ public enum DocumentCommand: Sendable {
     case setComponentPartRoles(componentIDs: [String], target: PartTarget, newGroupID: String?)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
-    /// Set one flag on a bounded set of parts and publish the result as one document edit.
+    /// Set one flag on bounded, literal UTF-8 part IDs and publish the result as one document edit.
     case setPartsState(ids: [String], property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
     /// Full raster decoding/validation belongs at the platform import boundary.
@@ -804,16 +804,19 @@ public struct Dust3DDocument: Sendable {
             else { throw DocumentError.missingPart(id) }
             guard setPartFlag(part, current: current, property: property, value: value) else { return self }
         case .setPartsState(let ids, let property, let value):
-            let current = Dictionary(contents.parts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            let current = Dictionary(
+                contents.parts.map { (Data($0.id.utf8), $0) }, uniquingKeysWith: { first, _ in first })
             let elements = Dictionary(
                 (root.elements(forName: "parts").first?.elements(forName: "part") ?? []).compactMap { part in
-                    part.attribute(forName: "id")?.stringValue.map { ($0, part) }
+                    part.attribute(forName: "id")?.stringValue.map { (Data($0.utf8), part) }
                 }, uniquingKeysWith: { first, _ in first })
             var changed = false
-            var seen = Set<String>()
-            for id in ids where seen.insert(id).inserted {
+            var seen = Set<Data>()
+            for id in ids where seen.insert(Data(id.utf8)).inserted {
                 try Task.checkCancellation()
-                guard let part = elements[id], let metadata = current[id] else { throw DocumentError.missingPart(id) }
+                guard let part = elements[Data(id.utf8)], let metadata = current[Data(id.utf8)] else {
+                    throw DocumentError.missingPart(id)
+                }
                 if setPartFlag(part, current: metadata, property: property, value: value) { changed = true }
             }
             guard changed else { return self }
