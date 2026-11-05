@@ -23,6 +23,7 @@ final class ImportedMeshRenderer: NSObject, MTKViewDelegate {
     var onRendered: (() -> Void)?
     var onError: ((any Error) -> Void)?
     var isWireframe = false
+    var showsColor = true
     var camera: OrbitCamera {
         didSet {
             if oldValue.yaw != camera.yaw || oldValue.pitch != camera.pitch { updateOrdering() }
@@ -116,7 +117,7 @@ final class ImportedMeshRenderer: NSObject, MTKViewDelegate {
         let distance = camera.distance / min(boundedAspect, 1)
         var uniforms = Uniforms(
             transform: camera.transform(aspect: aspect), rotation: camera.rotation,
-            eye: SIMD4(0, 0, distance, 1), options: .zero)
+            eye: SIMD4(0, 0, distance, 1), options: SIMD4(0, showsColor ? 0 : 1, 0, 0))
         encoder.setRenderPipelineState(resources.pipeline)
         encoder.setFrontFacing(.counterClockwise)
         encoder.setCullMode(.none)

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add window-local Model Colors and Wireframe controls to the View menu, preserving material transparency in neutral preview mode (#324).
+
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.

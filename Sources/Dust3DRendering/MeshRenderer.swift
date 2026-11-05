@@ -8,6 +8,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
     private struct Uniforms {
         var transform: simd_float4x4
         var rotation: simd_float4x4
+        var options: SIMD4<Float>
     }
 
     private let queue: MTLCommandQueue
@@ -19,6 +20,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
     private let indexCount: Int
     var camera = OrbitCamera()
     var isWireframe = false
+    var showsColor = true
 
     convenience init(
         mesh: RenderMesh, device: MTLDevice,
@@ -107,7 +109,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
         var uniforms = Uniforms(
             transform: camera.transform(aspect: Float(drawableSize.width / max(drawableSize.height, 1))),
-            rotation: camera.rotation
+            rotation: camera.rotation, options: SIMD4(0, showsColor ? 0 : 1, 0, 0)
         )
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
         if let indexBuffer {
