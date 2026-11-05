@@ -15,7 +15,7 @@ public enum ComponentMeshSelectionValue<Value: Equatable & Sendable>: Equatable,
 }
 
 /// Exact directly selected component rows, independent of role, link kind and graph locks.
-public struct ComponentMeshSelectionTarget: Sendable {
+public struct ComponentMeshSelectionTarget: Hashable, Sendable {
     private let context: CanvasAdjustmentTarget
     let ids: [String]
     public var count: Int { ids.count }

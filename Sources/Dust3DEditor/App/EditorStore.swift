@@ -1071,6 +1071,16 @@ final class EditorStore {
     func setEdgeBoneName(_ id: String, name: String) {
         perform { try await $0.apply([.setEdgeBoneName(id: id, name: name)]) }
     }
+    func setSelectedComponentColors(_ target: ComponentMeshSelectionTarget, value: String?) {
+        guard canEditComponentMeshSettings(target) else { return }
+        let color = value.flatMap { DocumentColor(archiveValue: $0) }
+        if value != nil, color == nil {
+            errorMessage = Self.message(DocumentError.invalidComponentColor)
+            return
+        }
+        perform(acceptCommittedCancellation: true) { try await $0.editSelectedComponentColors(color, target: target) }
+    }
+
     func setComponentColor(_ id: String, value: String) {
         guard !isWorking, !stopped else { return }
         guard let color = DocumentColor(archiveValue: value) else {

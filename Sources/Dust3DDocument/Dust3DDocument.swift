@@ -115,6 +115,13 @@ public enum DocumentCommand: Sendable {
     /// Throws `missingComponent` for an absent identity; semantic no-ops retain original archive bytes.
     /// Example: `.setComponentColor(id: id, color: DocumentColor(red: 255, green: 0, blue: 0))`.
     case setComponentColor(id: String, color: DocumentColor?)
+    /// Atomically replace/remove explicit colors with one indexed DOM update and serialization.
+    /// - Parameter updates: At most `DocumentComponentColorUpdate.maximumBatchCount` unique component identities.
+    /// - Throws: `invalidComponentColor` for duplicate updates, `missingComponent` for missing targets,
+    ///   existing hierarchy/graph errors or `limitExceeded`; no partial document is published.
+    /// Semantic no-ops and an empty batch preserve every original archive byte.
+    /// Example: `.setComponentColors([.init(componentID: id, color: nil)])`.
+    case setComponentColors([DocumentComponentColorUpdate])
     /// Assign a retained image or remove an override; unreferenced/shared assets remain untouched.
     /// Throws `TextureImageReferenceError` for unresolved resources, or `missingComponent`.
     /// Example: `.setComponentColorImage(id: componentID, imageID: nil)` removes the override.
@@ -529,6 +536,13 @@ public struct Dust3DDocument: Sendable {
     }
 
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
+        if case .setComponentColors(let updates) = command {
+            guard updates.count <= DocumentComponentColorUpdate.maximumBatchCount else {
+                throw DocumentError.limitExceeded
+            }
+            if updates.isEmpty { return self }
+            try Task.checkCancellation()
+        }
         let model = try Self.xml(modelXML, root: "canvas")
         let contents: DocumentContents
         var nextGraphOrder = graphOrder
@@ -651,6 +665,10 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentCombineMode(let id, let mode):
             guard try ComponentCombination.set(model, id: id, mode: mode) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentColors(let updates):
+            guard try ComponentColorValue.set(model, updates: updates) else { return self }
+            try Task.checkCancellation()
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentColorImage(let id, let imageID):
             let element = try ComponentColorImageValue.element(model, id: id)

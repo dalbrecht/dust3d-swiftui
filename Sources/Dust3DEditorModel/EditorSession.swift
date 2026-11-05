@@ -253,6 +253,20 @@ public actor EditorSession {
         }
     }
 
+    /// Apply color to the exact captured rows in one history step.
+    public func editSelectedComponentColors(_ color: DocumentColor?, target: ComponentMeshSelectionTarget) throws
+        -> EditorSnapshot
+    {
+        try update { state in
+            guard target.count > 1, target.isCurrent(in: state.snapshot) else {
+                throw ComponentMeshSelectionError.staleTarget
+            }
+            let updates = target.ids.map { DocumentComponentColorUpdate(componentID: $0, color: color) }
+            try state.apply([.setComponentColors(updates)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Publish one atomic Ungroup for the exact originating row context, preserving graph/resources.
     public func ungroupComponents(target: ComponentUngroupTarget) throws -> EditorSnapshot {
         try update { state in

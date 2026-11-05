@@ -76,3 +76,50 @@ struct ComponentColorControls: View {
         store.setComponentColor(component.id, value: draft.text)
     }
 }
+
+struct ComponentBatchColorControls: View {
+    let store: EditorStore
+    let target: ComponentMeshSelectionTarget
+    @State private var draft = ComponentColorDraft(source: .unset)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Selected Component Colors").font(.headline)
+            ColorPicker(
+                "Color draft",
+                selection: Binding(
+                    get: { DocumentColorPresentation.color(draft.pickerColor) },
+                    set: { draft = draft.choosing(DocumentColorPresentation.value(from: $0)) }
+                ), supportsOpacity: true)
+            TextField(
+                "Hex color",
+                text: Binding(
+                    get: { draft.text },
+                    set: { draft = draft.editing($0) }
+                ), prompt: Text("#RRGGBB or #AARRGGBB")
+            )
+            .accessibilityLabel("Selected components’ hex color, alpha first")
+            .focusedValue(\.editorTextEditing, true)
+            .onSubmit { apply() }
+            .onExitCommand { draft = ComponentColorDraft(source: .unset) }
+            if let conversionIssue = draft.conversionIssue {
+                Text(conversionIssue.message).font(.caption)
+            }
+            HStack {
+                Button("Apply Color", action: apply)
+                    .disabled(!draft.canApply)
+                    .accessibilityLabel("Apply color to selected components")
+                Button("Clear Colors") { store.setSelectedComponentColors(target, value: nil) }
+                    .accessibilityLabel("Clear colors from selected components")
+            }
+            Text("Changes apply to selected component rows.").font(.caption)
+        }
+        .disabled(!store.canEditComponentMeshSettings(target))
+        .accessibilityElement(children: .contain)
+    }
+    private func apply() {
+        guard draft.canApply else { return }
+        store.setSelectedComponentColors(target, value: draft.text)
+    }
+
+}

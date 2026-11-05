@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Apply or clear color across selected components with the native color picker and one-step Undo.
+
 - Drag component rows before or after siblings, into groups, or to the document root.
 
 - Place selected components before or after a sibling from the inspector, with one-step Undo.

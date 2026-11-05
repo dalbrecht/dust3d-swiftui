@@ -60,6 +60,39 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
             ComponentMeshFieldPresentation.combineAccessibilityValue(.uniform(.inversion), count: 2),
             "Inversion; 2 selected components")
     }
+    func testBatchComponentColorAppliesAndClearsWithOneUndoEach() async throws {
+        let original = try source()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        let selected: Set<String> = ["a", "b"]
+        value.selectComponents(selected)
+        try await settle(value)
+        let color = try XCTUnwrap(DocumentColor(archiveValue: "#2255AA"))
+        let target = ComponentMeshSelectionTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.setSelectedComponentColors(target, value: "#2255AA")
+        try await settle(value)
+        let colored = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(colored.selectedComponentIDs, selected)
+        XCTAssertNotEqual(target, ComponentMeshSelectionTarget(snapshot: colored))
+        XCTAssertEqual(colored.selectedComponentRows.count, 2)
+        XCTAssertTrue(colored.selectedComponentRows.allSatisfy { $0.component.color == .value(color) })
+        value.setSelectedComponentColors(target, value: nil)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), colored.document.encoded())
+        value.setSelectedComponentColors(ComponentMeshSelectionTarget(snapshot: colored), value: nil)
+        try await settle(value)
+        XCTAssertTrue(value.snapshot?.selectedComponentRows.allSatisfy { $0.component.color == .unset } == true)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), colored.document.encoded())
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testActualBatchActionPublishesOncePreservesFlagsSelectionAndOtherWindowWithExactUndo() async throws {
         let original = try source()
         let value = store()

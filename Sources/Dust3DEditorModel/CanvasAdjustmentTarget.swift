@@ -1,7 +1,7 @@
 import Foundation
 
 /// A queued canvas input belongs to one immutable document, selection and interaction-constraint epoch.
-public struct CanvasAdjustmentTarget: Sendable {
+public struct CanvasAdjustmentTarget: Hashable, Sendable {
     private let documentIdentity: UUID
     private let documentRevision: Int
     private let selectionRevision: Int

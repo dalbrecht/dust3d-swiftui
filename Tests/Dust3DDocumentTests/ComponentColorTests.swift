@@ -79,6 +79,32 @@ final class ComponentColorTests: XCTestCase {
         XCTAssertEqual(history.document.encoded(), changed.encoded())
     }
 
+    func testColorBatchRejectsInvalidInputWithoutChangingArchiveOrHistory() throws {
+        let source = try document("#FFAB01FF")
+        var history = DocumentHistory(document: source)
+        let clear = DocumentComponentColorUpdate(componentID: "g", color: nil)
+        try history.apply(.setComponentColors([clear]))
+        XCTAssertTrue(history.undo())
+
+        let cases: [([DocumentComponentColorUpdate], DocumentError)] = [
+            ([clear, .init(componentID: "missing", color: nil)], .missingComponent("missing")),
+            ([clear, clear], .invalidComponentColor),
+            (Array(repeating: clear, count: DocumentComponentColorUpdate.maximumBatchCount + 1), .limitExceeded),
+        ]
+        for (updates, error) in cases {
+            XCTAssertThrowsError(try history.apply(.setComponentColors(updates))) {
+                XCTAssertEqual($0 as? DocumentError, error)
+            }
+            XCTAssertEqual(history.document.encoded(), source.encoded())
+            XCTAssertTrue(history.canRedo)
+        }
+
+        try history.apply(.setComponentColors([]))
+        try history.apply(.setComponentColors([.init(componentID: "g", color: DocumentColor(archiveValue: "#AB01FF"))]))
+        XCTAssertEqual(history.document.encoded(), source.encoded())
+        XCTAssertTrue(history.canRedo)
+    }
+
     func testSemanticNoOpsKeepOriginalSpellingAndRedoAndMissingComponentRejectsAtomically() throws {
         for text: String? in [nil, "#ffAB01FF", "#ab01ff"] {
             let source = try document(text)
