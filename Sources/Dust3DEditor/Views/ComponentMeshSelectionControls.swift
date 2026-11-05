@@ -85,28 +85,30 @@ private struct ComponentMeshSelectionEditor: View {
             .help(
                 "Normal unions, Inversion subtracts, and Uncombined retains separate geometry. Component order matters."
             )
-            Text("Normal smoothing: \(cutoffTitle)").font(.caption)
-            TextField("Cutoff (°)", text: $degrees)
-                .accessibilityLabel("Selected components smoothing cutoff in degrees")
-                .accessibilityIdentifier("multi-component-smoothing-cutoff")
-                .focusedValue(\.editorTextEditing, true)
-                .onSubmit { store.componentMeshSmoothingAction(degrees, target: target)() }
-            if !degrees.isEmpty && ComponentMeshSmoothingInput.value(degrees) == nil {
-                Text("Enter a finite cutoff from 0 to 180 degrees.").font(.caption).foregroundStyle(.secondary)
+            if presentation.showsSmoothing {
+                Text("Normal smoothing: \(cutoffTitle)").font(.caption)
+                TextField("Cutoff (°)", text: $degrees)
+                    .accessibilityLabel("Selected components smoothing cutoff in degrees")
+                    .accessibilityIdentifier("multi-component-smoothing-cutoff")
+                    .focusedValue(\.editorTextEditing, true)
+                    .onSubmit { store.componentMeshSmoothingAction(degrees, target: target)() }
+                if !degrees.isEmpty && ComponentMeshSmoothingInput.value(degrees) == nil {
+                    Text("Enter a finite cutoff from 0 to 180 degrees.").font(.caption).foregroundStyle(.secondary)
+                }
+                HStack {
+                    Button("Reset Draft") { reset() }
+                    Spacer()
+                    Button("Apply Cutoff", action: store.componentMeshSmoothingAction(degrees, target: target))
+                        .disabled(ComponentMeshSmoothingInput.value(degrees) == nil)
+                        .accessibilityLabel("Apply smoothing cutoff to \(target.count) selected components")
+                }
+                Button("Set Sharp (0°)", action: store.componentMeshAction(.smoothCutoffDegrees(0), target: target))
+                    .accessibilityLabel("Set zero smoothing cutoff on \(target.count) selected components")
+                Text(
+                    "Zero keeps sharp edges. An explicit cutoff replaces unsupported values. Each change is one Undo step."
+                )
+                .font(.caption).foregroundStyle(.secondary)
             }
-            HStack {
-                Button("Reset Draft") { reset() }
-                Spacer()
-                Button("Apply Cutoff", action: store.componentMeshSmoothingAction(degrees, target: target))
-                    .disabled(ComponentMeshSmoothingInput.value(degrees) == nil)
-                    .accessibilityLabel("Apply smoothing cutoff to \(target.count) selected components")
-            }
-            Button("Set Sharp (0°)", action: store.componentMeshAction(.smoothCutoffDegrees(0), target: target))
-                .accessibilityLabel("Set zero smoothing cutoff on \(target.count) selected components")
-            Text(
-                "Zero keeps sharp edges. An explicit cutoff replaces unsupported values. Each change is one Undo step."
-            )
-            .font(.caption).foregroundStyle(.secondary)
         }
         .help("Selected components only; groups are not expanded. Cutoff affects normals, not authored node positions.")
         .disabled(!store.canEditComponentMeshSettings(target))

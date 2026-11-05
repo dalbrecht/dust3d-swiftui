@@ -10,6 +10,29 @@ final class ComponentMeshSelectionTests: XCTestCase {
                 "<canvas><components><component id='a' inverse='true' smoothCutoffDegrees='090.00'/><component id='b' combineMode='Future' smoothCutoffDegrees='future' linkDataType='future' linkData='opaque'/></components></canvas>"
                     .utf8))
     }
+    func testSmoothingIsHiddenWhenDirectLinksResolveToOneCutFace() throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><parts><part id='profile' target='CutFace'/><part id='model'/></parts>
+                <components><component id='a' linkDataType='partId' linkData='profile' smoothCutoffDegrees='42'/>
+                <component id='b' linkDataType='partId' linkData='profile'/><component id='group'/>
+                <component id='c' linkDataType='partId' linkData='model'/></components></canvas>
+                """.utf8))
+        var state = try EditorState(document: document)
+        let rows = state.snapshot.componentTree.rows
+        let cutFace = try XCTUnwrap(rows.first { $0.id == "a" }?.component)
+        XCTAssertFalse(state.snapshot.showsComponentSmoothing(for: [cutFace]))
+        for (ids, expected): (Set<String>, Bool) in [
+            (["a", "b"], false), (["a", "group"], false), (["a", "c"], true), (["group"], true),
+        ] {
+            try state.selectComponents(ids)
+            XCTAssertEqual(ComponentMeshSelectionPresentation(snapshot: state.snapshot).showsSmoothing, expected)
+        }
+        XCTAssertEqual(state.snapshot.document.encoded(), document.encoded())
+        XCTAssertEqual(cutFace.smoothCutoffDegrees, 42)
+    }
+
     func testPresentationAndAtomicEditPreserveSelectionLocksNoopAndExactUndo() async throws {
         let original = try source()
         let session = EditorSession()

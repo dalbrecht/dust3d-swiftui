@@ -496,5 +496,5 @@ Targeted actions capture their rendered document context, so retained menus/view
 Multiple selected components expose Combine Mode and Normal Smoothing controls.
 Each explicit change applies only to the selected rows in one Undo step. Invalid
 smoothing drafts cannot apply; Reset Draft and Set Sharp (0°) are distinct actions.
-Native admission follows the existing singleton controls, including CutFace rows;
-Qt hides its smoothing widget for one unique directly linked CutFace part. See ADR0146.
+The smoothing control is hidden when the selected rows directly link to exactly
+one CutFace part. Stored cutoff values are preserved. See ADR0146.

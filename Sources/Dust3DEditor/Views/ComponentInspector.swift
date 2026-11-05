@@ -40,7 +40,9 @@ struct ComponentInspector: View {
             )
             ComponentColorControls(store: store, component: component)
             ComponentColorImageControls(store: store, component: component)
-            ComponentSmoothingControls(store: store, component: component)
+            if store.snapshot?.showsComponentSmoothing(for: [component]) == true {
+                ComponentSmoothingControls(store: store, component: component)
+            }
             if component.isGroup {
                 ComponentWrappingControls(store: store, component: component)
                 ComponentStitchingControls(store: store, component: component)

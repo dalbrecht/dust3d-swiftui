@@ -46,6 +46,7 @@ public struct ComponentMeshSelectionTarget: Sendable {
 public struct ComponentMeshSelectionPresentation: Sendable {
     public let components: [DocumentComponent]
     public let combineMode: ComponentMeshSelectionValue<ComponentCombineMode>
+    public let showsSmoothing: Bool
     public let smoothCutoffDegrees: ComponentMeshSelectionValue<Double>
     public var isAvailable: Bool { components.count > 1 }
 
@@ -57,7 +58,17 @@ public struct ComponentMeshSelectionPresentation: Sendable {
             target.isCurrent(in: snapshot)
             ? snapshot.componentTree.rows.filter { keys.contains(Data($0.id.utf8)) }.map(\.component) : []
         combineMode = .read(components.map(\.combineMode))
+        showsSmoothing = snapshot.showsComponentSmoothing(for: components)
         smoothCutoffDegrees = .read(components.map(\.smoothCutoffDegrees))
+    }
+}
+
+extension EditorSnapshot {
+    /// Match the Qt inspector when the rows directly link to exactly one CutFace part.
+    public func showsComponentSmoothing(for components: [DocumentComponent]) -> Bool {
+        let linkedParts = Set(components.compactMap(\.partID).map { Data($0.utf8) })
+        guard linkedParts.count == 1, let linkedPart = linkedParts.first else { return true }
+        return !parts.contains { Data($0.id.utf8) == linkedPart && $0.target == .cutFace }
     }
 }
 

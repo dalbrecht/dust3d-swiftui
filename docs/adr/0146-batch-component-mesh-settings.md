@@ -13,9 +13,9 @@ and wrapping controls do not replace these mesh settings.
 Qt setters document.cc:3055–3067 and 3375–3387 impose no role/link/graph-lock guard.
 The smoothing widget alone suppresses its UI when preparePartIds 1157–1170 resolves
 one unique directly linked CutFace part (condition 401), including multiple references
-to that part. Native singleton smoothing already admits every component role/link;
-new batch controls retain that native policy. This is a narrow documented widget
-admission difference, not an invented group-only or graph-lock restriction.
+to that part. Both native inspector layouts now apply that visibility rule.
+Document commands continue to preserve and accept authored cutoff settings
+for every supported role.
 
 ## Decision
 
