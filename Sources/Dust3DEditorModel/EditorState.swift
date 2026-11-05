@@ -68,6 +68,10 @@ public struct EditorSnapshot: Sendable {
     public let selectedID: String?
     public let selectedIDs: Set<String>
     public let selectedEdgeID: String?
+    /// Validated by the editing session before the snapshot reaches the UI.
+    public let canInsertSelectedEdgeMidpoint: Bool
+    /// Validated by the editing session for the current explicit node selection.
+    public let canReduceSelectedNodes: Bool
     public let selectedPartID: String?
     public let canUndo: Bool
     public let canRedo: Bool
@@ -117,13 +121,6 @@ public struct EditorSnapshot: Sendable {
         guard let selectedEdgeID else { return false }
         return editableEdges.contains { $0.id == selectedEdgeID }
     }
-    /// Midpoint insertion also requires a non-loop edge with consistent part ownership.
-    public var canInsertSelectedEdgeMidpoint: Bool {
-        guard canEditSelectedEdge, let selectedEdgeID else { return false }
-        return document.canInsertEdgeMidpoint(id: selectedEdgeID)
-    }
-    /// Whether the full selection contains a reducible node in a valid editable graph.
-    public var canReduceSelectedNodes: Bool { document.canReduceNodes(Array(selectedIDs)) }
     /// Copy can include read-only nodes, but every copied node must belong to a part.
     public var canCopyNodes: Bool {
         let selected = selectedNodes
@@ -228,6 +225,9 @@ public struct EditorState: Sendable {
             selectedComponentIDs: selectedComponentIDs,
             origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
+            canInsertSelectedEdgeMidpoint: selectedEdgeID.map { history.document.canInsertEdgeMidpoint(id: $0) }
+                ?? false,
+            canReduceSelectedNodes: !selectedIDs.isEmpty && history.document.canReduceNodes(Array(selectedIDs)),
             selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
