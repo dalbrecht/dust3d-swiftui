@@ -363,15 +363,6 @@ public actor EditorSession {
             try Task.checkCancellation()
         }
     }
-    public func placeComponents(
-        in parent: ComponentParent, target: ComponentPlacementTarget
-    ) throws -> EditorSnapshot {
-        try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleComponentMove }
-            try state.apply([.reparentComponents(ids: target.ids, parentID: parent.componentID)])
-            try Task.checkCancellation()
-        }
-    }
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }

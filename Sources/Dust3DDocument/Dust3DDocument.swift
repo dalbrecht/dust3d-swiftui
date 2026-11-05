@@ -643,7 +643,13 @@ public struct Dust3DDocument: Sendable {
             guard try ComponentStructure.reparent(model, id: id, parentID: parentID) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .placeComponents(let ids, let placement):
-            guard try ComponentReordering.apply(model, ids: ids, placement: placement) else { return self }
+            if case .into(let parentID) = placement {
+                guard try ComponentReparentBatch.apply(model, ids: ids, parentID: parentID, appendBlock: true) else {
+                    return self
+                }
+            } else {
+                guard try ComponentReordering.apply(model, ids: ids, placement: placement) else { return self }
+            }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .reorderComponent(let id, let direction):
             guard try ComponentReordering.apply(model, id: id, direction: direction) else { return self }
