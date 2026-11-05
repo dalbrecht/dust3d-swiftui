@@ -582,7 +582,9 @@ revive an old action. A precommit cancellation adds no history. A receipt alread
 committed to the same current document is still published after cancellation.
 Each changed action is one undo transaction; no-ops retain history and preview
 identities. Physical menu/keyboard/VoiceOver acceptance remains a separate check.
-and descendant, while permitting ancestors. Explicit choices apply to all supported
+
+Weights From is shared across selected wrapping groups. Eligible bodies exclude each selected group
+and its descendants, while permitting ancestors. Explicit choices apply to all supported
 selected groups, including inactive and unknown wrapping modes, without changing those
 modes. Mixed real references remain explicit; absent and empty references share the
 Own Children display while retaining their original bytes until an actual change.
