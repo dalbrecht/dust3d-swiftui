@@ -4,6 +4,7 @@
     import Dust3DKit
     import Dust3DRendering
     import Foundation
+    import MachO
     import XCTest
 
     @testable import Dust3DEditor
@@ -39,7 +40,7 @@
                 animationCatalog: blocked)
             defer { store.stop() }
             if let expected = ProcessInfo.processInfo.environment["MOTE3D_EXPECTED_CORE_REVISION"] {
-                let identity = try RuntimeBuildIdentity.current.metadata.get()
+                let identity = try loadedTestIdentity()
                 XCTAssertEqual(identity.coreRevision, expected)
                 XCTAssertNotNil(identity.coreDigest)
                 XCTAssertEqual(identity.coreIsDirty, false)
@@ -107,6 +108,26 @@
             XCTAssertEqual(mesh.vertices.map(\.normal), solid.vertices.map(\.normal), file: file, line: line)
         }
 
+        /// XCTest's host is image zero; verify the loaded test image that actually links the native core.
+        private func loadedTestIdentity() throws -> BuildIdentityMetadata {
+            guard let executable = Bundle(for: Self.self).executableURL?.resolvingSymlinksInPath() else {
+                throw HollowAdmissionError.missingTestImage
+            }
+            for index in 0..<_dyld_image_count() {
+                guard let name = _dyld_get_image_name(index),
+                    URL(fileURLWithPath: String(cString: name)).resolvingSymlinksInPath() == executable,
+                    let header = _dyld_get_image_header(index), header.pointee.magic == MH_MAGIC_64
+                else { continue }
+                let header64 = UnsafeRawPointer(header).assumingMemoryBound(to: mach_header_64.self)
+                var size: UInt = 0
+                guard let bytes = getsectiondata(header64, "__TEXT", "__dust3d_build", &size),
+                    size > 0, size <= 4096
+                else { throw HollowAdmissionError.missingTestImage }
+                return try BuildIdentityMetadata(data: Data(bytes: bytes, count: Int(size)))
+            }
+            throw HollowAdmissionError.missingTestImage
+        }
+
         private func settle(_ store: EditorStore) async throws {
             for _ in 0..<3000 {
                 if !store.isWorking && !store.isGenerating && !store.isBakingMaterials { return }
@@ -116,7 +137,7 @@
         }
     }
 
-    private enum HollowAdmissionError: Error { case unreviewedInput, timeout }
+    private enum HollowAdmissionError: Error { case unreviewedInput, timeout, missingTestImage }
 
     private struct HollowAdmittedPreview: EditorPreviewServing {
         let admitted: Set<Data>
