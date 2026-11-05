@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Drag component rows before or after siblings, into groups, or to the document root.
+
 - Place selected components before or after a sibling from the inspector, with one-step Undo.
 
 - Move selected components to a new parent in one Undo step while preserving hierarchy order.
