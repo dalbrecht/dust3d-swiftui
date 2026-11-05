@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open the Part inspector when multiple component rows link directly to one shared part.
+
 - Show, hide, lock, unlock, enable, or disable directly selected parts in one edit.
 
 - Add batch component part roles with atomic stitching grouping, shared-group reveal and one-step Undo (#45).

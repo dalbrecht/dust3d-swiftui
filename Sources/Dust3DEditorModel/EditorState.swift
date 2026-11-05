@@ -146,6 +146,13 @@ public struct EditorSnapshot: Sendable {
         componentTree.rows.first { $0.id == selectedComponentID }?.component
     }
     public var selectedPart: DocumentPart? { parts.first { $0.id == selectedPartID } }
+
+    /// The sole part linked directly by the selected component rows, counting shared links once.
+    public var selectedLinkedComponentPart: DocumentPart? {
+        let owners = Set(selectedComponentRows.compactMap { $0.component.partID.map { Data($0.utf8) } })
+        guard owners.count == 1, let owner = owners.first else { return nil }
+        return parts.first { Data($0.id.utf8) == owner }
+    }
     /// Explanation for a loaded document whose preview currently has no geometry.
     /// - Returns: A next-step description for an empty graph, excluded contributors or successful empty generation.
     /// - Example: `snapshot.previewEmptyDescription` supplies the empty preview's message.
