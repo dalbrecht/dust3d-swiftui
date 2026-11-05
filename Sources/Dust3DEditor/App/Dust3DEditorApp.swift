@@ -11,6 +11,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorStore) private var store
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     @FocusedValue(\.editorTextEditing) private var isEditingText
+    @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
     @State private var pasteboard = EditorPasteboard()
     @State private var nativeUndoCommands = NativeUndoCommandState()
 
@@ -111,8 +112,9 @@ struct Dust3DEditorApp: App {
                 Button("Delete Graph Selection") { store?.deleteSelection() }
                     .keyboardShortcut(.delete, modifiers: [])
                     .disabled(
-                        !EditorCommandScope.allowsGraphShortcuts(
-                            animationFocus: isAnimationFocused == true, nativeTextFocus: isEditingText == true)
+                        !EditorCommandScope.allowsGraphDelete(
+                            animationFocus: isAnimationFocused == true, nativeTextFocus: isEditingText == true,
+                            componentSidebarFocus: isComponentSidebarFocused == true)
                             || store?.canDeleteGraphSelection != true)
                 Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
@@ -245,6 +247,8 @@ private struct EditorAnimationFocusKey: FocusedValueKey { typealias Value = Bool
 
 private struct EditorTextEditingKey: FocusedValueKey { typealias Value = Bool }
 
+private struct EditorComponentSidebarFocusKey: FocusedValueKey { typealias Value = Bool }
+
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 
 extension FocusedValues {
@@ -256,6 +260,11 @@ extension FocusedValues {
     var editorTextEditing: Bool? {
         get { self[EditorTextEditingKey.self] }
         set { self[EditorTextEditingKey.self] = newValue }
+    }
+
+    var editorComponentSidebarFocus: Bool? {
+        get { self[EditorComponentSidebarFocusKey.self] }
+        set { self[EditorComponentSidebarFocusKey.self] = newValue }
     }
 
     var editorStore: EditorStore? {

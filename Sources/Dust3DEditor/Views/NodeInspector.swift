@@ -21,6 +21,7 @@ struct NodeInspector: View {
             RigSettingsControls(store: store)
             NodeClipboardMenu(store: store)
             if let snapshot = store.snapshot, !snapshot.selectedComponentIDs.isEmpty {
+                ComponentDeletionButton(store: store, target: ComponentDeletionTarget(snapshot: snapshot))
                 ComponentUngroupButton(store: store, target: ComponentUngroupTarget(snapshot: snapshot))
             }
             ComponentMeshSelectionControls(store: store)

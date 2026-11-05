@@ -306,3 +306,9 @@ explicit owned edges to batch midpoint/reverse commands.
 selection and constraint epochs. `editSelectedComponentMeshSettings` stages one
 atomic Undo and checks cancellation before publication. Presentation distinguishes
 uniform/mixed/unsupported values without authoring guesses. See ADR0146.
+
+`ComponentDeletionTarget` captures explicit contextual component rows (or the raw
+selected IDs) and document/selection/constraint epochs. `deleteComponentSubtrees`
+stages one atomic transaction with cancellation checks before publication. Stale
+callbacks cannot retarget another window or later selection. Undo restores the
+document, while transient selection follows existing pruning policy. See ADR0142.

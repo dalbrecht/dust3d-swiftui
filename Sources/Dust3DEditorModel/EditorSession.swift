@@ -261,6 +261,18 @@ public actor EditorSession {
         }
     }
 
+    /// Delete captured component subtrees atomically, retaining parts referenced by surviving instances.
+    /// - Parameter target: The originating sidebar row/selection context and source epochs.
+    /// - Returns: One undoable snapshot; removed selection is pruned and Undo does not resurrect selection.
+    /// - Throws: Stale context, cancellation or original document validation errors before publication.
+    /// - Example: `try await session.deleteComponentSubtrees(target: target)`.
+    public func deleteComponentSubtrees(target: ComponentDeletionTarget) throws -> EditorSnapshot {
+        try update { state in
+            try state.deleteComponentSubtrees(target: target)
+            try Task.checkCancellation()
+        }
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }

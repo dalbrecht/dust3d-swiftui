@@ -297,3 +297,9 @@ field to nil for legacy callers; edge equality includes the retained owner.
 smoothing on exact explicit component rows in one indexed transaction. Defaults,
 legacy inverse/no-op spellings, assets and unselected descendants remain intact.
 Empty arrays are no-ops; invalid nonempty batches reject atomically. See ADR0146.
+
+`.removeComponentSubtrees([id])` removes explicit component XML closures and only
+their last-referenced known parts, nodes and owned/incident edges. Opaque links,
+incoming cutFace/wrapBindTo text and all assets remain untouched. Structural IDs
+are matched as exact UTF-8; every raw requested ID is validated before deduplication.
+This management action ignores canvas graph locks. See ADR0142.

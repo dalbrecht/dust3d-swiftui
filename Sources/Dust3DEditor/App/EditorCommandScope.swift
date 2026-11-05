@@ -4,6 +4,10 @@ enum EditorCommandScope {
         !animationFocus && !nativeTextFocus
     }
 
+    static func allowsGraphDelete(animationFocus: Bool, nativeTextFocus: Bool, componentSidebarFocus: Bool) -> Bool {
+        allowsGraphShortcuts(animationFocus: animationFocus, nativeTextFocus: nativeTextFocus) && !componentSidebarFocus
+    }
+
     static func routeUndo(hasNativeEditor: Bool, nativeAction: () -> Void, documentAction: () -> Void) {
         if hasNativeEditor { nativeAction() } else { documentAction() }
     }
