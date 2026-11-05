@@ -11,13 +11,15 @@ struct EndpointBendControls: View {
         if let snapshot = store.snapshot, let context = store.canvasRotationContext,
             let target = EndpointIKTarget(endpointID: endpointID, snapshot: snapshot)
         {
-            EndpointBendFields(store: store, context: context, target: target, locks: snapshot.locks)
-                .id(context)
+            DisclosureGroup("Bend Endpoint") {
+                EndpointBendFields(store: store, context: context, target: target, locks: snapshot.locks)
+                    .id(context)
+            }
         }
     }
 }
 
-private struct EndpointBendFields: View {
+struct EndpointBendFields: View {
     let store: EditorStore
     let context: CanvasRotationContext
     let target: EndpointIKTarget
@@ -36,26 +38,24 @@ private struct EndpointBendFields: View {
     }
 
     var body: some View {
-        DisclosureGroup("Bend Endpoint") {
-            VStack(alignment: .leading, spacing: 8) {
-                TextField("Target \(horizontalAxis.rawValue)", text: $horizontal)
-                    .accessibilityIdentifier("endpoint-target-horizontal")
-                    .disabled(locks.contains(horizontalAxis))
-                TextField("Target Y", text: $vertical)
-                    .accessibilityIdentifier("endpoint-target-vertical")
-                    .disabled(locks.contains(.y))
-                Button("Apply Bend", action: submit)
-                    .disabled(destination == nil || destination == target.endpointPosition)
-                if destination == nil {
-                    Text("Enter coordinates between −1,000,000 and 1,000,000.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Text("Enter a target in the current canvas plane. Blank fields keep the current coordinate.")
+        VStack(alignment: .leading, spacing: 8) {
+            TextField("Target \(horizontalAxis.rawValue)", text: $horizontal)
+                .accessibilityIdentifier("endpoint-target-horizontal")
+                .disabled(locks.contains(horizontalAxis))
+            TextField("Target Y", text: $vertical)
+                .accessibilityIdentifier("endpoint-target-vertical")
+                .disabled(locks.contains(.y))
+            Button("Apply Bend", action: submit)
+                .disabled(destination == nil || destination == target.endpointPosition)
+            if destination == nil {
+                Text("Enter coordinates between −1,000,000 and 1,000,000.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            .onSubmit(submit)
-            .focusedValue(\.editorTextEditing, true)
+            Text("Enter a target in the current canvas plane. Blank fields keep the current coordinate.")
+                .font(.caption).foregroundStyle(.secondary)
         }
+        .onSubmit(submit)
+        .focusedValue(\.editorTextEditing, true)
         .disabled(store.isWorking || store.isAddingNodes || store.isMovingOrigin || !target.canBend)
     }
 
