@@ -366,11 +366,7 @@ public actor EditorSession {
     public func placeComponents(
         in parent: ComponentParent, target: ComponentPlacementTarget
     ) throws -> EditorSnapshot {
-        try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleComponentMove }
-            try state.apply([.reparentComponents(ids: target.ids, parentID: parent.componentID)])
-            try Task.checkCancellation()
-        }
+        try placeComponents(at: .into(parentID: parent.componentID), target: target)
     }
     /// Change one flag on directly linked parts from the captured component selection.
     public func setSelectedComponentPartState(
