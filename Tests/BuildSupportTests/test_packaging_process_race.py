@@ -17,7 +17,7 @@ class PackagingProcessRaceTests(unittest.TestCase):
             root = temporary / 'source'
             scripts = root / 'script'
             scripts.mkdir(parents=True)
-            for name in ['build_and_run.sh', 'build_paths.sh', 'package_file_preview_extensions.sh']:
+            for name in ['build_and_run.sh', 'build_paths.sh', 'package_file_preview_extensions.sh', 'archive_app.py']:
                 shutil.copyfile(ROOT / 'script' / name, scripts / name)
             marker = temporary / 'target-started'
             (scripts / 'check_running_app.py').write_text('''import os, pathlib, sys

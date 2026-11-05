@@ -55,6 +55,7 @@ print(launch.read_text(), flush=True)
             supervisor = supervisor.replace("'/usr/bin/open'", repr(str(open_stub)))
             (scripts / 'stream_app_logs.py').write_text(supervisor)
             shutil.copyfile(ROOT / 'script/build_paths.sh', scripts / 'build_paths.sh')
+            shutil.copyfile(ROOT / 'script/archive_app.py', scripts / 'archive_app.py')
             (scripts / 'check_running_app.py').write_text('import sys\nsys.exit(0)\n')
             for name in ['package_file_preview_extensions.sh', 'check_file_preview_bundles.sh']:
                 path = scripts / name
