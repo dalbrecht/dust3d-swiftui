@@ -26,18 +26,20 @@ enum ComponentWrappingBatch {
         guard !ids.isEmpty else {
             throw DocumentError.invalidComponentWrapping
         }
-        let selected = Set(ids)
+        let selected = Set(ids.map { Data($0.utf8) })
         guard selected.count == ids.count else { throw DocumentError.invalidComponentWrapping }
         let components = try ComponentHierarchy.read(model)
-        let indexed = Dictionary(uniqueKeysWithValues: components.map { ($0.id, $0) })
+        let indexed = Dictionary(uniqueKeysWithValues: components.map { (Data($0.id.utf8), $0) })
         for id in ids {
-            guard let row = indexed[id] else { throw DocumentError.missingComponent(id) }
+            guard let row = indexed[Data(id.utf8)] else { throw DocumentError.missingComponent(id) }
             guard row.isGroup else { throw DocumentError.invalidComponentWrapping }
         }
         let elements = PartSplitting.componentElements(model)
         var updates: [(XMLElement, String, String?)] = []
         for element in elements {
-            guard let id = element.attribute(forName: "id")?.stringValue, selected.contains(id) else { continue }
+            guard let id = element.attribute(forName: "id")?.stringValue, selected.contains(Data(id.utf8)) else {
+                continue
+            }
             let current = ComponentWrapping.read(element)
             let name: String
             let replacement: String?

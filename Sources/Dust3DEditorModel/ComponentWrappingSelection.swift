@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Foundation
 
 /// A mixed or unsupported display never supplies an implicit authored value.
 public enum ComponentWrappingSelectionValue<Value: Equatable & Sendable>: Equatable, Sendable {
@@ -32,7 +33,7 @@ public struct ComponentWrappingSelectionTarget: Sendable {
     /// - Returns: True only for the original admitted selection.
     public func isCurrent(in snapshot: EditorSnapshot) -> Bool {
         !ids.isEmpty && context.isCurrent(in: snapshot)
-            && Set(ids) == snapshot.selectedComponentIDs
+            && Set(ids.map { Data($0.utf8) }) == Set(snapshot.selectedComponentIDs.map { Data($0.utf8) })
     }
 }
 
