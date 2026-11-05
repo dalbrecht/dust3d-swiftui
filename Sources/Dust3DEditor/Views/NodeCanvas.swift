@@ -9,11 +9,14 @@ struct NodeCanvas: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let projection = nodeDrag.displayProjection(
-                fallback: CanvasProjection(
-                    bounds: store.bounds, plane: store.plane,
-                    width: geometry.size.width, height: geometry.size.height))
+            let projection =
+                store.frozenAddProjection
+                ?? nodeDrag.displayProjection(
+                    fallback: CanvasProjection(
+                        bounds: store.bounds, plane: store.plane,
+                        width: geometry.size.width, height: geometry.size.height))
             let nodes = store.snapshot?.nodes ?? []
+            let addModeID = store.addModeID
             ZStack {
                 if store.showsReferenceImage, let image = store.referenceImage {
                     let aspect = Double(image.width) / Double(image.height)
@@ -28,15 +31,34 @@ struct NodeCanvas: View {
                 }
                 CanvasPointerSurface(
                     enabled: !store.isWorking && !store.isMovingOrigin,
-                    select: { rectangle, mode in store.selectMarquee(rectangle, projection: projection, mode: mode) },
-                    tap: { point, mode in store.pickEdge(at: point, projection: projection, mode: mode) },
+                    select: { rectangle, mode in
+                        guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else { return }
+                        store.selectMarquee(rectangle, projection: projection, mode: mode)
+                    },
+                    tap: { point, mode in
+                        guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else { return }
+                        store.pickEdge(at: point, projection: projection, mode: mode)
+                    },
                     rectangle: { marquee = $0 },
-                    hover: { store.updateCanvasHover(at: $0, projection: projection) },
-                    wheel: { store.handleCanvasWheel($0) },
-                    radiusKey: adjustRadius
+                    hover: { point in
+                        guard store.addModeID == addModeID else { return }
+                        if store.isAddingNodes {
+                            store.updateAddPointer(at: point, modeID: addModeID)
+                        } else {
+                            store.updateCanvasHover(at: point, projection: projection)
+                        }
+                    },
+                    wheel: { input in
+                        guard store.addModeID == addModeID else { return false }
+                        return store.handleCanvasWheel(input)
+                    },
+                    radiusKey: adjustRadius,
+                    isAddingNodes: store.isAddingNodes,
+                    addPress: { store.placeAddNode(at: $0, modeID: addModeID) },
+                    cancelInput: { if store.addModeID == addModeID { store.cancelAddMode() } }
                 )
                 .id(
-                    "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)"
+                    "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"
                 )
                 .accessibilityLabel("Marquee selection canvas")
                 if let marquee {
@@ -66,39 +88,71 @@ struct NodeCanvas: View {
                     }
                 }
                 .allowsHitTesting(false)
+                if let ghost = store.addGhostPoint {
+                    if let anchor = store.addAnchorPosition {
+                        let start = projection.point(for: anchor)
+                        Path { path in
+                            path.move(to: .init(x: start.x, y: start.y))
+                            path.addLine(to: .init(x: ghost.x, y: ghost.y))
+                        }.stroke(Color.accentColor.opacity(0.65), style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
+                            .allowsHitTesting(false)
+                    }
+                    Circle().stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
+                        .frame(width: store.addGhostDisplayDiameter, height: store.addGhostDisplayDiameter)
+                        .position(x: ghost.x, y: ghost.y).allowsHitTesting(false)
+                        .accessibilityLabel("Add node preview")
+                }
                 ForEach(nodes.filter(\.isVisible)) { node in
                     NodeHandle(
                         node: node, projection: projection,
                         position: previewPosition(node, projection: projection),
                         selected: store.snapshot?.selectedIDs.contains(node.id) == true,
-                        enabled: !store.isWorking && !store.isMovingOrigin,
-                        select: { store.select(node.id) },
-                        toggle: { store.toggleSelection(node.id) },
-                        add: { store.selectGraph(nodes: [node.id], edges: [], mode: .add) },
+                        enabled: !store.isWorking && !store.isMovingOrigin && !store.isAddingNodes,
+                        select: { if store.addModeID == addModeID && !store.isAddingNodes { store.select(node.id) } },
+                        toggle: {
+                            if store.addModeID == addModeID && !store.isAddingNodes { store.toggleSelection(node.id) }
+                        },
+                        add: {
+                            if store.addModeID == addModeID && !store.isAddingNodes {
+                                store.selectGraph(nodes: [node.id], edges: [], mode: .add)
+                            }
+                        },
                         wheel: { input in
+                            guard store.addModeID == addModeID, !store.isAddingNodes else { return false }
                             store.setHoveredNode(node.id)
                             return store.handleCanvasWheel(input)
                         },
                         radiusKey: adjustRadius,
                         begin: { token in
+                            guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
+                                return
+                            }
                             guard let snapshot = store.snapshot else { return }
                             try? nodeDrag.begin(
                                 token: token, anchorID: node.id, snapshot: snapshot, projection: projection)
                         },
                         update: { token, translation in
+                            guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
+                                return
+                            }
                             guard let snapshot = store.snapshot else { return }
                             nodeDrag.update(token: token, snapshot: snapshot, translation: translation)
                         },
                         finish: { token, translation in
+                            guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
+                                return
+                            }
                             guard let baseline = nodeDrag.finish(token: token) else { return }
                             store.commitNodeDrag(baseline, translation: translation)
                         },
                         cancel: { token in nodeDrag.cancel(token: token) }
                     )
-                    .allowsHitTesting(!store.isMovingOrigin)
+                    .id(addModeID)
+                    .allowsHitTesting(!store.isMovingOrigin && !store.isAddingNodes)
                 }
                 if let origin = store.originDragPosition ?? store.snapshot?.origin {
-                    OriginHandle(store: store, origin: origin, projection: projection)
+                    OriginHandle(store: store, origin: origin, projection: projection).allowsHitTesting(
+                        !store.isAddingNodes)
                 }
                 if nodes.isEmpty && store.referenceImage == nil {
                     VStack {
@@ -109,9 +163,28 @@ struct NodeCanvas: View {
                     .allowsHitTesting(false)
                 }
             }
-            .onAppear { store.setCanvasHeight(geometry.size.height) }
-            .onChange(of: geometry.size.height) { _, height in store.setCanvasHeight(height) }
+            .onAppear {
+                store.setCanvasContext(projection: projection, width: geometry.size.width, height: geometry.size.height)
+            }
+            .onChange(of: geometry.size.height) { _, _ in
+                store.setCanvasContext(projection: projection, width: geometry.size.width, height: geometry.size.height)
+            }
+            .onChange(of: store.snapshot?.documentRevision) { _, _ in
+                if !store.isAddingNodes {
+                    store.setCanvasContext(
+                        projection: projection, width: geometry.size.width, height: geometry.size.height)
+                }
+            }
+            .onChange(of: store.isAddingNodes) { _, active in
+                invalidateNodeDrag()
+                marquee = nil
+                if !active {
+                    store.setCanvasContext(
+                        projection: projection, width: geometry.size.width, height: geometry.size.height)
+                }
+            }
             .onDisappear {
+                store.cancelAddMode()
                 store.setCanvasHeight(0)
                 store.clearCanvasHover()
                 marquee = nil
@@ -133,6 +206,7 @@ struct NodeCanvas: View {
                 store.clearCanvasHover()
             }
             .onChange(of: geometry.size) { _, _ in
+                store.setCanvasContext(projection: projection, width: geometry.size.width, height: geometry.size.height)
                 marquee = nil
                 store.clearCanvasHover()
                 invalidateNodeDrag()
@@ -148,7 +222,7 @@ struct NodeCanvas: View {
         .background(.background)
     }
     private func adjustRadius(_ direction: Int) -> Bool {
-        guard store.canAdjustSelectionRadius else { return false }
+        guard store.canAdjustRadiusInput else { return false }
         store.adjustSelectionRadius(direction: Double(direction))
         return true
     }

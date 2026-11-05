@@ -22,6 +22,8 @@ public enum EditorError: Error, Equatable, Sendable {
     case staleOriginDrag
     case staleNodeDrag
     case staleCanvasAdjustment
+    case staleAddPlacement
+    case invalidAddPlacement
     case staleExport
     case staleAnimationTarget
 }
@@ -411,6 +413,96 @@ public struct EditorState: Sendable {
         selectedID = contents.nodes.first?.id
         selectedPartID = nil
         selectedComponentIDs = []
+    }
+
+    /// Commit one visible Add-mode click using supplied fresh identities. Creation bypasses interaction locks.
+    /// - Parameters: `request` captures the visible ghost/epochs; `identities` supplies fresh graph identities.
+    /// - Returns: Placement, connection or duplicate suppression, with any connection-fallback cause retained.
+    /// - Throws: Stale, readonly, invalid geometry/identity/owner or quota errors atomically.
+    public mutating func placeAddNode(_ request: AddPlacementRequest, identities: AddPlacementIdentities) throws
+        -> (outcome: AddPlacementOutcome, connectionFallbackReason: String?)
+    {
+        guard request.target.isCurrent(in: snapshot) else { throw EditorError.staleAddPlacement }
+        guard EditableNode(position: request.position, radius: request.radius).isValid,
+            request.radius >= 0.001, request.radius <= 1
+        else { throw EditorError.invalidAddPlacement }
+        let anchor = request.anchorID.flatMap { id in contents.nodes.first { $0.id == id } }
+        if let anchorID = request.anchorID {
+            guard let anchor, anchor.id == anchorID, anchor.partID != nil else { throw DocumentError.invalidNode }
+            guard anchor.isEditable else { throw EditorError.readOnlyNode }
+            let degree = contents.edges.reduce(0) {
+                $0 + ($1.fromID == anchorID ? 1 : 0) + ($1.toID == anchorID ? 1 : 0)
+            }
+            guard degree < 2 else { throw DocumentError.invalidNode }
+        }
+        guard componentTree.failureDescription == nil else { throw DocumentError.invalidComponentStructure }
+        let fresh = [identities.nodeID, identities.partID, identities.componentID, identities.edgeID]
+        func key(_ id: String) -> String {
+            let bytes = Array(id.utf8)
+            return bytes.count == 38 && bytes.first == 123 ? String(id.dropFirst().dropLast()) : id
+        }
+        let occupied = Set(
+            (contents.nodes.map(\.id) + contents.edges.map(\.id) + contents.parts.map(\.id)
+                + componentTree.rows.map(\.id)).map(key))
+        guard
+            fresh.allSatisfy({
+                !$0.isEmpty && $0.utf8.count <= 128
+                    && !$0.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) })
+            }),
+            Set(fresh.map(key)).count == 4, occupied.isDisjoint(with: fresh.map(key))
+        else { throw DocumentError.invalidNode }
+        var fallbackReason: String?
+        if let anchor, let candidateID = request.connectingTo,
+            let candidate = contents.nodes.first(where: { $0.id == candidateID }), candidate.id != anchor.id,
+            candidate.isEditable, candidate.partID != nil,
+            contents.edges.reduce(0, { $0 + ($1.fromID == candidateID ? 1 : 0) + ($1.toID == candidateID ? 1 : 0) })
+                < 2,
+            !contents.edges.contains(where: {
+                ($0.fromID == anchor.id && $0.toID == candidateID) || ($0.toID == anchor.id && $0.fromID == candidateID)
+            })
+        {
+            guard contents.edges.count < 20_000 else { throw DocumentError.limitExceeded }
+            var next = self
+            do {
+                try next.apply([.joinNodes(id: identities.edgeID, from: anchor.id, to: candidateID)])
+                self = next
+                return (.connected(edgeID: identities.edgeID), nil)
+            } catch let error as DocumentError { fallbackReason = String(describing: error) }
+        }
+        if let last = request.lastAddedPosition,
+            abs(last.x - request.position.x) <= 0.000001, abs(last.y - request.position.y) <= 0.000001,
+            abs(last.z - request.position.z) <= 0.000001
+        {
+            return (.duplicate, fallbackReason)
+        }
+        guard contents.nodes.count < 10_000 else { throw DocumentError.limitExceeded }
+        var commands: [DocumentCommand]
+        if let anchor, let partID = anchor.partID {
+            guard contents.edges.count < 20_000 else { throw DocumentError.limitExceeded }
+            let reverse = try history.document.firstIncidentEdge(nodeID: anchor.id)?.fromID == anchor.id
+            commands = [
+                .addNode(
+                    id: identities.nodeID, partID: partID, componentID: nil, position: request.position,
+                    radius: request.radius),
+                .addEdge(
+                    id: identities.edgeID, from: reverse ? identities.nodeID : anchor.id,
+                    to: reverse ? anchor.id : identities.nodeID),
+            ]
+        } else {
+            guard contents.parts.count < 10_000, componentTree.rows.count < 10_000 else {
+                throw DocumentError.limitExceeded
+            }
+            commands = [
+                .addNode(
+                    id: identities.nodeID, partID: identities.partID, componentID: identities.componentID,
+                    position: request.position, radius: request.radius)
+            ]
+            if let parentID = request.parentID {
+                commands.append(.reparentComponent(id: identities.componentID, parentID: parentID))
+            }
+        }
+        try apply(commands, selecting: identities.nodeID)
+        return (.placed(nodeID: identities.nodeID), fallbackReason)
     }
 
     /// Translate editable selected nodes as one atomic undo step. Read-only nodes stay fixed.

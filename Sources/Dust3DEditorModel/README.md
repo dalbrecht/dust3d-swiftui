@@ -256,4 +256,30 @@ while all selection contexts are empty. `CanvasAdjustmentTarget(snapshot:)`
 rejects queued inputs after document replacement, edits, selection changes or
 constraint changes, including change-and-restore cycles. Modifier-wheel input
 uses the existing position scale factor with radius factor 1 and the same target.
-Native Add-mode ghost-cursor radius input remains a separate missing foundation.
+Native Add-mode ghost-cursor input uses the transient placement foundation described below.
+
+`AddPlacementState` is a pure per-window ghost cursor. `begin` freezes its canvas
+projection, height, document/selection epochs and group destination. Pointer
+updates use an absolute inverse projection in constant time. Ghost radius starts
+at 32 scene points, inherits an anchor's effective radius when newly visible,
+and has a 1-point preview minimum with no preview maximum. `wouldCommitRadius`
+reports the separate 0.001...1 document-radius conversion used by `request`.
+Moving, resizing, hiding and cancelling this cursor never edit archive/history.
+
+`EditorSession.placeAddNode(request)` validates one captured visible click,
+allocates fresh identities and atomically creates a node/extension or connects an
+eligible endpoint through existing joining policy. Each successful operation is
+one undo step. Creation ignores position/radius interaction locks; read-only
+owners, graph quotas, identity collisions and stale document/selection epochs
+reject without publication. Receipts rebase chaining, suppress successive
+coordinates within 1e-6, and exit after connection. External document changes
+reset duplicate bookkeeping; cancelled/replaced or older receipts cannot rebase
+a newer mode. The UI cancels on geometry/plane changes and freezes input framing
+through chained placements.
+
+Native placement shows one plane at a time. The hidden coordinate comes from the
+anchor, or the supported document origin, or 0.5. `CanvasProjection.position`
+validates the inverse mapping. This explicit native depth policy does not claim
+Qt's dual-profile quarter-width seed-coordinate equivalence; ordinary native
+editing retains access to all three coordinates. Immediate Add Node/New Part
+commands remain separate.

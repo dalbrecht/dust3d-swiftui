@@ -471,4 +471,15 @@ Ordinary canvas wheel changes the selected radii, or a hovered node when transie
 
 The local AppKit canvas boundary handles pointer, marquee, hover and wheel input without a global monitor. Focus loss, Escape, disablement, window removal, plane/document replacement and resize cancel stale marquee activations. Model state remains in SwiftUI/session; view-update cancellation does not synchronously write SwiftUI state.
 
-Qt Add-mode ghost-cursor radius/placement remains separate open parity work. Physical keyboard, trackpad/momentum, native clipboard and VoiceOver acceptance are not established by hosted tests or rendered screenshots. No production core dependency change is required by these controls.
+Add-mode ghost placement is described below. Physical keyboard, trackpad/momentum, native clipboard and VoiceOver acceptance are not established by hosted tests or rendered screenshots. No production core dependency change is required by these controls.
+
+
+## Place Nodes mode
+
+Place Nodes is a transient canvas tool, separate from immediate Add Node/New Part commands. Move the pointer to show its ghost; left press commits one placement, and each successful node becomes the next extension anchor. An eligible existing endpoint can connect and exit the tool. Otherwise placement falls back to a new node, with a nonfatal cause notice when a connection policy rejects the target. Escape or switching tools cancels preview without adding history.
+
+Ghost radius defaults to 32 scene points, has a one-point minimum, and is retained across unanchored reentry. Radius keys and wheel change the visible ghost without editing the document. The requested preview is projected through frozen canvas scale; when conversion falls outside 0.001...1, the controls disclose the limited radius that will actually be placed. Imported anchor values are normalized only for derived preview; original archive values remain unchanged.
+
+Extensions preserve hidden depth and follow live incident edge direction. New parts use supported document origin, otherwise 0.5, for hidden depth and attach to the selected group/component context. This native single-plane policy differs from Qt’s paired-profile width/4 seed. Geometry/plane/document replacement, undo and window lifecycle changes cancel stale placement contexts. Two-dimensional bounds stay fixed during a chain, then refit on exit.
+
+Each placement/connection is one undo step. Preview movement/radius and cancellation create none. If cancellation arrives after a same-request graph commit, its receipt still publishes the document while the cancelled chain remains stopped. Accessible controls provide preview positioning/placement and status; hosted tests do not establish physical pointer, keyboard or VoiceOver acceptance.

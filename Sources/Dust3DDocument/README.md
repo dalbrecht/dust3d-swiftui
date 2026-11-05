@@ -281,3 +281,8 @@ validation before mutation. `canInsertEdgeMidpoints(ids:)` shares the structural
 validation without allocating identities. Each original edge keeps its first
 segment and opaque metadata; new segments copy only Qt's name and bone name.
 The singular midpoint command uses the same implementation.
+
+`firstIncidentEdge(nodeID:)` queries the first live Qt-ordered incident edge for
+creation direction. It reads the immutable process-local graph ordering restored
+with undo/redo; saving/reloading reconstructs that order from raw edge IDs as Qt
+does. The query never rewrites archive XML or assets.
