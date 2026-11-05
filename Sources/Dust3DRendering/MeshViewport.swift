@@ -23,7 +23,6 @@ extension MeshMaterialContent {
 
 /// Main-actor SwiftUI surface for a validated mesh and its interactive orbit camera.
 public struct MeshViewport: NSViewRepresentable {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let mesh: RenderMesh
     let isWireframe: Bool
     let showsColor: Bool
@@ -126,14 +125,17 @@ public struct MeshViewport: NSViewRepresentable {
         view.enableSetNeedsDisplay = true
         return view
     }
-    public func updateNSView(_ view: InteractiveMeshView, context: Context) { updateRenderer(in: view) }
+    public func updateNSView(_ view: InteractiveMeshView, context: Context) {
+        updateRenderer(in: view, reduceMotion: context.environment.accessibilityReduceMotion)
+    }
     public static func dismantleNSView(_ view: InteractiveMeshView, coordinator: ()) {
         view.automaticOrbitBinding.dismantle()
         view.cancelMaterialUpload()
         view.delegate = nil
     }
 
-    func updateRenderer(in view: InteractiveMeshView) {
+    // Direct renderer tests have no installed SwiftUI environment; production passes the context's current value.
+    func updateRenderer(in view: InteractiveMeshView, reduceMotion: Bool = false) {
         defer { view.automaticOrbitBinding.update(requested: automaticallyOrbits, reduceMotion: reduceMotion) }
         if materials == nil || view.meshRevision != meshRevision {
             view.cancelMaterialUpload()
