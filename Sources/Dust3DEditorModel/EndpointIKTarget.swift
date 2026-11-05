@@ -1,13 +1,14 @@
 import Dust3DDocument
 
 /// Captures a degree-one endpoint and its chain up to a branch or a fixed joint.
-public struct EndpointIKDrag: Sendable {
+public struct EndpointIKTarget: Sendable {
     private let target: CanvasAdjustmentTarget
     private let chain: [DocumentNode]
     private let locks: Set<EditingConstraint>
-    public let projection: CanvasProjection
+    public let endpointPosition: NodePosition
+    public var canBend: Bool { locks.intersection([.x, .y, .z]).count < 2 }
 
-    public init?(endpointID: String, snapshot: EditorSnapshot, projection: CanvasProjection) {
+    public init?(endpointID: String, snapshot: EditorSnapshot) {
         let nodes = Dictionary(uniqueKeysWithValues: snapshot.nodes.map { ($0.id, $0) })
         guard let endpoint = nodes[endpointID], endpoint.isEditable else { return nil }
         var neighbors: [String: [String]] = [:]
@@ -31,29 +32,27 @@ public struct EndpointIKDrag: Sendable {
         chain = joints.reversed()
         target = CanvasAdjustmentTarget(snapshot: snapshot)
         locks = snapshot.locks
-        self.projection = projection
+        endpointPosition = endpoint.value.position
     }
 
     public func isCurrent(in snapshot: EditorSnapshot) -> Bool { target.isCurrent(in: snapshot) }
 
-    public func updates(by translation: CanvasPoint) throws -> [NodeUpdate] {
-        guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidNode }
-        guard translation.x != 0 || translation.y != 0, let endpoint = chain.last else { return [] }
+    public func updates(toward requested: NodePosition) throws -> [NodeUpdate] {
+        guard EditableNode(position: requested, radius: 0).isValid else { throw DocumentError.invalidNode }
+        guard canBend else { return [] }
+        let destination = NodePosition(
+            x: locks.contains(.x) ? endpointPosition.x : requested.x,
+            y: locks.contains(.y) ? endpointPosition.y : requested.y,
+            z: locks.contains(.z) ? endpointPosition.z : requested.z)
+        guard destination != endpointPosition else { return [] }
         let axes: [(EditingConstraint, SIMD3<Double>)] = [(.x, [1, 0, 0]), (.y, [0, 1, 0]), (.z, [0, 0, 1])]
-        let fixedAxes = axes.filter { locks.contains($0.0) }
-        guard fixedAxes.count < 2 else { return [] }
-
-        let destination = projection.moving(endpoint.value.position, by: translation, locks: locks)
-        guard EditableNode(position: destination, radius: endpoint.value.radius).isValid else {
-            throw DocumentError.invalidNode
-        }
-        guard destination != endpoint.value.position else { return [] }
+        let fixedAxis = axes.first { locks.contains($0.0) }?.1
         let positions = chain.map { node in
             let point = node.value.position
             return SIMD3<Double>(point.x, point.y, point.z)
         }
         let solved = try EndpointIK.solve(
-            positions, toward: SIMD3(destination.x, destination.y, destination.z), fixedAxis: fixedAxes.first?.1)
+            positions, toward: SIMD3(destination.x, destination.y, destination.z), fixedAxis: fixedAxis)
         return zip(chain.dropFirst(), solved.dropFirst()).compactMap { node, point in
             let original = node.value.position
             let position = NodePosition(

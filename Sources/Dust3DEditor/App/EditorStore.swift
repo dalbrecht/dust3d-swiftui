@@ -1223,6 +1223,13 @@ final class EditorStore {
         perform { try await $0.commitCanvasShiftDrag(drag, translation: translation) }
     }
 
+    func bendEndpoint(_ target: EndpointIKTarget, toward destination: NodePosition, context: CanvasRotationContext) {
+        guard !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot,
+            canvasRotationContext == context, target.isCurrent(in: snapshot), target.canBend
+        else { return }
+        perform { try await $0.bendEndpoint(target, toward: destination) }
+    }
+
     func moveSelection(by delta: NodePosition) { perform { try await $0.moveSelection(by: delta) } }
     func scaleSelection(positionFactor: Double, radiusFactor: Double) {
         perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
