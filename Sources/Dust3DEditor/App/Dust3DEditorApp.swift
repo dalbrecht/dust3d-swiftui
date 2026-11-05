@@ -110,6 +110,10 @@ struct Dust3DEditorApp: App {
                             nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
                             || store?.canAdjustRadiusInput != true
                     )
+                CanvasRotationMenuButtons(
+                    store: store,
+                    animationFocus: isAnimationFocused == true,
+                    nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
                 DescendantRotationMenu(store: store)
                 Button("Reduce Selected Nodes") { store?.reduceSelectedNodes() }
                     .disabled(store?.canReduceSelectedNodes != true)

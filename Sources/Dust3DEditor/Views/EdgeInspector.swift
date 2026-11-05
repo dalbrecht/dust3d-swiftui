@@ -18,6 +18,7 @@ struct EdgeInspector: View {
             Text("To: \(to)")
             Text("Direction: \(from) → \(to)").font(.caption)
             NodeRadiusAdjustmentControls(store: store)
+            CanvasRotationControls(store: store)
             Button("Select Whole Part", action: store.wholePartSelectionAction(.edge(edge.id)))
                 .disabled(!store.canSelectWholePart(.edge(edge.id)))
             Button("Select Endpoints") { store.select([edge.fromID, edge.toID]) }
