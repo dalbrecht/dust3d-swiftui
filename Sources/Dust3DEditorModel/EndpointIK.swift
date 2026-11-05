@@ -1,8 +1,11 @@
+import Foundation
 import simd
 
 /// The unconstrained cyclic coordinate descent used by Qt's endpoint drag.
 enum EndpointIK {
-    static func solve(_ chain: [SIMD3<Double>], toward target: SIMD3<Double>) throws -> [SIMD3<Double>] {
+    static func solve(
+        _ chain: [SIMD3<Double>], toward target: SIMD3<Double>, fixedAxis: SIMD3<Double>? = nil
+    ) throws -> [SIMD3<Double>] {
         guard chain.count > 1 else { return chain }
         var positions = chain
         var lastDistance = 0.0
@@ -13,12 +16,14 @@ enum EndpointIK {
                 break
             }
             lastDistance = distance
-            try sweep(&positions, toward: target)
+            try sweep(&positions, toward: target, fixedAxis: fixedAxis)
         }
         return positions
     }
 
-    private static func sweep(_ positions: inout [SIMD3<Double>], toward target: SIMD3<Double>) throws {
+    private static func sweep(
+        _ positions: inout [SIMD3<Double>], toward target: SIMD3<Double>, fixedAxis: SIMD3<Double>?
+    ) throws {
         let endIndex = positions.count - 1
         let identity = simd_quatd(ix: 0, iy: 0, iz: 0, r: 1)
         var rotations = Array(repeating: identity, count: endIndex)
@@ -28,7 +33,7 @@ enum EndpointIK {
         for index in (0..<endIndex).reversed() {
             try Task.checkCancellation()
             let pivot = positions[index]
-            let rotation = rotation(from: endpoint - pivot, to: target - pivot)
+            let rotation = rotation(from: endpoint - pivot, to: target - pivot, fixedAxis: fixedAxis)
             rotations[index] = rotation
             endpoint = pivot + rotation.act(endpoint - pivot)
         }
@@ -47,8 +52,19 @@ enum EndpointIK {
         positions[endIndex] = endpoint
     }
 
-    private static func rotation(from: SIMD3<Double>, to: SIMD3<Double>) -> simd_quatd {
+    private static func rotation(
+        from: SIMD3<Double>, to: SIMD3<Double>, fixedAxis: SIMD3<Double>?
+    ) -> simd_quatd {
         let identity = simd_quatd(ix: 0, iy: 0, iz: 0, r: 1)
+        if let axis = fixedAxis {
+            let planarFrom = from - axis * simd_dot(axis, from)
+            let planarTo = to - axis * simd_dot(axis, to)
+            guard simd_length_squared(planarFrom) > 1e-24, simd_length_squared(planarTo) > 1e-24 else {
+                return identity
+            }
+            let angle = atan2(simd_dot(axis, simd_cross(planarFrom, planarTo)), simd_dot(planarFrom, planarTo))
+            return simd_quatd(angle: angle, axis: axis)
+        }
         let fromLength = simd_length(from)
         let toLength = simd_length(to)
         guard fromLength > 1e-12, toLength > 1e-12 else { return identity }
