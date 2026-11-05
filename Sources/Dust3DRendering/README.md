@@ -189,3 +189,11 @@ owned cancellable driver prevents a timer from retaining a detached viewport.
 `AutomaticOrbitTests` covers timing, eligibility and scheduling without AppKit;
 viewport/store regressions cover detached lifetime and presentation-only state.
 See `docs/preview-rotation-verification.md` for the remaining physical acceptance.
+
+SwiftUI supplies Reduce Motion through `NSViewRepresentableContext.environment`
+when updating the AppKit view. The internal renderer boundary accepts an explicit
+motion setting so headless tests never read an uninstalled Environment wrapper.
+Camera replacement/pan/zoom/Fit regressions run with both settings; the turntable
+policy separately verifies that Reduce Motion suppresses automatic movement.
+Physical preference changes and VoiceOver acceptance remain separate.
+Reference: [Apple context environment documentation](https://developer.apple.com/documentation/swiftui/nsviewrepresentablecontext/environment).

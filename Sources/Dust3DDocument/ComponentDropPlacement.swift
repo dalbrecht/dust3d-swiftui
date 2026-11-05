@@ -1,17 +1,19 @@
 import Foundation
 
-/// A sibling insertion boundary expressed in stable document identities.
+/// A sibling insertion boundary or destination group expressed in stable document identities.
 public enum ComponentDropPlacement: Sendable {
     case before(String)
     case after(String)
     case end(parentID: String?)
+    case into(parentID: String?)
 }
 
-/// A pure sibling permutation. An ancestor selection carries its selected descendants with it.
+/// A source-ordered block placement. An ancestor selection carries its selected descendants with it.
 public struct ComponentDropPlacementPlan: Sendable {
     public let parentID: String?
     public let orderedSiblingIDs: [String]
     public let changesOrder: Bool
+    let selectedRootIDs: [String]
 
     /// Resolve the boundary against the original sibling list before removing selected roots.
     public init(components: [DocumentComponent], ids: [String], placement: ComponentDropPlacement) throws {
@@ -32,6 +34,8 @@ public struct ComponentDropPlacementPlan: Sendable {
         let destination: String?
         let anchor: Data?
         let after: Bool
+        let allowsReparenting: Bool
+        if case .into = placement { allowsReparenting = true } else { allowsReparenting = false }
         switch placement {
         case .before(let id):
             destination = try component(id).parentID
@@ -41,8 +45,10 @@ public struct ComponentDropPlacementPlan: Sendable {
             destination = try component(id).parentID
             anchor = Data(id.utf8)
             after = true
-        case .end(let id):
-            if let id { _ = try component(id) }
+        case .end(let id), .into(let id):
+            if let id, try !component(id).isGroup, allowsReparenting {
+                throw DocumentError.invalidComponentStructure
+            }
             destination = id
             anchor = nil
             after = false
@@ -53,15 +59,22 @@ public struct ComponentDropPlacementPlan: Sendable {
         var covered = Set<Data>()
         var selected = Set<Data>()
         var siblings: [String] = []
+        var roots: [String] = []
         for row in components {
             let id = Data(row.id.utf8)
             let parent = row.parentID.map { Data($0.utf8) }
             if parent.map({ covered.contains($0) }) == true {
                 covered.insert(id)
             } else if requested.contains(id) {
-                guard parent == destinationKey else { throw DocumentError.invalidComponentStructure }
+                guard allowsReparenting || parent == destinationKey else {
+                    throw DocumentError.invalidComponentStructure
+                }
+                roots.append(row.id)
                 covered.insert(id)
                 selected.insert(id)
+            }
+            if allowsReparenting, id == destinationKey, covered.contains(id) {
+                throw DocumentError.invalidComponentStructure
             }
             if parent == destinationKey { siblings.append(row.id) }
         }
@@ -74,19 +87,18 @@ public struct ComponentDropPlacementPlan: Sendable {
         } else {
             boundary = siblings.count
         }
-        var moved: [String] = []
         var remaining: [String] = []
         var insertion = 0
         for (offset, id) in siblings.enumerated() {
-            if selected.contains(Data(id.utf8)) {
-                moved.append(id)
-            } else {
+            if !selected.contains(Data(id.utf8)) {
                 if offset < boundary { insertion += 1 }
                 remaining.append(id)
             }
         }
-        remaining.insert(contentsOf: moved, at: insertion)
+        remaining.insert(contentsOf: roots, at: insertion)
+        selectedRootIDs = roots
         orderedSiblingIDs = remaining
-        changesOrder = !zip(siblings, remaining).allSatisfy { $0.utf8.elementsEqual($1.utf8) }
+        changesOrder =
+            siblings.count != remaining.count || !zip(siblings, remaining).allSatisfy { $0.utf8.elementsEqual($1.utf8) }
     }
 }
