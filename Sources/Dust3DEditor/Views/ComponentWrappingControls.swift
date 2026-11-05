@@ -23,6 +23,7 @@ struct ComponentWrappingControls: View {
                 }
                 if presentation.showsSettings {
                     keepChildren
+                    ComponentWrapBindingControls(store: store, component: component)
                     WrappingNumberControl(
                         title: "Target Faces", identifier: "component-wrap-faces", identity: identity,
                         source: component.wrapping.targetFaces.map { String($0) },
