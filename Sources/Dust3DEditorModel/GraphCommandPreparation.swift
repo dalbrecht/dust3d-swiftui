@@ -9,7 +9,7 @@ enum GraphCommandPreparation {
         guard
             commands.contains(where: {
                 switch $0 {
-                case .removeNode, .removeNodes, .removeEdge: true
+                case .removeNode, .removeNodes, .removeEdge, .removeEdges: true
                 default: false
                 }
             })
@@ -31,6 +31,12 @@ enum GraphCommandPreparation {
                     affected.formUnion(
                         contents.nodes.filter { $0.id == edge.fromID || $0.id == edge.toID }.compactMap(\.partID))
                 }
+            case .removeEdges(let ids):
+                let selected = Set(ids)
+                let contents = try preview.editorContents()
+                let endpoints = Set(
+                    contents.edges.filter { selected.contains($0.id) }.flatMap { [$0.fromID, $0.toID] })
+                affected.formUnion(contents.nodes.filter { endpoints.contains($0.id) }.compactMap(\.partID))
             case .joinNodes(_, let from, let to):
                 let nodes = try preview.editorContents().nodes
                 if let sourcePart = nodes.first(where: { $0.id == from })?.partID,
