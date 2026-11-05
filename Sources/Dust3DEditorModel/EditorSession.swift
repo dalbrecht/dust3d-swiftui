@@ -289,6 +289,12 @@ public actor EditorSession {
     public func reverseSelectedEdges() throws -> EditorSnapshot {
         try update { try $0.reverseSelectedEdges() }
     }
+    /// Insert a midpoint on the selected editable edge using fresh UUID identities.
+    /// - Returns: One undoable snapshot retaining the original selected edge.
+    /// - Throws: Load, cancellation, selection, editability or document validation errors atomically.
+    public func insertSelectedEdgeMidpoint() throws -> EditorSnapshot {
+        try update { try $0.insertSelectedEdgeMidpoint(nodeID: Self.identifier(), edgeID: Self.identifier()) }
+    }
     public func move(id: String, to position: NodePosition) throws -> EditorSnapshot {
         try update { try $0.move(id: id, to: position) }
     }
