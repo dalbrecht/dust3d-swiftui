@@ -1,4 +1,3 @@
-import AppKit
 import Dust3DDocument
 import Dust3DEditorModel
 import Dust3DKit
@@ -70,10 +69,11 @@ private struct ReparentNoNative: EditorPreviewServing, ArchiveTextureBaking, Arc
         XCTAssertFalse(store.canUndo)
     }
 
-    func testSingleSelectedComponentExposesParentChooser() async throws {
-        _ = NSApplication.shared
+    func testSingleSelectedComponentUsesParentChooserTargetAndUndo() async throws {
         let document = try Dust3DDocument(
-            snapshotXML: Data("<canvas><components><component id='single'/></components></canvas>".utf8))
+            snapshotXML: Data(
+                "<canvas><components><component id='single'/><component id='group'><component id='stay'/></component></components></canvas>"
+                    .utf8))
         let stub = ReparentNoNative()
         let store = EditorStore(
             preview: stub, materialBaker: stub, importedMaterialLoader: stub, sourceMaterialBaker: stub,
@@ -84,37 +84,20 @@ private struct ReparentNoNative: EditorPreviewServing, ArchiveTextureBaking, Arc
         store.selectComponent("single")
         try await settle(store)
         XCTAssertEqual(store.snapshot?.selectedComponentIDs, ["single"])
-
-        let host = NSHostingView(rootView: NodeInspector(store: store).environment(EditorPasteboard()))
-        let window = NSWindow(
-            contentRect: NSRect(x: -10000, y: -10000, width: 520, height: 1400),
-            styleMask: [.titled], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        window.contentView = host
-        window.orderBack(nil)
-        defer { window.close() }
-
-        let label = "Choose a new parent for the selected components"
-        func containsLabel(_ object: Any, visited: inout Set<ObjectIdentifier>) -> Bool {
-            guard let element = object as? any NSAccessibilityProtocol,
-                visited.count < 512, visited.insert(ObjectIdentifier(element)).inserted
-            else { return false }
-            if element.accessibilityIdentifier() == "component-parent-chooser"
-                || element.accessibilityLabel() == label
-                || element.accessibilityTitle() == "Move to Parent…"
-            {
-                return true
-            }
-            let children = (element.accessibilityChildren() ?? []) + ((object as? NSView)?.subviews ?? [])
-            return children.contains { containsLabel($0, visited: &visited) }
+        if let output = ProcessInfo.processInfo.environment["DUST3D_UI_QA_OUTPUT_DIR"] {
+            let png = try InspectorRenderer.png(
+                NodeInspector(store: store).environment(EditorPasteboard()), width: 520, scheme: .light)
+            try png.write(
+                to: URL(fileURLWithPath: output).appendingPathComponent("single-component-parent-chooser.png"))
         }
-        for _ in 0..<100 {
-            host.layoutSubtreeIfNeeded()
-            var visited = Set<ObjectIdentifier>()
-            if containsLabel(window, visited: &visited) { return }
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        XCTFail("The parent chooser is missing from the single-component inspector")
+        let target = try XCTUnwrap(store.snapshot.flatMap(ComponentBatchReparentTarget.init(snapshot:)))
+        XCTAssertTrue(target.parentOptions().contains { $0.id == .component("group") })
+        store.reparentComponents(to: .component("group"), target: target)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentTree.rows.first?.component.childIDs, ["stay", "single"])
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
     }
 
     private func settle(_ value: EditorStore) async throws {
