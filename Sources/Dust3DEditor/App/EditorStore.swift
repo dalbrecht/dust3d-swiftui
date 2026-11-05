@@ -12,7 +12,7 @@ final class EditorStore {
     private(set) var snapshot: EditorSnapshot? {
         didSet {
             if oldValue?.documentIdentity != snapshot?.documentIdentity { clearCanvasHover() }
-            if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode(refit: false) }
+            if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
                 clearCanvasHover()
             }
@@ -107,7 +107,7 @@ final class EditorStore {
     private(set) var addPlacement = AddPlacementState()
     private(set) var addModeID = UUID()
     private var canvasWidth: Double = 0
-    private var isPlacingAddNode = false
+    private var addPlacementRequestID: UUID?
     private(set) var addPlacementNotice: String?
     private let addPlacements: any AddPlacementServing
     var isAddingNodes: Bool { addPlacement.isActive }
@@ -160,7 +160,8 @@ final class EditorStore {
     }
     func cancelAddMode(refit: Bool = true) {
         guard isAddingNodes else { return }
-        if isPlacingAddNode { operation?.cancel() }
+        if addPlacementRequestID != nil { operation?.cancel() }
+        addPlacementRequestID = nil
         addPlacement.cancel()
         addPlacementNotice = nil
         addModeID = UUID()
@@ -191,13 +192,15 @@ final class EditorStore {
                 return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
             })?.id
             guard let request = addPlacement.request(connectingTo: candidate) else { return }
-            isPlacingAddNode = true
+            let placementID = UUID()
+            addPlacementRequestID = placementID
             let service = addPlacements
             perform(
                 acceptCommittedCancellation: true,
                 completion: { [weak self] _ in
-                    self?.isPlacingAddNode = false
-                    if self?.isAddingNodes == false { self?.fitCanvas() }
+                    guard let self, self.addPlacementRequestID == placementID else { return }
+                    self.addPlacementRequestID = nil
+                    if !self.isAddingNodes { self.fitCanvas() }
                 },
                 { [weak self] session in
                     let receipt = try await service.place(request, in: session)
@@ -976,10 +979,7 @@ final class EditorStore {
 
     func dropComponents(token: UUID, in parent: ComponentParent) -> Bool {
         guard let target = consumeComponentDrag(token) else { return false }
-        perform(acceptCommittedCancellation: true) {
-            try await $0.placeComponents(in: parent, target: target)
-        }
-        return true
+        return placeComponents(at: .into(parentID: parent.componentID), target: target)
     }
 
     private func consumeComponentDrag(_ token: UUID) -> ComponentPlacementTarget? {
@@ -1091,8 +1091,8 @@ final class EditorStore {
     }
     func selectedParts(for target: ComponentMeshSelectionTarget) -> [DocumentPart] {
         guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot) else { return [] }
-        let ids = Set(snapshot.selectedComponentRows.compactMap { $0.component.partID })
-        return snapshot.parts.filter { ids.contains($0.id) }
+        let ids = Set(snapshot.selectedComponentRows.compactMap { $0.component.partID }.map { Data($0.utf8) })
+        return snapshot.parts.filter { ids.contains(Data($0.id.utf8)) }
     }
 
     func setSelectedComponentPartState(_ property: PartStateProperty, value: Bool, target: ComponentMeshSelectionTarget)
