@@ -99,7 +99,12 @@ private struct ReparentNoNative: EditorPreviewServing, ArchiveTextureBaking, Arc
             guard let element = object as? any NSAccessibilityProtocol,
                 visited.count < 512, visited.insert(ObjectIdentifier(element)).inserted
             else { return false }
-            if element.accessibilityLabel() == label { return true }
+            if element.accessibilityIdentifier() == "component-parent-chooser"
+                || element.accessibilityLabel() == label
+                || element.accessibilityTitle() == "Move to Parent…"
+            {
+                return true
+            }
             let children = (element.accessibilityChildren() ?? []) + ((object as? NSView)?.subviews ?? [])
             return children.contains { containsLabel($0, visited: &visited) }
         }
