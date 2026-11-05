@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve numeric move and scale controls for mixed and edge-only selections, expose additive node accessibility actions, and batch graph edge deletion into one validated XML mutation.
+
 - Select nodes and edges together, with explicit graph editing modes and one-step batch midpoint insertion.
 
 - Reduce eligible selected nodes and reconnect their neighbors in one Undo step while preserving graph order.

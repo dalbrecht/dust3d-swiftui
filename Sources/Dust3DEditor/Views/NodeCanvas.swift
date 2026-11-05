@@ -152,6 +152,10 @@ private struct NodeHandle: View {
         .accessibilityValue(selected ? "Selected" : "Not selected")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { select() }
+        .accessibilityAction(named: Text("Add node to selection")) { add() }
+        .accessibilityAction(named: Text("Remove node from selection")) {
+            if selected { toggle() }
+        }
         .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked, hidden or disabled part")")
     }
 }
