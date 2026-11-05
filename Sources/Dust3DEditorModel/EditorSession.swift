@@ -436,6 +436,15 @@ public actor EditorSession {
     public func rotateDescendants(_ rotation: DescendantRotation) throws -> EditorSnapshot {
         try update { try $0.rotateDescendants(rotation) }
     }
+    /// Rotate the effective graph selection in the captured plane as one atomic history step.
+    /// - Parameters: `degrees` is finite within signed 32-bit range; `target` rejects stale queued input.
+    /// - Returns: The edited snapshot, or unchanged history for a no-op.
+    /// - Throws: Load, cancellation, stale, angle, readonly or geometry errors.
+    public func rotateSelection(degrees: Double, plane: EditingPlane, target: CanvasAdjustmentTarget? = nil) throws
+        -> EditorSnapshot
+    {
+        try update { try $0.rotateSelection(degrees: degrees, plane: plane, target: target) }
+    }
     public func transformSelection(_ transform: SelectionTransform) throws -> EditorSnapshot {
         try update { try $0.transformSelection(transform) }
     }

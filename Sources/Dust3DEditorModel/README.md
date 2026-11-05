@@ -312,3 +312,19 @@ selected IDs) and document/selection/constraint epochs. `deleteComponentSubtrees
 stages one atomic transaction with cancellation checks before publication. Stale
 callbacks cannot retarget another window or later selection. Undo restores the
 document, while transient selection follows existing pruning policy. See ADR0142.
+
+Canvas angle rotation accepts a finite signed angle within ±2,147,483,647 degrees,
+normalizing full turns before trigonometry. `rotateSelection(degrees:plane:target:)`
+uses explicit nodes plus explicit selected-edge endpoints, deduplicated. With more
+than one effective participant, the editable nodes define the centroid. One
+editable effective node and a complete supported stored origin instead pivots its
+connected descendants, using the existing nearest-origin-parent traversal (a
+single neighbor is retained; cycles can reach the otherwise excluded parent).
+Equal-distance parents follow native document node order; Qt's distance-only sort
+does not establish this tie behavior. Without a supported stored origin, one node
+rotates about itself and produces no edit. Native axis and ownership locks apply;
+Qt temporarily bypasses those restrictions. Every accepted change is one atomic
+history step; zero/full turns preserve redo and preview identity. An optional
+CanvasAdjustmentTarget rejects document, selection and constraint changes before
+publication. Plane is an explicit captured command value. Existing quarter-turn
+and explicit descendant APIs retain their established behavior.
