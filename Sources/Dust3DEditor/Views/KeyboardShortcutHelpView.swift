@@ -16,8 +16,8 @@ enum KeyboardShortcutHelp {
         .init(action: "Select All Nodes", keys: "⇧⌘A", scope: "Active document"),
         .init(action: "Export OBJ Geometry", keys: "⇧⌘E", scope: "Active document with available export geometry"),
         .init(
-            action: "Decrease / Increase Radius", keys: "− / =",
-            scope: "Editable graph selection, outside text and animation controls"),
+            action: "Decrease / Increase Radius", keys: "- / =",
+            scope: "Focused canvas or node, with an editable graph selection and no active drag"),
         .init(
             action: "Rotate Selection −1° / +1°", keys: ", / .",
             scope: "Editable graph selection, outside text and animation controls"),
@@ -25,11 +25,13 @@ enum KeyboardShortcutHelp {
             action: "Delete Graph Selection", keys: "Delete",
             scope: "Graph selection, outside text, animation and component sidebar controls"),
         .init(
-            action: "Nudge Selection", keys: "← / → / ↑ / ↓",
-            scope: "Focused canvas, with editable selection and no active drag"),
+            action: "Nudge Selection or Origin", keys: "← / → / ↑ / ↓",
+            scope:
+                "Focused canvas, node or origin marker. Nudges the stored origin in Move Origin mode; otherwise the editable selection. No active drag"
+        ),
         .init(
             action: "Decrease / Increase Selection Spacing", keys: "[ / ]",
-            scope: "Focused canvas, with editable selection and no active drag"),
+            scope: "Focused canvas, node or origin marker, with editable selection and no active drag"),
         .init(action: "Lock X / Y / Z / Radius", keys: "⌥⌘X / ⌥⌘Y / ⌥⌘Z / ⌥⌘R", scope: "Active document"),
         .init(action: "Show Animations Inspector", keys: "⌥⌘A", scope: "Editor window"),
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
