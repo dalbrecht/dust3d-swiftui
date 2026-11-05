@@ -27,6 +27,7 @@ struct NodeInspector: View {
                 if snapshot.selectedComponentIDs.count > 1 {
                     ComponentBatchOrderMenu(store: store, snapshot: snapshot)
                     let colorTarget = ComponentMeshSelectionTarget(snapshot: snapshot)
+                    ComponentBatchPartStateMenu(store: store, target: colorTarget)
                     ComponentBatchColorControls(store: store, target: colorTarget)
                         .id(colorTarget)
                 }

@@ -372,6 +372,19 @@ public actor EditorSession {
             try Task.checkCancellation()
         }
     }
+    /// Change one flag on directly linked parts from the captured component selection.
+    public func setSelectedComponentPartState(
+        _ property: PartStateProperty, value: Bool, target: ComponentMeshSelectionTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot) else { throw ComponentMeshSelectionError.staleTarget }
+            let ids = snapshot.selectedComponentRows.compactMap { $0.component.partID }
+            try state.apply([.setPartsState(ids: ids, property: property, value: value)])
+            try Task.checkCancellation()
+        }
+    }
+
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
