@@ -51,6 +51,28 @@ final class AddPlacementTests: XCTestCase {
         XCTAssertFalse(state.snapshot.canUndo)
     }
 
+    func testBoundaryDocumentCanBeginAndPlaceInwardWhileOutwardPointerStillRejects() throws {
+        for plane in EditingPlane.allCases {
+            let xml =
+                "<canvas><nodes><node id='a' partId='p' x='\(plane == .front ? -1_000_000 : 0)' y='0' z='\(plane == .side ? -1_000_000 : 0)' radius='0.1'/></nodes><parts><part id='p'/></parts></canvas>"
+            let state = try EditorState(document: Dust3DDocument(snapshotXML: Data(xml.utf8)))
+            let projected = projection(state.snapshot, plane: plane)
+            var ghost = AddPlacementState()
+            try ghost.begin(snapshot: state.snapshot, projection: projected, canvasHeight: 400)
+            let inward = NodePosition(
+                x: plane == .front ? -999_999.98 : 0,
+                y: 0, z: plane == .side ? -999_999.98 : 0)
+            try ghost.updatePointer(projected.point(for: inward))
+            XCTAssertNotNil(ghost.request())
+            let accepted = ghost.ghostPosition
+            let outward = NodePosition(
+                x: plane == .front ? -1_000_001 : 0,
+                y: 0, z: plane == .side ? -1_000_001 : 0)
+            XCTAssertThrowsError(try ghost.updatePointer(projected.point(for: outward)))
+            XCTAssertEqual(ghost.ghostPosition, accepted)
+        }
+    }
+
     func testAnchoredInheritanceDirectionAndLocksDoNotConstrainCreation() throws {
         let original = try document()
         for (anchor, expectedFrom, expectedTo) in [("a", "newx", "a"), ("c", "c", "newx")] {
