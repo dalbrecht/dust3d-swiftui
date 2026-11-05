@@ -44,6 +44,7 @@ assert bundle.stat().st_mtime_ns >= max(plist.stat().st_mtime_ns, icon.stat().st
     'Rebuild must refresh the app root modification time after its metadata/resources'
 print(f'{bundle.name}: rebuilt directory timestamp includes current plist and icon')
 PY
+    python3 -B "$ROOT_DIR/script/check_rig_resources.py" "$bundle/Contents/Resources/Dust3DNative_Dust3DKit.bundle"
     codesign --verify --deep --strict "$bundle"
 done
 # Reusing the QA identity must remove copied provider bundles rather than registering duplicates.
@@ -64,6 +65,7 @@ assert metadata['CFBundleName'] == 'Dust3D Editor QA'
 assert not list((bundle / 'Contents/PlugIns').glob('*.appex')), 'QA apps must not own preview providers'
 print('QA bundle reuses the existing identity and has no preview providers')
 PYQA
+python3 -B "$ROOT_DIR/script/check_rig_resources.py" "$qa_output/Dust3DEditor.app/Contents/Resources/Dust3DNative_Dust3DKit.bundle"
 codesign --verify --deep --strict "$qa_output/Dust3DEditor.app"
 archive_manifest > "$APP_TEST_DIR/default-archives-after.json"
 cmp "$APP_TEST_DIR/default-archives-before.json" "$APP_TEST_DIR/default-archives-after.json"

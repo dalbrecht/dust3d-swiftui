@@ -64,7 +64,8 @@ print(launch.read_text(), flush=True)
             build.write_text('''#!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/build_paths.sh"
-mkdir -p "$DUST3D_BINARY_DIR/Dust3DNative_Dust3DRendering.bundle"
+mkdir -p "$DUST3D_BINARY_DIR/Dust3DNative_Dust3DRendering.bundle" "$DUST3D_BINARY_DIR/Dust3DNative_Dust3DKit.bundle"
+printf fixture-resource > "$DUST3D_BINARY_DIR/Dust3DNative_Dust3DKit.bundle/fixture"
 printf '%s' 'fixture binary' > "$DUST3D_BINARY_DIR/Dust3DEditor"
 printf '%s' 'fixture binary' > "$DUST3D_BINARY_DIR/Dust3DViewer"
 ''')
@@ -87,6 +88,9 @@ printf '%s' 'fixture binary' > "$DUST3D_BINARY_DIR/Dust3DViewer"
                                     cwd=source, env=environment, capture_output=True, text=True, timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn('appStartup fixture', result.stdout)
+            app_name = 'Dust3DEditor' if '--editor' in app_arguments or '--editor-qa' in app_arguments else 'Dust3DViewer'
+            resource = temporary / 'apps' / (app_name + '.app') / 'Contents/Resources/Dust3DNative_Dust3DKit.bundle/fixture'
+            self.assertEqual(resource.read_bytes(), b'fixture-resource')
             arguments = json.loads(recording.read_text())
             self.assertIn('--predicate', arguments)
             return arguments[arguments.index('--predicate') + 1]

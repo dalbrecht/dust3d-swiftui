@@ -14,6 +14,7 @@ cd "$ROOT_DIR"
 for EXTENSION_NAME in Dust3DQuickLookExtension Dust3DThumbnailExtension; do
     test -f "$BINARY_DIR/$EXTENSION_NAME" || { echo "Missing prebuilt provider: $EXTENSION_NAME" >&2; exit 1; }
 done
+test -d "$BINARY_DIR/Dust3DNative_Dust3DKit.bundle" || { echo "Missing prebuilt rig resources" >&2; exit 1; }
 test -d "$BINARY_DIR/Dust3DNative_Dust3DRendering.bundle" || { echo "Missing prebuilt shader resources" >&2; exit 1; }
 for EXTENSION_NAME in Dust3DQuickLookExtension Dust3DThumbnailExtension; do
     python3 -B "$ROOT_DIR/script/check_running_app.py" "$APP_BUNDLE/Contents/MacOS/Dust3DEditor"
@@ -21,6 +22,7 @@ for EXTENSION_NAME in Dust3DQuickLookExtension Dust3DThumbnailExtension; do
     mkdir -p "$EXTENSION_BUNDLE/Contents/MacOS" "$EXTENSION_BUNDLE/Contents/Resources"
     cp "$BINARY_DIR/$EXTENSION_NAME" "$EXTENSION_BUNDLE/Contents/MacOS/$EXTENSION_NAME"
     cp -R "$BINARY_DIR/Dust3DNative_Dust3DRendering.bundle" "$EXTENSION_BUNDLE/Contents/Resources/"
+    cp -R "$BINARY_DIR/Dust3DNative_Dust3DKit.bundle" "$EXTENSION_BUNDLE/Contents/Resources/"
     python3 - "$EXTENSION_BUNDLE/Contents/Info.plist" "$EXTENSION_NAME" <<'PY'
 import plistlib
 import sys

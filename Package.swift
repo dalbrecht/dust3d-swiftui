@@ -38,7 +38,7 @@ let package = Package(
                 "Dust3DDocument", .product(name: "Dust3DEngine", package: "dust3d-core"),
                 .product(name: "Dust3DWorkerRuntime", package: "dust3d-core"),
             ],
-            exclude: ["README.md"]),
+            exclude: ["README.md"], resources: [.copy("RigTemplates")]),
         .executableTarget(
             name: "Dust3DViewer",
             dependencies: ["Dust3DKit", "Dust3DRendering"], exclude: ["README.md"]

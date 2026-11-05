@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Package and verify the seven pinned rig templates for native SDK consumers and installed file-preview bundles (#195).
+
 - Add searchable Keyboard Shortcuts help with native command focus restrictions (#333).
 
 - Prepare lossless hollow-thickness history and an explicitly gated local-core inspector experiment; production geometry support remains unchanged (#96).
