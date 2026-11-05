@@ -47,6 +47,30 @@ import simd
         view.cancelMaterialUpload()
     }
 
+    func testDetachedTurntableRemainsStillAndDismantlingReleasesItsView() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(
+                id: "{11111111-1111-4111-8111-111111111111}", partID: "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}",
+                componentID: "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}", position: .init(x: 0.5, y: 0.5, z: 0.5),
+                radius: 0.2))
+        let mesh = try MeshLoader.loadIndexed(data: source.encoded())
+        var view: InteractiveMeshView? = InteractiveMeshView(frame: .zero, device: device)
+        view?.colorPixelFormat = .bgra8Unorm
+        view?.depthStencilPixelFormat = .depth32Float
+        weak var weakView: InteractiveMeshView?
+        weakView = view
+        let viewport = MeshViewport(
+            mesh: mesh, isWireframe: false, cameraReset: 0, automaticallyOrbits: true, onError: { XCTFail($0) })
+        viewport.updateRenderer(in: try XCTUnwrap(view))
+        let camera = try XCTUnwrap(view).orbitCamera.transform(aspect: 1)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(view?.orbitCamera.transform(aspect: 1), camera)
+        MeshViewport.dismantleNSView(try XCTUnwrap(view), coordinator: ())
+        view = nil
+        XCTAssertNil(weakView)
+    }
+
     func testActivationIsConsumedOnceAndRepeatingTheActionHasANewIdentity() {
         let view = InteractiveMeshView()
         let command = MeshCameraCommand(.zoomIn)
