@@ -5,6 +5,34 @@ import XCTest
 @testable import Dust3DEditorModel
 
 final class WorkflowReplayPlanTests: XCTestCase {
+    func testStableBoundsIncludeTemporarilyEnabledPartsAndExcludeExplicitlyHiddenPartsInBothPlanes() throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><parts><part id="on"/><part id="off" disabled="true"/>
+                <part id="hidden" disabled="true" visible="false"/></parts><nodes>
+                <node id="a" partId="on" x="0" y="0" z="0" radius=".1"/>
+                <node id="b" partId="off" x="100" y="0" z="100" radius=".1"/>
+                <node id="c" partId="hidden" x="1000" y="0" z="1000" radius=".1"/>
+                </nodes><components><component id="ca" linkDataType="partId" linkData="on"/>
+                <component id="cb" linkDataType="partId" linkData="off"/>
+                <component id="cc" linkDataType="partId" linkData="hidden"/></components></canvas>
+                """.utf8))
+        let plan = try WorkflowReplayPlan(document: source)
+        for bounds in [plan.bounds, plan.bounds(referenceImageAspectRatio: 2)] {
+            XCTAssertEqual(bounds.maximum.x, 100.1, accuracy: 1e-6)
+            XCTAssertEqual(bounds.maximum.z, 100.1, accuracy: 1e-6)
+            for plane in [EditingPlane.front, .side] {
+                let projection = CanvasProjection(bounds: bounds, plane: plane, width: 700, height: 540)
+                let point = projection.point(for: .init(x: 100, y: 0, z: 100))
+                XCTAssertGreaterThanOrEqual(point.x, 36)
+                XCTAssertLessThanOrEqual(point.x, 664)
+                XCTAssertGreaterThanOrEqual(point.y, 36)
+                XCTAssertLessThanOrEqual(point.y, 504)
+            }
+        }
+    }
+
     func testDisabledPartGraphVisibilityMatchesEachStagedPreviewAndRetainsHiddenAndLockedFlags() throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(
