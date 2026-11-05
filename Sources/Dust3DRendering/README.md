@@ -178,3 +178,14 @@ map-role adapter feeds the existing upload plan, so viewports and file previews
 share default routing. GPU sampling and public thumbnail rendering exercise this
 path; missing chains retain their specific cause during geometry fallback.
 Actual native mip production/copy binding remains pending; see ADR 0087 and #177.
+
+`MeshViewport` also accepts an opt-in `automaticallyOrbits` flag (default false).
+The turntable uses elapsed time at Qt's half-degree/42ms rate and retains the
+current pan, pitch and zoom. The view binding pauses it for Reduce Motion,
+dragging, hidden/occluded/minimized windows, loss of key-window/application focus,
+missing/failed geometry, detachment and dismantling. Resuming starts a new timing
+interval; scheduler gaps over 250ms are discarded rather than caught up. A weakly
+owned cancellable driver prevents a timer from retaining a detached viewport.
+`AutomaticOrbitTests` covers timing, eligibility and scheduling without AppKit;
+viewport/store regressions cover detached lifetime and presentation-only state.
+See `docs/preview-rotation-verification.md` for the remaining physical acceptance.

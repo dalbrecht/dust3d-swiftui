@@ -158,6 +158,42 @@ import XCTest
         XCTAssertFalse(store.canUndo)
     }
 
+    func testAutomaticOrbitIsOptInWindowLocalAndPausesForEmptyOrFailedPreview() async throws {
+        let source = try cameraDocument()
+        let store = EditorStore()
+        let other = EditorStore()
+        defer {
+            store.stop()
+            other.stop()
+        }
+        XCTAssertFalse(store.automaticallyOrbitsPreview)
+        store.automaticallyOrbitsPreview = true
+        XCTAssertFalse(store.isPreviewAutomaticallyOrbiting)
+        await store.load(data: source.encoded())
+        try await settle(store)
+        let revision = store.previewRevision
+        let reset = store.cameraReset
+        XCTAssertTrue(store.isPreviewAutomaticallyOrbiting)
+        XCTAssertFalse(other.automaticallyOrbitsPreview)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+        XCTAssertEqual(store.previewRevision, revision)
+        XCTAssertEqual(store.cameraReset, reset)
+        store.renderError = "Renderer unavailable"
+        XCTAssertFalse(store.isPreviewAutomaticallyOrbiting)
+        store.renderError = nil
+        XCTAssertTrue(store.isPreviewAutomaticallyOrbiting)
+        store.setPartState("{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", property: .disabled, value: true)
+        try await settle(store)
+        XCTAssertFalse(store.isPreviewAutomaticallyOrbiting)
+        store.undo()
+        try await settle(store)
+        XCTAssertTrue(store.isPreviewAutomaticallyOrbiting)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        store.stop()
+        XCTAssertFalse(store.isPreviewAutomaticallyOrbiting)
+    }
+
     private func cameraDocument() throws -> Dust3DDocument {
         try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
             .addNode(
