@@ -1,4 +1,5 @@
 import XCTest
+import simd
 
 @testable import Dust3DEditorModel
 
@@ -24,7 +25,23 @@ final class EndpointIKTests: XCTestCase {
             return d.x * d.x + d.y * d.y + d.z * d.z
         }
         XCTAssertEqual(result[0], chain[0])
-        XCTAssertLessThan(distanceSquared(result[3], target), 0.002)
+        XCTAssertLessThan(distanceSquared(result[3], target), distanceSquared(chain[3], target))
+        // Directly rotate every suffix, matching the four Qt sweeps on this nondegenerate fixture.
+        var oracle = chain
+        let end = oracle.count - 1
+        for _ in 0..<4 {
+            for joint in (0..<end).reversed() {
+                let pivot = oracle[joint]
+                let rotation = simd_quatd(
+                    from: simd_normalize(oracle[end] - pivot), to: simd_normalize(target - pivot))
+                for child in (joint + 1)...end {
+                    oracle[child] = pivot + rotation.act(oracle[child] - pivot)
+                }
+            }
+        }
+        for (actual, expected) in zip(result, oracle) {
+            XCTAssertLessThan(simd_length(actual - expected), 1e-12)
+        }
         for i in 1..<chain.count {
             XCTAssertEqual(
                 distanceSquared(result[i], result[i - 1]),
