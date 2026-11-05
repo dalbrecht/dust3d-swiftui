@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Replay document construction in a separate window with adjustable speed and a textured 3D preview.
+
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
 
 - Add shared Weights From editing across selected wrapping groups with common target eligibility, exact retained references and one atomic Undo.

@@ -20,7 +20,6 @@ final class ArchiveSourceTextureBakingTests: XCTestCase {
         XCTAssertEqual(source.encoded(), archive)
     }
 
-
     func testPreservesLargeCutoffMetadataFromRealArchiveThroughReviewedCoreAndSwiftCopies() async throws {
         let original = try fixture("ImportedSurface")
         let field = Data("\"alphaCutoff\":0.375".utf8)

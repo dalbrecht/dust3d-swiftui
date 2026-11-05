@@ -137,7 +137,11 @@ struct WorkflowReplayView: View {
                             case .referenceImage: Text("Set Reference Image")
                             case .property(let property): Text("Set \(property.title)").lineLimit(2)
                             case .createGroup(_, let name):
-                                if name.isEmpty { Text("Create Group") } else { Text("Create Group: \(name)").lineLimit(2) }
+                                if name.isEmpty {
+                                    Text("Create Group")
+                                } else {
+                                    Text("Create Group: \(name)").lineLimit(2)
+                                }
                             case .movePart(_, let groupName):
                                 if groupName.isEmpty {
                                     Text("Move Part into Group")
@@ -191,7 +195,8 @@ struct WorkflowReplayView: View {
                     } maximumValueLabel: {
                         Text("Faster")
                     }
-                    .accessibilityValue(Text("\(seconds, format: .number.precision(.fractionLength(2))) seconds per step"))
+                    .accessibilityValue(
+                        Text("\(seconds, format: .number.precision(.fractionLength(2))) seconds per step"))
                 }
                 .padding()
             } else if let failure {
@@ -279,7 +284,8 @@ struct WorkflowReplayView: View {
             if let mesh, let meshStep {
                 MeshViewport(
                     mesh: mesh, isWireframe: false, cameraReset: 0, meshRevision: meshStep,
-                    materials: materials, onMaterialError: { message in
+                    materials: materials,
+                    onMaterialError: { message in
                         if requestedMeshStep == meshStep { meshFailure = message }
                     }
                 ) { message in
