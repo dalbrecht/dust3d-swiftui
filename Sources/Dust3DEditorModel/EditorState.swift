@@ -68,6 +68,8 @@ public struct EditorSnapshot: Sendable {
     public let selectedID: String?
     public let selectedIDs: Set<String>
     public let selectedEdgeID: String?
+    /// Validated by the editing session before the snapshot reaches the UI.
+    public let canInsertSelectedEdgeMidpoint: Bool
     public let selectedPartID: String?
     public let canUndo: Bool
     public let canRedo: Bool
@@ -116,11 +118,6 @@ public struct EditorSnapshot: Sendable {
     public var canEditSelectedEdge: Bool {
         guard let selectedEdgeID else { return false }
         return editableEdges.contains { $0.id == selectedEdgeID }
-    }
-    /// Midpoint insertion also requires a non-loop edge with consistent part ownership.
-    public var canInsertSelectedEdgeMidpoint: Bool {
-        guard canEditSelectedEdge, let selectedEdgeID else { return false }
-        return document.canInsertEdgeMidpoint(id: selectedEdgeID)
     }
     /// Copy can include read-only nodes, but every copied node must belong to a part.
     public var canCopyNodes: Bool {
@@ -226,6 +223,8 @@ public struct EditorState: Sendable {
             selectedComponentIDs: selectedComponentIDs,
             origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
+            canInsertSelectedEdgeMidpoint: selectedEdgeID.map { history.document.canInsertEdgeMidpoint(id: $0) }
+                ?? false,
             selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
