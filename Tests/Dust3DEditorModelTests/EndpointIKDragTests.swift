@@ -31,8 +31,8 @@ final class EndpointIKDragTests: XCTestCase {
         let projection = CanvasProjection(bounds: .init(nodes: initial.nodes), plane: .front, width: 400, height: 400)
         XCTAssertNil(EndpointIKDrag(endpointID: "root", snapshot: initial, projection: projection))
         XCTAssertNil(EndpointIKDrag(endpointID: "joint", snapshot: initial, projection: projection))
-        let drag = try XCTUnwrap(EndpointIKDrag(endpointID: "tip", snapshot: initial, projection: projection))
-        let result = try await session.commitEndpointIKDrag(drag, translation: .init(x: -30, y: -60))
+        let drag = try CanvasShiftDrag(anchorID: "tip", snapshot: initial, projection: projection)
+        let result = try await session.commitCanvasShiftDrag(drag, translation: .init(x: -30, y: -60))
         XCTAssertEqual(result.selectedID, "tip")
         let old = Dictionary(uniqueKeysWithValues: initial.nodes.map { ($0.id, $0.value) })
         let new = Dictionary(uniqueKeysWithValues: result.nodes.map { ($0.id, $0.value) })
@@ -43,11 +43,30 @@ final class EndpointIKDragTests: XCTestCase {
             XCTAssertEqual(new[id]?.radius, old[id]?.radius)
         }
         do {
-            _ = try await session.commitEndpointIKDrag(drag, translation: .init(x: 0, y: 60))
+            _ = try await session.commitCanvasShiftDrag(drag, translation: .init(x: 0, y: 60))
             XCTFail("A committed gesture must become stale")
         } catch { XCTAssertEqual(error as? EditorError, .staleNodeDrag) }
         let undone = try await session.undo()
         XCTAssertEqual(undone.document.encoded(), original.encoded())
         XCTAssertFalse(undone.canUndo)
     }
+
+    func testMultipleSelectionUsesRotationAndDoesNotMoveTheRestOfTheChain() async throws {
+        let original = try archive()
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let initial = try await session.selectGraph(nodes: ["joint", "tip"], edges: [])
+        let projection = CanvasProjection(bounds: .init(nodes: initial.nodes), plane: .front, width: 400, height: 400)
+        let drag = try CanvasShiftDrag(anchorID: "tip", snapshot: initial, projection: projection)
+        XCTAssertTrue(try drag.updates(by: .init(x: 0, y: 60)).isEmpty)
+        let result = try await session.commitCanvasShiftDrag(drag, translation: .init(x: 90, y: 60))
+        let joint = try result.document.node(id: "joint").position
+        let tip = try result.document.node(id: "tip").position
+        XCTAssertEqual(joint, .init(x: 1.5, y: -0.5, z: 0.25))
+        XCTAssertEqual(tip, .init(x: 1.5, y: 0.5, z: 0.5))
+        XCTAssertEqual(try result.document.node(id: "root"), try original.node(id: "root"))
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), original.encoded())
+    }
+
 }
