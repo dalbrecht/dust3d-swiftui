@@ -47,6 +47,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
         view.cancelActivation()
         view.enabled = false
+        view.precisionKey = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         if !enabled { view.cancelActivation() }
@@ -178,7 +179,8 @@ final class CanvasPointerView: NSView {
         if isAddingNodes { cancelInput() }
     }
     override func keyDown(with event: NSEvent) {
-        if enabled, start == nil, !hasMarquee, superview != nil, let window, window.firstResponder === self,
+        // The captured precision handler admits keyboard edits independently of pointer picking.
+        if start == nil, !hasMarquee, superview != nil, let window, window.firstResponder === self,
             precisionKey?(CanvasPrecisionKeyInput(event)) == true
         {
             return
