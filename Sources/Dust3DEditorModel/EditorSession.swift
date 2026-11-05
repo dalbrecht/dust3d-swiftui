@@ -363,6 +363,11 @@ public actor EditorSession {
             try Task.checkCancellation()
         }
     }
+    public func placeComponents(
+        in parent: ComponentParent, target: ComponentPlacementTarget
+    ) throws -> EditorSnapshot {
+        try placeComponents(at: .into(parentID: parent.componentID), target: target)
+    }
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
