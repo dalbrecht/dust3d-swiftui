@@ -643,7 +643,7 @@ public struct EditorState: Sendable {
         let removed = Set(snapshot.selectedNodes.filter(\.isEditable).map(\.id))
         let edges = snapshot.selectedEdges.filter { !removed.contains($0.fromID) && !removed.contains($0.toID) }
         let edgeIDs = Set(edges.map(\.id))
-        var commands = GraphSelectionOrder.sorted(edgeIDs).map { DocumentCommand.removeEdge(id: $0) }
+        var commands: [DocumentCommand] = edgeIDs.isEmpty ? [] : [.removeEdges(GraphSelectionOrder.sorted(edgeIDs))]
         if !removed.isEmpty { commands.append(.removeNodes(GraphSelectionOrder.sorted(removed))) }
         return commands
     }
