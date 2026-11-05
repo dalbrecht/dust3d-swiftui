@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preview a new node and adjust its radius before placing it on the canvas in Add mode.
+
 - Adjust selected node radii using keyboard commands or the canvas wheel, with one-step Undo.
 
 - Select nodes and edges together, with explicit graph editing modes and one-step batch midpoint insertion.
