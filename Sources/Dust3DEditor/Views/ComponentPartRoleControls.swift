@@ -6,7 +6,7 @@ import SwiftUI
 struct ComponentPartRoleMenu: View {
     let store: EditorStore
     var body: some View {
-        let appliedRole = store.snapshot.flatMap(Self.appliedRole)
+        let appliedRole = store.snapshot?.selectedComponentPartRole
         Menu("Part Role") {
             ForEach(PartTarget.allCases, id: \.self) { role in
                 let apply = store.componentPartRoleAction(role)
@@ -25,16 +25,6 @@ struct ComponentPartRoleMenu: View {
         .help(
             "Assign roles to directly selected part rows. Multiple stitching siblings share a group and one undo step.")
     }
-    static func appliedRole(_ snapshot: EditorSnapshot) -> PartTarget? {
-        let ids = Set(snapshot.selectedComponentRows.compactMap { $0.component.partID })
-        guard !ids.isEmpty else { return nil }
-        let parts = snapshot.parts.filter { ids.contains($0.id) }
-        guard parts.count == ids.count, let first = parts.first?.target,
-            parts.allSatisfy({ $0.target == first })
-        else { return nil }
-        return first
-    }
-
     private func title(_ role: PartTarget) -> String {
         switch role {
         case .model: return "Model"

@@ -20,3 +20,17 @@ extension EditorSnapshot {
             componentIDs: selectedComponentIDs.sorted(), target: target)
     }
 }
+
+extension EditorSnapshot {
+    /// The shared role of directly linked selected parts, with groups contributing no descendants.
+    public var selectedComponentPartRole: PartTarget? {
+        let ids = Set(selectedComponentRows.compactMap { $0.component.partID })
+        guard !ids.isEmpty else { return nil }
+        let parts = self.parts.filter { ids.contains($0.id) }
+        guard parts.count == ids.count, let first = parts.first?.target,
+            parts.allSatisfy({ $0.target == first })
+        else { return nil }
+        return first
+    }
+
+}
