@@ -2,6 +2,8 @@ import Foundation
 
 /// One explicit field replacement across selected groups, without changing their other settings.
 public enum ComponentWrappingEdit: Sendable {
+    /// Replace body-weight references using one common owner/descendant exclusion plan.
+    case binding(ComponentWrapBindingChoice)
     case mode(ComponentWrapMode)
     case scalar(ComponentWrappingScalarProperty, Double)
     case keepChildren(Bool)
@@ -34,6 +36,10 @@ enum ComponentWrappingBatch {
             guard let row = indexed[id] else { throw DocumentError.missingComponent(id) }
             guard row.isGroup else { throw DocumentError.invalidComponentWrapping }
         }
+        if case .binding(let choice) = edit {
+            let plan = try ComponentWrapBindingPlan(components: components, ownerIDs: selected)
+            guard plan.allows(choice) else { throw DocumentError.invalidComponentWrapBinding }
+        }
         let elements = PartSplitting.componentElements(model)
         var updates: [(XMLElement, String, String?)] = []
         for element in elements {
@@ -42,6 +48,10 @@ enum ComponentWrappingBatch {
             let name: String
             let replacement: String?
             switch edit {
+            case .binding(let choice):
+                guard !ComponentWrapBindingXML.isUnchanged(current.binding, choice: choice) else { continue }
+                name = "wrapBindTo"
+                replacement = ComponentWrapBindingXML.targetID(for: choice)
             case .mode(let mode):
                 guard current.mode != mode else { continue }
                 name = "wrap"
