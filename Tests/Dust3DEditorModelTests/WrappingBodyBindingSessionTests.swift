@@ -97,4 +97,18 @@ import XCTest
         XCTAssertEqual(final.document.encoded(), document.encoded())
         XCTAssertTrue(final.canRedo)
     }
+    func testBindingTargetRejectsDanglingAliasSelection() throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts/><components><component id='cafe&#769;' wrap='Cloth'/><component id='body'/></components></canvas>"
+                    .utf8))
+        var state = try EditorState(document: document)
+        try state.selectComponent("caf\u{e9}")
+        let target = ComponentWrapBindingTarget(snapshot: state.snapshot)
+        XCTAssertFalse(target.isCurrent(in: state.snapshot))
+        XCTAssertThrowsError(try state.editComponentWrapBinding(.group("body"), target: target))
+        XCTAssertEqual(state.snapshot.document.encoded(), document.encoded())
+        XCTAssertFalse(state.snapshot.canUndo)
+    }
+
 }
