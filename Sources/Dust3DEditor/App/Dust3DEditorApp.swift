@@ -98,6 +98,10 @@ struct Dust3DEditorApp: App {
                     .disabled(store?.canAdjustRadiusInput != true)
                 Button("Increase Radius") { store?.adjustSelectionRadius(direction: 1) }
                     .disabled(store?.canAdjustRadiusInput != true)
+                CanvasRotationMenuButtons(
+                    store: store,
+                    animationFocus: isAnimationFocused == true,
+                    nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
                 DescendantRotationMenu(store: store)
                 Button("Reduce Selected Nodes") { store?.reduceSelectedNodes() }
                     .disabled(store?.canReduceSelectedNodes != true)

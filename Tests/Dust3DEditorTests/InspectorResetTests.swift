@@ -19,9 +19,13 @@ final class InspectorResetTests: XCTestCase {
         for _ in 0..<100 where store.snapshot?.selectedID != "a" {
             try await Task.sleep(for: .milliseconds(10))
         }
-        let node = try XCTUnwrap(store.snapshot?.selectedNode?.value)
+        let selected = try XCTUnwrap(store.snapshot?.selectedNode)
+        let node = selected.value
         let draft = InspectorNodeDraft()
-        let host = NSHostingView(rootView: NodeInspector(store: store, draft: draft).environment(EditorPasteboard()))
+        draft.reset(node)
+        // Scope the real native formatter test to the production numeric editor. Other
+        // inspector commands have independent text drafts and must not participate in Reset.
+        let host = NSHostingView(rootView: NodePropertyEditor(store: store, node: selected, draft: draft))
         let window = NSWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: 300, height: 800), styleMask: [.titled],
             backing: .buffered, defer: false)
@@ -34,9 +38,14 @@ final class InspectorResetTests: XCTestCase {
             host.layoutSubtreeIfNeeded()
         }
         XCTAssertEqual(fields(in: host).count, 4)
+        XCTAssertEqual(
+            Set(fields(in: host).map(\.stringValue)),
+            Set([node.position.x, node.position.y, node.position.z, node.radius].map { $0.formatted(.number) }))
         let expected = node.position.x.formatted(.number)
         for invalidText in ["", "oops"] {
-            let field = try XCTUnwrap(fields(in: host).first)
+            let matches = fields(in: host).filter { $0.stringValue == expected }
+            XCTAssertEqual(matches.count, 1, "The fixture's X draft is unique; view traversal order is irrelevant")
+            let field = try XCTUnwrap(matches.first)
             XCTAssertEqual(field.stringValue, expected)
             XCTAssertTrue(window.makeFirstResponder(field))
             let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
@@ -45,11 +54,11 @@ final class InspectorResetTests: XCTestCase {
             XCTAssertEqual(draft.x, 0.5)
             // Invoke the same Reset action as the button while a real native field holds invalid text.
             draft.reset(node)
-            for _ in 0..<100 where displayedText(in: host) != expected {
+            for _ in 0..<100 where displayedText(in: host, matching: expected) != expected {
                 try await Task.sleep(for: .milliseconds(10))
                 host.layoutSubtreeIfNeeded()
             }
-            XCTAssertEqual(displayedText(in: host), expected)
+            XCTAssertEqual(displayedText(in: host, matching: expected), expected)
         }
         XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
         XCTAssertFalse(store.snapshot?.canUndo ?? true)
@@ -57,8 +66,8 @@ final class InspectorResetTests: XCTestCase {
     }
 
     @MainActor
-    private func displayedText(in view: NSView) -> String? {
-        guard let field = fields(in: view).first else { return nil }
+    private func displayedText(in view: NSView, matching expected: String) -> String? {
+        guard let field = fields(in: view).first(where: { $0.stringValue == expected }) else { return nil }
         return field.currentEditor()?.string ?? field.stringValue
     }
 

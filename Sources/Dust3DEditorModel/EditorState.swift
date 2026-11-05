@@ -14,6 +14,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case notLoaded
     case readOnlyNode
     case invalidScale
+    case invalidRotation
     case invalidPivotSelection
     case unavailableOrigin
     case staleReferenceComposition

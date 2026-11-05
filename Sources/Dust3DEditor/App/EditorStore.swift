@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Dust3DDocument
 import Dust3DEditorModel
@@ -345,16 +346,23 @@ final class EditorStore {
     var errorMessage: String?
     var renderError: String?
     var bounds = CanvasBounds(nodes: [])
+    private var rotationInputContextID = UUID()
     var plane = EditingPlane.front {
         didSet {
             if plane != oldValue {
+                rotationInputContextID = UUID()
                 cancelAddMode()
                 cancelOriginDrag()
                 clearCanvasHover()
             }
         }
     }
-    private(set) var isMovingOrigin = false { didSet { if isMovingOrigin { clearCanvasHover() } } }
+    private(set) var isMovingOrigin = false {
+        didSet {
+            if isMovingOrigin != oldValue { rotationInputContextID = UUID() }
+            if isMovingOrigin { clearCanvasHover() }
+        }
+    }
     private(set) var originDragPosition: NodePosition?
     private var originDrag: OriginDrag?
     private var originDragToken: UUID?
@@ -1178,6 +1186,51 @@ final class EditorStore {
         let nodes = transform == .exchangeXZ ? snapshot.selectedNodes : snapshot.transformNodes
         return nodes.contains(where: \.isEditable)
     }
+    var canRotateCanvasSelection: Bool {
+        guard !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot,
+            snapshot.transformNodes.contains(where: \.isEditable)
+        else { return false }
+        return !locks.contains(.y) || !locks.contains(plane == .front ? .x : .z)
+    }
+    func canvasRotationAction(degrees: Double) -> @MainActor () -> Void {
+        let commit = canvasRotationHandler()
+        return { commit(degrees) }
+    }
+    var canvasRotationContext: CanvasRotationContext? {
+        snapshot.map {
+            CanvasRotationContext(
+                target: CanvasAdjustmentTarget(snapshot: $0), plane: plane,
+                inputEpoch: rotationInputContextID, addModeEpoch: addModeID)
+        }
+    }
+
+    /// Retain the rendered context while validating the displayed angle at submit.
+    func canvasRotationHandler() -> @MainActor (Double) -> Void {
+        let context = canvasRotationContext
+        return { [weak self] degrees in
+            guard let self, let context, self.canvasRotationContext == context else { return }
+            self.rotateCanvasSelection(degrees: degrees, target: context.target, plane: context.plane)
+        }
+    }
+    func rotateCanvasSelection(degrees: Double, target: CanvasAdjustmentTarget? = nil, plane: EditingPlane? = nil) {
+        guard canRotateCanvasSelection, let snapshot else { return }
+        let capturedTarget = target ?? CanvasAdjustmentTarget(snapshot: snapshot)
+        let capturedPlane = plane ?? self.plane
+        perform { try await $0.rotateSelection(degrees: degrees, plane: capturedPlane, target: capturedTarget) }
+    }
+    @discardableResult
+    func handleCanvasRotationInput(
+        characters: String, modifiers: NSEvent.ModifierFlags,
+        animationFocus: Bool, nativeTextFocus: Bool
+    ) -> Bool {
+        guard canRotateCanvasSelection,
+            let degrees = CanvasRotationInput.degrees(
+                characters: characters, modifiers: modifiers,
+                animationFocus: animationFocus, nativeTextFocus: nativeTextFocus)
+        else { return false }
+        rotateCanvasSelection(degrees: degrees)
+        return true
+    }
     var canRotateDescendants: Bool { !isWorking && snapshot?.canRotateDescendants == true }
     func rotateDescendants(_ rotation: DescendantRotation) { perform { try await $0.rotateDescendants(rotation) } }
     func transformSelection(_ transform: SelectionTransform) { perform { try await $0.transformSelection(transform) } }
@@ -1672,6 +1725,7 @@ final class EditorStore {
                 return
                     "Set a complete supported document origin first. Unlock position axes to initialize an unavailable origin."
             case .invalidPivotSelection: return "Select exactly one node as the rotation pivot."
+            case .invalidRotation: return "Enter a finite angle between −2147483647° and 2147483647°."
             case .invalidScale: return "Enter a finite, positive scale factor. Use 1 to keep the current size."
             }
         }

@@ -504,3 +504,24 @@ and contextual rows. It removes hidden/disabled/locked owned graph parts only wh
 no other component instance refers to them. One Undo restores the document; assets
 and incoming references remain preserved. This intentional management operation
 differs from ordinary graph editing locks. See ADR0142.
+
+### Fine-angle canvas rotation
+
+Canvas → Rotate Selection −1° / +1° and bare comma/period apply signed one-degree
+rotation in the active Front (X/Y) or Side (Z/Y) plane. Positive angles turn
+clockwise on the canvas. Text editing, animation focus, modifier chords, Add mode
+and Move Origin mode keep these shortcuts from editing graph positions. Node,
+edge and mixed-selection inspectors also provide labeled one-degree controls and
+a locale-aware Degrees field with Apply Angle. Invalid/incomplete text disables
+Apply rather than reusing an earlier numeric value. Return in the Degrees field
+submits the currently displayed valid draft through the same captured command;
+invalid text does not commit.
+
+Rotation includes explicit selected nodes and selected-edge endpoints once. A
+single effective pivot with a supported stored origin rotates its connected
+descendants; otherwise editable participants define the centroid. Native axis
+and part locks remain effective, unlike Qt's lock bypass. Controls capture the
+rendered plane/document/selection/constraints and reject stale callbacks after
+replacement, edits, lock changes or tool switches. Existing quarter-turn menus
+are unchanged. This slice covers punctuation, menu and explicit angle controls;
+Qt Shift-drag rotation and endpoint inverse kinematics remain separate work.

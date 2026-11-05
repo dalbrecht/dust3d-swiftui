@@ -56,31 +56,9 @@ struct NodeInspector: View {
                     .disabled(!store.canSelectWholePart(.node(node.id)))
                 SelectableNodeIdentifier(value: node.id)
                     .focusedValue(\.editorTextEditing, true)
-                Form {
-                    TextField("X", value: $draft.x, format: .number).accessibilityIdentifier("node-x")
-                        .disabled(store.locks.contains(.x))
-                    TextField("Y", value: $draft.y, format: .number).accessibilityIdentifier("node-y")
-                        .disabled(store.locks.contains(.y))
-                    TextField("Z", value: $draft.z, format: .number).accessibilityIdentifier("node-z")
-                        .disabled(store.locks.contains(.z))
-                    TextField("Radius", value: $draft.radius, format: .number).accessibilityIdentifier("node-radius")
-                        .disabled(store.locks.contains(.radius))
-                }
-                .id(draft.resetID)
-                .focusedValue(\.editorTextEditing, true)
-                .disabled(store.isWorking || !node.isEditable)
-                if !node.isEditable { Label("Locked, hidden or disabled part", systemImage: "lock").font(.caption) }
-                HStack {
-                    Button("Reset") { draft.reset(node.value) }
-                    Spacer()
-                    Button("Apply") {
-                        store.edit(
-                            id: node.id, position: .init(x: draft.x, y: draft.y, z: draft.z), radius: draft.radius)
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .disabled(store.isWorking || !node.isEditable)
+                NodePropertyEditor(store: store, node: node, draft: draft)
                 NodeRadiusAdjustmentControls(store: store)
+                CanvasRotationControls(store: store)
                 NodeReductionControls(store: store)
                 SelectionTransformMenu(store: store)
                 DescendantRotationMenu(store: store)
@@ -137,6 +115,7 @@ private struct GroupInspector: View {
             Text("\(editable) editable · \(selected.count - editable) read-only").font(.caption)
             SelectionTransformControls(store: store)
             NodeRadiusAdjustmentControls(store: store)
+            CanvasRotationControls(store: store)
             NodeReductionControls(store: store)
             SelectionTransformMenu(store: store)
             Button("Reverse Selected Edges") { store.reverseSelectedEdges() }
