@@ -119,8 +119,10 @@ final class ComponentUngroupSelectionTests: XCTestCase {
         let unavailable = ComponentUngroupTarget(snapshot: empty)
         let selected = try await session.selectComponents(["a"])
         XCTAssertFalse(unavailable.isCurrent(in: selected))
-        let task = Task { try await session.ungroupComponents(target: .init(snapshot: selected)) }
-        task.cancel()
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await session.ungroupComponents(target: .init(snapshot: selected))
+        }
         do {
             _ = try await task.value
             XCTFail("Cancelled")
