@@ -229,7 +229,7 @@ public enum DocumentCommand: Sendable {
     case setComponentPartRoles(componentIDs: [String], target: PartTarget, newGroupID: String?)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
-    /// Set one flag on a bounded set of parts and publish the result as one document edit.
+    /// Set one flag on bounded, literal UTF-8 part IDs and publish the result as one document edit.
     case setPartsState(ids: [String], property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
     /// Full raster decoding/validation belongs at the platform import boundary.
@@ -264,6 +264,11 @@ public enum DocumentCommand: Sendable {
     /// Remove explicitly empty editable parts and their references; retain nested content and all assets.
     case pruneEmptyParts([String])
     case removeEdge(id: String)
+    /// Remove one captured edge set atomically with one XML traversal and retained node identities.
+    /// - Parameter ids: At most 20,000 unique existing edges whose endpoints are editable.
+    /// - Throws: `invalidNode` for missing, duplicate or read-only edges; `limitExceeded` above the count bound.
+    /// - Example: `.removeEdges(["first", "second"])` is one undoable edit.
+    case removeEdges([String])
     case reverseEdges([String])
     case splitPart(id: String, identities: [PartSplitIdentity])
     case pasteNodes(
@@ -597,7 +602,7 @@ public struct Dust3DDocument: Sendable {
             .reorderComponent, .placeComponents,
             .groupComponents, .ungroupComponent, .ungroupComponents, .reparentComponent, .reparentComponents:
             contents = DocumentContents(nodes: [], edges: [])
-        default: contents = try Self.editorContents(model)
+        default: contents = try editorContents(in: model)
         }
         guard let root = model.rootElement() else { throw DocumentError.invalidXML }
         func container(_ name: String) -> XMLElement {
@@ -698,7 +703,13 @@ public struct Dust3DDocument: Sendable {
             guard try ComponentStructure.reparent(model, id: id, parentID: parentID) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .placeComponents(let ids, let placement):
-            guard try ComponentReordering.apply(model, ids: ids, placement: placement) else { return self }
+            if case .into(let parentID) = placement {
+                guard try ComponentReparentBatch.apply(model, ids: ids, parentID: parentID, appendBlock: true) else {
+                    return self
+                }
+            } else {
+                guard try ComponentReordering.apply(model, ids: ids, placement: placement) else { return self }
+            }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .reorderComponent(let id, let direction):
             guard try ComponentReordering.apply(model, id: id, direction: direction) else { return self }
@@ -711,6 +722,10 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentCombineMode(let id, let mode):
             guard try ComponentCombination.set(model, id: id, mode: mode) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentColors(let updates):
+            guard try ComponentColorValue.set(model, updates: updates) else { return self }
+            try Task.checkCancellation()
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentColorImage(let id, let imageID):
             let element = try ComponentColorImageValue.element(model, id: id)
@@ -730,10 +745,6 @@ public struct Dust3DDocument: Sendable {
                 .setComponentColorImage(id: id, imageID: imageID))
         case .setComponentColor(let id, let color):
             guard try ComponentColorValue.set(model, id: id, color: color) else { return self }
-            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
-        case .setComponentColors(let updates):
-            guard try ComponentColorValue.set(model, updates: updates) else { return self }
-            try Task.checkCancellation()
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }
@@ -847,16 +858,19 @@ public struct Dust3DDocument: Sendable {
             else { throw DocumentError.missingPart(id) }
             guard setPartFlag(part, current: current, property: property, value: value) else { return self }
         case .setPartsState(let ids, let property, let value):
-            let current = Dictionary(contents.parts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            let current = Dictionary(
+                contents.parts.map { (Data($0.id.utf8), $0) }, uniquingKeysWith: { first, _ in first })
             let elements = Dictionary(
                 (root.elements(forName: "parts").first?.elements(forName: "part") ?? []).compactMap { part in
-                    part.attribute(forName: "id")?.stringValue.map { ($0, part) }
+                    part.attribute(forName: "id")?.stringValue.map { (Data($0.utf8), part) }
                 }, uniquingKeysWith: { first, _ in first })
             var changed = false
-            var seen = Set<String>()
-            for id in ids where seen.insert(id).inserted {
+            var seen = Set<Data>()
+            for id in ids where seen.insert(Data(id.utf8)).inserted {
                 try Task.checkCancellation()
-                guard let part = elements[id], let metadata = current[id] else { throw DocumentError.missingPart(id) }
+                guard let part = elements[Data(id.utf8)], let metadata = current[Data(id.utf8)] else {
+                    throw DocumentError.missingPart(id)
+                }
                 if setPartFlag(part, current: metadata, property: property, value: value) { changed = true }
             }
             guard changed else { return self }
@@ -946,10 +960,9 @@ public struct Dust3DDocument: Sendable {
             if ids.isEmpty { return self }
             try EmptyPartCleanup.apply(ids, model: model, contents: contents)
         case .removeEdge(let id):
-            guard let edge = contents.edges.first(where: { $0.id == id }) else { throw DocumentError.invalidNode }
-            _ = try editable(edge.fromID)
-            _ = try editable(edge.toID)
-            edgeElements().first(where: { $0.attribute(forName: "id")?.stringValue == id })?.detach()
+            _ = try EdgeRemoval.apply([id], model: model, contents: contents)
+        case .removeEdges(let ids):
+            guard try EdgeRemoval.apply(ids, model: model, contents: contents) else { return self }
         case .reverseEdges(let ids):
             if ids.isEmpty { return self }
             let edges = Dictionary(uniqueKeysWithValues: contents.edges.map { ($0.id, $0) })
@@ -1559,11 +1572,10 @@ public struct Dust3DDocument: Sendable {
 
     /// Inspect the editable graph once, retaining source ordering and stable IDs.
     public func editorContents() throws -> DocumentContents {
-        try Self.editorContents(Self.xml(modelXML, root: "canvas"))
+        try editorContents(in: Self.xml(modelXML, root: "canvas"))
     }
 
-    /// Reuse a command's already parsed XML while retaining the public graph validation semantics.
-    private static func editorContents(_ xml: XMLDocument) throws -> DocumentContents {
+    private func editorContents(in xml: XMLDocument) throws -> DocumentContents {
         let partContainers = xml.rootElement()?.elements(forName: "parts") ?? []
         let edgeContainers = xml.rootElement()?.elements(forName: "edges") ?? []
         guard partContainers.count <= 1, edgeContainers.count <= 1 else { throw DocumentError.invalidNode }

@@ -37,6 +37,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let rectangle: (CanvasSelectionRectangle?) -> Void
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
@@ -57,6 +58,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.rectangle = rectangle
         view.hover = hover
         view.wheel = wheel
+        view.radiusKey = radiusKey
         view.doubleClick = doubleClick
         view.precisionKey = precisionKey
         if view.isAddingNodes != isAddingNodes { view.cancelActivation() }
@@ -73,6 +75,7 @@ final class CanvasPointerView: NSView {
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
@@ -178,6 +181,12 @@ final class CanvasPointerView: NSView {
         invalidate()
         if isAddingNodes { cancelInput() }
     }
+    func routeRadiusKey(_ event: NSEvent) -> Bool {
+        guard enabled, start == nil, window?.firstResponder === self,
+            let direction = CanvasRadiusKey.direction(for: event)
+        else { return false }
+        return radiusKey(direction)
+    }
     override func keyDown(with event: NSEvent) {
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if start == nil, !hasMarquee, superview != nil, let window, window.firstResponder === self,
@@ -185,6 +194,7 @@ final class CanvasPointerView: NSView {
         {
             return
         }
+        if routeRadiusKey(event) { return }
         if event.keyCode == 53, start != nil || isAddingNodes {
             invalidate()
             if isAddingNodes { cancelInput() }
