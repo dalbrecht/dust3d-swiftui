@@ -20,7 +20,7 @@ final class GeometryExportRenderingTests: XCTestCase {
             format: .fbx, byteCount: 5144, warning: "Textures omitted")
         let host = NSHostingView(
             rootView: EditorGeometryExportStatusView(
-                phase: .completed(receipt), onCancel: {}, onDismiss: {}))
+                phase: .completed(receipt), onCancel: {}, onDismiss: {}, onReveal: { _ in }))
         let window = NSWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: 640, height: 100),
             styleMask: [.titled], backing: .buffered, defer: false)
@@ -38,7 +38,8 @@ final class GeometryExportRenderingTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(10))
         }
         XCTAssertTrue(strings().contains(where: { $0.contains("Geometry only") }))
-        host.rootView = EditorGeometryExportStatusView(phase: .completed(secondReceipt), onCancel: {}, onDismiss: {})
+        host.rootView = EditorGeometryExportStatusView(
+            phase: .completed(secondReceipt), onCancel: {}, onDismiss: {}, onReveal: { _ in })
         for _ in 0..<100 where !strings().contains(where: { $0.contains("Textures omitted") }) {
             try await Task.sleep(for: .milliseconds(10))
         }
@@ -54,6 +55,15 @@ final class GeometryExportRenderingTests: XCTestCase {
         let own = [element.accessibilityLabel(), element.accessibilityValue() as? String].compactMap { $0 }
         let children = (element.accessibilityChildren() ?? []) + ((object as? NSView)?.subviews ?? [])
         return own + children.flatMap { accessibilityStrings($0, visited: &visited) }
+    }
+
+    func testFailedExportProvidesAnAccessibilityAnnouncement() {
+        let view = EditorGeometryExportStatusView(
+            phase: .failed(DocumentExportError.sourceAlias), onCancel: {}, onDismiss: {}, onReveal: { _ in })
+
+        XCTAssertEqual(
+            view.statusAnnouncement,
+            "Export failed. Choose an export destination separate from the source document.")
     }
 
     func testActualFormatMenuAndStatusesRenderOffscreenWithoutPublishing() throws {
@@ -73,7 +83,8 @@ final class GeometryExportRenderingTests: XCTestCase {
                     EditorGeometryExportMenu(
                         canExport: (name == "ready" || name == "completed"), onExport: { _ in publications += 1 })
                     EditorGeometryExportStatusView(
-                        phase: phase, format: .fbx, onCancel: {}, onDismiss: {})
+                        phase: phase, format: .fbx, onCancel: {}, onDismiss: {},
+                        onReveal: { _ in publications += 1 })
                 }
                 let png = try InspectorRenderer.png(view, width: 640, scheme: scheme)
                 XCTAssertGreaterThan(png.count, 100)
