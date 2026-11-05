@@ -42,6 +42,31 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         }
         XCTFail("Store did not settle")
     }
+    func testDanglingPartAliasCannotEnableOrPublishComponentStateActions() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts><part id='cafe&#769;'/></parts><components><component id='dangling' linkDataType='partId' linkData='caf&#233;'/></components></canvas>"
+                    .utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectComponent("dangling")
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        let target = ComponentMeshSelectionTarget(snapshot: before)
+        XCTAssertTrue(target.isCurrent(in: before))
+        XCTAssertTrue(value.selectedParts(for: target).isEmpty)
+        let message = value.errorMessage
+        value.setSelectedComponentPartState(.locked, value: true, target: target)
+        XCTAssertFalse(value.isWorking)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertEqual(value.snapshot?.previewIdentity, before.previewIdentity)
+        XCTAssertEqual(value.errorMessage, message)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testCombineCurrentStatusAndAccessibilityKeepFullUnsupportedValueAndSelectionCount() {
         XCTAssertEqual(
             ComponentMeshFieldPresentation.title(

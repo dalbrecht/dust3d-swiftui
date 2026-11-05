@@ -128,4 +128,29 @@ final class ComponentSurfaceDetailsTests: XCTestCase {
         XCTAssertEqual(limited.document.encoded(), opaque.encoded())
     }
 
+    func testSurfaceCommandsRequireLiteralComponentIDs() throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts/><components><component id='cafe&#769;' wrap='Cloth'/></components></canvas>"
+                    .utf8))
+        let alias = "caf\u{e9}"
+        let actual = "cafe\u{301}"
+        let commands: [DocumentCommand] = [
+            .setComponentSurfacePattern(id: alias, pattern: .spots),
+            .setComponentSurfaceScalar(id: alias, property: .wrinkles, value: 0.5),
+            .setComponentSurfaceColor(id: alias, color: .init(red: 1, green: 2, blue: 3)),
+        ]
+        for command in commands {
+            var history = DocumentHistory(document: source)
+            XCTAssertThrowsError(try history.apply(command))
+            XCTAssertEqual(history.document.encoded(), source.encoded())
+            XCTAssertFalse(history.canUndo)
+        }
+        var history = DocumentHistory(document: source)
+        try history.apply(.setComponentSurfacePattern(id: actual, pattern: .spots))
+        XCTAssertEqual(try details(history.document).pattern, .spots)
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), source.encoded())
+    }
+
 }
