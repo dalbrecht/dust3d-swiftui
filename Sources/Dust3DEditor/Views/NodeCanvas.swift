@@ -20,6 +20,8 @@ struct NodeCanvas: View {
             let referenceCanvas = ReferenceColorCanvasIdentity(
                 projection: projection, width: geometry.size.width, height: geometry.size.height)
             let colorizeActions = GraphColorizeActions(store: store)
+            let precisionKey = store.canvasPrecisionKeyHandler()
+            let precisionActions = CanvasPrecisionActions(store: store)
             let nodes = store.snapshot?.nodes ?? []
             let addModeID = store.addModeID
             let shiftContext = store.canvasRotationContext
@@ -67,7 +69,7 @@ struct NodeCanvas: View {
                         else { return }
                         store.selectWholePart(at: point, projection: projection, context: partContext)
                     },
-                    isAddingNodes: store.isAddingNodes,
+                    precisionKey: precisionKey, isAddingNodes: store.isAddingNodes,
                     addPress: { store.placeAddNode(at: $0, modeID: addModeID) },
                     cancelInput: { if store.addModeID == addModeID { store.cancelAddMode() } }
                 )
@@ -124,7 +126,8 @@ struct NodeCanvas: View {
                         enabled: store.canPickGraph && !store.isMovingOrigin && !store.isAddingNodes,
                         canDrag: !store.isWorking && node.isEditable,
                         canSelectWholePart: store.canSelectWholePart(.node(node.id)),
-                        colorizeActions: colorizeActions,
+                        colorizeActions: colorizeActions, precisionKey: precisionKey,
+                        precisionActions: precisionActions,
                         doubleClick: {
                             guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
                                 return
@@ -250,7 +253,10 @@ struct NodeCanvas: View {
                 store.clearCanvasHover()
                 marquee = nil
             }
-            .contextMenu { GraphColorizeMenu(actions: colorizeActions) }
+            .contextMenu {
+                GraphColorizeMenu(actions: colorizeActions)
+                CanvasPrecisionMenu(actions: precisionActions)
+            }
             .coordinateSpace(name: "node-canvas")
             .clipped()
             .onChange(of: store.isMovingOrigin) { _, _ in
@@ -317,6 +323,8 @@ private struct NodeHandle: View {
     let canDrag: Bool
     let canSelectWholePart: Bool
     let colorizeActions: GraphColorizeActions
+    let precisionKey: (CanvasPrecisionKeyInput) -> Bool
+    let precisionActions: CanvasPrecisionActions
     let doubleClick: () -> Void
     let select: () -> Void
     let toggle: () -> Void
@@ -343,6 +351,7 @@ private struct NodeHandle: View {
                 enabled: enabled, canDrag: canDrag, begin: begin, update: update, finish: finish,
                 cancel: cancel,
                 select: select, toggle: toggle, add: add, wheel: wheel, doubleClick: doubleClick,
+                precisionKey: precisionKey,
                 beginShiftDrag: beginShiftDrag
             ).frame(width: 36, height: 36)
         }
@@ -357,6 +366,7 @@ private struct NodeHandle: View {
         .contextMenu {
             Button("Select Whole Part", action: doubleClick).disabled(!canSelectWholePart)
             GraphColorizeMenu(actions: colorizeActions)
+            CanvasPrecisionMenu(actions: precisionActions)
         }
         .help(
             "\(node.title) · \(node.isEditable ? "Drag to move, Shift-drag to rotate or bend" : "Locked, hidden or disabled part")"

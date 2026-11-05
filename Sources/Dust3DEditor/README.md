@@ -590,3 +590,7 @@ modes. Mixed real references remain explicit; absent and empty references share 
 Own Children display while retaining their original bytes until an actual change.
 Current-source disclosure and accessible values disambiguate duplicate names with exact
 IDs. See ADR0141 for validation boundaries and per-garment ownership proof requirements.
+
+### Precision canvas input
+
+With the canvas, a node, or the origin marker focused, bare arrows nudge by one logical canvas unit (1/H document units) in the current Front or Side plane. When Move Origin is checked, arrows move the origin instead. Brackets change selected-node spacing uniformly in three dimensions by 1±10/H, retaining radii; spacing remains available with Move Origin checked. Add mode declines both. The Nudge and Spacing disclosure and native menus expose the same actions without taking sidebar arrow navigation or text input. Accepted input captures height and context before asynchronous actor work. Existing readonly/axis locks apply. Native hosted tests cover focus and cancellation; physical input and VoiceOver remain manual checks.

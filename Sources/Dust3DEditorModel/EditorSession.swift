@@ -434,8 +434,27 @@ public actor EditorSession {
     public func centerOriginOnModel() throws -> EditorSnapshot {
         try update { try $0.centerOriginOnModel() }
     }
-    public func moveSelection(by delta: NodePosition) throws -> EditorSnapshot {
-        try update { try $0.moveSelection(by: delta) }
+    public func moveSelection(by delta: NodePosition, target: CanvasAdjustmentTarget? = nil) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: target != nil) {
+            try $0.moveSelection(by: delta, target: target)
+        }.snapshot
+    }
+    /// Nudge a supported origin with the current native axis locks in one atomic history step.
+    /// - Parameters: Converted finite delta and optional pre-await interaction target.
+    /// - Returns: Current snapshot; a constrained no-op preserves redo/preview identity.
+    /// - Throws: Load, cancellation, stale target, unavailable origin or bounded geometry errors.
+    public func nudgeOrigin(by delta: NodePosition, target: CanvasAdjustmentTarget? = nil) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { try $0.nudgeOrigin(by: delta, target: target) }
+            .snapshot
+    }
+    /// Apply a signed position-only centroid factor; zero/negative values match Qt's small-height spacing math.
+    /// - Returns: One undoable snapshot, retaining selection and radii.
+    /// - Throws: Load, cancellation, stale target, nonfinite factor or bounded geometry errors atomically.
+    public func scaleSelectionPositions(factor: Double, target: CanvasAdjustmentTarget? = nil) throws -> EditorSnapshot
+    {
+        try updateWithResult(checkCancellationBeforePublication: true) {
+            try $0.scaleSelectionPositions(factor: factor, target: target)
+        }.snapshot
     }
     /// Scale the effective graph selection; an optional captured target rejects queued inputs from stale windows/epochs.
     public func scaleSelection(positionFactor: Double, radiusFactor: Double, target: CanvasAdjustmentTarget? = nil)
