@@ -126,7 +126,7 @@ struct NodeCanvas: View {
                         selected: store.snapshot?.selectedIDs.contains(node.id) == true,
                         enabled: store.canPickGraph && !store.isMovingOrigin && !store.isAddingNodes,
                         canDrag: !store.isWorking && node.isEditable,
-                        canSelectWholePart: store.canSelectWholePart(.node(node.id)),
+                        canSelectWholePart: store.canPickGraph && node.partID != nil,
                         colorizeActions: colorizeActions, precisionKey: precisionKey,
                         precisionActions: precisionActions,
                         doubleClick: {
