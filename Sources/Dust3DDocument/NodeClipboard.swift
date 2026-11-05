@@ -173,6 +173,11 @@ enum NodeClipboardMutation {
             sourceRoot.elements(forName: "parts").first?.elements(forName: "part").compactMap {
                 $0.attribute(forName: "id")?.stringValue
             } ?? [])
+        // Qt's binding map uses Uuid identities: brace aliases match, while case and opaque text stay exact.
+        let bindingIdentities = Dictionary(
+            uniqueKeysWithValues: identities.map {
+                (CutFaceLinks.canonicalID($0.key) ?? $0.key, $0.value)
+            })
         for element in semanticElements(fragment) {
             let name = element.name
             let originalID = element.attribute(forName: "id")?.stringValue ?? ""
@@ -201,6 +206,12 @@ enum NodeClipboardMutation {
             if name == "component", element.attribute(forName: "linkDataType")?.stringValue == "partId",
                 let attribute = element.attribute(forName: "linkData"), let value = attribute.stringValue,
                 let replacement = identities[value]
+            {
+                attribute.stringValue = replacement
+            }
+            if name == "component", let attribute = element.attribute(forName: "wrapBindTo"),
+                let value = attribute.stringValue,
+                let replacement = bindingIdentities[CutFaceLinks.canonicalID(value) ?? value]
             {
                 attribute.stringValue = replacement
             }

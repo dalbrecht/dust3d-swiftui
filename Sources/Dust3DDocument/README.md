@@ -318,3 +318,5 @@ their last-referenced known parts, nodes and owned/incident edges. Opaque links,
 incoming cutFace/wrapBindTo text and all assets remain untouched. Structural IDs
 are matched as exact UTF-8; every raw requested ID is validated before deduplication.
 This management action ignores canvas graph locks. See ADR0142.
+
+Clipboard paste retargets a component's `wrapBindTo` through the copied identity map once, including equivalent UUID brace spellings without case folding. A body not included in the fragment remains an exact external reference, including opaque or missing targets; copying does not expand graph selection to import it. Other wrapping metadata and assets remain untouched. This does not add binding authoring or dependency-cycle validation; see ADR0136.
