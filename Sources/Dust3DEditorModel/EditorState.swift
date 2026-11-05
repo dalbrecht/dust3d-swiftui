@@ -71,6 +71,12 @@ public struct EditorSnapshot: Sendable {
     public let selectedEdgeIDs: Set<String>
     /// Compatibility accessor for exactly one explicit edge.
     public var selectedEdgeID: String? { selectedEdgeIDs.count == 1 ? selectedEdgeIDs.first : nil }
+    /// Full batch midpoint eligibility, including the aggregate graph quota.
+    public let canInsertSelectedEdgeMidpoints: Bool
+    /// Compatibility accessor for a single editable edge.
+    public var canInsertSelectedEdgeMidpoint: Bool { selectedEdgeIDs.count == 1 && canInsertSelectedEdgeMidpoints }
+    /// Validated by the editing session for the current explicit node selection.
+    public let canReduceSelectedNodes: Bool
     public let selectedPartID: String?
     public let canUndo: Bool
     public let canRedo: Bool
@@ -104,10 +110,6 @@ public struct EditorSnapshot: Sendable {
     /// All explicit edges must have editable endpoints before a batch edge command can run.
     public var canEditSelectedEdges: Bool {
         !selectedEdgeIDs.isEmpty && selectedEdgeIDs.isSubset(of: Set(editableEdges.map(\.id)))
-    }
-    /// Full batch midpoint eligibility, including the aggregate graph quota.
-    public var canInsertSelectedEdgeMidpoints: Bool {
-        document.canInsertEdgeMidpoints(ids: Array(selectedEdgeIDs))
     }
     /// Combined delete consumes explicit picks; read-only nodes are skipped, read-only edges reject the batch.
     public var canDeleteSelection: Bool {
@@ -144,13 +146,6 @@ public struct EditorSnapshot: Sendable {
         guard let selectedEdgeID else { return false }
         return editableEdges.contains { $0.id == selectedEdgeID }
     }
-    /// Midpoint insertion also requires a non-loop edge with consistent part ownership.
-    public var canInsertSelectedEdgeMidpoint: Bool {
-        guard canEditSelectedEdge, let selectedEdgeID else { return false }
-        return document.canInsertEdgeMidpoint(id: selectedEdgeID)
-    }
-    /// Whether the full selection contains a reducible node in a valid editable graph.
-    public var canReduceSelectedNodes: Bool { document.canReduceNodes(Array(selectedIDs)) }
     /// Copy can include read-only nodes, but every copied node must belong to a part.
     public var canCopyNodes: Bool {
         let selected = selectedNodes
@@ -257,6 +252,9 @@ public struct EditorState: Sendable {
             selectedComponentIDs: selectedComponentIDs,
             origin: contents.origin,
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeIDs: selectedEdgeIDs,
+            canInsertSelectedEdgeMidpoints: !selectedEdgeIDs.isEmpty
+                && history.document.canInsertEdgeMidpoints(ids: Array(selectedEdgeIDs)),
+            canReduceSelectedNodes: !selectedIDs.isEmpty && history.document.canReduceNodes(Array(selectedIDs)),
             selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
