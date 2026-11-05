@@ -98,10 +98,10 @@ final class ComponentMeshSelectionTests: XCTestCase {
         let selected = try await session.selectComponents(["a", "b"])
         XCTAssertFalse(unavailable.isCurrent(in: selected))
         let task = Task {
-            try await session.editSelectedComponentMeshSettings(
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await session.editSelectedComponentMeshSettings(
                 .combineMode(.normal), target: .init(snapshot: selected))
         }
-        task.cancel()
         do {
             _ = try await task.value
             XCTFail("Cancelled edit")
