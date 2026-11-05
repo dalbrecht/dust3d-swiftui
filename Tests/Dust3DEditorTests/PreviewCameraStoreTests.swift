@@ -4,6 +4,7 @@ import XCTest
 
 @testable import Dust3DEditor
 @testable import Dust3DKit
+@testable import Dust3DRendering
 
 @MainActor final class PreviewCameraStoreTests: XCTestCase {
     func testCameraCommandsAreWindowLocalPresentationAndFitDoesNotChangeTheArchiveOrHistory() async throws {
@@ -127,6 +128,34 @@ import XCTest
         XCTAssertNil(store.previewCameraCommand)
         XCTAssertFalse(store.canUndo)
         XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+    }
+
+    func testPreviewAppearanceIsWindowLocalAndNeverChangesSourceHistoryOrCamera() async throws {
+        let source = try cameraDocument()
+        let store = EditorStore()
+        let other = EditorStore()
+        defer {
+            store.stop()
+            other.stop()
+        }
+        await store.load(data: source.encoded())
+        try await settle(store)
+        XCTAssertTrue(store.showsPreviewColor)
+        let previewRevision = store.previewRevision
+        let cameraReset = store.cameraReset
+        store.movePreviewCamera(.panLeft)
+        let command = store.previewCameraCommand?.id
+        store.showsPreviewColor = false
+        store.isWireframe = true
+        XCTAssertTrue(other.showsPreviewColor)
+        XCTAssertFalse(other.isWireframe)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+        XCTAssertEqual(store.previewRevision, previewRevision)
+        XCTAssertEqual(store.cameraReset, cameraReset)
+        XCTAssertEqual(store.previewCameraCommand?.id, command)
+        store.showsPreviewColor = true
+        XCTAssertFalse(store.canUndo)
     }
 
     private func cameraDocument() throws -> Dust3DDocument {

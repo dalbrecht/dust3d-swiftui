@@ -393,6 +393,40 @@ final class TexturedMetalRenderingTests: XCTestCase {
         XCTAssertGreaterThan(Int(original[center + 2]), Int(original[center]) + 50, "Base-only rendering remains red")
     }
 
+    func testNeutralColorPreservesSourceAlphaPoliciesAndRestoresEveryMaterialMap() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        for mode in [ImportedAlphaMode.opaque, .mask, .blend] {
+            for mapped in [false, true] {
+                for cutoff in [0.1, 0.9] {
+                    let baked = try BakedMetalFixture.quad(
+                        color: BakedMetalFixture.image([255, 0, 0, 128]),
+                        normal: BakedMetalFixture.image([255, 128, 128, 255]),
+                        metallic: BakedMetalFixture.image([255, 255, 255, 255]),
+                        roughness: BakedMetalFixture.image([32, 32, 32, 255]),
+                        emissive: BakedMetalFixture.image([255, 0, 0, 255]), mapped: mapped,
+                        layers: [.init(color: SIMD4(1, 0, 0, 0.5))])
+                    let source = BakedMetalFixture.source(
+                        baked, policy: .init(alphaMode: mode, alphaCutoff: cutoff, isDoubleSided: true))
+                    let owner = try await TexturedMetalResourcesBuilder().make(
+                        bakedMesh: source, device: device, camera: OrbitCamera(yaw: 0, pitch: 0, distance: 3))
+                    let renderer = TexturedMeshRenderer(resources: owner)
+                    let colored = try await pixels(renderer, device: device)
+                    renderer.showsColor = false
+                    let neutral = try await pixels(renderer, device: device)
+                    XCTAssertTrue(stride(from: 3, to: neutral.count, by: 4).allSatisfy { neutral[$0] == colored[$0] })
+                    if pixel(colored, x: 64, y: 64)[3] > 0 {
+                        XCTAssertFalse(colored == neutral)
+                        XCTAssertGreaterThan(pixel(neutral, x: 64, y: 64)[0], 10)
+                        XCTAssertGreaterThan(pixel(neutral, x: 64, y: 64)[1], 10)
+                    }
+                    renderer.showsColor = true
+                    let restored = try await pixels(renderer, device: device)
+                    XCTAssertTrue(restored == colored)
+                }
+            }
+        }
+    }
+
     private func render(_ mesh: MeshWithBakedTextures) async throws -> [UInt8] {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
         let owner = try await TexturedMetalResourcesBuilder().make(

@@ -241,6 +241,34 @@ final class ImportedMetalRenderingTests: XCTestCase {
         for channel in 0..<3 { XCTAssertEqual(pixel(minified)[channel], pixel(reference)[channel], accuracy: 2) }
     }
 
+    func testColorVisibilityPreservesMaskBlendAndSidednessWithoutReplacingMaterials() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        for mode in [ImportedAlphaMode.opaque, .mask, .blend] {
+            for cutoff in [0.1, 0.9] {
+                let data = try ImportedMetalFixture.quad(
+                    mode: mode, baseColor: SIMD4(1, 1, 1, 0.5), cutoff: cutoff,
+                    layers: [.init(rgba: [255, 0, 0, 128])])
+                let owner = try await ImportedMetalResourcesBuilder().make(
+                    data: data, device: device, camera: OrbitCamera(yaw: 0, pitch: 0, distance: 3))
+                let renderer = ImportedMeshRenderer(resources: owner)
+                let colored = try await pixels(renderer, device: device)
+                renderer.showsColor = false
+                let neutral = try await pixels(renderer, device: device)
+                XCTAssertEqual(
+                    stride(from: 3, to: neutral.count, by: 4).map { neutral[$0] },
+                    stride(from: 3, to: colored.count, by: 4).map { colored[$0] })
+                if pixel(colored)[3] > 0 {
+                    XCTAssertFalse(neutral == colored, "Disabling colors must change the rendered appearance")
+                    XCTAssertGreaterThan(pixel(neutral)[0], 10)
+                    XCTAssertGreaterThan(pixel(neutral)[1], 10)
+                }
+                renderer.showsColor = true
+                let restored = try await pixels(renderer, device: device)
+                XCTAssertEqual(restored, colored)
+            }
+        }
+    }
+
     private func pixel(_ bytes: [UInt8], x: Int = 64, y: Int = 64) -> [Int] {
         let offset = (y * 128 + x) * 4
         return bytes[offset..<offset + 4].map(Int.init)

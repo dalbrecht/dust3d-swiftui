@@ -25,6 +25,7 @@ extension MeshMaterialContent {
 public struct MeshViewport: NSViewRepresentable {
     let mesh: RenderMesh
     let isWireframe: Bool
+    let showsColor: Bool
     let cameraReset: Int
     let cameraCommand: MeshCameraCommand?
     let onError: (String) -> Void
@@ -37,13 +38,14 @@ public struct MeshViewport: NSViewRepresentable {
     /// GPU setup errors are delivered through onError on the main actor.
     public init(
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
-        cameraCommand: MeshCameraCommand? = nil, onError: @escaping (String) -> Void
+        cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true, onError: @escaping (String) -> Void
     ) {
         onMaterialRendered = {}
         materials = nil
         onMaterialError = { _ in }
         self.mesh = .expanded(mesh)
         self.isWireframe = isWireframe
+        self.showsColor = showsColor
         self.cameraReset = cameraReset
         self.cameraCommand = cameraCommand
         self.meshRevision = meshRevision
@@ -54,6 +56,7 @@ public struct MeshViewport: NSViewRepresentable {
     /// - Parameters:
     ///   - mesh: Immutable copied geometry.
     ///   - isWireframe: Draw triangle edges.
+    ///   - showsColor: Display source colors and materials; false uses neutral shading while preserving alpha policy.
     ///   - cameraReset: Increment to fit the model.
     ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
     ///   - meshRevision: Increment for replacement geometry/material output.
@@ -63,13 +66,13 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - onError: Ordinary GPU setup diagnostic.
     public init(
         mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
-        bakedMesh: MeshWithBakedTextures? = nil, cameraCommand: MeshCameraCommand? = nil,
+        bakedMesh: MeshWithBakedTextures? = nil, cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true,
         onMaterialError: ((String) -> Void)? = nil,
         onMaterialRendered: @escaping () -> Void = {}, onError: @escaping (String) -> Void
     ) {
         self.init(
             mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset, meshRevision: meshRevision,
-            materials: bakedMesh.map(MeshMaterialContent.baked), cameraCommand: cameraCommand,
+            materials: bakedMesh.map(MeshMaterialContent.baked), cameraCommand: cameraCommand, showsColor: showsColor,
             onMaterialError: onMaterialError,
             onMaterialRendered: onMaterialRendered, onError: onError)
     }
@@ -78,6 +81,7 @@ public struct MeshViewport: NSViewRepresentable {
     /// - Parameters:
     ///   - mesh: Immutable copied indexed geometry, retained as the failure fallback.
     ///   - isWireframe: Draw triangle edges.
+    ///   - showsColor: Display source colors and materials; false uses neutral shading while preserving alpha policy.
     ///   - cameraReset: Increment to fit the model.
     ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
     ///   - meshRevision: Increment for replacement geometry/material output or retry.
@@ -87,7 +91,7 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - onError: Ordinary geometry setup failure on the main actor.
     public init(
         mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
-        materials: MeshMaterialContent?, cameraCommand: MeshCameraCommand? = nil,
+        materials: MeshMaterialContent?, cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true,
         onMaterialError: ((String) -> Void)? = nil,
         onMaterialRendered: @escaping () -> Void = {}, onError: @escaping (String) -> Void
     ) {
@@ -96,6 +100,7 @@ public struct MeshViewport: NSViewRepresentable {
         self.onMaterialError = onMaterialError ?? onError
         self.mesh = .indexed(mesh)
         self.isWireframe = isWireframe
+        self.showsColor = showsColor
         self.cameraReset = cameraReset
         self.cameraCommand = cameraCommand
         self.meshRevision = meshRevision
@@ -153,6 +158,10 @@ public struct MeshViewport: NSViewRepresentable {
             view.cameraReset = cameraReset
         }
         if let cameraCommand { view.applyCameraCommand(cameraCommand) }
+        view.renderer?.showsColor = showsColor
+        view.materialRenderer?.showsColor = showsColor
+        view.importedRenderer?.showsColor = showsColor
+        view.requestedShowsColor = showsColor
         view.renderer?.isWireframe = isWireframe
         view.materialRenderer?.isWireframe = isWireframe
         view.importedRenderer?.isWireframe = isWireframe
@@ -184,6 +193,7 @@ public class InteractiveMeshView: MTKView {
     var completedMaterialRevision: Int?
     var failedMaterialRevision: Int?
     var requestedWireframe = false
+    var requestedShowsColor = true
     let materialBuilder = TexturedMetalResourcesBuilder()
     let importedMaterialBuilder = ImportedMetalResourcesBuilder()
 
@@ -265,6 +275,7 @@ public class InteractiveMeshView: MTKView {
                 let renderer = TexturedMeshRenderer(resources: resources)
                 renderer.camera = self.orbitCamera
                 renderer.isWireframe = self.requestedWireframe
+                renderer.showsColor = self.requestedShowsColor
                 renderer.onError = { [weak self] error in
                     guard let self, self.completedMaterialRevision == revision else { return }
                     onError(error.localizedDescription)
@@ -322,6 +333,7 @@ public class InteractiveMeshView: MTKView {
                 let renderer = ImportedMeshRenderer(resources: resources)
                 renderer.camera = self.orbitCamera
                 renderer.isWireframe = self.requestedWireframe
+                renderer.showsColor = self.requestedShowsColor
                 renderer.onError = { [weak self] error in
                     guard let self, self.completedMaterialRevision == revision else { return }
                     onError(error.localizedDescription)

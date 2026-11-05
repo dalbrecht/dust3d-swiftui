@@ -10,6 +10,7 @@ struct MeshVertex {
 struct Uniforms {
     float4x4 transform;
     float4x4 rotation;
+    float4 options;
 };
 
 struct VertexOutput {
@@ -25,7 +26,7 @@ vertex VertexOutput meshVertex(uint index [[vertex_id]],
     VertexOutput output;
     output.position = uniforms.transform * vertices[index].position;
     output.normal = (uniforms.rotation * vertices[index].normal).xyz;
-    output.color = vertices[index].color;
+    output.color = uniforms.options.y > 0.5 ? float4(0.96, 0.94, 0.91, vertices[index].color.a) : vertices[index].color;
     return output;
 }
 
@@ -120,7 +121,7 @@ vertex BakedVertexOutput bakedMeshVertex(uint index [[vertex_id]],
     output.viewPosition = (uniforms.rotation * vertices[index].position).xyz;
     output.normal = (uniforms.rotation * vertices[index].normal).xyz;
     output.tangent = float4((uniforms.rotation * float4(vertices[index].tangent.xyz, 0)).xyz, vertices[index].tangent.w);
-    output.color = vertices[index].color;
+    output.color = uniforms.options.y > 0.5 ? float4(0.96, 0.94, 0.91, vertices[index].color.a) : vertices[index].color;
     output.maskAlpha = maskScaleClampedVertexAlpha(vertices[index].color.a);
     output.textureCoordinate = vertices[index].textureCoordinate;
     return output;
@@ -153,6 +154,14 @@ float3 materialDisplay(float3 baseColor, float3 normal, float metal, float rough
     return display;
 }
 
+// Match Qt's warm paper-white inspection mode while leaving the material alpha pass intact.
+float3 neutralPreviewDisplay(float3 normal)
+{
+    float key = abs(dot(normal, normalize(float3(-0.5, 0.8, 0.7))));
+    float fill = abs(dot(normal, normalize(float3(0.6, 0.1, -0.5))));
+    return bakedLinearColor(float3(0.96, 0.94, 0.91) * (0.25 + 0.55 * key + 0.2 * fill));
+}
+
 fragment float4 bakedMeshFragment(BakedVertexOutput input [[stage_in]],
     bool frontFacing [[front_facing]], constant BakedUniforms& uniforms [[buffer(1)]],
     constant float4& policy [[buffer(2)]],
@@ -176,6 +185,8 @@ fragment float4 bakedMeshFragment(BakedVertexOutput input [[stage_in]],
     float3 normal = bakedNormalize(input.normal, float3(0, 0, 1));
     if (!frontFacing)
         normal = -normal;
+    if (uniforms.options.y > 0.5)
+        return float4(neutralPreviewDisplay(normal), base.a);
     if (mapped && input.textureCoordinate.w > 0.5 && uniforms.options.x > 0.5) {
         float3 axis = abs(normal.z) < 0.9 ? float3(0, 0, 1) : float3(0, 1, 0);
         float3 tangent = bakedNormalize(input.tangent.xyz - normal * dot(normal, input.tangent.xyz), bakedNormalize(cross(axis, normal), float3(1, 0, 0)));
@@ -217,7 +228,7 @@ vertex ImportedVertexOutput importedMeshVertex(uint index [[vertex_id]],
     output.position = uniforms.transform * vertices[index].position;
     output.viewPosition = (uniforms.rotation * vertices[index].position).xyz;
     output.normal = (uniforms.rotation * vertices[index].normal).xyz;
-    output.color = vertices[index].color;
+    output.color = uniforms.options.y > 0.5 ? float4(0.96, 0.94, 0.91, vertices[index].color.a) : vertices[index].color;
     output.maskAlpha = maskScaleAlpha(vertices[index].color.a);
     output.textureCoordinate = vertices[index].textureCoordinate.xyz;
     return output;
@@ -247,6 +258,8 @@ fragment float4 importedMeshFragment(ImportedVertexOutput input [[stage_in]], bo
     float3 normal = bakedNormalize(input.normal, float3(0, 0, 1));
     if (!frontFacing)
         normal = -normal;
+    if (uniforms.options.y > 0.5)
+        return float4(neutralPreviewDisplay(normal), alpha);
     float metal = clamp(material.emissiveMetallic.w, 0.0, 1.0);
     float rough = clamp(material.parameters.x, 0.045, 1.0);
     return float4(materialDisplay(base.rgb, normal, metal, rough, material.emissiveMetallic.xyz, uniforms.eye.xyz - input.viewPosition), alpha);
