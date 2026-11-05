@@ -349,3 +349,8 @@ cancellation before publication. A retained unavailable target never acquires a 
 selection. Missing or opaque imported references are not normalized by selection or
 preview. Geometry/source and material identities advance together on an actual change;
 semantic no-ops preserve history and redo. See ADR0137.
+
+Batch `.binding(ComponentWrapBindingChoice)` uses the existing wrapping selection
+target/actor path. `ComponentWrappingSelectionPresentation.binding` retains exact raw
+source values, including absent versus stored empty; inspector presentation coalesces
+those effective Own Children choices without mutating the model. See ADR0141.

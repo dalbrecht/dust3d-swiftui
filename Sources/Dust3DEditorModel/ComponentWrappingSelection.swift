@@ -50,6 +50,10 @@ public struct ComponentWrappingSelectionPresentation: Sendable {
     public func scalar(_ property: ComponentWrappingScalarProperty) -> ComponentWrappingSelectionValue<Double> {
         .read(groups.map { $0.wrapping.scalarValue(property) })
     }
+    /// Exact source values across the selection; absent and stored empty values remain distinct.
+    public var binding: ComponentWrappingSelectionValue<ComponentWrapBindingValue> {
+        .read(groups.map { $0.wrapping.binding })
+    }
     public var keepChildren: ComponentWrappingSelectionValue<Bool> { .read(groups.map { $0.wrapping.keepsChildren }) }
     public var faces: ComponentWrappingSelectionValue<Int> { .read(groups.map { $0.wrapping.targetFaces }) }
     public var ink: ComponentWrappingSelectionValue<ComponentColorValue> {

@@ -39,6 +39,7 @@ private struct MultiWrappingEditor: View {
             .accessibilityLabel("Selected groups wrapping mode")
             .accessibilityValue(title(presentation.mode) { ComponentWrappingPresentation.modeTitle($0) })
             .accessibilityIdentifier("multi-wrap-mode")
+            ComponentWrappingMultiBindingControls(store: store, target: target)
             Menu {
                 Button("On", action: action(.keepChildren(true)))
                 Button("Off", action: action(.keepChildren(false)))
