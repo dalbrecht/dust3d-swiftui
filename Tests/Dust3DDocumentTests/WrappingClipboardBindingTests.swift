@@ -99,4 +99,21 @@ final class WrappingClipboardBindingTests: XCTestCase {
         XCTAssertEqual(try binding(pasted, id: "new-garment"), "outer")
     }
 
+    func testCopiedBodyDoesNotRetargetByteDistinctExternalBinding() throws {
+        let actual = "cafe\u{301}"
+        let external = "caf\u{e9}"
+        for target in [actual, external] {
+            let original = try source(binding: target, bodyID: actual)
+            let clipboard = try original.copyingNodes(["n", "m"])
+            let ids = Dictionary(uniqueKeysWithValues: clipboard.identifiers.map { ($0, "new-" + $0) })
+            var history = DocumentHistory(document: original)
+            try history.apply(.pasteNodes(clipboard: clipboard, identities: ids, offset: .init(x: 0, y: 0, z: 0)))
+            let expected = target.utf8.elementsEqual(actual.utf8) ? "new-" + actual : external
+            let value = try XCTUnwrap(binding(history.document, id: "new-garment"))
+            XCTAssertTrue(value.utf8.elementsEqual(expected.utf8))
+            XCTAssertTrue(history.undo())
+            XCTAssertEqual(history.document.encoded(), original.encoded())
+        }
+    }
+
 }
