@@ -14,8 +14,44 @@ extension ComponentColorValue {
                 $0.attribute(forName: "id")?.stringValue == id
             })
         else { throw DocumentError.missingComponent(id) }
+        return set(element: element, current: current.color, color: color)
+    }
+
+    /// Classify/index the hierarchy once, preflight every target, then perform only validated replacements.
+    /// The document command has already enforced the existing component-count ceiling and nonempty input.
+    static func set(_ model: XMLDocument, updates: [DocumentComponentColorUpdate]) throws -> Bool {
+        var unique = Set<String>()
+        for update in updates {
+            try Task.checkCancellation()
+            guard unique.insert(update.componentID).inserted else { throw DocumentError.invalidComponentColor }
+        }
+        let components = try ComponentHierarchy.read(model)
+        let current = Dictionary(uniqueKeysWithValues: components.map { ($0.id, $0.color) })
+        // ComponentHierarchy.read rejects empty/duplicate identities before this index is constructed.
+        let elements = Dictionary(
+            uniqueKeysWithValues: PartSplitting.componentElements(model).compactMap { element in
+                element.attribute(forName: "id")?.stringValue.map { ($0, element) }
+            })
+        var replacements: [(XMLElement, ComponentColorValue, DocumentColor?)] = []
+        replacements.reserveCapacity(updates.count)
+        for update in updates {
+            try Task.checkCancellation()
+            guard let source = current[update.componentID], let element = elements[update.componentID] else {
+                throw DocumentError.missingComponent(update.componentID)
+            }
+            replacements.append((element, source, update.color))
+        }
+        var changed = false
+        for (element, current, color) in replacements {
+            try Task.checkCancellation()
+            if set(element: element, current: current, color: color) { changed = true }
+        }
+        return changed
+    }
+
+    private static func set(element: XMLElement, current: ComponentColorValue, color: DocumentColor?) -> Bool {
         let next = color.map(ComponentColorValue.value) ?? .unset
-        guard current.color != next else { return false }
+        guard current != next else { return false }
         element.removeAttribute(forName: "color")
         if let color {
             let attribute = XMLNode(kind: .attribute)
