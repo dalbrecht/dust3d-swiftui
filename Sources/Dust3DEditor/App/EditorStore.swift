@@ -356,7 +356,9 @@ final class EditorStore {
     var materialViewportRevision: Int { previewState.revision + materialState.revision }
     var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
-    var renderError: String?
+    var renderError: String? {
+        didSet { if renderError != nil { previewCameraCommand = nil } }
+    }
     var bounds = CanvasBounds(nodes: []) {
         didSet {
             if let canvas = referenceColorCanvas {
@@ -402,7 +404,7 @@ final class EditorStore {
     var isWireframe = false
     var cameraReset = 0
     private(set) var previewCameraCommand: MeshCameraCommand?
-    var canMovePreviewCamera: Bool { !stopped && mesh != nil }
+    var canMovePreviewCamera: Bool { !stopped && mesh != nil && renderError == nil }
     private(set) var referenceImage: CGImage?
     private(set) var referenceImageError: String?
     private(set) var isLoadingReferenceImage = false
