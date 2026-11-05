@@ -65,7 +65,7 @@
 
 - Preview a new node and adjust its radius before placing it on the canvas in Add mode.
 
-- Adjust selected node radii using keyboard commands or the canvas wheel, with one-step Undo.
+- Adjust selected node radii using canvas-focused keyboard input or the canvas wheel, with one-step Undo. Radius menu and inspector actions remain available independently of canvas focus.
 
 - Preserve numeric move and scale controls for mixed and edge-only selections, expose additive node accessibility actions, and batch graph edge deletion into one validated XML mutation.
 

@@ -69,6 +69,7 @@ struct NodeCanvas: View {
                         else { return }
                         store.selectWholePart(at: point, projection: projection, context: partContext)
                     },
+                    radiusKey: adjustRadius,
                     precisionKey: precisionKey, isAddingNodes: store.isAddingNodes,
                     addPress: { store.placeAddNode(at: $0, modeID: addModeID) },
                     cancelInput: { if store.addModeID == addModeID { store.cancelAddMode() } }
@@ -148,6 +149,7 @@ struct NodeCanvas: View {
                             store.setHoveredNode(node.id)
                             return store.handleCanvasWheel(input)
                         },
+                        radiusKey: adjustRadius,
                         begin: { token in
                             guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
                                 return
@@ -290,6 +292,12 @@ struct NodeCanvas: View {
         }
         .background(.background)
     }
+    private func adjustRadius(_ direction: Int) -> Bool {
+        guard store.canAdjustRadiusInput else { return false }
+        store.adjustSelectionRadius(direction: Double(direction))
+        return true
+    }
+
     private func invalidateNodeDrag() {
         nodeDrag.invalidate()
         shiftedDrag = nil
@@ -330,6 +338,7 @@ private struct NodeHandle: View {
     let toggle: () -> Void
     let add: () -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    let radiusKey: (Int) -> Bool
     let begin: (UUID) -> Void
     let update: (UUID, CanvasPoint) -> Void
     let finish: (UUID, CanvasPoint) -> Void
@@ -350,7 +359,7 @@ private struct NodeHandle: View {
             NodePointerSurface(
                 enabled: enabled, canDrag: canDrag, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle, add: add, wheel: wheel, doubleClick: doubleClick,
+                select: select, toggle: toggle, add: add, wheel: wheel, radiusKey: radiusKey, doubleClick: doubleClick,
                 precisionKey: precisionKey,
                 beginShiftDrag: beginShiftDrag
             ).frame(width: 36, height: 36)
