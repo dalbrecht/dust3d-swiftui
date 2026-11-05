@@ -48,6 +48,11 @@ final class EditorStore {
             self?.selectWholePart(target, context: context)
         }
     }
+    func selectComponentGraph(_ target: ComponentGraphSelectionTarget) {
+        guard !stopped, !isWorking, snapshot?.canSelectComponentGraph(target) == true else { return }
+        cancelAddMode()
+        perform(commits: false, selectionOnly: true) { try await $0.selectComponentGraph(target) }
+    }
     func selectWholePart(_ target: PartGraphTarget, context: PartGraphSelectionContext? = nil) {
         guard canPickGraph, let snapshot, context?.isCurrent(in: snapshot) != false,
             snapshot.canSelectWholePart(target)

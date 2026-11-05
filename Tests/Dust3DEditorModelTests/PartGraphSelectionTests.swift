@@ -18,6 +18,56 @@ final class PartGraphSelectionTests: XCTestCase {
                     .utf8))
     }
 
+    func testComponentGraphUsesCapturedRowsAndRejectsStaleActivation() throws {
+        let original = try document(partState: "locked='true'")
+        var state = try EditorState(document: original)
+        try state.selectComponent("group")
+        let before = state.snapshot
+        let target = ComponentGraphSelectionTarget(snapshot: before, componentIDs: ["root", "leafq"])
+        XCTAssertTrue(before.canSelectComponentGraph(target))
+        try state.selectComponentGraph(target)
+        XCTAssertEqual(state.snapshot.selectedIDs, ["u", "v"])
+        XCTAssertEqual(state.snapshot.selectedEdgeIDs, ["uv"])
+        XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+        XCTAssertFalse(state.snapshot.canUndo)
+        XCTAssertThrowsError(try state.selectComponentGraph(target))
+    }
+
+    func testComponentGraphWithOnlyIneligibleDescendantsLeavesSelectionUnchanged() throws {
+        for attributes in ["locked='true'", "visible='false'", "disabled='true'"] {
+            let original = try document(partState: attributes)
+            var state = try EditorState(document: original)
+            try state.selectComponent("group")
+            let before = state.snapshot
+            let target = ComponentGraphSelectionTarget(snapshot: before, componentIDs: ["group"])
+            XCTAssertFalse(before.canSelectComponentGraph(target), attributes)
+            try state.selectComponentGraph(target)
+            XCTAssertEqual(state.snapshot.selectedComponentIDs, before.selectedComponentIDs, attributes)
+            XCTAssertEqual(state.snapshot.selectionRevision, before.selectionRevision, attributes)
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded(), attributes)
+        }
+    }
+
+    func testComponentGraphRequiresEditableEndpointsAndStoredOwner() throws {
+        for attributes in ["locked='true'", "visible='false'", "disabled='true'", ""] {
+            let original = try document(partState: attributes, malformed: true)
+            var state = try EditorState(document: original)
+            let before = state.snapshot
+            let target = ComponentGraphSelectionTarget(snapshot: before, componentIDs: ["leafq"])
+            try state.selectComponentGraph(target)
+            XCTAssertEqual(state.snapshot.selectedIDs, ["u", "v"], attributes)
+            XCTAssertEqual(state.snapshot.selectedEdgeIDs, attributes.isEmpty ? ["uv", "foreign"] : ["uv"], attributes)
+            XCTAssertTrue(state.snapshot.canEditSelectedEdges, attributes)
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded(), attributes)
+            XCTAssertEqual(state.snapshot.documentRevision, before.documentRevision, attributes)
+            XCTAssertEqual(state.snapshot.previewIdentity, before.previewIdentity, attributes)
+            XCTAssertFalse(state.snapshot.canUndo, attributes)
+            try state.reverseExplicitlySelectedEdges()
+            try state.undo()
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded(), attributes)
+        }
+    }
+
     func testWholePartSelectsDisconnectedOwnedNodesAndEdgesWithIndependentRevealAndOneEpoch() throws {
         let original = try document(malformed: true)
         var state = try EditorState(document: original)

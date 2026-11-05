@@ -209,6 +209,11 @@ public actor EditorSession {
     public func selectPartNodes(_ partID: String, context: PartGraphSelectionContext? = nil) throws -> EditorSnapshot {
         try update { try $0.selectPartNodes(partID, context: context) }
     }
+    /// Select visible, unlocked graph objects in the captured component subtrees.
+    public func selectComponentGraph(_ target: ComponentGraphSelectionTarget) throws -> EditorSnapshot {
+        try update { try $0.selectComponentGraph(target) }
+    }
+
     /// Add graph picks atomically while preserving existing explicit nodes/edges.
     public func addToSelection(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
         try update { try $0.addToSelection(nodes: nodes, edges: edges) }
