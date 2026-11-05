@@ -5,7 +5,7 @@ public struct CanvasShiftDrag: Sendable {
     private let snapshot: EditorSnapshot
     private let target: CanvasAdjustmentTarget
     private let effective: [DocumentNode]
-    private let endpoint: EndpointIKDrag?
+    private let endpoint: EndpointIKTarget?
     public let projection: CanvasProjection
 
     public init(anchorID: String, snapshot: EditorSnapshot, projection: CanvasProjection) throws {
@@ -18,7 +18,7 @@ public struct CanvasShiftDrag: Sendable {
         effective = snapshot.transformNodeIDs.contains(anchorID) ? snapshot.transformNodes : [anchor]
         endpoint =
             effective.count == 1
-            ? EndpointIKDrag(endpointID: anchorID, snapshot: snapshot, projection: projection)
+            ? EndpointIKTarget(endpointID: anchorID, snapshot: snapshot)
             : nil
     }
 
@@ -26,7 +26,9 @@ public struct CanvasShiftDrag: Sendable {
 
     public func updates(by translation: CanvasPoint) throws -> [NodeUpdate] {
         guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidNode }
-        if let endpoint { return try endpoint.updates(by: translation) }
+        if let endpoint {
+            return try endpoint.updates(toward: projection.moving(endpoint.endpointPosition, by: translation))
+        }
         return try CanvasRotation.updates(
             degrees: translation.x.rounded(.towardZero), plane: projection.plane, snapshot: snapshot,
             effective: effective)

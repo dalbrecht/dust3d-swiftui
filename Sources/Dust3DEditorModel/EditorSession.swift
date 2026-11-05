@@ -503,6 +503,16 @@ public actor EditorSession {
         }
     }
 
+    /// Bend a captured endpoint toward an explicit document-space position.
+    public func bendEndpoint(_ target: EndpointIKTarget, toward destination: NodePosition) throws -> EditorSnapshot {
+        try update { state in
+            guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleCanvasAdjustment }
+            let updates = try target.updates(toward: destination)
+            if !updates.isEmpty { try state.apply([.setNodes(updates)]) }
+            try Task.checkCancellation()
+        }
+    }
+
     public func deleteSelection() throws -> EditorSnapshot {
         try update { state in
             let commands = try GraphCommandPreparation.normalizingDeletions(

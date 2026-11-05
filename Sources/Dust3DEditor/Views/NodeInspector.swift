@@ -59,6 +59,7 @@ struct NodeInspector: View {
                 NodePropertyEditor(store: store, node: node, draft: draft)
                 NodeRadiusAdjustmentControls(store: store)
                 CanvasRotationControls(store: store)
+                EndpointBendControls(store: store, endpointID: node.id)
                 GraphColorizeControls(store: store)
                 NodeReductionControls(store: store)
                 SelectionTransformMenu(store: store)
