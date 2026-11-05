@@ -315,6 +315,16 @@ public actor EditorSession {
         return result.snapshot
     }
 
+    /// Apply one field to the captured group selection with one atomic history/publication step.
+    public func editSelectedComponentWrapping(_ edit: ComponentWrappingEdit, target: ComponentWrappingSelectionTarget)
+        throws -> EditorSnapshot
+    {
+        let result = try updateWithResult(checkCancellationBeforePublication: true) { state in
+            try state.editSelectedComponentWrapping(edit, target: target)
+        }
+        return result.snapshot
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }
