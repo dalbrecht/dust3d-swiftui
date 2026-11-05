@@ -33,17 +33,19 @@ final class PartGraphSelectionTests: XCTestCase {
         XCTAssertThrowsError(try state.selectComponentGraph(target))
     }
 
-    func testComponentGraphWithOnlyLockedDescendantsLeavesSelectionUnchanged() throws {
-        let original = try document(partState: "locked='true'")
-        var state = try EditorState(document: original)
-        try state.selectComponent("group")
-        let before = state.snapshot
-        let target = ComponentGraphSelectionTarget(snapshot: before, componentIDs: ["group"])
-        XCTAssertFalse(before.canSelectComponentGraph(target))
-        try state.selectComponentGraph(target)
-        XCTAssertEqual(state.snapshot.selectedComponentIDs, before.selectedComponentIDs)
-        XCTAssertEqual(state.snapshot.selectionRevision, before.selectionRevision)
-        XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+    func testComponentGraphWithOnlyIneligibleDescendantsLeavesSelectionUnchanged() throws {
+        for attributes in ["locked='true'", "visible='false'", "disabled='true'"] {
+            let original = try document(partState: attributes)
+            var state = try EditorState(document: original)
+            try state.selectComponent("group")
+            let before = state.snapshot
+            let target = ComponentGraphSelectionTarget(snapshot: before, componentIDs: ["group"])
+            XCTAssertFalse(before.canSelectComponentGraph(target), attributes)
+            try state.selectComponentGraph(target)
+            XCTAssertEqual(state.snapshot.selectedComponentIDs, before.selectedComponentIDs, attributes)
+            XCTAssertEqual(state.snapshot.selectionRevision, before.selectionRevision, attributes)
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded(), attributes)
+        }
     }
 
     func testWholePartSelectsDisconnectedOwnedNodesAndEdgesWithIndependentRevealAndOneEpoch() throws {

@@ -158,7 +158,7 @@ struct ComponentSidebar: View {
         let target = ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids)
         return Button("Select in Canvas") { store.selectComponentGraph(target) }
             .disabled(!snapshot.canSelectComponentGraph(target))
-            .help("Select visible, unlocked nodes and edges in these components and their descendants.")
+            .help("Select editable nodes and edges in these components and their descendants.")
     }
 
     private func revealScrollKey(tree: ComponentTree) -> String? {

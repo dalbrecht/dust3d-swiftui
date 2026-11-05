@@ -98,7 +98,7 @@ extension EditorSnapshot {
         guard target.context.isCurrent(in: self), !roots.isEmpty,
             roots.isSubset(of: Set(componentTree.rows.map { Data($0.id.utf8) }))
         else { return nil }
-        let editableParts = Set(parts.filter { $0.isVisible && !$0.isLocked }.map { Data($0.id.utf8) })
+        let editableParts = Set(parts.filter(\.isEditable).map { Data($0.id.utf8) })
         var selectedDepth: Int?
         var partIDs: Set<Data> = []
         for row in componentTree.rows {
