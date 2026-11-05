@@ -31,6 +31,7 @@ package struct WorkflowReplayPlan: Sendable {
     package let bounds: CanvasBounds
     package let animationMetadataError: String?
     private let graph: DocumentContents
+    private let enabledNodes: [String: DocumentNode]
     private let finalMeshStep: Int
 
     package func frame(after completedSteps: Int) -> (nodes: [DocumentNode], edges: [DocumentEdge]) {
@@ -57,7 +58,18 @@ package struct WorkflowReplayPlan: Sendable {
                 id: edge.id, fromID: isReversed ? edge.toID : edge.fromID,
                 toID: isReversed ? edge.fromID : edge.toID, boneName: boneName, partID: edge.partID)
         }
-        return (graph.nodes.filter { nodes.contains($0.id) }, visibleEdges)
+        let pendingEnabledParts = Set(
+            steps.dropFirst(max(0, completedSteps)).compactMap { step -> String? in
+                guard case .property(let property) = step, property.owner == .part,
+                    property.attributes.contains("disabled")
+                else { return nil }
+                return property.id
+            })
+        let visibleNodes = graph.nodes.filter { nodes.contains($0.id) }.map { node in
+            guard let partID = node.partID, pendingEnabledParts.contains(partID) else { return node }
+            return enabledNodes[node.id] ?? node
+        }
+        return (visibleNodes, visibleEdges)
     }
 
     private func pendingReversals(after completedSteps: Int) -> Set<String> {
@@ -245,6 +257,15 @@ package struct WorkflowReplayPlan: Sendable {
         }
         self.steps = steps
         self.graph = graph
+        let disabledParts = graph.parts.filter(\.isDisabled).map(\.id)
+        if disabledParts.isEmpty {
+            enabledNodes = [:]
+        } else {
+            // Cache the staged default-enabled state once, retaining source visibility and locks.
+            let enabled = try document.applying(.setPartsState(ids: disabledParts, property: .disabled, value: false))
+                .editorContents().nodes
+            enabledNodes = Dictionary(uniqueKeysWithValues: enabled.map { ($0.id, $0) })
+        }
         bounds = CanvasBounds(nodes: graph.nodes, origin: graph.origin)
     }
 
