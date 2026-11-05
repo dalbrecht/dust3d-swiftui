@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select component graphs in the canvas from the sidebar context menu or by double-clicking a leaf row.
+
 - Select a whole part graph from its nodes, edges, or inspector and reveal the linked component in the sidebar.
 
 - Preview a new node and adjust its radius before placing it on the canvas in Add mode.

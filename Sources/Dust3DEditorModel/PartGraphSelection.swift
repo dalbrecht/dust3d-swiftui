@@ -74,3 +74,53 @@ extension EditorSnapshot {
         return partID
     }
 }
+
+/// A sidebar action captures exact component IDs and the document interaction epoch.
+public struct ComponentGraphSelectionTarget: Sendable {
+    let context: CanvasAdjustmentTarget
+    let componentIDs: Set<Data>
+
+    public init(snapshot: EditorSnapshot, componentIDs: Set<String>) {
+        context = CanvasAdjustmentTarget(snapshot: snapshot)
+        self.componentIDs = Set(componentIDs.map { Data($0.utf8) })
+    }
+}
+
+extension EditorSnapshot {
+    /// Whether a captured component selection contains visible, editable graph objects.
+    public func canSelectComponentGraph(_ target: ComponentGraphSelectionTarget) -> Bool {
+        guard let graph = componentGraph(target) else { return false }
+        return !graph.nodes.isEmpty || !graph.edges.isEmpty
+    }
+
+    func componentGraph(_ target: ComponentGraphSelectionTarget) -> (nodes: Set<String>, edges: Set<String>)? {
+        let roots = target.componentIDs
+        guard target.context.isCurrent(in: self), !roots.isEmpty,
+            roots.isSubset(of: Set(componentTree.rows.map { Data($0.id.utf8) }))
+        else { return nil }
+        let editableParts = Set(parts.filter { $0.isVisible && !$0.isLocked }.map { Data($0.id.utf8) })
+        var selectedDepth: Int?
+        var partIDs: Set<Data> = []
+        for row in componentTree.rows {
+            if let depth = selectedDepth, row.depth <= depth { selectedDepth = nil }
+            if selectedDepth == nil, roots.contains(Data(row.id.utf8)) { selectedDepth = row.depth }
+            if selectedDepth != nil, let part = row.component.partID {
+                let key = Data(part.utf8)
+                if editableParts.contains(key) { partIDs.insert(key) }
+            }
+        }
+        guard !partIDs.isEmpty else { return ([], []) }
+        return (
+            Set(
+                nodes.compactMap { node in
+                    guard let owner = node.partID, partIDs.contains(Data(owner.utf8)) else { return nil }
+                    return node.id
+                }),
+            Set(
+                edges.compactMap { edge in
+                    guard let owner = edge.partID, partIDs.contains(Data(owner.utf8)) else { return nil }
+                    return edge.id
+                })
+        )
+    }
+}

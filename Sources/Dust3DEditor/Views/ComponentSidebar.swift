@@ -29,6 +29,9 @@ struct ComponentSidebar: View {
                         Button("Clear Component Selection") { store.clearComponentSelection() }
                             .disabled(store.snapshot?.selectedComponentIDs.isEmpty != false)
                         Divider()
+                        if let snapshot = store.snapshot {
+                            selectInCanvasButton(snapshot: snapshot, ids: snapshot.selectedComponentIDs)
+                        }
                         Button("Group Selected Components") { store.groupSelectedComponents() }
                             .disabled(!store.canGroupComponents)
                         Button("Ungroup Selected Component") { store.ungroupSelectedComponent() }
@@ -112,6 +115,24 @@ struct ComponentSidebar: View {
                                 .help("\(row.title) · \(row.id)")
                             }
                         }
+                        .contextMenu(forSelectionType: String.self) { ids in
+                            if let snapshot = store.snapshot, snapshot.documentIdentity == documentIdentity,
+                                !ids.isEmpty
+                            {
+                                selectInCanvasButton(snapshot: snapshot, ids: ids)
+                            }
+                        } primaryAction: { ids in
+                            guard ids.count == 1, let id = ids.first, let snapshot = store.snapshot, !store.isWorking,
+                                snapshot.documentIdentity == documentIdentity,
+                                let row = snapshot.componentTree.rows.first(where: { $0.id == id })
+                            else { return }
+                            if row.hasChildren {
+                                disclosure.collapsedIDs.remove(id)
+                            } else {
+                                store.selectComponentGraph(
+                                    ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids))
+                            }
+                        }
                         .listStyle(.sidebar)
                         .frame(maxHeight: 120)
                         .disabled(store.isWorking)
@@ -133,6 +154,13 @@ struct ComponentSidebar: View {
         }
         .onChange(of: store.snapshot?.documentIdentity) { _, _ in disclosure.collapsedIDs = [] }
     }
+    private func selectInCanvasButton(snapshot: EditorSnapshot, ids: Set<String>) -> some View {
+        let target = ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids)
+        return Button("Select in Canvas") { store.selectComponentGraph(target) }
+            .disabled(!snapshot.canSelectComponentGraph(target))
+            .help("Select visible, unlocked nodes and edges in these components and their descendants.")
+    }
+
     private func revealScrollKey(tree: ComponentTree) -> String? {
         guard let snapshot = store.snapshot, let hint = snapshot.componentRevealHint,
             tree.visibleRows(collapsing: disclosure.collapsedIDs).contains(where: { $0.id == hint.componentID })

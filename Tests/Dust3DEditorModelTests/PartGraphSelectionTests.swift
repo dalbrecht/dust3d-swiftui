@@ -18,6 +18,21 @@ final class PartGraphSelectionTests: XCTestCase {
                     .utf8))
     }
 
+    func testComponentGraphUsesCapturedRowsAndRejectsStaleActivation() throws {
+        let original = try document(partState: "locked='true'")
+        var state = try EditorState(document: original)
+        try state.selectComponent("group")
+        let before = state.snapshot
+        let target = ComponentGraphSelectionTarget(snapshot: before, componentIDs: ["root", "leafq"])
+        XCTAssertTrue(before.canSelectComponentGraph(target))
+        try state.selectComponentGraph(target)
+        XCTAssertEqual(state.snapshot.selectedIDs, ["u", "v"])
+        XCTAssertEqual(state.snapshot.selectedEdgeIDs, ["uv"])
+        XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+        XCTAssertFalse(state.snapshot.canUndo)
+        XCTAssertThrowsError(try state.selectComponentGraph(target))
+    }
+
     func testWholePartSelectsDisconnectedOwnedNodesAndEdgesWithIndependentRevealAndOneEpoch() throws {
         let original = try document(malformed: true)
         var state = try EditorState(document: original)

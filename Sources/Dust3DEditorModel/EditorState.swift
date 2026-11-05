@@ -335,6 +335,13 @@ public struct EditorState: Sendable {
         try select(Set(contents.nodes.filter { $0.partID == resolved }.map(\.id)))
     }
 
+    /// Add graph objects from the captured component subtrees without editing the document.
+    public mutating func selectComponentGraph(_ target: ComponentGraphSelectionTarget) throws {
+        guard let graph = snapshot.componentGraph(target) else { throw EditorError.stalePartGraphSelection }
+        guard !graph.nodes.isEmpty || !graph.edges.isEmpty else { return }
+        try addToSelection(nodes: graph.nodes, edges: graph.edges)
+    }
+
     /// Add independent graph identities in one selection epoch; validation matches `selectGraph(nodes:edges:)`.
     public mutating func addToSelection(nodes: Set<String>, edges: Set<String>) throws {
         try selectGraph(nodes: selectedIDs.union(nodes), edges: selectedEdgeIDs.union(edges))
