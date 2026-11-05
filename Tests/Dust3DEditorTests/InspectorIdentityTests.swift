@@ -67,6 +67,54 @@ final class InspectorIdentityTests: XCTestCase {
     }
 
     @MainActor
+    func testSharedPartInspectorTracksExactLinkedSelection() async throws {
+        _ = NSApplication.shared
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes/><edges/><parts><part id='shared-part'/><part id='other-part'/></parts>
+                <components>
+                <component id='first' linkDataType='partId' linkData='shared-part'/>
+                <component id='second' linkDataType='partId' linkData='shared-part'/>
+                <component id='third' linkDataType='partId' linkData='other-part'/>
+                </components></canvas>
+                """.utf8))
+        let store = EditorStore()
+        await store.load(data: document.encoded())
+        defer { store.stop() }
+        let host = NSHostingView(rootView: NodeInspector(store: store).environment(EditorPasteboard()))
+        let window = NSWindow(
+            contentRect: NSRect(x: -10000, y: -10000, width: 520, height: 1400),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        window.orderBack(nil)
+        defer { window.close() }
+
+        for (selection, hasSharedPart): (Set<String>, Bool) in [
+            (["first", "second"], true), (["first", "third"], false),
+        ] {
+            store.selectComponents(selection)
+            for _ in 0..<100 where store.snapshot?.selectedComponentIDs != selection {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            XCTAssertEqual(store.snapshot?.selectedComponentIDs, selection)
+            var values: [String] = []
+            for _ in 0..<100 {
+                host.layoutSubtreeIfNeeded()
+                var visited = Set<ObjectIdentifier>()
+                values = accessibilityValues(window, visited: &visited)
+                if values.contains("shared-part") == hasSharedPart { break }
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            XCTAssertEqual(values.contains("shared-part"), hasSharedPart, "\(values)")
+            XCTAssertFalse(values.contains("other-part"))
+        }
+        XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
+    @MainActor
     private func accessibilityValues(_ object: Any, visited: inout Set<ObjectIdentifier>) -> [String] {
         guard let element = object as? any NSAccessibilityProtocol,
             visited.count < 512, visited.insert(ObjectIdentifier(element)).inserted

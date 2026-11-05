@@ -38,7 +38,7 @@ struct NodeInspector: View {
             }
             if let component = store.snapshot?.selectedComponent {
                 ComponentInspector(store: store, component: component)
-            } else if let part = store.snapshot?.selectedPart {
+            } else if let part = store.snapshot?.selectedPart ?? store.snapshot?.selectedLinkedComponentPart {
                 PartInspector(store: store, part: part)
             } else if store.snapshot?.selectedEdgeIDs.isEmpty == false
                 && (store.snapshot?.selectedIDs.isEmpty == false || (store.snapshot?.selectedEdgeIDs.count ?? 0) > 1)
