@@ -5,6 +5,35 @@ import XCTest
 @testable import Dust3DEditorModel
 
 final class WorkflowReplayPlanTests: XCTestCase {
+    func testDisabledPartGraphVisibilityMatchesEachStagedPreviewAndRetainsHiddenAndLockedFlags() throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                  <parts><part id="p" disabled="true"/><part id="hidden" disabled="true" visible="false"/>
+                    <part id="locked" disabled="1" locked="true"/></parts>
+                  <nodes><node id="a" partId="p" x="0" y="0" z="0" radius=".1"/>
+                    <node id="b" partId="hidden" x="1" y="0" z="0" radius=".1"/>
+                    <node id="c" partId="locked" x="2" y="0" z="0" radius=".1"/></nodes>
+                  <components><component id="cp" linkDataType="partId" linkData="p"/>
+                    <component id="ch" linkDataType="partId" linkData="hidden"/>
+                    <component id="cl" linkDataType="partId" linkData="locked"/></components>
+                </canvas>
+                """.utf8))
+        let original = source.encoded()
+        let plan = try WorkflowReplayPlan(document: source)
+        let drawn =
+            try XCTUnwrap(
+                plan.steps.firstIndex { if case .node(id: "a", incomingEdgeID: _) = $0 { true } else { false } }) + 1
+        XCTAssertTrue(try XCTUnwrap(plan.frame(after: drawn).nodes.first { $0.id == "a" }).isVisible)
+        for step in 0...plan.steps.count {
+            let expected = try plan.previewDocument(after: step, source: source).editorContents().nodes
+            let actual = plan.frame(after: step).nodes
+            XCTAssertEqual(actual, expected, "Graph state must match the staged source at step \(step)")
+        }
+        XCTAssertEqual(source.encoded(), original)
+    }
+
     func testReferenceOnlyReplayAppliesImageBeforeGraphAndPreservesBytes() throws {
         let png = try XCTUnwrap(
             Data(
