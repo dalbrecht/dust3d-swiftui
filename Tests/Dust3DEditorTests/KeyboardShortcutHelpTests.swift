@@ -14,4 +14,12 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(KeyboardShortcutHelp.matching(" \n ", in: entries), entries)
         XCTAssertTrue(KeyboardShortcutHelp.matching("unimplemented", in: entries).isEmpty)
     }
+    func testActualCatalogMakesFocusedRadiusAndOriginNudgingDiscoverable() {
+        let focused = KeyboardShortcutHelp.matching("Focused canvas")
+        XCTAssertTrue(focused.contains { $0.action == "Decrease / Increase Radius" })
+        XCTAssertTrue(KeyboardShortcutHelp.matching("-").contains { $0.action == "Decrease / Increase Radius" })
+        let originNudges = KeyboardShortcutHelp.matching("origin").filter { $0.keys == "← / → / ↑ / ↓" }
+        XCTAssertEqual(originNudges.count, 1)
+    }
+
 }
