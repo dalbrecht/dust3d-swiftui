@@ -53,6 +53,7 @@ struct NodeCanvas: View {
                         guard store.addModeID == addModeID else { return false }
                         return store.handleCanvasWheel(input)
                     },
+                    radiusKey: adjustRadius,
                     doubleClick: { point in
                         guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin, let partContext
                         else { return }
@@ -114,7 +115,7 @@ struct NodeCanvas: View {
                         selected: store.snapshot?.selectedIDs.contains(node.id) == true,
                         enabled: store.canPickGraph && !store.isMovingOrigin && !store.isAddingNodes,
                         canDrag: !store.isWorking && node.isEditable,
-                        canSelectWholePart: store.canSelectWholePart(.node(node.id)),
+                        canSelectWholePart: store.canPickGraph && node.partID != nil,
                         doubleClick: {
                             guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
                                 return
@@ -135,6 +136,7 @@ struct NodeCanvas: View {
                             store.setHoveredNode(node.id)
                             return store.handleCanvasWheel(input)
                         },
+                        radiusKey: adjustRadius,
                         begin: { token in
                             guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
                                 return
@@ -159,6 +161,7 @@ struct NodeCanvas: View {
                         },
                         cancel: { token in nodeDrag.cancel(token: token) }
                     )
+                    .id(addModeID)
                     .allowsHitTesting(!store.isMovingOrigin && !store.isAddingNodes)
                 }
                 if let origin = store.originDragPosition ?? store.snapshot?.origin {
@@ -232,6 +235,12 @@ struct NodeCanvas: View {
         }
         .background(.background)
     }
+    private func adjustRadius(_ direction: Int) -> Bool {
+        guard store.canAdjustRadiusInput else { return false }
+        store.adjustSelectionRadius(direction: Double(direction))
+        return true
+    }
+
     private func invalidateNodeDrag() { nodeDrag.invalidate() }
 
     private func previewPosition(_ node: DocumentNode, projection: CanvasProjection) -> NodePosition {
@@ -261,6 +270,7 @@ private struct NodeHandle: View {
     let toggle: () -> Void
     let add: () -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    let radiusKey: (Int) -> Bool
     let begin: (UUID) -> Void
     let update: (UUID, CanvasPoint) -> Void
     let finish: (UUID, CanvasPoint) -> Void
@@ -280,7 +290,7 @@ private struct NodeHandle: View {
             NodePointerSurface(
                 enabled: enabled, canDrag: canDrag, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle, add: add, wheel: wheel, doubleClick: doubleClick
+                select: select, toggle: toggle, add: add, wheel: wheel, radiusKey: radiusKey, doubleClick: doubleClick
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
@@ -292,6 +302,10 @@ private struct NodeHandle: View {
         .accessibilityAction { select() }
         .accessibilityAction(named: Text("Select Whole Part")) { if canSelectWholePart { doubleClick() } }
         .contextMenu { Button("Select Whole Part", action: doubleClick).disabled(!canSelectWholePart) }
+        .accessibilityAction(named: Text("Add node to selection")) { add() }
+        .accessibilityAction(named: Text("Remove node from selection")) {
+            if selected { toggle() }
+        }
         .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked, hidden or disabled part")")
     }
 }
