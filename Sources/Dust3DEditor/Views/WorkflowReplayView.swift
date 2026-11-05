@@ -179,9 +179,7 @@ struct WorkflowReplayView: View {
                             .disabled(phase == .complete)
                         Button("Next Step") { advance(plan) }
                             .disabled(phase == .complete || isPlaying || waitsForReference)
-                            .keyboardShortcut(
-                                EditorKeyboardShortcuts.nextReplayStepKey,
-                                modifiers: EditorKeyboardShortcuts.inspectorActionModifiers)
+                            .keyboardShortcut(.rightArrow, modifiers: .option)
                     }
                     let seconds = Double(WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed))) / 1000
                     Slider(
