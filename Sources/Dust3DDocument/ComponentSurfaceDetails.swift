@@ -92,9 +92,9 @@ enum ComponentSurfaceMetadata {
         return true
     }
     private static func group(_ model: XMLDocument, id: String) throws -> (ComponentSurfaceDetails, XMLElement) {
-        guard let component = try ComponentHierarchy.read(model).first(where: { $0.id == id }),
+        guard let component = try ComponentHierarchy.read(model).first(where: { $0.id.utf8.elementsEqual(id.utf8) }),
             let element = PartSplitting.componentElements(model).first(where: {
-                $0.attribute(forName: "id")?.stringValue == id
+                $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(id.utf8) == true
             })
         else { throw DocumentError.missingComponent(id) }
         guard component.isGroup else { throw DocumentError.invalidComponentWrapping }
