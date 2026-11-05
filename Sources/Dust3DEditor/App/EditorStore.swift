@@ -293,7 +293,9 @@ final class EditorStore {
             onEditingChanged?(isWorking)
         }
     }
-    private(set) var previewState = MeshPreviewState<EditorPreviewOutput>()
+    private(set) var previewState = MeshPreviewState<EditorPreviewOutput>() {
+        didSet { if previewState.value == nil { previewCameraCommand = nil } }
+    }
     var mesh: IndexedMesh? { previewState.value?.mesh }
     var previewSourceHints: MeshSourceHints? {
         guard !previewState.isStale, !isWorking, !stopped else { return nil }
