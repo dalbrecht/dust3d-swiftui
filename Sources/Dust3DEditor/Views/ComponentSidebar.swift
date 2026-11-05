@@ -40,6 +40,7 @@ struct ComponentSidebar: View {
                         if let snapshot = store.snapshot {
                             selectInCanvasButton(snapshot: snapshot, ids: snapshot.selectedComponentIDs)
                         }
+                        ComponentPartRoleMenu(store: store)
                         Button("Group Selected Components") { store.groupSelectedComponents() }
                             .disabled(!store.canGroupComponents)
                         if let snapshot = store.snapshot {

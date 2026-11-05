@@ -32,6 +32,9 @@ struct NodeInspector: View {
                 }
             }
             ComponentMeshSelectionControls(store: store)
+            if store.snapshot?.selectedComponentIDs.isEmpty == false {
+                ComponentPartRoleControls(store: store)
+            }
             if let component = store.snapshot?.selectedComponent {
                 ComponentInspector(store: store, component: component)
             } else if let part = store.snapshot?.selectedPart {

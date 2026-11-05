@@ -895,6 +895,24 @@ final class EditorStore {
         selectComponent(id)
     }
     func clearComponentSelection() { selectComponents([]) }
+    func canAssignComponentPartRole(_ role: PartTarget) -> Bool {
+        !isWorking && !stopped && (try? snapshot?.componentPartRolePlan(role)) != nil
+    }
+
+    /// Capture once at menu/inspector construction; an unavailable action never acquires a later selection.
+    func componentPartRoleAction(_ role: PartTarget) -> @MainActor () -> Void {
+        guard canAssignComponentPartRole(role), let snapshot else { return {} }
+        let target = ComponentPartRoleTarget(snapshot: snapshot)
+        return { [weak self] in
+            guard let self, let current = self.snapshot, target.isCurrent(in: current),
+                self.canAssignComponentPartRole(role)
+            else { return }
+            self.perform(acceptCommittedCancellation: true) {
+                try await $0.setSelectedComponentPartRole(role, target: target)
+            }
+        }
+    }
+
     var canGroupComponents: Bool { !isWorking && !stopped && snapshot?.canGroupComponents == true }
     // Compatibility entry point for callers; all UI paths use the same captured batch eligibility.
     var canUngroupComponent: Bool {
@@ -1525,6 +1543,7 @@ final class EditorStore {
     }
 
     static func message(_ error: Error) -> String {
+        if error is ComponentPartRoleError { return "The component role selection changed. Choose the role again." }
         if case .inheritedContext(let id, let attribute) = error as? ComponentReparentError {
             return "Cannot move \(id) without changing inherited \(attribute). The source is unchanged."
         }

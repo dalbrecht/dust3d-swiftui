@@ -33,6 +33,10 @@ enum ComponentStructure {
     static func group(_ model: XMLDocument, ids: [String], groupID: String) throws {
         guard ids.count <= 10_000 else { throw DocumentError.limitExceeded }
         let context = try Context(model)
+        try group(model, context: context, ids: ids, groupID: groupID)
+    }
+
+    private static func group(_ model: XMLDocument, context: Context, ids: [String], groupID: String) throws {
         let identities = Set(ids)
         guard !ids.isEmpty, ids.count == identities.count, !groupID.isEmpty, groupID.utf8.count <= 128,
             groupID.unicodeScalars.allSatisfy({
@@ -75,6 +79,46 @@ enum ComponentStructure {
                 parent.addChild(child)
             }
         }
+    }
+
+    /// One hierarchy index and one part index; all owners are resolved before publishing the XML copy.
+    static func setPartRoles(
+        _ model: XMLDocument, parts: [DocumentPart], ids: [String], target: PartTarget, groupID: String?
+    ) throws -> Bool {
+        let context = try Context(model)
+        let plan = try ComponentPartRolePlan(
+            components: context.ordered.map { $0.component }, parts: parts, componentIDs: ids, target: target)
+        let partElements =
+            DocumentXML.childElements(model.rootElement(), named: "parts").first?.elements(forName: "part") ?? []
+        var elements: [String: XMLElement] = [:]
+        for element in partElements {
+            guard let id = element.attribute(forName: "id")?.stringValue,
+                elements.updateValue(element, forKey: id) == nil
+            else { throw DocumentError.invalidComponentStructure }
+        }
+        let current = Dictionary(uniqueKeysWithValues: parts.map { ($0.id, $0.target) })
+        for id in plan.partIDs where elements[id] == nil { throw DocumentError.missingPart(id) }
+        if plan.requiresNewGroup {
+            guard let groupID else { throw DocumentError.invalidComponentStructure }
+            try group(model, context: context, ids: plan.componentIDs, groupID: groupID)
+        } else if groupID != nil {
+            throw DocumentError.invalidComponentStructure
+        }
+        var changed = plan.requiresNewGroup
+        for id in plan.partIDs {
+            try Task.checkCancellation()
+            guard current[id] != target else { continue }
+            guard let element = elements[id] else { throw DocumentError.missingPart(id) }
+            element.removeAttribute(forName: "target")
+            if target != .model {
+                let attribute = XMLNode(kind: .attribute)
+                attribute.name = "target"
+                attribute.stringValue = target.rawValue
+                element.addAttribute(attribute)
+            }
+            changed = true
+        }
+        return changed
     }
 
     static func ungroup(_ model: XMLDocument, id: String) throws -> Bool {
