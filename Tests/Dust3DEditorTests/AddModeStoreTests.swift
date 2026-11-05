@@ -161,6 +161,62 @@ import XCTest
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
         XCTAssertFalse(store.canUndo)
     }
+    func testSelectionCancellationRefitsNewlyPlacedNodeAfterFrozenAddBounds() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: Dust3DDocument.emptyArchive())
+        try await settle(store)
+        store.setCanvasContext(
+            projection: .init(bounds: store.bounds, plane: .front, width: 400, height: 300),
+            width: 400, height: 300)
+        store.beginAddMode()
+        let point = CanvasPoint(x: 380, y: 150)
+        store.updateAddPointer(at: point, modeID: store.addModeID)
+        store.placeAddNode(at: point, modeID: store.addModeID)
+        try await settle(store)
+        XCTAssertTrue(store.isAddingNodes)
+        let node = try XCTUnwrap(store.snapshot?.nodes.first)
+        store.select(nil)
+        try await settle(store)
+        XCTAssertFalse(store.isAddingNodes)
+        let projected = CanvasProjection(bounds: store.bounds, plane: .front, width: 400, height: 300)
+        XCTAssertLessThanOrEqual(projected.point(for: node.value.position).x, 364)
+        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+    }
+
+    func testOldPlacementCompletionCannotUnmarkAndUncancelNewDocumentPlacement() async throws {
+        let service = ReplacedAddPlacementService()
+        let store = EditorStore(addPlacements: service)
+        defer { store.stop() }
+        let original = Dust3DDocument.emptyArchive()
+        func startPlacement() {
+            store.setCanvasContext(
+                projection: .init(bounds: store.bounds, plane: .front, width: 400, height: 300),
+                width: 400, height: 300)
+            store.beginAddMode()
+            store.updateAddPointer(at: .init(x: 200, y: 150), modeID: store.addModeID)
+            store.placeAddNode(at: .init(x: 200, y: 150), modeID: store.addModeID)
+        }
+        await store.load(data: original)
+        try await settle(store)
+        startPlacement()
+        await service.waitUntilBlocked(0)
+        await store.load(data: original)
+        try await settle(store)
+        let identity = store.snapshot?.documentIdentity
+        startPlacement()
+        await service.waitUntilBlocked(1)
+        await service.release(0)
+        // Let the old perform task unwind while the current service remains deterministically gated.
+        try await Task.sleep(for: .milliseconds(100))
+        store.cancelAddMode()
+        await service.release(1)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.documentIdentity, identity)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testFreshPlaneProjectionAndToolExclusivityDoNotMutateArchive() async throws {
         let source = Dust3DDocument.emptyArchive()
         let store = EditorStore()
@@ -307,6 +363,59 @@ import XCTest
         XCTAssertFalse(store.isAddingNodes)
         XCTAssertTrue(store.canUndo)
     }
+    func testHeldNodePressAcrossAddModeRoundTripCannotToggleSelectionOnRelease() async throws {
+        var source = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+        source = try source.applying(
+            .addNode(
+                id: "{11111111-1111-4111-8111-111111111111}",
+                partID: "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}",
+                componentID: "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}",
+                position: .init(x: 0.5, y: 0.5, z: 0.5), radius: 0.1))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.select(nil)
+        try await settle(store)
+        let initialSelection = store.snapshot?.selectedIDs
+        let host = NSHostingView(rootView: NodeCanvas(store: store).frame(width: 472, height: 472))
+        let window = NSWindow(
+            contentRect: .init(x: -10000, y: -10000, width: 472, height: 472),
+            styleMask: [], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer {
+            window.contentView = nil
+            window.close()
+        }
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(100))
+        let projection = CanvasProjection(bounds: store.bounds, plane: store.plane, width: 472, height: 472)
+        let point = projection.point(for: .init(x: 0.5, y: 0.5, z: 0.5))
+        let hitPoint = NSPoint(x: point.x, y: 472 - point.y)
+        let node = try XCTUnwrap(host.hitTest(hitPoint) as? NodePointerView)
+        func commandEvent(_ type: NSEvent.EventType) throws -> NSEvent {
+            try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: type, location: hitPoint, modifierFlags: .command,
+                    timestamp: 0, windowNumber: window.windowNumber, context: nil, eventNumber: 1,
+                    clickCount: 1, pressure: 1))
+        }
+        node.mouseDown(with: try commandEvent(.leftMouseDown))
+        store.beginAddMode()
+        XCTAssertTrue(store.isAddingNodes)
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(100))
+        store.cancelAddMode()
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(100))
+        node.mouseUp(with: try commandEvent(.leftMouseUp))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, initialSelection)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     private func findCanvas(in view: NSView) -> CanvasPointerView? {
         if let canvas = view as? CanvasPointerView { return canvas }
         return view.subviews.lazy.compactMap { self.findCanvas(in: $0) }.first
@@ -416,4 +525,33 @@ private actor GatedAddPlacementService: AddPlacementServing {
         releasePlacement?.resume()
         releasePlacement = nil
     }
+}
+
+private actor ReplacedAddPlacementService: AddPlacementServing {
+    private var nextIndex = 0
+    private var releases: [Int: CheckedContinuation<Void, Never>] = [:]
+    private var waiters: [Int: CheckedContinuation<Void, Never>] = [:]
+    func place(_ request: AddPlacementRequest, in session: EditorSession) async throws -> AddPlacementReceipt {
+        let index = nextIndex
+        nextIndex += 1
+        if index == 0 {
+            let receipt = try await session.placeAddNode(request)
+            await pause(index)
+            return receipt
+        }
+        await pause(index)
+        try Task.checkCancellation()
+        return try await session.placeAddNode(request)
+    }
+    private func pause(_ index: Int) async {
+        await withCheckedContinuation { continuation in
+            releases[index] = continuation
+            waiters.removeValue(forKey: index)?.resume()
+        }
+    }
+    func waitUntilBlocked(_ index: Int) async {
+        if releases[index] != nil { return }
+        await withCheckedContinuation { waiters[index] = $0 }
+    }
+    func release(_ index: Int) { releases.removeValue(forKey: index)?.resume() }
 }

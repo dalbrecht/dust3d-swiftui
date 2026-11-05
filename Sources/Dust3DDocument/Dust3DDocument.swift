@@ -242,6 +242,11 @@ public enum DocumentCommand: Sendable {
     /// Remove explicitly empty editable parts and their references; retain nested content and all assets.
     case pruneEmptyParts([String])
     case removeEdge(id: String)
+    /// Remove one captured edge set atomically with one XML traversal and retained node identities.
+    /// - Parameter ids: At most 20,000 unique existing edges whose endpoints are editable.
+    /// - Throws: `invalidNode` for missing, duplicate or read-only edges; `limitExceeded` above the count bound.
+    /// - Example: `.removeEdges(["first", "second"])` is one undoable edit.
+    case removeEdges([String])
     case reverseEdges([String])
     case splitPart(id: String, identities: [PartSplitIdentity])
     case pasteNodes(
@@ -538,6 +543,7 @@ public struct Dust3DDocument: Sendable {
             if updates.isEmpty { return self }
             try Task.checkCancellation()
         }
+        let model = try Self.xml(modelXML, root: "canvas")
         let contents: DocumentContents
         var nextGraphOrder = graphOrder
         switch command {
@@ -550,9 +556,8 @@ public struct Dust3DDocument: Sendable {
             .reorderComponent, .placeComponents,
             .groupComponents, .ungroupComponent, .ungroupComponents, .reparentComponent, .reparentComponents:
             contents = DocumentContents(nodes: [], edges: [])
-        default: contents = try editorContents()
+        default: contents = try editorContents(in: model)
         }
-        let model = try Self.xml(modelXML, root: "canvas")
         guard let root = model.rootElement() else { throw DocumentError.invalidXML }
         func container(_ name: String) -> XMLElement {
             if let existing = root.elements(forName: name).first { return existing }
@@ -869,10 +874,9 @@ public struct Dust3DDocument: Sendable {
             if ids.isEmpty { return self }
             try EmptyPartCleanup.apply(ids, model: model, contents: contents)
         case .removeEdge(let id):
-            guard let edge = contents.edges.first(where: { $0.id == id }) else { throw DocumentError.invalidNode }
-            _ = try editable(edge.fromID)
-            _ = try editable(edge.toID)
-            edgeElements().first(where: { $0.attribute(forName: "id")?.stringValue == id })?.detach()
+            _ = try EdgeRemoval.apply([id], model: model, contents: contents)
+        case .removeEdges(let ids):
+            guard try EdgeRemoval.apply(ids, model: model, contents: contents) else { return self }
         case .reverseEdges(let ids):
             if ids.isEmpty { return self }
             let edges = Dictionary(uniqueKeysWithValues: contents.edges.map { ($0.id, $0) })
@@ -1324,7 +1328,10 @@ public struct Dust3DDocument: Sendable {
 
     /// Inspect the editable graph once, retaining source ordering and stable IDs.
     public func editorContents() throws -> DocumentContents {
-        let xml = try Self.xml(modelXML, root: "canvas")
+        try editorContents(in: Self.xml(modelXML, root: "canvas"))
+    }
+
+    private func editorContents(in xml: XMLDocument) throws -> DocumentContents {
         let partContainers = xml.rootElement()?.elements(forName: "parts") ?? []
         let edgeContainers = xml.rootElement()?.elements(forName: "edges") ?? []
         guard partContainers.count <= 1, edgeContainers.count <= 1 else { throw DocumentError.invalidNode }
