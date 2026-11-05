@@ -5,6 +5,19 @@ struct OrbitCamera {
     var pitch: Float = 0.15
     var distance: Float = 3
 
+    private var screenOffset = SIMD2<Float>.zero
+
+    init(yaw: Float = -0.35, pitch: Float = 0.15, distance: Float = 3) {
+        self.yaw = yaw
+        self.pitch = pitch
+        self.distance = distance
+    }
+
+    mutating func pan(horizontal: Float, vertical: Float) {
+        screenOffset = simd_clamp(
+            screenOffset + SIMD2(horizontal, vertical), SIMD2(repeating: -1.5), SIMD2(repeating: 1.5))
+    }
+
     mutating func orbit(horizontal: Float, vertical: Float) {
         yaw += horizontal * 0.01
         pitch = min(1.5, max(-1.5, pitch + vertical * 0.01))
@@ -31,7 +44,7 @@ struct OrbitCamera {
             columns: (
                 SIMD4(scale / boundedAspect, 0, 0, 0),
                 SIMD4(0, scale, 0, 0),
-                SIMD4(0, 0, far / (near - far), -1),
+                SIMD4(-screenOffset.x, -screenOffset.y, far / (near - far), -1),
                 SIMD4(0, 0, near * far / (near - far), 0)
             ))
         var view = matrix_identity_float4x4

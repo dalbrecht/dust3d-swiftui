@@ -259,6 +259,7 @@ struct EditorRootView: View {
                 MeshViewport(
                     mesh: mesh, isWireframe: store.isWireframe, cameraReset: store.cameraReset,
                     meshRevision: store.materialViewportRevision, materials: store.materialContent,
+                    cameraCommand: store.previewCameraCommand,
                     onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                     onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                 ) { store.renderError = $0 }
