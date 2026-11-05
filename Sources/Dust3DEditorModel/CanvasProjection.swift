@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Foundation
 
 public enum EditingPlane: String, CaseIterable, Sendable {
     case front = "Front (X/Y)"
@@ -100,6 +101,60 @@ public struct CanvasProjection: Sendable {
                 return node.isVisible && point.x >= rectangle.minimum.x && point.x <= rectangle.maximum.x
                     && point.y >= rectangle.minimum.y && point.y <= rectangle.maximum.y
             }.map(\.id))
+    }
+
+    /// Select visible native edge strokes intersecting the marquee, including boundary touches and collapsed projections.
+    /// - Parameters: `rectangle` is a finite screen region; graph snapshots supply endpoints; `selectedEdgeIDs` use the native 4-point stroke (others use 2 points).
+    /// - Returns: Explicit edge identities, never inferred merely because endpoint nodes were selected.
+    /// - Example: `projection.edgeIDs(in: marquee, nodes: snapshot.nodes, edges: snapshot.edges)`.
+    public func edgeIDs(
+        in rectangle: CanvasSelectionRectangle, nodes: [DocumentNode], edges: [DocumentEdge],
+        selectedEdgeIDs: Set<String> = []
+    ) -> Set<String> {
+        guard rectangle.isValid else { return [] }
+        let positions = Dictionary(
+            uniqueKeysWithValues: nodes.filter(\.isVisible).map {
+                ($0.id, point(for: $0.value.position))
+            })
+        func intersects(_ from: CanvasPoint, _ to: CanvasPoint, halfStroke: Double) -> Bool {
+            guard [from.x, from.y, to.x, to.y].allSatisfy(\.isFinite) else { return false }
+            let deltaX = to.x - from.x
+            let deltaY = to.y - from.y
+            let length = hypot(deltaX, deltaY)
+            if length == 0 {
+                let x = max(rectangle.minimum.x - from.x, 0, from.x - rectangle.maximum.x)
+                let y = max(rectangle.minimum.y - from.y, 0, from.y - rectangle.maximum.y)
+                return hypot(x, y) <= halfStroke
+            }
+            guard length.isFinite else { return false }
+            let tangentX = deltaX / length
+            let tangentY = deltaY / length
+            let normalX = -tangentY
+            let normalY = tangentX
+            let halfWidth = rectangle.maximum.x / 2 - rectangle.minimum.x / 2
+            let halfHeight = rectangle.maximum.y / 2 - rectangle.minimum.y / 2
+            let offsetX = rectangle.minimum.x / 2 + rectangle.maximum.x / 2 - from.x / 2 - to.x / 2
+            let offsetY = rectangle.minimum.y / 2 + rectangle.maximum.y / 2 - from.y / 2 - to.y / 2
+            // Separating axes of the marquee and the native butt-capped stroke rectangle.
+            for (axisX, axisY) in [(1.0, 0.0), (0.0, 1.0), (tangentX, tangentY), (normalX, normalY)] {
+                let distance = abs(offsetX * axisX + offsetY * axisY)
+                let marqueeRadius = halfWidth * abs(axisX) + halfHeight * abs(axisY)
+                let strokeRadius =
+                    length / 2 * abs(tangentX * axisX + tangentY * axisY)
+                    + halfStroke * abs(normalX * axisX + normalY * axisY)
+                if distance > marqueeRadius + strokeRadius { return false }
+            }
+            return true
+        }
+        return Set(
+            edges.compactMap { edge in
+                guard let from = positions[edge.fromID], let to = positions[edge.toID],
+                    intersects(from, to, halfStroke: selectedEdgeIDs.contains(edge.id) ? 2 : 1)
+                else {
+                    return nil
+                }
+                return edge.id
+            })
     }
 
     /// Pick the nearest visible segment within a finite, nonnegative screen-point tolerance.

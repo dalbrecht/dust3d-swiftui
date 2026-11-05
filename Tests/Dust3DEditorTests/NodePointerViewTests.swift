@@ -32,6 +32,24 @@ final class NodePointerViewTests: XCTestCase {
         XCTAssertEqual(toggled, 1)
     }
 
+    func testShiftClickAddsAndCommandShiftClickTogglesWithoutReplacingSelection() throws {
+        let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
+        view.enabled = true
+        var added = 0
+        var toggled = 0
+        var selected = 0
+        view.add = { added += 1 }
+        view.toggle = { toggled += 1 }
+        view.select = { selected += 1 }
+        for flags: NSEvent.ModifierFlags in [.shift, [.command, .shift]] {
+            view.mouseDown(with: try event(.leftMouseDown, x: 10, y: 10, flags: flags))
+            view.mouseUp(with: try event(.leftMouseUp, x: 10, y: 10, flags: flags))
+        }
+        XCTAssertEqual(added, 1)
+        XCTAssertEqual(toggled, 1)
+        XCTAssertEqual(selected, 0)
+    }
+
     func testEachDragCarriesItsOwnTokenAndWindowCoordinates() throws {
         let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
         view.enabled = true

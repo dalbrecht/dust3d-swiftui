@@ -274,3 +274,10 @@ the pinned reference contract. Timing validation preserves duration precision an
 requires integral bounded sample counts; it is not native sampling acceptance.
 Raw `DocumentAnimationParameter` construction preserves unsupported text; explicit
 edit commands still validate names/values before document mutation (ADR 0119).
+
+`insertEdgeMidpoints([EdgeMidpointInsertion])` applies a captured explicit edge
+batch in Qt UUID order with one graph/XML index, aggregate quotas and fresh-ID
+validation before mutation. `canInsertEdgeMidpoints(ids:)` shares the structural
+validation without allocating identities. Each original edge keeps its first
+segment and opaque metadata; new segments copy only Qt's name and bone name.
+The singular midpoint command uses the same implementation.

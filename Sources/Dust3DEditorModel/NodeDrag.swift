@@ -8,7 +8,8 @@ public struct NodeDrag: Sendable {
     private let constraintRevision: Int
     private let selectionRevision: Int
     private let selectedIDs: Set<String>
-    private let selectedEdgeID: String?
+    private let selectedEdgeIDs: Set<String>
+    private let participants: Set<String>
     private let selectedPartID: String?
     private let selectedComponentIDs: Set<String>
     private let locks: Set<EditingConstraint>
@@ -31,7 +32,8 @@ public struct NodeDrag: Sendable {
         constraintRevision = snapshot.constraintRevision
         selectionRevision = snapshot.selectionRevision
         selectedIDs = snapshot.selectedIDs
-        selectedEdgeID = snapshot.selectedEdgeID
+        selectedEdgeIDs = snapshot.selectedEdgeIDs
+        participants = snapshot.transformNodeIDs.contains(anchorID) ? snapshot.transformNodeIDs : [anchorID]
         selectedPartID = snapshot.selectedPartID
         selectedComponentIDs = snapshot.selectedComponentIDs
         locks = snapshot.locks
@@ -51,7 +53,7 @@ public struct NodeDrag: Sendable {
 
     /// Nodes that participate in this captured selection.
     public func includes(_ id: String) -> Bool {
-        selectedIDs.contains(anchorID) ? selectedIDs.contains(id) : id == anchorID
+        participants.contains(id)
     }
 
     /// Whether this gesture still targets the same document, selection and constraints.
@@ -59,7 +61,7 @@ public struct NodeDrag: Sendable {
         documentIdentity == snapshot.documentIdentity && revision == snapshot.documentRevision
             && constraintRevision == snapshot.constraintRevision && selectionRevision == snapshot.selectionRevision
             && locks == snapshot.locks
-            && selectedIDs == snapshot.selectedIDs && selectedEdgeID == snapshot.selectedEdgeID
+            && selectedIDs == snapshot.selectedIDs && selectedEdgeIDs == snapshot.selectedEdgeIDs
             && selectedPartID == snapshot.selectedPartID && selectedComponentIDs == snapshot.selectedComponentIDs
     }
 }

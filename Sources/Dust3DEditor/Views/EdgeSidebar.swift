@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// An accessible alternative to pointer picking, including edges whose projection collapses to a point.
@@ -15,18 +16,42 @@ struct EdgeSidebar: View {
                     ForEach(edges) { edge in
                         let title = "\(titles[edge.fromID] ?? edge.fromID) → \(titles[edge.toID] ?? edge.toID)"
                         Button {
-                            store.selectEdge(edge.id)
+                            let flags = NSApp.currentEvent?.modifierFlags ?? []
+                            if flags.contains(.command) {
+                                store.toggleEdgeSelection(edge.id)
+                            } else if flags.contains(.shift) {
+                                store.selectGraph(nodes: [], edges: [edge.id], mode: .add)
+                            } else {
+                                store.selectEdge(edge.id)
+                            }
                         } label: {
-                            Label(title, systemImage: "line.diagonal")
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Label(
+                                title,
+                                systemImage: store.snapshot?.selectedEdgeIDs.contains(edge.id) == true
+                                    ? "checkmark.circle.fill" : "line.diagonal"
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.bordered)
-                        .tint(store.snapshot?.selectedEdgeID == edge.id ? .accentColor : .secondary)
+                        .tint(store.snapshot?.selectedEdgeIDs.contains(edge.id) == true ? .accentColor : .secondary)
                         .accessibilityLabel(
                             "Select edge from \(titles[edge.fromID] ?? edge.fromID) to \(titles[edge.toID] ?? edge.toID)"
                         )
-                        .accessibilityValue(store.snapshot?.selectedEdgeID == edge.id ? "Selected" : "Not selected")
-                        .help(edge.id)
+                        .accessibilityAddTraits(
+                            store.snapshot?.selectedEdgeIDs.contains(edge.id) == true ? .isSelected : []
+                        )
+                        .accessibilityValue(
+                            store.snapshot?.selectedEdgeIDs.contains(edge.id) == true ? "Selected" : "Not selected"
+                        )
+                        .accessibilityAction(named: Text("Add edge to selection")) {
+                            store.selectGraph(nodes: [], edges: [edge.id], mode: .add)
+                        }
+                        .accessibilityAction(named: Text("Remove edge from selection")) {
+                            if store.snapshot?.selectedEdgeIDs.contains(edge.id) == true {
+                                store.toggleEdgeSelection(edge.id)
+                            }
+                        }
+                        .help("\(edge.id) · Shift-click adds; Command-click toggles selection")
                     }
                 }.padding(.horizontal, 12).padding(.bottom, 12)
             }
