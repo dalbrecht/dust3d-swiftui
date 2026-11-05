@@ -647,19 +647,53 @@ public actor EditorSession {
 
     private static func identifier() -> String { "{\(UUID().uuidString.lowercased())}" }
 
+    /// Clear selected node-owned part color overrides in one transaction, without preparing an image.
+    /// - Returns: The current snapshot; no-op plans retain history and preview identities.
+    /// - Throws: Load, cancellation, stale or ownership errors atomically.
+    public func clearSelectedPartColors(target: CanvasAdjustmentTarget? = nil) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) {
+            _ = try $0.clearSelectedPartColors(target: target)
+        }.snapshot
+    }
+
+    /// Apply one source-verified fitted-raster color plan on the editing actor.
+    /// - Parameters: Owned source bytes/raster and frozen displayed layout; target captures pre-await epochs.
+    /// - Returns: Snapshot and skip/change statistics for this one atomic transaction.
+    /// - Throws: Load, cancellation, stale source/context or ownership errors without a partial edit.
+    public func autoColorSelectedParts(
+        raster: ReferenceColorRaster, layout: ReferenceColorSamplingLayout,
+        referencePNG: Data, target: ReferenceColorTarget
+    ) throws -> ReferenceColorReceipt {
+        guard let previous = state?.snapshot else { throw EditorError.notLoaded }
+        let result = try updateWithResult(checkCancellationBeforePublication: true) {
+            try $0.autoColorSelectedParts(raster: raster, layout: layout, referencePNG: referencePNG, target: target)
+        }
+        return ReferenceColorReceipt(snapshot: result.snapshot, plan: result.result, previous: previous)
+    }
+
     public func undo() throws -> EditorSnapshot { try update { try $0.undo() } }
     public func redo() throws -> EditorSnapshot { try update { try $0.redo() } }
 
     private func update(_ operation: (inout EditorState) throws -> Void) throws -> EditorSnapshot {
+        try updateWithResult(operation).snapshot
+    }
+
+    private func updateWithResult<Result>(
+        checkCancellationBeforePublication: Bool = false,
+        _ operation: (inout EditorState) throws -> Result
+    ) throws
+        -> (snapshot: EditorSnapshot, result: Result)
+    {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
-        try operation(&next)
+        let result = try operation(&next)
         // Prune at publication so intervening reads cannot change history selection semantics.
         if selectedAnimationID != nil {
             selectedAnimationID =
                 Self.animationSnapshot(next, selectedID: selectedAnimationID).list.selectedRow?.source.id
         }
+        if checkCancellationBeforePublication { try Task.checkCancellation() }
         state = next
-        return next.snapshot
+        return (next.snapshot, result)
     }
 }

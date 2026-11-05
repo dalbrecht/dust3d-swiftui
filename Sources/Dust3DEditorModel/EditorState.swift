@@ -18,6 +18,8 @@ public enum EditorError: Error, Equatable, Sendable {
     case invalidPivotSelection
     case unavailableOrigin
     case staleReferenceComposition
+    case staleReferenceColor
+    case invalidReferenceColorSelection
     case staleComponentMove
     case staleColorImageTarget
     case staleOriginDrag

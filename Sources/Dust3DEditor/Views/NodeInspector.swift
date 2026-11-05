@@ -59,6 +59,7 @@ struct NodeInspector: View {
                 NodePropertyEditor(store: store, node: node, draft: draft)
                 NodeRadiusAdjustmentControls(store: store)
                 CanvasRotationControls(store: store)
+                GraphColorizeControls(store: store)
                 NodeReductionControls(store: store)
                 SelectionTransformMenu(store: store)
                 DescendantRotationMenu(store: store)
@@ -143,6 +144,7 @@ private struct GroupInspector: View {
                 .font(.caption).foregroundStyle(.secondary)
             NodeRadiusAdjustmentControls(store: store)
             CanvasRotationControls(store: store)
+            GraphColorizeControls(store: store)
             NodeReductionControls(store: store)
             SelectionTransformMenu(store: store)
             Button("Reverse Selected Edges") { store.reverseSelectedEdges() }

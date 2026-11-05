@@ -17,6 +17,10 @@ public struct DocumentPreviewIdentity: Equatable, Sendable {
             break
         case .setPartMaterial, .setComponentColorImage, .importComponentColorImage:
             materials = UUID()
+        case .setComponentColor, .setComponentColors:
+            // Component colors also feed vertex-color fallback, including the bulk command.
+            geometry = UUID()
+            materials = UUID()
         default:
             geometry = UUID()
             materials = UUID()

@@ -114,6 +114,7 @@ struct Dust3DEditorApp: App {
                     store: store,
                     animationFocus: isAnimationFocused == true,
                     nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
+                GraphColorizeMenu(store: store)
                 DescendantRotationMenu(store: store)
                 Button("Reduce Selected Nodes") { store?.reduceSelectedNodes() }
                     .disabled(store?.canReduceSelectedNodes != true)

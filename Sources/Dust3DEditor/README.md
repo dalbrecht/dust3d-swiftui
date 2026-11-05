@@ -525,3 +525,33 @@ rendered plane/document/selection/constraints and reject stale callbacks after
 replacement, edits, lock changes or tool switches. Existing quarter-turn menus
 are unchanged. This slice covers punctuation, menu and explicit angle controls;
 Qt Shift-drag rotation and endpoint inverse kinematics remain separate work.
+
+
+### Reference graph colors
+
+Colorize Selection → Auto Color uses the visible reference image to color selected
+parts. Select at least one node; explicit selected edges also contribute their
+midpoints under their stored part ownership. Clear Part Colors removes overrides
+for the editable selected-node parts and preserves reference/texture images. It
+works without an image. All-readonly actions are disabled; mixed selections skip
+read-only owners, while unresolved or ambiguous editable ownership is an atomic
+error. No new keyboard shortcut is assigned.
+
+Auto Color is available only after the current fitted reference has been prepared.
+The displayed image and sampled raster share the same owned source samples and
+logical fit; the original oriented source aspect determines the world rectangle,
+including when rounded raster dimensions have a slightly different aspect. Both
+Front and Side use the whole composed reference. Repeated RGB triples count once,
+alpha and display opacity do not weight the opaque average, and outside positions
+are skipped. This is encoded-source sampling, not a perceptual color-match claim.
+Hiding the reference disables Auto Color as a native clarity policy; Qt checks only
+for a loaded background image. Clear remains available with the image hidden.
+
+Raster work runs off the UI actor from an immutable document snapshot, never from
+a stale preview CGImage. No PNG extraction/equality is performed for UI admission.
+Plane, fit, resize, pointer interaction, tool, source and lifecycle changes cancel
+or invalidate pending work with monotonic epochs; changing away and back cannot
+revive an old action. A precommit cancellation adds no history. A receipt already
+committed to the same current document is still published after cancellation.
+Each changed action is one undo transaction; no-ops retain history and preview
+identities. Physical menu/keyboard/VoiceOver acceptance remains a separate check.

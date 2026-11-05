@@ -328,3 +328,16 @@ history step; zero/full turns preserve redo and preview identity. An optional
 CanvasAdjustmentTarget rejects document, selection and constraint changes before
 publication. Plane is an explicit captured command value. Existing quarter-turn
 and explicit descendant APIs retain their established behavior.
+
+
+`ReferenceColorTarget(snapshot:)` captures only scalar document/selection/constraint
+identity; it never extracts PNG bytes. Actor Auto Color verifies the service's
+returned PNG against the current document off-main, plans explicit node-center and
+explicit edge-midpoint samples, resolves all editable ownership, then applies the
+entire plan atomically. Clear needs no image. Action APIs require an explicit node;
+the pure planner retains its lower-level edge-only capability for independent use.
+Readonly owners and outside samples are skipped; ambiguous/unresolvable editable
+owners fail without partial mutation. Receipts report actually changed component
+overrides, not merely planned updates. Reference edits perform cooperative checks
+before planning, before applying, and before state/actor publication. Existing
+unrelated actor operations retain their established publication behavior.
