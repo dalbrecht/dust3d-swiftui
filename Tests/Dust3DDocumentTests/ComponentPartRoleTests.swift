@@ -16,6 +16,44 @@ final class ComponentPartRoleTests: XCTestCase {
     private let a = "<component id='a' linkDataType='partId' linkData='p'/>"
     private let b = "<component id='b' linkDataType='partId' linkData='q'/>"
 
+    func testRoleCommandsRequireExactComponentAndPartOwnershipBeforeAnyEdit() throws {
+        let actualComponent = "owner-cafe\u{301}"
+        let componentAlias = "owner-caf\u{e9}"
+        let actualPart = "cafe\u{301}"
+        let partAlias = "caf\u{e9}"
+        let prefix = "<canvas><nodes/><edges/><parts><part id='cafe&#769;' future='keep'/></parts><components>"
+        let owner = "<component id='owner-cafe&#769;' linkDataType='partId' linkData='cafe&#769;'/>"
+        let danglingRow = "<component id='dangling' linkDataType='partId' linkData='caf&#233;'/>"
+        let suffix = "</components></canvas>"
+        let ownerOnly = try Dust3DDocument(snapshotXML: Data((prefix + owner + suffix).utf8))
+        let danglingOnly = try Dust3DDocument(snapshotXML: Data((prefix + danglingRow + suffix).utf8))
+        let original = try Dust3DDocument(snapshotXML: Data((prefix + owner + danglingRow + suffix).utf8))
+        for (source, requested, expected) in [
+            (ownerOnly, [componentAlias], DocumentError.missingComponent(componentAlias)),
+            (ownerOnly, [actualComponent, componentAlias], DocumentError.missingComponent(componentAlias)),
+            (danglingOnly, ["dangling"], DocumentError.missingPart(partAlias)),
+        ] {
+            var history = DocumentHistory(document: source)
+            XCTAssertThrowsError(
+                try history.apply(
+                    .setComponentPartRoles(componentIDs: requested, target: .cutFace, newGroupID: nil))
+            ) {
+                XCTAssertEqual($0 as? DocumentError, expected)
+            }
+            XCTAssertEqual(history.document.encoded(), source.encoded())
+            XCTAssertFalse(history.canUndo)
+        }
+        var history = DocumentHistory(document: original)
+        try history.apply(.setComponentPartRoles(componentIDs: [actualComponent], target: .cutFace, newGroupID: nil))
+        let part = try XCTUnwrap(history.document.editorContents().parts.first)
+        XCTAssertEqual(Data(part.id.utf8), Data(actualPart.utf8))
+        XCTAssertEqual(part.target, .cutFace)
+        let dangling = try XCTUnwrap(history.document.components().first { $0.id == "dangling" })
+        XCTAssertEqual(dangling.partID.map { Data($0.utf8) }, Data(partAlias.utf8))
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+    }
+
     func testRootStitchingGroupsInDocumentOrderAndUndoesExactly() throws {
         let source = try document(a + "<component id='other'/>" + b)
         var history = DocumentHistory(document: source)

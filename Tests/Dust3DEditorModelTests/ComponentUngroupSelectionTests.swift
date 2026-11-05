@@ -76,6 +76,42 @@ final class ComponentUngroupSelectionTests: XCTestCase {
             } catch { XCTAssertEqual(error as? ComponentUngroupSelectionError, .staleTarget) }
         }
     }
+    func testByteDistinctSelectionChangesInvalidateRetainedUngroupIncludingReturnToOriginal() throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><components><component id='cafe&#769;'><component id='child'/></component></components></canvas>"
+                    .utf8))
+        for returnToOriginal in [false, true] {
+            var state = try EditorState(document: original)
+            try state.selectComponents(["cafe\u{301}"])
+            let before = state.snapshot
+            let target = ComponentUngroupTarget(snapshot: before)
+            XCTAssertEqual(target.wrapperCount, 1)
+            try state.selectComponents(["caf\u{e9}"])
+            XCTAssertEqual(state.snapshot.selectionRevision, before.selectionRevision + 1)
+            XCTAssertEqual(Set(state.snapshot.selectedComponentIDs.map { Data($0.utf8) }), [Data("caf\u{e9}".utf8)])
+            XCTAssertEqual(ComponentUngroupTarget(snapshot: state.snapshot).wrapperCount, 0)
+            if returnToOriginal {
+                try state.selectComponent("cafe\u{301}")
+                XCTAssertEqual(state.snapshot.selectionRevision, before.selectionRevision + 2)
+            }
+            XCTAssertFalse(target.isCurrent(in: state.snapshot))
+            XCTAssertThrowsError(try state.ungroupComponents(target: target)) {
+                XCTAssertEqual($0 as? ComponentUngroupSelectionError, .staleTarget)
+            }
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            XCTAssertEqual(state.snapshot.documentRevision, before.documentRevision)
+            XCTAssertEqual(state.snapshot.previewIdentity, before.previewIdentity)
+            XCTAssertFalse(state.snapshot.canUndo)
+            if returnToOriginal {
+                try state.ungroupComponents(target: .init(snapshot: state.snapshot))
+                XCTAssertEqual(state.snapshot.componentTree.rows.map(\.id), ["child"])
+                try state.undo()
+                XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            }
+        }
+    }
+
     func testUnavailableExactAliasesCancellationAndContextErrorsNeverPublishOrAcquireLaterTarget() async throws {
         let original = try source()
         let session = EditorSession()
@@ -83,8 +119,10 @@ final class ComponentUngroupSelectionTests: XCTestCase {
         let unavailable = ComponentUngroupTarget(snapshot: empty)
         let selected = try await session.selectComponents(["a"])
         XCTAssertFalse(unavailable.isCurrent(in: selected))
-        let task = Task { try await session.ungroupComponents(target: .init(snapshot: selected)) }
-        task.cancel()
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await session.ungroupComponents(target: .init(snapshot: selected))
+        }
         do {
             _ = try await task.value
             XCTFail("Cancelled")
