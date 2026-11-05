@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Prepare lossless hollow-thickness history and an explicitly gated local-core inspector experiment; production geometry support remains unchanged (#96).
+
 - Add opt-in automatic preview rotation that respects Reduce Motion and pauses while dragging or inactive (#326).
 
 - Add window-local Model Colors and Wireframe controls to the View menu, preserving material transparency in neutral preview mode (#324).

@@ -21,6 +21,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case missingComponent(String)
     case invalidPartCutFace
     case invalidPartCutRotation
+    case invalidPartHollowThickness
     case invalidPartDeformation
     case invalidPartMaterial
     case invalidPartName
@@ -107,6 +108,11 @@ public enum DocumentCommand: Sendable {
     case setHeadHasEyelids(Bool)
     /// Set finite canvas origin coordinates within ±1,000,000 without moving any nodes.
     case setOrigin(NodePosition)
+    /// Store finite hollow thickness in 0...1; both endpoints are solid in the reviewed local core.
+    /// Zero removes the attribute on change; semantic no-ops retain exact archive bytes.
+    /// Geometry requires the separately reviewed core; the production pin retains this as unsupported metadata.
+    /// Throws `invalidPartHollowThickness` or `missingPart`. Example: `.setPartHollowThickness(id: id, thickness: 0.5)`.
+    case setPartHollowThickness(id: String, thickness: Double)
     /// Rename the legacy part name, preserving component names. Empty input restores the default label.
     case setPartName(id: String, name: String)
     /// Rename one component independently of its linked part; empty input removes its name.
@@ -516,6 +522,21 @@ public struct Dust3DDocument: Sendable {
         items.first { $0.name == "canvas.png" && $0.type == "asset" }?.range.count
     }
 
+    /// Read the exact stored hollow thickness, including values from older archives.
+    public func partHollowThicknessSource(id: String) throws -> String? {
+        let model = try Self.xml(modelXML, root: "canvas")
+        return try Self.hollowPart(in: model.rootElement(), id: id).attribute(forName: "hollowThickness")?.stringValue
+    }
+
+    private static func hollowPart(in root: XMLElement?, id: String) throws -> XMLElement {
+        guard
+            let part = root?.elements(forName: "parts").first?.elements(forName: "part").first(where: {
+                $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(id.utf8) == true
+            })
+        else { throw DocumentError.missingPart(id) }
+        return part
+    }
+
     /// Read a complete finite bounded canvas origin, or nil for missing/unsupported coordinates.
     /// Unsupported source attributes remain intact until an explicit origin edit or Undo.
     public func origin() throws -> NodePosition? {
@@ -737,6 +758,22 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setPartHollowThickness(let id, let thickness):
+            guard thickness.isFinite, (0...1).contains(thickness) else {
+                throw DocumentError.invalidPartHollowThickness
+            }
+            let part = try Self.hollowPart(in: root, id: id)
+            let key = "hollowThickness"
+            let current = part.attribute(forName: key)
+            if (current?.stringValue.flatMap(Double.init) ?? (current == nil ? 0 : nil)) == thickness { return self }
+            part.removeAttribute(forName: key)
+            if thickness > 0 {
+                let attribute = XMLNode(kind: .attribute)
+                attribute.name = key
+                attribute.stringValue = String(thickness)
+                part.addAttribute(attribute)
+            }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartName(let id, let name):
             guard name.utf8.count <= 1024,
