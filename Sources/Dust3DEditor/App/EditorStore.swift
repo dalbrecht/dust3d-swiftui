@@ -148,6 +148,7 @@ final class EditorStore {
     }
     func beginAddMode() {
         guard canBeginAddMode, let snapshot else { return }
+        cancelReferenceColorCommit()
         let currentCanvasProjection = CanvasProjection(
             bounds: bounds, plane: plane, width: canvasWidth, height: canvasHeight)
         cancelOriginDrag()
@@ -342,12 +343,23 @@ final class EditorStore {
     var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
     var renderError: String?
-    var bounds = CanvasBounds(nodes: [])
+    var bounds = CanvasBounds(nodes: []) {
+        didSet {
+            if let canvas = referenceColorCanvas {
+                setReferenceColorCanvasContext(
+                    projection: CanvasProjection(
+                        bounds: bounds, plane: plane,
+                        width: canvas.identity.width, height: canvas.identity.height),
+                    width: canvas.identity.width, height: canvas.identity.height)
+            }
+        }
+    }
     private var rotationInputContextID = UUID()
     var plane = EditingPlane.front {
         didSet {
             if plane != oldValue {
                 rotationInputContextID = UUID()
+                invalidateReferenceColors()
                 cancelAddMode()
                 cancelOriginDrag()
                 clearCanvasHover()
@@ -356,7 +368,10 @@ final class EditorStore {
     }
     private(set) var isMovingOrigin = false {
         didSet {
-            if isMovingOrigin != oldValue { rotationInputContextID = UUID() }
+            if isMovingOrigin != oldValue {
+                rotationInputContextID = UUID()
+                cancelReferenceColorCommit()
+            }
             if isMovingOrigin { clearCanvasHover() }
         }
     }
@@ -368,7 +383,14 @@ final class EditorStore {
     private(set) var referenceImage: CGImage?
     private(set) var referenceImageError: String?
     private(set) var isLoadingReferenceImage = false
-    var showsReferenceImage = true
+    var showsReferenceImage = true {
+        didSet {
+            if showsReferenceImage != oldValue {
+                invalidateReferenceColors()
+                if showsReferenceImage { scheduleReferenceColors() }
+            }
+        }
+    }
     var referenceImageOpacity = 0.5
     var hasReferenceImage: Bool { snapshot?.document.hasReferenceImage == true }
     var referenceImageForComposition: CGImage? {
@@ -412,6 +434,20 @@ final class EditorStore {
     private(set) var isPreparingColorImage = false
     private var colorImageRequestID = UUID()
     private var operationRequestID = UUID()
+    private let referenceColorRaster: any ReferenceColorRasterServing
+    private let referenceColorApplying: any ReferenceColorApplying
+    private var referenceColorCanvas: (identity: ReferenceColorCanvasIdentity, projection: CanvasProjection)?
+    private var preparedReferenceColors: PreparedReferenceColors?
+    private var referenceColorPreparationID = UUID()
+    private(set) var referenceColorPreparation: Task<Void, Never>?
+    private(set) var isPreparingReferenceColors = false
+    private(set) var referenceColorError: String?
+    private(set) var referenceColorNotice: String?
+    private(set) var referenceColorCommitTask: Task<Void, Never>?
+    private var referenceColorApplyToken = UUID()
+    private var referenceColorOperationID: UUID?
+    private var referenceColorInteractionActive = false
+    private var referenceColorInteractionEpoch = UUID()
     private let referenceImages: any ReferenceImageServing
     private var operation: Task<Void, Never>?
     // Lifecycle callers can await a captured request's cooperative completion.
@@ -429,8 +465,12 @@ final class EditorStore {
         sourceMaterialBaker: any ArchiveSourceTextureBaking = ArchiveSourceTextureBakingService(),
         exportService: DocumentExportFileService? = nil,
         animationCatalog: (any AnimationCatalogLoading)? = nil,
-        addPlacements: any AddPlacementServing = AddPlacementService()
+        addPlacements: any AddPlacementServing = AddPlacementService(),
+        referenceColorRaster: any ReferenceColorRasterServing = ReferenceColorRasterService(),
+        referenceColorApplying: any ReferenceColorApplying = ReferenceColorApplicationService()
     ) {
+        self.referenceColorRaster = referenceColorRaster
+        self.referenceColorApplying = referenceColorApplying
         self.addPlacements = addPlacements
         authoringCatalog = EditorAnimationCatalogState(service: animationCatalog)
         self.exportService = exportService
@@ -665,6 +705,9 @@ final class EditorStore {
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
         pendingComponentDrag = nil
+        invalidateReferenceColors()
+        referenceColorApplyToken = UUID()
+        referenceColorOperationID = nil
         pendingWholePartPick = nil
         isSelectingGraph = false
         cancelAddMode(refit: false)
@@ -1368,6 +1411,182 @@ final class EditorStore {
         }
     }
 
+    var fittedReferenceColorImage: CGImage? {
+        guard let preparedReferenceColors, preparedReferenceColors.sourceID == referenceRequestID,
+            preparedReferenceColors.canvas == referenceColorCanvas?.identity
+        else { return nil }
+        return preparedReferenceColors.result.displayImage
+    }
+    func fittedReferenceColorImage(in canvas: ReferenceColorCanvasIdentity) -> CGImage? {
+        guard preparedReferenceColors?.canvas == canvas else { return nil }
+        return fittedReferenceColorImage
+    }
+    var referenceColorDisplayAspect: Double? {
+        guard let preparedReferenceColors, fittedReferenceColorImage != nil else { return nil }
+        return Double(preparedReferenceColors.result.referenceSize.width)
+            / Double(preparedReferenceColors.result.referenceSize.height)
+    }
+    private var hasColorizeAdmission: Bool {
+        !stopped && !isWorking && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
+            && snapshot.map(GraphReferenceColorPlan.canColorize) == true
+    }
+    var canClearSelectionColors: Bool {
+        hasColorizeAdmission && snapshot?.selectedNodes.contains(where: \.isEditable) == true
+    }
+    var canAutoColorSelection: Bool {
+        guard hasColorizeAdmission, let snapshot, showsReferenceImage, !isLoadingReferenceImage,
+            !isPreparingReferenceColors, !referenceColorInteractionActive, fittedReferenceColorImage != nil
+        else { return false }
+        if snapshot.selectedNodes.contains(where: \.isEditable) { return true }
+        let parts = Dictionary(uniqueKeysWithValues: snapshot.parts.map { ($0.id, $0) })
+        return snapshot.selectedEdges.contains { edge in
+            guard let partID = edge.partID, let part = parts[partID] else { return true }
+            return part.isEditable
+        }
+    }
+    func setReferenceColorCanvasContext(projection: CanvasProjection, width: Double, height: Double) {
+        let identity = ReferenceColorCanvasIdentity(projection: projection, width: width, height: height)
+        guard identity.isValid else {
+            clearReferenceColorCanvasContext()
+            return
+        }
+        guard identity != referenceColorCanvas?.identity else { return }
+        invalidateReferenceColors()
+        referenceColorCanvas = (identity, projection)
+        scheduleReferenceColors()
+    }
+    func clearReferenceColorCanvasContext() {
+        invalidateReferenceColors()
+        referenceColorCanvas = nil
+    }
+    func setReferenceColorInteractionActive(_ active: Bool) {
+        guard active != referenceColorInteractionActive else { return }
+        referenceColorInteractionActive = active
+        referenceColorInteractionEpoch = UUID()
+        if active { cancelReferenceColorCommit() }
+    }
+    private func cancelReferenceColorCommit() {
+        if referenceColorOperationID == operationRequestID { operation?.cancel() }
+    }
+    private func invalidateReferenceColors() {
+        cancelReferenceColorCommit()
+        referenceColorPreparation?.cancel()
+        referenceColorPreparationID = UUID()
+        isPreparingReferenceColors = false
+        preparedReferenceColors = nil
+        referenceColorError = nil
+        referenceColorNotice = nil
+    }
+    private func scheduleReferenceColors() {
+        guard !stopped, showsReferenceImage, !isLoadingReferenceImage, referenceImageError == nil,
+            let snapshot, snapshot.document.hasReferenceImage, let canvas = referenceColorCanvas
+        else { return }
+        referenceColorPreparation?.cancel()
+        let requestID = UUID()
+        referenceColorPreparationID = requestID
+        let sourceID = referenceRequestID
+        let documentID = snapshot.documentIdentity
+        let service = referenceColorRaster
+        isPreparingReferenceColors = true
+        referenceColorError = nil
+        referenceColorPreparation = Task { [weak self] in
+            await Task.yield()  // Collapse same-turn geometry changes before entering bounded raster work.
+            do {
+                try Task.checkCancellation()
+                let result = try await service.prepare(
+                    document: snapshot.document, logicalHeight: canvas.identity.scale)
+                try Task.checkCancellation()
+                guard let self, !self.stopped, self.referenceColorPreparationID == requestID,
+                    self.referenceRequestID == sourceID, self.snapshot?.documentIdentity == documentID,
+                    self.referenceColorCanvas?.identity == canvas.identity, self.showsReferenceImage
+                else { return }
+                let layout = try ReferenceColorSamplingLayout(
+                    referenceSize: result.referenceSize, projection: canvas.projection)
+                self.preparedReferenceColors = .init(
+                    sourceID: sourceID, canvas: canvas.identity, result: result, layout: layout)
+                self.isPreparingReferenceColors = false
+            } catch {
+                guard let self, !Task.isCancelled, self.referenceColorPreparationID == requestID else { return }
+                self.referenceColorError = Self.message(error)
+                self.isPreparingReferenceColors = false
+            }
+        }
+    }
+    func referenceColorAction() -> @MainActor () -> Void {
+        let target = snapshot.map(ReferenceColorTarget.init)
+        let admitted = canAutoColorSelection
+        let preparationID = referenceColorPreparationID
+        let interaction = referenceColorInteractionEpoch
+        let canvas = referenceColorCanvas?.identity
+        let source = referenceRequestID
+        let tool = rotationInputContextID
+        let add = addModeID
+        return { [weak self] in
+            guard admitted, let self, let target, let snapshot = self.snapshot, target.isCurrent(in: snapshot),
+                preparationID == self.referenceColorPreparationID, interaction == self.referenceColorInteractionEpoch,
+                canvas == self.referenceColorCanvas?.identity,
+                source == self.referenceRequestID,
+                tool == self.rotationInputContextID, add == self.addModeID
+            else { return }
+            self.autoColorSelection()
+        }
+    }
+    func clearSelectionColorsAction() -> @MainActor () -> Void {
+        let target = snapshot.map(CanvasAdjustmentTarget.init)
+        let admitted = canClearSelectionColors
+        let interaction = referenceColorInteractionEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        return { [weak self] in
+            guard admitted, let self, let target, let snapshot = self.snapshot, target.isCurrent(in: snapshot),
+                self.canClearSelectionColors, interaction == self.referenceColorInteractionEpoch,
+                tool == self.rotationInputContextID, add == self.addModeID
+            else { return }
+            self.referenceColorNotice = nil
+            self.perform { try await $0.clearSelectedPartColors(target: target) }
+        }
+    }
+    func clearSelectionColors() { clearSelectionColorsAction()() }
+    func autoColorSelection() {
+        guard canAutoColorSelection, let snapshot, let prepared = preparedReferenceColors else { return }
+        let target = ReferenceColorTarget(snapshot: snapshot)
+        let application = referenceColorApplying
+        let documentID = snapshot.documentIdentity
+        let token = UUID()
+        referenceColorApplyToken = token
+        perform(
+            acceptCommittedCancellation: true,
+            completion: { [weak self] _ in
+                guard let self, self.referenceColorApplyToken == token else { return }
+                self.referenceColorOperationID = nil
+            },
+            { [weak self] session in
+                let receipt = try await application.apply(
+                    raster: prepared.result.raster, layout: prepared.layout,
+                    referencePNG: prepared.result.referencePNG, target: target, in: session)
+                await self?.acceptReferenceColorReceipt(receipt, documentID: documentID, token: token)
+                return receipt.snapshot
+            }
+        )
+        referenceColorOperationID = operationRequestID
+        referenceColorCommitTask = operation
+    }
+    private func acceptReferenceColorReceipt(_ receipt: ReferenceColorReceipt, documentID: UUID, token: UUID) {
+        guard !stopped, snapshot?.documentIdentity == documentID, referenceColorApplyToken == token,
+            referenceColorOperationID == operationRequestID
+        else { return }
+        referenceColorNotice =
+            receipt.didChange
+            ? "Auto Color changed \(receipt.changedComponentCount) part colors."
+            : "No part colors changed."
+        if receipt.skippedReadOnlyObjects > 0 {
+            referenceColorNotice? += " Skipped \(receipt.skippedReadOnlyObjects) read-only objects."
+        }
+        if receipt.skippedOutsideObjects > 0 {
+            referenceColorNotice? += " Skipped \(receipt.skippedOutsideObjects) objects outside the reference."
+        }
+    }
+
     func importReferenceImage(from url: URL) {
         let service = referenceImages
         perform(reloadReferenceImage: true) { session in
@@ -1395,6 +1614,9 @@ final class EditorStore {
 
     func stop() {
         pendingComponentDrag = nil
+        invalidateReferenceColors()
+        referenceColorApplyToken = UUID()
+        referenceColorOperationID = nil
         pendingWholePartPick = nil
         isSelectingGraph = false
         cancelAddMode(refit: false)
@@ -1582,6 +1804,7 @@ final class EditorStore {
 
     private func refreshReferenceImage(_ snapshot: EditorSnapshot, forceFit: Bool = false) {
         referenceGeneration?.cancel()
+        invalidateReferenceColors()
         let requestID = UUID()
         referenceRequestID = requestID
         referenceImageError = nil
@@ -1599,6 +1822,7 @@ final class EditorStore {
                 isLoadingReferenceImage = false
                 // Empty results only clear the cache; Load/removal already fitted their visible content.
                 if result.image != nil && (result.changed || forceFit || !hadImage) { fit() }
+                scheduleReferenceColors()
             } catch {
                 guard !Task.isCancelled, !stopped, referenceRequestID == requestID else { return }
                 referenceImage = nil
@@ -1631,6 +1855,26 @@ final class EditorStore {
         }
         if error is ComponentMeshSelectionError {
             return "The component settings selection changed. Choose the edit again."
+        }
+        if let color = error as? ReferenceColorError {
+            switch color {
+            case .invalidRaster: return "The reference color raster has invalid pixel storage."
+            case .invalidLayout: return "The reference color layout is not supported."
+            case .unresolvableOwner(let id): return "The selected object's part ownership cannot be resolved: \(id)."
+            case .ambiguousOwner(let id): return "The selected part has multiple component owners: \(id)."
+            }
+        }
+        if let raster = error as? ReferenceColorRasterError {
+            switch raster {
+            case .missingReference: return "No reference image is available."
+            case .invalidLimits: return "The reference sampling limits are invalid."
+            case .fittedLimitExceeded: return "The fitted reference exceeds the sampling limit."
+            case .unsupportedOrientation(let value): return "Unsupported reference orientation: \(value)."
+            case .invalidLogicalHeight: return "The reference display size is invalid."
+            case .unsupportedDisplayProfile: return "The reference color profile cannot be represented safely."
+            case .incompatibleGrayPixels: return "The grayscale reference contains inconsistent channels."
+            case .displayImageUnavailable: return "The fitted reference display image could not be created."
+            }
         }
         if let image = error as? ReferenceImageError {
             switch image {
@@ -1705,6 +1949,9 @@ final class EditorStore {
             switch editor {
             case .notLoaded: return "Open a document before editing."
             case .readOnlyNode: return "This node belongs to a locked, hidden or disabled part."
+            case .invalidReferenceColorSelection: return "Select at least one node before colorizing parts."
+            case .staleReferenceColor:
+                return "The reference color target changed. Choose the selection again and retry."
             case .staleReferenceComposition:
                 return "The document or locks changed. Reopen the reference image composer."
             case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."

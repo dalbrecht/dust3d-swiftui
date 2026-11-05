@@ -15,15 +15,21 @@ struct NodeCanvas: View {
                     fallback: CanvasProjection(
                         bounds: store.bounds, plane: store.plane,
                         width: geometry.size.width, height: geometry.size.height))
+            let referenceCanvas = ReferenceColorCanvasIdentity(
+                projection: projection, width: geometry.size.width, height: geometry.size.height)
+            let colorizeActions = GraphColorizeActions(store: store)
             let nodes = store.snapshot?.nodes ?? []
             let addModeID = store.addModeID
             let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
             ZStack {
-                if store.showsReferenceImage, let image = store.referenceImage {
-                    let aspect = Double(image.width) / Double(image.height)
+                if store.showsReferenceImage,
+                    let image = store.fittedReferenceColorImage(in: referenceCanvas) ?? store.referenceImage
+                {
+                    let aspect = store.referenceColorDisplayAspect ?? Double(image.width) / Double(image.height)
                     let center = projection.point(for: .init(x: aspect / 2, y: 0.5, z: aspect / 2))
                     Image(decorative: image, scale: 1)
                         .resizable()
+                        .interpolation(.none)
                         .frame(width: aspect * projection.scale, height: projection.scale)
                         .position(x: center.x, y: center.y)
                         .opacity(store.referenceImageOpacity)
@@ -115,6 +121,7 @@ struct NodeCanvas: View {
                         enabled: store.canPickGraph && !store.isMovingOrigin && !store.isAddingNodes,
                         canDrag: !store.isWorking && node.isEditable,
                         canSelectWholePart: store.canSelectWholePart(.node(node.id)),
+                        colorizeActions: colorizeActions,
                         doubleClick: {
                             guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
                                 return
@@ -174,6 +181,13 @@ struct NodeCanvas: View {
                     .allowsHitTesting(false)
                 }
             }
+            .onChange(of: referenceCanvas, initial: true) { _, _ in
+                store.setReferenceColorCanvasContext(
+                    projection: projection, width: geometry.size.width, height: geometry.size.height)
+            }
+            .onChange(of: nodeDrag.preview != nil || marquee != nil) { _, active in
+                store.setReferenceColorInteractionActive(active)
+            }
             .onAppear {
                 store.setCanvasContext(projection: projection, width: geometry.size.width, height: geometry.size.height)
             }
@@ -195,11 +209,14 @@ struct NodeCanvas: View {
                 }
             }
             .onDisappear {
+                store.clearReferenceColorCanvasContext()
+                store.setReferenceColorInteractionActive(false)
                 store.cancelAddMode()
                 store.setCanvasHeight(0)
                 store.clearCanvasHover()
                 marquee = nil
             }
+            .contextMenu { GraphColorizeMenu(actions: colorizeActions) }
             .coordinateSpace(name: "node-canvas")
             .clipped()
             .onChange(of: store.isMovingOrigin) { _, _ in
@@ -256,6 +273,7 @@ private struct NodeHandle: View {
     let enabled: Bool
     let canDrag: Bool
     let canSelectWholePart: Bool
+    let colorizeActions: GraphColorizeActions
     let doubleClick: () -> Void
     let select: () -> Void
     let toggle: () -> Void
@@ -291,7 +309,10 @@ private struct NodeHandle: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { select() }
         .accessibilityAction(named: Text("Select Whole Part")) { if canSelectWholePart { doubleClick() } }
-        .contextMenu { Button("Select Whole Part", action: doubleClick).disabled(!canSelectWholePart) }
+        .contextMenu {
+            Button("Select Whole Part", action: doubleClick).disabled(!canSelectWholePart)
+            GraphColorizeMenu(actions: colorizeActions)
+        }
         .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked, hidden or disabled part")")
     }
 }

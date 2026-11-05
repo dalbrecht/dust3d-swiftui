@@ -1,0 +1,29 @@
+# ADR 0130: Graph color sampling from the displayed reference
+
+Status: accepted; full local native gate passed on 2026-11-01.
+
+## Context
+
+Qt exposes Colorize with explicit-node admission. Blank clears colors of parts owning explicit selected nodes; Auto Color samples explicit node centers and explicit selected-edge midpoints under each object's actual stored part identity. It averages distinct encoded RGB triples with integer truncation, not sample frequencies or linear-light values. Part ownership resolves to one component color override. Native manual component color editing does not supply this graph workflow.
+
+Qt reference: application/sources/skeleton_graphics_widget.cc:373–382,469–533; application/sources/document_window.cc:764–769; application/sources/turnaround_loader.cc:28–35. Qt's fitted background uses FastTransformation; exact fixed-point/QPainter transparency behavior remains a separate differential acceptance requirement.
+
+## Decision
+
+Share a pure owned-raster planner between typed actor commands and accessible graph controls/menu/context actions. Preserve explicit node/edge sets, authoritative edge ownership, distinct RGB means and opaque results. Clear uses explicit nodes only and does not require image preparation. Skip read-only parts before resolving mutable component ownership; reject missing or ambiguous editable ownership atomically. Axis/radius locks do not alter RGB. Preserve unrelated image/material fields.
+
+Prepare the retained composed canvas.png on a per-window off-main boundary. Reuse the audited public PNG decoder's Qt sample policy, including depth-specific keyed grayscale behavior. Normalize orientation before fitting, preserve explicit-alpha hidden RGB and encoded channel/profile values, and use an explicit logical raster grid without an inferred Retina multiplier. The fitted grid is ceil(aspect * captured projection scale) by ceil(captured projection scale), admitted against existing dimension/pixel/byte limits before integer conversion. Center-nearest sampling is defined mathematically; it is not an unmeasured claim of exact Qt fixed-point resizing.
+
+The canvas must display the same fitted sample grid used by Auto Color, using nearest interpolation. Preserve compatible source RGB profiles. A monochrome profile requires a compatible gray/alpha display representation derived losslessly from the same replicated-gray samples, rather than attaching a gray profile to RGBA bytes. Unsupported display spaces must retain a specific cause; no silent color-space fallback establishes acceptance.
+
+Capture immutable document ownership and scalar document/revision, selection, constraints, plane, tool and rendered-layout generations before asynchronous work. Extract and compare image bytes on the service/editing actor, avoiding large PNG copies on the main actor. Cancel/coalesce obsolete preparation and reject stale completions, including selection-away/back, Undo, replacement, resize, plane/tool changes and stop. Keep at most current prepared state rather than an unbounded layout cache. Output quotas are not total workspace/RSS limits.
+
+Disable Auto Color while no current matching raster is displayed, while hidden, during Add/origin tools, or without explicit node admission. Hidden-image exclusion is an intentional native clarity policy; Qt checks image availability. Clear remains independently available without image preparation. All action surfaces share captured targets and meaningful labels. Apply all planned overrides in one actor transaction using a bulk document command. Index the component hierarchy once and serialize the changed model once, retaining existing graph validation and the existing 10,000-component ceiling. This keeps graph/color planning and document mutation linear in document and selection size instead of repeating DOM work per part. Bulk color edits retain the same geometry and material preview identity changes as individual colors, because vertex-color fallback consumes them. No-ops preserve exact bytes, history and preview identity. An already-committed receipt may publish only to its current originating document; precommit cancellation must not mutate.
+
+## Verification
+
+Require test-first planner, raster, actor and UI evidence: distinct versus repeated colors, integer truncation, real edge owner versus endpoint owners, independent parts, ambiguous/missing ownership, readonly/outside counts, exact Undo/Redo/reopen, source metadata preservation, no-op bytes, both planes, strict half-open bounds, all orientation mappings, transparent/low-alpha/keyed-gray/palette/profile samples, fitted dimensions and quotas, and cancellation.
+
+Deterministically hold preparation/commit to prove stale replacement, image changes, selection/locks, layout/plane/tools, stop and two-window isolation. Verify actual fitted display construction for RGB/P3/gray and hosted light/dark render integration. Run the full native gate before a checkpoint. Physical input/VoiceOver and broad Qt image-resize differential acceptance remain open until measured. This feature does not adopt the experimental core or alter quarantines.
+
+Local verification: 60 support and 1,330 XCTest tests passed, with configured coverage (including880/880 editor-state lines), Qt-free linkage and isolated bundle/signature/rebuild checks. Frozen focused integration passed153 tests; complete document/model regression passed573. New pure/domain files and bulk XML lines have100% measured line coverage. RGB/P3/gray display construction, profile-preserving hosted renders, retained callbacks, asynchronous cancellation, old/new apply races, source/layout generations and bulk atomicity were exercised. Physical input and VoiceOver remain outstanding, as does exact Qt fixed-point/QPainter image-resize differential acceptance.
