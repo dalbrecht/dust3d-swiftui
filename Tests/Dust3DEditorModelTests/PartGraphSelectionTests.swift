@@ -33,6 +33,19 @@ final class PartGraphSelectionTests: XCTestCase {
         XCTAssertThrowsError(try state.selectComponentGraph(target))
     }
 
+    func testComponentGraphWithOnlyLockedDescendantsLeavesSelectionUnchanged() throws {
+        let original = try document(partState: "locked='true'")
+        var state = try EditorState(document: original)
+        try state.selectComponent("group")
+        let before = state.snapshot
+        let target = ComponentGraphSelectionTarget(snapshot: before, componentIDs: ["group"])
+        XCTAssertFalse(before.canSelectComponentGraph(target))
+        try state.selectComponentGraph(target)
+        XCTAssertEqual(state.snapshot.selectedComponentIDs, before.selectedComponentIDs)
+        XCTAssertEqual(state.snapshot.selectionRevision, before.selectionRevision)
+        XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+    }
+
     func testWholePartSelectsDisconnectedOwnedNodesAndEdgesWithIndependentRevealAndOneEpoch() throws {
         let original = try document(malformed: true)
         var state = try EditorState(document: original)
