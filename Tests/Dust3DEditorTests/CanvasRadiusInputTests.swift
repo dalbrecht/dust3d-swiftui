@@ -343,6 +343,43 @@ import XCTest
         window.contentView = nil
         XCTAssertEqual(stateCallbacks, 0, "Native lifecycle cancellation leaves presentation clearing to SwiftUI hooks")
     }
+    func testHostedCanvasRadiusKeyChangesOnlyAddGhostWhileAddingNodes() async throws {
+        let source = try document()
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+        let host = NSHostingView(rootView: NodeCanvas(store: store).frame(width: 400, height: 240))
+        let window = NSWindow(
+            contentRect: .init(x: -10000, y: -10000, width: 400, height: 240),
+            styleMask: [], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer {
+            window.contentView = nil
+            window.close()
+        }
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(100))
+        store.beginAddMode()
+        XCTAssertTrue(store.isAddingNodes)
+        store.previewAddAtCanvasCenter()
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(100))
+        let canvas = try XCTUnwrap(findCanvas(in: host))
+        XCTAssertTrue(window.makeFirstResponder(canvas))
+        let radius = store.addGhostRadius
+        let event = try XCTUnwrap(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [],
+                timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "=",
+                charactersIgnoringModifiers: "=", isARepeat: false, keyCode: 24))
+        XCTAssertTrue(canvas.routeRadiusKey(event))
+        XCTAssertEqual(store.addGhostRadius, radius + 1)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     private func findCanvas(in view: NSView) -> CanvasPointerView? {
         if let canvas = view as? CanvasPointerView { return canvas }
         return view.subviews.lazy.compactMap { self.findCanvas(in: $0) }.first

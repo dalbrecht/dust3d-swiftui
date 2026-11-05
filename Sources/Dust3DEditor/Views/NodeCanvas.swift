@@ -64,12 +64,12 @@ struct NodeCanvas: View {
                         guard store.addModeID == addModeID else { return false }
                         return store.handleCanvasWheel(input)
                     },
+                    radiusKey: adjustRadius,
                     doubleClick: { point in
                         guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin, let partContext
                         else { return }
                         store.selectWholePart(at: point, projection: projection, context: partContext)
                     },
-                    radiusKey: adjustRadius,
                     precisionKey: precisionKey, isAddingNodes: store.isAddingNodes,
                     addPress: { store.placeAddNode(at: $0, modeID: addModeID) },
                     cancelInput: { if store.addModeID == addModeID { store.cancelAddMode() } }
