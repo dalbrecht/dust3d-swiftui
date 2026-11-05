@@ -24,6 +24,7 @@ struct NodePointerSurface: NSViewRepresentable {
     static func dismantleNSView(_ view: NodePointerView, coordinator: ()) {
         view.cancelActivation(deferred: true, restoringFocus: false)
         view.enabled = false
+        view.precisionKey = nil
     }
     func updateNSView(_ view: NodePointerView, context: Context) {
         if !enabled { view.cancelActivation(deferred: true, restoringFocus: false) }
@@ -191,7 +192,8 @@ final class NodePointerView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
-        if enabled, activation == nil, superview != nil, let window, window.firstResponder === self,
+        // The captured precision handler admits keyboard edits independently of pointer picking.
+        if activation == nil, superview != nil, let window, window.firstResponder === self,
             precisionKey?(CanvasPrecisionKeyInput(event)) == true
         {
             return
