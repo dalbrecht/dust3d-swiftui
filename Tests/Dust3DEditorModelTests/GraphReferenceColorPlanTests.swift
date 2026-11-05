@@ -37,6 +37,80 @@ final class GraphReferenceColorPlanTests: XCTestCase {
                 height: 500))
     }
 
+    func testColorPlansRequireLiteralOwnersAndIgnoreDanglingOwnerAliases() throws {
+        for (nodeOwner, componentRows, rejectsOwner) in [
+            ("caf&#233;", "<component id='cp' linkDataType='partId' linkData='cafe&#769;' color='#123456'/>", true),
+            (
+                "cafe&#769;", "<component id='dangling' linkDataType='partId' linkData='caf&#233;' color='#123456'/>",
+                true
+            ),
+            (
+                "cafe&#769;",
+                "<component id='cp' linkDataType='partId' linkData='cafe&#769;' color='#123456'/><component id='dangling' linkDataType='partId' linkData='caf&#233;' color='#654321'/>",
+                false
+            ),
+        ] {
+            let original = try Dust3DDocument(
+                snapshotXML: Data(
+                    "<canvas><nodes><node id='n' partId='\(nodeOwner)' x='.5' y='.5' z='.5' radius='.1'/></nodes><edges/><parts><part id='cafe&#769;'/></parts><components>\(componentRows)</components></canvas>"
+                        .utf8))
+            var state = try EditorState(document: original)
+            try state.selectGraph(nodes: ["n"], edges: [])
+            let before = state.snapshot
+            if rejectsOwner {
+                XCTAssertThrowsError(
+                    try GraphReferenceColorPlan.autoColor(snapshot: before, raster: raster(), layout: layout(before))
+                ) {
+                    XCTAssertEqual($0 as? ReferenceColorError, .unresolvableOwner("n"))
+                }
+                XCTAssertThrowsError(try state.clearSelectedPartColors()) {
+                    XCTAssertEqual($0 as? ReferenceColorError, .unresolvableOwner("n"))
+                }
+                XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+                XCTAssertFalse(state.snapshot.canUndo)
+            } else {
+                let plan = try GraphReferenceColorPlan.autoColor(
+                    snapshot: before, raster: raster(), layout: layout(before))
+                XCTAssertEqual(plan.updates.map(\.componentID), ["cp"])
+                try state.clearSelectedPartColors()
+                XCTAssertEqual(try state.snapshot.document.components().first { $0.id == "cp" }?.color, .unset)
+                XCTAssertEqual(
+                    try state.snapshot.document.components().first { $0.id == "dangling" }?.color,
+                    .value(try XCTUnwrap(DocumentColor(archiveValue: "#654321"))))
+                try state.undo()
+                XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            }
+        }
+    }
+
+    func testColorPlansRejectLiteralSelectionAndEndpointAliasesBeforePublication() throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes><node id='cafe&#769;' partId='p' x='.25' y='.5' z='.5' radius='.1'/><node id='b' partId='p' x='.75' y='.5' z='.5' radius='.1'/></nodes><edges><edge id='edge-cafe&#769;' partId='p' from='caf&#233;' to='b'/></edges><parts><part id='p'/></parts><components><component id='cp' linkDataType='partId' linkData='p' color='#123456'/></components></canvas>"
+                    .utf8))
+        for (nodes, edges, objectID) in [
+            (Set(["caf\u{e9}"]), Set<String>(), "caf\u{e9}"),
+            (Set(["b"]), Set(["edge-caf\u{e9}"]), "edge-caf\u{e9}"),
+            (Set(["b"]), Set(["edge-cafe\u{301}"]), "edge-cafe\u{301}"),
+        ] {
+            var state = try EditorState(document: original)
+            try state.selectGraph(nodes: nodes, edges: edges)
+            let before = state.snapshot
+            XCTAssertThrowsError(
+                try GraphReferenceColorPlan.autoColor(snapshot: before, raster: raster(), layout: layout(before))
+            ) {
+                XCTAssertEqual($0 as? ReferenceColorError, .unresolvableOwner(objectID))
+            }
+            if edges.isEmpty {
+                XCTAssertThrowsError(try state.clearSelectedPartColors()) {
+                    XCTAssertEqual($0 as? ReferenceColorError, .unresolvableOwner(objectID))
+                }
+            }
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            XCTAssertFalse(state.snapshot.canUndo)
+        }
+    }
+
     func testDistinctColorsIgnoreFrequenciesAndAlphaWithTruncatedOpaqueMeans() throws {
         var state = try state()
         try state.selectGraph(nodes: ["a", "b", "c"], edges: [])
