@@ -1216,6 +1216,13 @@ final class EditorStore {
     func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) {
         perform { try await $0.commitNodeDrag(drag, translation: translation) }
     }
+    func commitCanvasShiftDrag(_ drag: CanvasShiftDrag, translation: CanvasPoint) {
+        guard !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot,
+            drag.projection.plane == plane, drag.isCurrent(in: snapshot)
+        else { return }
+        perform { try await $0.commitCanvasShiftDrag(drag, translation: translation) }
+    }
+
     func moveSelection(by delta: NodePosition) { perform { try await $0.moveSelection(by: delta) } }
     func scaleSelection(positionFactor: Double, radiusFactor: Double) {
         perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }

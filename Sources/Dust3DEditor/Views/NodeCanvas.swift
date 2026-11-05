@@ -5,12 +5,14 @@ import SwiftUI
 struct NodeCanvas: View {
     let store: EditorStore
     @State private var nodeDrag = NodeDragLifecycle()
+    @State private var shiftedDrag: (token: UUID, plan: CanvasShiftDrag, positions: [String: NodePosition])?
     @State private var marquee: CanvasSelectionRectangle?
 
     var body: some View {
         GeometryReader { geometry in
             let projection =
                 store.frozenAddProjection
+                ?? shiftedDrag?.plan.projection
                 ?? nodeDrag.displayProjection(
                     fallback: CanvasProjection(
                         bounds: store.bounds, plane: store.plane,
@@ -155,16 +157,42 @@ struct NodeCanvas: View {
                                 return
                             }
                             guard let snapshot = store.snapshot else { return }
-                            nodeDrag.update(token: token, snapshot: snapshot, translation: translation)
+                            if let drag = shiftedDrag, drag.token == token {
+                                guard drag.plan.isCurrent(in: snapshot) else {
+                                    shiftedDrag = nil
+                                    return
+                                }
+                                let updates = (try? drag.plan.updates(by: translation)) ?? []
+                                shiftedDrag?.positions = Dictionary(
+                                    uniqueKeysWithValues: updates.map { ($0.id, $0.value.position) })
+                            } else {
+                                nodeDrag.update(token: token, snapshot: snapshot, translation: translation)
+                            }
                         },
                         finish: { token, translation in
                             guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
                                 return
                             }
+                            if let drag = shiftedDrag, drag.token == token {
+                                shiftedDrag = nil
+                                store.commitCanvasShiftDrag(drag.plan, translation: translation)
+                                return
+                            }
                             guard let baseline = nodeDrag.finish(token: token) else { return }
                             store.commitNodeDrag(baseline, translation: translation)
                         },
-                        cancel: { token in nodeDrag.cancel(token: token) }
+                        cancel: { token in
+                            if shiftedDrag?.token == token { shiftedDrag = nil }
+                            nodeDrag.cancel(token: token)
+                        },
+                        beginShiftDrag: { token in
+                            guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin,
+                                let snapshot = store.snapshot,
+                                let plan = try? CanvasShiftDrag(
+                                    anchorID: node.id, snapshot: snapshot, projection: projection)
+                            else { return }
+                            shiftedDrag = (token, plan, [:])
+                        }
                     )
                     .allowsHitTesting(!store.isMovingOrigin && !store.isAddingNodes)
                 }
@@ -209,6 +237,7 @@ struct NodeCanvas: View {
                 }
             }
             .onDisappear {
+                invalidateNodeDrag()
                 store.clearReferenceColorCanvasContext()
                 store.setReferenceColorInteractionActive(false)
                 store.cancelAddMode()
@@ -230,6 +259,7 @@ struct NodeCanvas: View {
                 store.clearCanvasHover()
             }
             .onChange(of: store.snapshot?.documentIdentity) { _, _ in
+                invalidateNodeDrag()
                 marquee = nil
                 store.clearCanvasHover()
             }
@@ -249,9 +279,17 @@ struct NodeCanvas: View {
         }
         .background(.background)
     }
-    private func invalidateNodeDrag() { nodeDrag.invalidate() }
+    private func invalidateNodeDrag() {
+        nodeDrag.invalidate()
+        shiftedDrag = nil
+    }
 
     private func previewPosition(_ node: DocumentNode, projection: CanvasProjection) -> NodePosition {
+        if let drag = shiftedDrag, let snapshot = store.snapshot, drag.plan.isCurrent(in: snapshot),
+            let position = drag.positions[node.id]
+        {
+            return position
+        }
         guard let drag = nodeDrag.preview, let snapshot = store.snapshot, drag.baseline.isCurrent(in: snapshot),
             node.isEditable
         else {
@@ -283,6 +321,7 @@ private struct NodeHandle: View {
     let update: (UUID, CanvasPoint) -> Void
     let finish: (UUID, CanvasPoint) -> Void
     let cancel: (UUID) -> Void
+    let beginShiftDrag: (UUID) -> Void
 
     var body: some View {
         let point = projection.point(for: position)
@@ -298,7 +337,8 @@ private struct NodeHandle: View {
             NodePointerSurface(
                 enabled: enabled, canDrag: canDrag, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle, add: add, wheel: wheel, doubleClick: doubleClick
+                select: select, toggle: toggle, add: add, wheel: wheel, doubleClick: doubleClick,
+                beginShiftDrag: beginShiftDrag
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
@@ -313,6 +353,8 @@ private struct NodeHandle: View {
             Button("Select Whole Part", action: doubleClick).disabled(!canSelectWholePart)
             GraphColorizeMenu(actions: colorizeActions)
         }
-        .help("\(node.title) · \(node.isEditable ? "Drag to move" : "Locked, hidden or disabled part")")
+        .help(
+            "\(node.title) · \(node.isEditable ? "Drag to move, Shift-drag to rotate or bend" : "Locked, hidden or disabled part")"
+        )
     }
 }

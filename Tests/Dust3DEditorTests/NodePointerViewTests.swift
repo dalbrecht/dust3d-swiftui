@@ -50,6 +50,31 @@ final class NodePointerViewTests: XCTestCase {
         XCTAssertEqual(selected, 0)
     }
 
+    func testShiftDragCapturesItsModeAndShiftClickStillAddsSelection() throws {
+        let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
+        view.enabled = true
+        view.canDrag = true
+        var regular: [UUID] = []
+        var shifted: [UUID] = []
+        var finished: [UUID] = []
+        var added = 0
+        view.begin = { regular.append($0) }
+        view.beginShiftDrag = { shifted.append($0) }
+        view.finish = { token, _ in finished.append(token) }
+        view.add = { added += 1 }
+
+        view.mouseDown(with: try event(.leftMouseDown, x: 10, y: 10, flags: .shift))
+        view.mouseUp(with: try event(.leftMouseUp, x: 10, y: 10))
+        view.mouseDown(with: try event(.leftMouseDown, x: 10, y: 10, flags: .shift))
+        view.mouseDragged(with: try event(.leftMouseDragged, x: 20, y: 10))
+        view.mouseUp(with: try event(.leftMouseUp, x: 20, y: 10))
+
+        XCTAssertEqual(added, 1)
+        XCTAssertTrue(regular.isEmpty)
+        XCTAssertEqual(shifted.count, 2)
+        XCTAssertEqual(finished, Array(shifted.suffix(1)))
+    }
+
     func testEachDragCarriesItsOwnTokenAndWindowCoordinates() throws {
         let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
         view.enabled = true

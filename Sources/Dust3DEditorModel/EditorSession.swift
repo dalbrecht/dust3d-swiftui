@@ -489,8 +489,8 @@ public actor EditorSession {
         }
     }
 
-    /// Commit the captured endpoint chain in one edit without changing radii or graph selection.
-    public func commitEndpointIKDrag(_ drag: EndpointIKDrag, translation: CanvasPoint) throws -> EditorSnapshot {
+    /// Publish the captured Shift-drag result as one undoable graph edit.
+    public func commitCanvasShiftDrag(_ drag: CanvasShiftDrag, translation: CanvasPoint) throws -> EditorSnapshot {
         try update { state in
             guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
             let updates = try drag.updates(by: translation)
