@@ -58,6 +58,7 @@ struct ComponentReparentControls: View {
             } else {
                 Button("Move to Parent…") { reset() }
                     .accessibilityLabel("Choose a new parent for the selected components")
+                    .accessibilityIdentifier("component-parent-chooser")
             }
         }
         .disabled(store.isWorking)
