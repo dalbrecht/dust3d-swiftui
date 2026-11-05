@@ -5,6 +5,65 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/dust3d-bundle-rebuild.XXXXXX")"
 trap 'rm -rf "$APP_TEST_DIR"' EXIT
 cd "$ROOT_DIR"
+verify_archive() {
+    python3 -B - "$1" "$2" <<'PYARCHIVE'
+from pathlib import Path
+import hashlib
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+import zipfile
+bundle, archive = map(Path, sys.argv[1:])
+def digest(stream):
+    value = hashlib.sha256()
+    while chunk := stream.read(1024 * 1024):
+        value.update(chunk)
+    return value.hexdigest()
+def tree(root):
+    result = {}
+    def visit(path, name):
+        mode = path.lstat().st_mode
+        kind = stat.S_IFMT(mode)
+        if stat.S_ISDIR(mode):
+            result[name + '/'] = (kind, stat.S_IMODE(mode), None)
+            for child in sorted(path.iterdir()):
+                visit(child, name + '/' + child.name)
+        elif stat.S_ISLNK(mode):
+            result[name] = (kind, stat.S_IMODE(mode), os.fsencode(os.readlink(path)))
+        elif stat.S_ISREG(mode):
+            with path.open('rb') as source:
+                result[name] = (kind, stat.S_IMODE(mode), digest(source))
+        else:
+            raise AssertionError(f'Unexpected bundle entry: {path}')
+    visit(root, root.name)
+    return result
+expected = tree(bundle)
+with zipfile.ZipFile(archive) as source:
+    actual = {}
+    for entry in source.infolist():
+        mode = entry.external_attr >> 16
+        kind = stat.S_IFMT(mode)
+        assert entry.filename not in actual, 'Archive must not contain duplicate entries'
+        if stat.S_ISDIR(mode):
+            payload = None
+        elif stat.S_ISLNK(mode):
+            payload = source.read(entry)
+        else:
+            assert stat.S_ISREG(mode), f'Unexpected archive entry: {entry.filename}'
+            with source.open(entry) as stream:
+                payload = digest(stream)
+        actual[entry.filename] = (kind, stat.S_IMODE(mode), payload)
+    assert actual == expected, 'ZIP must contain exactly the signed tree, types, modes and bytes'
+with tempfile.TemporaryDirectory(prefix='dust3d-archive-extract-') as temporary:
+    subprocess.run(['ditto', '-x', '-k', str(archive), temporary], check=True)
+    extracted = Path(temporary) / bundle.name
+    assert tree(extracted) == expected, 'Extracted tree must preserve bytes, modes and symbolic links'
+    subprocess.run(['codesign', '--verify', '--deep', '--strict', str(extracted)], check=True)
+print(f'{bundle.name}: exact archive and extracted signature verified')
+PYARCHIVE
+}
 archive_manifest() {
     python3 - "$ROOT_DIR/dist" <<'PYTHON'
 from pathlib import Path
@@ -46,6 +105,7 @@ print(f'{bundle.name}: rebuilt directory timestamp includes current plist and ic
 PY
     python3 -B "$ROOT_DIR/script/check_rig_resources.py" "$bundle/Contents/Resources/Dust3DNative_Dust3DKit.bundle"
     codesign --verify --deep --strict "$bundle"
+    verify_archive "$bundle" "$DUST3D_ARCHIVE_OUTPUT_DIR/$app.zip"
 done
 # Reusing the QA identity must remove copied provider bundles rather than registering duplicates.
 qa_output="$APP_TEST_DIR/qa"
@@ -67,6 +127,7 @@ print('QA bundle reuses the existing identity and has no preview providers')
 PYQA
 python3 -B "$ROOT_DIR/script/check_rig_resources.py" "$qa_output/Dust3DEditor.app/Contents/Resources/Dust3DNative_Dust3DKit.bundle"
 codesign --verify --deep --strict "$qa_output/Dust3DEditor.app"
+verify_archive "$qa_output/Dust3DEditor.app" "$APP_TEST_DIR/qa-archives/Dust3DEditor.zip"
 archive_manifest > "$APP_TEST_DIR/default-archives-after.json"
 cmp "$APP_TEST_DIR/default-archives-before.json" "$APP_TEST_DIR/default-archives-after.json"
 for app in Dust3DEditor Dust3DViewer; do

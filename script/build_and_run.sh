@@ -106,8 +106,8 @@ if [ "$APP_NAME" = "Dust3DEditor" ] && [ "$IS_QA" = false ]; then
 fi
 # Launch Services detects rebuilt bundle metadata through the application directory timestamp.
 /usr/bin/touch "$APP_BUNDLE"
-# A ZIP keeps File Provider Finder metadata outside the app's sealed resources.
-ditto -c -k --keepParent "$APP_BUNDLE" "$ARCHIVE_OUTPUT_DIR/$APP_NAME.zip"
+# Archive the signed tree without synthesizing filesystem metadata entries.
+python3 -B "$ROOT_DIR/script/archive_app.py" "$APP_BUNDLE" "$ARCHIVE_OUTPUT_DIR/$APP_NAME.zip"
 
 case "$MODE" in
     --build-only) echo "$APP_BUNDLE" ;;
