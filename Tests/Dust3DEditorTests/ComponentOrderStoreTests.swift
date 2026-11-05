@@ -1,5 +1,6 @@
 import Dust3DDocument
 import Dust3DEditorModel
+import Foundation
 import XCTest
 
 @testable import Dust3DEditor
@@ -66,5 +67,71 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertEqual(store.mesh?.triangleCount, 32)
         store.stop()
         XCTAssertFalse(store.canReorderComponent(.down))
+    }
+
+    @MainActor func testParentDropRejectsInvalidAndNoOpTargetsAndMovesTheEntireBlockInSourceOrder() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts/><components><component id='a'/><component id='group'><component id='b'/><component id='x'/></component></components></canvas>"
+                    .utf8))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+
+        let noOp = try XCTUnwrap(store.beginComponentDrag(grabbedID: "group"))
+        XCTAssertFalse(store.dropComponents(token: noOp, in: .root))
+        XCTAssertFalse(store.isWorking)
+        let cycle = try XCTUnwrap(store.beginComponentDrag(grabbedID: "group"))
+        XCTAssertFalse(store.dropComponents(token: cycle, in: .component("b")))
+        XCTAssertFalse(store.isWorking)
+        XCTAssertFalse(store.canUndo)
+
+        store.selectComponents(["a", "b"])
+        try await settle(store)
+        let block = try XCTUnwrap(store.beginComponentDrag(grabbedID: "a"))
+        XCTAssertTrue(store.dropComponents(token: block, in: .component("group")))
+        try await settle(store)
+        let result = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(result.componentTree.rows.map(\.id), ["group", "x", "a", "b"])
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+    }
+
+    @MainActor func testInteriorSiblingChoicesAndPlacementForSingleAndMultipleRows() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts/><components><component id='a'/><component id='b'/><component id='c'/><component id='d'><component id='child'/></component><component id='e'/></components></canvas>"
+                    .utf8))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+
+        store.selectComponent("e")
+        try await settle(store)
+        var snapshot = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(ComponentBatchOrderMenu.eligibleSiblings(in: snapshot).map(\.id), ["a", "b", "c", "d"])
+        let single = try XCTUnwrap(ComponentPlacementTarget(snapshot: snapshot))
+        store.placeComponents(at: .before("c"), target: single)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), ["a", "b", "e", "c", "d", "child"])
+
+        store.selectComponents(["a", "d", "child"])
+        try await settle(store)
+        snapshot = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(ComponentBatchOrderMenu.eligibleSiblings(in: snapshot).map(\.id), ["b", "e", "c"])
+        let batch = try XCTUnwrap(ComponentPlacementTarget(snapshot: snapshot))
+        store.placeComponents(at: .after("e"), target: batch)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), ["b", "e", "a", "d", "child", "c"])
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), snapshot.document.encoded())
+
+        store.selectComponents(["a", "child"])
+        try await settle(store)
+        XCTAssertTrue(ComponentBatchOrderMenu.eligibleSiblings(in: try XCTUnwrap(store.snapshot)).isEmpty)
     }
 }

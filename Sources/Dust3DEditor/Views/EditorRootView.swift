@@ -75,7 +75,8 @@ struct EditorRootView: View {
                 }
                 EditorGeometryExportStatusView(
                     phase: exportWorkflow.phase, format: exportWorkflow.format,
-                    onCancel: exportWorkflow.cancel, onDismiss: exportWorkflow.dismissResult)
+                    onCancel: exportWorkflow.cancel, onDismiss: exportWorkflow.dismissResult,
+                    onReveal: { NSWorkspace.shared.activateFileViewerSelecting([$0]) })
                 HStack(spacing: 0) {
                     VStack(spacing: 0) {
                         HStack {

@@ -317,6 +317,70 @@ import XCTest
         try await settle(store)
         XCTAssertFalse(store.canUndo)
     }
+    func testHostedShiftPointerInvalidatesRetainedColorActionsAcrossRelease() async throws {
+        _ = NSApplication.shared
+        let source = try document().applying(
+            .setComponentColor(
+                id: "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}",
+                color: try XCTUnwrap(DocumentColor(archiveValue: "#123456"))))
+        let store = EditorStore(preview: ReferenceColorNoPreview())
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectGraph(nodes: [a, b], edges: [])
+        try await settle(store)
+        let host = NSHostingView(rootView: NodeCanvas(store: store))
+        host.frame = .init(x: 0, y: 0, width: 472, height: 472)
+        let window = NSWindow(
+            contentRect: .init(x: -10000, y: -10000, width: 472, height: 472),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer { window.close() }
+        for _ in 0..<100 {
+            host.layoutSubtreeIfNeeded()
+            if store.canAutoColorSelection && store.canClearSelectionColors { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(store.canAutoColorSelection)
+        XCTAssertTrue(store.canClearSelectionColors)
+        let retained = GraphColorizeActions(store: store)
+        let before = try XCTUnwrap(store.snapshot)
+        let projection = CanvasProjection(bounds: store.bounds, plane: store.plane, width: 472, height: 472)
+        let point = projection.point(for: try source.node(id: a).position)
+        let start = NSPoint(x: point.x, y: 472 - point.y)
+        let hit = try XCTUnwrap(host.hitTest(start) as? NodePointerView)
+        func event(_ type: NSEvent.EventType) throws -> NSEvent {
+            try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: type, location: start, modifierFlags: .shift,
+                    timestamp: 0, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
+                    pressure: 1))
+        }
+        hit.mouseDown(with: try event(.leftMouseDown))
+        for _ in 0..<20 {
+            host.layoutSubtreeIfNeeded()
+            if !store.canAutoColorSelection && !store.canClearSelectionColors { break }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertFalse(store.canAutoColorSelection)
+        XCTAssertFalse(store.canClearSelectionColors)
+        hit.mouseUp(with: try event(.leftMouseUp))
+        for _ in 0..<100 {
+            host.layoutSubtreeIfNeeded()
+            if store.canAutoColorSelection && store.canClearSelectionColors { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(store.canAutoColorSelection)
+        XCTAssertTrue(store.canClearSelectionColors)
+        XCTAssertEqual(store.snapshot?.selectionRevision, before.selectionRevision)
+        retained.clear()
+        retained.autoColor()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testHostedColorizeControlsAndSharedContextMenuPayloadRender() async throws {
         let store = EditorStore()
         defer { store.stop() }
