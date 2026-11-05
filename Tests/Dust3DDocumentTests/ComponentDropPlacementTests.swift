@@ -55,12 +55,14 @@ final class ComponentDropPlacementTests: XCTestCase {
 
 extension ComponentDropPlacementTests {
     func testPlacementPersistsSiblingOrderAndRetainsOpaqueSlots() throws {
-        let xml = "<canvas><components><component id='a'><component id='child'/></component><!--slot--><opaque/><component id='b'/><component id='c'/></components></canvas>"
+        let xml =
+            "<canvas><components><component id='a'><component id='child'/></component><!--slot--><opaque/><component id='b'/><component id='c'/></components></canvas>"
         let original = try Dust3DDocument(snapshotXML: Data(xml.utf8))
         let moved = try original.applying(.placeComponents(ids: ["c", "b"], placement: .before("a")))
         XCTAssertEqual(try moved.components().map(\.id), ["b", "c", "a", "child"])
         let text = String(decoding: moved.modelXML, as: UTF8.self)
         XCTAssertTrue(text.contains("<!--slot--><opaque"))
-        XCTAssertTrue(try moved.applying(.placeComponents(ids: ["b", "c"], placement: .before("a"))).modelXML == moved.modelXML)
+        XCTAssertTrue(
+            try moved.applying(.placeComponents(ids: ["b", "c"], placement: .before("a"))).modelXML == moved.modelXML)
     }
 }

@@ -49,9 +49,10 @@ enum ComponentReordering {
         let plan = try ComponentDropPlacementPlan(
             components: ComponentHierarchy.read(model), ids: ids, placement: placement)
         guard plan.changesOrder else { return false }
-        let elements = Dictionary(uniqueKeysWithValues: PartSplitting.componentElements(model).compactMap { element in
-            element.attribute(forName: "id")?.stringValue.map { (Data($0.utf8), element) }
-        })
+        let elements = Dictionary(
+            uniqueKeysWithValues: PartSplitting.componentElements(model).compactMap { element in
+                element.attribute(forName: "id")?.stringValue.map { (Data($0.utf8), element) }
+            })
         let reordered = plan.orderedSiblingIDs.compactMap { elements[Data($0.utf8)] }
         guard reordered.count == plan.orderedSiblingIDs.count,
             let parent = reordered.first?.parent as? XMLElement,

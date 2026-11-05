@@ -42,8 +42,10 @@ final class ComponentOrderSessionTests: XCTestCase {
 
 extension ComponentOrderSessionTests {
     func testBatchPlacementPreservesSelectionAndUsesOneUndoStep() async throws {
-        let original = try Dust3DDocument(snapshotXML: Data(
-            "<canvas><components><component id='a'/><component id='b'/><component id='c'/><component id='d'/></components></canvas>".utf8))
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><components><component id='a'/><component id='b'/><component id='c'/><component id='d'/></components></canvas>"
+                    .utf8))
         let session = EditorSession()
         _ = try await session.open(data: original.encoded())
         let selected = try await session.selectComponents(["b", "d"])
