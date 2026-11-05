@@ -19,10 +19,14 @@ public struct MeshPreviewState<Output: Sendable>: Sendable {
     /// Whether retained geometry predates the current pending or failed generation.
     public var isStale: Bool { value != nil && (isGenerating || errorMessage != nil) }
 
-    /// Starts a request with a fresh caller-provided identity, retaining any last successful output.
-    public mutating func begin(requestID: UUID) {
+    /// Start a request, retaining any last successful output.
+    /// - Parameters:
+    ///   - requestID: New caller-owned request identity.
+    ///   - preservingError: Keep the original failure visible during a repair until a current success or failure arrives.
+    /// - Example: `preview.begin(requestID: id, preservingError: true)` for a repair retry.
+    public mutating func begin(requestID: UUID, preservingError: Bool = false) {
         self.requestID = requestID
-        errorMessage = nil
+        if !preservingError { errorMessage = nil }
         isGenerating = true
     }
 
@@ -30,6 +34,7 @@ public struct MeshPreviewState<Output: Sendable>: Sendable {
     public mutating func succeed(_ value: Output, requestID: UUID) {
         guard self.requestID == requestID else { return }
         self.value = value
+        errorMessage = nil
         revision += 1
         finish()
     }
@@ -40,6 +45,7 @@ public struct MeshPreviewState<Output: Sendable>: Sendable {
     public mutating func succeedEmpty(requestID: UUID) {
         guard self.requestID == requestID else { return }
         value = nil
+        errorMessage = nil
         revision += 1
         finish()
     }

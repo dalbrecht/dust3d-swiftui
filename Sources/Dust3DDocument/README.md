@@ -172,7 +172,15 @@ reject non-group owners and invalid edits with typed errors. For example:
 `.setComponentWrapScalar(id: group.id, property: .offset, value: 0.01)`.
 Mode changes retain explicit parameters. Semantic no-ops retain archive bytes
 and redo; edits remain compatible with exact history and actor-session batches.
-Existing higher face counts, binding, patterns and wrinkle metadata stay intact.
+`component.wrapping.surfaceDetails` interprets coat patterns, opaque pattern ink,
+pattern size, belly shading and wrinkle strength/size without rewriting unsupported
+source text. Field-local `.setComponentSurfacePattern`, `.setComponentSurfaceColor`
+and `.setComponentSurfaceScalar` commands preserve unrelated wrapping attributes,
+assets and exact no-op bytes. None pattern removes only `wrapPattern`; automatic
+ink removes only its override; defaults remove only their changed scalar attribute.
+Finish commands advance material identity only: current preparation regenerates its
+own fold-placement snapshot while the visible geometry remains stable. Existing
+higher face counts and body-binding metadata remain intact. See ADR0135.
 Core issue #13 tracks nonfinite low-density opening output; this document
 foundation does not claim complete wrapping geometry or native UI acceptance.
 

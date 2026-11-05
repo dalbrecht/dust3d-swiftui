@@ -144,6 +144,15 @@ public enum DocumentCommand: Sendable {
     /// Set a group wrapping mode without resetting explicit parameters. Throws missingComponent/invalidComponentWrapping.
     /// Example: `.setComponentWrapMode(id: groupID, mode: .cloth)`.
     case setComponentWrapMode(id: String, mode: ComponentWrapMode)
+    /// Replace one group pattern; None removes only wrapPattern. Throws missingComponent/invalidComponentWrapping.
+    /// Example: `.setComponentSurfacePattern(id: groupID, pattern: .spots)`.
+    case setComponentSurfacePattern(id: String, pattern: ComponentSurfacePattern)
+    /// Replace a finite finish scalar within its Qt editing range, retaining unrelated source fields.
+    /// Throws missingComponent/invalidComponentWrapping. Example: `.setComponentSurfaceScalar(id: id, property: .wrinkles, value: 0.5)`.
+    case setComponentSurfaceScalar(id: String, property: ComponentSurfaceScalar, value: Double)
+    /// Assign opaque pattern RGB or nil for automatic ink; other metadata/assets remain untouched.
+    /// Throws missingComponent/invalidComponentWrapping. Example: `.setComponentSurfaceColor(id: id, color: nil)`.
+    case setComponentSurfaceColor(id: String, color: DocumentColor?)
     /// Set a group wrapping scalar within its property bounds. Throws invalidComponentWrapping/missingComponent.
     /// Example: `.setComponentWrapScalar(id: groupID, property: .offset, value: 0.01)`.
     case setComponentWrapScalar(id: String, property: ComponentWrappingScalarProperty, value: Double)
@@ -557,6 +566,7 @@ public struct Dust3DDocument: Sendable {
             .setComponentCombineMode, .editComponentMeshSettings,
             .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
             .setComponentWrapKeepChildren, .setComponentWrapFaces,
+            .setComponentSurfacePattern, .setComponentSurfaceScalar, .setComponentSurfaceColor,
             .reorderComponent, .placeComponents,
             .groupComponents, .ungroupComponent, .ungroupComponents, .reparentComponent, .reparentComponents:
             contents = DocumentContents(nodes: [], edges: [])
@@ -728,6 +738,17 @@ public struct Dust3DDocument: Sendable {
                 attribute.stringValue = value
                 part.addAttribute(attribute)
             }
+        case .setComponentSurfacePattern(let id, let pattern):
+            guard try ComponentSurfaceMetadata.pattern(model, id: id, pattern: pattern) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentSurfaceScalar(let id, let property, let value):
+            guard try ComponentSurfaceMetadata.scalar(model, id: id, property: property, value: value) else {
+                return self
+            }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentSurfaceColor(let id, let color):
+            guard try ComponentSurfaceMetadata.color(model, id: id, color: color) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentWrapMode(let id, let mode):
             guard try ComponentWrapping.setMode(model, id: id, mode: mode) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))

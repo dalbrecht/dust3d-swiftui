@@ -40,9 +40,9 @@ final class FilePreviewDocumentTests: XCTestCase {
             XCTAssertNotNil(preview.bakedMesh)
             XCTAssertEqual(preview.materialSourceCapabilities.hasLegacySurfaceDetails, legacy)
             XCTAssertEqual(preview.compatibilityWarning(), preview.mesh?.warning, "The GPU has not rendered yet")
-            XCTAssertEqual(
+            XCTAssertNil(
                 preview.compatibilityWarning(materialsRendered: true),
-                legacy ? "Procedural surface details are not yet displayed." : nil)
+                "A confirmed procedural bake covers supported details; inactive opaque wrap metadata stays retained")
             XCTAssertEqual(preview.compatibilityWarning(materialRenderingFailed: true), preview.mesh?.warning)
             XCTAssertEqual(try Data(contentsOf: url), source.encoded())
             let failed = try await FilePreviewDocumentService(materialBaker: MissingPreviewImage()).load(url: url)
