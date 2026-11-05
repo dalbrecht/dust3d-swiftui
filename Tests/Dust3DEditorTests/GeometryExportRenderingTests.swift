@@ -33,7 +33,8 @@ final class GeometryExportRenderingTests: XCTestCase {
                     EditorGeometryExportMenu(
                         canExport: (name == "ready" || name == "completed"), onExport: { _ in publications += 1 })
                     EditorGeometryExportStatusView(
-                        phase: phase, format: .fbx, onCancel: {}, onDismiss: {})
+                        phase: phase, format: .fbx, onCancel: {}, onDismiss: {},
+                        onReveal: { _ in publications += 1 })
                 }
                 let png = try InspectorRenderer.png(view, width: 640, scheme: scheme)
                 XCTAssertGreaterThan(png.count, 100)
