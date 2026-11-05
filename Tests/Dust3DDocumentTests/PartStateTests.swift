@@ -14,6 +14,27 @@ final class PartStateTests: XCTestCase {
             data: Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
                 + model + Data([0, 255, 10, 128]))
     }
+    func testBatchPartStateRejectsByteDistinctAliasesWithoutPublishingPartialChanges() throws {
+        let actual = "cafe\u{301}"
+        let alias = "caf\u{e9}"
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts><part id='cafe&#769;' future='keep'/></parts><components/></canvas>"
+                    .utf8))
+        for (property, value) in [(PartStateProperty.visible, false), (.locked, true), (.disabled, true)] {
+            for ids in [[alias], [actual, alias]] {
+                var history = DocumentHistory(document: original)
+                let preview = history.previewIdentity
+                XCTAssertThrowsError(try history.apply(.setPartsState(ids: ids, property: property, value: value))) {
+                    XCTAssertEqual($0 as? DocumentError, .missingPart(alias))
+                }
+                XCTAssertEqual(history.document.encoded(), original.encoded())
+                XCTAssertEqual(history.previewIdentity, preview)
+                XCTAssertFalse(history.canUndo)
+            }
+        }
+    }
+
     func testPartsRetainDocumentOrderNamesAndDefaults() throws {
         let original = try document()
         let contents = try original.editorContents()
