@@ -16,6 +16,7 @@ struct EdgeInspector: View {
             Text("From: \(from)")
             Text("To: \(to)")
             Text("Direction: \(from) → \(to)").font(.caption)
+            NodeRadiusAdjustmentControls(store: store)
             Button("Select Endpoints") { store.select([edge.fromID, edge.toID]) }
                 .disabled(store.isWorking)
             Button("Insert Midpoint") { store.insertSelectedEdgeMidpoint() }

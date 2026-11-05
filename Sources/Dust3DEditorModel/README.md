@@ -243,3 +243,17 @@ nodes only. Batch midpoint and explicit Reverse consume explicit edges in UUID
 order. `reverseSelectedEdges()` remains the inferred-edge convenience.
 Combined Delete (and mixed Cut after copying explicit editable nodes) normalizes
 all removals once in one history transaction. Edge-only Cut stays unavailable.
+
+`adjustSelectionRadius(by:target:)` adds one finite document-space increment to
+all editable transform participants, clamping edited radii to 0.001...1 without
+moving nodes. The UI converts each activation using its captured canvas height.
+Zero, radius-locked, read-only and already-clamped no-ops preserve archive bytes,
+redo and preview identity. Imported out-of-range radii survive until explicitly
+edited; existing multiplicative scaling remains separate.
+
+`adjustNodeRadius(id:by:target:)` adjusts a hovered node without selecting it only
+while all selection contexts are empty. `CanvasAdjustmentTarget(snapshot:)`
+rejects queued inputs after document replacement, edits, selection changes or
+constraint changes, including change-and-restore cycles. Modifier-wheel input
+uses the existing position scale factor with radius factor 1 and the same target.
+Native Add-mode ghost-cursor radius input remains a separate missing foundation.

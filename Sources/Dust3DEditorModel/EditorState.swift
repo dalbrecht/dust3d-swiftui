@@ -21,6 +21,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case staleColorImageTarget
     case staleOriginDrag
     case staleNodeDrag
+    case staleCanvasAdjustment
     case staleExport
     case staleAnimationTarget
 }
@@ -107,6 +108,19 @@ public struct EditorSnapshot: Sendable {
         let ids = transformNodeIDs
         return nodes.filter { ids.contains($0.id) }
     }
+    /// Additive radius input acts on editable transform participants unless the radius constraint is locked.
+    public var canAdjustSelectionRadius: Bool {
+        !locks.contains(.radius) && transformNodes.contains(where: \.isEditable)
+    }
+
+    /// Hovered radius input never changes selection and is available only while every selection context is empty.
+    /// - Parameter id: Exact hovered node identity in the originating canvas.
+    /// - Returns: Whether that node is editable and radius input is unlocked.
+    public func canAdjustNodeRadius(id: String) -> Bool {
+        selectedIDs.isEmpty && selectedEdgeIDs.isEmpty && selectedPartID == nil && selectedComponentIDs.isEmpty
+            && !locks.contains(.radius) && nodes.contains { $0.id == id && $0.isEditable }
+    }
+
     /// All explicit edges must have editable endpoints before a batch edge command can run.
     public var canEditSelectedEdges: Bool {
         !selectedEdgeIDs.isEmpty && selectedEdgeIDs.isSubset(of: Set(editableEdges.map(\.id)))
@@ -413,9 +427,52 @@ public struct EditorState: Sendable {
         try apply([.setNodes(updates)])
     }
 
+    /// Add one finite document-space radius delta to the selected node/edge-endpoint union, in one history step.
+    /// - Parameters: `delta` is already divided by the actual canvas height; `target` optionally guards queued input.
+    /// - Throws: `invalidNode` for nonfinite delta or `staleCanvasAdjustment` for a changed target.
+    /// - Note: Nonzero edits clamp to 0.001...1. Zero, radius-locked and read-only edits retain source bytes.
+    public mutating func adjustSelectionRadius(by delta: Double, target: CanvasAdjustmentTarget? = nil) throws {
+        guard delta.isFinite else { throw DocumentError.invalidNode }
+        if let target, !target.isCurrent(in: snapshot) { throw EditorError.staleCanvasAdjustment }
+        try applyRadiusDelta(delta, nodes: snapshot.transformNodes)
+    }
+
+    /// Add a radius delta to one hovered node without selecting it, only while all transient selection is empty.
+    /// - Parameters: `id` is the hovered node; `delta` is finite document-space input; `target` captures its window epoch.
+    /// - Throws: `missingNode`, `invalidNode`, or `staleCanvasAdjustment`; read-only and radius-locked nodes are no-ops.
+    public mutating func adjustNodeRadius(id: String, by delta: Double, target: CanvasAdjustmentTarget? = nil) throws {
+        guard delta.isFinite else { throw DocumentError.invalidNode }
+        if let target, !target.isCurrent(in: snapshot) { throw EditorError.staleCanvasAdjustment }
+        guard selectedIDs.isEmpty, selectedEdgeIDs.isEmpty, selectedPartID == nil, selectedComponentIDs.isEmpty else {
+            throw EditorError.staleCanvasAdjustment
+        }
+        guard let node = contents.nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
+        try applyRadiusDelta(delta, nodes: [node])
+    }
+
+    private mutating func applyRadiusDelta(_ delta: Double, nodes: [DocumentNode]) throws {
+        guard delta != 0, !locks.contains(.radius) else { return }
+        let updates = nodes.filter(\.isEditable).map { node in
+            let radius: Double
+            // Compare finite bounded differences before adding, so even extreme finite deltas saturate safely.
+            if delta <= 0.001 - node.value.radius {
+                radius = 0.001
+            } else if delta >= 1 - node.value.radius {
+                radius = 1
+            } else {
+                radius = node.value.radius + delta
+            }
+            return NodeUpdate(id: node.id, value: .init(position: node.value.position, radius: radius))
+        }
+        try apply([.setNodes(updates)])
+    }
+
     /// Scale editable node positions about their centroid and radii independently.
     /// Factors must be finite and positive. Locks and read-only parts retain their values.
-    public mutating func scaleSelection(positionFactor: Double, radiusFactor: Double) throws {
+    public mutating func scaleSelection(
+        positionFactor: Double, radiusFactor: Double, target: CanvasAdjustmentTarget? = nil
+    ) throws {
+        if let target, !target.isCurrent(in: snapshot) { throw EditorError.staleCanvasAdjustment }
         guard positionFactor.isFinite, radiusFactor.isFinite, positionFactor > 0, radiusFactor > 0 else {
             throw EditorError.invalidScale
         }

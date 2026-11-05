@@ -61,6 +61,7 @@ struct NodeInspector: View {
                     .buttonStyle(.borderedProminent)
                 }
                 .disabled(store.isWorking || !node.isEditable)
+                NodeRadiusAdjustmentControls(store: store)
                 NodeReductionControls(store: store)
                 SelectionTransformMenu(store: store)
                 DescendantRotationMenu(store: store)
@@ -116,6 +117,7 @@ private struct GroupInspector: View {
             Text("\(selected.count) selected").font(.title3)
             Text("\(editable) editable · \(selected.count - editable) read-only").font(.caption)
             SelectionTransformControls(store: store)
+            NodeRadiusAdjustmentControls(store: store)
             NodeReductionControls(store: store)
             SelectionTransformMenu(store: store)
             Button("Reverse Selected Edges") { store.reverseSelectedEdges() }

@@ -23,6 +23,7 @@ struct GraphSelectionInspector: View {
                 }
             }
             .disabled(!store.canTransform)
+            NodeRadiusAdjustmentControls(store: store)
             NodeReductionControls(store: store)
             Button("Delete Graph Selection", role: .destructive) { store.deleteSelection() }
                 .disabled(!store.canDeleteGraphSelection)
