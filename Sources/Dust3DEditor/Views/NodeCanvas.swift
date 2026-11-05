@@ -216,7 +216,7 @@ struct NodeCanvas: View {
                 store.setReferenceColorCanvasContext(
                     projection: projection, width: geometry.size.width, height: geometry.size.height)
             }
-            .onChange(of: nodeDrag.preview != nil || marquee != nil) { _, active in
+            .onChange(of: nodeDrag.preview != nil || shiftedDrag != nil || marquee != nil) { _, active in
                 store.setReferenceColorInteractionActive(active)
             }
             .onAppear {
