@@ -341,3 +341,11 @@ owners fail without partial mutation. Receipts report actually changed component
 overrides, not merely planned updates. Reference edits perform cooperative checks
 before planning, before applying, and before state/actor publication. Existing
 unrelated actor operations retain their established publication behavior.
+
+`ComponentWrapBindingTarget` captures the singleton active Skin/Cloth group plus
+window document/revision, selection and constraint epochs. The state/session
+`editComponentWrapBinding(_:target:)` stages one field-local transaction and checks
+cancellation before publication. A retained unavailable target never acquires a later
+selection. Missing or opaque imported references are not normalized by selection or
+preview. Geometry/source and material identities advance together on an actual change;
+semantic no-ops preserve history and redo. See ADR0137.

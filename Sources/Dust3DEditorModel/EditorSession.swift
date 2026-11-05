@@ -325,6 +325,20 @@ public actor EditorSession {
         return result.snapshot
     }
 
+    /// Replace body-weight binding for the captured active wrapping group away from the UI actor.
+    /// - Parameters: choice is an eligible group or Own Children; target captures source/selection/constraints.
+    /// - Returns: One undoable snapshot with refreshed geometry/source-hint and material identities.
+    /// - Throws: Cancellation, stale target or original document validation errors before publication.
+    /// - Example: `try await session.editComponentWrapBinding(.group(bodyID), target: target)`.
+    public func editComponentWrapBinding(
+        _ choice: ComponentWrapBindingChoice, target: ComponentWrapBindingTarget
+    ) throws -> EditorSnapshot {
+        let result = try updateWithResult(checkCancellationBeforePublication: true) { state in
+            try state.editComponentWrapBinding(choice, target: target)
+        }
+        return result.snapshot
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }
