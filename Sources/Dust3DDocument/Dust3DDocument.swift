@@ -547,6 +547,7 @@ public struct Dust3DDocument: Sendable {
             if ids.isEmpty { return self }
             try Task.checkCancellation()
         }
+        let model = try Self.xml(modelXML, root: "canvas")
         let contents: DocumentContents
         var nextGraphOrder = graphOrder
         switch command {
