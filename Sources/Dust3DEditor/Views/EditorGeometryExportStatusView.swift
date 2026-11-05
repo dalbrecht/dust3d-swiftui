@@ -1,3 +1,4 @@
+import Accessibility
 import Dust3DKit
 import Foundation
 import SwiftUI
@@ -7,8 +8,22 @@ struct EditorGeometryExportStatusView: View {
     var format: DocumentExportFormat = .obj
     let onCancel: () -> Void
     let onDismiss: () -> Void
+    let onReveal: (URL) -> Void
 
-    @ViewBuilder var body: some View {
+    var body: some View {
+        content.onChange(of: statusAnnouncement) { _, announcement in
+            if let announcement {
+                AccessibilityNotification.Announcement(announcement).post()
+            }
+        }
+    }
+
+    var statusAnnouncement: String? {
+        guard case .failed(let error) = phase else { return nil }
+        return "Export failed. " + EditorStore.message(error)
+    }
+
+    @ViewBuilder private var content: some View {
         switch phase {
         case .idle, .failed: EmptyView()
         case .choosing: status { activity("Choose an export destination…") }
@@ -23,12 +38,18 @@ struct EditorGeometryExportStatusView: View {
                         Text(ByteCountFormatter.string(fromByteCount: Int64(receipt.byteCount), countStyle: .file))
                             .monospacedDigit().foregroundStyle(.secondary).fixedSize()
                         Spacer(minLength: 8)
+                        Button(action: { onReveal(receipt.destination) }) {
+                            Text("Show in Finder").frame(minHeight: 40)
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityHint("Selects the exported file in Finder")
                         Button(action: onDismiss) { Text("Dismiss").frame(minHeight: 40) }
                             .buttonStyle(.borderless).accessibilityLabel(
                                 "Dismiss \(receipt.format.rawValue.uppercased()) export result")
                     }
                     if !receipt.warning.isEmpty {
                         Text("Export warning: \(receipt.warning)").textSelection(.enabled)
+                            .id(receipt.warning)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
