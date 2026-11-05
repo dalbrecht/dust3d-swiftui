@@ -6,8 +6,10 @@ import XCTest
 
 final class WorkflowReplayPlanTests: XCTestCase {
     func testReferenceOnlyReplayAppliesImageBeforeGraphAndPreservesBytes() throws {
-        let png = try XCTUnwrap(Data(base64Encoded:
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
+        let png = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
         let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
             .applying(.setReferenceImagePNG(png))
         let plan = try WorkflowReplayPlan(document: original)
@@ -18,22 +20,23 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(try plan.previewDocument(after: 1, source: original).encoded(), original.encoded())
     }
 
-
     func testReplayBuildsGroupsAndMovesPartsAfterDrawing() throws {
-        let source = try Dust3DDocument(snapshotXML: Data("""
-            <canvas>
-              <parts><part id="p"/></parts>
-              <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
-              <components>
-                <component id="outer" name="Outer" color="#ff0000" xmlns:asset="urn:dust3d:test">
-                  <component id="inner" name="Inner">
-                    <component id="leaf" linkDataType="partId" linkData="p" asset:hint="keep"/>
-                  </component>
-                </component>
-                <component id="empty" name="Empty Group"/>
-              </components>
-            </canvas>
-            """.utf8))
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                  <parts><part id="p"/></parts>
+                  <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
+                  <components>
+                    <component id="outer" name="Outer" color="#ff0000" xmlns:asset="urn:dust3d:test">
+                      <component id="inner" name="Inner">
+                        <component id="leaf" linkDataType="partId" linkData="p" asset:hint="keep"/>
+                      </component>
+                    </component>
+                    <component id="empty" name="Empty Group"/>
+                  </components>
+                </canvas>
+                """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
         XCTAssertEqual(plan.steps.count, 6)
         func components(after step: Int) throws -> [DocumentComponent] {
@@ -44,13 +47,15 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertNil(drawn.first?.parentID)
         let drawing = try plan.previewDocument(after: 1, source: source)
         let xml = String(decoding: drawing.modelXML, as: UTF8.self)
-        XCTAssertTrue(xml.contains("xmlns:asset=\"urn:dust3d:test\"") || xml.contains("xmlns:asset='urn:dust3d:test'"), xml)
+        XCTAssertTrue(
+            xml.contains("xmlns:asset=\"urn:dust3d:test\"") || xml.contains("xmlns:asset='urn:dust3d:test'"), xml)
         XCTAssertTrue(xml.contains("asset:hint=\"keep\""))
         let outerCreated = try components(after: 2)
         XCTAssertEqual(Set(outerCreated.map(\.id)), ["leaf", "outer"])
         XCTAssertEqual(outerCreated.first { $0.id == "outer" }?.color, .some(.unset))
-        XCTAssertEqual(try components(after: 3).first { $0.id == "outer" }?.color,
-                       try source.components().first?.color)
+        XCTAssertEqual(
+            try components(after: 3).first { $0.id == "outer" }?.color,
+            try source.components().first?.color)
         let innerCreated = try components(after: 4)
         XCTAssertEqual(innerCreated.first { $0.id == "inner" }?.parentID, "outer")
         XCTAssertNil(innerCreated.first { $0.id == "leaf" }?.parentID)
@@ -61,20 +66,22 @@ final class WorkflowReplayPlanTests: XCTestCase {
 
     func testLinkedCutFaceAppearsWhenItsProfileFinishes() throws {
         let profile = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
-        let source = try Dust3DDocument(snapshotXML: Data("""
-            <canvas>
-              <parts>
-                <part id="tube" cutFace="\(profile)"/>
-                <part id="\(profile)" target="CutFace" rounded="true"/>
-                <part id="next"/>
-              </parts>
-              <nodes>
-                <node id="tubeNode" partId="tube" x="0" y="0" z="0" radius=".1"/>
-                <node id="profileNode" partId="\(profile)" x="1" y="0" z="0" radius=".1"/>
-                <node id="nextNode" partId="next" x="2" y="0" z="0" radius=".1"/>
-              </nodes>
-            </canvas>
-            """.utf8))
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                  <parts>
+                    <part id="tube" cutFace="\(profile)"/>
+                    <part id="\(profile)" target="CutFace" rounded="true"/>
+                    <part id="next"/>
+                  </parts>
+                  <nodes>
+                    <node id="tubeNode" partId="tube" x="0" y="0" z="0" radius=".1"/>
+                    <node id="profileNode" partId="\(profile)" x="1" y="0" z="0" radius=".1"/>
+                    <node id="nextNode" partId="next" x="2" y="0" z="0" radius=".1"/>
+                  </nodes>
+                </canvas>
+                """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
         let drawn = try plan.previewDocument(after: 2, source: source).editorContents()
         XCTAssertEqual(drawn.parts.first { $0.id == profile }?.target, .model)
@@ -92,18 +99,20 @@ final class WorkflowReplayPlanTests: XCTestCase {
 
     func testReplayStagesNodeCutFacesAndWaitsForLinkedProfiles() throws {
         let profile = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
-        let source = try Dust3DDocument(snapshotXML: Data("""
-            <canvas>
-              <parts><part id="tube"/><part id="\(profile)" target="CutFace"/><part id="next"/></parts>
-              <nodes>
-                <node id="a" partId="tube" x="0" y="0" z="0" radius=".1" cutFace="Triangle"/>
-                <node id="b" partId="tube" x="0" y="1" z="0" radius=".1" cutFace="\(profile)" cutRotation=".25"/>
-                <node id="p" partId="\(profile)" x="1" y="0" z="0" radius=".1"/>
-                <node id="n" partId="next" x="2" y="0" z="0" radius=".1"/>
-              </nodes>
-              <edges><edge id="ab" partId="tube" from="a" to="b"/></edges>
-            </canvas>
-            """.utf8))
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                  <parts><part id="tube"/><part id="\(profile)" target="CutFace"/><part id="next"/></parts>
+                  <nodes>
+                    <node id="a" partId="tube" x="0" y="0" z="0" radius=".1" cutFace="Triangle"/>
+                    <node id="b" partId="tube" x="0" y="1" z="0" radius=".1" cutFace="\(profile)" cutRotation=".25"/>
+                    <node id="p" partId="\(profile)" x="1" y="0" z="0" radius=".1"/>
+                    <node id="n" partId="next" x="2" y="0" z="0" radius=".1"/>
+                  </nodes>
+                  <edges><edge id="ab" partId="tube" from="a" to="b"/></edges>
+                </canvas>
+                """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
         XCTAssertEqual(plan.steps.count, 8)
         func xml(after step: Int) throws -> String {
@@ -121,13 +130,15 @@ final class WorkflowReplayPlanTests: XCTestCase {
 
     func testReplayStagesStitchingAndImportedTargets() throws {
         for target in ["StitchingLine", "StitchingLoop", "ImportedModel"] {
-            let source = try Dust3DDocument(snapshotXML: Data("""
-                <canvas>
-                  <parts><part id="p" target="\(target)" importedModelId="retained"/></parts>
-                  <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
-                  <components><component id="after"/></components>
-                </canvas>
-                """.utf8))
+            let source = try Dust3DDocument(
+                snapshotXML: Data(
+                    """
+                    <canvas>
+                      <parts><part id="p" target="\(target)" importedModelId="retained"/></parts>
+                      <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
+                      <components><component id="after"/></components>
+                    </canvas>
+                    """.utf8))
             let plan = try WorkflowReplayPlan(document: source)
             XCTAssertEqual(plan.steps.count, 3)
             let before = try plan.previewDocument(after: 1, source: source)
@@ -141,16 +152,18 @@ final class WorkflowReplayPlanTests: XCTestCase {
     }
 
     func testReplayAppliesGroupWrappingAsOneStep() throws {
-        let source = try Dust3DDocument(snapshotXML: Data("""
-            <canvas>
-              <components>
-                <component id="body"/>
-                <component id="cloth" name="Cloth" wrap="Cloth" wrapOffset=".025"
-                    wrapBindTo="body" wrapFuture="retained"/>
-                <component id="after"/>
-              </components>
-            </canvas>
-            """.utf8))
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                  <components>
+                    <component id="body"/>
+                    <component id="cloth" name="Cloth" wrap="Cloth" wrapOffset=".025"
+                        wrapBindTo="body" wrapFuture="retained"/>
+                    <component id="after"/>
+                  </components>
+                </canvas>
+                """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
         XCTAssertEqual(plan.steps.count, 4)
         let before = try plan.previewDocument(after: 2, source: source)
@@ -169,20 +182,22 @@ final class WorkflowReplayPlanTests: XCTestCase {
     func testReplayStagesRigBeforeByteDistinctBoneAssignments() throws {
         let firstName = "Cafe\u{301}"
         let secondName = "Caf\u{e9}"
-        let source = try Dust3DDocument(snapshotXML: Data("""
-            <canvas rigType="Biped">
-              <parts><part id="p"/></parts>
-              <nodes>
-                <node id="a" partId="p" x="0" y="0" z="0" radius=".1"/>
-                <node id="b" partId="p" x="0" y="1" z="0" radius=".1"/>
-                <node id="c" partId="p" x="0" y="2" z="0" radius=".1"/>
-              </nodes>
-              <edges>
-                <edge id="ab" from="a" to="b" boneName="\(firstName)"/>
-                <edge id="bc" from="b" to="c" boneName="\(secondName)"/>
-              </edges>
-            </canvas>
-            """.utf8))
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas rigType="Biped">
+                  <parts><part id="p"/></parts>
+                  <nodes>
+                    <node id="a" partId="p" x="0" y="0" z="0" radius=".1"/>
+                    <node id="b" partId="p" x="0" y="1" z="0" radius=".1"/>
+                    <node id="c" partId="p" x="0" y="2" z="0" radius=".1"/>
+                  </nodes>
+                  <edges>
+                    <edge id="ab" from="a" to="b" boneName="\(firstName)"/>
+                    <edge id="bc" from="b" to="c" boneName="\(secondName)"/>
+                  </edges>
+                </canvas>
+                """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
         XCTAssertEqual(plan.steps.count, 6)
         let drawn = try plan.previewDocument(after: 3, source: source).editorContents()
@@ -199,16 +214,18 @@ final class WorkflowReplayPlanTests: XCTestCase {
     }
 
     func testReplayRevealsStoredAnimationsAndParametersInOrder() throws {
-        let source = try Dust3DDocument(snapshotXML: Data("""
-            <canvas>
-              <parts><part id="p"/></parts>
-              <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
-              <animations>
-                <animation id="walk" name="Walk" type="Walk" speed=".5" duration="2"/>
-                <animation id="jump" name="Jump" type="Jump"/>
-              </animations>
-            </canvas>
-            """.utf8))
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                  <parts><part id="p"/></parts>
+                  <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
+                  <animations>
+                    <animation id="walk" name="Walk" type="Walk" speed=".5" duration="2"/>
+                    <animation id="jump" name="Jump" type="Jump"/>
+                  </animations>
+                </canvas>
+                """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
         XCTAssertEqual(plan.steps.count, 5)
         XCTAssertEqual((0...5).map { plan.meshStep(after: $0) }, [0, 1, 1, 1, 1, 1])
@@ -229,13 +246,15 @@ final class WorkflowReplayPlanTests: XCTestCase {
     }
 
     func testInvalidAnimationMetadataLeavesModelingReplayAvailable() throws {
-        let source = try Dust3DDocument(snapshotXML: Data("""
-            <canvas>
-              <parts><part id="p"/></parts>
-              <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
-              <animations><animation id="duplicate"/><animation id="duplicate"/></animations>
-            </canvas>
-            """.utf8))
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                  <parts><part id="p"/></parts>
+                  <nodes><node id="n" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
+                  <animations><animation id="duplicate"/><animation id="duplicate"/></animations>
+                </canvas>
+                """.utf8))
         let plan = try WorkflowReplayPlan(document: source)
         XCTAssertEqual(plan.steps, [.node(id: "n", incomingEdgeID: nil)])
         XCTAssertNotNil(plan.animationMetadataError)
@@ -250,37 +269,40 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(WorkflowReplaySpeed.intervalMilliseconds(for: .max), 50)
     }
 
-
     func testFinishesPartSettingsBeforeDrawingNextPart() throws {
-        let document = try Dust3DDocument(snapshotXML: Data("""
-            <canvas>
-              <parts><part id="chain"/><part id="loop" rounded="true"/></parts>
-              <nodes>
-                <node id="middle" partId="chain" x="0" y="0" z="0" radius=".1"/>
-                <node id="start" partId="chain" x="0" y="1" z="0" radius=".1"/>
-                <node id="end" partId="chain" x="0" y="2" z="0" radius=".1"/>
-                <node id="a" partId="loop" x="1" y="0" z="0" radius=".1"/>
-                <node id="b" partId="loop" x="1" y="1" z="0" radius=".1"/>
-                <node id="c" partId="loop" x="1" y="2" z="0" radius=".1"/>
-              </nodes>
-              <edges>
-                <edge id="backward" partId="chain" from="middle" to="start"/>
-                <edge id="forward" partId="chain" from="middle" to="end"/>
-                <edge id="ab" partId="loop" from="a" to="b"/>
-                <edge id="bc" partId="loop" from="b" to="c"/>
-                <edge id="ca" partId="loop" from="c" to="a"/>
-              </edges>
-              <components>
-                <component id="loopComponent" linkDataType="partId" linkData="loop" color="#ff0000"/>
-                <component id="chainComponent" linkDataType="partId" linkData="chain"/>
-              </components>
-            </canvas>
-            """.utf8))
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                  <parts><part id="chain"/><part id="loop" rounded="true"/></parts>
+                  <nodes>
+                    <node id="middle" partId="chain" x="0" y="0" z="0" radius=".1"/>
+                    <node id="start" partId="chain" x="0" y="1" z="0" radius=".1"/>
+                    <node id="end" partId="chain" x="0" y="2" z="0" radius=".1"/>
+                    <node id="a" partId="loop" x="1" y="0" z="0" radius=".1"/>
+                    <node id="b" partId="loop" x="1" y="1" z="0" radius=".1"/>
+                    <node id="c" partId="loop" x="1" y="2" z="0" radius=".1"/>
+                  </nodes>
+                  <edges>
+                    <edge id="backward" partId="chain" from="middle" to="start"/>
+                    <edge id="forward" partId="chain" from="middle" to="end"/>
+                    <edge id="ab" partId="loop" from="a" to="b"/>
+                    <edge id="bc" partId="loop" from="b" to="c"/>
+                    <edge id="ca" partId="loop" from="c" to="a"/>
+                  </edges>
+                  <components>
+                    <component id="loopComponent" linkDataType="partId" linkData="loop" color="#ff0000"/>
+                    <component id="chainComponent" linkDataType="partId" linkData="chain"/>
+                  </components>
+                </canvas>
+                """.utf8))
         let plan = try WorkflowReplayPlan(document: document)
-        XCTAssertEqual(Array(plan.steps.prefix(4)), [
-            .node(id: "a", incomingEdgeID: nil), .node(id: "b", incomingEdgeID: "ab"),
-            .node(id: "c", incomingEdgeID: "bc"), .edge(id: "ca"),
-        ])
+        XCTAssertEqual(
+            Array(plan.steps.prefix(4)),
+            [
+                .node(id: "a", incomingEdgeID: nil), .node(id: "b", incomingEdgeID: "ab"),
+                .node(id: "c", incomingEdgeID: "bc"), .edge(id: "ca"),
+            ])
         XCTAssertTrue(plan.frame(after: -1).nodes.isEmpty)
         let partial = plan.frame(after: 3)
         XCTAssertEqual(partial.nodes.map(\.id), ["a", "b", "c"])
@@ -306,10 +328,12 @@ final class WorkflowReplayPlanTests: XCTestCase {
         let colored = try plan.previewDocument(after: 6, source: document)
         XCTAssertTrue(String(decoding: colored.modelXML, as: UTF8.self).contains("color="))
         XCTAssertEqual(try colored.editorContents().parts.map(\.id), ["loop"])
-        XCTAssertEqual(Array(plan.steps.dropLast().suffix(3)), [
-            .node(id: "start", incomingEdgeID: nil), .node(id: "middle", incomingEdgeID: "backward"),
-            .node(id: "end", incomingEdgeID: "forward"),
-        ])
+        XCTAssertEqual(
+            Array(plan.steps.dropLast().suffix(3)),
+            [
+                .node(id: "start", incomingEdgeID: nil), .node(id: "middle", incomingEdgeID: "backward"),
+                .node(id: "end", incomingEdgeID: "forward"),
+            ])
         let provisional = plan.frame(after: 9).edges.first { $0.id == "backward" }
         XCTAssertEqual(provisional?.fromID, "start")
         XCTAssertEqual(provisional?.toID, "middle")
@@ -317,7 +341,8 @@ final class WorkflowReplayPlanTests: XCTestCase {
             .first { $0.id == "backward" }
         XCTAssertEqual(previewEdge, provisional)
         XCTAssertEqual(plan.frame(after: 10).edges.first { $0.id == "backward" }?.fromID, "middle")
-        XCTAssertEqual(try plan.previewDocument(after: plan.steps.count, source: document).encoded(), document.encoded())
+        XCTAssertEqual(
+            try plan.previewDocument(after: plan.steps.count, source: document).encoded(), document.encoded())
 
     }
 }

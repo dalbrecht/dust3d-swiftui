@@ -105,7 +105,9 @@ public actor FilePreviewDocumentService {
         return try await enqueue { try await self.loadNow(document: document, data: data) }
     }
 
-    private func enqueue(_ load: @escaping @Sendable () async throws -> FilePreviewDocument) async throws -> FilePreviewDocument {
+    private func enqueue(_ load: @escaping @Sendable () async throws -> FilePreviewDocument) async throws
+        -> FilePreviewDocument
+    {
         try Task.checkCancellation()
         let previous = tail
         let operation = Task {

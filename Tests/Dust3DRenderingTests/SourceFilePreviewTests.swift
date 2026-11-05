@@ -21,7 +21,6 @@ final class SourceFilePreviewTests: XCTestCase {
         XCTAssertEqual(source.encoded(), data)
     }
 
-
     func testSourceFrameClearsLegacyDetailNoticeButFallbackRestoresIt() async throws {
         let loaded = try await FilePreviewDocumentService().load(url: fixture())
         let original = try XCTUnwrap(loaded.mesh)

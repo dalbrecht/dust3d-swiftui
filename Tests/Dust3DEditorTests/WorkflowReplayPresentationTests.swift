@@ -14,8 +14,9 @@ final class WorkflowReplayPresentationTests: XCTestCase {
         XCTAssertTrue(WorkflowReplayReferenceState.loading.blocksAdvance(hasReferenceStep: true, completedSteps: 0))
         XCTAssertFalse(WorkflowReplayReferenceState.loading.blocksAdvance(hasReferenceStep: false, completedSteps: 0))
         XCTAssertFalse(WorkflowReplayReferenceState.loading.blocksAdvance(hasReferenceStep: true, completedSteps: 1))
-        XCTAssertFalse(WorkflowReplayReferenceState.unavailable("Invalid image")
-            .blocksAdvance(hasReferenceStep: true, completedSteps: 0))
+        XCTAssertFalse(
+            WorkflowReplayReferenceState.unavailable("Invalid image")
+                .blocksAdvance(hasReferenceStep: true, completedSteps: 0))
     }
 
     func testStalePreviewErrorYieldsToCurrentFrameProgress() {

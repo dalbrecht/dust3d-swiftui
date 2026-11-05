@@ -44,7 +44,8 @@ package struct WorkflowReplayPlan: Sendable {
             case .edge(let id):
                 edges.insert(id)
             case .referenceImage, .property, .createGroup, .movePart, .restoreEdgeDirections,
-                 .setRigType, .assignBone, .addAnimation: break
+                .setRigType, .assignBone, .addAnimation:
+                break
             }
         }
         let reversed = pendingReversals(after: completedSteps)
@@ -143,16 +144,18 @@ package struct WorkflowReplayPlan: Sendable {
         let nodeProperties = Dictionary(grouping: properties.filter { $0.owner == .node }, by: \.id)
         let partProperties = Dictionary(grouping: properties.filter { $0.owner == .part }, by: \.id)
         let componentProperties = Dictionary(grouping: properties.filter { $0.owner == .component }, by: \.id)
-        let linkedComponents = Dictionary(grouping: components.compactMap { component in
-            component.partID.map { (partID: $0, componentID: component.id) }
-        }, by: \.partID)
+        let linkedComponents = Dictionary(
+            grouping: components.compactMap { component in
+                component.partID.map { (partID: $0, componentID: component.id) }
+            }, by: \.partID)
         var visitedParts = Set<String?>()
         var stagedComponents = Set<String>()
         var deferredProfiles: [String: [ReplayProperty]] = [:]
         var unresolvedProfiles: [ReplayProperty] = []
         var steps: [Step] = document.hasReferenceImage ? [.referenceImage] : []
         steps.reserveCapacity(graph.nodes.count + graph.edges.count + properties.count)
-        let partOrder = components.compactMap(\.partID).map(Optional.some)
+        let partOrder =
+            components.compactMap(\.partID).map(Optional.some)
             + graph.parts.map { Optional($0.id) } + [nil]
         func stage(_ property: ReplayProperty, for part: String?) {
             // A linked cross-section needs the target geometry to exist in the frame.
@@ -229,9 +232,11 @@ package struct WorkflowReplayPlan: Sendable {
                     $0.name.utf8.lexicographicallyPrecedes($1.name.utf8)
                 }
                 for parameter in parameters {
-                    steps.append(.property(ReplayProperty(
-                        owner: .animation, id: animation.id, attributes: [parameter.name],
-                        title: "\(name) — \(parameter.name)", profilePartID: nil)))
+                    steps.append(
+                        .property(
+                            ReplayProperty(
+                                owner: .animation, id: animation.id, attributes: [parameter.name],
+                                title: "\(name) — \(parameter.name)", profilePartID: nil)))
                 }
             }
             animationMetadataError = nil

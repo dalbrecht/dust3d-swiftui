@@ -1192,7 +1192,8 @@ public struct Dust3DDocument: Sendable {
                     if attribute == "target", value != "ImportedModel" {
                         guard let target = PartTarget(rawValue: value), target != .model else { return nil }
                     }
-                    let profilePartID = attribute == "cutFace" && CutFaceLinks.canonicalID(value) != nil
+                    let profilePartID =
+                        attribute == "cutFace" && CutFaceLinks.canonicalID(value) != nil
                         ? value : nil
                     return ReplayProperty(
                         owner: owner, id: id, attributes: [attribute],
@@ -1204,15 +1205,17 @@ public struct Dust3DDocument: Sendable {
                     let value = element.attribute(forName: "wrap")?.stringValue, !value.isEmpty
                 {
                     let attributes = (element.attributes ?? []).compactMap(\.name).filter { $0.hasPrefix("wrap") }
-                    result.append(ReplayProperty(
-                        owner: owner, id: id, attributes: attributes,
-                        title: name.isEmpty ? "Wrap Modifier" : "\(name) — Wrap Modifier", profilePartID: nil))
+                    result.append(
+                        ReplayProperty(
+                            owner: owner, id: id, attributes: attributes,
+                            title: name.isEmpty ? "Wrap Modifier" : "\(name) — Wrap Modifier", profilePartID: nil))
                 }
                 return result
             }
         }
         return properties(
-            try Self.nodes(model), owner: .node, rules: [
+            try Self.nodes(model), owner: .node,
+            rules: [
                 ("cutFace", "Node Cut Face"), ("cutRotation", "Node Cut Rotation"),
             ]) + properties(parts, owner: .part, rules: partRules)
             + properties(PartSplitting.componentElements(model), owner: .component, rules: componentRules)
@@ -1280,14 +1283,16 @@ public struct Dust3DDocument: Sendable {
                 // Parts are initially at the root and must survive removal of their future groups.
                 for element in elements {
                     guard let id = element.attribute(forName: "id")?.stringValue,
-                        pendingMoveIDs.contains(id) else { continue }
+                        pendingMoveIDs.contains(id)
+                    else { continue }
                     try namespaceBudget.preserve(element, movingTo: components)
                     element.detach()
                     components.addChild(element)
                 }
                 for element in elements.reversed() {
                     guard let id = element.attribute(forName: "id")?.stringValue,
-                        pendingGroupIDs.contains(id) else { continue }
+                        pendingGroupIDs.contains(id)
+                    else { continue }
                     element.detach()
                 }
             }
