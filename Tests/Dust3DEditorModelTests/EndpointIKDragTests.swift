@@ -94,4 +94,18 @@ final class EndpointIKDragTests: XCTestCase {
         XCTAssertEqual(undone.document.encoded(), original.encoded())
     }
 
+    func testLockedAxisOutsideBoundsIsIgnoredButNonfiniteInputStillRejects() async throws {
+        let original = try archive()
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let snapshot = try await session.setLock(.x, isLocked: true)
+        let target = try XCTUnwrap(EndpointIKTarget(endpointID: "tip", snapshot: snapshot))
+        let masked = try target.updates(toward: .init(x: 2_000_000, y: 1, z: 0.5))
+        let bounded = try target.updates(toward: .init(x: 2, y: 1, z: 0.5))
+        XCTAssertFalse(masked.isEmpty)
+        XCTAssertEqual(masked.map(\.value), bounded.map(\.value))
+        XCTAssertThrowsError(try target.updates(toward: .init(x: .nan, y: 1, z: 0.5)))
+        XCTAssertThrowsError(try target.updates(toward: .init(x: 2, y: 2_000_000, z: 0.5)))
+    }
+
 }

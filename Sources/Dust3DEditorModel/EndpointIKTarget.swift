@@ -38,12 +38,15 @@ public struct EndpointIKTarget: Sendable {
     public func isCurrent(in snapshot: EditorSnapshot) -> Bool { target.isCurrent(in: snapshot) }
 
     public func updates(toward requested: NodePosition) throws -> [NodeUpdate] {
-        guard EditableNode(position: requested, radius: 0).isValid else { throw DocumentError.invalidNode }
+        guard [requested.x, requested.y, requested.z].allSatisfy(\.isFinite) else {
+            throw DocumentError.invalidNode
+        }
         guard canBend else { return [] }
         let destination = NodePosition(
             x: locks.contains(.x) ? endpointPosition.x : requested.x,
             y: locks.contains(.y) ? endpointPosition.y : requested.y,
             z: locks.contains(.z) ? endpointPosition.z : requested.z)
+        guard EditableNode(position: destination, radius: 0).isValid else { throw DocumentError.invalidNode }
         guard destination != endpointPosition else { return [] }
         let axes: [(EditingConstraint, SIMD3<Double>)] = [(.x, [1, 0, 0]), (.y, [0, 1, 0]), (.z, [0, 0, 1])]
         let fixedAxis = axes.first { locks.contains($0.0) }?.1
