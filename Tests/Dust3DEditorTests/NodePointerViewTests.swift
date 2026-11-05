@@ -265,6 +265,53 @@ final class NodePointerViewTests: XCTestCase {
         XCTAssertTrue(store.canUndo)
     }
 
+    func testHostedCanvasShiftDragBendsEndpointAndCommitsOnlyOnRelease() async throws {
+        let xml = """
+            <canvas><nodes>
+            <node id='root' partId='p' x='0' y='0' z='0' radius='.1'/>
+            <node id='tip' partId='p' x='1' y='0' z='0' radius='.1'/>
+            </nodes><edges><edge id='e' partId='p' from='root' to='tip'/></edges>
+            <parts><part id='p'/></parts></canvas>
+            """
+        let source = try Dust3DDocument(snapshotXML: Data(xml.utf8))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        for _ in 0..<300 where store.isWorking || store.isGenerating || store.isLoadingReferenceImage {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let initial = try XCTUnwrap(store.snapshot)
+        let tip = try initial.document.node(id: "tip")
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 472, height: 472)
+        let point = projection.point(for: tip.position)
+        let window = NSWindow(
+            contentRect: .init(x: 0, y: 0, width: 472, height: 472),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let host = NSHostingView(rootView: NodeCanvas(store: store))
+        host.frame = .init(x: 0, y: 0, width: 472, height: 472)
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        let start = NSPoint(x: point.x, y: 472 - point.y)
+        let hit = try XCTUnwrap(host.hitTest(start) as? NodePointerView)
+        hit.mouseDown(with: try event(.leftMouseDown, x: start.x, y: start.y, flags: .shift))
+        hit.mouseDragged(with: try event(.leftMouseDragged, x: start.x, y: start.y + 40, flags: .shift))
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+        hit.mouseUp(with: try event(.leftMouseUp, x: start.x, y: start.y + 40, flags: .shift))
+        for _ in 0..<300 where store.isWorking { try await Task.sleep(for: .milliseconds(10)) }
+        let changed = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(try changed.document.node(id: "root"), try source.node(id: "root"))
+        let moved = try changed.document.node(id: "tip").position
+        XCTAssertNotEqual(moved.y, tip.position.y)
+        XCTAssertEqual(hypot(moved.x, moved.y), 1, accuracy: 1e-10)
+        store.undo()
+        for _ in 0..<300 where store.isWorking { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testHostedOriginPointerInvokesDragAndEscapeWithoutTouchingArchive() async throws {
         let original = Dust3DDocument.emptyArchive()
         let store = EditorStore()

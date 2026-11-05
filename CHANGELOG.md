@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Shift-drag a graph selection to rotate it or bend a single endpoint chain.
+
 - Add graph auto-color from displayed reference pixels and default-color reset, with source-bound atomic Undo and stale-raster rejection (#45).
 
 - Add canvas one-degree keyboard rotation and explicit angle controls, with automatic pivot/descendant selection, native lock protection and stale-input rejection (#45).
