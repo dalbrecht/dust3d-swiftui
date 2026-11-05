@@ -15,12 +15,18 @@ struct NodePointerSurface: NSViewRepresentable {
     var add: () -> Void = {}
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
     var doubleClick: (() -> Void)? = nil
+    var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)? = nil
     var beginShiftDrag: ((UUID) -> Void)? = nil
 
     func makeNSView(context: Context) -> NodePointerView { NodePointerView() }
+    static func dismantleNSView(_ view: NodePointerView, coordinator: ()) {
+        view.cancelActivation(deferred: true, restoringFocus: false)
+        view.enabled = false
+    }
     func updateNSView(_ view: NodePointerView, context: Context) {
+        if !enabled { view.cancelActivation(deferred: true, restoringFocus: false) }
         view.enabled = enabled
         view.canDrag = canDrag
         view.begin = begin
@@ -33,6 +39,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.add = add
         view.wheel = wheel
         view.doubleClick = doubleClick
+        view.precisionKey = precisionKey
         view.isRectangular = isRectangular
         view.clickCancel = clickCancel
     }
@@ -51,10 +58,14 @@ final class NodePointerView: NSView {
     var add: () -> Void = {}
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
     var doubleClick: (() -> Void)? = nil
+    var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)?
     private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, isCommand: Bool, isShift: Bool)?
     private weak var previousResponder: NSResponder?
+    private weak var activationResponder: NSResponder?
+    private var lostPrecisionFocus = false
+    private(set) var pendingCancellation: Task<Void, Never>?
 
     func routeWheel(_ input: CanvasWheelInput) -> Bool { enabled && input.isSupported && wheel(input) }
     override func scrollWheel(with event: NSEvent) {
@@ -81,10 +92,19 @@ final class NodePointerView: NSView {
             return
         }
         let token = UUID()
+        lostPrecisionFocus = false
+        activationResponder = window?.firstResponder
         activation = (
             token, event.locationInWindow, false, event.modifierFlags.contains(.command),
             event.modifierFlags.contains(.shift)
         )
+        if precisionKey != nil, let window, window.firstResponder !== self {
+            previousResponder = window.firstResponder
+            guard window.makeFirstResponder(self) else {
+                cancelActivation()
+                return
+            }
+        }
         if canDrag {
             if event.modifierFlags.contains(.shift), !event.modifierFlags.contains(.command), let beginShiftDrag {
                 beginShiftDrag(token)
@@ -96,13 +116,13 @@ final class NodePointerView: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         guard var current = activation else { return }
-        guard enabled, canDrag else {
+        guard enabled, canDrag, !lostPrecisionFocus else {
             cancelActivation()
             return
         }
         let translation = displacement(from: current.origin, to: event.locationInWindow)
         guard current.isDragging || hypot(translation.x, translation.y) >= 3 else { return }
-        if !current.isDragging, let window {
+        if !current.isDragging, let window, window.firstResponder !== self {
             previousResponder = window.firstResponder
             guard window.makeFirstResponder(self) else {
                 cancelActivation()
@@ -117,8 +137,19 @@ final class NodePointerView: NSView {
     override func mouseUp(with event: NSEvent) {
         guard let current = activation else { return }
         activation = nil
-        restoreResponder()
-        guard enabled else {
+        let mayFocus =
+            !lostPrecisionFocus && (window?.firstResponder === self || window?.firstResponder === activationResponder)
+        if precisionKey != nil, enabled, mayFocus {
+            previousResponder = nil
+            if let window, window.firstResponder !== self { window.makeFirstResponder(self) }
+        } else {
+            restoreResponder()
+        }
+        defer {
+            activationResponder = nil
+            lostPrecisionFocus = false
+        }
+        guard enabled, !lostPrecisionFocus else {
             cancel(current.token)
             return
         }
@@ -130,11 +161,28 @@ final class NodePointerView: NSView {
         }
     }
 
+    override func resignFirstResponder() -> Bool {
+        let accepted = super.resignFirstResponder()
+        if accepted, precisionKey != nil, let current = activation {
+            lostPrecisionFocus = true
+            // Responder changes can occur during SwiftUI updates. Invalidate admission now;
+            // deliver the matching token cancellation after that update has completed.
+            pendingCancellation = Task { @MainActor [weak self] in
+                await Task.yield()
+                guard let self, self.activation?.token == current.token, self.lostPrecisionFocus else { return }
+                self.cancelActivation()
+            }
+        }
+        return accepted
+    }
+
     override func viewWillMove(toWindow newWindow: NSWindow?) {
         if let window {
             NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: window)
         }
-        if newWindow !== window { cancelActivation() }
+        if newWindow !== window || newWindow == nil {
+            cancelActivation(deferred: true, restoringFocus: false)
+        }
         super.viewWillMove(toWindow: newWindow)
         if let newWindow {
             NotificationCenter.default.addObserver(
@@ -143,6 +191,11 @@ final class NodePointerView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
+        if enabled, activation == nil, superview != nil, let window, window.firstResponder === self,
+            precisionKey?(CanvasPrecisionKeyInput(event)) == true
+        {
+            return
+        }
         guard event.keyCode == 53, activation != nil else {
             super.keyDown(with: event)
             return
@@ -152,16 +205,27 @@ final class NodePointerView: NSView {
 
     @objc private func windowResigned() { cancelActivation() }
 
-    private func cancelActivation() {
+    func cancelActivation(deferred: Bool = false, restoringFocus: Bool = true) {
         guard let current = activation else { return }
         activation = nil
-        restoreResponder()
-        cancel(current.token)
+        if restoringFocus { restoreResponder() } else { previousResponder = nil }
+        activationResponder = nil
+        lostPrecisionFocus = false
+        let callback = cancel
+        if deferred {
+            // Deliver the cancelled owner's callback/token, never a newer owner's callback.
+            pendingCancellation = Task { @MainActor in
+                await Task.yield()
+                callback(current.token)
+            }
+        } else {
+            callback(current.token)
+        }
     }
 
     private func restoreResponder() {
         defer { previousResponder = nil }
-        guard let window, window.firstResponder === self else { return }
+        guard !lostPrecisionFocus, let window, window.firstResponder === self else { return }
         if let previous = previousResponder as? NSView, previous.window !== window { return }
         window.makeFirstResponder(previousResponder)
     }

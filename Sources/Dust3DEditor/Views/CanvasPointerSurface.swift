@@ -38,6 +38,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
     var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
@@ -56,6 +57,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.hover = hover
         view.wheel = wheel
         view.doubleClick = doubleClick
+        view.precisionKey = precisionKey
         if view.isAddingNodes != isAddingNodes { view.cancelActivation() }
         view.isAddingNodes = isAddingNodes
         view.addPress = addPress
@@ -71,6 +73,7 @@ final class CanvasPointerView: NSView {
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
@@ -175,6 +178,11 @@ final class CanvasPointerView: NSView {
         if isAddingNodes { cancelInput() }
     }
     override func keyDown(with event: NSEvent) {
+        if enabled, start == nil, !hasMarquee, superview != nil, let window, window.firstResponder === self,
+            precisionKey?(CanvasPrecisionKeyInput(event)) == true
+        {
+            return
+        }
         if event.keyCode == 53, start != nil || isAddingNodes {
             invalidate()
             if isAddingNodes { cancelInput() }

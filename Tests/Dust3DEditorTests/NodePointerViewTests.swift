@@ -98,7 +98,7 @@ final class NodePointerViewTests: XCTestCase {
         XCTAssertEqual(finishes[0].1, .init(x: 12, y: -6))
     }
 
-    func testRemovalCancelsOwnedActivation() throws {
+    func testRemovalCancelsOwnedActivation() async throws {
         let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
         view.enabled = true
         view.canDrag = true
@@ -112,6 +112,8 @@ final class NodePointerViewTests: XCTestCase {
         view.viewWillMove(toWindow: nil)
         view.mouseUp(with: try event(.leftMouseUp, x: 20, y: 10))
         XCTAssertNotNil(begun)
+        XCTAssertNil(cancelled, "Removal must not synchronously mutate SwiftUI-owned drafts")
+        await view.pendingCancellation?.value
         XCTAssertEqual(cancelled, begun)
         XCTAssertFalse(finished)
     }
