@@ -270,6 +270,11 @@ public enum DocumentCommand: Sendable {
     /// Remove explicitly empty editable parts and their references; retain nested content and all assets.
     case pruneEmptyParts([String])
     case removeEdge(id: String)
+    /// Remove one captured edge set atomically with one XML traversal and retained node identities.
+    /// - Parameter ids: At most 20,000 unique existing edges whose endpoints are editable.
+    /// - Throws: `invalidNode` for missing, duplicate or read-only edges; `limitExceeded` above the count bound.
+    /// - Example: `.removeEdges(["first", "second"])` is one undoable edit.
+    case removeEdges([String])
     case reverseEdges([String])
     case splitPart(id: String, identities: [PartSplitIdentity])
     case pasteNodes(
@@ -989,10 +994,9 @@ public struct Dust3DDocument: Sendable {
             if ids.isEmpty { return self }
             try EmptyPartCleanup.apply(ids, model: model, contents: contents)
         case .removeEdge(let id):
-            guard let edge = contents.edges.first(where: { $0.id == id }) else { throw DocumentError.invalidNode }
-            _ = try editable(edge.fromID)
-            _ = try editable(edge.toID)
-            edgeElements().first(where: { $0.attribute(forName: "id")?.stringValue == id })?.detach()
+            _ = try EdgeRemoval.apply([id], model: model, contents: contents)
+        case .removeEdges(let ids):
+            guard try EdgeRemoval.apply(ids, model: model, contents: contents) else { return self }
         case .reverseEdges(let ids):
             if ids.isEmpty { return self }
             let edges = Dictionary(uniqueKeysWithValues: contents.edges.map { ($0.id, $0) })

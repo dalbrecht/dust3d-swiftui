@@ -362,6 +362,10 @@ private struct NodeHandle: View {
         .accessibilityValue(selected ? "Selected" : "Not selected")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { select() }
+        .accessibilityAction(named: Text("Add node to selection")) { add() }
+        .accessibilityAction(named: Text("Remove node from selection")) {
+            if selected { toggle() }
+        }
         .accessibilityAction(named: Text("Select Whole Part")) { if canSelectWholePart { doubleClick() } }
         .contextMenu {
             Button("Select Whole Part", action: doubleClick).disabled(!canSelectWholePart)
