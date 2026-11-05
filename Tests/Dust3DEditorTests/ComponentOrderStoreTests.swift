@@ -1,5 +1,6 @@
 import Dust3DDocument
 import Dust3DEditorModel
+import Foundation
 import XCTest
 
 @testable import Dust3DEditor
@@ -67,4 +68,35 @@ final class ComponentOrderStoreTests: XCTestCase {
         store.stop()
         XCTAssertFalse(store.canReorderComponent(.down))
     }
+
+    @MainActor func testParentDropRejectsInvalidAndNoOpTargetsAndMovesTheEntireBlockInSourceOrder() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts/><components><component id='a'/><component id='group'><component id='b'/><component id='x'/></component></components></canvas>"
+                    .utf8))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+
+        let noOp = try XCTUnwrap(store.beginComponentDrag(grabbedID: "group"))
+        XCTAssertFalse(store.dropComponents(token: noOp, in: .root))
+        XCTAssertFalse(store.isWorking)
+        let cycle = try XCTUnwrap(store.beginComponentDrag(grabbedID: "group"))
+        XCTAssertFalse(store.dropComponents(token: cycle, in: .component("b")))
+        XCTAssertFalse(store.isWorking)
+        XCTAssertFalse(store.canUndo)
+
+        store.selectComponents(["a", "b"])
+        try await settle(store)
+        let block = try XCTUnwrap(store.beginComponentDrag(grabbedID: "a"))
+        XCTAssertTrue(store.dropComponents(token: block, in: .component("group")))
+        try await settle(store)
+        let result = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(result.componentTree.rows.map(\.id), ["group", "x", "a", "b"])
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+    }
+
 }

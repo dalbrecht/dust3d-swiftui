@@ -958,10 +958,7 @@ final class EditorStore {
 
     func dropComponents(token: UUID, in parent: ComponentParent) -> Bool {
         guard let target = consumeComponentDrag(token) else { return false }
-        perform(acceptCommittedCancellation: true) {
-            try await $0.placeComponents(in: parent, target: target)
-        }
-        return true
+        return placeComponents(at: .into(parentID: parent.componentID), target: target)
     }
 
     private func consumeComponentDrag(_ token: UUID) -> ComponentPlacementTarget? {
