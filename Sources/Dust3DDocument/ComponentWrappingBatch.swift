@@ -37,7 +37,7 @@ enum ComponentWrappingBatch {
             guard row.isGroup else { throw DocumentError.invalidComponentWrapping }
         }
         if case .binding(let choice) = edit {
-            let plan = try ComponentWrapBindingPlan(components: components, ownerIDs: selected)
+            let plan = try ComponentWrapBindingPlan(components: components, ownerIDs: Set(ids))
             guard plan.allows(choice) else { throw DocumentError.invalidComponentWrapBinding }
         }
         let elements = PartSplitting.componentElements(model)
