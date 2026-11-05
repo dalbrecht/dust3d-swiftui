@@ -687,12 +687,12 @@ public actor EditorSession {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
         let result = try operation(&next)
-        // Prune at publication so intervening reads cannot change history selection semantics.
-        if selectedAnimationID != nil {
-            selectedAnimationID =
-                Self.animationSnapshot(next, selectedID: selectedAnimationID).list.selectedRow?.source.id
+        // Stage selection pruning with the edit so cancellation cannot publish either change.
+        let nextAnimationID = selectedAnimationID.flatMap {
+            Self.animationSnapshot(next, selectedID: $0).list.selectedRow?.source.id
         }
         if checkCancellationBeforePublication { try Task.checkCancellation() }
+        selectedAnimationID = nextAnimationID
         state = next
         return (next.snapshot, result)
     }
