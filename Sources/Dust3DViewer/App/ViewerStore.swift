@@ -31,9 +31,13 @@ final class ViewerStore {
                 && renderedMaterialRevision == meshRevision + materialRevision,
             hasSourceBakedMaterials: sourceBakedMesh != nil
                 && renderedMaterialRevision == meshRevision + materialRevision,
-            hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails)
+            hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails,
+            hasRenderedSurfaceDetails: bakedMesh != nil && renderedMaterialRevision == meshRevision + materialRevision,
+            materialWarning: acceptedMaterialWarning)
     }
     private var renderedMaterialRevision: Int?
+    // Retain only diagnostics from the accepted current preparation, including after a GPU failure.
+    private var acceptedMaterialWarning: String?
 
     func materialsRendered(revision: Int) {
         guard materials != nil, revision == meshRevision + materialRevision else { return }
@@ -110,6 +114,7 @@ final class ViewerStore {
                 try Task.checkCancellation()
                 guard let self, self.revision == documentRevision, self.materialRequestID == requestID else { return }
                 self.materials = prepared
+                self.acceptedMaterialWarning = prepared.preparationWarning
                 self.materialRevision += 1
                 self.isBakingMaterials = false
             } catch {
@@ -146,6 +151,7 @@ final class ViewerStore {
     private func clearMaterials() {
         materialTask?.cancel()
         materialRequestID = UUID()
+        acceptedMaterialWarning = nil
         renderedMaterialRevision = nil
         materials = nil
         materialIssue = nil

@@ -24,8 +24,9 @@ struct ComponentWrappingControls: View {
                 if presentation.showsSettings {
                     keepChildren
                     WrappingNumberControl(
-                        title: "Faces", identifier: "component-wrap-faces", identity: identity,
-                        source: component.wrapping.targetFaces.map { String($0) }, range: "64–20000, whole numbers"
+                        title: "Target Faces", identifier: "component-wrap-faces", identity: identity,
+                        source: component.wrapping.targetFaces.map { String($0) },
+                        range: "64–20000, whole numbers. Approximate mesh detail; generated face count can differ."
                     ) { store.setComponentWrapFaces(component.id, faces: $0) }
                     ForEach(presentation.fields) { field in
                         WrappingNumberControl(
@@ -34,6 +35,7 @@ struct ComponentWrappingControls: View {
                             range: field.rangeDescription
                         ) { store.setComponentWrapScalar(component.id, property: field.property, value: $0) }
                     }
+                    ComponentSurfaceControls(store: store, component: component)
                     Text(
                         "Apply or Return saves a number. Reset Draft discards typed changes. Changes use one undo step."
                     )

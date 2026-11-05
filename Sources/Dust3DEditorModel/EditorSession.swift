@@ -301,6 +301,20 @@ public actor EditorSession {
         }
     }
 
+    /// Apply one captured wrap-finish replacement away from the UI actor with one undo entry.
+    /// - Parameters: edit is a typed field replacement; target belongs to the originating inspector.
+    /// - Returns: The committed snapshot, preserving geometry identity for a finish-only edit.
+    /// - Throws: Stale target, original document error or cancellation before publication.
+    /// - Example: `try await session.editComponentSurface(.pattern(.spots), target: target)`.
+    public func editComponentSurface(_ edit: ComponentSurfaceEdit, target: ComponentSurfaceTarget) throws
+        -> EditorSnapshot
+    {
+        let result = try updateWithResult(checkCancellationBeforePublication: true) { state in
+            try state.editComponentSurface(edit, target: target)
+        }
+        return result.snapshot
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }

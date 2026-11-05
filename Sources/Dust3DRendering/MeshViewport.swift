@@ -10,6 +10,17 @@ public enum MeshMaterialContent: Sendable {
     case imported(ImportedMaterialRenderData)
 }
 
+extension MeshMaterialContent {
+    /// Preparation diagnostics remain available after a GPU error, independent of displayed-material admission.
+    package var preparationWarning: String? {
+        switch self {
+        case .baked(let value): return value.geometry.warning
+        case .sourceBaked(let value): return value.geometry.warning
+        case .imported: return nil
+        }
+    }
+}
+
 /// Main-actor SwiftUI surface for a validated mesh and its interactive orbit camera.
 public struct MeshViewport: NSViewRepresentable {
     let mesh: RenderMesh

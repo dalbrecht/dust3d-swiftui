@@ -233,12 +233,30 @@ mesh as stale with the original diagnostic. See ADR 0050 and
 `docs/wrapping-controller-verification.md`; topology cleanup remains core #14.
 
 In the component inspector, select an unlinked group and choose Wrapping → Skin
-or Cloth. Keep children controls source-part visibility; Faces accepts whole
+or Cloth. Keep children controls source-part visibility; Target Faces accepts whole
 counts from 64 to 20000. Numeric drafts show their range and commit with Apply or
 Return; Reset Draft discards typed changes. Unsupported source values remain
 preserved until explicitly replaced. Skin shows offset/smoothness; Cloth adds
 drape, length, openings and thickness. Native interaction/GPU acceptance remains
 pending; see `docs/native-wrapping-verification.md` for offscreen evidence and limits.
+
+
+Surface finish adds Spots, Rosettes, Stripes, Patches and Mottled patterns, automatic
+or opaque RGB ink, size, belly shading and generated wrinkle strength/size. Ink
+picker/text changes remain drafts until Apply; Cancel invalidates old native picker
+callbacks. Lighter belly applies only with a selected pattern. Drafts and queued
+commands belong to the original document, component selection and constraints.
+Unknown source text stays intact until explicitly replaced. None wrapping retains
+its parameters. One edit is one Undo entry; save/reopen retains bytes and output.
+
+Procedural baking and current GPU receipts determine the compatibility notice;
+retained geometry warnings are combined with current accepted preparation causes.
+Stale/failed preparation values cannot introduce old diagnostics. Repairing a
+finish value retries missing/stale geometry, retaining its error until a current
+result arrives. Offscreen pattern and generated-normal evidence uses bounded
+reviewed fixtures; it does not establish broad Qt corpus, physical UI or VoiceOver
+acceptance. Multi-group wrapping, body-binding authoring and textured export remain
+separate workflows. See ADR0135.
 
 Generated previews use copied indexed meshes and UInt32 Metal triangle buffers.
 Preview request identities, stale-failure retention, successful-empty clearing,

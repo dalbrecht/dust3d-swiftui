@@ -1,0 +1,25 @@
+# ADR 0135: Wrapping surface-detail authoring
+
+Status: accepted for local delivery; physical interaction and VoiceOver acceptance remain outstanding.
+
+## Context
+
+Qt's actual Properties action opens selected component controls (`part_manage_widget.cc:128,158–169`). Its wrap inspector exposes coat pattern, ink, size, belly shading and wrinkle strength/size (`component_property_widget.cc:823–966`). Native Skin/Cloth geometry settings already worked, but these finish fields were opaque and uneditable. The unchanged production core already consumes them: pinned `native/Engine/BakedMesh.cc:95–125` resolves pattern and fold bake inputs; `mesh_generator.cc:2184–2213` generates fold placement. Wrinkles are normal-map detail, not displaced geometry.
+
+## Decision
+
+Interpret None/Spots/Rosettes/Stripes/Patches/Mottled, opaque RGB or automatic ink, pattern scale 0.01–0.3 (default 0.06), belly 0–1 (default 0), wrinkles 0–1 (default 0) and wrinkle size 0.2–4 (default 1). Unsupported explicit source text remains uninterpreted until that field is replaced. Field-local edits preserve unrelated attributes/assets. Genuine default resets remove only their own scalar attribute; semantic no-ops preserve exact spelling/bytes/redo. None pattern and automatic ink remove only their override. Unlike Qt's destructive wrap=None setter, native mode changes retain all parameters.
+
+Only active recognized singleton unlinked groups expose finish controls. Capture document/revision, component selection and constraint epochs. Apply typed field commands through the actor, staging state and checking cancellation before publication. Local ink/number drafts commit on Apply/Return; Reset/Cancel discards them. Native well/text callbacks carry a draft generation plus captured admission; old callbacks cannot repopulate a reset or newer inspector. Picker edits never publish document changes. Target Faces is approximate mesh detail, not an output-face quota. Belly shading is retained/editable but applies only when a pattern is selected.
+
+Finish-only edits advance material identity without changing visible geometry identity. Each material preparation regenerates its own source/fold snapshot, so strength/size cannot reuse stale fold placement. If visible geometry is missing/stale, retry the current source instead of skipping all work. The optional preview-state preservingError flag is used only for this repair; accepted current success/empty clears it, a new failure supersedes it and stale receipts cannot clear it. Ordinary begin behavior remains unchanged.
+
+Combine original geometry diagnostics with only current accepted preparation diagnostics, including after a GPU failure hides displayed materials. Exclude stale/failed preparation values. A distinct hasRenderedSurfaceDetails capability suppresses only known procedural surface limitations after a matching legacy-baked frame. Imported limitations still require genuine imported/source receipts. Only standalone leading capability notices may be consumed from preparation messages; unknown remainder, nested/quoted literals, byte-exact duplicate/extension handling and original failure causes remain intact. This reuses the pure diagnostic-combination design independently from experimental mip adoption.
+
+## Verification and limits
+
+TDD covers lossless metadata/defaults/ranges/no-ops, typed owner validation, exact history/reopen, active-group admission, stale selection/locks/Undo/replacement/window targets, cancellation and native picker lifecycle. Bounded root-reviewed input hashes guard all native material tests. The maintained one-sphere Skin family exercises all five patterns, ink, size and belly through actual Store actions and real baked pixels. The reviewed 684-byte Cloth source and its 730-byte authored result exercise actual generated folds, half strength and size 2 without injected fold metadata or forced normal flags.
+
+One fixed production-pin legacy-normal proof uploads the genuine 256-square linear base-level map and compares two 512-square production draws at one camera. The omitted-normal control retains identical geometry, UVs, tangents and every other map. Alpha coverage is equal; visible lighting changes are measured. This is scoped causal normal rendering, not independent PBR differential, mip acceptance or broad wrapping topology parity. Pattern and control light/dark artifacts are inspected offscreen. Physical interaction and VoiceOver remain outstanding. Multi-selection wrapping, body-binding authoring and textured export are separate gaps. No production pin, dependency, remote publication, quarantined API/fixture or protected QA process changes.
+
+Final pinned make ci passed 60 BuildSupport and 1,397 XCTest tests, configured coverage, Qt-free linkage and isolated bundle rebuild/signature checks. The six measured new or affected domain files cover 1,302/1,302 lines, 344/344 functions and 866/866 regions. The earlier full-gate image-notice assertion was corrected to require a current GPU receipt; the pattern menu now supplies its current accessible value. No production core adoption or physical acceptance is implied.

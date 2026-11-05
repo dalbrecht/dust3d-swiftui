@@ -51,6 +51,8 @@ public struct ComponentWrappingSettings: Equatable, Sendable {
     public let keepsChildren: Bool?
     /// Editable whole face count in 64...20000; larger engine-supported source values remain opaque.
     public let targetFaces: Int?
+    /// Retained pattern and wrinkle settings; active effects are baked through the material pipeline.
+    public let surfaceDetails: ComponentSurfaceDetails
     private let scalars: [ComponentWrappingScalarProperty: Double]
 
     /// Read a supported explicit scalar or its mode-dependent default.
@@ -61,12 +63,13 @@ public struct ComponentWrappingSettings: Equatable, Sendable {
 
     init(
         mode: ComponentWrapMode?, keepsChildren: Bool?, targetFaces: Int?,
-        scalars: [ComponentWrappingScalarProperty: Double]
+        scalars: [ComponentWrappingScalarProperty: Double], surfaceDetails: ComponentSurfaceDetails
     ) {
         self.mode = mode
         self.keepsChildren = keepsChildren
         self.targetFaces = targetFaces
         self.scalars = scalars
+        self.surfaceDetails = surfaceDetails
     }
 }
 
@@ -99,7 +102,8 @@ enum ComponentWrapping {
                 ? mode.map { property.defaultValue(for: $0) } : EngineScalar.parse(text, in: property.bounds)
         }
         return ComponentWrappingSettings(
-            mode: mode, keepsChildren: keepsChildren, targetFaces: targetFaces, scalars: scalars)
+            mode: mode, keepsChildren: keepsChildren, targetFaces: targetFaces, scalars: scalars,
+            surfaceDetails: .read(element))
     }
 
     static func setMode(_ model: XMLDocument, id: String, mode: ComponentWrapMode) throws -> Bool {
