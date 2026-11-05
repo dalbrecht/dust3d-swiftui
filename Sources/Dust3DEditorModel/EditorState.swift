@@ -311,7 +311,9 @@ public struct EditorState: Sendable {
         if let missing = nodes.subtracting(existing).sorted().first { throw DocumentError.missingNode(missing) }
         guard edges.isSubset(of: Set(contents.edges.map(\.id))) else { throw DocumentError.invalidNode }
         componentRevealHint = nil
-        if nodes != selectedIDs || edges != selectedEdgeIDs || selectedPartID != nil || !selectedComponentIDs.isEmpty {
+        let nodesChanged = Set(nodes.map { Data($0.utf8) }) != Set(selectedIDs.map { Data($0.utf8) })
+        let edgesChanged = Set(edges.map { Data($0.utf8) }) != Set(selectedEdgeIDs.map { Data($0.utf8) })
+        if nodesChanged || edgesChanged || selectedPartID != nil || !selectedComponentIDs.isEmpty {
             selectionRevision += 1
         }
         selectedIDs = nodes
@@ -404,7 +406,9 @@ public struct EditorState: Sendable {
         let existing = Set(componentTree.rows.map(\.id))
         if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingComponent(missing) }
         componentRevealHint = nil
-        if ids != selectedComponentIDs || selectedPartID != nil || !selectedEdgeIDs.isEmpty || !selectedIDs.isEmpty {
+        let exactIDs = Set(ids.map { Data($0.utf8) })
+        let previousExactIDs = Set(selectedComponentIDs.map { Data($0.utf8) })
+        if exactIDs != previousExactIDs || selectedPartID != nil || !selectedEdgeIDs.isEmpty || !selectedIDs.isEmpty {
             selectionRevision += 1
         }
         selectedComponentIDs = ids
@@ -805,7 +809,7 @@ public struct EditorState: Sendable {
         let removed = Set(snapshot.selectedNodes.filter(\.isEditable).map(\.id))
         let edges = snapshot.selectedEdges.filter { !removed.contains($0.fromID) && !removed.contains($0.toID) }
         let edgeIDs = Set(edges.map(\.id))
-        var commands = GraphSelectionOrder.sorted(edgeIDs).map { DocumentCommand.removeEdge(id: $0) }
+        var commands: [DocumentCommand] = edgeIDs.isEmpty ? [] : [.removeEdges(GraphSelectionOrder.sorted(edgeIDs))]
         if !removed.isEmpty { commands.append(.removeNodes(GraphSelectionOrder.sorted(removed))) }
         return commands
     }
