@@ -337,6 +337,23 @@ public struct DocumentContents: Sendable {
     }
 }
 
+package struct ReplayProperty: Equatable, Sendable {
+    package enum Owner: Hashable, Sendable { case node, part, component, animation }
+    package let owner: Owner
+    package let id: String
+    package let attributes: [String]
+    package let title: String
+    package let profilePartID: String?
+
+    package init(owner: Owner, id: String, attributes: [String], title: String, profilePartID: String?) {
+        self.owner = owner
+        self.id = id
+        self.attributes = attributes
+        self.title = title
+        self.profilePartID = profilePartID
+    }
+}
+
 /// Immutable archive value. Unchanged saves retain every input byte, including unknown assets.
 public struct Dust3DDocument: Sendable {
     private struct Item: Sendable {
@@ -1150,6 +1167,164 @@ public struct Dust3DDocument: Sendable {
             return model.xmlData()
         }
         return try canonical(modelXML) == canonical(other.modelXML)
+    }
+
+    package func replayProperties() throws -> [ReplayProperty] {
+        let model = try Self.xml(modelXML, root: "canvas")
+        let parts = model.rootElement()?.elements(forName: "parts").first?.elements(forName: "part") ?? []
+        let partRules = [
+            ("target", "Part Target"),
+            ("xMirrored", "X Mirror"), ("rounded", "Rounded Ends"), ("chamfered", "Chamfer"),
+            ("subdived", "Subdivision"), ("interpolated", "Interpolation"), ("hard", "Hard Join"),
+            ("fillLoopInterior", "Fill Loop Interior"), ("deformThickness", "Thickness"),
+            ("deformWidth", "Width"), ("deformUnified", "Unified Deformation"), ("cutFace", "Cut Face"),
+            ("cutRotation", "Cut Rotation"), ("hollowThickness", "Hollow Thickness"),
+            ("metallic", "Metallic"), ("roughness", "Roughness"), ("disabled", "Part Enabled State"),
+        ]
+        let componentRules = [
+            ("combineMode", "Combine Mode"), ("color", "Color"), ("colorImageId", "Color Image"),
+            ("sideClosed", "Close Sides"), ("frontClosed", "Close Front"), ("backClosed", "Close Back"),
+            ("backCloseDepthRatio", "Back Closure Depth"), ("backCloseSharpness", "Back Closure Sharpness"),
+            ("targetSegments", "Target Segments"), ("smoothCutoffDegrees", "Smoothing Cutoff"),
+        ]
+        func properties(
+            _ elements: [XMLElement], owner: ReplayProperty.Owner, rules: [(String, String)]
+        ) -> [ReplayProperty] {
+            elements.flatMap { element -> [ReplayProperty] in
+                guard let id = element.attribute(forName: "id")?.stringValue else { return [] }
+                let name = element.attribute(forName: "name")?.stringValue ?? ""
+                var result = rules.compactMap { attribute, label -> ReplayProperty? in
+                    guard let value = element.attribute(forName: attribute)?.stringValue else { return nil }
+                    if attribute == "target", value != "ImportedModel" {
+                        guard let target = PartTarget(rawValue: value), target != .model else { return nil }
+                    }
+                    let profilePartID =
+                        attribute == "cutFace" && CutFaceLinks.canonicalID(value) != nil
+                        ? value : nil
+                    return ReplayProperty(
+                        owner: owner, id: id, attributes: [attribute],
+                        title: name.isEmpty ? label : "\(name) — \(label)", profilePartID: profilePartID)
+                }
+                if owner == .component,
+                    (element.attribute(forName: "linkDataType")?.stringValue ?? "").isEmpty,
+                    (element.attribute(forName: "linkData")?.stringValue ?? "").isEmpty,
+                    let value = element.attribute(forName: "wrap")?.stringValue, !value.isEmpty
+                {
+                    let attributes = (element.attributes ?? []).compactMap(\.name).filter { $0.hasPrefix("wrap") }
+                    result.append(
+                        ReplayProperty(
+                            owner: owner, id: id, attributes: attributes,
+                            title: name.isEmpty ? "Wrap Modifier" : "\(name) — Wrap Modifier", profilePartID: nil))
+                }
+                return result
+            }
+        }
+        return properties(
+            try Self.nodes(model), owner: .node,
+            rules: [
+                ("cutFace", "Node Cut Face"), ("cutRotation", "Node Cut Rotation"),
+            ]) + properties(parts, owner: .part, rules: partRules)
+            + properties(PartSplitting.componentElements(model), owner: .component, rules: componentRules)
+    }
+
+    /// Produce a transient archive for a replay frame, retaining source assets and metadata.
+    package func replayFrame(
+        nodeIDs: Set<String>, edgeIDs: Set<String>, pendingProperties: [ReplayProperty] = [],
+        pendingGroupIDs: Set<String> = [], pendingMoveIDs: Set<String> = [],
+        reversedEdgeIDs: Set<String> = [], hidesRigType: Bool = false,
+        unassignedBoneEdgeIDs: Set<String> = [], pendingAnimationIDs: Set<[UInt8]> = []
+    ) throws -> Dust3DDocument {
+        let model = try Self.xml(modelXML, root: "canvas")
+        guard let root = model.rootElement() else { throw DocumentError.invalidNode }
+        if hidesRigType { root.removeAttribute(forName: "rigType") }
+        var retainedParts = Set<String>()
+        for node in try Self.nodes(model) {
+            guard let id = node.attribute(forName: "id")?.stringValue, nodeIDs.contains(id) else {
+                node.detach()
+                continue
+            }
+            if let part = node.attribute(forName: "partId")?.stringValue { retainedParts.insert(part) }
+        }
+        for edge in root.elements(forName: "edges").first?.elements(forName: "edge") ?? [] {
+            guard let id = edge.attribute(forName: "id")?.stringValue, edgeIDs.contains(id),
+                let from = edge.attribute(forName: "from")?.stringValue, nodeIDs.contains(from),
+                let to = edge.attribute(forName: "to")?.stringValue, nodeIDs.contains(to)
+            else {
+                edge.detach()
+                continue
+            }
+            if unassignedBoneEdgeIDs.contains(id) { edge.removeAttribute(forName: "boneName") }
+            if reversedEdgeIDs.contains(id) {
+                edge.attribute(forName: "from")?.stringValue = to
+                edge.attribute(forName: "to")?.stringValue = from
+            }
+        }
+        for part in root.elements(forName: "parts").first?.elements(forName: "part") ?? []
+        where !retainedParts.contains(part.attribute(forName: "id")?.stringValue ?? "") {
+            part.detach()
+        }
+        for entry in root.elements(forName: "partIdList").first?.elements(forName: "partId") ?? []
+        where !retainedParts.contains(entry.attribute(forName: "id")?.stringValue ?? "") {
+            entry.detach()
+        }
+        func pruneComponents(in parent: XMLElement) {
+            for component in parent.elements(forName: "component") {
+                pruneComponents(in: component)
+                guard component.attribute(forName: "linkDataType")?.stringValue == "partId",
+                    !retainedParts.contains(component.attribute(forName: "linkData")?.stringValue ?? "")
+                else { continue }
+                if component.elements(forName: "component").isEmpty {
+                    component.detach()
+                } else {
+                    component.removeAttribute(forName: "linkDataType")
+                    component.removeAttribute(forName: "linkData")
+                }
+            }
+        }
+        if let components = root.elements(forName: "components").first {
+            pruneComponents(in: components)
+            if !pendingGroupIDs.isEmpty || !pendingMoveIDs.isEmpty {
+                let elements = PartSplitting.componentElements(model)
+                var namespaceBudget = DocumentXML.NamespaceBudget()
+                // Parts are initially at the root and must survive removal of their future groups.
+                for element in elements {
+                    guard let id = element.attribute(forName: "id")?.stringValue,
+                        pendingMoveIDs.contains(id)
+                    else { continue }
+                    try namespaceBudget.preserve(element, movingTo: components)
+                    element.detach()
+                    components.addChild(element)
+                }
+                for element in elements.reversed() {
+                    guard let id = element.attribute(forName: "id")?.stringValue,
+                        pendingGroupIDs.contains(id)
+                    else { continue }
+                    element.detach()
+                }
+            }
+        }
+        let pending = Dictionary(grouping: pendingProperties, by: \.owner)
+        func mask(_ elements: [XMLElement], owner: ReplayProperty.Owner) {
+            let attributes = Dictionary(grouping: pending[owner] ?? [], by: { Array($0.id.utf8) })
+            for element in elements {
+                guard let id = element.attribute(forName: "id")?.stringValue else { continue }
+                for property in attributes[Array(id.utf8)] ?? [] {
+                    for attribute in property.attributes { element.removeAttribute(forName: attribute) }
+                }
+            }
+        }
+        mask(try Self.nodes(model), owner: .node)
+        mask(root.elements(forName: "parts").first?.elements(forName: "part") ?? [], owner: .part)
+        mask(PartSplitting.componentElements(model), owner: .component)
+        if !pendingAnimationIDs.isEmpty || pending[.animation] != nil {
+            let animations = try AnimationMetadata.elements(root)
+            for animation in animations {
+                let id = animation.attribute(forName: "id")?.stringValue ?? ""
+                if pendingAnimationIDs.contains(Array(id.utf8)) { animation.detach() }
+            }
+            mask(animations, owner: .animation)
+        }
+        return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
     }
 
     private func replacingModel(_ model: Data) throws -> Dust3DDocument {

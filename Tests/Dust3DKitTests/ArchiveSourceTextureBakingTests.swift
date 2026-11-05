@@ -6,6 +6,20 @@ import XCTest
 
 @MainActor
 final class ArchiveSourceTextureBakingTests: XCTestCase {
+    func testPartialReplayArchiveGeneratesAMeshWithoutMutatingSource() throws {
+        let archive = try fixture("Capsule")
+        let source = try Dust3DDocument(data: archive)
+        let graph = try source.editorContents()
+        let edge = try XCTUnwrap(graph.edges.first)
+        let partial = try source.replayFrame(nodeIDs: [edge.fromID, edge.toID], edgeIDs: [edge.id])
+        XCTAssertEqual(try partial.editorContents().edges, [edge])
+        let fullMesh = try MeshLoader.loadIndexed(data: archive)
+        let partialMesh = try MeshLoader.loadIndexed(data: partial.encoded())
+        XCTAssertGreaterThan(partialMesh.triangleCount, 0)
+        XCTAssertLessThan(partialMesh.triangleCount, fullMesh.triangleCount)
+        XCTAssertEqual(source.encoded(), archive)
+    }
+
     func testPreservesLargeCutoffMetadataFromRealArchiveThroughReviewedCoreAndSwiftCopies() async throws {
         let original = try fixture("ImportedSurface")
         let field = Data("\"alphaCutoff\":0.375".utf8)
