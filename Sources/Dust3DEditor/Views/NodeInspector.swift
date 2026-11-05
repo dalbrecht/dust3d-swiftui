@@ -14,7 +14,7 @@ struct NodeInspector: View {
     var body: some View { ScrollView { content } }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        return VStack(alignment: .leading, spacing: 16) {
             Text("Selection inspector").font(.headline)
             AddModeControls(store: store)
             OriginControls(store: store)
@@ -36,6 +36,8 @@ struct NodeInspector: View {
                 let targets = store.snapshot?.connectionTargets ?? []
                 let editableEdges = Set(store.snapshot?.editableEdges.map(\.id) ?? [])
                 Text(node.title).font(.title3)
+                Button("Select Whole Part", action: store.wholePartSelectionAction(.node(node.id)))
+                    .disabled(!store.canSelectWholePart(.node(node.id)))
                 SelectableNodeIdentifier(value: node.id)
                     .focusedValue(\.editorTextEditing, true)
                 Form {

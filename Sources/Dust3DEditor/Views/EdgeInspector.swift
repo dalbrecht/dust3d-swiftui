@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct EdgeInspector: View {
@@ -17,6 +18,8 @@ struct EdgeInspector: View {
             Text("To: \(to)")
             Text("Direction: \(from) → \(to)").font(.caption)
             NodeRadiusAdjustmentControls(store: store)
+            Button("Select Whole Part", action: store.wholePartSelectionAction(.edge(edge.id)))
+                .disabled(!store.canSelectWholePart(.edge(edge.id)))
             Button("Select Endpoints") { store.select([edge.fromID, edge.toID]) }
                 .disabled(store.isWorking)
             Button("Insert Midpoint") { store.insertSelectedEdgeMidpoint() }

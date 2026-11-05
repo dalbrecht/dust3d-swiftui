@@ -14,6 +14,7 @@ struct EdgeSidebar: View {
             ScrollView {
                 LazyVStack(alignment: .leading) {
                     ForEach(edges) { edge in
+                        let selectWholePart = store.wholePartSelectionAction(.edge(edge.id))
                         let title = "\(titles[edge.fromID] ?? edge.fromID) → \(titles[edge.toID] ?? edge.toID)"
                         Button {
                             let flags = NSApp.currentEvent?.modifierFlags ?? []
@@ -50,6 +51,10 @@ struct EdgeSidebar: View {
                             if store.snapshot?.selectedEdgeIDs.contains(edge.id) == true {
                                 store.toggleEdgeSelection(edge.id)
                             }
+                        }
+                        .contextMenu {
+                            Button("Select Whole Part", action: selectWholePart)
+                                .disabled(!store.canSelectWholePart(.edge(edge.id)))
                         }
                         .help("\(edge.id) · Shift-click adds; Command-click toggles selection")
                     }

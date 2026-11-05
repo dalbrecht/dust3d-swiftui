@@ -247,8 +247,21 @@ public struct DocumentEdge: Identifiable, Equatable, Sendable {
     public let id: String
     public let fromID: String
     public let toID: String
+    /// Exact stored edge owner, nil when absent; never inferred from either endpoint's part.
+    public let partID: String?
     /// Exact retained bone lookup intent, empty when unassigned; not proof of a generated bone or weight.
     public let boneName: String
+
+    /// Construct an edge snapshot. Omitting the optional owner preserves source compatibility for legacy callers.
+    /// - Parameters: `id`, `fromID` and `toID` retain graph identities; `boneName` retains lookup spelling; `partID` is the stored owner.
+    /// - Example: `DocumentEdge(id: "edge", fromID: "a", toID: "b", partID: "part")`.
+    public init(id: String, fromID: String, toID: String, boneName: String = "", partID: String? = nil) {
+        self.id = id
+        self.fromID = fromID
+        self.toID = toID
+        self.boneName = boneName
+        self.partID = partID
+    }
 
     /// Compare the exact UTF-8 lookup spelling used by the inherited rig generator.
     /// - Parameter name: Candidate stored bone identity, including case and spacing.
@@ -260,7 +273,7 @@ public struct DocumentEdge: Identifiable, Equatable, Sendable {
 
     /// Compare edge snapshots while retaining byte-distinct bone lookup identities.
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.id == rhs.id && lhs.fromID == rhs.fromID && lhs.toID == rhs.toID
+        lhs.id == rhs.id && lhs.fromID == rhs.fromID && lhs.toID == rhs.toID && lhs.partID == rhs.partID
             && lhs.hasExactBoneName(rhs.boneName)
     }
 }
@@ -1314,7 +1327,8 @@ public struct Dust3DDocument: Sendable {
             else { throw DocumentError.invalidNode }
             return DocumentEdge(
                 id: id, fromID: from, toID: to,
-                boneName: edge.attribute(forName: "boneName")?.stringValue ?? "")
+                boneName: edge.attribute(forName: "boneName")?.stringValue ?? "",
+                partID: edge.attribute(forName: "partId")?.stringValue)
         }
         guard edges.count <= 20_000 else { throw DocumentError.limitExceeded }
         return DocumentContents(

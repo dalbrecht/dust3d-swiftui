@@ -18,6 +18,87 @@ final class EditorStore {
             }
         }
     }
+    private(set) var isSelectingGraph = false
+    var canPickGraph: Bool { !stopped && (!isWorking || isSelectingGraph) }
+    private struct PendingWholePartPick {
+        let target: PartGraphTarget
+        let context: PartGraphSelectionContext
+        let documentIdentity: UUID
+        let documentRevision: Int
+    }
+    private var pendingWholePartPick: PendingWholePartPick?
+    func canSelectWholePart(_ target: PartGraphTarget) -> Bool {
+        canPickGraph && snapshot?.canSelectWholePart(target) == true
+    }
+    var wholePartActionTarget: PartGraphTarget? {
+        if let hoveredNodeID { return .node(hoveredNodeID) }
+        guard let snapshot else { return nil }
+        if let id = snapshot.selectedPartID { return .part(id) }
+        if snapshot.selectedIDs.count == 1, snapshot.selectedEdgeIDs.isEmpty, let id = snapshot.selectedID {
+            return .node(id)
+        }
+        if snapshot.selectedIDs.isEmpty, let id = snapshot.selectedEdgeID { return .edge(id) }
+        return nil
+    }
+    /// Build a targeted view action from the rendered document, never from a later replacement.
+    func wholePartSelectionAction(_ target: PartGraphTarget) -> @MainActor () -> Void {
+        let context = snapshot.map { PartGraphSelectionContext(snapshot: $0) }
+        return { [weak self] in
+            guard let context else { return }
+            self?.selectWholePart(target, context: context)
+        }
+    }
+    func selectWholePart(_ target: PartGraphTarget, context: PartGraphSelectionContext? = nil) {
+        guard canPickGraph, let snapshot, context?.isCurrent(in: snapshot) != false,
+            snapshot.canSelectWholePart(target)
+        else { return }
+        let pick = PendingWholePartPick(
+            target: target, context: context ?? .init(snapshot: snapshot), documentIdentity: snapshot.documentIdentity,
+            documentRevision: snapshot.documentRevision)
+        if isWorking && isSelectingGraph {
+            pendingWholePartPick = pick
+            return
+        }
+        commitWholePartPick(pick)
+    }
+    private func commitWholePartPick(_ pick: PendingWholePartPick) {
+        guard !stopped, !isWorking, let snapshot,
+            snapshot.documentIdentity == pick.documentIdentity, snapshot.documentRevision == pick.documentRevision
+        else { return }
+        cancelAddMode()
+        perform(commits: false, selectionOnly: true) {
+            try await $0.selectWholePart(pick.target, context: pick.context)
+        }
+    }
+    private func drainWholePartPick() {
+        let pick = pendingWholePartPick
+        pendingWholePartPick = nil
+        if let pick { commitWholePartPick(pick) }
+    }
+    func selectWholePart(at point: CanvasPoint, projection: CanvasProjection, context: PartGraphSelectionContext? = nil)
+    {
+        guard canPickGraph, !isAddingNodes, let snapshot, context?.isCurrent(in: snapshot) != false else { return }
+        if let node = snapshot.nodes.last(where: {
+            let center = projection.point(for: $0.value.position)
+            return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
+        }) {
+            selectWholePart(.node(node.id), context: context)
+        } else if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: snapshot.edges) {
+            selectWholePart(.edge(edge), context: context)
+        }
+    }
+    func partNodesSelectionAction(_ id: String) -> @MainActor () -> Void {
+        let context = snapshot.map { PartGraphSelectionContext(snapshot: $0) }
+        return { [weak self] in
+            guard let context else { return }
+            self?.selectPartNodes(id, context: context)
+        }
+    }
+    func selectPartNodes(_ id: String, context: PartGraphSelectionContext? = nil) {
+        guard !isWorking, !stopped, let snapshot, context?.isCurrent(in: snapshot) != false else { return }
+        let capturedContext = context ?? PartGraphSelectionContext(snapshot: snapshot)
+        perform(commits: false, selectionOnly: true) { try await $0.selectPartNodes(id, context: capturedContext) }
+    }
     private(set) var addPlacement = AddPlacementState()
     private(set) var addModeID = UUID()
     private var canvasWidth: Double = 0
@@ -573,6 +654,8 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        pendingWholePartPick = nil
+        isSelectingGraph = false
         cancelAddMode(refit: false)
         cancelAnimationQuery()
         cancelExport()
@@ -739,12 +822,12 @@ final class EditorStore {
         perform(commits: false) { try await $0.setLock(constraint, isLocked: isLocked) }
     }
 
-    func select(_ id: String?) { perform(commits: false) { try await $0.select(id) } }
+    func select(_ id: String?) { perform(commits: false, selectionOnly: true) { try await $0.select(id) } }
 
-    func select(_ ids: Set<String>) { perform(commits: false) { try await $0.select(ids) } }
-    func selectEdge(_ id: String?) { perform(commits: false) { try await $0.selectEdge(id) } }
+    func select(_ ids: Set<String>) { perform(commits: false, selectionOnly: true) { try await $0.select(ids) } }
+    func selectEdge(_ id: String?) { perform(commits: false, selectionOnly: true) { try await $0.selectEdge(id) } }
     func selectGraph(nodes: Set<String>, edges: Set<String>, mode: GraphSelectionMode = .replace) {
-        perform(commits: false) { session in
+        perform(commits: false, selectionOnly: true) { session in
             switch mode {
             case .replace: try await session.selectGraph(nodes: nodes, edges: edges)
             case .add: try await session.addToSelection(nodes: nodes, edges: edges)
@@ -752,8 +835,12 @@ final class EditorStore {
             }
         }
     }
-    func selectEdges(_ ids: Set<String>) { perform(commits: false) { try await $0.selectEdges(ids) } }
-    func toggleEdgeSelection(_ id: String) { perform(commits: false) { try await $0.toggleEdgeSelection(id) } }
+    func selectEdges(_ ids: Set<String>) {
+        perform(commits: false, selectionOnly: true) { try await $0.selectEdges(ids) }
+    }
+    func toggleEdgeSelection(_ id: String) {
+        perform(commits: false, selectionOnly: true) { try await $0.toggleEdgeSelection(id) }
+    }
     func pickEdge(at point: CanvasPoint, projection: CanvasProjection, mode: GraphSelectionMode) {
         guard !isWorking, let snapshot else { return }
         if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: snapshot.edges) {
@@ -930,9 +1017,11 @@ final class EditorStore {
             try await $0.apply([.setPartState(id: id, property: property, value: value)])
         }
     }
-    func toggleSelection(_ id: String) { perform(commits: false) { try await $0.toggleSelection(id) } }
-    func selectAllNodes() { perform(commits: false) { try await $0.selectAllNodes() } }
-    func selectAll() { perform(commits: false) { try await $0.selectAll() } }
+    func toggleSelection(_ id: String) {
+        perform(commits: false, selectionOnly: true) { try await $0.toggleSelection(id) }
+    }
+    func selectAllNodes() { perform(commits: false, selectionOnly: true) { try await $0.selectAllNodes() } }
+    func selectAll() { perform(commits: false, selectionOnly: true) { try await $0.selectAll() } }
     func move(id: String, to position: NodePosition) { perform { try await $0.move(id: id, to: position) } }
 
     func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) {
@@ -1111,6 +1200,8 @@ final class EditorStore {
     }
 
     func stop() {
+        pendingWholePartPick = nil
+        isSelectingGraph = false
         cancelAddMode(refit: false)
         authoringCatalog.stop()
         cancelAnimationQuery()
@@ -1131,6 +1222,7 @@ final class EditorStore {
 
     private func perform(
         commits: Bool = true, reloadReferenceImage: Bool = false, acceptCommittedCancellation: Bool = false,
+        selectionOnly: Bool = false,
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
@@ -1142,12 +1234,17 @@ final class EditorStore {
         cancelOriginDrag()
         let requestID = UUID()
         operationRequestID = requestID
+        isSelectingGraph = selectionOnly
         isWorking = true
         operation = Task {
             var succeeded = false
             defer {
-                if operationRequestID == requestID { isWorking = false }
+                if operationRequestID == requestID {
+                    isWorking = false
+                    isSelectingGraph = false
+                }
                 completion?(succeeded)
+                if operationRequestID == requestID { drainWholePartPick() }
             }
             do {
                 let next = try await action(session)
@@ -1396,6 +1493,7 @@ final class EditorStore {
             case .staleColorImageTarget: return "The document or selected component changed. Choose the image again."
             case .staleComponentMove: return "The document or component selection changed. Reset the parent chooser."
             case .staleOriginDrag: return "Origin drag cancelled because the document or constraints changed."
+            case .stalePartGraphSelection: return "Part selection cancelled because the document changed."
             case .staleAddPlacement:
                 return "Add placement cancelled because the document, selection or constraints changed."
             case .invalidAddPlacement: return "Move the add cursor to a valid canvas position."
