@@ -401,6 +401,8 @@ final class EditorStore {
     private var originDragToken: UUID?
     var isWireframe = false
     var cameraReset = 0
+    private(set) var previewCameraCommand: MeshCameraCommand?
+    var canMovePreviewCamera: Bool { !stopped && mesh != nil }
     private(set) var referenceImage: CGImage?
     private(set) var referenceImageError: String?
     private(set) var isLoadingReferenceImage = false
@@ -1779,7 +1781,19 @@ final class EditorStore {
         perform(reloadReferenceImage: true) { try await $0.apply([.setReferenceImagePNG(nil)]) }
     }
 
+    func movePreviewCamera(_ action: MeshCameraCommand.Action) {
+        guard canMovePreviewCamera else { return }
+        previewCameraCommand = .init(action)
+    }
+
+    func fitPreviewCamera() {
+        guard canMovePreviewCamera else { return }
+        previewCameraCommand = nil
+        cameraReset += 1
+    }
+
     func fit() {
+        previewCameraCommand = nil
         cancelOriginDrag()
         fitCanvas()
         cameraReset += 1
@@ -1793,6 +1807,7 @@ final class EditorStore {
     }
 
     func stop() {
+        previewCameraCommand = nil
         pendingComponentDrag = nil
         invalidateReferenceColors()
         referenceColorApplyToken = UUID()

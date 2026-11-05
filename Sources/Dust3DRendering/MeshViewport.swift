@@ -26,6 +26,7 @@ public struct MeshViewport: NSViewRepresentable {
     let mesh: RenderMesh
     let isWireframe: Bool
     let cameraReset: Int
+    let cameraCommand: MeshCameraCommand?
     let onError: (String) -> Void
     let meshRevision: Int
     let materials: MeshMaterialContent?
@@ -35,7 +36,8 @@ public struct MeshViewport: NSViewRepresentable {
     /// Increment meshRevision to replace geometry; increment cameraReset to fit the view.
     /// GPU setup errors are delivered through onError on the main actor.
     public init(
-        mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0, onError: @escaping (String) -> Void
+        mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
+        cameraCommand: MeshCameraCommand? = nil, onError: @escaping (String) -> Void
     ) {
         onMaterialRendered = {}
         materials = nil
@@ -43,6 +45,7 @@ public struct MeshViewport: NSViewRepresentable {
         self.mesh = .expanded(mesh)
         self.isWireframe = isWireframe
         self.cameraReset = cameraReset
+        self.cameraCommand = cameraCommand
         self.meshRevision = meshRevision
         self.onError = onError
     }
@@ -52,6 +55,7 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - mesh: Immutable copied geometry.
     ///   - isWireframe: Draw triangle edges.
     ///   - cameraReset: Increment to fit the model.
+    ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
     ///   - meshRevision: Increment for replacement geometry/material output.
     ///   - bakedMesh: Current matching baked output, or nil for ordinary geometry.
     ///   - onMaterialError: Material failure retaining ordinary geometry; defaults to onError.
@@ -59,12 +63,14 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - onError: Ordinary GPU setup diagnostic.
     public init(
         mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
-        bakedMesh: MeshWithBakedTextures? = nil, onMaterialError: ((String) -> Void)? = nil,
+        bakedMesh: MeshWithBakedTextures? = nil, cameraCommand: MeshCameraCommand? = nil,
+        onMaterialError: ((String) -> Void)? = nil,
         onMaterialRendered: @escaping () -> Void = {}, onError: @escaping (String) -> Void
     ) {
         self.init(
             mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset, meshRevision: meshRevision,
-            materials: bakedMesh.map(MeshMaterialContent.baked), onMaterialError: onMaterialError,
+            materials: bakedMesh.map(MeshMaterialContent.baked), cameraCommand: cameraCommand,
+            onMaterialError: onMaterialError,
             onMaterialRendered: onMaterialRendered, onError: onError)
     }
 
@@ -73,6 +79,7 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - mesh: Immutable copied indexed geometry, retained as the failure fallback.
     ///   - isWireframe: Draw triangle edges.
     ///   - cameraReset: Increment to fit the model.
+    ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
     ///   - meshRevision: Increment for replacement geometry/material output or retry.
     ///   - materials: Mutually exclusive current material data; uploads off the main actor.
     ///   - onMaterialError: Original material preparation/GPU cause; defaults to onError.
@@ -80,7 +87,8 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - onError: Ordinary geometry setup failure on the main actor.
     public init(
         mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
-        materials: MeshMaterialContent?, onMaterialError: ((String) -> Void)? = nil,
+        materials: MeshMaterialContent?, cameraCommand: MeshCameraCommand? = nil,
+        onMaterialError: ((String) -> Void)? = nil,
         onMaterialRendered: @escaping () -> Void = {}, onError: @escaping (String) -> Void
     ) {
         self.onMaterialRendered = onMaterialRendered
@@ -89,6 +97,7 @@ public struct MeshViewport: NSViewRepresentable {
         self.mesh = .indexed(mesh)
         self.isWireframe = isWireframe
         self.cameraReset = cameraReset
+        self.cameraCommand = cameraCommand
         self.meshRevision = meshRevision
         self.onError = onError
     }
@@ -143,6 +152,7 @@ public struct MeshViewport: NSViewRepresentable {
             view.orbitCamera = OrbitCamera()
             view.cameraReset = cameraReset
         }
+        if let cameraCommand { view.applyCameraCommand(cameraCommand) }
         view.renderer?.isWireframe = isWireframe
         view.materialRenderer?.isWireframe = isWireframe
         view.importedRenderer?.isWireframe = isWireframe
@@ -177,9 +187,31 @@ public class InteractiveMeshView: MTKView {
     let materialBuilder = TexturedMetalResourcesBuilder()
     let importedMaterialBuilder = ImportedMetalResourcesBuilder()
 
+    private var fallbackCamera = OrbitCamera()
+    private var lastCameraCommand: UUID?
+
+    func applyCameraCommand(_ command: MeshCameraCommand) {
+        guard lastCameraCommand != command.id else { return }
+        lastCameraCommand = command.id
+        switch command.action {
+        case .orbitLeft: orbitCamera.orbit(horizontal: -18, vertical: 0)
+        case .orbitRight: orbitCamera.orbit(horizontal: 18, vertical: 0)
+        case .orbitUp: orbitCamera.orbit(horizontal: 0, vertical: -18)
+        case .orbitDown: orbitCamera.orbit(horizontal: 0, vertical: 18)
+        case .panLeft: orbitCamera.pan(horizontal: -0.16, vertical: 0)
+        case .panRight: orbitCamera.pan(horizontal: 0.16, vertical: 0)
+        case .panUp: orbitCamera.pan(horizontal: 0, vertical: 0.16)
+        case .panDown: orbitCamera.pan(horizontal: 0, vertical: -0.16)
+        case .zoomIn: orbitCamera.zoom(delta: 6)
+        case .zoomOut: orbitCamera.zoom(delta: -6)
+        }
+        needsDisplay = true
+    }
+
     var orbitCamera: OrbitCamera {
-        get { importedRenderer?.camera ?? materialRenderer?.camera ?? renderer?.camera ?? OrbitCamera() }
+        get { importedRenderer?.camera ?? materialRenderer?.camera ?? renderer?.camera ?? fallbackCamera }
         set {
+            fallbackCamera = newValue
             renderer?.camera = newValue
             materialRenderer?.camera = newValue
             importedRenderer?.camera = newValue

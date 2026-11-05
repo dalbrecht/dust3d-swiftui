@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
+
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
