@@ -156,6 +156,67 @@ import XCTest
         XCTAssertFalse(EditorCommandScope.allowsGraphShortcuts(animationFocus: false, nativeTextFocus: true))
         XCTAssertFalse(EditorCommandScope.allowsGraphShortcuts(animationFocus: true, nativeTextFocus: false))
     }
+    func testRadiusKeysRequireTheActualCanvasResponderAndLeaveOtherControlsAlone() throws {
+        let window = NSWindow(
+            contentRect: .init(x: -10000, y: -10000, width: 400, height: 300),
+            styleMask: [], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            window.contentView = nil
+            window.close()
+        }
+        let parent = NSView(frame: .init(x: 0, y: 0, width: 400, height: 300))
+        let canvas = CanvasPointerView(frame: parent.bounds)
+        let node = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
+        let text = NSTextView(frame: .init(x: 50, y: 50, width: 100, height: 30))
+        parent.addSubview(canvas)
+        parent.addSubview(node)
+        parent.addSubview(text)
+        window.contentView = parent
+        canvas.enabled = true
+        node.enabled = true
+        var directions: [Int] = []
+        canvas.radiusKey = {
+            directions.append($0)
+            return true
+        }
+        node.radiusKey = {
+            directions.append($0)
+            return true
+        }
+        func key(_ characters: String, modifiers: NSEvent.ModifierFlags = []) throws -> NSEvent {
+            try XCTUnwrap(
+                NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: modifiers,
+                    timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: characters,
+                    charactersIgnoringModifiers: characters, isARepeat: false, keyCode: 0))
+        }
+        XCTAssertTrue(window.makeFirstResponder(text))
+        XCTAssertFalse(canvas.routeRadiusKey(try key("-")))
+        XCTAssertFalse(node.routeRadiusKey(try key("=")))
+        XCTAssertTrue(directions.isEmpty)
+        XCTAssertTrue(window.makeFirstResponder(canvas))
+        XCTAssertTrue(canvas.routeRadiusKey(try key("-")))
+        XCTAssertTrue(canvas.routeRadiusKey(try key("=")))
+        XCTAssertFalse(node.routeRadiusKey(try key("=")))
+        for modifier: NSEvent.ModifierFlags in [.command, .option, .control, .shift] {
+            XCTAssertFalse(canvas.routeRadiusKey(try key("=", modifiers: modifier)))
+        }
+        XCTAssertFalse(canvas.routeRadiusKey(try key("a")))
+        canvas.enabled = false
+        XCTAssertFalse(canvas.routeRadiusKey(try key("=")))
+        XCTAssertTrue(window.makeFirstResponder(node))
+        XCTAssertTrue(node.routeRadiusKey(try key("=")))
+        XCTAssertTrue(window.makeFirstResponder(text))
+        XCTAssertFalse(node.routeRadiusKey(try key("-")))
+        XCTAssertTrue(window.makeFirstResponder(canvas))
+        canvas.enabled = true
+        canvas.keyDown(with: try key("-"))
+        XCTAssertTrue(window.makeFirstResponder(node))
+        node.keyDown(with: try key("="))
+        XCTAssertEqual(directions, [-1, 1, 1, -1, 1])
+    }
+
     func testNativeWheelDeliveryUsesOnlyHitResponderAndPassesUnhandledToParent() throws {
         let parent = RadiusWheelParent(frame: .init(x: 0, y: 0, width: 400, height: 300))
         let canvas = CanvasPointerView(frame: parent.bounds)
