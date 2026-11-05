@@ -103,6 +103,21 @@ final class NodeReductionTests: XCTestCase {
         }
     }
 
+    func testReductionRejectsParallelEdgesInOriginalAndEvolvingLoops() throws {
+        let triangle = try chain([("AB", a, b), ("BC", b, c), ("CA", c, a)])
+        let square = try chain([("AB", a, b), ("BC", b, c), ("CD", c, d), ("DA", d, a)])
+        XCTAssertTrue(square.canReduceNodes([b]))
+        for (document, selection) in [(triangle, [b]), (square, [b, c])] {
+            var history = DocumentHistory(document: document)
+            XCTAssertFalse(document.canReduceNodes(selection))
+            XCTAssertThrowsError(try history.apply(.reduceNodes(selection))) {
+                XCTAssertEqual($0 as? DocumentError, .invalidNode)
+            }
+            XCTAssertEqual(history.document.encoded(), document.encoded())
+            XCTAssertFalse(history.canUndo)
+        }
+    }
+
     func testMetadataAssetsCopyAndPastePreserveLiveOrderAndPasteUsesRawSourceOrder() throws {
         let original = try chain([("a", a, b), ("b", b, c), ("c", c, d)])
         let live = try original.applying(.insertEdgeMidpoint(id: "b", nodeID: "middle", edgeID: "z"))

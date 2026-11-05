@@ -1237,6 +1237,9 @@ public struct Dust3DDocument: Sendable {
     /// - Returns: False for a no-op or a batch rejected by the same validation as execution. Archive bytes are unchanged.
     /// - Example: `document.canReduceNodes(Array(selection))`.
     public func canReduceNodes(_ ids: [String]) -> Bool {
+        guard ids.count <= 10_000, ids.contains(where: { graphOrder.incident[$0]?.count == 2 }) else {
+            return false
+        }
         do {
             let model = try Self.xml(modelXML, root: "canvas")
             var order = graphOrder
