@@ -101,7 +101,9 @@ public struct AddPlacementState: Sendable {
         snapshot: EditorSnapshot, projection: CanvasProjection, canvasHeight: Double, parentID: String? = nil
     ) throws {
         guard canvasHeight.isFinite, canvasHeight > 0 else { throw EditorError.invalidAddPlacement }
-        _ = try projection.position(at: .init(x: 0, y: 0), hiddenCoordinate: 0.5)
+        // Validate the transform using a known bounded document point, not a possibly out-of-bounds canvas corner.
+        let probe = NodePosition(x: 0.5, y: 0.5, z: 0.5)
+        _ = try projection.position(at: projection.point(for: probe), hiddenCoordinate: 0.5)
         let merged = snapshot.transformNodes
         let candidate = merged.count == 1 ? merged.first : nil
         let anchor = candidate.flatMap { node in
