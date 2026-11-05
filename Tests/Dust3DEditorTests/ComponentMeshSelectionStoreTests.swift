@@ -94,14 +94,15 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
     }
 
     func testBatchPartStateUsesDirectOwnersAndUpdatesPreviewOnlyWhenNeeded() async throws {
-        let original = try Dust3DDocument(
-            snapshotXML: Data(
-                ("<canvas><nodes/><edges/><parts><part id='p'/><part id='q'/><part id='r'/></parts><components>"
-                    + "<component id='a' linkDataType='partId' linkData='p'/>"
-                    + "<component id='alias' linkDataType='partId' linkData='p'/>"
-                    + "<component id='b' linkDataType='partId' linkData='q'/>"
-                    + "<component id='g'><component id='c' linkDataType='partId' linkData='r'/></component>"
-                    + "</components></canvas>").utf8))
+        let xml = """
+            <canvas><nodes/><edges/><parts><part id='p'/><part id='q'/><part id='r'/></parts><components>
+            <component id='a' linkDataType='partId' linkData='p'/>
+            <component id='alias' linkDataType='partId' linkData='p'/>
+            <component id='b' linkDataType='partId' linkData='q'/>
+            <component id='g'><component id='c' linkDataType='partId' linkData='r'/></component>
+            </components></canvas>
+            """
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8))
         let value = store()
         defer { value.stop() }
         await value.load(data: original.encoded())
