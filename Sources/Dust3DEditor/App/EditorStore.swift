@@ -1054,6 +1054,35 @@ final class EditorStore {
         guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
     }
+    func canEditComponentWrappingSelection(_ target: ComponentWrappingSelectionTarget) -> Bool {
+        guard !stopped, !isWorking, let snapshot else { return false }
+        return target.isCurrent(in: snapshot)
+    }
+    func componentWrappingSelectionAction(_ edit: ComponentWrappingEdit, target: ComponentWrappingSelectionTarget)
+        -> @MainActor () -> Void
+    {
+        guard canEditComponentWrappingSelection(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canEditComponentWrappingSelection(target) else { return }
+            self.perform(acceptCommittedCancellation: true) {
+                try await $0.editSelectedComponentWrapping(edit, target: target)
+            }
+        }
+    }
+    func componentWrappingSelectionNumberAction(
+        target: ComponentWrappingSelectionTarget, edit: @escaping @MainActor (String) -> ComponentWrappingEdit?
+    ) -> @MainActor (String) -> Void {
+        guard canEditComponentWrappingSelection(target) else { return { _ in } }
+        return { [weak self] text in
+            guard let self, self.canEditComponentWrappingSelection(target) else { return }
+            guard let value = edit(text) else {
+                self.errorMessage = Self.message(DocumentError.invalidComponentWrapping)
+                return
+            }
+            self.componentWrappingSelectionAction(value, target: target)()
+        }
+    }
+
     func canEditComponentSurface(_ target: ComponentSurfaceTarget) -> Bool {
         guard !isWorking, !stopped, let snapshot else { return false }
         return target.isCurrent(in: snapshot)

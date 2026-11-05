@@ -107,51 +107,17 @@ enum ComponentWrapping {
     }
 
     static func setMode(_ model: XMLDocument, id: String, mode: ComponentWrapMode) throws -> Bool {
-        let (current, element) = try group(model, id: id)
-        guard current.mode != mode else { return false }
-        replace(element, name: "wrap", value: mode == .none ? nil : mode.rawValue)
-        return true
+        try ComponentWrappingBatch.apply(model, ids: [id], edit: .mode(mode))
     }
     static func setKeep(_ model: XMLDocument, id: String, value: Bool) throws -> Bool {
-        let (current, element) = try group(model, id: id)
-        guard current.keepsChildren != value else { return false }
-        let isDefault = current.mode.map { ($0 == .cloth) == value } ?? false
-        replace(element, name: "wrapKeep", value: isDefault ? nil : value ? "true" : "false")
-        return true
+        try ComponentWrappingBatch.apply(model, ids: [id], edit: .keepChildren(value))
     }
     static func setFaces(_ model: XMLDocument, id: String, faces: Int) throws -> Bool {
-        guard (64...20000).contains(faces) else { throw DocumentError.invalidComponentWrapping }
-        let (current, element) = try group(model, id: id)
-        guard current.targetFaces != faces else { return false }
-        let isDefault = current.mode.map { ($0 == .cloth ? 1200 : 1600) == faces } ?? false
-        replace(element, name: "wrapFaces", value: isDefault ? nil : String(faces))
-        return true
+        try ComponentWrappingBatch.apply(model, ids: [id], edit: .targetFaces(faces))
     }
     static func setScalar(_ model: XMLDocument, id: String, property: ComponentWrappingScalarProperty, value: Double)
         throws -> Bool
     {
-        guard EngineScalar.isValid(value, in: property.bounds) else { throw DocumentError.invalidComponentWrapping }
-        let (current, element) = try group(model, id: id)
-        guard current.scalarValue(property) != value else { return false }
-        let isDefault = current.mode.map { property.defaultValue(for: $0) == value } ?? false
-        replace(element, name: property.rawValue, value: isDefault ? nil : String(value))
-        return true
-    }
-    private static func group(_ model: XMLDocument, id: String) throws -> (ComponentWrappingSettings, XMLElement) {
-        guard let current = try ComponentHierarchy.read(model).first(where: { $0.id == id }),
-            let element = PartSplitting.componentElements(model).first(where: {
-                $0.attribute(forName: "id")?.stringValue == id
-            })
-        else { throw DocumentError.missingComponent(id) }
-        guard current.isGroup else { throw DocumentError.invalidComponentWrapping }
-        return (current.wrapping, element)
-    }
-    private static func replace(_ element: XMLElement, name: String, value: String?) {
-        element.removeAttribute(forName: name)
-        guard let value else { return }
-        let attribute = XMLNode(kind: .attribute)
-        attribute.name = name
-        attribute.stringValue = value
-        element.addAttribute(attribute)
+        try ComponentWrappingBatch.apply(model, ids: [id], edit: .scalar(property, value))
     }
 }

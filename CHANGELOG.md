@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add explicit multi-group wrapping and surface-finish edits with mixed values, captured selection protection and one atomic Undo.
+
 - Add wrapping surface finish authoring for coat patterns, RGB ink, belly shading and generated cloth wrinkles, with cancellable drafts and one-step Undo.
 
 - Mark the common role of selected parts in the Part Role menu.

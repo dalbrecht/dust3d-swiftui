@@ -144,6 +144,10 @@ public enum DocumentCommand: Sendable {
     /// Set a group wrapping mode without resetting explicit parameters. Throws missingComponent/invalidComponentWrapping.
     /// Example: `.setComponentWrapMode(id: groupID, mode: .cloth)`.
     case setComponentWrapMode(id: String, mode: ComponentWrapMode)
+    /// Atomically replace one field on all explicitly selected groups without expanding descendants.
+    /// Throws missingComponent, invalidComponentWrapping or limitExceeded before mutation.
+    /// Example: `.editComponentWrapping(ids: groupIDs, edit: .mode(.cloth))`.
+    case editComponentWrapping(ids: [String], edit: ComponentWrappingEdit)
     /// Replace one group pattern; None removes only wrapPattern. Throws missingComponent/invalidComponentWrapping.
     /// Example: `.setComponentSurfacePattern(id: groupID, pattern: .spots)`.
     case setComponentSurfacePattern(id: String, pattern: ComponentSurfacePattern)
@@ -564,7 +568,7 @@ public struct Dust3DDocument: Sendable {
             .deleteAnimation, .setRigType, .setHeadHasEyelids, .setNode, .setNodes, .setReferenceImagePNG, .setOrigin,
             .setComponentName,
             .setComponentCombineMode, .editComponentMeshSettings,
-            .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .setComponentWrapScalar,
+            .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .editComponentWrapping, .setComponentWrapScalar,
             .setComponentWrapKeepChildren, .setComponentWrapFaces,
             .setComponentSurfacePattern, .setComponentSurfaceScalar, .setComponentSurfaceColor,
             .reorderComponent, .placeComponents,
@@ -748,6 +752,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentSurfaceColor(let id, let color):
             guard try ComponentSurfaceMetadata.color(model, id: id, color: color) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .editComponentWrapping(let ids, let edit):
+            guard try ComponentWrappingBatch.apply(model, ids: ids, edit: edit) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentWrapMode(let id, let mode):
             guard try ComponentWrapping.setMode(model, id: id, mode: mode) else { return self }

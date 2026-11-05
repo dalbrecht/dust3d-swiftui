@@ -1,0 +1,19 @@
+# ADR 0138: Multi-group wrapping authoring
+
+## Context
+
+Qt exposes group-only multi-selection wrapping controls (`application/sources/component_property_widget.cc:702–974`). Each explicit choice applies to every selected group, even when modes differ; the last group determines its displayed value. Native singleton wrapping and finish authoring already preserve unknown source text, but multi-selection had no wrapping inspector.
+
+## Decision
+
+Provide a captured multi-group inspector with explicit uniform, multiple-value and unsupported states. Every explicit replacement applies to all directly selected supported unlinked groups, including Skin, Cloth, None and unknown modes. No descendant expansion, readonly-flag filtering or implicit mode normalization occurs. Cloth controls appear when any selected group is Cloth and explain their effect while preserving the other groups' authored fields. Unknown text is untouched until that field is explicitly replaced.
+
+A document-owned typed field edit preflights the complete bounded owner set and requested value, prepares field-local replacements on one DOM, then serializes once. Singleton setters delegate to the same helper. Default removals use each owner's existing mode independently; mode=None removes only wrap, preserving parameters and opaque binding text. Semantic noops return original bytes and preserve redo. Surface edits retain material-only identity classification; geometry settings invalidate geometry and materials as before.
+
+A CanvasAdjustmentTarget-backed selection target captures document, archive revision, selection and constraint epochs before callbacks. The state stages on a copy, checks cancellation and publishes one history step; the actor checks again before publication. Store callbacks reject stale, busy and stopped contexts before parsing or reporting errors. Numeric and ink drafts use explicit Apply/Cancel and do not derive replacement defaults from mixed presentation. Draft controls are recreated when the captured context changes.
+
+## Verification and limits
+
+Exact-suite pure metadata/model and injected-preview Store tests cover mixed modes, field semantics, invalid late owners, duplicates, quota, field-local noops, exact history/reopen, cancellation, selection/constraint ABA and stop. Hosted mixed controls render in light/dark without invoking native geometry or changing archive bytes. Physical keyboard/VoiceOver acceptance remains outstanding.
+
+The separately root-reviewed two-garment native proof passed once at unchanged production48b: two disjoint radius0.15 Cloth spheres, target faces64 and keep=false, explicit offset0.012→0.025. Throwing SHA/count admission guards protect preview, imported surface selection, procedural bake and direct loader boundaries for all three exact source/actual-mutated/independent archives. The actual captured Store action produces both finite garment regions and matches the independently serialized expected archive’s oriented triangle multiset without welding coincident vertices. Save/reopen and one-step Undo/Redo preserve exact archive history. Real material preparation completes, but this test makes no material-pixel, GPU, fold-ownership or broad topology claim. The first native run passed1/1 with no skips. Body-binding batching is deferred until the independent singleton binding lane stabilizes; future eligibility must use the union of all edited owners and descendants, reusing exact-identity types. Imported model authoring, broader nested-wrap/combine acceptance and textured export remain separate gaps. Production dependency/pin and core implementation are unchanged.
