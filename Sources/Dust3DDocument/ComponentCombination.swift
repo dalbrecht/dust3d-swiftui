@@ -21,12 +21,16 @@ enum ComponentCombination {
 
     static func set(_ model: XMLDocument, id: String, mode: ComponentCombineMode) throws -> Bool {
         let components = try ComponentHierarchy.read(model)
-        guard let component = components.first(where: { $0.id == id }),
+        guard components.contains(where: { $0.id == id }),
             let element = PartSplitting.componentElements(model).first(where: {
                 $0.attribute(forName: "id")?.stringValue == id
             })
         else { throw DocumentError.missingComponent(id) }
-        guard component.combineMode != mode else { return false }
+        return set(element, mode: mode)
+    }
+
+    static func set(_ element: XMLElement, mode: ComponentCombineMode) -> Bool {
+        guard self.mode(element) != mode else { return false }
         // Legacy inversion overrides Normal in the engine; remove it only when the user explicitly changes mode.
         element.removeAttribute(forName: "inverse")
         element.removeAttribute(forName: "combineMode")

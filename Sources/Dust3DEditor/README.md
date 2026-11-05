@@ -491,3 +491,10 @@ Select Whole Part selects the target part's explicit nodes and edges, including 
 The owning component is revealed by expanding ancestors and scrolling its row into view, without replacing graph selection with component selection. This changes neither document bytes nor undo/preview state. Hidden/read-only parts remain inspectable; mutation controls still enforce their restrictions.
 
 Targeted actions capture their rendered document context, so retained menus/views cannot select reused identities in a replacement document. A whole-part double-click arriving during a pending pure graph pick waits as one latest intent and then validates the same document; it is not queued through edits or reloads. Native physical double-click/focus and VoiceOver acceptance remain separate from hosted event and sidebar tests.
+
+
+Multiple selected components expose Combine Mode and Normal Smoothing controls.
+Each explicit change applies only to the selected rows in one Undo step. Invalid
+smoothing drafts cannot apply; Reset Draft and Set Sharp (0°) are distinct actions.
+The smoothing control is hidden when the selected rows directly link to exactly
+one CutFace part. Stored cutoff values are preserved. See ADR0146.

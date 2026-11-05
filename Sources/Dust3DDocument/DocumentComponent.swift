@@ -32,11 +32,12 @@ public struct DocumentComponent: Identifiable, Equatable, Sendable {
 
 /// Component interpretation is opt-in: opaque hierarchies remain preservable by unrelated edits.
 enum ComponentHierarchy {
+    static let maximumCount = 10_000
     static func read(_ model: XMLDocument) throws -> [DocumentComponent] {
         let containers = DocumentXML.childElements(model.rootElement(), named: "components")
         guard containers.count <= 1 else { throw DocumentError.invalidComponent }
         let elements = PartSplitting.componentElements(model)
-        guard elements.count <= 10_000 else { throw DocumentError.limitExceeded }
+        guard elements.count <= maximumCount else { throw DocumentError.limitExceeded }
         // Upstream interprets any child tag with an ID as a component. Reject unknown tagged
         // identities rather than presenting a tree that silently omits generator input.
         for parent in containers + elements {

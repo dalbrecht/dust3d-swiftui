@@ -20,6 +20,7 @@ struct NodeInspector: View {
             OriginControls(store: store)
             RigSettingsControls(store: store)
             NodeClipboardMenu(store: store)
+            ComponentMeshSelectionControls(store: store)
             if let component = store.snapshot?.selectedComponent {
                 ComponentInspector(store: store, component: component)
             } else if let part = store.snapshot?.selectedPart {
