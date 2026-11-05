@@ -96,8 +96,11 @@ import XCTest
         lockAction()
         try await settle(store)
         XCTAssertFalse(store.canUndo)
+        let beforePlaneChange = try XCTUnwrap(store.canvasRotationContext)
         let planeAction = store.canvasRotationAction(degrees: 30)
         store.plane = .side
+        store.plane = beforePlaneChange.plane
+        XCTAssertNotEqual(store.canvasRotationContext, beforePlaneChange)
         planeAction()
         try await settle(store)
         XCTAssertFalse(store.canUndo)
