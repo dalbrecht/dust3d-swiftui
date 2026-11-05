@@ -39,3 +39,29 @@ final class ComponentOrderSessionTests: XCTestCase {
         XCTAssertEqual(afterFailure.document.encoded(), original.encoded())
     }
 }
+
+extension ComponentOrderSessionTests {
+    func testBatchPlacementPreservesSelectionAndUsesOneUndoStep() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><components><component id='a'/><component id='b'/><component id='c'/><component id='d'/></components></canvas>"
+                    .utf8))
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let selected = try await session.selectComponents(["b", "d"])
+        let target = try XCTUnwrap(ComponentPlacementTarget(snapshot: selected))
+        let moved = try await session.placeComponents(at: .before("a"), target: target)
+        XCTAssertEqual(moved.componentTree.rows.map(\.id), ["b", "d", "a", "c"])
+        XCTAssertEqual(moved.selectedComponentIDs, ["b", "d"])
+        do {
+            _ = try await session.placeComponents(at: .after("c"), target: target)
+            XCTFail("A previous document revision must reject placement")
+        } catch EditorError.staleComponentMove {}
+        let current = try XCTUnwrap(ComponentPlacementTarget(snapshot: moved))
+        _ = try await session.placeComponents(at: .before("a"), target: current)
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), original.encoded())
+        let redone = try await session.redo()
+        XCTAssertEqual(redone.document.encoded(), moved.document.encoded())
+    }
+}
