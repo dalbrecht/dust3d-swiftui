@@ -70,6 +70,8 @@ public struct EditorSnapshot: Sendable {
     public let selectedEdgeID: String?
     /// Validated by the editing session before the snapshot reaches the UI.
     public let canInsertSelectedEdgeMidpoint: Bool
+    /// Validated by the editing session for the current explicit node selection.
+    public let canReduceSelectedNodes: Bool
     public let selectedPartID: String?
     public let canUndo: Bool
     public let canRedo: Bool
@@ -225,6 +227,7 @@ public struct EditorState: Sendable {
             selectedID: selectedID, selectedIDs: selectedIDs, selectedEdgeID: selectedEdgeID,
             canInsertSelectedEdgeMidpoint: selectedEdgeID.map { history.document.canInsertEdgeMidpoint(id: $0) }
                 ?? false,
+            canReduceSelectedNodes: !selectedIDs.isEmpty && history.document.canReduceNodes(Array(selectedIDs)),
             selectedPartID: selectedPartID,
             canUndo: history.canUndo, canRedo: history.canRedo,
             locks: locks,
@@ -471,6 +474,13 @@ public struct EditorState: Sendable {
         try apply([.insertEdgeMidpoint(id: edge.id, nodeID: nodeID, edgeID: edgeID)])
     }
 
+    /// Reduce degree-two nodes in the full selection as one undo step.
+    /// Degree-ineligible nodes remain selected; removed nodes are pruned from selection.
+    /// - Throws: Document validation or read-only errors atomically.
+    public mutating func reduceSelectedNodes() throws {
+        try apply([.reduceNodes(Array(selectedIDs))])
+    }
+
     /// Drag an anchor, retaining its group if selected; otherwise select only the anchor.
     public mutating func move(id: String, to position: NodePosition) throws {
         guard let node = contents.nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
@@ -593,7 +603,7 @@ public struct EditorState: Sendable {
     }
 
     private mutating func publish(_ next: DocumentHistory) throws {
-        guard next.document.encoded() != history.document.encoded() else { return }
+        guard !next.document.hasSameEditingState(as: history.document) else { return }
         let nextContents = try next.document.editorContents()
         let nextTree = ComponentTree(document: next.document)
         contents = nextContents

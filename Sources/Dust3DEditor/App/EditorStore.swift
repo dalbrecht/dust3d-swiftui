@@ -721,6 +721,13 @@ final class EditorStore {
     var canRotateDescendants: Bool { !isWorking && snapshot?.canRotateDescendants == true }
     func rotateDescendants(_ rotation: DescendantRotation) { perform { try await $0.rotateDescendants(rotation) } }
     func transformSelection(_ transform: SelectionTransform) { perform { try await $0.transformSelection(transform) } }
+    var canReduceSelectedNodes: Bool { !isWorking && snapshot?.canReduceSelectedNodes == true }
+
+    func reduceSelectedNodes() {
+        guard canReduceSelectedNodes else { return }
+        perform { try await $0.reduceSelectedNodes() }
+    }
+
     var canInsertEdgeMidpoint: Bool { !isWorking && snapshot?.canInsertSelectedEdgeMidpoint == true }
 
     func insertSelectedEdgeMidpoint() {

@@ -206,6 +206,11 @@ public enum DocumentCommand: Sendable {
     /// - Example: `.insertEdgeMidpoint(id: "edge", nodeID: "middle", edgeID: "second")`.
     case insertEdgeMidpoint(id: String, nodeID: String, edgeID: String)
     case joinNodes(id: String, from: String, to: String)
+    /// Reduce selected degree-two nodes sequentially in Qt UUID order, retaining the first live incident edge.
+    /// - Parameter ids: Selected node identities; absent nodes and degrees other than two are skipped.
+    /// - Throws: `invalidNode` for unsafe ownership/topology/read-only candidates; `limitExceeded` above 10,000 selections.
+    /// - Example: `.reduceNodes([firstNodeID, secondNodeID])` creates one atomic history edit.
+    case reduceNodes([String])
     case removeNode(id: String)
     case removeNodes([String])
     /// Remove explicitly empty editable parts and their references; retain nested content and all assets.
@@ -284,6 +289,7 @@ public struct Dust3DDocument: Sendable {
     private let payloadOffset: Int
     private let items: [Item]
     private let modelIndex: Int
+    private var graphOrder: DocumentGraphOrder
 
     /// Decode a bounded .ds3 archive without generating geometry or interpreting unknown fields.
     /// Throws DocumentError for malformed, ambiguous, external-entity or oversized inputs.
@@ -343,6 +349,7 @@ public struct Dust3DDocument: Sendable {
         self.payloadOffset = offset
         self.items = items
         self.modelIndex = modelIndex
+        self.graphOrder = DocumentGraphOrder(model: model)
     }
 
     /// Wrap a Qt canvas snapshot in an asset-free archive using the existing bounded XML validator.
@@ -353,6 +360,7 @@ public struct Dust3DDocument: Sendable {
     public init(snapshotXML: Data) throws {
         guard snapshotXML.count <= 16 * 1024 * 1024 else { throw DocumentError.limitExceeded }
         self = try Dust3DDocument(data: Self.emptyArchive()).replacingModel(Data(snapshotXML))
+        graphOrder = DocumentGraphOrder(model: try Self.xml(modelXML, root: "canvas"))
         _ = try editorContents()
     }
 
@@ -485,6 +493,7 @@ public struct Dust3DDocument: Sendable {
 
     private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
         let contents: DocumentContents
+        var nextGraphOrder = graphOrder
         switch command {
         case .createAnimation, .setAnimationName, .setAnimationType, .setAnimationParameter, .duplicateAnimation,
             .deleteAnimation, .setRigType, .setHeadHasEyelids, .setNode, .setNodes, .setReferenceImagePNG, .setOrigin,
@@ -786,6 +795,8 @@ public struct Dust3DDocument: Sendable {
                         ("id", nodeID), ("partId", partID), ("x", String(position.x)),
                         ("y", String(position.y)), ("z", String(position.z)), ("radius", String(radius)),
                     ]))
+            try nextGraphOrder.replace(id, with: edgeID, at: edge.toID)
+            nextGraphOrder.incident[nodeID] = [id, edgeID]
             sourceElement.attribute(forName: "to")?.stringValue = nodeID
             var attributes = [("id", edgeID), ("partId", partID), ("from", nodeID), ("to", edge.toID)]
             for name in ["name", "boneName"] {
@@ -794,6 +805,10 @@ public struct Dust3DDocument: Sendable {
             container("edges").addChild(element("edge", attributes))
         case .joinNodes(let id, let from, let to):
             try PartJoining.apply(id: id, from: from, to: to, model: model, contents: contents)
+        case .reduceNodes(let ids):
+            guard try NodeReduction.apply(ids, model: model, contents: contents, order: &nextGraphOrder) else {
+                return self
+            }
         case .removeNode(let id):
             return try applying(.removeNodes([id]))
         case .removeNodes(let ids):
@@ -842,8 +857,21 @@ public struct Dust3DDocument: Sendable {
             try NodeClipboardMutation.paste(
                 clipboard, identities: identities, offset: offset, into: model, contents: contents,
                 namespaceBudget: &namespaceBudget)
+            let pastedEdges = try clipboard.document.editorContents().edges.sorted {
+                $0.id.utf8.lexicographicallyPrecedes($1.id.utf8)
+            }
+            for edge in pastedEdges {
+                guard let edgeID = identities[edge.id], let from = identities[edge.fromID],
+                    let to = identities[edge.toID]
+                else {
+                    throw DocumentError.invalidNode
+                }
+                nextGraphOrder.incident[from, default: []].append(edgeID)
+                nextGraphOrder.incident[to, default: []].append(edgeID)
+            }
             var result = try replacingModel(model.xmlData(options: [.nodePreserveAll])).mergingAssets(
                 from: clipboard.document, namespaceBudget: &namespaceBudget)
+            result.graphOrder = nextGraphOrder.reconciled(with: model)
             let contents = try result.editorContents()
             let pastedParts = Set(
                 try clipboard.document.editorContents().nodes.compactMap(\.partID).compactMap { identities[$0] })
@@ -895,10 +923,29 @@ public struct Dust3DDocument: Sendable {
             if !changed { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         }
-        let next = try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        var next = try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        next.graphOrder = nextGraphOrder.reconciled(with: model)
         _ = try next.editorContents()
         return next
     }
+
+    /// Compare persisted bytes and process-local graph ordering that affects future editing commands.
+    /// - Parameter other: Another immutable document snapshot.
+    /// - Returns: True only when both archive content and future incident-edge behavior are identical.
+    /// - Example: `document.hasSameEditingState(as: history.document)`.
+    public func hasSameEditingState(as other: Dust3DDocument) -> Bool {
+        encoded() == other.encoded() && hasSameGraphOrder(as: other)
+    }
+
+    var historyByteCost: Int { encoded().count + graphOrder.historyByteCost }
+
+    func preservingGraphOrder(from other: Dust3DDocument) -> Self {
+        var result = self
+        result.graphOrder = other.graphOrder
+        return result
+    }
+
+    func hasSameGraphOrder(as other: Dust3DDocument) -> Bool { graphOrder == other.graphOrder }
 
     // Normalize known serialization differences for net-zero transactions, while comparing every asset and header field.
     func hasSameContents(as other: Dust3DDocument) throws -> Bool {
@@ -930,7 +977,7 @@ public struct Dust3DDocument: Sendable {
     /// Model-only transactions cannot alter assets; avoid traversing opaque payloads on interactive graph edits.
     func hasSameModel(as other: Dust3DDocument) throws -> Bool {
         func canonical(_ data: Data) throws -> Data {
-            let model = try Self.xml(data, root: "canvas")
+            let model = try Self.xml(data, root: "canvas", preserveSourceSpelling: false)
             model.isStandalone = false
             // Attribute order is not animation intent. Reorder only the parsed comparison tree;
             // a net-zero transaction restores the original archive rather than serializing this order.
@@ -996,7 +1043,7 @@ public struct Dust3DDocument: Sendable {
                     attribute.stringValue = "{" + String(decoding: identity, as: UTF8.self) + "}"
                 }
             }
-            return model.xmlData(options: [.nodePreserveAll])
+            return model.xmlData()
         }
         return try canonical(modelXML) == canonical(other.modelXML)
     }
@@ -1122,7 +1169,9 @@ public struct Dust3DDocument: Sendable {
         let start = Data([0xD3, 0x3D]) + Data("DUST3D 1.0 xml ".utf8)
         let offset = start.count + 12 + header.count
         guard offset <= 256 * 1024 * 1024 - payload.count else { throw DocumentError.limitExceeded }
-        return try Dust3DDocument(data: start + Data(String(format: "%010d\r\n", offset).utf8) + header + payload)
+        var result = try Dust3DDocument(data: start + Data(String(format: "%010d\r\n", offset).utf8) + header + payload)
+        result.graphOrder = graphOrder.reconciled(with: try Self.xml(result.modelXML, root: "canvas"))
+        return result
     }
 
     /// Copy selected graph objects and their linked-profile dependencies into a bounded fragment.
@@ -1178,7 +1227,24 @@ public struct Dust3DDocument: Sendable {
         let start = Data([0xd3, 0x3d]) + Data("DUST3D 1.0 xml ".utf8)
         let offset = start.count + 12 + header.count
         guard offset <= 256 * 1024 * 1024 - payload.count else { throw DocumentError.limitExceeded }
-        return try Dust3DDocument(data: start + Data(String(format: "%010d\r\n", offset).utf8) + header + payload)
+        var result = try Dust3DDocument(data: start + Data(String(format: "%010d\r\n", offset).utf8) + header + payload)
+        result.graphOrder = graphOrder.reconciled(with: try Self.xml(result.modelXML, root: "canvas"))
+        return result
+    }
+
+    /// Whether this full selection produces at least one safe reduction against the evolving graph.
+    /// - Parameter ids: Exact selected identities; degree-ineligible and absent nodes are skipped.
+    /// - Returns: False for a no-op or a batch rejected by the same validation as execution. Archive bytes are unchanged.
+    /// - Example: `document.canReduceNodes(Array(selection))`.
+    public func canReduceNodes(_ ids: [String]) -> Bool {
+        guard ids.count <= 10_000, ids.contains(where: { graphOrder.incident[$0]?.count == 2 }) else {
+            return false
+        }
+        do {
+            let model = try Self.xml(modelXML, root: "canvas")
+            var order = graphOrder
+            return try NodeReduction.apply(ids, model: model, contents: editorContents(), order: &order)
+        } catch { return false }
     }
 
     /// Whether an edge can currently accept a midpoint, without allocating identities or changing the archive.
@@ -1297,7 +1363,7 @@ public struct Dust3DDocument: Sendable {
         return node
     }
 
-    private static func xml(_ data: Data, root: String) throws -> XMLDocument {
+    private static func xml(_ data: Data, root: String, preserveSourceSpelling: Bool = true) throws -> XMLDocument {
         guard let text = String(data: data, encoding: .utf8), !text.contains("\0"),
             !text.uppercased().contains("<!DOCTYPE"), !text.uppercased().contains("<!ENTITY")
         else { throw DocumentError.invalidXML }
@@ -1307,7 +1373,11 @@ public struct Dust3DDocument: Sendable {
         parser.delegate = delegate
         guard parser.parse(), !delegate.exceeded else { throw DocumentError.invalidXML }
         do {
-            let document = try XMLDocument(data: data, options: [.nodePreserveAll, .nodeLoadExternalEntitiesNever])
+            let options: XMLNode.Options =
+                preserveSourceSpelling
+                ? [.nodePreserveAll, .nodeLoadExternalEntitiesNever]
+                : [.nodePreserveWhitespace, .nodeLoadExternalEntitiesNever]
+            let document = try XMLDocument(data: data, options: options)
             guard document.rootElement()?.name == root else { throw DocumentError.invalidXML }
             return document
         } catch { throw DocumentError.invalidXML }

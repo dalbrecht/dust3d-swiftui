@@ -57,8 +57,8 @@ public struct DocumentHistory: Sendable {
     /// Validate and commit a command. A rejected or no-op command preserves history and redo.
     public mutating func apply(_ command: DocumentCommand) throws {
         let next = try document.applying(command)
-        guard next.encoded() != document.encoded() else { return }
-        guard document.encoded().count <= maximumUndoBytes, next.encoded().count <= maximumUndoBytes else {
+        guard next.encoded() != document.encoded() || !next.hasSameGraphOrder(as: document) else { return }
+        guard document.historyByteCost <= maximumUndoBytes, next.historyByteCost <= maximumUndoBytes else {
             throw DocumentError.limitExceeded
         }
         if transactionStart == nil {
@@ -71,8 +71,8 @@ public struct DocumentHistory: Sendable {
             default: transactionRequiresModelComparison = true
             }
         }
+        if next.encoded() != document.encoded() { previewIdentity.advance(for: command) }
         document = next
-        previewIdentity.advance(for: command)
     }
 
     /// Group continuous edits into one undo record. Nested transactions are rejected.
@@ -89,10 +89,14 @@ public struct DocumentHistory: Sendable {
             : transactionRequiresModelComparison
                 ? start.document.hasSameModel(as: document)
                 : transactionNodes.allSatisfy { try start.document.node(id: $0) == document.node(id: $0) }
-        if unchanged {
+        if unchanged && start.document.hasSameGraphOrder(as: document) {
             document = start.document
             previewIdentity = start.previewIdentity
         } else {
+            if unchanged {
+                document = start.document.preservingGraphOrder(from: document)
+                previewIdentity = start.previewIdentity
+            }
             redoStack.removeAll()
             pushUndo(start)
         }
@@ -139,7 +143,7 @@ public struct DocumentHistory: Sendable {
 
     private mutating func trimHistory() {
         while undoStack.count + redoStack.count > maximumEntries
-            || (undoStack + redoStack).reduce(0, { $0 + $1.document.encoded().count }) > maximumUndoBytes
+            || (undoStack + redoStack).reduce(0, { $0 + $1.document.historyByteCost }) > maximumUndoBytes
         {
             if !undoStack.isEmpty {
                 undoStack.removeFirst()

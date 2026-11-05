@@ -80,6 +80,9 @@ struct Dust3DEditorApp: App {
                 }
                 .disabled(store?.canTransform != true)
                 DescendantRotationMenu(store: store)
+                Button("Reduce Selected Nodes") { store?.reduceSelectedNodes() }
+                    .disabled(store?.canReduceSelectedNodes != true)
+                    .accessibilityLabel("Reduce Selected Nodes")
                 Button("Reverse Edges Between Selected Nodes") { store?.reverseSelectedEdges() }
                     .disabled(store?.isWorking != false || store?.snapshot?.reversibleEdges.isEmpty != false)
                 Button("Insert Midpoint") { store?.insertSelectedEdgeMidpoint() }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reduce eligible selected nodes and reconnect their neighbors in one Undo step while preserving graph order.
+
 - Refresh selectable export-warning accessibility text when the result changes (#235).
 
 - Add Insert Midpoint to the edge inspector and Canvas menu, with one-step Undo and preserved edge direction.
