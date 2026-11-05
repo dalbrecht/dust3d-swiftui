@@ -86,4 +86,23 @@ final class WrappingBodyBindingTests: XCTestCase {
         }
         XCTAssertThrowsError(try original.applying(.setComponentWrapBinding(id: "linked", choice: .ownChildren)))
     }
+    func testBindingOwnerMustMatchLiteralComponentIdentity() throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts/><components><component id='cafe&#769;' wrap='Cloth' wrapBindTo='old'/><component id='body'/></components></canvas>"
+                    .utf8))
+        let alias = "caf\u{e9}"
+        XCTAssertThrowsError(try ComponentWrapBindingPlan(components: document.components(), ownerIDs: [alias]))
+        for choice: ComponentWrapBindingChoice in [.ownChildren, .group("body")] {
+            var history = DocumentHistory(document: document)
+            XCTAssertThrowsError(try history.apply(.setComponentWrapBinding(id: alias, choice: choice)))
+            XCTAssertEqual(history.document.encoded(), document.encoded())
+            XCTAssertFalse(history.canUndo)
+        }
+        var history = DocumentHistory(document: document)
+        try history.apply(.setComponentWrapBinding(id: "cafe\u{301}", choice: .group("body")))
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), document.encoded())
+    }
+
 }

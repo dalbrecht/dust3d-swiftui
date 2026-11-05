@@ -122,7 +122,7 @@ extension EditorSnapshot {
                     return node.id
                 }),
             Set(
-                edges.compactMap { edge in
+                editableEdges.compactMap { edge in
                     guard let owner = edge.partID, partIDs.contains(Data(owner.utf8)) else { return nil }
                     return edge.id
                 })
