@@ -405,7 +405,9 @@ public struct EditorState: Sendable {
         let existing = Set(componentTree.rows.map(\.id))
         if let missing = ids.subtracting(existing).sorted().first { throw DocumentError.missingComponent(missing) }
         componentRevealHint = nil
-        if ids != selectedComponentIDs || selectedPartID != nil || !selectedEdgeIDs.isEmpty || !selectedIDs.isEmpty {
+        let exactIDs = Set(ids.map { Data($0.utf8) })
+        let previousExactIDs = Set(selectedComponentIDs.map { Data($0.utf8) })
+        if exactIDs != previousExactIDs || selectedPartID != nil || !selectedEdgeIDs.isEmpty || !selectedIDs.isEmpty {
             selectionRevision += 1
         }
         selectedComponentIDs = ids
