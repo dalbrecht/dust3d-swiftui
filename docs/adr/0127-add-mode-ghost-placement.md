@@ -18,7 +18,9 @@ Native shows one plane at a time rather than Qt's paired profiles. New-part hidd
 
 Keep 2D bounds/projection stable while placing; refit on exit. Geometry, plane, document, undo and window lifecycle changes cancel stale placement context. Preserve existing immediate creation controls separately. A narrow native canvas input boundary owns left-press/hover delivery; SwiftUI owns ghost presentation, and model/session owns graph state. Representable updates must not synchronously mutate SwiftUI state.
 
-Cancellation before commit produces no edit. If a same-document/current-request placement already committed, publish its receipt even if mode cancellation arrives afterward, but do not rebase the cancelled ghost chain. Do not weaken generic stale-request protection.
+Cancellation before commit produces no edit. If a same-document/current-request placement already committed, publish its receipt even if mode cancellation arrives afterward, but do not rebase the cancelled ghost chain. Do not weaken generic stale-request protection. Each in-flight placement has its own identity: cancellation invalidates it, and a late completion may clear only its matching request. A replaced document's completion cannot unmark a newer placement or suppress its cancellation. Selection-only exit refits against the newly published snapshot. Node responder identity includes the tool epoch, so a held press cannot become a new-tool selection on release.
+
+Validate projection inversion using a known bounded document point; a fitted canvas corner may lie beyond the document coordinate limit. Actual pointer updates still reject out-of-bounds positions without changing the accepted ghost.
 
 ## Verification
 

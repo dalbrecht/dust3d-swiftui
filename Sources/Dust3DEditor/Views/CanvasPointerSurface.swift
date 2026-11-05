@@ -37,6 +37,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let rectangle: (CanvasSelectionRectangle?) -> Void
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
@@ -55,6 +56,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.rectangle = rectangle
         view.hover = hover
         view.wheel = wheel
+        view.radiusKey = radiusKey
         view.doubleClick = doubleClick
         if view.isAddingNodes != isAddingNodes { view.cancelActivation() }
         view.isAddingNodes = isAddingNodes
@@ -70,6 +72,7 @@ final class CanvasPointerView: NSView {
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
@@ -174,7 +177,14 @@ final class CanvasPointerView: NSView {
         invalidate()
         if isAddingNodes { cancelInput() }
     }
+    func routeRadiusKey(_ event: NSEvent) -> Bool {
+        guard enabled, start == nil, window?.firstResponder === self,
+            let direction = CanvasRadiusKey.direction(for: event)
+        else { return false }
+        return radiusKey(direction)
+    }
     override func keyDown(with event: NSEvent) {
+        if routeRadiusKey(event) { return }
         if event.keyCode == 53, start != nil || isAddingNodes {
             invalidate()
             if isAddingNodes { cancelInput() }
