@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 APP_BUNDLE="${1:?usage: check_file_preview_bundles.sh path/to/Dust3DEditor.app}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+for owner in "$APP_BUNDLE" "$APP_BUNDLE/Contents/PlugIns/Dust3DQuickLookExtension.appex" "$APP_BUNDLE/Contents/PlugIns/Dust3DThumbnailExtension.appex"; do
+    python3 -B "$ROOT_DIR/script/check_rig_resources.py" "$owner/Contents/Resources/Dust3DNative_Dust3DKit.bundle"
+done
 python3 - "$APP_BUNDLE" <<'PY'
 import pathlib
 import plistlib

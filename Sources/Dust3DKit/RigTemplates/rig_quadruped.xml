@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rig type="Quadruped">
+    <description>Four-legged animal rig (horse, dog, cat, etc.)</description>
+    
+    <bone name="Root" parent="">
+        <position x="0" y="0" z="0"/>
+        <endPosition x="0" y="1.0" z="0"/>
+    </bone>
+    
+    <!-- Spine -->
+    <bone name="Pelvis" parent="Root">
+        <position x="0" y="1.0" z="0"/>
+        <endPosition x="0" y="1.1" z="0.1"/>
+    </bone>
+    
+    <bone name="Spine" parent="Pelvis">
+        <position x="0" y="1.0" z="0.1"/>
+        <endPosition x="0" y="1.1" z="0.3"/>
+    </bone>
+    
+    <bone name="Chest" parent="Spine">
+        <position x="0" y="1.1" z="0.3"/>
+        <endPosition x="0" y="1.2" z="0.5"/>
+    </bone>
+    
+    <bone name="Neck" parent="Chest">
+        <position x="0" y="1.2" z="0.5"/>
+        <endPosition x="0" y="1.3" z="0.7"/>
+    </bone>
+    
+    <bone name="Head" parent="Neck">
+        <position x="0" y="1.3" z="0.7"/>
+        <endPosition x="0" y="1.4" z="1.0"/>
+    </bone>
+    
+    <bone name="Jaw" parent="Head">
+        <position x="0" y="1.25" z="0.95"/>
+        <endPosition x="0" y="1.2" z="1.15"/>
+    </bone>
+    
+    <!-- Tail -->
+    <bone name="TailBase" parent="Pelvis">
+        <position x="0" y="1.05" z="-0.2"/>
+        <endPosition x="0" y="1.0" z="-0.4"/>
+    </bone>
+    
+    <bone name="TailMid" parent="TailBase">
+        <position x="0" y="1.0" z="-0.4"/>
+        <endPosition x="0" y="0.95" z="-0.6"/>
+    </bone>
+    
+    <bone name="TailTip" parent="TailMid">
+        <position x="0" y="0.95" z="-0.6"/>
+        <endPosition x="0" y="0.9" z="-0.8"/>
+    </bone>
+    
+    <!-- Front Left Leg -->
+    <bone name="FrontLeftUpperLeg" parent="Chest">
+        <position x="0.3" y="0.9" z="0.3"/>
+        <endPosition x="0.3" y="0.5" z="0.4"/>
+    </bone>
+    
+    <bone name="FrontLeftLowerLeg" parent="FrontLeftUpperLeg">
+        <position x="0.3" y="0.5" z="0.4"/>
+        <endPosition x="0.3" y="0.1" z="0.4"/>
+    </bone>
+    
+    <bone name="FrontLeftFoot" parent="FrontLeftLowerLeg">
+        <position x="0.3" y="0.1" z="0.4"/>
+        <endPosition x="0.3" y="0.0" z="0.5"/>
+    </bone>
+    
+    <!-- Front Right Leg -->
+    <bone name="FrontRightUpperLeg" parent="Chest">
+        <position x="-0.3" y="0.9" z="0.3"/>
+        <endPosition x="-0.3" y="0.5" z="0.4"/>
+    </bone>
+    
+    <bone name="FrontRightLowerLeg" parent="FrontRightUpperLeg">
+        <position x="-0.3" y="0.5" z="0.4"/>
+        <endPosition x="-0.3" y="0.1" z="0.4"/>
+    </bone>
+    
+    <bone name="FrontRightFoot" parent="FrontRightLowerLeg">
+        <position x="-0.3" y="0.1" z="0.4"/>
+        <endPosition x="-0.3" y="0.0" z="0.5"/>
+    </bone>
+    
+    <!-- Back Left Leg -->
+    <bone name="BackLeftUpperLeg" parent="Pelvis">
+        <position x="0.3" y="0.9" z="-0.1"/>
+        <endPosition x="0.3" y="0.5" z="-0.2"/>
+    </bone>
+    
+    <bone name="BackLeftLowerLeg" parent="BackLeftUpperLeg">
+        <position x="0.3" y="0.5" z="-0.2"/>
+        <endPosition x="0.3" y="0.1" z="-0.2"/>
+    </bone>
+    
+    <bone name="BackLeftFoot" parent="BackLeftLowerLeg">
+        <position x="0.3" y="0.1" z="-0.2"/>
+        <endPosition x="0.3" y="0.0" z="-0.1"/>
+    </bone>
+    
+    <!-- Back Right Leg -->
+    <bone name="BackRightUpperLeg" parent="Pelvis">
+        <position x="-0.3" y="0.9" z="-0.1"/>
+        <endPosition x="-0.3" y="0.5" z="-0.2"/>
+    </bone>
+    
+    <bone name="BackRightLowerLeg" parent="BackRightUpperLeg">
+        <position x="-0.3" y="0.5" z="-0.2"/>
+        <endPosition x="-0.3" y="0.1" z="-0.2"/>
+    </bone>
+    
+    <bone name="BackRightFoot" parent="BackRightLowerLeg">
+        <position x="-0.3" y="0.1" z="-0.2"/>
+        <endPosition x="-0.3" y="0.0" z="-0.1"/>
+    </bone>
+    
+</rig>
