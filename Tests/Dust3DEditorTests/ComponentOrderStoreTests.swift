@@ -39,8 +39,12 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertFalse(store.canReorderComponent(.down))
         let camera = store.cameraReset
         let preview = store.previewRevision
-        let target = try XCTUnwrap(store.snapshot.flatMap(ComponentPlacementTarget.init(snapshot:)))
-        store.placeComponents(at: .before(first), target: target)
+        let noop = try XCTUnwrap(store.beginComponentDrag(grabbedID: last))
+        XCTAssertFalse(store.dropComponents(token: noop, at: .after(last)))
+        XCTAssertFalse(store.dropComponents(token: noop, at: .before(first)))
+        let token = try XCTUnwrap(store.beginComponentDrag(grabbedID: last))
+        XCTAssertFalse(store.dropComponents(token: UUID(), at: .before(first)))
+        XCTAssertTrue(store.dropComponents(token: token, at: .before(first)))
         try await settle(store)
         XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), [last, first])
         XCTAssertEqual(store.snapshot?.selectedComponentID, last)
@@ -50,7 +54,7 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertEqual(store.mesh?.triangleCount, 32)
         let edited = store.snapshot?.document.encoded()
         let completedPreview = store.previewRevision
-        store.placeComponents(at: .after(first), target: target)
+        XCTAssertFalse(store.dropComponents(token: token, at: .after(first)))
         try await settle(store)
         XCTAssertEqual(publications, 1)
         XCTAssertEqual(store.previewRevision, completedPreview)
@@ -63,6 +67,36 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertEqual(store.mesh?.triangleCount, 32)
         store.stop()
         XCTAssertFalse(store.canReorderComponent(.down))
+    }
+
+    @MainActor func testParentDropRejectsInvalidAndNoOpTargetsAndMovesTheEntireBlockInSourceOrder() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts/><components><component id='a'/><component id='group'><component id='b'/><component id='x'/></component></components></canvas>"
+                    .utf8))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+
+        let noOp = try XCTUnwrap(store.beginComponentDrag(grabbedID: "group"))
+        XCTAssertFalse(store.dropComponents(token: noOp, in: .root))
+        XCTAssertFalse(store.isWorking)
+        let cycle = try XCTUnwrap(store.beginComponentDrag(grabbedID: "group"))
+        XCTAssertFalse(store.dropComponents(token: cycle, in: .component("b")))
+        XCTAssertFalse(store.isWorking)
+        XCTAssertFalse(store.canUndo)
+
+        store.selectComponents(["a", "b"])
+        try await settle(store)
+        let block = try XCTUnwrap(store.beginComponentDrag(grabbedID: "a"))
+        XCTAssertTrue(store.dropComponents(token: block, in: .component("group")))
+        try await settle(store)
+        let result = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(result.componentTree.rows.map(\.id), ["group", "x", "a", "b"])
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
     }
 
     @MainActor func testInteriorSiblingChoicesAndPlacementForSingleAndMultipleRows() async throws {
@@ -100,5 +134,4 @@ final class ComponentOrderStoreTests: XCTestCase {
         try await settle(store)
         XCTAssertTrue(ComponentBatchOrderMenu.eligibleSiblings(in: try XCTUnwrap(store.snapshot)).isEmpty)
     }
-
 }

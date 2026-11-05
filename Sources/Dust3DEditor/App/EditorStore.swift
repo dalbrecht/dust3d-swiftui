@@ -659,6 +659,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        pendingComponentDrag = nil
         pendingWholePartPick = nil
         isSelectingGraph = false
         cancelAddMode(refit: false)
@@ -941,11 +942,42 @@ final class EditorStore {
             try await $0.reparentComponents(to: parent, target: target)
         }
     }
-    func placeComponents(at placement: ComponentDropPlacement, target: ComponentPlacementTarget) {
-        guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot) else { return }
+    @ObservationIgnored private var pendingComponentDrag: (token: UUID, target: ComponentPlacementTarget)?
+
+    func beginComponentDrag(grabbedID: String) -> UUID? {
+        pendingComponentDrag = nil
+        guard !stopped, !isWorking, let snapshot,
+            let target = ComponentPlacementTarget(snapshot: snapshot, grabbedID: grabbedID)
+        else { return nil }
+        let token = UUID()
+        pendingComponentDrag = (token, target)
+        return token
+    }
+
+    func dropComponents(token: UUID, at placement: ComponentDropPlacement) -> Bool {
+        guard let target = consumeComponentDrag(token) else { return false }
+        return placeComponents(at: placement, target: target)
+    }
+
+    func dropComponents(token: UUID, in parent: ComponentParent) -> Bool {
+        guard let target = consumeComponentDrag(token) else { return false }
+        return placeComponents(at: .into(parentID: parent.componentID), target: target)
+    }
+
+    private func consumeComponentDrag(_ token: UUID) -> ComponentPlacementTarget? {
+        guard let drag = pendingComponentDrag, drag.token == token else { return nil }
+        pendingComponentDrag = nil
+        guard !stopped, !isWorking, let snapshot, drag.target.isCurrent(in: snapshot) else { return nil }
+        return drag.target
+    }
+
+    @discardableResult
+    func placeComponents(at placement: ComponentDropPlacement, target: ComponentPlacementTarget) -> Bool {
+        guard !stopped, !isWorking, let snapshot, target.canPlace(at: placement, in: snapshot) else { return false }
         perform(acceptCommittedCancellation: true) {
             try await $0.placeComponents(at: placement, target: target)
         }
+        return true
     }
     func canReorderComponent(_ direction: ComponentOrderMove) -> Bool {
         !isWorking && !stopped && snapshot?.availableComponentOrderMoves.contains(direction) == true
@@ -1267,6 +1299,7 @@ final class EditorStore {
     }
 
     func stop() {
+        pendingComponentDrag = nil
         pendingWholePartPick = nil
         isSelectingGraph = false
         cancelAddMode(refit: false)

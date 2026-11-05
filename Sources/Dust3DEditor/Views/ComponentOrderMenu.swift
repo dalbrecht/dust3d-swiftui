@@ -95,14 +95,9 @@ private struct ComponentSiblingPlacementControls: View {
     }
 
     private func placementButton(_ title: LocalizedStringKey, placement: ComponentDropPlacement?) -> some View {
-        let plan = placement.flatMap {
-            try? ComponentDropPlacementPlan(
-                components: snapshot.componentTree.rows.map(\.component), ids: Array(snapshot.selectedComponentIDs),
-                placement: $0)
-        }
         return Button(title) {
             if let placement { store.placeComponents(at: placement, target: target) }
         }
-        .disabled(plan?.changesOrder != true)
+        .disabled(placement.map { target.canPlace(at: $0, in: snapshot) } != true)
     }
 }
