@@ -1,4 +1,12 @@
 import AppKit
+import Dust3DEditorModel
+
+struct CanvasRotationContext: Hashable {
+    let target: CanvasAdjustmentTarget
+    let plane: EditingPlane
+    let inputEpoch: UUID
+    let addModeEpoch: UUID
+}
 
 /// Exact bare Qt punctuation; shifted characters and command chords remain responder-owned.
 enum CanvasRotationInput {

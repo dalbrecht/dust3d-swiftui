@@ -3,6 +3,14 @@ import SwiftUI
 /// Explicit angular input shares the captured canvas command used by keyboard/menu actions.
 struct CanvasRotationControls: View {
     let store: EditorStore
+    var body: some View {
+        CanvasRotationFields(store: store)
+            .id(store.canvasRotationContext)
+    }
+}
+
+private struct CanvasRotationFields: View {
+    let store: EditorStore
     @State private var draft = "1"
 
     var body: some View {
