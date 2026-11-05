@@ -204,6 +204,7 @@ struct NodeCanvas: View {
                             shiftedDrag = (token, plan, [:])
                         }
                     )
+                    .id(addModeID)
                     .allowsHitTesting(!store.isMovingOrigin && !store.isAddingNodes)
                 }
                 if let origin = store.originDragPosition ?? store.snapshot?.origin {

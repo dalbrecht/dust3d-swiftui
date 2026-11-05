@@ -13,7 +13,7 @@ final class EditorStore {
     private(set) var snapshot: EditorSnapshot? {
         didSet {
             if oldValue?.documentIdentity != snapshot?.documentIdentity { clearCanvasHover() }
-            if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode(refit: false) }
+            if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
                 clearCanvasHover()
             }
@@ -108,7 +108,7 @@ final class EditorStore {
     private(set) var addPlacement = AddPlacementState()
     private(set) var addModeID = UUID()
     private var canvasWidth: Double = 0
-    private var isPlacingAddNode = false
+    private var addPlacementRequestID: UUID?
     private(set) var addPlacementNotice: String?
     private let addPlacements: any AddPlacementServing
     var isAddingNodes: Bool { addPlacement.isActive }
@@ -163,7 +163,8 @@ final class EditorStore {
     }
     func cancelAddMode(refit: Bool = true) {
         guard isAddingNodes else { return }
-        if isPlacingAddNode { operation?.cancel() }
+        if addPlacementRequestID != nil { operation?.cancel() }
+        addPlacementRequestID = nil
         addPlacement.cancel()
         addPlacementNotice = nil
         addModeID = UUID()
@@ -194,13 +195,15 @@ final class EditorStore {
                 return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
             })?.id
             guard let request = addPlacement.request(connectingTo: candidate) else { return }
-            isPlacingAddNode = true
+            let placementID = UUID()
+            addPlacementRequestID = placementID
             let service = addPlacements
             perform(
                 acceptCommittedCancellation: true,
                 completion: { [weak self] _ in
-                    self?.isPlacingAddNode = false
-                    if self?.isAddingNodes == false { self?.fitCanvas() }
+                    guard let self, self.addPlacementRequestID == placementID else { return }
+                    self.addPlacementRequestID = nil
+                    if !self.isAddingNodes { self.fitCanvas() }
                 },
                 { [weak self] session in
                     let receipt = try await service.place(request, in: session)
