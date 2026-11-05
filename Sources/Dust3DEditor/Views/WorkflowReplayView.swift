@@ -11,11 +11,12 @@ struct WorkflowReplayRequest: Identifiable {
 }
 
 private actor WorkflowReplayMeshLoader {
-    func load(plan: WorkflowReplayPlan, document: Dust3DDocument, step: Int) throws -> IndexedMesh? {
+    private let previews = FilePreviewDocumentService()
+
+    func load(plan: WorkflowReplayPlan, document: Dust3DDocument, step: Int) async throws -> FilePreviewDocument {
         try Task.checkCancellation()
         let frame = try plan.meshPreviewDocument(at: step, source: document)
-        try Task.checkCancellation()
-        return try MeshLoader.loadIndexedIfPresent(data: frame.encoded(), maximumPayloadBytes: 64 * 1024 * 1024)
+        return try await previews.load(document: frame)
     }
 }
 
@@ -80,6 +81,7 @@ struct WorkflowReplayView: View {
     @State private var presentation: Presentation = .front
     @State private var meshLoader = WorkflowReplayMeshLoader()
     @State private var mesh: IndexedMesh?
+    @State private var materials: MeshMaterialContent?
     @State private var meshStep: Int?
     @State private var meshFailure: String?
     @State private var referenceState = WorkflowReplayReferenceState.loading
@@ -173,7 +175,9 @@ struct WorkflowReplayView: View {
                             .disabled(phase == .complete)
                         Button("Next Step") { advance(plan) }
                             .disabled(phase == .complete || isPlaying || waitsForReference)
-                            .keyboardShortcut(.rightArrow, modifiers: .option)
+                            .keyboardShortcut(
+                                EditorKeyboardShortcuts.nextReplayStepKey,
+                                modifiers: EditorKeyboardShortcuts.inspectorActionModifiers)
                     }
                     let seconds = Double(WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed))) / 1000
                     Slider(
@@ -232,17 +236,21 @@ struct WorkflowReplayView: View {
             meshFailure = nil
             if step == 0 {
                 mesh = nil
+                materials = nil
                 meshStep = 0
                 return
             }
             do {
                 let loaded = try await meshLoader.load(plan: plan, document: document, step: step)
                 guard !Task.isCancelled, requestedMeshStep == step else { return }
-                mesh = loaded
+                mesh = loaded.mesh
+                materials = loaded.materials
                 meshStep = step
+                meshFailure = loaded.materialError.map(EditorStore.message)
             } catch {
                 guard !Task.isCancelled, requestedMeshStep == step else { return }
                 mesh = nil
+                materials = nil
                 meshStep = step
                 meshFailure = EditorStore.message(error)
             }
@@ -271,7 +279,7 @@ struct WorkflowReplayView: View {
             if let mesh, let meshStep {
                 MeshViewport(
                     mesh: mesh, isWireframe: false, cameraReset: 0, meshRevision: meshStep,
-                    materials: nil, onMaterialError: { message in
+                    materials: materials, onMaterialError: { message in
                         if requestedMeshStep == meshStep { meshFailure = message }
                     }
                 ) { message in

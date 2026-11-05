@@ -7,6 +7,21 @@ import XCTest
 
 @MainActor
 final class SourceFilePreviewTests: XCTestCase {
+    func testInMemoryReplayFramePreparesMixedTexturesFromRetainedAssets() async throws {
+        let data = try Data(contentsOf: fixture())
+        let source = try Dust3DDocument(data: data)
+        let graph = try source.editorContents()
+        let frame = try source.replayFrame(nodeIDs: Set(graph.nodes.map(\.id)), edgeIDs: Set(graph.edges.map(\.id)))
+        let preview = try await FilePreviewDocumentService().load(document: frame)
+        let baked = try XCTUnwrap(preview.sourceBakedMesh)
+        XCTAssertNil(preview.materialError)
+        XCTAssertTrue(baked.triangles.contains { $0.modelIndex == 0 && $0.packedUVs != nil })
+        XCTAssertTrue(baked.triangles.contains { $0.modelIndex == nil && $0.packedUVs != nil })
+        XCTAssertEqual(frame.asset(named: "opaque.bin"), Data([19, 20, 21]))
+        XCTAssertEqual(source.encoded(), data)
+    }
+
+
     func testSourceFrameClearsLegacyDetailNoticeButFallbackRestoresIt() async throws {
         let loaded = try await FilePreviewDocumentService().load(url: fixture())
         let original = try XCTUnwrap(loaded.mesh)

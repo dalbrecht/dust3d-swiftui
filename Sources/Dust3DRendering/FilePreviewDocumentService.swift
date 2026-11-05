@@ -93,12 +93,25 @@ public actor FilePreviewDocumentService {
     /// - Throws: Original filesystem/native errors or `CancellationError` at cooperative boundaries.
     /// - Note: Archive input is at most 64 MiB; logical output/workspace are separate quotas.
     public func load(url: URL) async throws -> FilePreviewDocument {
+        try await enqueue { try await self.loadNow(url: url) }
+    }
+
+    /// Prepare a read-only replay frame with the same input and material budgets as file previews.
+    package func load(document: Dust3DDocument) async throws -> FilePreviewDocument {
+        let data = document.encoded()
+        guard data.count <= 64 * 1024 * 1024 else {
+            throw FilePreviewError.unavailable("The replay frame exceeds the 64 MiB preview limit.")
+        }
+        return try await enqueue { try await self.loadNow(document: document, data: data) }
+    }
+
+    private func enqueue(_ load: @escaping @Sendable () async throws -> FilePreviewDocument) async throws -> FilePreviewDocument {
         try Task.checkCancellation()
         let previous = tail
-        let operation = Task { [self] in
+        let operation = Task {
             await previous?.value
             try Task.checkCancellation()
-            return try await loadNow(url: url)
+            return try await load()
         }
         tail = Task { _ = await operation.result }
         return try await withTaskCancellationHandler {
@@ -136,7 +149,10 @@ public actor FilePreviewDocumentService {
     private func loadNow(url: URL) async throws -> FilePreviewDocument {
         let data = try await files.readArchive(url: url, maximumBytes: 64 * 1024 * 1024)
         try Task.checkCancellation()
-        let document = try Dust3DDocument(data: data)
+        return try await loadNow(document: Dust3DDocument(data: data), data: data)
+    }
+
+    private func loadNow(document: Dust3DDocument, data: Data) async throws -> FilePreviewDocument {
         let contents = try document.editorContents()
         let components = try document.components()
         guard components.allSatisfy({ $0.isGroup || $0.partID != nil }) else {
