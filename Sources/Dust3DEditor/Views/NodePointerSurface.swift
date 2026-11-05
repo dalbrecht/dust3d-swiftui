@@ -14,6 +14,7 @@ struct NodePointerSurface: NSViewRepresentable {
     let toggle: () -> Void
     var add: () -> Void = {}
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: (() -> Void)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)? = nil
@@ -30,6 +31,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.toggle = toggle
         view.add = add
         view.wheel = wheel
+        view.radiusKey = radiusKey
         view.doubleClick = doubleClick
         view.isRectangular = isRectangular
         view.clickCancel = clickCancel
@@ -47,6 +49,7 @@ final class NodePointerView: NSView {
     var toggle: () -> Void = {}
     var add: () -> Void = {}
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: (() -> Void)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)?
@@ -118,6 +121,7 @@ final class NodePointerView: NSView {
         } else {
             if let clickCancel { clickCancel(current.token) } else { cancel(current.token) }
             if current.isCommand { toggle() } else if current.isShift { add() } else { select() }
+            window?.makeFirstResponder(self)
         }
     }
 
@@ -133,7 +137,15 @@ final class NodePointerView: NSView {
         }
     }
 
+    func routeRadiusKey(_ event: NSEvent) -> Bool {
+        guard enabled, activation == nil, window?.firstResponder === self,
+            let direction = CanvasRadiusKey.direction(for: event)
+        else { return false }
+        return radiusKey(direction)
+    }
+
     override func keyDown(with event: NSEvent) {
+        if routeRadiusKey(event) { return }
         guard event.keyCode == 53, activation != nil else {
             super.keyDown(with: event)
             return
