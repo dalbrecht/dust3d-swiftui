@@ -29,6 +29,12 @@ enum DocumentXML {
         }
 
         mutating func install(_ bindings: [NamespaceBinding], on element: XMLElement) throws {
+            try reserve(bindings)
+            DocumentXML.installNamespaces(bindings, on: element)
+        }
+
+        /// Bound owned binding materialization before allocating cached difference results.
+        mutating func reserve(_ bindings: [NamespaceBinding]) throws {
             guard bindings.count <= remainingBindings else { throw DocumentError.limitExceeded }
             var available = remainingBytes
             for binding in bindings {
@@ -41,7 +47,6 @@ enum DocumentXML {
             }
             remainingBindings -= bindings.count
             remainingBytes = available
-            DocumentXML.installNamespaces(bindings, on: element)
         }
     }
 

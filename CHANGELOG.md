@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Ungroup multiple selected components in one undoable operation while preserving their children and order.
+
 - Add atomic Combine Mode and Normal Smoothing edits for multiple selected components, with explicit mixed values and one-step Undo.
 
 

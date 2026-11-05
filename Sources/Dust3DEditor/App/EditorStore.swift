@@ -886,14 +886,28 @@ final class EditorStore {
     }
     func clearComponentSelection() { selectComponents([]) }
     var canGroupComponents: Bool { !isWorking && !stopped && snapshot?.canGroupComponents == true }
-    var canUngroupComponent: Bool { !isWorking && !stopped && snapshot?.canUngroupComponent == true }
+    // Compatibility entry point for callers; all UI paths use the same captured batch eligibility.
+    var canUngroupComponent: Bool {
+        guard let snapshot else { return false }
+        return canUngroupComponents(ComponentUngroupTarget(snapshot: snapshot))
+    }
+    func canUngroupComponents(_ target: ComponentUngroupTarget) -> Bool {
+        !stopped && !isWorking && snapshot.map { target.isCurrent(in: $0) } == true
+    }
+    func componentUngroupAction(_ target: ComponentUngroupTarget) -> @MainActor () -> Void {
+        guard canUngroupComponents(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canUngroupComponents(target) else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.ungroupComponents(target: target) }
+        }
+    }
     func groupSelectedComponents() {
         guard canGroupComponents, let ids = snapshot?.selectedComponentIDs else { return }
         perform { try await $0.groupComponents(ids) }
     }
     func ungroupSelectedComponent() {
-        guard canUngroupComponent, let id = snapshot?.selectedComponentID else { return }
-        perform { try await $0.apply([.ungroupComponent(id: id)]) }
+        guard let snapshot else { return }
+        componentUngroupAction(ComponentUngroupTarget(snapshot: snapshot))()
     }
     func reparentComponent(
         to parent: ComponentParent, target: ComponentReparentTarget,
@@ -1436,6 +1450,18 @@ final class EditorStore {
     }
 
     static func message(_ error: Error) -> String {
+        if error is ComponentUngroupSelectionError {
+            return "The component Ungroup target changed. Choose the components again."
+        }
+        if let ungroup = error as? ComponentUngroupError {
+            switch ungroup {
+            case .inheritedContext(let id, let attribute):
+                return "Cannot ungroup \(id) without changing inherited \(attribute). The source is unchanged."
+            case .textNamespaceContext(let id):
+                return
+                    "Cannot ungroup \(id) without changing the namespace context of its text. The source is unchanged."
+            }
+        }
         if error is ComponentMeshSelectionError {
             return "The component settings selection changed. Choose the edit again."
         }

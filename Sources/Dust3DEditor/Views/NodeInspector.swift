@@ -20,6 +20,9 @@ struct NodeInspector: View {
             OriginControls(store: store)
             RigSettingsControls(store: store)
             NodeClipboardMenu(store: store)
+            if let snapshot = store.snapshot, !snapshot.selectedComponentIDs.isEmpty {
+                ComponentUngroupButton(store: store, target: ComponentUngroupTarget(snapshot: snapshot))
+            }
             ComponentMeshSelectionControls(store: store)
             if let component = store.snapshot?.selectedComponent {
                 ComponentInspector(store: store, component: component)

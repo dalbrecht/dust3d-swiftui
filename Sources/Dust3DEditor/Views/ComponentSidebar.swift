@@ -34,8 +34,10 @@ struct ComponentSidebar: View {
                         }
                         Button("Group Selected Components") { store.groupSelectedComponents() }
                             .disabled(!store.canGroupComponents)
-                        Button("Ungroup Selected Component") { store.ungroupSelectedComponent() }
-                            .disabled(!store.canUngroupComponent)
+                        if let snapshot = store.snapshot {
+                            ComponentUngroupButton(
+                                store: store, target: ComponentUngroupTarget(snapshot: snapshot))
+                        }
                         Divider()
                         Button("Collapse Selected Group") {
                             if let id = store.snapshot?.selectedComponentID { disclosure.collapsedIDs.insert(id) }
@@ -120,6 +122,9 @@ struct ComponentSidebar: View {
                                 !ids.isEmpty
                             {
                                 selectInCanvasButton(snapshot: snapshot, ids: ids)
+                                ComponentUngroupButton(
+                                    store: store,
+                                    target: ComponentUngroupTarget(snapshot: snapshot, componentIDs: Array(ids)))
                             }
                         } primaryAction: { ids in
                             guard ids.count == 1, let id = ids.first, let snapshot = store.snapshot, !store.isWorking,
