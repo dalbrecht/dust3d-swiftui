@@ -42,6 +42,31 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         }
         XCTFail("Store did not settle")
     }
+    func testDanglingPartAliasCannotEnableOrPublishComponentStateActions() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts><part id='cafe&#769;'/></parts><components><component id='dangling' linkDataType='partId' linkData='caf&#233;'/></components></canvas>"
+                    .utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectComponent("dangling")
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        let target = ComponentMeshSelectionTarget(snapshot: before)
+        XCTAssertTrue(target.isCurrent(in: before))
+        XCTAssertTrue(value.selectedParts(for: target).isEmpty)
+        let message = value.errorMessage
+        value.setSelectedComponentPartState(.locked, value: true, target: target)
+        XCTAssertFalse(value.isWorking)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertEqual(value.snapshot?.previewIdentity, before.previewIdentity)
+        XCTAssertEqual(value.errorMessage, message)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testCombineCurrentStatusAndAccessibilityKeepFullUnsupportedValueAndSelectionCount() {
         XCTAssertEqual(
             ComponentMeshFieldPresentation.title(
@@ -87,6 +112,55 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         value.undo()
         try await settle(value)
         XCTAssertEqual(value.snapshot?.document.encoded(), colored.document.encoded())
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testBatchPartStateUsesDirectOwnersAndUpdatesPreviewOnlyWhenNeeded() async throws {
+        let xml = """
+            <canvas><nodes/><edges/><parts><part id='p'/><part id='q'/><part id='r'/></parts><components>
+            <component id='a' linkDataType='partId' linkData='p'/>
+            <component id='alias' linkDataType='partId' linkData='p'/>
+            <component id='b' linkDataType='partId' linkData='q'/>
+            <component id='g'><component id='c' linkDataType='partId' linkData='r'/></component>
+            </components></canvas>
+            """
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        let selection: Set<String> = ["a", "alias", "b", "g"]
+        value.selectComponents(selection)
+        try await settle(value)
+        let initial = try XCTUnwrap(value.snapshot)
+        let target = ComponentMeshSelectionTarget(snapshot: initial)
+        XCTAssertEqual(value.selectedParts(for: target).map(\.id), ["p", "q"])
+
+        value.setSelectedComponentPartState(.visible, value: true, target: target)
+        XCTAssertFalse(value.isWorking)
+        XCTAssertFalse(value.canUndo)
+        value.setSelectedComponentPartState(.visible, value: false, target: target)
+        try await settle(value)
+        let hidden = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(hidden.selectedComponentIDs, selection)
+        XCTAssertEqual(hidden.parts.map(\.isVisible), [false, false, true])
+        XCTAssertEqual(hidden.previewIdentity, initial.previewIdentity)
+        XCTAssertTrue(value.selectedParts(for: target).isEmpty)
+
+        value.setSelectedComponentPartState(.disabled, value: true, target: target)
+        XCTAssertFalse(value.isWorking)
+        value.setSelectedComponentPartState(
+            .disabled, value: true, target: ComponentMeshSelectionTarget(snapshot: hidden))
+        try await settle(value)
+        let disabled = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(disabled.parts.map(\.isDisabled), [true, true, false])
+        XCTAssertNotEqual(disabled.previewIdentity.geometry, hidden.previewIdentity.geometry)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), hidden.document.encoded())
         value.undo()
         try await settle(value)
         XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())

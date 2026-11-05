@@ -14,6 +14,27 @@ final class PartStateTests: XCTestCase {
             data: Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
                 + model + Data([0, 255, 10, 128]))
     }
+    func testBatchPartStateRejectsByteDistinctAliasesWithoutPublishingPartialChanges() throws {
+        let actual = "cafe\u{301}"
+        let alias = "caf\u{e9}"
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes/><edges/><parts><part id='cafe&#769;' future='keep'/></parts><components/></canvas>"
+                    .utf8))
+        for (property, value) in [(PartStateProperty.visible, false), (.locked, true), (.disabled, true)] {
+            for ids in [[alias], [actual, alias]] {
+                var history = DocumentHistory(document: original)
+                let preview = history.previewIdentity
+                XCTAssertThrowsError(try history.apply(.setPartsState(ids: ids, property: property, value: value))) {
+                    XCTAssertEqual($0 as? DocumentError, .missingPart(alias))
+                }
+                XCTAssertEqual(history.document.encoded(), original.encoded())
+                XCTAssertEqual(history.previewIdentity, preview)
+                XCTAssertFalse(history.canUndo)
+            }
+        }
+    }
+
     func testPartsRetainDocumentOrderNamesAndDefaults() throws {
         let original = try document()
         let contents = try original.editorContents()
@@ -100,4 +121,32 @@ final class PartStateTests: XCTestCase {
         XCTAssertFalse(history.canUndo)
         XCTAssertTrue(history.canRedo)
     }
+
+    func testBatchPartFlagsPreserveNoOpsAndHistoryAndRejectMissingTargets() throws {
+        let original = try document()
+        var history = DocumentHistory(document: original)
+        try history.apply(.setPartsState(ids: ["empty", "p"], property: .locked, value: false))
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+        XCTAssertFalse(history.canUndo)
+
+        XCTAssertThrowsError(try history.apply(.setPartsState(ids: ["p", "missing"], property: .locked, value: true))) {
+            XCTAssertEqual($0 as? DocumentError, .missingPart("missing"))
+        }
+        XCTAssertEqual(history.document.encoded(), original.encoded())
+        XCTAssertFalse(history.canUndo)
+
+        for property in PartStateProperty.allCases {
+            let value = property != .visible
+            try history.apply(.setPartsState(ids: ["p", "empty", "p"], property: property, value: value))
+            let parts = try history.document.editorContents().parts
+            XCTAssertEqual(parts.map(\.isVisible), [property != .visible, property != .visible])
+            XCTAssertEqual(parts.map(\.isLocked), [property == .locked, property == .locked])
+            XCTAssertEqual(parts.map(\.isDisabled), [property == .disabled, property == .disabled])
+            XCTAssertEqual(history.document.asset(named: "opaque.bin"), original.asset(named: "opaque.bin"))
+            XCTAssertTrue(history.undo())
+            XCTAssertEqual(history.document.encoded(), original.encoded())
+            XCTAssertFalse(history.canUndo)
+        }
+    }
+
 }

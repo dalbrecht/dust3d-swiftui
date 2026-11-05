@@ -1089,6 +1089,20 @@ final class EditorStore {
     func setEdgeBoneName(_ id: String, name: String) {
         perform { try await $0.apply([.setEdgeBoneName(id: id, name: name)]) }
     }
+    func selectedParts(for target: ComponentMeshSelectionTarget) -> [DocumentPart] {
+        guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot) else { return [] }
+        let ids = Set(snapshot.selectedComponentRows.compactMap { $0.component.partID }.map { Data($0.utf8) })
+        return snapshot.parts.filter { ids.contains(Data($0.id.utf8)) }
+    }
+
+    func setSelectedComponentPartState(_ property: PartStateProperty, value: Bool, target: ComponentMeshSelectionTarget)
+    {
+        guard selectedParts(for: target).contains(where: { $0.state(property) != value }) else { return }
+        perform(acceptCommittedCancellation: true) {
+            try await $0.setSelectedComponentPartState(property, value: value, target: target)
+        }
+    }
+
     func setSelectedComponentColors(_ target: ComponentMeshSelectionTarget, value: String?) {
         guard canEditComponentMeshSettings(target) else { return }
         let color = value.flatMap { DocumentColor(archiveValue: $0) }

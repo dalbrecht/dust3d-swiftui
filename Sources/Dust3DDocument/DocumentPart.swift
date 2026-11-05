@@ -56,6 +56,15 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     /// Legacy non-UUID identities remain preserved but cannot be offered as new profile links.
     public var canBeCutFaceProfile: Bool { CutFaceLinks.canonicalID(id) != nil }
 
+    /// Read the effective flag, including legacy defaults and spellings.
+    public func state(_ property: PartStateProperty) -> Bool {
+        switch property {
+        case .visible: isVisible
+        case .locked: isLocked
+        case .disabled: isDisabled
+        }
+    }
+
     public var isEditVisible: Bool { isVisible && !isDisabled }
     public var isEditable: Bool { isEditVisible && !isLocked }
 
