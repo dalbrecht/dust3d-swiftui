@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add batch component part roles with atomic stitching grouping, shared-group reveal and one-step Undo (#45).
+
 - Apply or clear color across selected components with the native color picker and one-step Undo.
 
 - Drag component rows before or after siblings, into groups, or to the document root.

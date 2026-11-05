@@ -406,6 +406,25 @@ public struct EditorState: Sendable {
         selectedIDs = []
     }
 
+    /// Apply one preflighted bulk role command, then reveal its reused or newly created stitching group.
+    /// Selection/reveal alone remains history-free when all source roles already match.
+    public mutating func setSelectedComponentPartRole(
+        _ role: PartTarget, target: ComponentPartRoleTarget, newGroupID: String?
+    ) throws {
+        guard target.isCurrent(in: snapshot) else { throw ComponentPartRoleError.staleContext }
+        let plan = try snapshot.componentPartRolePlan(role)
+        var next = self
+        try next.apply([.setComponentPartRoles(componentIDs: plan.componentIDs, target: role, newGroupID: newGroupID)])
+        if let group = plan.requiresNewGroup ? newGroupID : plan.revealGroupID {
+            try next.selectComponent(group)
+            next.componentRevealRevision += 1
+            next.componentRevealHint = ComponentRevealHint.make(
+                componentID: group, tree: next.componentTree, revision: next.componentRevealRevision)
+        }
+        try Task.checkCancellation()
+        self = next
+    }
+
     /// Apply image commands only to the captured current document/revision/component.
     /// - Parameters: command is the image mutation; target captures the intended singleton selection.
     /// - Throws: `staleColorImageTarget` or original document/resource errors atomically.

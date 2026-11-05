@@ -287,6 +287,20 @@ public actor EditorSession {
         }
     }
 
+    /// Assign supported roles and perform any necessary stitching grouping in one undo/publication.
+    /// Fresh group identities belong to this session, never the pure document planner.
+    public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws
+        -> EditorSnapshot
+    {
+        try update { state in
+            guard target.isCurrent(in: state.snapshot) else { throw ComponentPartRoleError.staleContext }
+            let plan = try state.snapshot.componentPartRolePlan(role)
+            try state.setSelectedComponentPartRole(
+                role, target: target, newGroupID: plan.requiresNewGroup ? Self.identifier() : nil)
+            try Task.checkCancellation()
+        }
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }

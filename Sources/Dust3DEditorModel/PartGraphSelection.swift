@@ -35,6 +35,11 @@ public struct ComponentRevealHint: Equatable, Sendable {
 
     static func make(partID: String, tree: ComponentTree, revision: Int) -> Self? {
         guard let owner = tree.rows.first(where: { $0.component.partID == partID }) else { return nil }
+        return make(componentID: owner.id, tree: tree, revision: revision)
+    }
+
+    static func make(componentID: String, tree: ComponentTree, revision: Int) -> Self? {
+        guard let owner = tree.rows.first(where: { $0.id == componentID }) else { return nil }
         let byID = Dictionary(uniqueKeysWithValues: tree.rows.map { ($0.id, $0.component) })
         var ancestors: [String] = []
         var parentID = owner.component.parentID

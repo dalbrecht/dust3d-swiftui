@@ -207,6 +207,8 @@ public enum DocumentCommand: Sendable {
     /// Throws `missingPart` for an absent identity. Unsupported source roles survive until explicit replacement.
     /// Example: `.setPartTarget(id: id, target: .cutFace)`.
     case setPartTarget(id: String, target: PartTarget)
+    /// Assign explicit component-owned part roles and atomically group root stitching siblings when needed.
+    case setComponentPartRoles(componentIDs: [String], target: PartTarget, newGroupID: String?)
     /// Change a part flag, including restoring a hidden/locked/disabled part.
     case setPartState(id: String, property: PartStateProperty, value: Bool)
     /// Replace Qt's canvas.png asset with PNG-signature bytes (at most 32 MiB), or remove it with nil.
@@ -738,6 +740,12 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartFillLoopInterior(let id, let value):
             guard try PartLoopInterior.set(model, parts: contents.parts, id: id, value: value) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentPartRoles(let componentIDs, let target, let groupID):
+            guard
+                try ComponentStructure.setPartRoles(
+                    model, parts: contents.parts, ids: componentIDs, target: target, groupID: groupID)
+            else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartTarget(let id, let target):
             guard try PartTargetMetadata.set(model, parts: contents.parts, id: id, target: target) else { return self }
