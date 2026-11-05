@@ -85,18 +85,23 @@ struct ComponentBatchColorControls: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Selected Component Colors").font(.headline)
-            ColorPicker("Color draft", selection: Binding(
-                get: { DocumentColorPresentation.color(draft.pickerColor) },
-                set: { draft = draft.choosing(DocumentColorPresentation.value(from: $0)) }
-            ), supportsOpacity: true)
-            TextField("Hex color", text: Binding(
-                get: { draft.text },
-                set: { draft = draft.editing($0) }
-            ), prompt: Text("#RRGGBB or #AARRGGBB"))
-                .accessibilityLabel("Selected components’ hex color, alpha first")
-                .focusedValue(\.editorTextEditing, true)
-                .onSubmit { apply() }
-                .onExitCommand { draft = ComponentColorDraft(source: .unset) }
+            ColorPicker(
+                "Color draft",
+                selection: Binding(
+                    get: { DocumentColorPresentation.color(draft.pickerColor) },
+                    set: { draft = draft.choosing(DocumentColorPresentation.value(from: $0)) }
+                ), supportsOpacity: true)
+            TextField(
+                "Hex color",
+                text: Binding(
+                    get: { draft.text },
+                    set: { draft = draft.editing($0) }
+                ), prompt: Text("#RRGGBB or #AARRGGBB")
+            )
+            .accessibilityLabel("Selected components’ hex color, alpha first")
+            .focusedValue(\.editorTextEditing, true)
+            .onSubmit { apply() }
+            .onExitCommand { draft = ComponentColorDraft(source: .unset) }
             if let conversionIssue = draft.conversionIssue {
                 Text(conversionIssue.message).font(.caption)
             }
