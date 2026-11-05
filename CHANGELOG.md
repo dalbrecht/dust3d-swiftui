@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Select a whole part graph from its nodes, edges, or inspector and reveal the linked component in the sidebar.
+- Select a whole part graph from its nodes, edges, or inspector and reveal the linked component in the sidebar. Reuse each rendered node’s validated owner for constant-time whole-part availability.
 
 - Preview a new node and adjust its radius before placing it on the canvas in Add mode. Keep cancellation bound to its placement request, refit on selection exit, discard held presses across tool changes, and allow inward placement at document coordinate limits.
 

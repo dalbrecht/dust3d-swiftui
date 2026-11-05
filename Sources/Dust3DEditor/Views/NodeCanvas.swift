@@ -115,7 +115,7 @@ struct NodeCanvas: View {
                         selected: store.snapshot?.selectedIDs.contains(node.id) == true,
                         enabled: store.canPickGraph && !store.isMovingOrigin && !store.isAddingNodes,
                         canDrag: !store.isWorking && node.isEditable,
-                        canSelectWholePart: store.canSelectWholePart(.node(node.id)),
+                        canSelectWholePart: store.canPickGraph && node.partID != nil,
                         doubleClick: {
                             guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
                                 return
