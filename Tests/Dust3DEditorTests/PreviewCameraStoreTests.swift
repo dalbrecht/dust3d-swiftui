@@ -35,6 +35,23 @@ import XCTest
         XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
         XCTAssertFalse(store.canUndo)
         store.movePreviewCamera(.orbitLeft)
+        store.renderError = "Renderer unavailable"
+        XCTAssertFalse(store.canMovePreviewCamera)
+        XCTAssertNil(store.previewCameraCommand)
+        let failedReset = store.cameraReset
+        store.movePreviewCamera(.zoomIn)
+        store.fitPreviewCamera()
+        XCTAssertNil(store.previewCameraCommand)
+        XCTAssertEqual(store.cameraReset, failedReset)
+        store.renderError = nil
+        XCTAssertTrue(store.canMovePreviewCamera)
+        store.movePreviewCamera(.orbitLeft)
+        store.selectAllNodes()
+        try await settle(store)
+        store.deleteSelection()
+        try await settle(store)
+        XCTAssertFalse(store.canMovePreviewCamera)
+        XCTAssertNil(store.previewCameraCommand)
         await store.load(data: source.encoded())
         try await settle(store)
         XCTAssertNil(store.previewCameraCommand)
