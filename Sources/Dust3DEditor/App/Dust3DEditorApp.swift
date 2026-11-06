@@ -13,6 +13,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorTextEditing) private var isEditingText
     @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
     @State private var pasteboard = EditorPasteboard()
+    @State private var replayRequest: WorkflowReplayRequest?
     @State private var nativeUndoCommands = NativeUndoCommandState()
 
     private var applicationName: String {
@@ -56,6 +57,14 @@ struct Dust3DEditorApp: App {
             }
             EditorClipboardCommands(pasteboard: pasteboard)
             EditorGeometryExportCommands()
+            CommandGroup(after: .windowArrangement) {
+                Button("Replay Steps…") {
+                    guard let document = store?.snapshot?.document else { return }
+                    replayRequest = WorkflowReplayRequest(document: document)
+                    openWindow(id: "workflow-replay")
+                }
+                .disabled(store?.snapshot == nil)
+            }
             CommandMenu("Canvas") {
                 Toggle(
                     "Add Nodes with Pointer",
@@ -135,6 +144,17 @@ struct Dust3DEditorApp: App {
                 }
             }
         }
+        Window("Replay Steps", id: "workflow-replay") {
+            Group {
+                if let replayRequest {
+                    WorkflowReplayView(document: replayRequest.document).id(replayRequest.id)
+                } else {
+                    ContentUnavailableView("No Replay", systemImage: "play.rectangle")
+                }
+            }
+            .onDisappear { replayRequest = nil }
+        }
+        .defaultSize(width: 700, height: 540)
         Window("About \(applicationName)", id: "build-diagnostics") {
             BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
         }
