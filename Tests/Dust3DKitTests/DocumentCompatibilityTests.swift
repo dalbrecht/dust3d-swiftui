@@ -325,7 +325,7 @@ final class DocumentCompatibilityTests: XCTestCase {
         }
     }
 
-    @MainActor func testSplitPiecesCanRejoinThroughActorAndUndoRestoresSplit() async throws {
+    @MainActor func testSplitPiecesRejoinThroughCapturedSelectionAndUndoRestoresSplit() async throws {
         let url = try XCTUnwrap(
             Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
         let data = try Data(contentsOf: url)
@@ -334,9 +334,10 @@ final class DocumentCompatibilityTests: XCTestCase {
         let session = EditorSession()
         _ = try await session.open(data: data)
         let split = try await session.apply([.removeEdge(id: edge.id)])
-        let joined = try await session.apply([
-            .joinNodes(id: "{99999999-9999-4999-8999-999999999999}", from: edge.toID, to: edge.fromID)
-        ])
+        let selected = try await session.select([edge.toID, edge.fromID])
+        let target = NodeConnectionTarget(snapshot: selected)
+        XCTAssertTrue(target.requiresOwnershipChoice)
+        let joined = try await session.connectSelectedNodes(target: target, ownerID: edge.toID)
         let mesh = try MeshLoader.load(data: joined.document.encoded())
         XCTAssertEqual(mesh.partCount, 1)
         XCTAssertEqual(mesh.nodeCount, 3)

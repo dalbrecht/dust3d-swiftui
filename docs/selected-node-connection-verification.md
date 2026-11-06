@@ -27,6 +27,14 @@ Regression evidence:
   reaches preview, texture, import, animation or native generation. All new Store
   tests inject blocked implementations for every native service.
 
+The existing bounded Capsule split/rejoin integration now selects the two
+endpoints and invokes the new captured session API. On the unchanged production
+core it produced one part with the original three nodes and original triangle
+count; Undo restored the split archive and two-part mesh, and Redo restored exact
+joined document bytes. This reuses the established fixture rather than adding a
+new native geometry family. The focused integration passed independently without
+rig, pose, animation, catalog, fault or process-control activity.
+
 The required full committed production-pin make ci gate is separate from focused
 results and must pass before publication. The existing PartJoiningTests continue
 to cover orientation, asset/unknown XML retention, component handling and profile
