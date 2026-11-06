@@ -141,6 +141,7 @@ final class EditorStore {
     }
     func setCanvasContext(projection: CanvasProjection, width: Double, height: Double) {
         if isAddingNodes && (canvasWidth != width || canvasHeight != height) { cancelAddMode() }
+        updatePrecisionCanvasIdentity(projection: projection, width: width, height: height)
         canvasWidth = width
         setCanvasHeight(height)
         // Mode entry rebuilds against current bounds/plane, which may change before SwiftUI renders again.
@@ -224,7 +225,18 @@ final class EditorStore {
     }
     private(set) var canvasHeight: Double = 0
     private(set) var hoveredNodeID: String?
-    func setCanvasHeight(_ height: Double) { canvasHeight = height.isFinite && height > 0 ? height : 0 }
+    func setCanvasHeight(_ height: Double) {
+        let next = height.isFinite && height > 0 ? height : 0
+        if next != canvasHeight { precisionLayoutEpoch = UUID() }
+        canvasHeight = next
+    }
+    private func updatePrecisionCanvasIdentity(projection: CanvasProjection, width: Double, height: Double) {
+        let next = ReferenceColorCanvasIdentity(projection: projection, width: width, height: height)
+        if next != precisionCanvasIdentity {
+            precisionLayoutEpoch = UUID()
+            precisionCanvasIdentity = next
+        }
+    }
     func setHoveredNode(_ id: String?) {
         hoveredNodeID = snapshot?.nodes.first(where: { $0.id == id && $0.isVisible })?.id
     }
@@ -351,6 +363,11 @@ final class EditorStore {
     var bounds = CanvasBounds(nodes: []) {
         didSet {
             if let canvas = referenceColorCanvas {
+                updatePrecisionCanvasIdentity(
+                    projection: CanvasProjection(
+                        bounds: bounds, plane: plane,
+                        width: canvas.identity.width, height: canvas.identity.height), width: canvas.identity.width,
+                    height: canvas.identity.height)
                 setReferenceColorCanvasContext(
                     projection: CanvasProjection(
                         bounds: bounds, plane: plane,
@@ -359,6 +376,8 @@ final class EditorStore {
             }
         }
     }
+    private var precisionLayoutEpoch = UUID()
+    private var precisionCanvasIdentity: ReferenceColorCanvasIdentity?
     private var rotationInputContextID = UUID()
     var plane = EditingPlane.front {
         didSet {
@@ -821,8 +840,8 @@ final class EditorStore {
         isMovingOrigin = enabled && !isWorking && !stopped && snapshot?.origin != nil
     }
 
-    func cancelOriginDrag() {
-        isMovingOrigin = false
+    func cancelOriginDrag(preservingMode: Bool = false) {
+        if !preservingMode { isMovingOrigin = false }
         originDrag = nil
         originDragToken = nil
         originDragPosition = nil
@@ -1323,6 +1342,76 @@ final class EditorStore {
         let nodes = transform == .exchangeXZ ? snapshot.selectedNodes : snapshot.transformNodes
         return nodes.contains(where: \.isEditable)
     }
+    func canPerformCanvasPrecision(_ action: CanvasPrecisionAction) -> Bool {
+        guard !isWorking, !stopped, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
+            canvasHeight.isFinite, canvasHeight > 0, let snapshot
+        else { return false }
+        if action.isSpacing {
+            let factor = 1 + (action == .increaseSpacing ? 10 : -10) / canvasHeight
+            return factor.isFinite && !locks.isSuperset(of: [.x, .y, .z])
+                && snapshot.transformNodes.contains(where: \.isEditable)
+        }
+        let vertical = action == .up || action == .down
+        let axis: EditingConstraint = vertical ? .y : (plane == .front ? .x : .z)
+        guard !locks.contains(axis) else { return false }
+        return isMovingOrigin ? snapshot.origin != nil : snapshot.transformNodes.contains(where: \.isEditable)
+    }
+    func canvasPrecisionAction(_ action: CanvasPrecisionAction) -> @MainActor () -> Void {
+        let handler = canvasPrecisionHandler()
+        let admitted = canPerformCanvasPrecision(action)
+        return { if admitted { _ = handler(action) } }
+    }
+    func canvasPrecisionKeyHandler() -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
+        let handler = canvasPrecisionHandler()
+        return { input in
+            guard let action = input.action else { return false }
+            return handler(action)
+        }
+    }
+    private func canvasPrecisionHandler() -> @MainActor (CanvasPrecisionAction) -> Bool {
+        let target = snapshot.map(CanvasAdjustmentTarget.init)
+        let capturedPlane = plane
+        let height = canvasHeight
+        let layout = precisionLayoutEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] action in
+            guard let self, let target, let snapshot = self.snapshot, target.isCurrent(in: snapshot),
+                self.precisionLayoutEpoch == layout, self.rotationInputContextID == tool,
+                self.addModeID == add, self.referenceColorInteractionEpoch == interaction,
+                self.canPerformCanvasPrecision(action)
+            else { return false }
+            self.dispatchCanvasPrecision(action, height: height, plane: capturedPlane, target: target)
+            return true
+        }
+    }
+    func performCanvasPrecision(_ action: CanvasPrecisionAction) { canvasPrecisionAction(action)() }
+    private func dispatchCanvasPrecision(
+        _ action: CanvasPrecisionAction, height: Double, plane: EditingPlane,
+        target: CanvasAdjustmentTarget
+    ) {
+        let preservesOriginMode = isMovingOrigin
+        if action.isSpacing {
+            let factor = 1 + (action == .increaseSpacing ? 10 : -10) / height
+            perform(acceptCommittedCancellation: true, preserveOriginMode: preservesOriginMode) {
+                try await $0.scaleSelectionPositions(factor: factor, target: target)
+            }
+        } else {
+            let horizontal = action == .left ? -1.0 : (action == .right ? 1 : 0)
+            let vertical = action == .up ? -1.0 : (action == .down ? 1 : 0)
+            let delta = NodePosition(
+                x: plane == .front ? horizontal / height : 0,
+                y: vertical / height, z: plane == .side ? horizontal / height : 0)
+            if preservesOriginMode {
+                perform(acceptCommittedCancellation: true, preserveOriginMode: true) {
+                    try await $0.nudgeOrigin(by: delta, target: target)
+                }
+            } else {
+                perform(acceptCommittedCancellation: true) { try await $0.moveSelection(by: delta, target: target) }
+            }
+        }
+    }
     var canRotateCanvasSelection: Bool {
         guard !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot,
             snapshot.transformNodes.contains(where: \.isEditable)
@@ -1699,9 +1788,9 @@ final class EditorStore {
         cameraReset += 1
     }
 
-    private func fitCanvas() {
+    private func fitCanvas(preservingOriginMode: Bool = false) {
         guard !isAddingNodes else { return }
-        cancelOriginDrag()
+        cancelOriginDrag(preservingMode: preservingOriginMode)
         let aspect = showsReferenceImage ? referenceImage.map { Double($0.width) / Double($0.height) } : nil
         bounds = CanvasBounds(nodes: snapshot?.nodes ?? [], referenceImageAspectRatio: aspect, origin: snapshot?.origin)
     }
@@ -1733,7 +1822,7 @@ final class EditorStore {
 
     private func perform(
         commits: Bool = true, reloadReferenceImage: Bool = false, acceptCommittedCancellation: Bool = false,
-        selectionOnly: Bool = false,
+        selectionOnly: Bool = false, preserveOriginMode: Bool = false,
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
@@ -1742,7 +1831,7 @@ final class EditorStore {
             return
         }
         cancelColorImagePreparation()
-        cancelOriginDrag()
+        cancelOriginDrag(preservingMode: preserveOriginMode)
         let requestID = UUID()
         operationRequestID = requestID
         isSelectingGraph = selectionOnly
@@ -1776,7 +1865,7 @@ final class EditorStore {
                 if countChanged && !isAddingNodes {
                     fit()
                 } else if needsFit && !isAddingNodes {
-                    fitCanvas()
+                    fitCanvas(preservingOriginMode: preserveOriginMode)
                 }
                 errorMessage = nil
                 if commits && changed {
@@ -2076,6 +2165,7 @@ final class EditorStore {
                     "Set a complete supported document origin first. Unlock position axes to initialize an unavailable origin."
             case .invalidPivotSelection: return "Select exactly one node as the rotation pivot."
             case .invalidRotation: return "Enter a finite angle between −2147483647° and 2147483647°."
+            case .invalidSpacingFactor: return "Selection spacing requires a finite factor."
             case .invalidScale: return "Enter a finite, positive scale factor. Use 1 to keep the current size."
             }
         }

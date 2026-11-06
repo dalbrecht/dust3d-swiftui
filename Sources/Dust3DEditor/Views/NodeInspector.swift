@@ -61,6 +61,8 @@ struct NodeInspector: View {
                 NodeRadiusAdjustmentControls(store: store)
                 CanvasRotationControls(store: store)
                 EndpointBendControls(store: store, endpointID: node.id)
+
+                CanvasPrecisionControls(store: store)
                 GraphColorizeControls(store: store)
                 NodeReductionControls(store: store)
                 SelectionTransformMenu(store: store)
@@ -119,10 +121,11 @@ private struct GroupInspector: View {
             SelectionTransformControls(store: store)
             NodeRadiusAdjustmentControls(store: store)
             CanvasRotationControls(store: store)
+            CanvasPrecisionControls(store: store)
             GraphColorizeControls(store: store)
             NodeReductionControls(store: store)
             SelectionTransformMenu(store: store)
-            Button("Reverse Selected Edges") { store.reverseSelectedEdges() }
+            Button("Reverse Edges Between Selected Nodes") { store.reverseSelectedEdges() }
                 .disabled(store.snapshot?.reversibleEdges.isEmpty != false)
             Divider()
             Button("Delete Selected Nodes", role: .destructive) { store.deleteSelection() }

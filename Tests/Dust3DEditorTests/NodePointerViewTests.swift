@@ -75,6 +75,41 @@ final class NodePointerViewTests: XCTestCase {
         XCTAssertEqual(finished, Array(shifted.suffix(1)))
     }
 
+    func testShiftDragKeepsCanvasKeyboardFocusAndForwardsPrecisionKeys() throws {
+        let window = NSWindow(
+            contentRect: .init(x: -10000, y: -10000, width: 200, height: 200),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
+        window.contentView = view
+        view.enabled = true
+        view.canDrag = true
+        var shifted: UUID?
+        var finished: UUID?
+        var keys = 0
+        view.beginShiftDrag = { shifted = $0 }
+        view.finish = { token, _ in finished = token }
+        view.precisionKey = { _ in
+            keys += 1
+            return true
+        }
+        view.mouseDown(with: try event(.leftMouseDown, x: 10, y: 10, flags: .shift))
+        XCTAssertTrue(window.firstResponder === view)
+        view.mouseDragged(with: try event(.leftMouseDragged, x: 20, y: 10, flags: .shift))
+        view.mouseUp(with: try event(.leftMouseUp, x: 20, y: 10, flags: .shift))
+        XCTAssertNotNil(shifted)
+        XCTAssertEqual(finished, shifted)
+        XCTAssertTrue(window.firstResponder === view)
+        let arrow = try XCTUnwrap(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                windowNumber: window.windowNumber, context: nil, characters: "\u{F703}",
+                charactersIgnoringModifiers: "\u{F703}", isARepeat: false, keyCode: 124))
+        view.keyDown(with: arrow)
+        XCTAssertEqual(keys, 1)
+    }
+
     func testEachDragCarriesItsOwnTokenAndWindowCoordinates() throws {
         let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
         view.enabled = true
@@ -98,7 +133,7 @@ final class NodePointerViewTests: XCTestCase {
         XCTAssertEqual(finishes[0].1, .init(x: 12, y: -6))
     }
 
-    func testRemovalCancelsOwnedActivation() throws {
+    func testRemovalCancelsOwnedActivation() async throws {
         let view = NodePointerView(frame: .init(x: 0, y: 0, width: 36, height: 36))
         view.enabled = true
         view.canDrag = true
@@ -112,6 +147,8 @@ final class NodePointerViewTests: XCTestCase {
         view.viewWillMove(toWindow: nil)
         view.mouseUp(with: try event(.leftMouseUp, x: 20, y: 10))
         XCTAssertNotNil(begun)
+        XCTAssertNil(cancelled, "Removal must not synchronously mutate SwiftUI-owned drafts")
+        await view.pendingCancellation?.value
         XCTAssertEqual(cancelled, begun)
         XCTAssertFalse(finished)
     }

@@ -9,6 +9,7 @@ struct OriginHandle: View {
 
     var body: some View {
         let point = projection.point(for: origin)
+        let precisionKey = store.canvasPrecisionKeyHandler()
         Image(systemName: "scope")
             .font(.title3)
             .foregroundStyle(store.isMovingOrigin ? Color.accentColor : .secondary)
@@ -25,7 +26,7 @@ struct OriginHandle: View {
                     update: { store.updateOriginDrag(token: $0, translation: $1) },
                     finish: { store.finishOriginDrag(token: $0, translation: $1) },
                     cancel: { store.cancelOriginDrag(token: $0) }, select: {}, toggle: {},
-                    isRectangular: true, clickCancel: { store.endOriginClick(token: $0) }
+                    precisionKey: precisionKey, isRectangular: true, clickCancel: { store.endOriginClick(token: $0) }
                 )
             }
             .position(x: point.x, y: point.y)

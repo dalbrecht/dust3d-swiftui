@@ -14,6 +14,7 @@ public enum EditorError: Error, Equatable, Sendable {
     case notLoaded
     case readOnlyNode
     case invalidScale
+    case invalidSpacingFactor
     case invalidRotation
     case invalidPivotSelection
     case unavailableOrigin
@@ -580,7 +581,16 @@ public struct EditorState: Sendable {
     }
 
     /// Translate editable selected nodes as one atomic undo step. Read-only nodes stay fixed.
-    public mutating func moveSelection(by delta: NodePosition) throws {
+    public mutating func moveSelection(by delta: NodePosition, target: CanvasAdjustmentTarget? = nil) throws {
+        if let target {
+            guard target.isCurrent(in: snapshot) else { throw EditorError.staleCanvasAdjustment }
+            try Task.checkCancellation()
+            var next = self
+            try next.moveSelection(by: delta)
+            try Task.checkCancellation()
+            self = next
+            return
+        }
         guard [delta.x, delta.y, delta.z].allSatisfy(\.isFinite) else { throw DocumentError.invalidNode }
         let updates = snapshot.transformNodes.filter(\.isEditable).map { node in
             let position = node.value.position

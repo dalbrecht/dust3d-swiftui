@@ -39,6 +39,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let wheel: (CanvasWheelInput) -> Bool
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
@@ -47,6 +48,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
         view.cancelActivation()
         view.enabled = false
+        view.precisionKey = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         if !enabled { view.cancelActivation() }
@@ -58,6 +60,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.wheel = wheel
         view.radiusKey = radiusKey
         view.doubleClick = doubleClick
+        view.precisionKey = precisionKey
         if view.isAddingNodes != isAddingNodes { view.cancelActivation() }
         view.isAddingNodes = isAddingNodes
         view.addPress = addPress
@@ -74,6 +77,7 @@ final class CanvasPointerView: NSView {
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
@@ -184,6 +188,12 @@ final class CanvasPointerView: NSView {
         return radiusKey(direction)
     }
     override func keyDown(with event: NSEvent) {
+        // The captured precision handler admits keyboard edits independently of pointer picking.
+        if start == nil, !hasMarquee, superview != nil, let window, window.firstResponder === self,
+            precisionKey?(CanvasPrecisionKeyInput(event)) == true
+        {
+            return
+        }
         if routeRadiusKey(event) { return }
         if event.keyCode == 53, start != nil || isAddingNodes {
             invalidate()
