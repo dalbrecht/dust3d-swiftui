@@ -296,7 +296,9 @@ final class EditorStore {
             onEditingChanged?(isWorking)
         }
     }
-    private(set) var previewState = MeshPreviewState<EditorPreviewOutput>()
+    private(set) var previewState = MeshPreviewState<EditorPreviewOutput>() {
+        didSet { if previewState.value == nil { previewCameraCommand = nil } }
+    }
     var mesh: IndexedMesh? { previewState.value?.mesh }
     var previewSourceHints: MeshSourceHints? {
         guard !previewState.isStale, !isWorking, !stopped else { return nil }
@@ -359,7 +361,9 @@ final class EditorStore {
     var materialViewportRevision: Int { previewState.revision + materialState.revision }
     var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
-    var renderError: String?
+    var renderError: String? {
+        didSet { if renderError != nil { previewCameraCommand = nil } }
+    }
     var bounds = CanvasBounds(nodes: []) {
         didSet {
             if let canvas = referenceColorCanvas {
@@ -404,6 +408,8 @@ final class EditorStore {
     private var originDragToken: UUID?
     var isWireframe = false
     var cameraReset = 0
+    private(set) var previewCameraCommand: MeshCameraCommand?
+    var canMovePreviewCamera: Bool { !stopped && mesh != nil && renderError == nil }
     private(set) var referenceImage: CGImage?
     private(set) var referenceImageError: String?
     private(set) var isLoadingReferenceImage = false
@@ -1782,7 +1788,19 @@ final class EditorStore {
         perform(reloadReferenceImage: true) { try await $0.apply([.setReferenceImagePNG(nil)]) }
     }
 
+    func movePreviewCamera(_ action: MeshCameraCommand.Action) {
+        guard canMovePreviewCamera else { return }
+        previewCameraCommand = .init(action)
+    }
+
+    func fitPreviewCamera() {
+        guard canMovePreviewCamera else { return }
+        previewCameraCommand = nil
+        cameraReset += 1
+    }
+
     func fit() {
+        previewCameraCommand = nil
         cancelOriginDrag()
         fitCanvas()
         cameraReset += 1
@@ -1796,6 +1814,7 @@ final class EditorStore {
     }
 
     func stop() {
+        previewCameraCommand = nil
         pendingComponentDrag = nil
         invalidateReferenceColors()
         referenceColorApplyToken = UUID()

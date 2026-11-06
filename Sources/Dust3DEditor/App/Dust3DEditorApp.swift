@@ -65,6 +65,11 @@ struct Dust3DEditorApp: App {
                 }
                 .disabled(store?.snapshot == nil)
             }
+            CommandGroup(after: .toolbar) {
+                PreviewCameraMenu(
+                    title: "Preview Camera", isEnabled: store?.canMovePreviewCamera == true,
+                    move: { store?.movePreviewCamera($0) }, fit: { store?.fitPreviewCamera() })
+            }
             CommandMenu("Canvas") {
                 Toggle(
                     "Add Nodes with Pointer",
