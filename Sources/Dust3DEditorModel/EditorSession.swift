@@ -267,6 +267,15 @@ public actor EditorSession {
         }
     }
 
+    /// Connect exactly two captured eligible endpoints, allocating one fresh edge off the UI actor.
+    /// - Throws: Stale intent, cancellation or the original joining error before atomic publication.
+    public func connectSelectedNodes(target: NodeConnectionTarget, ownerID: String) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            try state.connectSelectedNodes(
+                target: target, ownerID: ownerID, edgeID: "{\(UUID().uuidString.lowercased())}")
+        }.snapshot
+    }
+
     /// Publish one atomic Ungroup for the exact originating row context, preserving graph/resources.
     public func ungroupComponents(target: ComponentUngroupTarget) throws -> EditorSnapshot {
         try update { state in

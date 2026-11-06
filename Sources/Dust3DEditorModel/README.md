@@ -356,3 +356,15 @@ source values, including absent versus stored empty; inspector presentation coal
 those effective Own Children choices without mutating the model. See ADR0141.
 
 Precision canvas commands use captured CanvasAdjustmentTarget epochs. Targeted translation and origin nudges are atomic and cancellable; scaleSelectionPositions accepts finite signed factors about editable merged-selection positions, retaining radii and native axis locks. This signed spacing API is distinct from the existing positive-only scale API. Zero/negative factors are pure-model tested without native degenerate-geometry probes. See ADR0132 for Qt height normalization and admission policy.
+
+
+### Two selected endpoints
+
+NodeConnectionTarget captures two eligible explicit nodes, source/selection/constraint
+epochs and their exact part identities without parsing XML on the UI actor. Its
+owners retain document order and byte-exact IDs. Cross-part native controls ask
+which owner's settings survive; callers pass that chosen owner to
+EditorSession.connectSelectedNodes(target:ownerID:). The existing joinNodes command
+retains chain/profile validation, metadata and atomic history. Stale, unavailable,
+wrong-owner and cancelled requests cannot publish. See ADR0151 and
+[verification](../../docs/selected-node-connection-verification.md).

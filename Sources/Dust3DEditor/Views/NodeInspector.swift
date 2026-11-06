@@ -124,6 +124,7 @@ private struct GroupInspector: View {
             CanvasPrecisionControls(store: store)
             GraphColorizeControls(store: store)
             NodeReductionControls(store: store)
+            NodeConnectionControls(store: store)
             SelectionTransformMenu(store: store)
             Button("Reverse Edges Between Selected Nodes") { store.reverseSelectedEdges() }
                 .disabled(store.snapshot?.reversibleEdges.isEmpty != false)

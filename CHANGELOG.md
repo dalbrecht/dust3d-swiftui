@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Connect two selected endpoints from the inspector or Canvas menu, with explicit surviving part settings, stale-action protection and one Undo step (#349).
+
 - Add shared Help commands for the native project, issue reporting and upstream Dust3D, with visible link-opening failures (#348).
 
 - Include upstream contributor and supporter credits in both native About panels, available offline (#346).

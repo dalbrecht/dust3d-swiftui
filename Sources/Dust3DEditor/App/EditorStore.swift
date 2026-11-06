@@ -1579,6 +1579,21 @@ final class EditorStore {
         perform { try await $0.apply(transaction, selecting: nodeID) }
     }
 
+    func canConnectSelectedNodes(_ target: NodeConnectionTarget, ownerID: String? = nil) -> Bool {
+        guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot) else { return false }
+        guard let ownerID else { return true }
+        return target.owners.contains { $0.nodeID.utf8.elementsEqual(ownerID.utf8) }
+    }
+    func nodeConnectionAction(_ target: NodeConnectionTarget, ownerID: String) -> @MainActor () -> Void {
+        guard canConnectSelectedNodes(target, ownerID: ownerID) else { return {} }
+        return { [weak self] in
+            guard let self, self.canConnectSelectedNodes(target, ownerID: ownerID) else { return }
+            self.perform(acceptCommittedCancellation: true) {
+                try await $0.connectSelectedNodes(target: target, ownerID: ownerID)
+            }
+        }
+    }
+
     func connect(to id: String) {
         guard let selected = snapshot?.selectedID else { return }
         let command = DocumentCommand.joinNodes(id: Self.identifier(), from: selected, to: id)
