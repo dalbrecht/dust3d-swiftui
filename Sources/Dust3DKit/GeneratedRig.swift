@@ -14,7 +14,9 @@ public struct GeneratedRigJoint: Sendable {
     public let parentIndex: Int?
     public let head: SIMD3<Float>
     public let tail: SIMD3<Float>
+    /// Radius in model units, without a physical metric-unit conversion.
     public let capsuleRadius: Float
+    /// Signed radians; generated eyelid joints retain their closing direction.
     public let closingAngle: Float
     public let restWorld: [Double]
     public let inverseBind: [Double]
