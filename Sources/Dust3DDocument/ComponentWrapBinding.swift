@@ -89,6 +89,19 @@ public struct ComponentWrapBindingPlan: Sendable {
 }
 
 enum ComponentWrapBindingXML {
+    static func targetID(for choice: ComponentWrapBindingChoice) -> String? {
+        switch choice {
+        case .ownChildren: return nil
+        case .group(let id): return id
+        }
+    }
+    static func isUnchanged(_ current: ComponentWrapBindingValue, choice: ComponentWrapBindingChoice) -> Bool {
+        switch (current.targetID, targetID(for: choice)) {
+        case (nil, nil): return true
+        case (let original?, let desired?): return original.utf8.elementsEqual(desired.utf8)
+        default: return false
+        }
+    }
     static func set(_ model: XMLDocument, id: String, choice: ComponentWrapBindingChoice) throws -> Bool {
         let components = try ComponentHierarchy.read(model)
         let plan = try ComponentWrapBindingPlan(components: components, ownerIDs: [id])
@@ -98,14 +111,8 @@ enum ComponentWrapBindingXML {
                 $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(id.utf8) == true
             })
         else { throw DocumentError.missingComponent(id) }
-        let desired: String?
-        switch choice {
-        case .ownChildren: desired = nil
-        case .group(let id): desired = id
-        }
-        let original = current.wrapping.binding.targetID
-        if original == nil && desired == nil { return false }
-        if let original, let desired, original.utf8.elementsEqual(desired.utf8) { return false }
+        guard !isUnchanged(current.wrapping.binding, choice: choice) else { return false }
+        let desired = targetID(for: choice)
         element.removeAttribute(forName: "wrapBindTo")
         if let desired {
             let attribute = XMLNode(kind: .attribute)

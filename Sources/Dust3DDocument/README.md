@@ -319,4 +319,10 @@ incoming cutFace/wrapBindTo text and all assets remain untouched. Structural IDs
 are matched as exact UTF-8; every raw requested ID is validated before deduplication.
 This management action ignores canvas graph locks. See ADR0142.
 
-Clipboard paste retargets a component's `wrapBindTo` through the copied identity map once, including equivalent UUID brace spellings without case folding. A body not included in the fragment remains an exact external reference, including opaque or missing targets; copying does not expand graph selection to import it. Other wrapping metadata and assets remain untouched. This does not add binding authoring or dependency-cycle validation; see ADR0136.
+Clipboard paste retargets a component's `wrapBindTo` through the copied identity map once, including equivalent UUID brace spellings without case folding. A body not included in the fragment remains an exact external reference, including opaque or missing targets; copying does not expand graph selection to import it. Other wrapping metadata and assets remain untouched. The clipboard operation does not validate binding dependency cycles; authoring is a separate field-local action (ADR0137). See ADR0136.
+
+`.editComponentWrapping(ids:edit: .binding(choice))` preflights one shared
+`ComponentWrapBindingPlan` for all owners before collecting field-local XML updates.
+It preserves each owner's mode/defaults and semantic no-op source spelling. Binding
+edits refresh geometry/source and materials together, and use one atomic history step.
+See ADR0141; no separate binding-cycle policy or core adoption is implied.
