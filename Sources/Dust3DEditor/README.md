@@ -654,3 +654,15 @@ is off the main actor; its original failure is shown without discarding copied
 rig data. The hierarchy and properties remain available when GPU preparation
 fails. This is native inspection under M5, not a claim that Qt had a separate
 actual-joint numeric editor. Physical keyboard/VoiceOver acceptance is pending.
+
+The central canvas/preview divider is resizable. Experimental generated-rest
+builds provide a Model/Generated Rest selector and an Expand action in the Rig
+inspector. A window owns one rest session, so moving between the inspector and
+workspace preserves generation, selection and camera. Fit, Wireframe and the
+View camera/Wireframe menus target the chosen workspace. Model Colors is unavailable
+in rest mode; automatic orbit is unavailable in
+rest mode and retains the ordinary model preference. Template clicks are explicit
+selection actions; late view refreshes cannot undo a newer choice. Pointer input
+checks its originating generation and presentation at invocation. This slice does
+not add Model/Bones/Weights visibility switches, 3D picking, pose evaluation or
+physical UI/VoiceOver acceptance. See ADR 0166.

@@ -9,6 +9,8 @@ struct Dust3DEditorApp: App {
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(EditorAppDelegate.self) private var appDelegate
     @FocusedValue(\.editorStore) private var store
+    @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
+    @FocusedValue(\.editorPreviewDisplayActions) private var previewDisplayActions
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     @FocusedValue(\.editorTextEditing) private var isEditingText
     @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
@@ -80,27 +82,35 @@ struct Dust3DEditorApp: App {
                 Toggle(
                     "Wireframe",
                     isOn: Binding(
-                        get: { store?.isWireframe == true }, set: { store?.isWireframe = $0 })
+                        get: { previewDisplayActions?.isWireframe == true },
+                        set: { previewDisplayActions?.setWireframe($0) })
                 )
-                .disabled(store == nil)
+                .disabled(previewDisplayActions?.canChangeWireframe != true)
                 Toggle(
                     "Model Colors",
                     isOn: Binding(
-                        get: { store?.showsPreviewColor != false }, set: { store?.showsPreviewColor = $0 })
+                        get: { previewDisplayActions?.showsModelColors == true },
+                        set: { previewDisplayActions?.setModelColors($0) })
                 )
-                .disabled(store == nil)
+                .disabled(previewDisplayActions?.canChangeModelColors != true)
                 Divider()
                 Toggle(
                     "Rotate Preview Automatically",
                     isOn: Binding(
-                        get: { store?.automaticallyOrbitsPreview == true },
-                        set: { store?.automaticallyOrbitsPreview = $0 })
+                        get: {
+                            previewCameraActions?.supportsAutomaticOrbit == true
+                                && store?.automaticallyOrbitsPreview == true
+                        },
+                        set: { enabled in
+                            guard previewCameraActions?.canAutomaticallyOrbit == true else { return }
+                            store?.automaticallyOrbitsPreview = enabled
+                        })
                 )
-                .disabled(store?.canMovePreviewCamera != true)
+                .disabled(previewCameraActions?.canAutomaticallyOrbit != true)
                 .help("Pauses during dragging, while inactive, and when Reduce Motion is enabled.")
                 PreviewCameraMenu(
-                    title: "Preview Camera", isEnabled: store?.canMovePreviewCamera == true,
-                    move: { store?.movePreviewCamera($0) }, fit: { store?.fitPreviewCamera() })
+                    title: "Preview Camera", isEnabled: previewCameraActions?.canMove == true,
+                    move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() })
             }
             CommandMenu("Canvas") {
                 Toggle(

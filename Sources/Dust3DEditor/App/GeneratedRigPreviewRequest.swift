@@ -20,6 +20,14 @@ struct GeneratedRigPreviewRequest: Sendable, Hashable {
 
     func matches(_ snapshot: EditorSnapshot) -> Bool { self == Self(snapshot: snapshot) }
 
+    /// Interaction admission after full request-byte validation. Actor-owned
+    /// document snapshots advance revision for edits, Undo and replacement.
+    func matchesVersion(_ snapshot: EditorSnapshot) -> Bool {
+        documentIdentity == snapshot.documentIdentity && documentRevision == snapshot.documentRevision
+            && sourceType.map { Data($0.utf8) } == snapshot.rigSettings.sourceRigType.map { Data($0.utf8) }
+            && headHasEyelids == snapshot.rigSettings.headHasEyelids
+    }
+
     static func == (left: Self, right: Self) -> Bool {
         left.documentIdentity == right.documentIdentity && left.documentRevision == right.documentRevision
             && left.headHasEyelids == right.headHasEyelids

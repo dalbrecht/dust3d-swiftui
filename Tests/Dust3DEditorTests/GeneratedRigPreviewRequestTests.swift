@@ -35,4 +35,19 @@ final class GeneratedRigPreviewRequestTests: XCTestCase {
         XCTAssertFalse(request.matches(other))
         XCTAssertEqual(Set([request, GeneratedRigPreviewRequest(snapshot: opened)]).count, 1)
     }
+    func testVersionAdmissionTracksActorRevisionAndDocumentIdentity() async throws {
+        let session = EditorSession()
+        let opened = try await session.open(data: document().encoded())
+        let request = GeneratedRigPreviewRequest(snapshot: opened)
+        XCTAssertTrue(request.matchesVersion(opened))
+        let selected = try await session.select("n")
+        XCTAssertTrue(request.matchesVersion(selected))
+        let changed = try await session.apply([.setHeadHasEyelids(true)])
+        XCTAssertFalse(request.matchesVersion(changed))
+        let restored = try await session.undo()
+        XCTAssertFalse(request.matchesVersion(restored))
+        let other = try await EditorSession().open(data: document().encoded())
+        XCTAssertFalse(request.matchesVersion(other))
+    }
+
 }
