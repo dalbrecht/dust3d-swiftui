@@ -70,4 +70,26 @@ final class MeshPickGestureTests: XCTestCase {
         XCTAssertNil(gesture.finish(at: .zero, lease: lease))
         XCTAssertNil(gesture.drag(to: SIMD2(10, 0), lease: lease))
     }
+    func testPanIntentBelowThresholdCannotBecomeClickAndResetsOnNextPress() {
+        var gesture = MeshPickGesture()
+        let lease = MeshPickGesture.Lease(pickingRevision: UUID(), cameraRevision: UUID())
+        gesture.begin(at: .zero, lease: lease)
+        gesture.disallowClick()
+        XCTAssertNil(gesture.drag(to: SIMD2(1, 1), lease: lease))
+        XCTAssertNil(gesture.finish(at: SIMD2(1, 1), lease: lease))
+        gesture.begin(at: .zero, lease: lease)
+        XCTAssertEqual(gesture.finish(at: .zero, lease: lease), .zero)
+    }
+
+    func testPanIntentPreservesThresholdAndFullDeltaInsteadOfCancellingDrag() {
+        var gesture = MeshPickGesture()
+        let lease = MeshPickGesture.Lease(pickingRevision: UUID(), cameraRevision: UUID())
+        gesture.begin(at: SIMD2(10, 10), lease: lease)
+        gesture.disallowClick()
+        XCTAssertNil(gesture.drag(to: SIMD2(12, 10), lease: lease))
+        XCTAssertEqual(gesture.drag(to: SIMD2(14, 10), lease: lease), SIMD2(4, 0))
+        XCTAssertEqual(gesture.drag(to: SIMD2(15, 12), lease: lease), SIMD2(1, 2))
+        XCTAssertNil(gesture.finish(at: SIMD2(10, 10), lease: lease))
+    }
+
 }

@@ -594,15 +594,35 @@ public class InteractiveMeshView: MTKView {
 
     public override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
+        guard cameraInteractionAllowed() else {
+            cancelCameraInteraction()
+            return
+        }
         if let lease = pickLease, let onPick, cameraInteractionAllowed() {
             pickGesture.begin(at: pointer(event), lease: lease)
+            if event.modifierFlags.contains(.shift) { pickGesture.disallowClick() }
             pressedPick = onPick
         }
         lastDragLocation = event.locationInWindow
         automaticOrbitBinding.cameraInputChanged()
     }
 
+    private func dragCamera(by delta: SIMD2<Float>, pans: Bool) {
+        var camera = orbitCamera
+        guard camera.drag(by: delta, viewport: SIMD2(Float(bounds.width), Float(bounds.height)), pans: pans) else {
+            return
+        }
+        orbitCamera = camera
+        needsDisplay = true
+    }
+
     public override func mouseDragged(with event: NSEvent) {
+        guard cameraInteractionAllowed() else {
+            cancelCameraInteraction()
+            return
+        }
+        let pans = event.modifierFlags.contains(.shift)
+        if pans { pickGesture.disallowClick() }
         let location = event.locationInWindow
         if pickingRevision != nil {
             guard cameraInteractionAllowed(), let lease = pickLease else {
@@ -610,23 +630,21 @@ public class InteractiveMeshView: MTKView {
                 return
             }
             if let delta = pickGesture.drag(to: pointer(event), lease: lease) {
-                orbitCamera.orbit(horizontal: delta.x, vertical: -delta.y)
-                needsDisplay = true
+                dragCamera(by: delta, pans: pans)
             }
             lastDragLocation = location
             return
         }
         if let previous = lastDragLocation {
-            orbitCamera.orbit(
-                horizontal: Float(location.x - previous.x),
-                vertical: Float(previous.y - location.y)
-            )
+            dragCamera(
+                by: SIMD2(Float(location.x - previous.x), Float(location.y - previous.y)), pans: pans)
         }
         lastDragLocation = location
         needsDisplay = true
     }
 
     public override func mouseUp(with event: NSEvent) {
+        if event.modifierFlags.contains(.shift) { pickGesture.disallowClick() }
         let callback = pressedPick
         if cameraInteractionAllowed(), let lease = pickLease,
             let point = pickGesture.finish(at: pointer(event), lease: lease), let callback

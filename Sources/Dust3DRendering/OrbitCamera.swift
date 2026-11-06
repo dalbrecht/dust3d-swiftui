@@ -27,6 +27,27 @@ struct OrbitCamera {
         distance = min(20, max(1.25, distance * exp(-delta * 0.03)))
     }
 
+    /// Pointer deltas use bottom-left view-point coordinates. Shift-pan follows
+    /// the pointer in screen space; ordinary dragging retains the existing orbit.
+    @discardableResult
+    mutating func drag(by delta: SIMD2<Float>, viewport: SIMD2<Float>, pans: Bool) -> Bool {
+        guard delta.x.isFinite, delta.y.isFinite else { return false }
+        if pans {
+            guard viewport.x.isFinite, viewport.y.isFinite, viewport.x > 0, viewport.y > 0 else { return false }
+            func normalized(_ value: Float, size: Float) -> Float {
+                let amount = Double(value) / Double(size) * 2
+                // The full existing offset span is three. Larger deltas have
+                // the same saturated result, and bounding before conversion
+                // avoids Float overflow for small valid viewports.
+                return Float(min(3, max(-3, amount)))
+            }
+            pan(horizontal: normalized(delta.x, size: viewport.x), vertical: normalized(delta.y, size: viewport.y))
+        } else {
+            orbit(horizontal: delta.x, vertical: -delta.y)
+        }
+        return true
+    }
+
     /// AppKit magnification is an incremental scale delta. Reuse the zoom
     /// envelope while dividing camera distance by the positive factor 1 + delta.
     @discardableResult

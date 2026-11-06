@@ -83,7 +83,7 @@
                     hierarchySection(rig: rig, revision: revision, selected: selected)
                     if session.canPick {
                         Text(
-                            "Click a bone to select it; drag to orbit. Hide Model to select bones behind model surfaces."
+                            "Click a bone to select it; drag to orbit or Shift-drag to pan. Hide Model to select bones behind model surfaces."
                         )
                         .font(.caption).foregroundStyle(.secondary)
                     } else {
