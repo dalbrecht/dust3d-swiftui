@@ -10,6 +10,8 @@ private final class RestMenuRecords {
     var bones = true
     var weights = true
     var writes: [String] = []
+    var canReveal = true
+    var reveals = 0
 
     func actions() -> EditorRestPreviewActions {
         EditorRestPreviewActions(
@@ -32,7 +34,9 @@ private final class RestMenuRecords {
             setShowsWeights: {
                 self.weights = $0
                 self.writes.append("weights")
-            })
+            },
+            canRevealSelectedJoint: { self.canReveal },
+            revealSelectedJoint: { self.reveals += 1 })
     }
 }
 
@@ -105,4 +109,25 @@ final class EditorRestPreviewActionsTests: XCTestCase {
         XCTAssertTrue(records.model && records.bones && records.weights)
         XCTAssertEqual(records.writes, ["mode"])
     }
+    func testRevealChecksCurrentRestModeAndCurrentJointAvailabilityAtDispatch() {
+        let records = RestMenuRecords()
+        let actions = records.actions()
+        XCTAssertFalse(actions.canRevealSelectedJoint)
+        actions.revealSelectedJoint()
+        XCTAssertEqual(records.reveals, 0)
+        records.mode = .generatedRest
+        XCTAssertTrue(actions.canRevealSelectedJoint)
+        actions.revealSelectedJoint()
+        XCTAssertEqual(records.reveals, 1)
+        records.canReveal = false
+        XCTAssertFalse(actions.canRevealSelectedJoint)
+        actions.revealSelectedJoint()
+        records.canReveal = true
+        records.current = false
+        XCTAssertFalse(actions.canRevealSelectedJoint)
+        actions.revealSelectedJoint()
+        XCTAssertEqual(records.reveals, 1)
+        XCTAssertTrue(records.writes.isEmpty)
+    }
+
 }

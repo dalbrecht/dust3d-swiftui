@@ -396,4 +396,57 @@ final class GeneratedRigPreviewSessionTests: XCTestCase {
         session.stop()
     }
 
+    func testHierarchyRevealSurvivesRemountWithoutMovingCameraAndRejectsObsoleteOrigins() async throws {
+        let initial = try await snapshot()
+        let box = SessionSnapshotBox(initial)
+        let request = GeneratedRigPreviewRequest(snapshot: initial)
+        let gate = SessionRigGate()
+        let session = GeneratedRigPreviewSession(
+            generation: GeneratedRigPreviewState { _ in try await gate.load() },
+            display: GeneratedRigDisplayState { rig, _ in rig.mesh }, readSnapshot: { box.value })
+        session.update(request: request, selectedBoneName: "Root", appearance: palette)
+        try await wait { await gate.contains(1) }
+        await gate.finish(1)
+        try await wait { session.isReady }
+        let revision = try XCTUnwrap(session.currentRevision)
+        session.selectJoint(1, revision: revision)
+        try await wait { session.isReady && session.selectedIndex == 1 }
+        let disclosure = session.hierarchyDisclosure
+        XCTAssertEqual(disclosure.expanded, [0])
+        XCTAssertTrue(disclosure.isExpanded)
+        let first = try XCTUnwrap(disclosure.reveal)
+        let origin = session.presentationRevision
+        XCTAssertTrue(session.acceptsHierarchyReveal(first, presentationRevision: origin))
+        let camera = session.cameraState
+        let transform = camera.camera.transform(aspect: 1)
+        session.setHierarchyExpanded(false, index: 0, revision: revision, presentationRevision: origin)
+        session.update(request: request, selectedBoneName: nil, appearance: palette)
+        XCTAssertTrue(session.hierarchyDisclosure === disclosure)
+        XCTAssertFalse(disclosure.expanded.contains(0))
+        XCTAssertFalse(session.acceptsHierarchyReveal(first, presentationRevision: origin))
+        session.revealSelectedJoint(revision: revision, presentationRevision: origin)
+        let second = try XCTUnwrap(disclosure.reveal)
+        XCTAssertNotEqual(first.id, second.id)
+        XCTAssertTrue(disclosure.expanded.contains(0))
+        session.setPresentation(.generatedRest)
+        session.setPresentation(.model)
+        XCTAssertFalse(session.acceptsHierarchyReveal(second, presentationRevision: origin))
+        let current = session.presentationRevision
+        session.revealSelectedJoint(revision: revision, presentationRevision: origin)
+        XCTAssertNil(disclosure.reveal)
+        session.revealSelectedJoint(revision: revision, presentationRevision: current)
+        let third = try XCTUnwrap(disclosure.reveal)
+        box.value = try await snapshot()
+        XCTAssertFalse(session.acceptsHierarchyReveal(third, presentationRevision: current))
+        session.setHierarchyExpanded(false, index: 0, revision: revision, presentationRevision: current)
+        XCTAssertTrue(disclosure.expanded.contains(0))
+        XCTAssertEqual(session.selectedIndex, nil)
+        XCTAssertEqual(camera.camera.transform(aspect: 1), transform)
+        XCTAssertEqual(session.request, request)
+        let calls = await gate.calls
+        XCTAssertEqual(calls, 1)
+        session.stop()
+        XCTAssertNil(disclosure.revision)
+    }
+
 }

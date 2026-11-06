@@ -258,6 +258,7 @@ struct EditorRootView: View {
         #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
             let presentation = restPreview.presentationRevision
             let document = store.snapshot?.documentIdentity
+            let revision = restPreview.currentRevision
             return EditorRestPreviewActions(
                 isCurrent: { [weak restPreview, weak store] in
                     store != nil && store?.snapshot?.documentIdentity == document
@@ -270,7 +271,17 @@ struct EditorRootView: View {
                 showsBones: { [weak restPreview] in restPreview?.showsBones == true },
                 setShowsBones: { [weak restPreview] in restPreview?.showsBones = $0 },
                 showsWeights: { [weak restPreview] in restPreview?.showsWeights == true },
-                setShowsWeights: { [weak restPreview] in restPreview?.setShowsWeights($0) })
+                setShowsWeights: { [weak restPreview] in restPreview?.setShowsWeights($0) },
+                canRevealSelectedJoint: { [weak restPreview] in
+                    guard let revision, let restPreview else { return false }
+                    return restPreview.currentRevision == revision
+                        && restPreview.hierarchyDisclosure.revision == revision
+                        && restPreview.hierarchyDisclosure.selectedIndex != nil
+                },
+                revealSelectedJoint: { [weak restPreview] in
+                    guard let revision else { return }
+                    restPreview?.revealSelectedJoint(revision: revision, presentationRevision: presentation)
+                })
         #else
             return nil
         #endif
