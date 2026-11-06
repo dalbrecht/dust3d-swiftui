@@ -686,3 +686,11 @@ Hit testing runs on copied geometry in the background. Results from an older
 source, presentation, camera or viewport projection are ignored. Picking errors
 retain the rendered rest mesh and their original diagnostic. Physical pointer,
 GPU, keyboard and VoiceOver acceptance remains outstanding. See ADR 0168.
+
+Experimental builds also provide View > Preview Mode and View > Generated Rest
+menu controls. Preview Mode selects Model or Generated Rest; the Generated Rest
+submenu offers Show Model, Show Bones and Show Weights when that workspace is
+active. They share the window's existing preferences and display preparation,
+without changing documents. Old menu actions are ignored after document or
+presentation replacement. The ordinary build's menus stay unchanged. Physical
+menu navigation and VoiceOver acceptance remain outstanding. See ADR 0169.

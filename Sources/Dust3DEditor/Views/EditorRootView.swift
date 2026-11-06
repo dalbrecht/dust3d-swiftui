@@ -200,6 +200,7 @@ struct EditorRootView: View {
         .focusedSceneValue(\.editorStore, store)
         .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
         .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
+        .focusedSceneValue(\.editorRestPreviewActions, restPreviewActions)
         .focusedSceneValue(
             \.editorGeometryExportAction,
             EditorGeometryExportAction(
@@ -251,6 +252,28 @@ struct EditorRootView: View {
                 NodeInspector(store: store)
             }
         }
+    }
+
+    private var restPreviewActions: EditorRestPreviewActions? {
+        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+            let presentation = restPreview.presentationRevision
+            let document = store.snapshot?.documentIdentity
+            return EditorRestPreviewActions(
+                isCurrent: { [weak restPreview, weak store] in
+                    store != nil && store?.snapshot?.documentIdentity == document
+                        && restPreview?.presentationRevision == presentation
+                },
+                mode: { [weak restPreview] in restPreview?.presentation ?? .model },
+                setMode: { [weak restPreview] in restPreview?.setPresentation($0) },
+                showsModel: { [weak restPreview] in restPreview?.showsModel == true },
+                setShowsModel: { [weak restPreview] in restPreview?.showsModel = $0 },
+                showsBones: { [weak restPreview] in restPreview?.showsBones == true },
+                setShowsBones: { [weak restPreview] in restPreview?.showsBones = $0 },
+                showsWeights: { [weak restPreview] in restPreview?.showsWeights == true },
+                setShowsWeights: { [weak restPreview] in restPreview?.setShowsWeights($0) })
+        #else
+            return nil
+        #endif
     }
 
     private var previewCameraActions: EditorPreviewCameraActions {
