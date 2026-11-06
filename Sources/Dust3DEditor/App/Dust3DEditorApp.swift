@@ -151,6 +151,7 @@ struct Dust3DEditorApp: App {
                 CanvasPrecisionMenu(store: store)
                 GraphColorizeMenu(store: store)
                 DescendantRotationMenu(store: store)
+                NodeConnectionControls(store: store)
                 Button("Reduce Selected Nodes") { store?.reduceSelectedNodes() }
                     .disabled(store?.canReduceSelectedNodes != true)
                     .accessibilityLabel("Reduce Selected Nodes")
