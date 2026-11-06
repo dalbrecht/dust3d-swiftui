@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select generated bones directly in the experimental rest preview with guarded click-versus-drag input and cancellable background picking; retain displayed geometry and keyboard inspection if picking preparation fails (#367).
+
 - Add independent Model, Bones and Weights controls to experimental generated-rest inspection, preserving the full camera frame, selected joint and numerical properties when geometry or weight colors are hidden (#367).
 
 - Add a resizable Model/Generated Rest workspace with one per-window rest session, shared camera and stale-safe focused controls; preserve selection and camera across presentation changes (#367).

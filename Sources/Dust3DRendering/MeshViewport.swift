@@ -31,6 +31,8 @@ public struct MeshViewport: NSViewRepresentable {
     let automaticallyOrbits: Bool
     let cameraReset: Int
     let cameraCommand: MeshCameraCommand?
+    let pickingRevision: UUID?
+    let onPick: (@MainActor (MeshPickInput) -> Void)?
     let cameraState: MeshCameraState?
     let cameraRevision: Int?
     let cameraInteractionAllowed: @MainActor () -> Bool
@@ -54,6 +56,7 @@ public struct MeshViewport: NSViewRepresentable {
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
         cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true, automaticallyOrbits: Bool = false,
         blendsVertexAlpha: Bool = false, drawRange: Range<Int>? = nil, cameraState: MeshCameraState? = nil,
+        pickingRevision: UUID? = nil, onPick: (@MainActor (MeshPickInput) -> Void)? = nil,
         cameraInteractionAllowed: @escaping @MainActor () -> Bool = { true }, onError: @escaping (String) -> Void
     ) {
         onMaterialRendered = {}
@@ -61,6 +64,8 @@ public struct MeshViewport: NSViewRepresentable {
         onMaterialError = { _ in }
         self.blendsVertexAlpha = blendsVertexAlpha
         self.drawRange = drawRange
+        self.pickingRevision = pickingRevision
+        self.onPick = onPick
         self.cameraState = cameraState
         cameraRevision = cameraState?.revision
         self.cameraInteractionAllowed = cameraInteractionAllowed
@@ -127,6 +132,8 @@ public struct MeshViewport: NSViewRepresentable {
         self.onMaterialError = onMaterialError ?? onError
         blendsVertexAlpha = false
         drawRange = nil
+        pickingRevision = nil
+        onPick = nil
         cameraState = nil
         cameraRevision = nil
         cameraInteractionAllowed = { true }
@@ -162,6 +169,7 @@ public struct MeshViewport: NSViewRepresentable {
     func updateRenderer(in view: InteractiveMeshView, reduceMotion: Bool = false) {
         defer { view.automaticOrbitBinding.update(requested: automaticallyOrbits, reduceMotion: reduceMotion) }
         view.drawRangeRequest.update(range: drawRange, meshRevision: meshRevision)
+        view.updatePicking(revision: pickingRevision, callback: onPick)
         view.cameraInteractionAllowed = cameraInteractionAllowed
         view.adoptCameraState(cameraState)
         if view.alphaRequest.update(blendsVertexAlpha: blendsVertexAlpha) {
@@ -270,6 +278,32 @@ public class InteractiveMeshView: MTKView {
     private var cameraState: MeshCameraState?
     var cameraInteractionAllowed: @MainActor () -> Bool = { true }
     private var lastCameraCommand: UUID?
+    private var fallbackInputRevision = UUID()
+    private var pickingRevision: UUID?
+    private var onPick: (@MainActor (MeshPickInput) -> Void)?
+    private var pressedPick: (@MainActor (MeshPickInput) -> Void)?
+    private var pickGesture = MeshPickGesture()
+
+    func updatePicking(revision: UUID?, callback: (@MainActor (MeshPickInput) -> Void)?) {
+        if pickingRevision != revision { cancelPicking() }
+        pickingRevision = revision
+        onPick = callback
+    }
+    private func cancelPicking() {
+        pickGesture.cancel()
+        pressedPick = nil
+        lastDragLocation = nil
+    }
+    private var pickLease: MeshPickGesture.Lease? {
+        pickingRevision.map {
+            MeshPickGesture.Lease(
+                pickingRevision: $0, cameraRevision: cameraState?.inputRevision ?? fallbackInputRevision)
+        }
+    }
+    private func pointer(_ event: NSEvent) -> SIMD2<Float> {
+        let point = convert(event.locationInWindow, from: nil)
+        return SIMD2(Float(point.x), Float(point.y))
+    }
 
     func applyCameraCommand(_ command: MeshCameraCommand) {
         guard lastCameraCommand != command.id else { return }
@@ -316,6 +350,7 @@ public class InteractiveMeshView: MTKView {
             {
                 return
             }
+            fallbackInputRevision = UUID()
             synchronizeCamera(newValue)
         }
     }
@@ -480,16 +515,49 @@ public class InteractiveMeshView: MTKView {
         automaticOrbitBinding.visibilityChanged()
     }
 
+    private func invalidatePickingProjection() {
+        guard pickingRevision != nil || pressedPick != nil else { return }
+        cancelPicking()
+        cameraState?.invalidateProjection()
+        fallbackInputRevision = UUID()
+    }
+
+    public override func setFrameSize(_ newSize: NSSize) {
+        if frame.size != newSize { invalidatePickingProjection() }
+        super.setFrameSize(newSize)
+    }
+
+    public override func viewDidChangeBackingProperties() {
+        invalidatePickingProjection()
+        super.viewDidChangeBackingProperties()
+    }
+
     public override var acceptsFirstResponder: Bool { true }
 
     public override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
+        if let lease = pickLease, let onPick, cameraInteractionAllowed() {
+            pickGesture.begin(at: pointer(event), lease: lease)
+            pressedPick = onPick
+        }
         lastDragLocation = event.locationInWindow
         automaticOrbitBinding.cameraInputChanged()
     }
 
     public override func mouseDragged(with event: NSEvent) {
         let location = event.locationInWindow
+        if pickingRevision != nil {
+            guard cameraInteractionAllowed(), let lease = pickLease else {
+                cancelPicking()
+                return
+            }
+            if let delta = pickGesture.drag(to: pointer(event), lease: lease) {
+                orbitCamera.orbit(horizontal: delta.x, vertical: -delta.y)
+                needsDisplay = true
+            }
+            lastDragLocation = location
+            return
+        }
         if let previous = lastDragLocation {
             orbitCamera.orbit(
                 horizontal: Float(location.x - previous.x),
@@ -501,17 +569,32 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func mouseUp(with event: NSEvent) {
+        let callback = pressedPick
+        if cameraInteractionAllowed(), let lease = pickLease,
+            let point = pickGesture.finish(at: pointer(event), lease: lease), let callback
+        {
+            let size = SIMD2(Float(bounds.width), Float(bounds.height))
+            if size.x > 0, size.y > 0 {
+                // Event positions remain in view points; use the renderer's
+                // actual drawable aspect, including backing-pixel rounding.
+                let aspect = Float(drawableSize.width / max(drawableSize.height, 1))
+                callback(MeshPickInput(point: point, size: size, transform: orbitCamera.transform(aspect: aspect)))
+            }
+        }
+        cancelPicking()
         lastDragLocation = nil
         automaticOrbitBinding.cameraInputChanged()
     }
 
     public override func scrollWheel(with event: NSEvent) {
+        cancelPicking()
         automaticOrbitBinding.cameraInputChanged()
         orbitCamera.zoom(delta: Float(event.scrollingDeltaY))
         needsDisplay = true
     }
 
     public override func keyDown(with event: NSEvent) {
+        cancelPicking()
         automaticOrbitBinding.cameraInputChanged()
         switch event.keyCode {
         case 123: orbitCamera.orbit(horizontal: -10, vertical: 0)

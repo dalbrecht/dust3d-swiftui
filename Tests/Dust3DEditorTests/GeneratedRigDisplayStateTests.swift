@@ -360,4 +360,36 @@ final class GeneratedRigDisplayStateTests: XCTestCase {
         XCTAssertEqual(Set([enabled, disabled]).count, 2)
     }
 
+    func testPickingMetadataPublishesWithMeshAndFailureDoesNotDiscardDisplay() async {
+        let state = GeneratedRigDisplayState.withPicking { rig, key in
+            let mesh = Mesh(
+                vertices: rig.mesh.vertices + rig.mesh.vertices, nodeCount: 1, partCount: 1, warning: "retained")
+            if key.selectedBoneName == "cause" {
+                return GeneratedRigDisplayGeometry(mesh: mesh, pickingFailure: "original picking cause")
+            }
+            return GeneratedRigDisplayGeometry(
+                mesh: mesh, skeletonTriangleOwners: key.selectedBoneName == "invalid" ? [0, 0] : [0])
+        }
+        let first = request()
+        await state.load(first, rig: displayRig())
+        XCTAssertTrue(state.pickingGeometry?.hasBones == true)
+        XCTAssertNil(state.pickingError)
+        XCTAssertEqual(state.acceptedRequest, first)
+        let cause = request(name: "cause")
+        await state.load(cause, rig: displayRig())
+        XCTAssertEqual(state.acceptedRequest, cause)
+        XCTAssertEqual(state.mesh?.vertices.count, 6)
+        XCTAssertEqual(state.skeletonVertexCount, 3)
+        XCTAssertNil(state.error)
+        XCTAssertNil(state.pickingGeometry)
+        XCTAssertEqual(state.pickingError, "original picking cause")
+        await state.load(request(name: "invalid"), rig: displayRig())
+        XCTAssertNil(state.error)
+        XCTAssertNotNil(state.pickingError)
+        XCTAssertNotNil(state.mesh)
+        state.stop()
+        XCTAssertNil(state.pickingGeometry)
+        XCTAssertNil(state.pickingError)
+    }
+
 }

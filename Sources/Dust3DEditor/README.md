@@ -663,7 +663,7 @@ View camera/Wireframe menus target the chosen workspace. Model Colors is unavail
 in rest mode; automatic orbit is unavailable in
 rest mode and retains the ordinary model preference. Template clicks are explicit
 selection actions; late view refreshes cannot undo a newer choice. Pointer input
-checks its originating generation and presentation at invocation. Three-dimensional picking, pose evaluation and physical UI/VoiceOver
+checks its originating generation and presentation at invocation. Pose evaluation and physical UI/VoiceOver
 acceptance remain outstanding. See ADR 0166.
 
 Experimental generated-rest inspection also offers Model, Bones and Weights
@@ -674,3 +674,15 @@ no bones can be drawn. Weights off makes the body gray while retaining selected
 bone colors, joint selection and numerical summaries; it only prepares display
 colors and does not regenerate the rig. Physical rendering and VoiceOver
 acceptance remain outstanding. See ADR 0167.
+
+The experimental rest preview supports clicking a bone to select its existing
+hierarchy/weight highlight. Dragging orbits the camera; a click does not assign
+edges or change document history. Model surfaces block picks even though the body
+is translucent; hide Model to access interior or obscured bones. Empty/body clicks
+preserve selection. The hierarchy and Weight highlight picker remain the keyboard
+route, including zero-axis joints with no drawable shape.
+
+Hit testing runs on copied geometry in the background. Results from an older
+source, presentation, camera or viewport projection are ignored. Picking errors
+retain the rendered rest mesh and their original diagnostic. Physical pointer,
+GPU, keyboard and VoiceOver acceptance remains outstanding. See ADR 0168.

@@ -1,4 +1,5 @@
 import Dust3DKit
+import Dust3DRendering
 import Foundation
 import Observation
 
@@ -33,10 +34,26 @@ struct GeneratedRigDisplayRequest: Sendable, Hashable {
     }
 }
 
+/// Optional copied ownership is a derived picking aid. Its failure cannot
+/// discard an otherwise valid rest mesh or weight summary.
+struct GeneratedRigDisplayGeometry: Sendable {
+    let mesh: Mesh
+    let skeletonTriangleOwners: [UInt32]?
+    let pickingFailure: String?
+
+    init(mesh: Mesh, skeletonTriangleOwners: [UInt32]? = nil, pickingFailure: String? = nil) {
+        self.mesh = mesh
+        self.skeletonTriangleOwners = skeletonTriangleOwners
+        self.pickingFailure = pickingFailure
+    }
+}
+
 private struct GeneratedRigDisplayPrepared: Sendable {
     let mesh: Mesh
     let weightSummary: GeneratedRigWeightSummary?
     let skeletonVertexCount: Int
+    let pickingGeometry: MeshPickingGeometry?
+    let pickingError: String?
 }
 
 /// Recolors copied rest data without regenerating a rig or evaluating a pose.
@@ -50,26 +67,49 @@ final class GeneratedRigDisplayState {
     private(set) var mesh: Mesh?
     private(set) var weightSummary: GeneratedRigWeightSummary?
     private(set) var skeletonVertexCount: Int?
+    private(set) var pickingGeometry: MeshPickingGeometry?
+    private(set) var pickingError: String?
     private(set) var meshRigRevision: UUID?
     private(set) var meshRevision = 0
     private(set) var error: String?
     private(set) var isLoading = false
     @ObservationIgnored private var worker: Task<GeneratedRigDisplayPrepared, Error>?
-    @ObservationIgnored private let builder: @Sendable (GeneratedRig, GeneratedRigDisplayRequest) async throws -> Mesh
+    @ObservationIgnored private let preparer:
+        @Sendable (GeneratedRig, GeneratedRigDisplayRequest) async throws -> GeneratedRigDisplayGeometry
 
     init(builder: @escaping @Sendable (GeneratedRig, GeneratedRigDisplayRequest) async throws -> Mesh) {
-        self.builder = builder
+        preparer = { rig, request in GeneratedRigDisplayGeometry(mesh: try await builder(rig, request)) }
+    }
+
+    private init(
+        preparer:
+            @escaping @Sendable (GeneratedRig, GeneratedRigDisplayRequest) async throws -> GeneratedRigDisplayGeometry
+    ) {
+        self.preparer = preparer
+    }
+
+    static func withPicking(
+        _ preparer:
+            @escaping @Sendable (GeneratedRig, GeneratedRigDisplayRequest) async throws -> GeneratedRigDisplayGeometry
+    ) -> GeneratedRigDisplayState {
+        GeneratedRigDisplayState(preparer: preparer)
     }
 
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
         convenience init() {
-            self.init { rig, request in
+            self.init(preparer: { rig, request in
                 let skeleton = try rig.skeletonMesh(selectedBoneName: request.selectedBoneName)
-                return try rig.previewMesh(
+                let mesh = try rig.previewMesh(
                     skeleton: skeleton, selectedBoneName: request.selectedBoneName, showsWeights: request.showsWeights,
                     boneColor: request.appearance.boneColor,
                     selectedBoneColor: request.appearance.selectedBoneColor, ringColor: request.appearance.ringColor)
-            }
+                do {
+                    return GeneratedRigDisplayGeometry(
+                        mesh: mesh, skeletonTriangleOwners: try skeleton?.triangleOwners() ?? [])
+                } catch is CancellationError { throw CancellationError() } catch {
+                    return GeneratedRigDisplayGeometry(mesh: mesh, pickingFailure: error.localizedDescription)
+                }
+            })
         }
     #endif
 
@@ -83,10 +123,11 @@ final class GeneratedRigDisplayState {
         acceptedRequest = nil
         error = nil
         isLoading = true
-        let builder = builder
+        let preparer = preparer
         let task = Task.detached(priority: .userInitiated) {
             try Task.checkCancellation()
-            let mesh = try await builder(rig, request)
+            let geometry = try await preparer(rig, request)
+            let mesh = geometry.mesh
             try Task.checkCancellation()
             // The builder's contract is a skeleton prefix followed by every copied
             // body vertex. Retain the complete stream for one stable camera frame.
@@ -95,9 +136,23 @@ final class GeneratedRigDisplayState {
             else { throw RigTemplateHierarchyError.invalidMetadata("invalid generated rest body boundary") }
             let skeletonVertexCount = mesh.vertices.count - rig.mesh.vertices.count
             let summary = try rig.weightSummary(selectedBoneName: request.selectedBoneName)
+            var pickingGeometry: MeshPickingGeometry?
+            var pickingError = geometry.pickingFailure
+            if let owners = geometry.skeletonTriangleOwners, pickingError == nil {
+                do {
+                    guard owners.count == skeletonVertexCount / 3 else {
+                        throw RigTemplateHierarchyError.invalidMetadata("invalid picking skeleton/body boundary")
+                    }
+                    pickingGeometry = try MeshPickingGeometry(
+                        mesh: mesh, skeletonTriangleOwners: owners, jointCount: rig.joints.count)
+                } catch is CancellationError { throw CancellationError() } catch {
+                    pickingError = error.localizedDescription
+                }
+            }
             try Task.checkCancellation()
             return GeneratedRigDisplayPrepared(
-                mesh: mesh, weightSummary: summary, skeletonVertexCount: skeletonVertexCount)
+                mesh: mesh, weightSummary: summary, skeletonVertexCount: skeletonVertexCount,
+                pickingGeometry: pickingGeometry, pickingError: pickingError)
         }
         worker = task
         let result: Result<GeneratedRigDisplayPrepared, Error>
@@ -124,6 +179,8 @@ final class GeneratedRigDisplayState {
             mesh = value.mesh
             weightSummary = value.weightSummary
             skeletonVertexCount = value.skeletonVertexCount
+            pickingGeometry = value.pickingGeometry
+            pickingError = value.pickingError
             meshRigRevision = request.rigRevision
             meshRevision += 1
             acceptedRequest = request
@@ -148,6 +205,8 @@ final class GeneratedRigDisplayState {
         mesh = nil
         weightSummary = nil
         skeletonVertexCount = nil
+        pickingGeometry = nil
+        pickingError = nil
         meshRigRevision = nil
         error = nil
         isLoading = false
