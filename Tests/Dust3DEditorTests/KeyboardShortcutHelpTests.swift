@@ -3,6 +3,12 @@ import XCTest
 @testable import Dust3DEditor
 
 final class KeyboardShortcutHelpTests: XCTestCase {
+    func testInspectorVisibilityShortcutMatchesNativeWindowCommand() throws {
+        let entry = try XCTUnwrap(KeyboardShortcutHelp.entries.first { $0.action == "Show / Hide Inspector" })
+        XCTAssertEqual(entry.keys, "⌃⌘I")
+        XCTAssertEqual(entry.scope, "Focused editor window")
+    }
+
     func testSearchFindsActionsKeysAndFocusScopeWithoutChangingOrder() {
         let entries = [
             KeyboardShortcutHelp.Entry(action: "Rotate Selection", keys: ", / .", scope: "Canvas selection"),

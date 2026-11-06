@@ -33,6 +33,7 @@ enum KeyboardShortcutHelp {
             action: "Decrease / Increase Selection Spacing", keys: "[ / ]",
             scope: "Focused canvas, node or origin marker, with editable selection and no active drag"),
         .init(action: "Lock X / Y / Z / Radius", keys: "⌥⌘X / ⌥⌘Y / ⌥⌘Z / ⌥⌘R", scope: "Active document"),
+        .init(action: "Show / Hide Inspector", keys: "⌃⌘I", scope: "Focused editor window"),
         .init(action: "Show Animations Inspector", keys: "⌥⌘A", scope: "Editor window"),
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
         .init(action: "Next Replay Step", keys: "⌥→", scope: "Replay Steps window, when a next step is available"),
@@ -78,7 +79,7 @@ struct KeyboardShortcutHelpView: View {
                     ContentUnavailableView.search(text: query)
                 }
             }
-            Text("⌘ Command · ⌥ Option · ⇧ Shift. Punctuation and arrow commands use unmodified keys.")
+            Text("⌘ Command · ⌥ Option · ⌃ Control · ⇧ Shift. Follow the focus scope shown for each command.")
                 .font(.callout).foregroundStyle(.secondary)
         }
         .padding()

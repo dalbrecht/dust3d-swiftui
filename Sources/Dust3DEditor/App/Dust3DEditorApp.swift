@@ -60,6 +60,7 @@ struct Dust3DEditorApp: App {
             }
             EditorClipboardCommands(pasteboard: pasteboard)
             EditorGeometryExportCommands()
+            InspectorCommands()
             CommandGroup(after: .windowArrangement) {
                 Button("Replay Steps…") {
                     guard let document = store?.snapshot?.document else { return }

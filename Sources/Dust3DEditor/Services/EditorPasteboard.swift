@@ -10,11 +10,12 @@ import Observation
 /// App-wide write/text-validation boundary; SwiftUI handles asynchronous paste transfer.
 @MainActor @Observable final class EditorPasteboard: EditorClipboardWriting {
     private static let type = NSPasteboard.PasteboardType(NodeClipboardTransfer.contentType.identifier)
-    private let pasteboard = NSPasteboard.general
+    private let pasteboard: NSPasteboard
     private(set) var textSelectionRevision = 0
     @ObservationIgnored private var selectionObserver: AnyCancellable?
 
-    init() {
+    init(pasteboard: NSPasteboard = .general) {
+        self.pasteboard = pasteboard
         selectionObserver = NotificationCenter.default.publisher(for: NSTextView.didChangeSelectionNotification)
             .sink { [weak self] _ in self?.textSelectionRevision &+= 1 }
     }
