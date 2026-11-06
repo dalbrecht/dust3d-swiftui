@@ -190,3 +190,10 @@ See ADR 0121 and the scoped independent Assimp verification.
 from verified template resources. None returns nil; unsupported types and resource
 failures retain their typed errors. Invalid/cyclic metadata rejects atomically.
 This API performs no skeleton generation or pose evaluation.
+
+Experimental template draw copies are available behind
+`MOTE3D_EXPERIMENTAL_RIG_TEMPLATE` in isolated local-core builds. `RigTemplateMesh`
+returns owned Swift vertices and exact source-order names, retaining flat normals
+and semantic bone/selected/ring roles. It does not create a document rig or pose.
+Run its synchronous loader off the main actor. See ADR0160 for quotas, identity
+and validation limits. The production core revision remains unchanged.

@@ -78,6 +78,11 @@ class LocalCoreIntegrationTests(unittest.TestCase):
                 module.validate_arguments(args)
         module.validate_arguments(['test', '--filter', 'ExampleTests'])
 
+    def test_rig_template_compiler_flag_is_recorded_for_isolated_candidate(self):
+        self.assertEqual(module.validate_arguments([
+            'test', '--filter', 'RigTemplateMeshTests', '-Xswiftc', '-DMOTE3D_EXPERIMENTAL_RIG_TEMPLATE'
+        ]), ['MOTE3D_EXPERIMENTAL_RIG_TEMPLATE'])
+
     def test_hollow_compiler_flag_is_explicit_and_returned_for_build_identity(self):
         self.assertEqual(module.validate_arguments([
             'test', '--filter', 'HollowNativeHistoryTests', '-Xswiftc', '-DMOTE3D_EXPERIMENTAL_HOLLOW'

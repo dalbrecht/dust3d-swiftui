@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an isolated experimental native rig-template preview with complete solids/rings, exact-name selection, background preparation, stale-result protection and camera menu controls; preserve the production core pin (#144).
+
 - Show rig assignment progress with stored/selectable counts, select unassigned or chosen-bone edges, and highlight matches on hover without changing document history (#363).
 
 - Clear exact stored assignments for a template bone or its descendant chain across the document in one Undo step, including hidden and locked parts (#361).

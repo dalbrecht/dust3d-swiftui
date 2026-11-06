@@ -3,7 +3,7 @@ import Dust3DKit
 import Foundation
 import SwiftUI
 
-/// Template browsing does not mutate the document or request generated geometry.
+/// Template browsing never requests document rig generation; assignments remain explicit actions.
 struct RigTemplateBoneBrowser: View {
     let store: EditorStore
     let sourceType: String?
@@ -18,6 +18,9 @@ struct RigTemplateBoneBrowser: View {
                 let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: snapshot)
                 Text("Template bones").font(.headline)
                 Text(hierarchy.description).font(.caption).foregroundStyle(.secondary)
+                #if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE
+                    RigTemplatePreview(sourceType: hierarchy.type, selectedBoneName: selectedName ?? "")
+                #endif
                 BoneAssignmentProgressControls(store: store, overview: context.overview)
                 OutlineGroup(hierarchy.roots, children: \.children) { bone in
                     let target = context.overview.target(for: .named(bone.name))

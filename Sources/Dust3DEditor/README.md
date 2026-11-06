@@ -621,3 +621,12 @@ progress or a bone row highlights raw matches with an accent halo/dashed edge,
 without history or selection changes. Exact surface/row/source ownership prevents
 late exits from clearing a newer highlight; changes and stop clear stale state.
 Physical pointer/keyboard/VoiceOver acceptance remains pending. See ADR0159/#363.
+
+The isolated `MOTE3D_EXPERIMENTAL_RIG_TEMPLATE` workflow adds the complete template
+solids/rings to the bone browser through the existing Metal viewport. Each surface
+owns background generation and color copying, exact-name request identity and
+stale/cancelled/render-error rejection. The native View menu exposes orbit, pan,
+zoom and Fit; selection remains explicit text and list state. Palette resolution
+follows light/dark and increased contrast. This is template visualization only;
+actual generated rigs/weights/IK/deformation and physical UI/VoiceOver acceptance
+remain outstanding. See ADR0160 and issue365. Production core pin is unchanged.
