@@ -181,6 +181,13 @@ ink removes only its override; defaults remove only their changed scalar attribu
 Finish commands advance material identity only: current preparation regenerates its
 own fold-placement snapshot while the visible geometry remains stable. Existing
 higher face counts and body-binding metadata remain intact. See ADR0135.
+`component.wrapping.binding` retains absent versus exact stored `wrapBindTo` text.
+`ComponentWrapBindingPlan` proposes supported unlinked target groups excluding edited
+owners and descendants while retaining ancestor choices. Binding edges do not define
+an extra cycle policy. `.setComponentWrapBinding(id:choice:)` changes only that field;
+Own Children removes a nonempty override, and semantic no-ops preserve source bytes.
+Imported missing/self/descendant/opaque references survive until explicitly replaced.
+The command advances both geometry/source-hint and material input identities; see ADR0137.
 Core issue #13 tracks nonfinite low-density opening output; this document
 foundation does not claim complete wrapping geometry or native UI acceptance.
 
@@ -311,3 +318,5 @@ their last-referenced known parts, nodes and owned/incident edges. Opaque links,
 incoming cutFace/wrapBindTo text and all assets remain untouched. Structural IDs
 are matched as exact UTF-8; every raw requested ID is validated before deduplication.
 This management action ignores canvas graph locks. See ADR0142.
+
+Clipboard paste retargets a component's `wrapBindTo` through the copied identity map once, including equivalent UUID brace spellings without case folding. A body not included in the fragment remains an exact external reference, including opaque or missing targets; copying does not expand graph selection to import it. Other wrapping metadata and assets remain untouched. This does not add binding authoring or dependency-cycle validation; see ADR0136.

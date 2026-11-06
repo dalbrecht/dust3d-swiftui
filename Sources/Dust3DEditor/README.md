@@ -255,8 +255,17 @@ Stale/failed preparation values cannot introduce old diagnostics. Repairing a
 finish value retries missing/stale geometry, retaining its error until a current
 result arrives. Offscreen pattern and generated-normal evidence uses bounded
 reviewed fixtures; it does not establish broad Qt corpus, physical UI or VoiceOver
-acceptance. Multi-group wrapping, body-binding authoring and textured export remain
-separate workflows. See ADR0135.
+acceptance. Multi-group wrapping and textured export remain separate workflows. See ADR0135.
+
+Skin/Cloth groups expose a Weights From picker for Own Children or another supported
+group. The current source remains visible when missing or ineligible for new authoring;
+choosing a replacement is explicit. Ancestors are eligible; the owner and descendants
+are excluded. Imported opaque links remain preserved, although native authoring does
+not yet offer unknown link kinds accepted by Qt. No usable target samples retains guide
+weights; an existing target surface can still affect folds. Captured callbacks reject
+selection, document and constraint changes. Geometry/source and material identities
+advance together in one Undo entry. See ADR0137 for the source-audited acceptance scope
+and the distinction between resolved Swift hints and complete transient donor ownership.
 
 Generated previews use copied indexed meshes and UInt32 Metal triangle buffers.
 Preview request identities, stale-failure retention, successful-empty clearing,

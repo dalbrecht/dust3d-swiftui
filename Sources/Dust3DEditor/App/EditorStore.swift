@@ -1119,6 +1119,22 @@ final class EditorStore {
         }
     }
 
+    func canEditComponentWrapBinding(_ target: ComponentWrapBindingTarget) -> Bool {
+        guard !isWorking, !stopped, let snapshot else { return false }
+        return target.isCurrent(in: snapshot)
+    }
+    func componentWrapBindingAction(_ choice: ComponentWrapBindingChoice, target: ComponentWrapBindingTarget)
+        -> @MainActor () -> Void
+    {
+        guard canEditComponentWrapBinding(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canEditComponentWrapBinding(target) else { return }
+            self.perform(acceptCommittedCancellation: true) {
+                try await $0.editComponentWrapBinding(choice, target: target)
+            }
+        }
+    }
+
     func setComponentWrapMode(_ id: String, mode: ComponentWrapMode) {
         perform { try await $0.apply([.setComponentWrapMode(id: id, mode: mode)]) }
     }
@@ -1916,6 +1932,9 @@ final class EditorStore {
     }
 
     static func message(_ error: Error) -> String {
+        if error is ComponentWrapBindingError {
+            return "The wrapping weights inspector changed. Choose the source again."
+        }
         if error is ComponentSurfaceError { return "The wrapping finish inspector changed. Choose the edit again." }
         if error is ComponentPartRoleError { return "The component role selection changed. Choose the role again." }
         if case .inheritedContext(let id, let attribute) = error as? ComponentReparentError {
@@ -1992,6 +2011,7 @@ final class EditorStore {
                 return "The document contains unsupported component tags or ambiguous identities/containers."
             case .invalidComponentStructure:
                 return "Choose unique sibling components and an unlinked group destination without creating a cycle."
+            case .invalidComponentWrapBinding: return "Choose an available body group, or Own Children."
             case .invalidComponentWrapping:
                 return "Choose a group and wrapping values within the supported editing ranges."
             case .invalidComponentTargetSegments: return "Enter a whole target segment count from 0 to 100."

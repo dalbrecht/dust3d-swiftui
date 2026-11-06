@@ -12,6 +12,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidComponent
     case invalidComponentStructure
     case invalidComponentWrapping
+    case invalidComponentWrapBinding
     case invalidComponentTargetSegments
     case invalidComponentStitchingScalar
     case invalidComponentSmoothing
@@ -148,6 +149,10 @@ public enum DocumentCommand: Sendable {
     /// Throws missingComponent, invalidComponentWrapping or limitExceeded before mutation.
     /// Example: `.editComponentWrapping(ids: groupIDs, edit: .mode(.cloth))`.
     case editComponentWrapping(ids: [String], edit: ComponentWrappingEdit)
+    /// Replace only a group's body-weight reference with an eligible group or Own Children.
+    /// Throws missingComponent/invalidComponentWrapping/invalidComponentWrapBinding atomically.
+    /// Example: `.setComponentWrapBinding(id: garmentID, choice: .group(bodyID))`.
+    case setComponentWrapBinding(id: String, choice: ComponentWrapBindingChoice)
     /// Replace one group pattern; None removes only wrapPattern. Throws missingComponent/invalidComponentWrapping.
     /// Example: `.setComponentSurfacePattern(id: groupID, pattern: .spots)`.
     case setComponentSurfacePattern(id: String, pattern: ComponentSurfacePattern)
@@ -573,7 +578,8 @@ public struct Dust3DDocument: Sendable {
             .deleteAnimation, .setRigType, .setHeadHasEyelids, .setNode, .setNodes, .setReferenceImagePNG, .setOrigin,
             .setComponentName,
             .setComponentCombineMode, .editComponentMeshSettings,
-            .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .editComponentWrapping, .setComponentWrapScalar,
+            .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .editComponentWrapping, .setComponentWrapBinding,
+            .setComponentWrapScalar,
             .setComponentWrapKeepChildren, .setComponentWrapFaces,
             .setComponentSurfacePattern, .setComponentSurfaceScalar, .setComponentSurfaceColor,
             .reorderComponent, .placeComponents,
@@ -760,6 +766,9 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .editComponentWrapping(let ids, let edit):
             guard try ComponentWrappingBatch.apply(model, ids: ids, edit: edit) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentWrapBinding(let id, let choice):
+            guard try ComponentWrapBindingXML.set(model, id: id, choice: choice) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentWrapMode(let id, let mode):
             guard try ComponentWrapping.setMode(model, id: id, mode: mode) else { return self }

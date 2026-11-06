@@ -47,6 +47,8 @@ public enum ComponentWrappingScalarProperty: String, CaseIterable, Hashable, Sen
 /// Opt-in wrapping interpretation. Nil preserves unsupported source metadata without rewriting it.
 public struct ComponentWrappingSettings: Equatable, Sendable {
     public let mode: ComponentWrapMode?
+    /// Exact imported body-reference text, including empty, missing and unsupported targets.
+    public let binding: ComponentWrapBindingValue
     /// Effective keep-children flag; absent/empty defaults to true only for Cloth.
     public let keepsChildren: Bool?
     /// Editable whole face count in 64...20000; larger engine-supported source values remain opaque.
@@ -63,13 +65,15 @@ public struct ComponentWrappingSettings: Equatable, Sendable {
 
     init(
         mode: ComponentWrapMode?, keepsChildren: Bool?, targetFaces: Int?,
-        scalars: [ComponentWrappingScalarProperty: Double], surfaceDetails: ComponentSurfaceDetails
+        scalars: [ComponentWrappingScalarProperty: Double], surfaceDetails: ComponentSurfaceDetails,
+        binding: ComponentWrapBindingValue
     ) {
         self.mode = mode
         self.keepsChildren = keepsChildren
         self.targetFaces = targetFaces
         self.scalars = scalars
         self.surfaceDetails = surfaceDetails
+        self.binding = binding
     }
 }
 
@@ -103,7 +107,9 @@ enum ComponentWrapping {
         }
         return ComponentWrappingSettings(
             mode: mode, keepsChildren: keepsChildren, targetFaces: targetFaces, scalars: scalars,
-            surfaceDetails: .read(element))
+            surfaceDetails: .read(element),
+            binding: (element.attribute(forName: "wrapBindTo")?.stringValue).map(ComponentWrapBindingValue.stored)
+                ?? .absent)
     }
 
     static func setMode(_ model: XMLDocument, id: String, mode: ComponentWrapMode) throws -> Bool {
