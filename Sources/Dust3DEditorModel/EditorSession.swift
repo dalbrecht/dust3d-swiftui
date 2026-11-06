@@ -622,6 +622,9 @@ public actor EditorSession {
                 }
                 try state.selectGraph(nodes: [edge.fromID, edge.toID], edges: [])
                 return
+            case .selectBoneEdges:
+                try state.selectGraph(nodes: [], edges: target.boneEdgeIDs)
+                return
             case .insertMidpoint:
                 try state.insertSelectedEdgeMidpoint(nodeID: identifier(), edgeID: identifier())
                 return

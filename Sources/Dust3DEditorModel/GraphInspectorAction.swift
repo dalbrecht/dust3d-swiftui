@@ -8,6 +8,8 @@ public enum GraphInspectorAction: Sendable {
     case reverseEdge(id: String)
     case disconnectEdge(id: String)
     case selectEndpoints(edgeID: String)
+    /// Replace transient graph selection using this selected edge’s exact stored bone assignment.
+    case selectBoneEdges(edgeID: String)
     case insertMidpoint(edgeID: String)
 }
 
@@ -15,15 +17,17 @@ public enum GraphInspectorAction: Sendable {
 public struct GraphInspectorActionTarget: Sendable {
     private let context: CanvasAdjustmentTarget
     let action: GraphInspectorAction?
+    let boneEdgeIDs: Set<String>
 
-    fileprivate init(context: CanvasAdjustmentTarget, action: GraphInspectorAction?) {
+    fileprivate init(context: CanvasAdjustmentTarget, action: GraphInspectorAction?, boneEdgeIDs: Set<String> = []) {
         self.context = context
         self.action = action
+        self.boneEdgeIDs = boneEdgeIDs
     }
-    /// Endpoint selection updates transient selection only; all other available actions edit history.
+    /// Endpoint and bone-group selection are transient; all other available actions edit history.
     public var changesDocument: Bool {
         switch action {
-        case .none, .selectEndpoints: false
+        case .none, .selectEndpoints, .selectBoneEdges: false
         default: true
         }
     }
@@ -45,6 +49,8 @@ public struct GraphInspectorActionContext: Sendable {
         var mutableEdges = Set<Data>()
         var selectableEdge: Data?
         var midpointEdge: Data?
+        var boneAnchor: Data?
+        var boneEdgeIDs = Set<String>()
     }
 
     /// No XML parsing, engine access or actor mutation occurs while constructing inspector controls.
@@ -56,15 +62,19 @@ public struct GraphInspectorActionContext: Sendable {
     /// Capture the actual row identities and their initial availability; unavailable rows never acquire later intent.
     public func target(for action: GraphInspectorAction) -> GraphInspectorActionTarget {
         let valid: Bool
+        var boneEdgeIDs = Set<String>()
         switch action {
         case .connect(let from, let to):
             valid = availability.node == Data(from.utf8) && availability.peers.contains(Data(to.utf8))
         case .deleteNode(let id): valid = availability.deletableNode == Data(id.utf8)
         case .reverseEdge(let id), .disconnectEdge(let id): valid = availability.mutableEdges.contains(Data(id.utf8))
         case .selectEndpoints(let id): valid = availability.selectableEdge == Data(id.utf8)
+        case .selectBoneEdges(let id):
+            valid = availability.boneAnchor == Data(id.utf8)
+            if valid { boneEdgeIDs = availability.boneEdgeIDs }
         case .insertMidpoint(let id): valid = availability.midpointEdge == Data(id.utf8)
         }
-        return .init(context: context, action: valid ? action : nil)
+        return .init(context: context, action: valid ? action : nil, boneEdgeIDs: boneEdgeIDs)
     }
 
     private static func index(_ snapshot: EditorSnapshot) -> Availability {
@@ -107,6 +117,17 @@ public struct GraphInspectorActionContext: Sendable {
             if allNodes.contains(from) && allNodes.contains(to) { result.selectableEdge = key }
             if editableNodes.contains(from) && editableNodes.contains(to) { result.mutableEdges.insert(key) }
             if result.mutableEdges.contains(key) && snapshot.canInsertSelectedEdgeMidpoint { result.midpointEdge = key }
+            if !edge.boneName.isEmpty {
+                let editableParts = Set(snapshot.parts.filter(\.isEditable).map { Data($0.id.utf8) })
+                for candidate in snapshot.edges where candidate.hasExactBoneName(edge.boneName) {
+                    guard let owner = candidate.partID, editableParts.contains(Data(owner.utf8)),
+                        editableNodes.contains(Data(candidate.fromID.utf8)),
+                        editableNodes.contains(Data(candidate.toID.utf8))
+                    else { continue }
+                    result.boneEdgeIDs.insert(candidate.id)
+                }
+                result.boneAnchor = key
+            }
         }
         return result
     }
