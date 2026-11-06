@@ -3,6 +3,39 @@ import Dust3DKit
 import MetalKit
 import simd
 
+/// Each policy transition owns queued renderer diagnostics, including A-to-B-to-A changes.
+struct MeshAlphaRequestState {
+    private(set) var blendsVertexAlpha: Bool?
+    private(set) var epoch = UUID()
+
+    mutating func update(blendsVertexAlpha: Bool) -> Bool {
+        guard self.blendsVertexAlpha != blendsVertexAlpha else { return false }
+        self.blendsVertexAlpha = blendsVertexAlpha
+        epoch = UUID()
+        return true
+    }
+
+    func accepts(_ capturedEpoch: UUID) -> Bool { epoch == capturedEpoch }
+}
+
+/// Ordinary meshes stay opaque; rest-rig previews opt into Qt's straight-alpha pass.
+enum MeshAlphaPolicy: Sendable {
+    case opaque
+    case vertexAlpha
+
+    var shaderOption: Float { self == .vertexAlpha ? 1 : 0 }
+
+    func configure(_ attachment: MTLRenderPipelineColorAttachmentDescriptor) {
+        attachment.isBlendingEnabled = self == .vertexAlpha
+        attachment.rgbBlendOperation = .add
+        attachment.alphaBlendOperation = .add
+        attachment.sourceRGBBlendFactor = .sourceAlpha
+        attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+        attachment.sourceAlphaBlendFactor = .sourceAlpha
+        attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+    }
+}
+
 @MainActor
 final class MeshRenderer: NSObject, MTKViewDelegate {
     private struct Uniforms {
@@ -11,6 +44,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
         var options: SIMD4<Float>
     }
 
+    private let alphaPolicy: MeshAlphaPolicy
     private let queue: MTLCommandQueue
     private let pipeline: MTLRenderPipelineState
     private let depthState: MTLDepthStencilState
@@ -24,17 +58,21 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
 
     convenience init(
         mesh: RenderMesh, device: MTLDevice,
-        colorPixelFormat: MTLPixelFormat = .bgra8Unorm, depthPixelFormat: MTLPixelFormat = .depth32Float
+        colorPixelFormat: MTLPixelFormat = .bgra8Unorm, depthPixelFormat: MTLPixelFormat = .depth32Float,
+        blendsVertexAlpha: Bool = false
     ) throws {
         try self.init(
             geometry: RenderGeometry(mesh: mesh), device: device,
-            colorPixelFormat: colorPixelFormat, depthPixelFormat: depthPixelFormat)
+            colorPixelFormat: colorPixelFormat, depthPixelFormat: depthPixelFormat,
+            blendsVertexAlpha: blendsVertexAlpha)
     }
 
     init(
         geometry: RenderGeometry, device: MTLDevice,
-        colorPixelFormat: MTLPixelFormat = .bgra8Unorm, depthPixelFormat: MTLPixelFormat = .depth32Float
+        colorPixelFormat: MTLPixelFormat = .bgra8Unorm, depthPixelFormat: MTLPixelFormat = .depth32Float,
+        blendsVertexAlpha: Bool = false
     ) throws {
+        alphaPolicy = blendsVertexAlpha ? .vertexAlpha : .opaque
         try geometry.validateBufferLengths(maximumBufferLength: device.maxBufferLength)
         let packagedResources = Bundle.main.resourceURL.flatMap {
             Bundle(url: $0.appendingPathComponent("Dust3DNative_Dust3DRendering.bundle"))
@@ -48,6 +86,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
         descriptor.vertexFunction = library.makeFunction(name: "meshVertex")
         descriptor.fragmentFunction = library.makeFunction(name: "meshFragment")
         descriptor.colorAttachments[0].pixelFormat = colorPixelFormat
+        alphaPolicy.configure(descriptor.colorAttachments[0])
         descriptor.depthAttachmentPixelFormat = depthPixelFormat
         pipeline = try device.makeRenderPipelineState(descriptor: descriptor)
         let depthDescriptor = MTLDepthStencilDescriptor()
@@ -109,7 +148,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
         var uniforms = Uniforms(
             transform: camera.transform(aspect: Float(drawableSize.width / max(drawableSize.height, 1))),
-            rotation: camera.rotation, options: SIMD4(0, showsColor ? 0 : 1, 0, 0)
+            rotation: camera.rotation, options: SIMD4(0, showsColor ? 0 : 1, alphaPolicy.shaderOption, 0)
         )
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
         if let indexBuffer {

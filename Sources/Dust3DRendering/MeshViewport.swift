@@ -26,6 +26,7 @@ public struct MeshViewport: NSViewRepresentable {
     let mesh: RenderMesh
     let isWireframe: Bool
     let showsColor: Bool
+    let blendsVertexAlpha: Bool
     let automaticallyOrbits: Bool
     let cameraReset: Int
     let cameraCommand: MeshCameraCommand?
@@ -37,14 +38,17 @@ public struct MeshViewport: NSViewRepresentable {
 
     /// Increment meshRevision to replace geometry; increment cameraReset to fit the view.
     /// GPU setup errors are delivered through onError on the main actor.
+    /// blendsVertexAlpha opts into straight-alpha blending with ordinary depth testing;
+    /// triangle order remains caller-owned. The default preserves opaque previews.
     public init(
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
         cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true, automaticallyOrbits: Bool = false,
-        onError: @escaping (String) -> Void
+        blendsVertexAlpha: Bool = false, onError: @escaping (String) -> Void
     ) {
         onMaterialRendered = {}
         materials = nil
         onMaterialError = { _ in }
+        self.blendsVertexAlpha = blendsVertexAlpha
         self.mesh = .expanded(mesh)
         self.isWireframe = isWireframe
         self.showsColor = showsColor
@@ -106,6 +110,7 @@ public struct MeshViewport: NSViewRepresentable {
         self.onMaterialRendered = onMaterialRendered
         self.materials = materials
         self.onMaterialError = onMaterialError ?? onError
+        blendsVertexAlpha = false
         self.mesh = .indexed(mesh)
         self.isWireframe = isWireframe
         self.showsColor = showsColor
@@ -137,6 +142,10 @@ public struct MeshViewport: NSViewRepresentable {
     // Direct renderer tests have no installed SwiftUI environment; production passes the context's current value.
     func updateRenderer(in view: InteractiveMeshView, reduceMotion: Bool = false) {
         defer { view.automaticOrbitBinding.update(requested: automaticallyOrbits, reduceMotion: reduceMotion) }
+        if view.alphaRequest.update(blendsVertexAlpha: blendsVertexAlpha) {
+            view.meshRevision = nil
+            view.failedMeshRevision = nil
+        }
         if materials == nil || view.meshRevision != meshRevision {
             view.cancelMaterialUpload()
             view.materialRenderer = nil
@@ -151,7 +160,7 @@ public struct MeshViewport: NSViewRepresentable {
                 }
                 let renderer = try MeshRenderer(
                     mesh: mesh, device: device, colorPixelFormat: view.colorPixelFormat,
-                    depthPixelFormat: view.depthStencilPixelFormat)
+                    depthPixelFormat: view.depthStencilPixelFormat, blendsVertexAlpha: blendsVertexAlpha)
                 renderer.camera = view.orbitCamera
                 view.meshRevision = meshRevision
                 view.failedMeshRevision = nil
@@ -160,8 +169,11 @@ public struct MeshViewport: NSViewRepresentable {
             } catch {
                 view.failedMeshRevision = meshRevision
                 let message = error.localizedDescription
+                let alphaEpoch = view.alphaRequest.epoch
                 DispatchQueue.main.async {
-                    guard view.failedMeshRevision == meshRevision else { return }
+                    guard view.failedMeshRevision == meshRevision,
+                        view.alphaRequest.accepts(alphaEpoch)
+                    else { return }
                     onError(message)
                 }
                 return
@@ -209,6 +221,7 @@ public class InteractiveMeshView: MTKView {
     var failedMaterialRevision: Int?
     var requestedWireframe = false
     var requestedShowsColor = true
+    var alphaRequest = MeshAlphaRequestState()
     let materialBuilder = TexturedMetalResourcesBuilder()
     let importedMaterialBuilder = ImportedMetalResourcesBuilder()
 
