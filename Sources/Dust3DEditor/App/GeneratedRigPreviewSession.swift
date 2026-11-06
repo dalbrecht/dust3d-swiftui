@@ -19,6 +19,9 @@ final class GeneratedRigPreviewSession {
     private(set) var presentationRevision = UUID()
     private(set) var selection: GeneratedRigJointSelection?
     var isWireframe = false
+    var showsModel = true
+    var showsBones = true
+    private(set) var showsWeights = true
     private var templateName = Data()
     private var appearance: RigTemplatePreviewAppearance?
     @ObservationIgnored private let readSnapshot: @MainActor () -> EditorSnapshot?
@@ -65,12 +68,29 @@ final class GeneratedRigPreviewSession {
     }
     var desiredDisplay: GeneratedRigDisplayRequest? {
         guard let revision = currentRevision, let appearance else { return nil }
-        return GeneratedRigDisplayRequest(rigRevision: revision, selectedBoneName: selectedName, appearance: appearance)
+        return GeneratedRigDisplayRequest(
+            rigRevision: revision, selectedBoneName: selectedName, appearance: appearance, showsWeights: showsWeights)
     }
     var isReady: Bool {
         guard let desired = desiredDisplay else { return false }
         return display.acceptedRequest == desired && display.mesh != nil && !display.isLoading && display.error == nil
     }
+    /// Draw spans reference the complete accepted stream, never filtered geometry.
+    var drawRange: Range<Int>? {
+        guard isReady, let mesh = display.mesh, let boundary = display.skeletonVertexCount else { return 0..<0 }
+        if showsModel && showsBones { return nil }
+        if !showsModel && !showsBones { return 0..<0 }
+        return showsBones ? 0..<boundary : boundary..<mesh.vertices.count
+    }
+    var canMoveCamera: Bool {
+        isReady && (drawRange.map { !$0.isEmpty } ?? true)
+    }
+    func setShowsWeights(_ value: Bool) {
+        guard !stopped, showsWeights != value else { return }
+        showsWeights = value
+        prepareDisplay()
+    }
+
     private var sourceIsCurrent: Bool {
         guard !stopped, let request, let snapshot = readSnapshot() else { return false }
         // New inputs are byte-validated in update. Actor-owned snapshots advance
@@ -134,15 +154,15 @@ final class GeneratedRigPreviewSession {
         prepareDisplay()
     }
     func move(_ action: MeshCameraCommand.Action, revision: UUID?) {
-        guard let revision, canInteract(revision), isReady else { return }
+        guard let revision, canInteract(revision), canMoveCamera else { return }
         cameraState.move(action)
     }
     func fit(revision: UUID?) {
-        guard let revision, canInteract(revision), isReady else { return }
+        guard let revision, canInteract(revision), canMoveCamera else { return }
         cameraState.fit()
     }
     func allowsCameraInteraction(revision: UUID, presentationRevision: UUID) -> Bool {
-        self.presentationRevision == presentationRevision && canInteract(revision) && isReady
+        self.presentationRevision == presentationRevision && canInteract(revision) && canMoveCamera
     }
 
     private func canInteract(_ revision: UUID) -> Bool {

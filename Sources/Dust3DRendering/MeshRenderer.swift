@@ -52,6 +52,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
     private let vertexCount: Int
     private let indexBuffer: MTLBuffer?
     private let indexCount: Int
+    private var drawRange = MeshDrawRangeState()
     var camera = OrbitCamera()
     var isWireframe = false
     var showsColor = true
@@ -121,7 +122,15 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
         self.depthState = depthState
         self.buffer = buffer
         vertexCount = vertices.count
+        var initialDrawRange = MeshDrawRangeState()
+        try initialDrawRange.update(vertexCount: vertices.count, range: nil, isIndexed: geometry.indices != nil)
+        drawRange = initialDrawRange
         super.init()
+    }
+
+    /// Select triangles from the existing full buffer without changing normalization.
+    func updateDrawRange(_ range: Range<Int>?) throws {
+        try drawRange.update(vertexCount: vertexCount, range: range, isIndexed: indexBuffer != nil)
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
@@ -141,6 +150,7 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
 
     /// Encodes the same production pass for either an MTKView drawable or an offscreen test target.
     func encode(encoder: MTLRenderCommandEncoder, drawableSize: CGSize) {
+        guard drawRange.isValid else { return }
         encoder.setRenderPipelineState(pipeline)
         encoder.setDepthStencilState(depthState)
         encoder.setCullMode(.none)
@@ -155,8 +165,9 @@ final class MeshRenderer: NSObject, MTKViewDelegate {
             encoder.drawIndexedPrimitives(
                 type: .triangle, indexCount: indexCount, indexType: .uint32,
                 indexBuffer: indexBuffer, indexBufferOffset: 0)
-        } else {
-            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
+        } else if drawRange.span.vertexCount > 0 {
+            encoder.drawPrimitives(
+                type: .triangle, vertexStart: drawRange.span.vertexStart, vertexCount: drawRange.span.vertexCount)
         }
     }
 }

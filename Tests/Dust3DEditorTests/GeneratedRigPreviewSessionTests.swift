@@ -350,4 +350,50 @@ final class GeneratedRigPreviewSessionTests: XCTestCase {
         }
     }
 
+    func testVisibilityUsesFixedFullStreamWithoutGenerationOrLosingSelection() async throws {
+        let snapshot = try await snapshot()
+        let request = GeneratedRigPreviewRequest(snapshot: snapshot)
+        let gate = SessionRigGate()
+        let session = GeneratedRigPreviewSession(
+            generation: GeneratedRigPreviewState { _ in try await gate.load() },
+            display: GeneratedRigDisplayState { rig, _ in
+                Mesh(vertices: rig.mesh.vertices + rig.mesh.vertices, nodeCount: 1, partCount: 1, warning: "")
+            }, readSnapshot: { snapshot })
+        session.update(request: request, selectedBoneName: "Child", appearance: palette)
+        try await wait { await gate.contains(1) }
+        await gate.finish(1)
+        try await wait { session.isReady }
+        let revision = try XCTUnwrap(session.currentRevision)
+        let displayRevision = session.display.revision
+        let camera = session.cameraState
+        session.move(.orbitRight, revision: revision)
+        let yaw = camera.camera.yaw
+        XCTAssertNil(session.drawRange)
+        session.showsModel = false
+        XCTAssertEqual(session.drawRange, 0..<3)
+        session.showsBones = false
+        XCTAssertEqual(session.drawRange, 0..<0)
+        XCTAssertFalse(
+            session.allowsCameraInteraction(revision: revision, presentationRevision: session.presentationRevision))
+        session.showsModel = true
+        XCTAssertEqual(session.drawRange, 3..<6)
+        XCTAssertEqual(session.display.revision, displayRevision)
+        XCTAssertEqual(session.display.mesh?.vertices.count, 6)
+        session.showsBones = true
+        XCTAssertNil(session.drawRange)
+        session.setShowsWeights(false)
+        try await wait { session.isReady && session.display.acceptedRequest?.showsWeights == false }
+        XCTAssertEqual(session.selectedIndex, 1)
+        XCTAssertEqual(session.selectedName, "Child")
+        XCTAssertEqual(session.cameraState.camera.yaw, yaw)
+        let accepted = session.display.revision
+        session.setShowsWeights(false)
+        XCTAssertEqual(session.display.revision, accepted)
+        session.setShowsWeights(true)
+        try await wait { session.isReady && session.display.acceptedRequest?.showsWeights == true }
+        let calls = await gate.calls
+        XCTAssertEqual(calls, 1)
+        session.stop()
+    }
+
 }

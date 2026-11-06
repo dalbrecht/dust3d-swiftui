@@ -663,6 +663,14 @@ View camera/Wireframe menus target the chosen workspace. Model Colors is unavail
 in rest mode; automatic orbit is unavailable in
 rest mode and retains the ordinary model preference. Template clicks are explicit
 selection actions; late view refreshes cannot undo a newer choice. Pointer input
-checks its originating generation and presentation at invocation. This slice does
-not add Model/Bones/Weights visibility switches, 3D picking, pose evaluation or
-physical UI/VoiceOver acceptance. See ADR 0166.
+checks its originating generation and presentation at invocation. Three-dimensional picking, pose evaluation and physical UI/VoiceOver
+acceptance remain outstanding. See ADR 0166.
+
+Experimental generated-rest inspection also offers Model, Bones and Weights
+checkboxes. Model/Bones change only the triangles drawn from the complete copied
+stream, preserving camera framing and generation. Both hidden shows an explicit
+status and disables camera movement. Zero-axis joints stay inspectable even when
+no bones can be drawn. Weights off makes the body gray while retaining selected
+bone colors, joint selection and numerical summaries; it only prepares display
+colors and does not regenerate the rig. Physical rendering and VoiceOver
+acceptance remain outstanding. See ADR 0167.
