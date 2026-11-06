@@ -228,7 +228,7 @@ struct EditorRootView: View {
             Picker("Inspector section", selection: $inspectorSection) {
                 ForEach(EditorInspectorSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
-            .pickerStyle(.segmented).padding(10)
+            .pickerStyle(.segmented).labelsHidden().padding(10)
             Divider()
             if inspectorSection == .animations {
                 AnimationPanel(store: store)

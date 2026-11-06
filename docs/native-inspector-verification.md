@@ -41,3 +41,29 @@ Animations opens the correct section, inspect narrow-window behavior and focus
 restoration, and verify the toolbar name/state with VoiceOver. Full-editor
 presentation and these physical interactions are not proven by control images
 or the catalog test. Production core pin and all quarantines remain unchanged.
+
+## Empty production-root rendering follow-up
+
+The owned fixture now supplies the real document scene's EditorPasteboard
+environment, backed by a unique named test pasteboard whose change count must
+remain unchanged. It renders an in-memory empty document at 1400×800; the
+source's hasEnabledGeometry guard skips native generation. The window cannot
+become key/main, stays hidden and far offscreen, and the test process remains
+inactive. No document file or existing app is opened or controlled.
+
+The first setup omitted the required environment and terminated; that fixture
+was corrected. The resulting image exposed a three-line wrapped Inspector
+section label at the 250-point column width. The segmented picker now uses
+labelsHidden, retaining its semantic label while avoiding the visual collision.
+Before/after artifacts are local review evidence, not committed baselines.
+
+Full-root light capture is readable after supplying an opaque semantic background.
+Dark captures remain insufficient for contrast acceptance: the standalone
+NodeInspector renders readable text in dark appearance, while the native presentation's bitmap
+shows black text even though both report dark color scheme. Matching the test
+application/window appearance, explicit scheme/primary-style propagation and
+owned offscreen window drawing did not resolve that discrepancy. Ineffective
+production appearance experiments and diagnostic prints were removed. Do not
+claim actual dark-mode contrast is accepted or proven broken from these bitmaps;
+physical/native composited acceptance remains required. The rendering assertions
+prove owned-window/pasteboard invariants and artifact creation, not pixel parity.
