@@ -18,12 +18,14 @@ struct NodePointerSurface: NSViewRepresentable {
     var doubleClick: (() -> Void)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)? = nil
+    var beginShiftDrag: ((UUID) -> Void)? = nil
 
     func makeNSView(context: Context) -> NodePointerView { NodePointerView() }
     func updateNSView(_ view: NodePointerView, context: Context) {
         view.enabled = enabled
         view.canDrag = canDrag
         view.begin = begin
+        view.beginShiftDrag = beginShiftDrag
         view.update = update
         view.finish = finish
         view.cancel = cancel
@@ -42,6 +44,7 @@ final class NodePointerView: NSView {
     var enabled = false
     var canDrag = false
     var begin: (UUID) -> Void = { _ in }
+    var beginShiftDrag: ((UUID) -> Void)?
     var update: (UUID, CanvasPoint) -> Void = { _, _ in }
     var finish: (UUID, CanvasPoint) -> Void = { _, _ in }
     var cancel: (UUID) -> Void = { _ in }
@@ -85,7 +88,13 @@ final class NodePointerView: NSView {
             token, event.locationInWindow, false, event.modifierFlags.contains(.command),
             event.modifierFlags.contains(.shift)
         )
-        if canDrag { begin(token) }
+        if canDrag {
+            if event.modifierFlags.contains(.shift), !event.modifierFlags.contains(.command), let beginShiftDrag {
+                beginShiftDrag(token)
+            } else {
+                begin(token)
+            }
+        }
     }
 
     override func mouseDragged(with event: NSEvent) {

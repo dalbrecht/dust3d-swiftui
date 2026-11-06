@@ -489,6 +489,16 @@ public actor EditorSession {
         }
     }
 
+    /// Publish the captured Shift-drag result as one undoable graph edit.
+    public func commitCanvasShiftDrag(_ drag: CanvasShiftDrag, translation: CanvasPoint) throws -> EditorSnapshot {
+        try update { state in
+            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
+            let updates = try drag.updates(by: translation)
+            if !updates.isEmpty { try state.apply([.setNodes(updates)]) }
+            try Task.checkCancellation()
+        }
+    }
+
     public func deleteSelection() throws -> EditorSnapshot {
         try update { state in
             let commands = try GraphCommandPreparation.normalizingDeletions(
