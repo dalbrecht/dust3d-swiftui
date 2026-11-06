@@ -45,6 +45,19 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertNotEqual(owner.inputRevision, next)
     }
 
+    func testObsoleteProjectionOriginCannotInvalidateCurrentOwnerLease() {
+        let owner = MeshCameraState()
+        let input = owner.inputRevision
+        let revision = owner.revision
+        let camera = owner.camera.transform(aspect: 1)
+        owner.invalidateProjection(interactionAllowed: { false })
+        XCTAssertEqual(owner.inputRevision, input)
+        owner.invalidateProjection(interactionAllowed: { true })
+        XCTAssertNotEqual(owner.inputRevision, input)
+        XCTAssertEqual(owner.revision, revision)
+        XCTAssertEqual(owner.camera.transform(aspect: 1), camera)
+    }
+
     func testEveryDiscreteMoveUpdatesOwnedCamera() {
         let owner = MeshCameraState()
         let initial = owner.camera.transform(aspect: 1)

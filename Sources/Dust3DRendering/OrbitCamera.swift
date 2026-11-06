@@ -27,6 +27,26 @@ struct OrbitCamera {
         distance = min(20, max(1.25, distance * exp(-delta * 0.03)))
     }
 
+    /// AppKit magnification is an incremental scale delta. Reuse the zoom
+    /// envelope while dividing camera distance by the positive factor 1 + delta.
+    @discardableResult
+    mutating func magnify(by magnification: Double) -> Bool {
+        guard magnification.isFinite, magnification > -1 else { return false }
+        zoom(delta: Float(log1p(magnification) / 0.03))
+        return true
+    }
+
+    /// AppKit supplies counterclockwise degrees. This viewport maps that gesture
+    /// to its existing left orbit, preserving pitch/pan rather than introducing roll.
+    /// Reduce full turns before Float conversion to bound even extreme finite input.
+    @discardableResult
+    mutating func rotateGesture(by degrees: Double) -> Bool {
+        guard degrees.isFinite else { return false }
+        let turn = degrees.truncatingRemainder(dividingBy: 360)
+        orbit(horizontal: -Float(turn * Double.pi / 180 / 0.01), vertical: 0)
+        return true
+    }
+
     var rotation: simd_float4x4 {
         simd_float4x4(simd_quatf(angle: pitch, axis: SIMD3(1, 0, 0)))
             * simd_float4x4(simd_quatf(angle: yaw, axis: SIMD3(0, 1, 0)))

@@ -283,9 +283,10 @@ public class InteractiveMeshView: MTKView {
     private var onPick: (@MainActor (MeshPickInput) -> Void)?
     private var pressedPick: (@MainActor (MeshPickInput) -> Void)?
     private var pickGesture = MeshPickGesture()
+    private var gestureActivity = CameraGestureActivity()
 
     func updatePicking(revision: UUID?, callback: (@MainActor (MeshPickInput) -> Void)?) {
-        if pickingRevision != revision { cancelPicking() }
+        if pickingRevision != revision { cancelCameraInteraction() }
         pickingRevision = revision
         onPick = callback
     }
@@ -498,15 +499,72 @@ public class InteractiveMeshView: MTKView {
     var failedMeshRevision: Int?
     var cameraReset = 0
     private var lastDragLocation: CGPoint?
-    var isDraggingCamera: Bool { lastDragLocation != nil }
+    var isDraggingCamera: Bool { lastDragLocation != nil || gestureActivity.isActive }
+
+    /// Lifecycle loss discards incomplete input before automatic orbit reconciles.
+    func cancelCameraInteraction() {
+        gestureActivity.cancel()
+        cancelPicking()
+        cameraState?.invalidateProjection(interactionAllowed: cameraInteractionAllowed)
+        fallbackInputRevision = UUID()
+    }
+
+    private func cameraGesturePhase(_ phase: NSEvent.Phase) -> CameraGestureActivity.Phase {
+        if phase.contains(.cancelled) { return .cancelled }
+        if phase.contains(.ended) { return .ended }
+        if phase.contains(.began) { return .began }
+        if phase.contains(.changed) { return .changed }
+        if phase.contains(.stationary) { return .stationary }
+        if phase.contains(.mayBegin) { return .mayBegin }
+        return .none
+    }
+
+    private func applyCameraGesture(
+        phase: NSEvent.Phase, update: (inout OrbitCamera) -> Bool
+    ) {
+        let phase = cameraGesturePhase(phase)
+        guard phase != .cancelled else {
+            cancelCameraInteraction()
+            automaticOrbitBinding.cameraInputChanged()
+            return
+        }
+        guard cameraInteractionAllowed() else {
+            cancelCameraInteraction()
+            automaticOrbitBinding.cameraInputChanged()
+            return
+        }
+        var camera = orbitCamera
+        guard update(&camera) else {
+            if phase == .ended || phase == .none {
+                gestureActivity.cancel()
+                automaticOrbitBinding.cameraInputChanged()
+            }
+            return
+        }
+        cancelPicking()
+        gestureActivity.update(phase)
+        orbitCamera = camera
+        automaticOrbitBinding.cameraInputChanged()
+        needsDisplay = true
+    }
+
+    public override func magnify(with event: NSEvent) {
+        applyCameraGesture(phase: event.phase) { $0.magnify(by: Double(event.magnification)) }
+    }
+
+    public override func rotate(with event: NSEvent) {
+        applyCameraGesture(phase: event.phase) { $0.rotateGesture(by: Double(event.rotation)) }
+    }
 
     public override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        if window == nil { cancelCameraInteraction() }
         automaticOrbitBinding.movedToWindow()
     }
 
     public override func viewDidHide() {
         super.viewDidHide()
+        cancelCameraInteraction()
         automaticOrbitBinding.visibilityChanged()
     }
 
@@ -518,7 +576,7 @@ public class InteractiveMeshView: MTKView {
     private func invalidatePickingProjection() {
         guard pickingRevision != nil || pressedPick != nil else { return }
         cancelPicking()
-        cameraState?.invalidateProjection()
+        cameraState?.invalidateProjection(interactionAllowed: cameraInteractionAllowed)
         fallbackInputRevision = UUID()
     }
 

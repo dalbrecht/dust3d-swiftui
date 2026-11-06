@@ -62,12 +62,23 @@ final class AutomaticOrbitViewBinding: NSObject {
     }
 
     func dismantle() {
+        view?.cancelCameraInteraction()
         requested = false
         driver.stop()
         NotificationCenter.default.removeObserver(self)
     }
 
-    @objc private func availabilityDidChange(_ notification: Notification) { driver.reconcile() }
+    @objc private func availabilityDidChange(_ notification: Notification) {
+        if notification.name == NSWindow.didResignKeyNotification
+            || notification.name == NSWindow.didMiniaturizeNotification
+            || notification.name == NSApplication.didResignActiveNotification
+            || (notification.name == NSWindow.didChangeOcclusionStateNotification && !availability.isVisible)
+        {
+            view?.cancelCameraInteraction()
+            driver.resetTiming()
+        }
+        driver.reconcile()
+    }
 
     deinit { NotificationCenter.default.removeObserver(self) }
 }
