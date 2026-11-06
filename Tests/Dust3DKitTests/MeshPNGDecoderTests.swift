@@ -4,6 +4,27 @@ import XCTest
 @testable import Dust3DKit
 
 final class MeshPNGDecoderTests: XCTestCase {
+    func testSingleTransparentPixelKeepsEncodedRGBForEveryFilterSplitIDATAndAdam7() throws {
+        // Own valid 1x1 RGBA8 scanlines. Older ImageIO can zero their hidden RGB;
+        // all PNG row filters have zero neighbors for this single pixel (#337).
+        let fixtures = [
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMQDD7JAAAC1AEu7/9etQAAAABJRU5ErkJggg==",
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMUDD7JAAAC2QEvmctdCgAAAABJRU5ErkJggg==",
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMSDD7JAAAC3gEwHJI2PQAAAABJRU5ErkJggg==",
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMWDD7JAAAC4wExTs3QEgAAAABJRU5ErkJggg==",
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMRDD7JAAAC6AEyOU11MAAAAABJRU5ErkJggg==",
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAUlEQVR4duaE5gAAAAxJREFUnGMQDD7JAAAC1AEuB0NZqQAAAABJRU5ErkJggg==",
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAFoEvQfAAAADUlEQVR4nGMQDD7JAAAC1AEu7/9etQAAAABJRU5ErkJggg==",
+        ]
+        for fixture in fixtures {
+            let data = try XCTUnwrap(Data(base64Encoded: fixture))
+            let result = try MeshPNGDecoder.decode(data, imageID: "single-transparent")
+            XCTAssertEqual(result.width, 1)
+            XCTAssertEqual(result.height, 1)
+            XCTAssertEqual(Array(result.pixels), [17, 83, 201, 0])
+        }
+    }
+
     func test_should_preserve_png_samples_in_straight_rgba8() throws {
         // Independently encoded PNG scanlines (Python stdlib zlib/CRC), not rendered snapshots.
         let fixtures: [(String, String, [UInt8])] = [
