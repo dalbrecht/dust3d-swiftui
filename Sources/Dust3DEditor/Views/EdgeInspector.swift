@@ -7,6 +7,11 @@ struct EdgeInspector: View {
     let edge: DocumentEdge
 
     var body: some View {
+        let context = store.snapshot.map { GraphInspectorActionContext(snapshot: $0) }
+        let select = context?.target(for: .selectEndpoints(edgeID: edge.id))
+        let midpoint = context?.target(for: .insertMidpoint(edgeID: edge.id))
+        let reverse = context?.target(for: .reverseEdge(id: edge.id))
+        let delete = context?.target(for: .disconnectEdge(id: edge.id))
         let nodes = store.snapshot?.nodes ?? []
         let from = nodes.first { $0.id == edge.fromID }?.title ?? edge.fromID
         let to = nodes.first { $0.id == edge.toID }?.title ?? edge.toID
@@ -23,17 +28,21 @@ struct EdgeInspector: View {
             GraphColorizeControls(store: store)
             Button("Select Whole Part", action: store.wholePartSelectionAction(.edge(edge.id)))
                 .disabled(!store.canSelectWholePart(.edge(edge.id)))
-            Button("Select Endpoints") { store.select([edge.fromID, edge.toID]) }
-                .disabled(store.isWorking)
-            Button("Insert Midpoint") { store.insertSelectedEdgeMidpoint() }
-                .disabled(!store.canInsertEdgeMidpoint)
+            Button("Select Endpoints", action: store.inspectorAction(select))
+                .disabled(!store.canPerformInspectorAction(select))
+            Button("Insert Midpoint", action: store.inspectorAction(midpoint))
+                .disabled(!store.canPerformInspectorAction(midpoint))
                 .accessibilityLabel("Insert Midpoint")
-            Button("Reverse Edge") { store.reverseEdge(edge.id) }
-                .disabled(store.isWorking || store.snapshot?.canEditSelectedEdge != true)
-            Button("Delete Edge", role: .destructive) { store.deleteSelection() }
-                .disabled(store.isWorking || store.snapshot?.canEditSelectedEdge != true)
-            if store.snapshot?.canEditSelectedEdge != true {
-                Label("Locked, hidden or disabled endpoint", systemImage: "lock").font(.caption)
+            Button("Reverse Edge", action: store.inspectorAction(reverse))
+                .disabled(!store.canPerformInspectorAction(reverse))
+            Button("Delete Edge", role: .destructive, action: store.inspectorAction(delete))
+                .disabled(!store.canPerformInspectorAction(delete))
+            if !store.canPerformInspectorAction(reverse) {
+                Label(
+                    store.snapshot?.canEditSelectedEdge == false
+                        ? "Locked, hidden or disabled endpoint" : "Edge editing unavailable", systemImage: "lock"
+                ).font(.caption)
+                    .help("Editing requires the current edge and editable supported endpoints.")
             }
             Text(
                 "Inserting a midpoint, reversing or deleting an edge is one undo step. Deleting an edge keeps its nodes and splits disconnected parts."
