@@ -35,4 +35,24 @@ final class RigTemplateBrowserContextTests: XCTestCase {
         let anotherWindow = try EditorState(document: document)
         XCTAssertFalse(unselected.isCurrent(in: anotherWindow.snapshot))
     }
+    func testClearTargetsUseChosenBoneAndExactDescendantsAcrossReadonlyParts() throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas rigType='Biped'><nodes><node id='a' partId='p' x='.1' y='.5' z='.5' radius='.1'/><node id='b' partId='p' x='.2' y='.5' z='.5' radius='.1'/></nodes><edges><edge id='e1' partId='p' from='a' to='b' boneName='Head'/><edge id='e2' partId='unknown' from='b' to='a' boneName='HairBack3'/><edge id='e3' from='a' to='b' boneName='LeftUpperArm'/><edge id='e4' from='b' to='a' boneName='head'/></edges><parts><part id='p' locked='true'/></parts></canvas>"
+                    .utf8))
+        let state = try EditorState(document: document)
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: state.snapshot)
+        XCTAssertEqual(context.clearTarget(name: "Head", includeDescendants: false)?.matchingEdgeCount, 1)
+        let chain = try XCTUnwrap(context.clearTarget(name: "Head", includeDescendants: true))
+        XCTAssertEqual(chain.matchingEdgeCount, 2)
+        XCTAssertTrue(chain.isCurrent(in: state.snapshot))
+        XCTAssertNil(context.clearTarget(name: "head", includeDescendants: true))
+        let bird = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Bird"))
+        XCTAssertNil(
+            RigTemplateBrowserContext(hierarchy: bird, snapshot: state.snapshot).clearTarget(
+                name: "Head", includeDescendants: true))
+        XCTAssertEqual(context.clearTarget(name: "Root", includeDescendants: true)?.matchingEdgeCount, 3)
+    }
+
 }

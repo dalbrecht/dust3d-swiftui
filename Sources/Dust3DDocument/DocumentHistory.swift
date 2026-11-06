@@ -10,6 +10,7 @@ public struct DocumentPreviewIdentity: Equatable, Sendable {
         switch command {
         case .createAnimation, .setAnimationName, .setAnimationType, .setAnimationParameter,
             .duplicateAnimation, .deleteAnimation, .setRigType, .setHeadHasEyelids, .setEdgeBoneName, .setEdgeBoneNames,
+            .clearEdgeBoneNames,
             .setPartName, .setComponentName, .setReferenceImagePNG:
             break
         case .setPartState(_, let property, _) where property != .disabled,

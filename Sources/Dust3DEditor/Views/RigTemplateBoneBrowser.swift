@@ -45,6 +45,26 @@ struct RigTemplateBoneBrowser: View {
                     )
                     .frame(minHeight: 40)
                     .disabled(!store.canAssignBoneName(selectedName, target: context.assignment))
+                    if let target = context.clearTarget(name: selectedName, includeDescendants: false) {
+                        Button(
+                            "Clear Bone Assignments (\(target.matchingEdgeCount))",
+                            action: store.clearBoneAssignmentsAction(target)
+                        )
+                        .frame(minHeight: 40)
+                        .disabled(!store.canClearBoneAssignments(target))
+                    }
+                    if let target = context.clearTarget(name: selectedName, includeDescendants: true) {
+                        Button(
+                            "Clear Bone Chain Assignments (\(target.matchingEdgeCount))",
+                            action: store.clearBoneAssignmentsAction(target)
+                        )
+                        .frame(minHeight: 40)
+                        .disabled(!store.canClearBoneAssignments(target))
+                    }
+                    Text(
+                        "Clears matching assignments throughout the document, including hidden and locked parts. Each clear is one Undo step."
+                    )
+                    .font(.caption).foregroundStyle(.primary)
                 } else {
                     Text("Choose a bone, then assign explicitly selected edges.").font(.caption)
                 }

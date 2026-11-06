@@ -1272,6 +1272,18 @@ final class EditorStore {
         }
     }
 
+    func canClearBoneAssignments(_ target: BoneAssignmentClearTarget) -> Bool {
+        guard !stopped, !isWorking, let snapshot else { return false }
+        return target.isCurrent(in: snapshot)
+    }
+    func clearBoneAssignmentsAction(_ target: BoneAssignmentClearTarget) -> @MainActor () -> Void {
+        guard canClearBoneAssignments(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canClearBoneAssignments(target) else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.clearBoneAssignments(target: target) }
+        }
+    }
+
     func setEdgeBoneName(_ id: String, name: String) {
         perform { try await $0.apply([.setEdgeBoneName(id: id, name: name)]) }
     }
