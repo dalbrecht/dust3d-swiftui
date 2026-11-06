@@ -51,17 +51,25 @@ final class ReferenceColorRasterServiceTests: XCTestCase {
         }
     }
 
-    func testFittedGridIsExplicitAndNearestSamplingHasDefinedCenterRule() throws {
-        let source = try document(png())
+    func testFittedGridIsExplicitAndMatchesCapturedQtAliasedBoundaries() throws {
+        // Opaque 2x3 source separates spatial selection from alpha conversion.
+        // Qt 6.12.0 IgnoreAspectRatio/FastTransformation: 1x1 -> red13;
+        // 3x2 -> reds11,11,12 /15,15,16. No Qt is needed by this test.
+        let opaque = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAADCAYAAAC56t6BAAAAI0lEQVR4nGPgFpX/zyOm8J+BV1zxP5+E0n8Gfknl/wJSKv8BXZMHoqcZPKIAAAAASUVORK5CYII="
+            ))
+        let source = try document(opaque)
         let one = try ReferenceColorRasterCodec.prepare(document: source, fittedSize: .init(width: 2, height: 3))
         let two = try ReferenceColorRasterCodec.prepare(document: source, fittedSize: .init(width: 4, height: 6))
         XCTAssertEqual(two.raster.size.width, one.raster.size.width * 2)
         XCTAssertEqual(two.raster.color(x: 0, y: 0), one.raster.color(x: 0, y: 0))
         XCTAssertEqual(two.raster.color(x: 1, y: 1), one.raster.color(x: 0, y: 0))
         let down = try ReferenceColorRasterCodec.prepare(document: source, fittedSize: .init(width: 1, height: 1))
-        XCTAssertEqual(down.raster.color(x: 0, y: 0)?.red, 14)
+        XCTAssertEqual(down.raster.color(x: 0, y: 0)?.red, 13)
         let mixed = try ReferenceColorRasterCodec.prepare(document: source, fittedSize: .init(width: 3, height: 2))
-        XCTAssertEqual(try redRows(mixed.raster), [11, 12, 12, 15, 16, 16])
+        XCTAssertEqual(try redRows(mixed.raster), [11, 11, 12, 15, 15, 16])
     }
 
     func testGrayPaletteAndQtDepthSpecificTransparencyPolicyReuseExistingDecoder() throws {
