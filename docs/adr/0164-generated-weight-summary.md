@@ -33,7 +33,11 @@ would require over four billion source joints and is not forced with an allocati
 or exhaustion probe. Existing injected fixtures were made coherent rather than
 relaxing source validation. Independent source review found no concrete defect.
 
-Full production gate and experimental UI compilation remain pending. PR369's
-reviewed head remains unchanged while its two native checks run. Production core
+The isolated experimental run41338 compiled the numerical SwiftUI surface and
+passed51 scoped tests on f2d32d44. A subsequent change only wraps one long test
+assertion and records this result; production Sources remain identical. The full
+production gate initially stopped at that strict formatting check, before tests;
+formatting now passes and the complete gate remains required. PR369's reviewed
+head remains unchanged while its native checks run. Production core
 pin, QA52 default, quarantines and protected QA process are unchanged. No GUI,
 pose, animation, GLB, writer or broad core-catalog runtime probes are added.

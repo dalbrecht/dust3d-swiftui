@@ -41,7 +41,8 @@ final class GeneratedRigWeightSummaryTests: XCTestCase {
         XCTAssertEqual(summary.triangleCount, 2)
         XCTAssertEqual(
             summary,
-            GeneratedRigWeightSummary(minimumWeight: 0, maximumWeight: summary.maximumWeight, influencedTriangleCount: 1, triangleCount: 2))
+            GeneratedRigWeightSummary(
+                minimumWeight: 0, maximumWeight: summary.maximumWeight, influencedTriangleCount: 1, triangleCount: 2))
     }
 
     func testExactUTF8NamesRemainDistinctAndUnselectedKnownBoneHasZeroRange() throws {
