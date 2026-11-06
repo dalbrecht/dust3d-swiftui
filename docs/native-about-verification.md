@@ -50,3 +50,24 @@ resource bundles. This is upstream project attribution; it does not claim a
 complete native dependency-license inventory or full Qt/HIG acceptance.
 Physical standard-panel scrolling, dark/light layout, keyboard and VoiceOver
 remain outstanding.
+
+## Installed resource lookup regression
+
+Review of PR345 found that Bundle.module searches the application root and an
+absolute build-time location, while the packager installs the rendering bundle
+under Contents/Resources. The resource files and signatures could be correct
+while the runtime lookup still failed on another machine. Resolve the embedded
+bundle first; for a packaged .app with missing resources, return visible missing
+attribution without touching the potentially terminating development accessor.
+Only command-line/development hosts may use the lazy fallback.
+
+Three new metadata tests cover embedded lookup, absent packaged resources and
+development fallback. Initial compilation reproduced the missing injection API;
+all six About tests then passed. An extracted archive check compiled the actual
+About source into an owned metadata-only executable with an instrumented
+Bundle.module that has no build-resource path. The old source consulted that
+accessor once and failed embedded-license validation for both apps; the fixed
+source read both exact licenses with zero consultations. No original build
+resources were moved, GUI executable launched, panel shown or archive modified.
+This check now runs in the existing isolated bundle/archive gate. Physical About
+appearance, keyboard and VoiceOver remain separate.

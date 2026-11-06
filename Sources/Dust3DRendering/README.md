@@ -203,3 +203,9 @@ icon/version, QA-aware application name and exact bundled project MIT notice.
 Build Diagnostics remains a separate Help command and preserves the immutable
 startup source/core capture. Standard-panel physical/VoiceOver acceptance and
 full upstream attribution/help inventory remain separate.
+
+About resolves the rendering bundle under the application's Resources directory
+first. Installed apps never consult SwiftPM's absolute development path, including
+when packaged attribution is missing. Command-line builds retain a lazy fallback.
+The archive gate compiles the production options/resolver into an owned metadata
+checker inside extracted app copies, without launching the GUI or opening About.
