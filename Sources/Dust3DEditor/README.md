@@ -312,7 +312,7 @@ shared and unused assets. Limits and native acceptance are documented in
 
 ## Build diagnostics
 
-The About window reports the source revision/digest, dirty state and exact core pin
+The Help > Build Diagnostics window reports the source revision/digest, dirty state and exact core pin
 embedded in the loaded executable, separately from process identity. The startup
 capture remains fixed if an on-disk bundle changes. Use the canonical build wrapper
 to embed metadata; direct SwiftPM builds show unavailable identity honestly.
@@ -594,3 +594,9 @@ IDs. See ADR0141 for validation boundaries and per-garment ownership proof requi
 ### Precision canvas input
 
 With the canvas, a node, or the origin marker focused, bare arrows nudge by one logical canvas unit (1/H document units) in the current Front or Side plane. When Move Origin is checked, arrows move the origin instead. Brackets change selected-node spacing uniformly in three dimensions by 1±10/H, retaining radii; spacing remains available with Move Origin checked. Add mode declines both. The Nudge and Spacing disclosure and native menus expose the same actions without taking sidebar arrow navigation or text input. Accepted input captures height and context before asynchronous actor work. Existing readonly/axis locks apply. Native hosted tests cover focus and cancellation; physical input and VoiceOver remain manual checks.
+
+The app-menu About command uses AppKit's standard panel with the packaged
+icon/version, QA-aware application name and exact bundled project MIT notice.
+Build Diagnostics remains a separate Help command and preserves the immutable
+startup source/core capture. Standard-panel physical/VoiceOver acceptance and
+full upstream attribution/help inventory remain separate.
