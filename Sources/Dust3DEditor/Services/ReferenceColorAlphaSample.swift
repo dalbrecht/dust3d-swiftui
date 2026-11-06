@@ -5,12 +5,23 @@ enum ReferenceColorAlphaSample {
     static func fit(
         _ rgba: (Int, Int, Int, Int), singlePixel: Bool, sourceDepth: Int, vectorLane: Bool
     ) -> (UInt8, UInt8, UInt8, UInt8) {
-        let alpha = rgba.3
-        guard alpha != 0 else { return (0, 0, 0, 0) }
         func byte(_ value: Int) -> UInt8 {
             let rounded = value + 128
             return UInt8(clamping: (rounded - (rounded >> 8)) >> 8)
         }
+        let samples: (Int, Int, Int, Int)
+        if singlePixel && sourceDepth == 16 {
+            // Qt's one-pixel image path reads pixel() as RGBA8 before filling
+            // even an RGBA64 target. Other wide-image paths keep source precision.
+            samples = (
+                Int(byte(rgba.0)) * 257, Int(byte(rgba.1)) * 257,
+                Int(byte(rgba.2)) * 257, Int(byte(rgba.3)) * 257
+            )
+        } else {
+            samples = rgba
+        }
+        let alpha = samples.3
+        guard alpha != 0 else { return (0, 0, 0, 0) }
         func channel(_ value: Int) -> UInt8 {
             if alpha == 65535 { return byte(value) }
             if singlePixel && sourceDepth == 8 {
@@ -30,6 +41,6 @@ enum ReferenceColorAlphaSample {
             let unassociated = (associated * 65535 + alpha / 2) / alpha
             return byte(min(65535, unassociated))
         }
-        return (channel(rgba.0), channel(rgba.1), channel(rgba.2), byte(alpha))
+        return (channel(samples.0), channel(samples.1), channel(samples.2), byte(alpha))
     }
 }

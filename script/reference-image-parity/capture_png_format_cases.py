@@ -72,6 +72,9 @@ for depth in [8, 16]:
                     [[17 * unit, 83 * unit, 201 * unit, alpha, 201 * unit, 83 * unit, 17 * unit, 127 * unit]])))
     sources.append((f"graya{depth}-low", encode(3, 1, depth, 4,
                     [[17 * unit, alpha, 128 * unit, alpha, 255 * unit, alpha]])))
+# The single-pixel painter first reads pixel() as RGBA8 even for RGBA64 sources.
+for alpha in [1,128,129,256]:
+    sources.append((f"rgba16-single-wide-a{alpha}",encode(1,1,16,6,[[4369,21331,51657,alpha]])))
 # Named alpha boundaries exercise the single-pixel fill path and the vector tail.
 for depth in [8, 16]:
     unit = 257 if depth == 16 else 1

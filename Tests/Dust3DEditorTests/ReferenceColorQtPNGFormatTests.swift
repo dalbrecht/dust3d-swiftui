@@ -350,6 +350,70 @@ final class ReferenceColorQtPNGFormatTests: XCTestCase {
                 255, 255, 255, 0, 255, 255, 255, 0, 255, 255, 255, 0, 255, 255, 255, 0,
             ]),
         Fixture(
+            name: "rgba16-single-wide-a1-1x1",
+            png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGMQFAwOPnmSgREAChkCXHUOpZYAAAAASUVORK5CYII=",
+            sha256: "aca2a5bff3f8d4c0081b3d8b61a2767f65b8e3ae5971ca0488cbd67b7b723094",
+            width: 1, height: 1,
+            expected: [
+                17, 83, 201, 0,
+            ]),
+        Fixture(
+            name: "rgba16-single-wide-a1-2x2",
+            png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGMQFAwOPnmSgREAChkCXHUOpZYAAAAASUVORK5CYII=",
+            sha256: "aca2a5bff3f8d4c0081b3d8b61a2767f65b8e3ae5971ca0488cbd67b7b723094",
+            width: 2, height: 2,
+            expected: [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ]),
+        Fixture(
+            name: "rgba16-single-wide-a128-1x1",
+            png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGMQFAwOPnmSoQEACpgC2ypO+aUAAAAASUVORK5CYII=",
+            sha256: "22fa26e9812e4bdf60e9254b465e36003f52c42cf1c2b4952fd2b60891dde649",
+            width: 1, height: 1,
+            expected: [
+                17, 83, 201, 0,
+            ]),
+        Fixture(
+            name: "rgba16-single-wide-a128-2x2",
+            png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGMQFAwOPnmSoQEACpgC2ypO+aUAAAAASUVORK5CYII=",
+            sha256: "22fa26e9812e4bdf60e9254b465e36003f52c42cf1c2b4952fd2b60891dde649",
+            width: 2, height: 2,
+            expected: [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ]),
+        Fixture(
+            name: "rgba16-single-wide-a129-1x1",
+            png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGMQFAwOPnmSoREACpkC3LY+BKoAAAAASUVORK5CYII=",
+            sha256: "69882134503be21706ebff5db5d0a50b341b6686d731b8bb375b9018a29c776c",
+            width: 1, height: 1,
+            expected: [
+                17, 83, 201, 1,
+            ]),
+        Fixture(
+            name: "rgba16-single-wide-a129-2x2",
+            png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGMQFAwOPnmSoREACpkC3LY+BKoAAAAASUVORK5CYII=",
+            sha256: "69882134503be21706ebff5db5d0a50b341b6686d731b8bb375b9018a29c776c",
+            width: 2, height: 2,
+            expected: [
+                17, 83, 201, 1, 17, 83, 201, 1, 17, 83, 201, 1, 17, 83, 201, 1,
+            ]),
+        Fixture(
+            name: "rgba16-single-wide-a256-1x1",
+            png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGMQFAwOPnmSkQEAChoCXBNAhZoAAAAASUVORK5CYII=",
+            sha256: "fc23b4f4353f41cd2b2ba7b9fe86dfd88abe63ecd6cc98207456580e65dd7b08",
+            width: 1, height: 1,
+            expected: [
+                17, 83, 201, 1,
+            ]),
+        Fixture(
+            name: "rgba16-single-wide-a256-2x2",
+            png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAYAAABPhRjKAAAAEUlEQVR4nGMQFAwOPnmSkQEAChoCXBNAhZoAAAAASUVORK5CYII=",
+            sha256: "fc23b4f4353f41cd2b2ba7b9fe86dfd88abe63ecd6cc98207456580e65dd7b08",
+            width: 2, height: 2,
+            expected: [
+                17, 83, 201, 1, 17, 83, 201, 1, 17, 83, 201, 1, 17, 83, 201, 1,
+            ]),
+        Fixture(
             name: "rgba8-single-a0-1x1",
             png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMQDD7JAAAC1AEu7/9etQAAAABJRU5ErkJggg==",
             sha256: "6d1b621ceee00d479318bfc74fa0840ddda1adf4138a6da8a9aa7896c8056834",
