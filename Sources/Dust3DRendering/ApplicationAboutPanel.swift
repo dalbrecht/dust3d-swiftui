@@ -31,7 +31,7 @@ import Foundation
     private static func licenseText(at url: URL?) -> String {
         guard let url else {
             return
-                "License information unavailable: ApplicationLicense.txt is missing from the rendering resource bundle."
+                "License information unavailable: the bundled ApplicationLicense.txt file is missing."
         }
         do {
             return try String(contentsOf: url, encoding: .utf8)

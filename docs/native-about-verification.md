@@ -18,10 +18,14 @@ Primary contract: [NSApplication standard About panel options](https://developer
 
 ## Evidence and scope
 
-The two metadata tests first failed compilation because ApplicationAboutPanel
+The initial two metadata tests first failed compilation because ApplicationAboutPanel
 was absent, then passed. They verify QA naming, exact resource/root-license
 identity, copyright and the absence of app version/build overrides, plus explicit
-missing-resource feedback. They construct options without opening a panel,
+missing-resource feedback. Bundle review then exposed that the existing name
+resolver recognized only the older combine-QA ID. A third regression using the
+actual graph-QA bundle ID failed two assertions; both recognized QA IDs now retain
+"Dust3D Editor QA" while normal/unknown IDs preserve their existing fallback.
+These tests construct options without opening a panel,
 activating an app or controlling an existing window. The native panel call is a
 thin manual-verification boundary, not a fake-window acceptance claim.
 

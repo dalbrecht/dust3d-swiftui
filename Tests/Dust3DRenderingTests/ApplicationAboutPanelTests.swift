@@ -19,6 +19,14 @@ final class ApplicationAboutPanelTests: XCTestCase {
         XCTAssertNil(options[.version])
     }
 
+    func testCurrentGraphQABundleKeepsItsQADistinctionInNativeAbout() {
+        let name = BuildIdentityPresentation.applicationName(
+            bundleIdentifier: "org.dust3d.editor.graph-stack-qa", fallback: "Dust3D Editor")
+        XCTAssertEqual(name, "Dust3D Editor QA")
+        let options = ApplicationAboutPanel.options(applicationName: name)
+        XCTAssertEqual(options[.applicationName] as? String, "Dust3D Editor QA")
+    }
+
     func testMissingLicenseIsVisibleInsteadOfSilentlyDroppingAttribution() {
         let options = ApplicationAboutPanel.options(applicationName: "Dust3D Viewer", licenseURL: nil)
         let credits = (options[.credits] as? NSAttributedString)?.string ?? ""

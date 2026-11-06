@@ -18,7 +18,12 @@ public struct BuildIdentityPresentation: Sendable {
     ///   - fallback: The owning app's name for canonical or unidentified launches.
     /// - Returns: The distinct QA name for its existing identity, otherwise the caller's name.
     public static func applicationName(bundleIdentifier: String?, fallback: String) -> String {
-        bundleIdentifier == "org.dust3d.editor.combine-qa" ? "Dust3D Editor QA" : fallback
+        if bundleIdentifier == "org.dust3d.editor.combine-qa"
+            || bundleIdentifier == "org.dust3d.editor.graph-stack-qa"
+        {
+            return "Dust3D Editor QA"
+        }
+        return fallback
     }
 
     /// Present one immutable startup capture without consulting filesystem or application state.
