@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Archive exactly the signed app tree without generated Finder metadata, retaining executable permissions and framework links (#329).
+
 - Prepare lossless hollow-thickness history and an explicitly gated local-core inspector experiment; production geometry support remains unchanged (#96).
 
 - Add opt-in automatic preview rotation that respects Reduce Motion and pauses while dragging or inactive (#326).
