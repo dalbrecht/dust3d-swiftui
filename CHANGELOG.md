@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
+
 - Resolve About attribution from installed app resources without requiring the original SwiftPM build directory, and report missing packaged attribution safely (#344).
 
 - Allow opt-in owned source-bake mip copying through the existing pinned core, validating level counts and aggregate payload quotas; default loading remains base-only (#288).

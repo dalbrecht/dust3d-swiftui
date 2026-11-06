@@ -47,6 +47,67 @@ private struct InspectorNoNative: EditorPreviewServing, ArchiveTextureBaking, Ar
         .init(snapshot: try XCTUnwrap(value.snapshot))
     }
 
+    func testBoneSelectionFactoryPublishesNoDocumentAndKeepsOtherWindowSelection() async throws {
+        let original = try source().applying(.setEdgeBoneName(id: "ab", name: "Arm"))
+            .applying(.setEdgeBoneName(id: "bc", name: "Arm"))
+        let value = store()
+        let other = store()
+        defer {
+            value.stop()
+            other.stop()
+        }
+        await value.load(data: original.encoded())
+        await other.load(data: original.encoded())
+        try await settle(value)
+        try await settle(other)
+        value.selectGraph(nodes: [], edges: ["ab"])
+        other.selectGraph(nodes: [], edges: ["ab"])
+        try await settle(value)
+        try await settle(other)
+        let target = try context(value).target(for: .selectBoneEdges(edgeID: "ab"))
+        XCTAssertTrue(value.canPerformInspectorAction(target))
+        let revision = value.snapshot?.documentRevision
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        let action = value.inspectorAction(target)
+        action()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab", "bc"])
+        XCTAssertEqual(other.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertEqual(value.snapshot?.documentRevision, revision)
+        XCTAssertEqual(publications, 0)
+        XCTAssertFalse(value.canUndo)
+        value.selectGraph(nodes: [], edges: ["bc"])
+        try await settle(value)
+        action()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["bc"])
+        XCTAssertEqual(publications, 0)
+    }
+
+    func testUnavailableBoneFactoryNeverUsesLaterAssignment() async throws {
+        let original = try source()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectGraph(nodes: [], edges: ["ab"])
+        try await settle(value)
+        let target = try context(value).target(for: .selectBoneEdges(edgeID: "ab"))
+        XCTAssertFalse(value.canPerformInspectorAction(target))
+        let action = value.inspectorAction(target)
+        try await value.load(data: original.applying(.setEdgeBoneName(id: "ab", name: "Arm")).encoded())
+        try await settle(value)
+        value.selectGraph(nodes: [], edges: ["ab"])
+        try await settle(value)
+        let before = value.snapshot?.selectionRevision
+        action()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectionRevision, before)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+    }
+
     func testEachDocumentFactoryPublishesOnceWithExactUndoRedoAndWindowIsolation() async throws {
         let cases: [(GraphInspectorAction, Set<String>, Set<String>)] = [
             (.connect(from: "a", to: "x"), ["a"], []), (.deleteNode(id: "b"), ["b"], []),

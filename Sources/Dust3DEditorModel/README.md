@@ -376,3 +376,10 @@ document, selection or constraint epochs with `GraphInspectorActionError.staleTa
 Unavailable targets never become enabled through later selection. Mutation uses
 one existing normalized document transaction; original document errors propagate.
 Endpoint selection remains transient and works for read-only endpoints.
+
+`GraphInspectorAction.selectBoneEdges(edgeID:)` captures a nonempty group from
+the selected edge’s exact stored bone name. The context admits editable assigned
+edge owners and supported editable endpoints; no XML parsing or rig generation
+is needed. The session replaces explicit graph selection after epoch validation
+without dirtying the document, consuming history or changing another window.
+The inspector’s Select Bone Edges button uses the existing captured Store factory.

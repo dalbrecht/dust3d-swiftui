@@ -9,6 +9,7 @@ struct EdgeInspector: View {
     var body: some View {
         let context = store.snapshot.map { GraphInspectorActionContext(snapshot: $0) }
         let select = context?.target(for: .selectEndpoints(edgeID: edge.id))
+        let boneSelect = context?.target(for: .selectBoneEdges(edgeID: edge.id))
         let midpoint = context?.target(for: .insertMidpoint(edgeID: edge.id))
         let reverse = context?.target(for: .reverseEdge(id: edge.id))
         let delete = context?.target(for: .disconnectEdge(id: edge.id))
@@ -30,6 +31,9 @@ struct EdgeInspector: View {
                 .disabled(!store.canSelectWholePart(.edge(edge.id)))
             Button("Select Endpoints", action: store.inspectorAction(select))
                 .disabled(!store.canPerformInspectorAction(select))
+            Button("Select Bone Edges", action: store.inspectorAction(boneSelect))
+                .disabled(!store.canPerformInspectorAction(boneSelect))
+                .help("Select visible, editable edges with this exact stored bone assignment.")
             Button("Insert Midpoint", action: store.inspectorAction(midpoint))
                 .disabled(!store.canPerformInspectorAction(midpoint))
                 .accessibilityLabel("Insert Midpoint")
