@@ -8,6 +8,9 @@ struct Dust3DEditorApp: App {
     @Environment(\.openWindow) private var openWindow
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(EditorAppDelegate.self) private var appDelegate
+    #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+        @FocusedValue(\.editorRestPreviewActions) private var restPreviewActions
+    #endif
     @FocusedValue(\.editorStore) private var store
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
     @FocusedValue(\.editorPreviewDisplayActions) private var previewDisplayActions
@@ -79,6 +82,37 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.snapshot == nil)
             }
             CommandGroup(after: .toolbar) {
+                #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                    Picker(
+                        "Preview Mode",
+                        selection: Binding(
+                            get: { restPreviewActions?.mode ?? .model },
+                            set: { restPreviewActions?.setMode($0) })
+                    ) {
+                        Text("Model").tag(GeneratedRigPreviewSession.Presentation.model)
+                        Text("Generated Rest").tag(GeneratedRigPreviewSession.Presentation.generatedRest)
+                    }
+                    .disabled(restPreviewActions?.canChangeMode != true)
+                    Menu("Generated Rest") {
+                        Toggle(
+                            "Show Model",
+                            isOn: Binding(
+                                get: { restPreviewActions?.showsModel == true },
+                                set: { restPreviewActions?.setShowsModel($0) }))
+                        Toggle(
+                            "Show Bones",
+                            isOn: Binding(
+                                get: { restPreviewActions?.showsBones == true },
+                                set: { restPreviewActions?.setShowsBones($0) }))
+                        Toggle(
+                            "Show Weights",
+                            isOn: Binding(
+                                get: { restPreviewActions?.showsWeights == true },
+                                set: { restPreviewActions?.setShowsWeights($0) }))
+                    }
+                    .disabled(restPreviewActions?.canChangeVisibility != true)
+                    Divider()
+                #endif
                 Toggle(
                     "Wireframe",
                     isOn: Binding(

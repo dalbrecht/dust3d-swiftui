@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
+
 - Select generated bones directly in the experimental rest preview with guarded click-versus-drag input and cancellable background picking; retain displayed geometry and keyboard inspection if picking preparation fails (#367).
 
 - Add independent Model, Bones and Weights controls to experimental generated-rest inspection, preserving the full camera frame, selected joint and numerical properties when geometry or weight colors are hidden (#367).
