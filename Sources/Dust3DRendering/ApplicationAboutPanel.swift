@@ -9,10 +9,14 @@ import Foundation
         NSApplication.shared.orderFrontStandardAboutPanel(options: options(applicationName: applicationName))
     }
 
-    static func options(applicationName: String) -> [NSApplication.AboutPanelOptionKey: Any] {
+    static func options(
+        applicationName: String, applicationBundle: Bundle = .main,
+        developmentBundle: () -> Bundle = { Bundle.module }
+    ) -> [NSApplication.AboutPanelOptionKey: Any] {
         options(
             applicationName: applicationName,
-            licenseURL: Bundle.module.url(forResource: "ApplicationLicense", withExtension: "txt"))
+            licenseURL: RenderingResourceBundle.resolve(in: applicationBundle, developmentBundle: developmentBundle)?
+                .url(forResource: "ApplicationLicense", withExtension: "txt"))
     }
 
     static func options(applicationName: String, licenseURL: URL?) -> [NSApplication.AboutPanelOptionKey: Any] {

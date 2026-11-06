@@ -5,6 +5,68 @@ import XCTest
 
 @MainActor
 final class ApplicationAboutPanelTests: XCTestCase {
+    func testPackagedAboutUsesEmbeddedResourcesWithoutDevelopmentLookup() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let app = try resourceFixture(at: root.appendingPathComponent("Copied.app"), identifier: "test.app")
+        let resources = try XCTUnwrap(app.resourceURL)
+        let embedded = try resourceFixture(
+            at: resources.appendingPathComponent("Dust3DNative_Dust3DRendering.bundle"), identifier: "test.resources")
+        let license = "Copyright Embedded Owner\nEmbedded license only"
+        try license.write(
+            to: try XCTUnwrap(embedded.resourceURL).appendingPathComponent("ApplicationLicense.txt"), atomically: true,
+            encoding: .utf8)
+        var usedDevelopment = false
+        let options = ApplicationAboutPanel.options(applicationName: "Copied", applicationBundle: app) {
+            usedDevelopment = true
+            return app
+        }
+        XCTAssertEqual((options[.credits] as? NSAttributedString)?.string, license)
+        XCTAssertFalse(usedDevelopment)
+    }
+
+    func testMissingPackagedResourcesNeverConsultPotentiallyUnavailableBuildBundle() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let app = try resourceFixture(at: root.appendingPathComponent("Copied.app"), identifier: "test.missing")
+        var usedDevelopment = false
+        let options = ApplicationAboutPanel.options(applicationName: "Copied", applicationBundle: app) {
+            usedDevelopment = true
+            return app
+        }
+        XCTAssertFalse(usedDevelopment)
+        XCTAssertTrue(((options[.credits] as? NSAttributedString)?.string ?? "").contains("missing"))
+    }
+
+    func testCommandLineAboutCanUseDevelopmentResources() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let command = try resourceFixture(at: root.appendingPathComponent("Command.bundle"), identifier: "test.command")
+        let development = try resourceFixture(
+            at: root.appendingPathComponent("Development.bundle"), identifier: "test.development")
+        try "Development license".write(
+            to: try XCTUnwrap(development.resourceURL).appendingPathComponent("ApplicationLicense.txt"),
+            atomically: true, encoding: .utf8)
+        var usedDevelopment = false
+        let options = ApplicationAboutPanel.options(applicationName: "Command", applicationBundle: command) {
+            usedDevelopment = true
+            return development
+        }
+        XCTAssertTrue(usedDevelopment)
+        XCTAssertEqual((options[.credits] as? NSAttributedString)?.string, "Development license")
+    }
+
+    private func resourceFixture(at url: URL, identifier: String) throws -> Bundle {
+        try FileManager.default.createDirectory(
+            at: url.appendingPathComponent("Contents/Resources"), withIntermediateDirectories: true)
+        let info: [String: Any] = [
+            "CFBundleIdentifier": identifier, "CFBundlePackageType": url.pathExtension == "app" ? "APPL" : "BNDL",
+        ]
+        try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0).write(
+            to: url.appendingPathComponent("Contents/Info.plist"))
+        return try XCTUnwrap(Bundle(url: url))
+    }
+
     func testAboutUsesExactBundledLicenseAndQANameWhileLeavingVersionDefaultsToAppKit() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
