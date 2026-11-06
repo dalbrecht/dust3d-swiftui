@@ -37,9 +37,12 @@ struct Dust3DEditorApp: App {
         .defaultSize(width: 1300, height: 820)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About \(applicationName)…") { openWindow(id: "build-diagnostics") }
+                Button("About \(applicationName)") {
+                    ApplicationAboutPanel.show(applicationName: applicationName)
+                }
             }
             CommandGroup(after: .help) {
+                Button("Build Diagnostics") { openWindow(id: "build-diagnostics") }
                 Button("Keyboard Shortcuts") { openWindow(id: "keyboard-shortcuts") }
             }
             CommandGroup(replacing: .undoRedo) {
@@ -189,7 +192,7 @@ struct Dust3DEditorApp: App {
             .onDisappear { replayRequest = nil }
         }
         .defaultSize(width: 700, height: 540)
-        Window("About \(applicationName)", id: "build-diagnostics") {
+        Window("Build Diagnostics – \(applicationName)", id: "build-diagnostics") {
             BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
         }
         .defaultSize(width: 660, height: 520)

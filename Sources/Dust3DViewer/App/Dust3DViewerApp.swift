@@ -21,7 +21,12 @@ struct Dust3DViewerApp: App {
         .defaultSize(width: 1000, height: 720)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About \(applicationName)…") { openWindow(id: "build-diagnostics") }
+                Button("About \(applicationName)") {
+                    ApplicationAboutPanel.show(applicationName: applicationName)
+                }
+            }
+            CommandGroup(after: .help) {
+                Button("Build Diagnostics") { openWindow(id: "build-diagnostics") }
             }
             CommandGroup(replacing: .newItem) {
                 Button("Open…") {
@@ -31,7 +36,7 @@ struct Dust3DViewerApp: App {
                 .disabled(openDocument == nil)
             }
         }
-        Window("About \(applicationName)", id: "build-diagnostics") {
+        Window("Build Diagnostics – \(applicationName)", id: "build-diagnostics") {
             BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
         }
         .defaultSize(width: 660, height: 520)

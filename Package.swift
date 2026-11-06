@@ -22,7 +22,7 @@ let package = Package(
         .testTarget(name: "Dust3DEditorModelTests", dependencies: ["Dust3DEditorModel", "Dust3DDocument"]),
         .target(
             name: "Dust3DRendering", dependencies: ["Dust3DKit", "Dust3DDocument"], exclude: ["README.md"],
-            resources: [.copy("Shaders.metal")]),
+            resources: [.copy("Shaders.metal"), .copy("ApplicationLicense.txt")]),
         .testTarget(
             name: "Dust3DRenderingTests", dependencies: ["Dust3DRendering", "Dust3DKit", "Dust3DDocument"]),
         .executableTarget(

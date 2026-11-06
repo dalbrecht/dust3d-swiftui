@@ -29,7 +29,7 @@ remain explicit. Metadata is prepared from the same file snapshot off-main.
 
 ## Build diagnostics
 
-The About window reports the source revision/digest, dirty state and exact core pin
+The Help > Build Diagnostics window reports the source revision/digest, dirty state and exact core pin
 embedded in the loaded executable, separately from process identity. The startup
 capture remains fixed if an on-disk bundle changes. Use the canonical build wrapper
 to embed metadata; direct SwiftPM builds show unavailable identity honestly.
@@ -73,3 +73,9 @@ maps are color 512, normal/material 256, atlas 256, with 64 MiB aggregate decode
 image admission. Native/output/workspace quotas remain independent; these are not
 a process-memory cap. Atlases currently sample only their base level (core #59).
 Editor and system-preview adoption follow separately. See ADR 0082 and #172.
+
+The app-menu About command uses AppKit's standard panel with the packaged
+icon/version, QA-aware application name and exact bundled project MIT notice.
+Build Diagnostics remains a separate Help command and preserves the immutable
+startup source/core capture. Standard-panel physical/VoiceOver acceptance and
+full upstream attribution/help inventory remain separate.

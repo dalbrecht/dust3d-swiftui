@@ -66,7 +66,7 @@ registration, sandboxing and supported-content limits.
 
 ## Build diagnostics
 
-The About window reports the source revision/digest, dirty state and exact core pin
+The Help > Build Diagnostics window reports the source revision/digest, dirty state and exact core pin
 embedded in the loaded executable, separately from process identity. The startup
 capture remains fixed if an on-disk bundle changes. Use the canonical build wrapper
 to embed metadata; direct SwiftPM builds show unavailable identity honestly.
@@ -197,3 +197,9 @@ Camera replacement/pan/zoom/Fit regressions run with both settings; the turntabl
 policy separately verifies that Reduce Motion suppresses automatic movement.
 Physical preference changes and VoiceOver acceptance remain separate.
 Reference: [Apple context environment documentation](https://developer.apple.com/documentation/swiftui/nsviewrepresentablecontext/environment).
+
+The app-menu About command uses AppKit's standard panel with the packaged
+icon/version, QA-aware application name and exact bundled project MIT notice.
+Build Diagnostics remains a separate Help command and preserves the immutable
+startup source/core capture. Standard-panel physical/VoiceOver acceptance and
+full upstream attribution/help inventory remain separate.
