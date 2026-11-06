@@ -152,7 +152,8 @@ def validate_arguments(arguments):
         if option in switches:
             index += 1
         elif option == '-Xswiftc' and arguments[index + 1:index + 2] in (
-                ['-DMOTE3D_EXPERIMENTAL_HOLLOW'], ['-DMOTE3D_EXPERIMENTAL_RIG_TEMPLATE']):
+                ['-DMOTE3D_EXPERIMENTAL_HOLLOW'], ['-DMOTE3D_EXPERIMENTAL_RIG_TEMPLATE'],
+                ['-DMOTE3D_EXPERIMENTAL_GENERATED_RIG']):
             experimental_features.add(arguments[index + 1][2:])
             index += 2
         elif option in value_options and index + 1 < len(arguments) and not arguments[index + 1].startswith('-'):

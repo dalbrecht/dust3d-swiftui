@@ -197,3 +197,19 @@ returns owned Swift vertices and exact source-order names, retaining flat normal
 and semantic bone/selected/ring roles. It does not create a document rig or pose.
 Run its synchronous loader off the main actor. See ADR0160 for quotas, identity
 and validation limits. The production core revision remains unchanged.
+
+## Experimental actual generated rigs
+
+`MOTE3D_EXPERIMENTAL_GENERATED_RIG` enables `GeneratedRigService` against a local
+core containing the generated-rig C ABI (core330, e63d16f0). The separate flag does
+not change template-only experiments or the production pin. Pass immutable archive
+bytes and a pinned rig type; the actor returns copied Sendable mesh, exact source
+joints/parents, column-major rest/inverse arrays and all four draw-corner weights.
+None returns nil; original resource/native errors remain visible. Cancellation
+uses a lock-backed native token and Swift checkpoints, without a fixed-latency
+promise for every inherited stage. No native handle escapes into Swift results.
+
+The data does not evaluate poses/animation or expose a complete UV/export model.
+A future preview must use the returned grounded body with its own joints, capture
+document identity/revision/bytes/settings and reject stale requests. Ordinary mesh
+geometry identity does not advance for rig-only edits. See ADR0161.

@@ -78,6 +78,11 @@ class LocalCoreIntegrationTests(unittest.TestCase):
                 module.validate_arguments(args)
         module.validate_arguments(['test', '--filter', 'ExampleTests'])
 
+    def test_generated_rig_flag_is_distinct_and_recorded(self):
+        self.assertEqual(module.validate_arguments([
+            'test', '--filter', 'GeneratedRigTests', '-Xswiftc', '-DMOTE3D_EXPERIMENTAL_GENERATED_RIG'
+        ]), ['MOTE3D_EXPERIMENTAL_GENERATED_RIG'])
+
     def test_rig_template_compiler_flag_is_recorded_for_isolated_candidate(self):
         self.assertEqual(module.validate_arguments([
             'test', '--filter', 'RigTemplateMeshTests', '-Xswiftc', '-DMOTE3D_EXPERIMENTAL_RIG_TEMPLATE'
