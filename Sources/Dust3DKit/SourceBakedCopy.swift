@@ -112,6 +112,27 @@ enum SourceBakedCopy {
         return try TextureMipChainCopy.image(view, nativeRemaining: &nativeRemaining, budget: &budget)
     }
 
+    static func mipChain(
+        _ owner: OpaquePointer, map: Dust3DTextureMap, required: Bool, lod: Double, maximumLevels: Int,
+        nativeRemaining: inout Int, budget: inout SourceBakeCopyBudget
+    ) throws -> TextureMipChain? {
+        let count = dust3d_source_baked_mesh_texture_level_count(owner, map.rawValue)
+        guard count <= maximumLevels else { throw TextureMipChainError.invalidLevelCount }
+        return try TextureMipChainCopy.copy(
+            count: count, required: required, maximumSamplingLod: lod,
+            nativeRemaining: &nativeRemaining, budget: &budget
+        ) { level in
+            let view = dust3d_source_baked_mesh_texture_level(owner, map.rawValue, level)
+            if level == 0 {
+                let base = dust3d_source_baked_mesh_texture(owner, map.rawValue)
+                guard view.pixels == base.pixels, view.width == base.width, view.height == base.height,
+                    view.row_stride == base.row_stride, view.byte_count == base.byte_count
+                else { throw TextureMipChainError.invalidImage }
+            }
+            return view
+        }
+    }
+
     static func copy(_ owner: OpaquePointer, options: SourceMeshBakeOptions) throws -> SourceBakedMesh {
         guard let geometry = dust3d_source_baked_mesh_geometry(owner),
             let source = dust3d_source_baked_mesh_triangles(owner)
@@ -163,23 +184,53 @@ enum SourceBakedCopy {
             try Task.checkCancellation()
             records.append(try triangle(source[index], models: models, components: components))
         }
-        guard
-            let color = try image(
-                owner, map: DUST3D_TEXTURE_COLOR, required: true, nativeRemaining: &remaining, budget: &budget)
-        else {
-            throw SourceMeshBakeError.invalidNativeCounts
+        let lod = dust3d_source_baked_mesh_maximum_sampling_lod(owner)
+        let mipmaps: SourceBakedMipmaps
+        let maps: MeshTextureMaps
+        if options.maximumMipLevels > 0 {
+            let color = try mipChain(
+                owner, map: DUST3D_TEXTURE_COLOR, required: true, lod: lod, maximumLevels: options.maximumMipLevels,
+                nativeRemaining: &remaining, budget: &budget)
+            let normal = try mipChain(
+                owner, map: DUST3D_TEXTURE_NORMAL, required: false, lod: lod, maximumLevels: options.maximumMipLevels,
+                nativeRemaining: &remaining, budget: &budget)
+            let metallic = try mipChain(
+                owner, map: DUST3D_TEXTURE_METALLIC, required: true, lod: lod, maximumLevels: options.maximumMipLevels,
+                nativeRemaining: &remaining, budget: &budget)
+            let roughness = try mipChain(
+                owner, map: DUST3D_TEXTURE_ROUGHNESS, required: true, lod: lod, maximumLevels: options.maximumMipLevels,
+                nativeRemaining: &remaining, budget: &budget)
+            let emissive = try mipChain(
+                owner, map: DUST3D_TEXTURE_EMISSIVE, required: true, lod: lod, maximumLevels: options.maximumMipLevels,
+                nativeRemaining: &remaining, budget: &budget)
+            guard let color, let metallic, let roughness, let emissive else {
+                throw SourceMeshBakeError.invalidNativeCounts
+            }
+            mipmaps = SourceBakedMipmaps(
+                color: color, normal: normal, metallic: metallic, roughness: roughness, emissive: emissive)
+            maps = MeshTextureMaps(
+                color: color.levels[0], normal: normal?.levels[0], metallic: metallic.levels[0],
+                roughness: roughness.levels[0], emissive: emissive.levels[0])
+        } else {
+            guard
+                let color = try image(
+                    owner, map: DUST3D_TEXTURE_COLOR, required: true, nativeRemaining: &remaining, budget: &budget)
+            else {
+                throw SourceMeshBakeError.invalidNativeCounts
+            }
+            maps = try MeshTextureMaps(
+                color: color,
+                normal: image(
+                    owner, map: DUST3D_TEXTURE_NORMAL, required: false, nativeRemaining: &remaining, budget: &budget),
+                metallic: image(
+                    owner, map: DUST3D_TEXTURE_METALLIC, required: true, nativeRemaining: &remaining, budget: &budget),
+                roughness: image(
+                    owner, map: DUST3D_TEXTURE_ROUGHNESS, required: true, nativeRemaining: &remaining, budget: &budget),
+                emissive: image(
+                    owner, map: DUST3D_TEXTURE_EMISSIVE, required: true, nativeRemaining: &remaining, budget: &budget))
+            _ = try samplingLod(lod, maps: maps)
+            mipmaps = SourceBakedMipmaps()
         }
-        let maps = try MeshTextureMaps(
-            color: color,
-            normal: image(
-                owner, map: DUST3D_TEXTURE_NORMAL, required: false, nativeRemaining: &remaining, budget: &budget),
-            metallic: image(
-                owner, map: DUST3D_TEXTURE_METALLIC, required: true, nativeRemaining: &remaining, budget: &budget),
-            roughness: image(
-                owner, map: DUST3D_TEXTURE_ROUGHNESS, required: true, nativeRemaining: &remaining, budget: &budget),
-            emissive: image(
-                owner, map: DUST3D_TEXTURE_EMISSIVE, required: true, nativeRemaining: &remaining, budget: &budget))
-        let lod = try samplingLod(dust3d_source_baked_mesh_maximum_sampling_lod(owner), maps: maps)
         try Task.checkCancellation()
         let mesh = try MeshLoader.copyNativeMesh(geometry)
         try budget.charge(mesh.vertices.capacity - vertices, width: MemoryLayout<MeshVertex>.stride)
@@ -187,6 +238,6 @@ enum SourceBakedCopy {
         try Task.checkCancellation()
         return SourceBakedMesh(
             geometry: mesh, triangles: records, modelIDs: modelIDs, components: catalog, textures: maps,
-            maximumSamplingLod: lod, nativePayloadBytes: payload, copiedPayloadBytes: budget.used)
+            mipmaps: mipmaps, maximumSamplingLod: lod, nativePayloadBytes: payload, copiedPayloadBytes: budget.used)
     }
 }
