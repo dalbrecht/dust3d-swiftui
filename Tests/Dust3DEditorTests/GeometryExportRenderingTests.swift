@@ -8,6 +8,77 @@ import XCTest
 
 @MainActor
 final class GeometryExportRenderingTests: XCTestCase {
+    func testCompletedExportAnnouncesOnlyFilenameAndCurrentWarning() {
+        for (format, warning, expected) in [
+            (DocumentExportFormat.obj, "", "Exported Capsule.obj."),
+            (.fbx, "Textures omitted", "Exported Capsule.fbx. Export warning: Textures omitted"),
+        ] {
+            let receipt = EditorExportReceipt(
+                documentIdentity: UUID(), documentRevision: 7,
+                destination: URL(fileURLWithPath: "/owned/private-project/Capsule.\(format.rawValue)"),
+                format: format, byteCount: 5143, warning: warning)
+            let view = EditorGeometryExportStatusView(
+                phase: .completed(receipt), onCancel: {}, onDismiss: {}, onReveal: { _ in }, onAnnouncement: { _ in })
+            XCTAssertEqual(view.statusAnnouncement, expected)
+        }
+        for phase in [EditorGeometryExportPhase.idle, .choosing, .encoding, .cancelling] {
+            let view = EditorGeometryExportStatusView(
+                phase: phase, onCancel: {}, onDismiss: {}, onReveal: { _ in }, onAnnouncement: { _ in })
+            XCTAssertNil(view.statusAnnouncement)
+        }
+    }
+
+    func testDistinctSameDestinationExportsAnnounceOnceEachWithoutChangingResponderOrPublishing() async throws {
+        _ = NSApplication.shared
+        var announcements: [String] = []
+        var actions = 0
+        func view(_ phase: EditorGeometryExportPhase) -> EditorGeometryExportStatusView {
+            EditorGeometryExportStatusView(
+                phase: phase, onCancel: { actions += 1 }, onDismiss: { actions += 1 },
+                onReveal: { _ in actions += 1 }, onAnnouncement: { announcements.append($0) })
+        }
+        let sourceIdentity = UUID()
+        func receipt() -> EditorExportReceipt {
+            EditorExportReceipt(
+                documentIdentity: sourceIdentity, documentRevision: 7,
+                destination: URL(fileURLWithPath: "/owned/Capsule.obj"),
+                format: .obj, byteCount: 5143, warning: "Geometry only")
+        }
+        let first = receipt()
+        let second = receipt()
+        let host = NSHostingView(rootView: view(.encoding))
+        let window = NSWindow(
+            contentRect: NSRect(x: -10000, y: -10000, width: 640, height: 140),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 640, height: 140))
+        host.frame = NSRect(x: 0, y: 0, width: 640, height: 100)
+        let field = NSTextField(string: "Continue editing")
+        field.frame = NSRect(x: 8, y: 108, width: 320, height: 24)
+        container.addSubview(host)
+        container.addSubview(field)
+        window.contentView = container
+        window.orderBack(nil)
+        defer { window.close() }
+        XCTAssertTrue(window.makeFirstResponder(field))
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(30))
+        let responder = try XCTUnwrap(window.firstResponder)
+        XCTAssertTrue(responder is NSTextView)
+        host.rootView = view(.completed(first))
+        for _ in 0..<100 where announcements.count < 1 { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(announcements, ["Exported Capsule.obj. Export warning: Geometry only"])
+        // A new completion may be coalesced with no rendered intermediate activity frame.
+        host.rootView = view(.completed(second))
+        for _ in 0..<100 where announcements.count < 2 { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(announcements, Array(repeating: "Exported Capsule.obj. Export warning: Geometry only", count: 2))
+        host.rootView = view(.completed(second))
+        try await Task.sleep(for: .milliseconds(30))
+        XCTAssertEqual(announcements.count, 2)
+        XCTAssertTrue(window.firstResponder === responder)
+        XCTAssertEqual(actions, 0)
+    }
+
     func testAccessibilityReplacesSelectableExportWarning() async throws {
         _ = NSApplication.shared
         let receipt = EditorExportReceipt(
@@ -20,7 +91,7 @@ final class GeometryExportRenderingTests: XCTestCase {
             format: .fbx, byteCount: 5144, warning: "Textures omitted")
         let host = NSHostingView(
             rootView: EditorGeometryExportStatusView(
-                phase: .completed(receipt), onCancel: {}, onDismiss: {}, onReveal: { _ in }))
+                phase: .completed(receipt), onCancel: {}, onDismiss: {}, onReveal: { _ in }, onAnnouncement: { _ in }))
         let window = NSWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: 640, height: 100),
             styleMask: [.titled], backing: .buffered, defer: false)
@@ -39,7 +110,7 @@ final class GeometryExportRenderingTests: XCTestCase {
         }
         XCTAssertTrue(strings().contains(where: { $0.contains("Geometry only") }))
         host.rootView = EditorGeometryExportStatusView(
-            phase: .completed(secondReceipt), onCancel: {}, onDismiss: {}, onReveal: { _ in })
+            phase: .completed(secondReceipt), onCancel: {}, onDismiss: {}, onReveal: { _ in }, onAnnouncement: { _ in })
         for _ in 0..<100 where !strings().contains(where: { $0.contains("Textures omitted") }) {
             try await Task.sleep(for: .milliseconds(10))
         }
@@ -59,7 +130,8 @@ final class GeometryExportRenderingTests: XCTestCase {
 
     func testFailedExportProvidesAnAccessibilityAnnouncement() {
         let view = EditorGeometryExportStatusView(
-            phase: .failed(DocumentExportError.sourceAlias), onCancel: {}, onDismiss: {}, onReveal: { _ in })
+            phase: .failed(DocumentExportError.sourceAlias), onCancel: {}, onDismiss: {}, onReveal: { _ in },
+            onAnnouncement: { _ in })
 
         XCTAssertEqual(
             view.statusAnnouncement,

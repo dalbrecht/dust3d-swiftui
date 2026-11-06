@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Announce completed geometry exports and warnings to assistive technologies, with one notification per export even for repeated destinations (#339).
+
 - Match Qt reference-image pixel selection and alpha fitting while preserving 16-bit sample precision; retain correct RGB16 transparency decoding despite a Qt reader defect (#337).
 
 - Package and verify the seven pinned rig templates for native SDK consumers and installed file-preview bundles (#195).

@@ -1,0 +1,11 @@
+# Export completion accessibility feedback (#339)
+
+The export banner previously posted failure announcements only. Successful export completion now provides the filename and any current warning through the same Announcement boundary. No focus-change or screen-change notification is requested. Apple's [accessibility technologies lab](https://developer.apple.com/videos/play/wwdc2026/8005/) recommends Announcement for completion feedback without moving VoiceOver focus (14:57 discussion).
+
+Each immutable export receipt owns a notification identity. SwiftUI compares the identity and message, so two completed exports to the same destination/revision announce separately even when an intermediate busy frame is coalesced. Re-rendering the same receipt does not duplicate its announcement. Idle, destination choice, encoding and cancellation remain silent; existing failure messaging is retained. Completion speech uses the filename, not the full destination path. Selectable warnings and native Reveal/Dismiss controls are unchanged.
+
+The regression uses captured receipt metadata, fake actions and an injected notification sink in a fresh offscreen owned window. It checks delivery for two same-source/revision/destination receipts, no duplicate on refresh, no action invocation and retention of an actual native field editor as first responder. Existing selectable-warning transition and light/dark status rendering tests remain. The initial two tests reproduced five assertion failures before the fix. No save panel, export writer, protected QA process, AX press/navigation or quarantined engine path is invoked by the new tests.
+
+These checks establish model messages, SwiftUI change delivery and owned-window responder behavior. Physical VoiceOver speech/focus and broader accessibility/HIG acceptance remain outstanding. Historical stale external AX observations in #235 remain separately tracked. Full native CI and clean exact-head automated review/CI remain required before merge or a new release checkpoint.
+
+Focused validation passed all 22 export workflow/status tests, including the five renderer/announcement tests. The announcement sink is injected in hosted transition tests so they do not post system speech notifications. Full native validation is recorded separately for the committed source.

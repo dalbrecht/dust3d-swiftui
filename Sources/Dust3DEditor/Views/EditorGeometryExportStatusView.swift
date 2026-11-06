@@ -9,19 +9,19 @@ struct EditorGeometryExportStatusView: View {
     let onCancel: () -> Void
     let onDismiss: () -> Void
     let onReveal: (URL) -> Void
+    var onAnnouncement: @MainActor (String) -> Void = { announcement in
+        AccessibilityNotification.Announcement(announcement).post()
+    }
 
     var body: some View {
-        content.onChange(of: statusAnnouncement) { _, announcement in
+        content.onChange(of: phase.accessibilityAnnouncement) { _, announcement in
             if let announcement {
-                AccessibilityNotification.Announcement(announcement).post()
+                onAnnouncement(announcement.message)
             }
         }
     }
 
-    var statusAnnouncement: String? {
-        guard case .failed(let error) = phase else { return nil }
-        return "Export failed. " + EditorStore.message(error)
-    }
+    var statusAnnouncement: String? { phase.accessibilityAnnouncement?.message }
 
     @ViewBuilder private var content: some View {
         switch phase {
