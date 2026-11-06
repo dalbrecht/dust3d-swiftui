@@ -16,7 +16,11 @@ immutable bytes before loading, then actor snapshot identity/revision permits ch
 input checks without archive encoding per pointer event. New sources reset the
 camera; palette, selection and presentation changes reuse generated data and camera.
 
-A template name supplied by a view seeds a new source only. Explicit template
+A template name supplied by a view seeds a new document/template source only.
+Preserve the explicit template choice across revisions of the same document and
+exact UTF-8 rig type, including workspace assignment/settings edits. Clear the
+generated-joint override for each regenerated rig; a new document/type does not
+inherit the stored template choice. Explicit template
 clicks control later changes, including clearing a generated-joint override when
 clicking the already-selected template. Retry and menu actions check captured
 source epochs. Raw viewport input additionally checks its captured presentation

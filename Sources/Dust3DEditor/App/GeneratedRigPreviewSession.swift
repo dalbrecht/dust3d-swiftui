@@ -86,9 +86,15 @@ final class GeneratedRigPreviewSession {
         let changed = self.request != request
         self.appearance = appearance
         if changed {
+            let sameTemplate =
+                self.request?.documentIdentity == request.documentIdentity
+                && self.request?.sourceType.map { Data($0.utf8) } == request.sourceType.map { Data($0.utf8) }
+            if let pendingTemplate, pendingTemplate.0 == request {
+                templateName = pendingTemplate.1
+            } else if !sameTemplate {
+                templateName = Data((selectedBoneName ?? "").utf8)
+            }
             self.request = request
-            templateName =
-                pendingTemplate?.0 == request ? pendingTemplate?.1 ?? Data() : Data((selectedBoneName ?? "").utf8)
             pendingTemplate = nil
             selection = nil
             beginGeneration()

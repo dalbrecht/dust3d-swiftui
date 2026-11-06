@@ -296,4 +296,58 @@ final class GeneratedRigPreviewSessionTests: XCTestCase {
         XCTAssertFalse(session.cameraState.replaceFromInteraction(OrbitCamera()))
     }
 
+    func testWorkspaceRegenerationKeepsExplicitTemplateChoiceForSameDocumentAndRigType() async throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data("<canvas rigType='Snake'><nodes/><edges/><parts/></canvas>".utf8))
+        let editor = EditorSession()
+        let current = SessionSnapshotBox(try await editor.open(data: document.encoded()))
+        let gate = SessionRigGate()
+        let session = GeneratedRigPreviewSession(
+            generation: GeneratedRigPreviewState { _ in try await gate.load() },
+            display: GeneratedRigDisplayState { rig, _ in rig.mesh }, readSnapshot: { current.value })
+        session.update(
+            request: GeneratedRigPreviewRequest(snapshot: current.value), selectedBoneName: "Root", appearance: palette)
+        try await wait { await gate.contains(1) }
+        await gate.finish(1)
+        try await wait { session.isReady }
+        session.setTemplateSelection("Child", request: GeneratedRigPreviewRequest(snapshot: current.value))
+        try await wait { session.isReady && session.selectedName == "Child" }
+        current.value = try await editor.apply([.setHeadHasEyelids(true)])
+        session.update(
+            request: GeneratedRigPreviewRequest(snapshot: current.value), selectedBoneName: nil, appearance: palette)
+        try await wait { await gate.contains(2) }
+        await gate.finish(2)
+        try await wait { session.isReady }
+        XCTAssertEqual(session.selectedName, "Child")
+        XCTAssertEqual(session.display.acceptedRequest?.selectedBoneName, "Child")
+        session.stop()
+    }
+
+    func testDifferentDocumentOrRigTypeDoesNotInheritStoredTemplateChoice() async throws {
+        for changesType in [true, false] {
+            let document = try Dust3DDocument(
+                snapshotXML: Data("<canvas rigType='Snake'><nodes/><edges/><parts/></canvas>".utf8))
+            let editor = EditorSession()
+            let current = SessionSnapshotBox(try await editor.open(data: document.encoded()))
+            let session = GeneratedRigPreviewSession(
+                generation: GeneratedRigPreviewState { _ in sessionRig() },
+                display: GeneratedRigDisplayState { rig, _ in rig.mesh }, readSnapshot: { current.value })
+            session.update(
+                request: GeneratedRigPreviewRequest(snapshot: current.value), selectedBoneName: "Child",
+                appearance: palette)
+            try await wait { session.isReady }
+            XCTAssertEqual(session.selectedName, "Child")
+            current.value =
+                changesType
+                ? try await editor.apply([.setRigType(.bird)]) : try await editor.open(data: document.encoded())
+            session.update(
+                request: GeneratedRigPreviewRequest(snapshot: current.value), selectedBoneName: nil, appearance: palette
+            )
+            try await wait { session.isReady }
+            XCTAssertEqual(session.selectedName, "")
+            XCTAssertNil(session.selectedIndex)
+            session.stop()
+        }
+    }
+
 }
