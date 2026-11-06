@@ -24,12 +24,6 @@
         }
     }
 
-    struct RigTemplatePreviewAppearance: Sendable, Hashable {
-        let boneColor: SIMD4<Float>
-        let selectedBoneColor: SIMD4<Float>
-        let ringColor: SIMD4<Float>
-    }
-
     private struct RigTemplatePreviewPrepared: Sendable {
         let mesh: RigTemplateMesh?
         let displayMesh: Mesh?

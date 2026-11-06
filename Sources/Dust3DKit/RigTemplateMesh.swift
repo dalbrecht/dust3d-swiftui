@@ -1,6 +1,6 @@
 import Foundation
 
-#if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE
+#if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE || MOTE3D_EXPERIMENTAL_GENERATED_RIG
     import Dust3DEngine
 #endif
 
@@ -136,7 +136,10 @@ public struct RigTemplateMesh: Sendable {
             return try (coordinate("x"), coordinate("y"), coordinate("z"))
         }
 
-        private static func copy(_ owner: OpaquePointer, expectedNames: [String]) throws -> Self {
+    #endif
+
+    #if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE || MOTE3D_EXPERIMENTAL_GENERATED_RIG
+        static func copy(_ owner: OpaquePointer, expectedNames: [String]) throws -> Self {
             let count = dust3d_rig_template_mesh_vertex_count(owner)
             let boneCount = dust3d_rig_template_mesh_bone_count(owner)
             let payload = dust3d_rig_template_mesh_output_bytes(owner)

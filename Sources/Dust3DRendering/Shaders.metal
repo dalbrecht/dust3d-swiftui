@@ -27,6 +27,7 @@ vertex VertexOutput meshVertex(uint index [[vertex_id]],
     output.position = uniforms.transform * vertices[index].position;
     output.normal = (uniforms.rotation * vertices[index].normal).xyz;
     output.color = uniforms.options.y > 0.5 ? float4(0.96, 0.94, 0.91, vertices[index].color.a) : vertices[index].color;
+    output.color.a = uniforms.options.z > 0.5 ? clamp(vertices[index].color.a, 0.0, 1.0) : 1.0;
     return output;
 }
 
@@ -35,7 +36,7 @@ fragment float4 meshFragment(VertexOutput input [[stage_in]])
     float3 normal = normalize(input.normal);
     float key = abs(dot(normal, normalize(float3(-0.5, 0.8, 0.7))));
     float fill = abs(dot(normal, normalize(float3(0.6, 0.1, -0.5))));
-    return float4(input.color.rgb * (0.25 + 0.55 * key + 0.2 * fill), 1.0);
+    return float4(input.color.rgb * (0.25 + 0.55 * key + 0.2 * fill), input.color.a);
 }
 
 struct BakedMeshVertex {

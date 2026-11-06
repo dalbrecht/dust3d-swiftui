@@ -52,8 +52,17 @@ struct RigSettingsControls: View {
                 } else {
                     Text("Open a document to edit rig settings.").font(.caption)
                 }
-                Text("Changes are included when you save. Skeleton generation and pose preview are not available yet.")
+                #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                    Text(
+                        "Changes are included when you save. Generated rest preview is experimental; pose preview is not available yet."
+                    )
                     .font(.caption).foregroundStyle(.primary)
+                #else
+                    Text(
+                        "Changes are included when you save. Skeleton generation and pose preview are not available yet."
+                    )
+                    .font(.caption).foregroundStyle(.primary)
+                #endif
             }
         } label: {
             HStack {
