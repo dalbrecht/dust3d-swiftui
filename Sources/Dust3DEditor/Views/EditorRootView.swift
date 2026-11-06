@@ -260,7 +260,7 @@ struct EditorRootView: View {
             if mode == .generatedRest {
                 let revision = restPreview.currentRevision
                 return EditorPreviewCameraActions(
-                    canMove: restPreview.isReady, supportsAutomaticOrbit: false,
+                    canMove: restPreview.canMoveCamera, supportsAutomaticOrbit: false,
                     isCurrent: { [weak restPreview] in
                         restPreview?.presentationRevision == presentation && restPreview?.currentRevision == revision
                     },

@@ -327,4 +327,37 @@ final class GeneratedRigDisplayStateTests: XCTestCase {
         XCTAssertNil(state.weightSummary)
     }
 
+    func testDisplayBoundaryIsPublishedWithAcceptedMeshAndRetainedOnFailedReplacement() async {
+        let state = GeneratedRigDisplayState { rig, request in
+            let vertices =
+                request.selectedBoneName == "invalid"
+                ? Array(rig.mesh.vertices.prefix(2)) : rig.mesh.vertices + rig.mesh.vertices
+            return Mesh(vertices: vertices, nodeCount: 1, partCount: 1, warning: "boundary")
+        }
+        let first = request()
+        await state.load(first, rig: displayRig())
+        XCTAssertEqual(state.skeletonVertexCount, 3)
+        XCTAssertEqual(state.mesh?.vertices.count, 6)
+        XCTAssertEqual(state.acceptedRequest, first)
+        await state.load(request(name: "invalid"), rig: displayRig())
+        XCTAssertNil(state.acceptedRequest)
+        XCTAssertNotNil(state.error)
+        XCTAssertEqual(state.skeletonVertexCount, 3)
+        XCTAssertEqual(state.mesh?.vertices.count, 6)
+        state.stop()
+        XCTAssertNil(state.skeletonVertexCount)
+    }
+
+    func testWeightsFlagIsDisplayIdentityWithoutChangingSelectedName() {
+        let revision = UUID()
+        let palette = RigTemplatePreviewAppearance(boneColor: .one, selectedBoneColor: .one, ringColor: .one)
+        let enabled = GeneratedRigDisplayRequest(rigRevision: revision, selectedBoneName: "Root", appearance: palette)
+        let disabled = GeneratedRigDisplayRequest(
+            rigRevision: revision, selectedBoneName: "Root", appearance: palette, showsWeights: false)
+        XCTAssertTrue(enabled.showsWeights)
+        XCTAssertFalse(disabled.showsWeights)
+        XCTAssertEqual(enabled.selectedBoneName, disabled.selectedBoneName)
+        XCTAssertEqual(Set([enabled, disabled]).count, 2)
+    }
+
 }

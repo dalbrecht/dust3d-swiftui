@@ -55,9 +55,15 @@
                     }
                     cameraMenu(
                         revision: revision,
-                        enabled: display.acceptedRequest == displayRequest && !display.isLoading && display.error == nil
-                            && rig != nil)
+                        enabled: session.canMoveCamera && rig != nil)
                 }
+                HStack {
+                    Toggle("Model", isOn: Binding(get: { session.showsModel }, set: { session.showsModel = $0 }))
+                    Toggle("Bones", isOn: Binding(get: { session.showsBones }, set: { session.showsBones = $0 }))
+                    Toggle(
+                        "Weights", isOn: Binding(get: { session.showsWeights }, set: { session.setShowsWeights($0) }))
+                }
+                .toggleStyle(.checkbox)
                 if current, generation.request == request, let error = generation.error {
                     Text(error).font(.caption).textSelection(.enabled)
                     Button("Retry Generation") {
@@ -65,6 +71,14 @@
                     }
                 } else if let rig, let revision {
                     jointPicker(rig: rig, revision: revision, selected: selected)
+                    if !session.showsModel && !session.showsBones {
+                        Text("Model and bones hidden").font(.caption).foregroundStyle(.secondary)
+                    } else if !session.showsModel, display.acceptedRequest == displayRequest,
+                        session.display.skeletonVertexCount == 0
+                    {
+                        Text("No drawable bones; joints remain listed below.").font(.caption).foregroundStyle(
+                            .secondary)
+                    }
                     hierarchySection(rig: rig, revision: revision, selected: selected)
                     ZStack {
                         // Keep the view mounted while display colors change, preserving its camera.
@@ -73,6 +87,7 @@
                             MeshViewport(
                                 mesh: mesh, isWireframe: session.isWireframe, cameraReset: 0,
                                 meshRevision: display.meshRevision, blendsVertexAlpha: true,
+                                drawRange: session.drawRange,
                                 cameraState: session.cameraState,
                                 cameraInteractionAllowed: { [weak session] in
                                     session?.allowsCameraInteraction(
@@ -115,10 +130,12 @@
                         "\(rig.joints.count) generated joints. \(rig.eyelidsGenerated ? "Eyelids included." : "No generated eyelids.")"
                     )
                     .font(.caption).foregroundStyle(.secondary)
-                    Text(name.isEmpty ? "No weight highlight" : "Weight highlight: \(name)")
+                    Text(name.isEmpty ? "No joint selected" : "Selected joint: \(name)")
                         .font(.caption).foregroundStyle(.secondary)
                     Text(
-                        "Weight colors: gray means no selected influence; blue to red means increasing selected weight."
+                        session.showsWeights
+                            ? "Weight colors: gray means no selected influence; blue to red means increasing selected weight."
+                            : "Weight colors hidden; joint selection and numerical properties are preserved."
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     if display.acceptedRequest == displayRequest, !display.isLoading, display.error == nil,

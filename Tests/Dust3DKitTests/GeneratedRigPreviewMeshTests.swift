@@ -60,6 +60,34 @@ final class GeneratedRigPreviewMeshTests: XCTestCase {
         XCTAssertEqual(mesh.vertices[2].color, SIMD4(0.25, 0, 0.75, 0.8))
     }
 
+    func testHiddenWeightsGrayBodyWhilePreservingSelectedSkeletonAndGeometry() throws {
+        let base = fixture()
+        let rig = GeneratedRig(
+            mesh: base.mesh, joints: base.joints,
+            influences: Array(repeating: GeneratedRigInfluences(joints: .zero, weights: SIMD4(1, 0, 0, 0)), count: 3),
+            eyelidsGenerated: false)
+        let skeleton = GeneratedRigSkeleton(
+            vertices: [RigTemplateMeshRole.bone, .selectedBone, .ring].map {
+                RigTemplateMeshVertex(position: SIMD3(12, 3, 4), normal: SIMD3(0, 1, 0), boneIndex: 0, role: $0)
+            }, boneNames: ["Root"])
+        let highlighted = try rig.previewMesh(
+            skeleton: skeleton, selectedBoneName: "Root", boneColor: SIMD4(1, 0, 0, 0),
+            selectedBoneColor: SIMD4(0, 1, 0, 0), ringColor: SIMD4(0, 0, 1, 0))
+        let hidden = try rig.previewMesh(
+            skeleton: skeleton, selectedBoneName: "Root", showsWeights: false, boneColor: SIMD4(1, 0, 0, 0),
+            selectedBoneColor: SIMD4(0, 1, 0, 0), ringColor: SIMD4(0, 0, 1, 0))
+        XCTAssertEqual(hidden.vertices.count, highlighted.vertices.count)
+        XCTAssertEqual(hidden.vertices.map(\.position), highlighted.vertices.map(\.position))
+        XCTAssertEqual(hidden.vertices.map(\.normal), highlighted.vertices.map(\.normal))
+        XCTAssertEqual(hidden.vertices.prefix(3).map(\.color), highlighted.vertices.prefix(3).map(\.color))
+        XCTAssertEqual(hidden.vertices[1].color, SIMD4(0, 1, 0, 1))
+        XCTAssertTrue(highlighted.vertices.suffix(3).allSatisfy { $0.color == SIMD4(1, 0, 0, 0.8) })
+        XCTAssertTrue(hidden.vertices.suffix(3).allSatisfy { $0.color == SIMD4(0.5, 0.5, 0.5, 0.8) })
+        XCTAssertEqual(hidden.nodeCount, highlighted.nodeCount)
+        XCTAssertEqual(hidden.partCount, highlighted.partCount)
+        XCTAssertEqual(hidden.warning, highlighted.warning)
+    }
+
     func testMissingDrawableSkeletonAndMalformedCorrespondenceAreRejected() throws {
         let base = fixture()
         let joint = GeneratedRigJoint(

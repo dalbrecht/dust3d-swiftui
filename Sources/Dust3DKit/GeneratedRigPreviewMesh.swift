@@ -6,13 +6,14 @@ extension GeneratedRig {
     /// - Parameters:
     ///   - skeleton: Unnormalized geometry from this rig, or nil when all axes are zero.
     ///   - selectedBoneName: Exact UTF-8 source name whose weights are displayed.
+    ///   - showsWeights: Whether selected weights color the body; skeleton colors remain visible.
     ///   - boneColor: Platform palette for ordinary bones (alpha is forced to one).
     ///   - selectedBoneColor: Platform palette for selected bones.
     ///   - ringColor: Platform palette for capsule rings.
     /// - Returns: Copied triangles with opaque bones and body alpha 0.8.
     /// - Throws: Invalid source correspondence, nonfinite palette, or cancellation.
     package func previewMesh(
-        skeleton: GeneratedRigSkeleton?, selectedBoneName: String = "",
+        skeleton: GeneratedRigSkeleton?, selectedBoneName: String = "", showsWeights: Bool = true,
         boneColor: SIMD4<Float>, selectedBoneColor: SIMD4<Float>, ringColor: SIMD4<Float>
     ) throws -> Mesh {
         func invalid() -> RigTemplateHierarchyError { .invalidMetadata("invalid generated rig preview correspondence") }
@@ -47,7 +48,7 @@ extension GeneratedRig {
         for (index, vertex) in mesh.vertices.enumerated() {
             if index.isMultiple(of: 1024) { try Task.checkCancellation() }
             var weight: Float = 0
-            if let selected {
+            if showsWeights, let selected {
                 for slot in 0..<4 where influences[index].joints[slot] == UInt32(selected) {
                     weight += influences[index].weights[slot]
                 }

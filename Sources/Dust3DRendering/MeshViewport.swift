@@ -27,6 +27,7 @@ public struct MeshViewport: NSViewRepresentable {
     let isWireframe: Bool
     let showsColor: Bool
     let blendsVertexAlpha: Bool
+    let drawRange: Range<Int>?
     let automaticallyOrbits: Bool
     let cameraReset: Int
     let cameraCommand: MeshCameraCommand?
@@ -47,16 +48,19 @@ public struct MeshViewport: NSViewRepresentable {
     /// cameraReset/cameraCommand are ignored. Invoke the owner's move/fit controls.
     /// cameraInteractionAllowed admits owned-camera raw input from this surface;
     /// capture its source/presentation epoch to reject obsolete mounted views.
+    /// drawRange selects complete triangles from the full expanded buffer; nil
+    /// draws all, and an empty range clears without drawing. Bounds stay fixed.
     public init(
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
         cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true, automaticallyOrbits: Bool = false,
-        blendsVertexAlpha: Bool = false, cameraState: MeshCameraState? = nil,
+        blendsVertexAlpha: Bool = false, drawRange: Range<Int>? = nil, cameraState: MeshCameraState? = nil,
         cameraInteractionAllowed: @escaping @MainActor () -> Bool = { true }, onError: @escaping (String) -> Void
     ) {
         onMaterialRendered = {}
         materials = nil
         onMaterialError = { _ in }
         self.blendsVertexAlpha = blendsVertexAlpha
+        self.drawRange = drawRange
         self.cameraState = cameraState
         cameraRevision = cameraState?.revision
         self.cameraInteractionAllowed = cameraInteractionAllowed
@@ -122,6 +126,7 @@ public struct MeshViewport: NSViewRepresentable {
         self.materials = materials
         self.onMaterialError = onMaterialError ?? onError
         blendsVertexAlpha = false
+        drawRange = nil
         cameraState = nil
         cameraRevision = nil
         cameraInteractionAllowed = { true }
@@ -156,6 +161,7 @@ public struct MeshViewport: NSViewRepresentable {
     // Direct renderer tests have no installed SwiftUI environment; production passes the context's current value.
     func updateRenderer(in view: InteractiveMeshView, reduceMotion: Bool = false) {
         defer { view.automaticOrbitBinding.update(requested: automaticallyOrbits, reduceMotion: reduceMotion) }
+        view.drawRangeRequest.update(range: drawRange, meshRevision: meshRevision)
         view.cameraInteractionAllowed = cameraInteractionAllowed
         view.adoptCameraState(cameraState)
         if view.alphaRequest.update(blendsVertexAlpha: blendsVertexAlpha) {
@@ -194,6 +200,20 @@ public struct MeshViewport: NSViewRepresentable {
                 }
                 return
             }
+        }
+        do {
+            try view.renderer?.updateDrawRange(drawRange)
+            view.drawRangeRequest.succeeded()
+        } catch {
+            if let stamp = view.drawRangeRequest.captureFailure() {
+                let message = error.localizedDescription
+                DispatchQueue.main.async {
+                    guard view.meshRevision == meshRevision, view.drawRangeRequest.accepts(stamp) else { return }
+                    onError(message)
+                }
+            }
+            view.needsDisplay = true
+            return
         }
         if cameraState == nil {
             if view.cameraReset != cameraReset {
@@ -240,6 +260,7 @@ public class InteractiveMeshView: MTKView {
     var requestedWireframe = false
     var requestedShowsColor = true
     var alphaRequest = MeshAlphaRequestState()
+    var drawRangeRequest = MeshDrawRangeRequestState()
     let materialBuilder = TexturedMetalResourcesBuilder()
     let importedMaterialBuilder = ImportedMetalResourcesBuilder()
 
