@@ -702,3 +702,9 @@ during gestures, honors Reduce Motion, and resumes without a catch-up jump.
 Changing the source/window or hiding the preview clears incomplete input. Existing
 camera menus remain available for keyboard navigation. Physical trackpad and
 VoiceOver acceptance remains outstanding. See ADR 0170.
+
+Shift-drag pans mesh previews in view points, matching the Qt interaction. Ordinary
+drag still orbits. In generated-rest picking, pan intent cannot select a bone,
+even if movement stays below the click threshold. Camera commands remain available
+in the menu. Physical pointer/keyboard/VoiceOver acceptance remains outstanding.
+See [ADR 0171](../../docs/adr/0171-preview-pointer-pan.md).
