@@ -1260,6 +1260,18 @@ final class EditorStore {
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
+    func canAssignBoneName(_ name: String, target: EdgeBoneAssignmentTarget) -> Bool {
+        guard !stopped, !isWorking, let snapshot else { return false }
+        return target.isCurrent(in: snapshot) && target.hasChanges(name: name)
+    }
+    func assignBoneNameAction(_ name: String, target: EdgeBoneAssignmentTarget) -> @MainActor () -> Void {
+        guard canAssignBoneName(name, target: target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canAssignBoneName(name, target: target) else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.assignBoneName(name, target: target) }
+        }
+    }
+
     func setEdgeBoneName(_ id: String, name: String) {
         perform { try await $0.apply([.setEdgeBoneName(id: id, name: name)]) }
     }

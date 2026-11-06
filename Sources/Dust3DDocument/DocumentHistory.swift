@@ -9,7 +9,7 @@ public struct DocumentPreviewIdentity: Equatable, Sendable {
     mutating func advance(for command: DocumentCommand) {
         switch command {
         case .createAnimation, .setAnimationName, .setAnimationType, .setAnimationParameter,
-            .duplicateAnimation, .deleteAnimation, .setRigType, .setHeadHasEyelids, .setEdgeBoneName,
+            .duplicateAnimation, .deleteAnimation, .setRigType, .setHeadHasEyelids, .setEdgeBoneName, .setEdgeBoneNames,
             .setPartName, .setComponentName, .setReferenceImagePNG:
             break
         case .setPartState(_, let property, _) where property != .disabled,

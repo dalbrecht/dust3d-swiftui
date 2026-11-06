@@ -5,6 +5,7 @@ import SwiftUI
 /// Preserve byte-distinct native text edits while SwiftUI owns the accepted draft.
 struct ExactBoneNameField: NSViewRepresentable {
     @Binding var name: BoneNameIdentity
+    var placeholder: String = "Unassigned"
     let onSubmit: @MainActor () -> Void
     let onCancel: @MainActor () -> Void
 
@@ -12,7 +13,7 @@ struct ExactBoneNameField: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSTextField {
         let field = NSTextField(string: name.rawValue)
-        field.placeholderString = "Unassigned"
+        field.placeholderString = placeholder
         field.font = .preferredFont(forTextStyle: .body)
         field.bezelStyle = .roundedBezel
         field.maximumNumberOfLines = 1
@@ -31,6 +32,7 @@ struct ExactBoneNameField: NSViewRepresentable {
     func updateNSView(_ field: NSTextField, context: Context) {
         context.coordinator.owner = self
         field.isEnabled = context.environment.isEnabled
+        if field.placeholderString != placeholder { field.placeholderString = placeholder }
         let editor = field.currentEditor()
         let current = editor?.string ?? field.stringValue
         // Unrelated publications must retain the native insertion point and selection.
