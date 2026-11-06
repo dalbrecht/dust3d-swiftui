@@ -15,7 +15,9 @@ public struct DocumentPreviewIdentity: Equatable, Sendable {
         case .setPartState(_, let property, _) where property != .disabled,
             .setPartsState(_, let property, _) where property != .disabled:
             break
-        case .setPartMaterial, .setComponentColorImage, .importComponentColorImage:
+        case .setPartMaterial, .setComponentColorImage, .importComponentColorImage,
+            .setComponentSurfacePattern, .setComponentSurfaceScalar, .setComponentSurfaceColor:
+            // Finish fields affect baked color/normal pixels; each bake regenerates its own fold-placement snapshot.
             materials = UUID()
         case .setComponentColor, .setComponentColors:
             // Component colors also feed vertex-color fallback, including the bulk command.

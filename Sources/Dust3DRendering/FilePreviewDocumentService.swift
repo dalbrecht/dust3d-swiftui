@@ -60,7 +60,9 @@ public struct FilePreviewDocument: Sendable {
             hasImportedMaterials: materialsRendered && (importedMaterials != nil || sourceBakedMesh != nil)
                 && !materialRenderingFailed,
             hasSourceBakedMaterials: materialsRendered && sourceBakedMesh != nil && !materialRenderingFailed,
-            hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails)
+            hasLegacySurfaceDetails: materialSourceCapabilities.hasLegacySurfaceDetails,
+            hasRenderedSurfaceDetails: materialsRendered && bakedMesh != nil && !materialRenderingFailed,
+            materialWarning: materials?.preparationWarning)
     }
 }
 

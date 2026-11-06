@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add wrapping surface finish authoring for coat patterns, RGB ink, belly shading and generated cloth wrinkles, with cancellable drafts and one-step Undo.
+
 - Mark the common role of selected parts in the Part Role menu.
 
 - Enter a target in the node inspector to bend a chain from the keyboard.

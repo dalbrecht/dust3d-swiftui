@@ -320,7 +320,9 @@ final class EditorStore {
                 && renderedMaterialRevision == materialViewportRevision,
             hasSourceBakedMaterials: sourceBakedMesh != nil
                 && renderedMaterialRevision == materialViewportRevision,
-            hasLegacySurfaceDetails: legacyDetails)
+            hasLegacySurfaceDetails: legacyDetails,
+            hasRenderedSurfaceDetails: bakedMesh != nil && renderedMaterialRevision == materialViewportRevision,
+            materialWarning: materialState.isStale ? nil : materialState.value?.preparationWarning)
     }
     private var renderedMaterialRevision: Int?
 
@@ -1055,6 +1057,39 @@ final class EditorStore {
         guard canReorderComponent(direction), let id = snapshot?.selectedComponentID else { return }
         perform { try await $0.apply([.reorderComponent(id: id, direction: direction)]) }
     }
+    func canEditComponentSurface(_ target: ComponentSurfaceTarget) -> Bool {
+        guard !isWorking, !stopped, let snapshot else { return false }
+        return target.isCurrent(in: snapshot)
+    }
+    func componentSurfaceAction(_ edit: ComponentSurfaceEdit, target: ComponentSurfaceTarget) -> @MainActor () -> Void {
+        guard canEditComponentSurface(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canEditComponentSurface(target) else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.editComponentSurface(edit, target: target) }
+        }
+    }
+    func componentSurfaceScalarAction(_ property: ComponentSurfaceScalar, target: ComponentSurfaceTarget)
+        -> @MainActor (String) -> Void
+    {
+        guard canEditComponentSurface(target) else { return { _ in } }
+        return { [weak self] text in
+            guard let self, self.canEditComponentSurface(target) else { return }
+            guard let number = EngineScalar.parse(text, in: property.bounds) else {
+                self.errorMessage =
+                    "Enter a wrapping finish value from \(property.bounds.lowerBound) to \(property.bounds.upperBound)."
+                return
+            }
+            self.componentSurfaceAction(.scalar(property, number), target: target)()
+        }
+    }
+    func componentSurfaceInkAction(target: ComponentSurfaceTarget) -> @MainActor (DocumentColor) -> Void {
+        guard canEditComponentSurface(target) else { return { _ in } }
+        return { [weak self] color in
+            guard let self, self.canEditComponentSurface(target) else { return }
+            self.componentSurfaceAction(.ink(color), target: target)()
+        }
+    }
+
     func setComponentWrapMode(_ id: String, mode: ComponentWrapMode) {
         perform { try await $0.apply([.setComponentWrapMode(id: id, mode: mode)]) }
     }
@@ -1705,7 +1740,11 @@ final class EditorStore {
                         generate(next)
                     } else if previousPreviewIdentity?.materials != next.previewIdentity.materials {
                         clearMaterials()
-                        if !previewState.isStale, mesh != nil { generateMaterials(next) }
+                        if mesh == nil || previewState.isStale {
+                            generate(next, preservingFailure: true)
+                        } else {
+                            generateMaterials(next)
+                        }
                     }
                     if reloadReferenceImage { refreshReferenceImage(next) }
                 }
@@ -1735,7 +1774,7 @@ final class EditorStore {
         }
     }
 
-    private func generate(_ snapshot: EditorSnapshot) {
+    private func generate(_ snapshot: EditorSnapshot, preservingFailure: Bool = false) {
         clearMaterials()
         generation?.cancel()
         renderError = nil
@@ -1747,7 +1786,7 @@ final class EditorStore {
         previewSourceIssue = nil
         let scopeID = previewScopeID
         let requestID = UUID()
-        previewState.begin(requestID: requestID)
+        previewState.begin(requestID: requestID, preservingError: preservingFailure)
         generation = Task {
             do {
                 try await Task.sleep(for: .milliseconds(150))
@@ -1848,6 +1887,7 @@ final class EditorStore {
     }
 
     static func message(_ error: Error) -> String {
+        if error is ComponentSurfaceError { return "The wrapping finish inspector changed. Choose the edit again." }
         if error is ComponentPartRoleError { return "The component role selection changed. Choose the role again." }
         if case .inheritedContext(let id, let attribute) = error as? ComponentReparentError {
             return "Cannot move \(id) without changing inherited \(attribute). The source is unchanged."

@@ -174,6 +174,11 @@ final class ComponentColorImageStoreTests: XCTestCase {
         XCTAssertNil(store.materialIssue)
         let after = try XCTUnwrap(store.bakedMesh?.textures.color.pixels)
         XCTAssertNotEqual(before, after)
+        XCTAssertNotNil(store.previewCompatibilityWarning, "CPU preparation does not acknowledge a displayed GPU frame")
+        let materialRevision = store.materialViewportRevision
+        store.materialsRendered(revision: materialRevision - 1)
+        XCTAssertNotNil(store.previewCompatibilityWarning, "An obsolete GPU receipt cannot clear the current notice")
+        store.materialsRendered(revision: materialRevision)
         XCTAssertNil(store.previewCompatibilityWarning)
         let encoded = try XCTUnwrap(store.snapshot?.document.encoded())
         let reopened = try Dust3DDocument(data: encoded)

@@ -141,12 +141,11 @@ final class ViewerMaterialTests: XCTestCase {
             store.materialsRendered(revision: store.meshRevision + store.materialRevision - 1)
             XCTAssertEqual(store.previewCompatibilityWarning, warning)
             store.materialsRendered(revision: store.meshRevision + store.materialRevision)
-            switch capabilities {
-            case .known(false): XCTAssertNil(store.previewCompatibilityWarning)
-            case .known(true):
-                XCTAssertEqual(store.previewCompatibilityWarning, "Procedural surface details are not yet displayed.")
-            default:
-                XCTAssertEqual(store.previewCompatibilityWarning, "Procedural surface details could not be verified.")
+            XCTAssertNil(
+                store.previewCompatibilityWarning,
+                "A matching procedural bake receipt establishes surface pixels without trusting source-capability guesses"
+            )
+            if case .unavailable = capabilities {
                 XCTAssertEqual(store.materialSourceIssue, "Original source interpretation cause")
             }
             store.materialFailed("Original GPU failure")
