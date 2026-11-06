@@ -22,11 +22,18 @@ final class RigTemplateBrowserContextTests: XCTestCase {
         XCTAssertTrue(unselected.contains("Root"))
         XCTAssertFalse(unselected.contains("root"))
         XCTAssertFalse(unselected.assignment.isAvailable)
+        XCTAssertEqual(unselected.selectionTarget(name: "Root")?.matchingEdgeIDs, ["e"])
+        XCTAssertNil(unselected.selectionTarget(name: "root"))
+        let zero = try XCTUnwrap(unselected.selectionTarget(name: "Hips"))
+        XCTAssertTrue(zero.isCurrent(in: state.snapshot))
+        XCTAssertEqual(zero.selectableEdgeCount, 0)
         try state.selectGraph(nodes: [], edges: ["e"])
         XCTAssertFalse(unselected.isCurrent(in: state.snapshot))
         let selected = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: state.snapshot)
         XCTAssertTrue(selected.assignment.isAvailable)
         let other = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Bird"))
+        XCTAssertNil(
+            RigTemplateBrowserContext(hierarchy: other, snapshot: state.snapshot).selectionTarget(name: "Root"))
         XCTAssertFalse(
             RigTemplateBrowserContext(hierarchy: other, snapshot: state.snapshot).isCurrent(in: state.snapshot))
         try state.selectGraph(nodes: [], edges: [])

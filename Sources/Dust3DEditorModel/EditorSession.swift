@@ -625,6 +625,18 @@ public actor EditorSession {
         }.snapshot
     }
 
+    /// Replace transient graph selection with one captured bone-name or unassigned group.
+    /// - Parameter target: Frozen source/interaction epochs and eligible exact edge IDs.
+    /// - Returns: Current selection with document/history/preview inputs unchanged.
+    /// - Throws: Stale target, cancellation or original selection error before publication.
+    /// - Example: `try await session.selectBoneEdges(target: overview.target(for: .unassigned))`.
+    public func selectBoneEdges(target: BoneEdgeSelectionTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard target.isCurrent(in: state.snapshot) else { throw BoneEdgeSelectionError.staleTarget }
+            try state.selectGraph(nodes: [], edges: target.selectableEdgeIDs)
+        }.snapshot
+    }
+
     /// Perform a captured inspector command after source/interaction validation on this window's actor.
     /// Deletion retains existing split/prune normalization; selection-only actions add no Undo entry.
     /// - Throws: Stale intent, cancellation or the original document error before atomic publication.

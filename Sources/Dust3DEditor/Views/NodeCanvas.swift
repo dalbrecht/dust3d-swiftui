@@ -23,6 +23,7 @@ struct NodeCanvas: View {
             let precisionKey = store.canvasPrecisionKeyHandler()
             let precisionActions = CanvasPrecisionActions(store: store)
             let nodes = store.snapshot?.nodes ?? []
+            let boneHighlights = store.highlightedBoneEdgeIDs
             let addModeID = store.addModeID
             let shiftContext = store.canvasRotationContext
             let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
@@ -98,9 +99,14 @@ struct NodeCanvas: View {
                             path.move(to: CGPoint(x: from.x, y: from.y))
                             path.addLine(to: CGPoint(x: to.x, y: to.y))
                             let selected = store.snapshot?.selectedEdgeIDs.contains(edge.id) == true
+                            let highlighted = boneHighlights.contains(edge.id)
+                            if highlighted {
+                                context.stroke(path, with: .color(.accentColor.opacity(0.25)), lineWidth: 8)
+                            }
                             context.stroke(
-                                path, with: .color(selected ? .accentColor : .secondary.opacity(0.5)),
-                                lineWidth: selected ? 4 : 2)
+                                path, with: .color(selected || highlighted ? .accentColor : .secondary.opacity(0.5)),
+                                style: StrokeStyle(
+                                    lineWidth: selected ? 4 : 2, dash: highlighted && !selected ? [5, 3] : []))
                         }
                     }
                 }
