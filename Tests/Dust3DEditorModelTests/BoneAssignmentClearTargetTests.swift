@@ -13,7 +13,10 @@ final class BoneAssignmentClearTargetTests: XCTestCase {
     func testExactNamesReadonlyScopeOneUndoAndInitiallyEmptyIntent() async throws {
         let original = try source()
         let session = EditorSession()
-        let before = try await session.open(data: original.encoded())
+        _ = try await session.open(data: original.encoded())
+        let before = try await session.selectGraph(nodes: ["a"], edges: ["e2"])
+        XCTAssertEqual(before.selectedIDs, ["a"])
+        XCTAssertEqual(before.selectedEdgeIDs, ["e2"])
         let empty = BoneAssignmentClearTarget(snapshot: before, names: ["Missing", ""])
         XCTAssertFalse(empty.isAvailable)
         let target = BoneAssignmentClearTarget(snapshot: before, names: ["Café"])

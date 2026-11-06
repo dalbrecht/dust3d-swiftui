@@ -54,6 +54,10 @@ private struct ClearNoNative: EditorPreviewServing, ArchiveTextureBaking, Archiv
         await other.load(data: original.encoded())
         try await settle(value)
         try await settle(other)
+        value.selectGraph(nodes: ["a"], edges: ["e3"])
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["a"])
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["e3"])
         let snapshot = try XCTUnwrap(value.snapshot)
         let context = RigTemplateBrowserContext(
             hierarchy: try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped")), snapshot: snapshot)
@@ -95,7 +99,7 @@ private struct ClearNoNative: EditorPreviewServing, ArchiveTextureBaking, Archiv
         XCTAssertEqual(value.snapshot?.document.encoded(), cleared.document.encoded())
     }
     func testInitiallyUnavailableSelectionABAReplacementAndStopNeverRetarget() async throws {
-        for change in 0..<3 {
+        for change in 0..<4 {
             let value = store()
             defer { value.stop() }
             let original = try source()
@@ -113,6 +117,11 @@ private struct ClearNoNative: EditorPreviewServing, ArchiveTextureBaking, Archiv
                 value.setLock(.x, isLocked: false)
                 try await settle(value)
             case 1:
+                value.selectGraph(nodes: ["a"], edges: ["e3"])
+                try await settle(value)
+                value.selectGraph(nodes: [], edges: [])
+                try await settle(value)
+            case 2:
                 await value.load(data: original.encoded())
                 try await settle(value)
             default: value.stop()
