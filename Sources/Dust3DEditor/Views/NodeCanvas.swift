@@ -372,15 +372,15 @@ private struct NodeHandle: View {
         .accessibilityValue(selected ? "Selected" : "Not selected")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { select() }
-        .accessibilityAction(named: Text("Add node to selection")) { add() }
-        .accessibilityAction(named: Text("Remove node from selection")) {
-            if selected { toggle() }
-        }
         .accessibilityAction(named: Text("Select Whole Part")) { if canSelectWholePart { doubleClick() } }
         .contextMenu {
             Button("Select Whole Part", action: doubleClick).disabled(!canSelectWholePart)
             GraphColorizeMenu(actions: colorizeActions)
             CanvasPrecisionMenu(actions: precisionActions)
+        }
+        .accessibilityAction(named: Text("Add node to selection")) { add() }
+        .accessibilityAction(named: Text("Remove node from selection")) {
+            if selected { toggle() }
         }
         .help(
             "\(node.title) · \(node.isEditable ? "Drag to move, Shift-drag to rotate or bend" : "Locked, hidden or disabled part")"

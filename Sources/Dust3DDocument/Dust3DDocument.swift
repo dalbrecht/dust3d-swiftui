@@ -623,7 +623,7 @@ public struct Dust3DDocument: Sendable {
             .reorderComponent, .placeComponents,
             .groupComponents, .ungroupComponent, .ungroupComponents, .reparentComponent, .reparentComponents:
             contents = DocumentContents(nodes: [], edges: [])
-        default: contents = try Self.editorContents(model)
+        default: contents = try editorContents(in: model)
         }
         guard let root = model.rootElement() else { throw DocumentError.invalidXML }
         func container(_ name: String) -> XMLElement {
@@ -744,6 +744,10 @@ public struct Dust3DDocument: Sendable {
         case .setComponentCombineMode(let id, let mode):
             guard try ComponentCombination.set(model, id: id, mode: mode) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentColors(let updates):
+            guard try ComponentColorValue.set(model, updates: updates) else { return self }
+            try Task.checkCancellation()
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentColorImage(let id, let imageID):
             let element = try ComponentColorImageValue.element(model, id: id)
             let canonical: String?
@@ -762,10 +766,6 @@ public struct Dust3DDocument: Sendable {
                 .setComponentColorImage(id: id, imageID: imageID))
         case .setComponentColor(let id, let color):
             guard try ComponentColorValue.set(model, id: id, color: color) else { return self }
-            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
-        case .setComponentColors(let updates):
-            guard try ComponentColorValue.set(model, updates: updates) else { return self }
-            try Task.checkCancellation()
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }
@@ -1609,11 +1609,10 @@ public struct Dust3DDocument: Sendable {
 
     /// Inspect the editable graph once, retaining source ordering and stable IDs.
     public func editorContents() throws -> DocumentContents {
-        try Self.editorContents(Self.xml(modelXML, root: "canvas"))
+        try editorContents(in: Self.xml(modelXML, root: "canvas"))
     }
 
-    /// Reuse a command's already parsed XML while retaining the public graph validation semantics.
-    private static func editorContents(_ xml: XMLDocument) throws -> DocumentContents {
+    private func editorContents(in xml: XMLDocument) throws -> DocumentContents {
         let partContainers = xml.rootElement()?.elements(forName: "parts") ?? []
         let edgeContainers = xml.rootElement()?.elements(forName: "edges") ?? []
         guard partContainers.count <= 1, edgeContainers.count <= 1 else { throw DocumentError.invalidNode }

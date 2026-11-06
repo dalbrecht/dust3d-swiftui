@@ -203,13 +203,13 @@ final class NodePointerView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
-        if routeRadiusKey(event) { return }
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if activation == nil, superview != nil, let window, window.firstResponder === self,
             precisionKey?(CanvasPrecisionKeyInput(event)) == true
         {
             return
         }
+        if routeRadiusKey(event) { return }
         guard event.keyCode == 53, activation != nil else {
             super.keyDown(with: event)
             return
