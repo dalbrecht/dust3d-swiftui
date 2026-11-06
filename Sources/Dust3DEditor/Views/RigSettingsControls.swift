@@ -39,6 +39,7 @@ struct RigSettingsControls: View {
                         Text("Unsupported template retained. Choose a template to replace it.")
                             .font(.caption).foregroundStyle(.primary)
                     }
+                    RigTemplateBoneBrowser(store: store, sourceType: settings.sourceRigType)
                     Toggle(
                         "Head bone has eyelids",
                         isOn: Binding(
