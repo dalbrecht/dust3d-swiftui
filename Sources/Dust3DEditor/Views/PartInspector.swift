@@ -36,6 +36,9 @@ struct PartInspector: View {
             .font(.caption).foregroundStyle(.secondary)
             PartModifierControls(store: store, part: part)
             PartDeformationControls(store: store, part: part)
+            #if MOTE3D_EXPERIMENTAL_HOLLOW
+                if part.target == .model { PartHollowControls(store: store, partID: part.id).id(part.id) }
+            #endif
             PartCutFaceControls(store: store, part: part)
             if part.target == .model { PartMaterialControls(store: store, part: part) }
             Text("Part names are independent of component names.").font(.caption).foregroundStyle(.secondary)

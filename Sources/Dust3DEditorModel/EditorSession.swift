@@ -419,6 +419,20 @@ public actor EditorSession {
         }
     }
 
+    /// Apply one thickness edit against the captured selected part and document/constraint revisions.
+    /// - Returns: One atomic history entry, or unchanged history for a semantic no-op.
+    /// - Throws: Cancellation, stale selection or document validation errors without partial publication.
+    public func setPartHollowThickness(
+        id: String, thickness: Double, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            try Task.checkCancellation()
+            guard target.isCurrent(in: state.snapshot), state.snapshot.selectedPart?.id == id else {
+                throw EditorError.stalePartGraphSelection
+            }
+            try state.apply([.setPartHollowThickness(id: id, thickness: thickness)])
+        }.snapshot
+    }
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }

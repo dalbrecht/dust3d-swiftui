@@ -145,15 +145,21 @@ def validate_arguments(arguments):
         raise ValueError('Only SwiftPM build and test are supported')
     value_options = {'--product', '--filter', '--configuration'}
     switches = {'--enable-code-coverage', '--parallel'}
+    experimental_features = set()
     index = 1
     while index < len(arguments):
         option = arguments[index]
         if option in switches:
             index += 1
+        elif option == '-Xswiftc' and arguments[index + 1:index + 2] == ['-DMOTE3D_EXPERIMENTAL_HOLLOW']:
+            experimental_features.add('MOTE3D_EXPERIMENTAL_HOLLOW')
+            index += 2
         elif option in value_options and index + 1 < len(arguments) and not arguments[index + 1].startswith('-'):
             index += 2
         else:
             raise ValueError(f'Unsupported SwiftPM argument: {option}')
+
+    return sorted(experimental_features)
 
 
 def run_guarded(action, validate):
@@ -169,7 +175,7 @@ def run_guarded(action, validate):
 
 
 def run(app, core, root, arguments):
-    validate_arguments(arguments)
+    experimental_features = validate_arguments(arguments)
     app, core, root = app.resolve(), core.resolve(), root.resolve()
     if root.is_relative_to(app) or root.is_relative_to(core) or app.is_relative_to(root) or core.is_relative_to(root):
         raise ValueError('Build root and source trees must be disjoint')
@@ -204,6 +210,8 @@ def run(app, core, root, arguments):
     data = {'schemaVersion': 1, 'sourceRevision': before_app['revision'], 'sourceDigest': before_app['digest'],
             'isDirty': before_app['dirty'], 'coreRevision': before_core['revision'],
             'coreDigest': before_core['digest'], 'coreIsDirty': before_core['dirty']}
+    if experimental_features:
+        data['experimentalFeatures'] = experimental_features
     metadata = work / 'identity.json'
     metadata_bytes = json.dumps(data, sort_keys=True, separators=(',', ':')).encode()
     metadata.write_bytes(metadata_bytes)

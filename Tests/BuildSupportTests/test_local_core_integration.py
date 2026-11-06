@@ -78,6 +78,18 @@ class LocalCoreIntegrationTests(unittest.TestCase):
                 module.validate_arguments(args)
         module.validate_arguments(['test', '--filter', 'ExampleTests'])
 
+    def test_hollow_compiler_flag_is_explicit_and_returned_for_build_identity(self):
+        self.assertEqual(module.validate_arguments([
+            'test', '--filter', 'HollowNativeHistoryTests', '-Xswiftc', '-DMOTE3D_EXPERIMENTAL_HOLLOW'
+        ]), ['MOTE3D_EXPERIMENTAL_HOLLOW'])
+        self.assertEqual(module.validate_arguments(['build', '--product', 'Dust3DEditor']), [])
+        for args in [
+            ['build', '-Xswiftc', '-DOTHER_FEATURE'], ['build', '-Xswiftc'],
+            ['build', '-Xswiftc', '-DMOTE3D_EXPERIMENTAL_HOLLOW', '-Xswiftc', '-DOTHER_FEATURE'],
+        ]:
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                module.validate_arguments(args)
+
     def test_gitlink_directory_is_a_non_compiled_input(self):
         from unittest.mock import patch
         source, target = self.root / 'source', self.root / 'copy'
