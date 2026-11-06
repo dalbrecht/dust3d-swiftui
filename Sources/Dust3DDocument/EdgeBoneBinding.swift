@@ -37,6 +37,25 @@ enum EdgeBoneBinding {
         return true
     }
 
+    static func clearMany(model: XMLDocument, contents: DocumentContents, ids: Set<String>) throws -> Bool {
+        let requested = Set(ids.map { Data($0.utf8) })
+        let existing = Set(contents.edges.map { Data($0.id.utf8) })
+        guard requested.isSubset(of: existing) else { throw DocumentError.invalidNode }
+        let changed = Set(
+            contents.edges.filter {
+                requested.contains(Data($0.id.utf8)) && !$0.boneName.isEmpty
+            }.map { Data($0.id.utf8) })
+        guard !changed.isEmpty else { return false }
+        let elements = model.rootElement()?.elements(forName: "edges").first?.elements(forName: "edge") ?? []
+        let selected = elements.filter {
+            $0.attribute(forName: "id")?.stringValue.map { changed.contains(Data($0.utf8)) } == true
+        }
+        guard selected.count == changed.count else { throw DocumentError.invalidNode }
+        // Qt's explicit global rig clear includes locked/hidden owners; geometry is untouched.
+        for edge in selected { write("", to: edge) }
+        return true
+    }
+
     private static func validateName(_ name: String) throws {
         guard name.utf8.count <= 1024,
             name.unicodeScalars.allSatisfy({

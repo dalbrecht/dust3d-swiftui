@@ -613,6 +613,18 @@ public actor EditorSession {
         }.snapshot
     }
 
+    /// Clear a captured global set of exact stored bone matches in one Undo step.
+    /// - Parameter target: Frozen source, interaction epochs and matching edge IDs.
+    /// - Returns: One metadata-only publication, preserving graph selection and preview inputs.
+    /// - Throws: Stale target, cancellation or original document error before publication.
+    /// - Example: `try await session.clearBoneAssignments(target: target)`.
+    public func clearBoneAssignments(target: BoneAssignmentClearTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard target.isCurrent(in: state.snapshot) else { throw BoneAssignmentClearError.staleTarget }
+            try state.apply([.clearEdgeBoneNames(ids: target.edgeIDs)])
+        }.snapshot
+    }
+
     /// Perform a captured inspector command after source/interaction validation on this window's actor.
     /// Deletion retains existing split/prune normalization; selection-only actions add no Undo entry.
     /// - Throws: Stale intent, cancellation or the original document error before atomic publication.

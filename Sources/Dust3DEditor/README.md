@@ -607,3 +607,9 @@ its exact name only to explicitly selected editable edges through the captured
 atomic batch action. Unknown names remain manually editable. Generated skeleton
 and skin display, and physical keyboard/VoiceOver acceptance remain pending.
 See ADR0157 and #359.
+
+The template browser also provides Clear Bone Assignments and Clear Bone Chain
+Assignments with exact matching counts. These explicit global metadata actions
+include hidden/locked parts and commit one Undo step. Selected-edge Clear All
+retains its distinct editable-edge scope. Physical UI/VoiceOver remains pending.
+See ADR0158 and #361.

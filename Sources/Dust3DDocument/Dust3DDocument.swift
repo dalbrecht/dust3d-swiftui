@@ -105,6 +105,11 @@ public enum DocumentCommand: Sendable {
     /// - Throws: Original `invalidBoneName` or `invalidNode`; all edges are preflighted before changes.
     /// - Example: `.setEdgeBoneNames(ids: [firstEdge, secondEdge], name: "Root")`.
     case setEdgeBoneNames(ids: Set<String>, name: String)
+    /// Clear stored rig metadata on exact edge IDs across the document, including read-only parts.
+    /// This explicit global rig action does not broaden ordinary editable-edge assignment.
+    /// - Throws: `invalidNode` if any requested edge is absent; no partial mutation is published.
+    /// - Example: `.clearEdgeBoneNames(ids: matchingEdges)`.
+    case clearEdgeBoneNames(ids: Set<String>)
     /// Store a recognized rig template without generating or replacing any skeleton data.
     /// Semantic no-ops preserve source bytes. Example: `.setRigType(.biped)`.
     case setRigType(DocumentRigType)
@@ -691,6 +696,9 @@ public struct Dust3DDocument: Sendable {
             guard try EdgeBoneBinding.setMany(model: model, contents: contents, ids: ids, name: name) else {
                 return self
             }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .clearEdgeBoneNames(let ids):
+            guard try EdgeBoneBinding.clearMany(model: model, contents: contents, ids: ids) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setRigType(let type):
             if DocumentRigSettings(root: root).rigType == type { return self }

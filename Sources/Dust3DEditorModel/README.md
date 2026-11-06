@@ -391,3 +391,8 @@ one atomic document command and rejects stale or unavailable targets before
 publication. `EdgeBoneNameDraft` preserves mixed values: an initial blank is not
 a Clear action, and an unchanged submit callback cannot mark it edited. Reset
 restores captured text; exact UTF-8 name differences remain meaningful.
+
+`BoneAssignmentClearTarget` captures exact global stored-name matches and all
+window/source/interaction epochs. `EditorSession.clearBoneAssignments(target:)`
+clears one frozen set atomically without changing selection or preview inputs;
+stale/unavailable/cancelled intent never retargets. See ADR0158 and #361.

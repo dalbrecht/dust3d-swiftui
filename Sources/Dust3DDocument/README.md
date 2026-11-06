@@ -333,3 +333,8 @@ retains opaque assets, unrelated edges and metadata, preserves exact Undo/Redo,
 and reports original name/edge errors. Legacy absent edge owners retain the
 existing binding behavior; assigned owners and endpoints must be supported and
 editable. Preview input identities remain unchanged. See ADR0156 and #357.
+
+`clearEdgeBoneNames(ids:)` explicitly clears global rig metadata, including
+read-only/unsupported part owners as in Qt. It validates exact edge IDs atomically,
+preserves unknown XML/assets and preview identities, and retains redo on no-op.
+Ordinary edge assignment keeps its editable-owner policy. See ADR0158 and #361.
