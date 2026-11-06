@@ -107,6 +107,7 @@ PY
     codesign --verify --deep --strict "$bundle"
     verify_archive "$bundle" "$DUST3D_ARCHIVE_OUTPUT_DIR/$app.zip"
 done
+python3 -B "$ROOT_DIR/script/check_about_resources.py" "$ROOT_DIR" "$DUST3D_ARCHIVE_OUTPUT_DIR" "$APP_TEST_DIR/about-resources.json"
 # Reusing the QA identity must remove copied provider bundles rather than registering duplicates.
 qa_output="$APP_TEST_DIR/qa"
 mkdir -p "$qa_output/Dust3DEditor.app/Contents/PlugIns/Dust3DQuickLookExtension.appex"
