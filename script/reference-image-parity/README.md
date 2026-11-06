@@ -1,0 +1,9 @@
+# Reference-image pixel conformance
+
+These developer-only tools construct valid bounded PNGs with Python stdlib zlib/CRC and record QImage pixel values with Qt 6.12.0 on ARM64. They create no GUI/application object, load no Dust3D engine, and are not imported or linked by the app or native tests. The optional reference environment uses Python 3.12.16, PySide6-Essentials 6.12.0 and shiboken6 6.12.0. The actual Qt SDK is needed to measure reference behavior; native image libraries cannot independently prove what Qt produces. No application dependency or package pin changes.
+
+Run `python capture_png_format_cases.py` from this directory in that reference environment. It writes `outputs/qt-fast-scale-format-cases.json` under the repository root. Source images have at most 4096 pixels, encoded input at most 2048 bytes and each output at most 4096 pixels with sides at most 1024. The intentional 301-pixel source and large narrow targets exercise affine ratio boundaries. Other cases cover palette/grayscale/RGB/RGBA, bit depths, transparency, single-pixel fills and four-pixel vector tails. Results are ARM64 Qt 6.12 observations, not a universal platform promise.
+
+`python update_swift_fixtures.py OUTPUT_JSON Tests/Dust3DEditorTests/ReferenceColorQtPNGFormatTests.swift` freezes the encoded inputs, hashes and RGBA expectations into the native test. Run swift-format afterward and review the data. This refreshes numeric pixel fixtures, not rendered UI baselines. Native tests need no Qt installation.
+
+Two RGB16+tRNS cases record a Qt decoder defect; a separate native contract asserts correct encoded channels instead. See issue #337 and ADR 0130. General view-fit layout, EXIF policy differences, other Qt versions/architectures, physical interaction, VoiceOver and complete HIG acceptance remain outside this finite corpus.

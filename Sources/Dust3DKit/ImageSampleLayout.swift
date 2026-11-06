@@ -2,15 +2,15 @@ import CoreGraphics
 
 enum ImageSampleError: Error { case unsupportedLayout, invalidPixels }
 
-struct ImageSampleLayout {
-    let bytesPerPixel: Int
+package struct ImageSampleLayout {
+    package let bytesPerPixel: Int
     let bytesPerSample: Int
     let isLittleEndian: Bool
     let model: CGColorSpaceModel
     let hasAlpha: Bool
     let palette: [UInt8]
 
-    init(_ image: CGImage) throws {
+    package init(_ image: CGImage) throws {
         guard let space = image.colorSpace,
             image.bitsPerComponent == 8 || image.bitsPerComponent == 16,
             image.bitsPerPixel % image.bitsPerComponent == 0,
@@ -36,6 +36,28 @@ struct ImageSampleLayout {
             else { throw ImageSampleError.unsupportedLayout }
         default: throw ImageSampleError.unsupportedLayout
         }
+    }
+
+    /// Read original integer precision for reference-image alpha processing.
+    /// The caller must validate the complete row/storage span before passing a pixel.
+    package func rgba16(_ source: UnsafePointer<UInt8>) throws -> (Int, Int, Int, Int) {
+        func sample(_ channel: Int) -> Int {
+            let offset = channel * bytesPerSample
+            if bytesPerSample == 1 { return Int(source[offset]) * 257 }
+            let first = Int(source[offset])
+            let second = Int(source[offset + 1])
+            return isLittleEndian ? first + second * 256 : first * 256 + second
+        }
+        if model == .indexed {
+            let offset = Int(source[0]) * 3
+            guard offset + 2 < palette.count else { throw ImageSampleError.invalidPixels }
+            return (Int(palette[offset]) * 257, Int(palette[offset + 1]) * 257, Int(palette[offset + 2]) * 257, 65535)
+        }
+        if model == .monochrome {
+            let gray = sample(0)
+            return (gray, gray, gray, hasAlpha ? sample(1) : 65535)
+        }
+        return (sample(0), sample(1), sample(2), hasAlpha ? sample(3) : 65535)
     }
 
     func rgba(_ source: UnsafePointer<UInt8>) throws -> (UInt8, UInt8, UInt8, UInt8) {

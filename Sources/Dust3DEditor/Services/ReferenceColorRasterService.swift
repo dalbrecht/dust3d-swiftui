@@ -47,11 +47,11 @@ actor ReferenceColorRasterService: ReferenceColorRasterServing {
 enum ReferenceColorRasterCodec {
     static let maximumPixelBytes = 64 * 1024 * 1024
 
-    /// Decode retained reference bytes, normalize orientation and fit with an explicit center-nearest rule.
+    /// Decode retained reference bytes, normalize orientation and fit with an explicit aliased sample grid.
     /// Call outside the UI actor. No native engine, catalog or archive extraction is involved.
     /// The existing PNG decoder matches audited Qt sample rules, including its depth-specific keyed-gray
     /// exception. Explicit alpha/RGB-key hidden RGB and low-alpha channels are not premultiplied here.
-    /// This clean mathematical fit is not a claim of bit-identical Qt fixed-point/QPainter scaling.
+    /// Coordinate fitting follows Qt's aliased grid; PNG alpha/depth conversion parity remains under test.
     static func prepare(
         document: Dust3DDocument, fittedSize: ReferencePixelSize,
         maximumDecodedBytes: Int = maximumPixelBytes, maximumFittedBytes: Int = maximumPixelBytes
@@ -110,21 +110,71 @@ enum ReferenceColorRasterCodec {
         let fittedBytes = fittedSize.width * fittedSize.height * 4
         guard fittedBytes <= maximumFittedBytes else { throw ReferenceColorRasterError.fittedLimitExceeded }
         try Task.checkCancellation()
+        let metadata = try PNGContainerMetadata(data: png)
+        let isResized = fittedSize != size
+        // Indexed/low-depth grayscale transforms copy palette entries instead of
+        // painting associated-alpha samples. Original-size copies retain RGB too.
+        let paintsAlpha =
+            isResized && (metadata.colorType != 3)
+            && !(metadata.colorType == 0 && metadata.bitDepth <= 8)
+        let paletteGrid =
+            metadata.colorType == 3
+            || (metadata.colorType == 0
+                && (metadata.bitDepth < 8
+                    || (metadata.bitDepth == 8 && metadata.hasTransparencyKey)))
+        let horizontalRatio = Double(size.width) / Double(fittedSize.width)
+        let verticalRatio = Double(size.height) / Double(fittedSize.height)
+        let fixedAffine =
+            horizontalRatio > 1.0 / 256 && horizontalRatio < 100
+            && verticalRatio > 1.0 / 256 && verticalRatio < 100
+        let wideLayout = try ImageSampleLayout(image)
+        guard let wideData = image.dataProvider?.data, let wideStorage = CFDataGetBytePtr(wideData) else {
+            throw MeshPNGDecodingError.invalidPNG
+        }
+        defer { withExtendedLifetime(wideData) {} }
+        let wideSpan = image.bytesPerRow.multipliedReportingOverflow(by: image.height)
+        guard !wideSpan.overflow, image.bytesPerRow >= image.width * wideLayout.bytesPerPixel,
+            CFDataGetLength(wideData) >= wideSpan.partialValue
+        else { throw MeshPNGDecodingError.invalidPNG }
         var fitted = Data(count: fittedBytes)
         try fitted.withUnsafeMutableBytes { (output: UnsafeMutableRawBufferPointer) in
             try decoded.pixels.withUnsafeBytes { (input: UnsafeRawBufferPointer) in
                 // All dimensions are validated <=8192; these integer products stay far below Int's limit.
                 for y in 0..<fittedSize.height {
                     try Task.checkCancellation()
-                    let orientedY = ((2 * y + 1) * size.height) / (2 * fittedSize.height)
+                    let orientedY = fittedCoordinate(
+                        y, source: size.height, destination: fittedSize.height, scanline: false, palette: paletteGrid,
+                        fixedAffine: fixedAffine)
                     for x in 0..<fittedSize.width {
-                        let orientedX = ((2 * x + 1) * size.width) / (2 * fittedSize.width)
+                        let orientedX = fittedCoordinate(
+                            x, source: size.width, destination: fittedSize.width, scanline: true, palette: paletteGrid,
+                            fixedAffine: fixedAffine)
                         let original = originalPoint(
                             x: orientedX, y: orientedY, width: decoded.width, height: decoded.height,
                             orientation: orientation)
                         let from = original.y * decoded.rowStride + original.x * 4
                         let to = (y * fittedSize.width + x) * 4
-                        for channel in 0..<4 { output[to + channel] = input[from + channel] }
+                        if paintsAlpha {
+                            let channels: (Int, Int, Int, Int)
+                            if metadata.bitDepth == 16 {
+                                let offset = original.y * image.bytesPerRow + original.x * wideLayout.bytesPerPixel
+                                channels = try wideLayout.rgba16(wideStorage.advanced(by: offset))
+                            } else {
+                                channels = (
+                                    Int(input[from]) * 257, Int(input[from + 1]) * 257,
+                                    Int(input[from + 2]) * 257, Int(input[from + 3]) * 257
+                                )
+                            }
+                            let sample = ReferenceColorAlphaSample.fit(
+                                channels, singlePixel: size.width == 1 && size.height == 1,
+                                sourceDepth: Int(metadata.bitDepth), vectorLane: x < fittedSize.width / 4 * 4)
+                            output[to] = sample.0
+                            output[to + 1] = sample.1
+                            output[to + 2] = sample.2
+                            output[to + 3] = sample.3
+                        } else {
+                            for channel in 0..<4 { output[to + channel] = input[from + channel] }
+                        }
                     }
                 }
             }
@@ -137,6 +187,39 @@ enum ReferenceColorRasterCodec {
         return ReferenceColorRasterResult(
             referencePNG: png, referenceSize: size, raster: raster, displayImage: displayImage,
             sourceColorSpace: image.colorSpace)
+    }
+
+    /// Qt's aliased painter samples just below exact center boundaries. Its fast
+    /// affine fetch advances a truncated 16.16 horizontal step within each row;
+    /// vertical coordinates are evaluated afresh for each row. Use integer math
+    /// for that bounded grid, without depending on Qt or host floating rounding.
+    private static func fittedCoordinate(
+        _ position: Int, source: Int, destination: Int, scanline: Bool, palette: Bool, fixedAffine: Bool
+    ) -> Int {
+        if source == destination { return position }
+        if palette {
+            // Palette/monochrome transforms use a 12-bit entry-copy grid with
+            // truncated steps in both dimensions and no painter boundary bias.
+            let step = source * 4096 / destination
+            return min(source - 1, (step / 2 + position * step) / 4096)
+        }
+        let fixedScale = 65_536
+        let ratio = Double(source) / Double(destination)
+        // Qt's fixed affine path excludes extreme ratios. Its floating fallback
+        // evaluates each pixel center independently with the same boundary bias.
+        if !fixedAffine {
+            let center = (Double(position) + 0.5) * ratio - 1.0 / Double(fixedScale)
+            return min(source - 1, max(0, Int(center.rounded(.down))))
+        }
+        let fixed: Int
+        if scanline {
+            fixed =
+                source * (fixedScale / 2) / destination - 1
+                + position * (source * fixedScale / destination)
+        } else {
+            fixed = (2 * position + 1) * source * (fixedScale / 2) / destination - 1
+        }
+        return min(source - 1, max(0, fixed / fixedScale))
     }
 
     private static func originalPoint(x: Int, y: Int, width: Int, height: Int, orientation: Int) -> (x: Int, y: Int) {
