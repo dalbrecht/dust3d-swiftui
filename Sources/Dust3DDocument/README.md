@@ -326,3 +326,10 @@ Clipboard paste retargets a component's `wrapBindTo` through the copied identity
 It preserves each owner's mode/defaults and semantic no-op source spelling. Binding
 edits refresh geometry/source and materials together, and use one atomic history step.
 See ADR0141; no separate binding-cycle policy or core adoption is implied.
+
+`DocumentCommand.setEdgeBoneNames(ids:name:)` validates one exact name and all
+explicit edge identities before changing a single owned XML tree. Assign/Clear
+retains opaque assets, unrelated edges and metadata, preserves exact Undo/Redo,
+and reports original name/edge errors. Legacy absent edge owners retain the
+existing binding behavior; assigned owners and endpoints must be supported and
+editable. Preview input identities remain unchanged. See ADR0156 and #357.

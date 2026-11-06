@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
+
 - Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
 
 - Resolve About attribution from installed app resources without requiring the original SwiftPM build directory, and report missing packaged attribution safely (#344).

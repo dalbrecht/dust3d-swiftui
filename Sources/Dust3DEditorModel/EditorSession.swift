@@ -601,6 +601,18 @@ public actor EditorSession {
         try update { try $0.edit(id: id, position: position, radius: radius) }
     }
 
+    /// Assign or clear an exact stored bone name on one frozen explicit-edge set.
+    /// - Parameters: `name` is unnormalized; `target` captures source, selection and constraint epochs.
+    /// - Returns: The atomically committed snapshot; semantic no-ops retain history and preview inputs.
+    /// - Throws: Stale target, cancellation or the original document validation/quota error.
+    /// - Example: `try await session.assignBoneName("Root", target: target)`.
+    public func assignBoneName(_ name: String, target: EdgeBoneAssignmentTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard target.isCurrent(in: state.snapshot) else { throw EdgeBoneAssignmentError.staleTarget }
+            try state.apply([.setEdgeBoneNames(ids: target.edgeIDs, name: name)])
+        }.snapshot
+    }
+
     /// Perform a captured inspector command after source/interaction validation on this window's actor.
     /// Deletion retains existing split/prune normalization; selection-only actions add no Undo entry.
     /// - Throws: Stale intent, cancellation or the original document error before atomic publication.

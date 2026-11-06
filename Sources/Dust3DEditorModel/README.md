@@ -384,3 +384,10 @@ edge owners and supported editable endpoints; no XML parsing or rig generation
 is needed. The session replaces explicit graph selection after epoch validation
 without dirtying the document, consuming history or changing another window.
 The inspector’s Select Bone Edges button uses the existing captured Store factory.
+
+`EdgeBoneAssignmentTarget(snapshot:edgeIDs:)` captures exact explicit edges and
+source/selection/constraint epochs. `session.assignBoneName(_:target:)` applies
+one atomic document command and rejects stale or unavailable targets before
+publication. `EdgeBoneNameDraft` preserves mixed values: an initial blank is not
+a Clear action, and an unchanged submit callback cannot mark it edited. Reset
+restores captured text; exact UTF-8 name differences remain meaningful.

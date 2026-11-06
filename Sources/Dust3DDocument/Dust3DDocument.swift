@@ -100,6 +100,11 @@ public enum DocumentCommand: Sendable {
     /// - Throws: `invalidBoneName` or `invalidNode` for missing/read-only endpoints; no generation occurs.
     /// - Example: `.setEdgeBoneName(id: edgeID, name: "Root")`.
     case setEdgeBoneName(id: String, name: String)
+    /// Assign one exact name to explicit edges in one owned XML traversal; empty clears their attributes.
+    /// - Parameters: `ids` are exact edge identities; `name` follows the single-edge byte/control limits.
+    /// - Throws: Original `invalidBoneName` or `invalidNode`; all edges are preflighted before changes.
+    /// - Example: `.setEdgeBoneNames(ids: [firstEdge, secondEdge], name: "Root")`.
+    case setEdgeBoneNames(ids: Set<String>, name: String)
     /// Store a recognized rig template without generating or replacing any skeleton data.
     /// Semantic no-ops preserve source bytes. Example: `.setRigType(.biped)`.
     case setRigType(DocumentRigType)
@@ -681,6 +686,11 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setEdgeBoneName(let id, let name):
             guard try EdgeBoneBinding.set(model: model, contents: contents, id: id, name: name) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setEdgeBoneNames(let ids, let name):
+            guard try EdgeBoneBinding.setMany(model: model, contents: contents, ids: ids, name: name) else {
+                return self
+            }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setRigType(let type):
             if DocumentRigSettings(root: root).rigType == type { return self }
