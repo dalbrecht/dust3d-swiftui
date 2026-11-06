@@ -76,6 +76,54 @@ final class ImportedMaterialViewportTests: XCTestCase {
         XCTAssertNil(view.completedMaterialRevision)
     }
 
+    func testColorChangesDuringUploadAndReplacementPreserveRendererAndCamera() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        let view = InteractiveMeshView(frame: .zero, device: device)
+        view.isPaused = true
+        view.colorPixelFormat = .bgra8Unorm
+        view.depthStencilPixelFormat = .depth32Float
+        let data = try ImportedMetalFixture.quad()
+        let baked = try BakedMetalFixture.quad()
+        let representations: [MeshMaterialContent] = [
+            .imported(data), .baked(baked),
+            .sourceBaked(BakedMetalFixture.source(baked, policy: nil)),
+        ]
+        var failures: [String] = []
+        for (index, materials) in representations.enumerated() {
+            func update(_ showsColor: Bool) {
+                MeshViewport(
+                    mesh: indexed(data), isWireframe: true, cameraReset: 0, meshRevision: index,
+                    materials: materials, showsColor: showsColor, onError: { failures.append($0) }
+                ).updateRenderer(in: view)
+            }
+            update(true)
+            view.orbitCamera.pan(horizontal: 0.1, vertical: 0.2)
+            let camera = view.orbitCamera.transform(aspect: 1)
+            let pending = view.materialTask
+            update(false)
+            await pending?.value
+            XCTAssertEqual(view.renderer?.showsColor, false)
+            if case .imported = materials {
+                XCTAssertEqual(view.importedRenderer?.showsColor, false)
+            } else {
+                XCTAssertEqual(view.materialRenderer?.showsColor, false)
+            }
+            let ordinary = view.renderer
+            let imported = view.importedRenderer
+            let textured = view.materialRenderer
+            update(true)
+            XCTAssertTrue(view.renderer === ordinary)
+            XCTAssertTrue(view.importedRenderer === imported)
+            XCTAssertTrue(view.materialRenderer === textured)
+            XCTAssertEqual(view.renderer?.showsColor, true)
+            XCTAssertEqual(view.orbitCamera.transform(aspect: 1), camera)
+            XCTAssertEqual(view.completedMaterialRevision, index)
+            XCTAssertNil(view.requestedMaterialRevision)
+        }
+        XCTAssertTrue(failures.isEmpty)
+        view.cancelMaterialUpload()
+    }
+
     private func indexed(_ data: ImportedMaterialRenderData) -> IndexedMesh {
         IndexedMesh(
             vertices: data.surface.mesh.vertices, indices: data.surface.mesh.vertices.indices.map(UInt32.init),

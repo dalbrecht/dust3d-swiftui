@@ -407,6 +407,7 @@ final class EditorStore {
     private var originDrag: OriginDrag?
     private var originDragToken: UUID?
     var isWireframe = false
+    var showsPreviewColor = true
     var cameraReset = 0
     private(set) var previewCameraCommand: MeshCameraCommand?
     var canMovePreviewCamera: Bool { !stopped && mesh != nil && renderError == nil }

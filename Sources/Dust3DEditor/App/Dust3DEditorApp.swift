@@ -66,6 +66,19 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.snapshot == nil)
             }
             CommandGroup(after: .toolbar) {
+                Toggle(
+                    "Wireframe",
+                    isOn: Binding(
+                        get: { store?.isWireframe == true }, set: { store?.isWireframe = $0 })
+                )
+                .disabled(store == nil)
+                Toggle(
+                    "Model Colors",
+                    isOn: Binding(
+                        get: { store?.showsPreviewColor != false }, set: { store?.showsPreviewColor = $0 })
+                )
+                .disabled(store == nil)
+                Divider()
                 PreviewCameraMenu(
                     title: "Preview Camera", isEnabled: store?.canMovePreviewCamera == true,
                     move: { store?.movePreviewCamera($0) }, fit: { store?.fitPreviewCamera() })

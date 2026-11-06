@@ -1,9 +1,9 @@
 import AppKit
 import Dust3DDocument
-import Dust3DKit
 import Metal
 import XCTest
 
+@testable import Dust3DKit
 @testable import Dust3DRendering
 
 @MainActor
@@ -34,6 +34,33 @@ final class IndexedMetalRenderingTests: XCTestCase {
             XCTAssertGreaterThan(coverage, 20)
             if wireframe { XCTAssertLessThan(coverage, solidCoverage) } else { solidCoverage = coverage }
         }
+    }
+
+    func testColorVisibilityIsReversibleForIndexedAndExpandedProductionPasses() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        let vertices = [SIMD3<Float>(-1, -1, 0), SIMD3(1, -1, 0), SIMD3(0, 1, 0)].map {
+            MeshVertex(position: $0, normal: SIMD3(0, 0, 1), color: SIMD4(1, 0, 0, 1))
+        }
+        let indexed = IndexedMesh(vertices: vertices, indices: [0, 1, 2], nodeCount: 0, partCount: 1, warning: "")
+        let expanded = Mesh(vertices: vertices, nodeCount: 0, partCount: 1, warning: "")
+        var neutralPasses: [[UInt8]] = []
+        for mesh in [RenderMesh.indexed(indexed), .expanded(expanded)] {
+            let renderer = try MeshRenderer(mesh: mesh, device: device)
+            let colored = try pixels(renderer, device: device)
+            renderer.showsColor = false
+            let neutral = try pixels(renderer, device: device)
+            XCTAssertFalse(colored == neutral, "Disabling colors must change the rendered appearance")
+            XCTAssertEqual(
+                stride(from: 3, to: neutral.count, by: 4).map { neutral[$0] },
+                stride(from: 3, to: colored.count, by: 4).map { colored[$0] })
+            let offset = (64 * 128 + 64) * 4
+            XCTAssertGreaterThan(neutral[offset], 40, "Neutral paper-white must contain blue")
+            XCTAssertGreaterThan(neutral[offset + 1], 40, "Neutral paper-white must contain green")
+            renderer.showsColor = true
+            XCTAssertEqual(try pixels(renderer, device: device), colored)
+            neutralPasses.append(neutral)
+        }
+        XCTAssertEqual(neutralPasses[0], neutralPasses[1])
     }
 
     private func saveArtifact(_ pixels: [UInt8], name: String) throws {
