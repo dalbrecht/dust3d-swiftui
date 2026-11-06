@@ -9,7 +9,28 @@ private func displayMesh(_ marker: String) -> Mesh {
     return Mesh(vertices: [vertex, vertex, vertex], nodeCount: 1, partCount: 1, warning: marker)
 }
 private func displayRig() -> GeneratedRig {
-    GeneratedRig(mesh: displayMesh("source"), joints: [], influences: [], eyelidsGenerated: false)
+    let identity: [Double] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    let joint = GeneratedRigJoint(
+        name: "Root", parentIndex: nil, head: .zero, tail: .zero,
+        capsuleRadius: 0, closingAngle: 0, restWorld: identity, inverseBind: identity)
+    let unbound = GeneratedRigInfluences(joints: .init(repeating: .max), weights: .zero)
+    return GeneratedRig(
+        mesh: displayMesh("source"), joints: [joint],
+        influences: Array(repeating: unbound, count: 3), eyelidsGenerated: false)
+}
+private func displayWeightedRig(_ weight: Float) -> GeneratedRig {
+    let joints = ["Root", "Other"].map { name in
+        GeneratedRigJoint(
+            name: name, parentIndex: nil, head: .zero, tail: .zero,
+            capsuleRadius: 0, closingAngle: 0, restWorld: [], inverseBind: [])
+    }
+    let weighted = GeneratedRigInfluences(
+        joints: SIMD4(weight == 0 ? UInt32.max : 0, weight == 1 ? UInt32.max : 1, .max, .max),
+        weights: SIMD4(weight, 1 - weight, 0, 0))
+    let unbound = GeneratedRigInfluences(joints: .init(repeating: .max), weights: .zero)
+    return GeneratedRig(
+        mesh: displayMesh("weighted source"), joints: joints,
+        influences: [weighted, unbound, unbound], eyelidsGenerated: false)
 }
 private func displayThreadMarker() -> String { Thread.isMainThread ? "main" : "background" }
 private actor GeneratedDisplayGate {
@@ -273,4 +294,37 @@ final class GeneratedRigDisplayStateTests: XCTestCase {
         await state.load(key, rig: displayRig())
         XCTAssertEqual(state.mesh?.warning, "background/source/selected")
     }
+    func testWeightSummaryPublishesWithMatchingMeshAndRejectsLateWork() async throws {
+        let gate = GeneratedDisplayGate()
+        let state = GeneratedRigDisplayState { _, _ in try await gate.load() }
+        let firstKey = request()
+        let nextKey = request()
+        XCTAssertNil(state.weightSummary)
+        let first = Task { await state.load(firstKey, rig: displayWeightedRig(0.75)) }
+        try await wait(1, gate)
+        let replacement = Task { await state.load(nextKey, rig: displayWeightedRig(0.25)) }
+        try await wait(2, gate)
+        await gate.finish(2, "current")
+        await replacement.value
+        XCTAssertEqual(state.weightSummary?.minimumWeight, 0)
+        XCTAssertEqual(state.weightSummary?.maximumWeight, 0.25)
+        XCTAssertEqual(state.weightSummary?.influencedTriangleCount, 1)
+        XCTAssertEqual(state.weightSummary?.triangleCount, 1)
+        XCTAssertEqual(state.acceptedRequest, nextKey)
+        await gate.finish(1, "obsolete")
+        await first.value
+        XCTAssertEqual(state.weightSummary?.maximumWeight, 0.25)
+        XCTAssertEqual(state.mesh?.warning, "current")
+        let refresh = Task { await state.load(nextKey, rig: displayWeightedRig(0)) }
+        try await wait(3, gate)
+        XCTAssertEqual(state.weightSummary?.maximumWeight, 0.25)
+        XCTAssertNil(state.acceptedRequest)
+        await gate.finish(3, "refresh")
+        await refresh.value
+        XCTAssertEqual(state.weightSummary?.maximumWeight, 0)
+        XCTAssertEqual(state.weightSummary?.influencedTriangleCount, 0)
+        state.stop()
+        XCTAssertNil(state.weightSummary)
+    }
+
 }
