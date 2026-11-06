@@ -1594,6 +1594,21 @@ final class EditorStore {
         }
     }
 
+    func canPerformInspectorAction(_ target: GraphInspectorActionTarget?) -> Bool {
+        guard !stopped, !isWorking, let target, let snapshot else { return false }
+        return target.isCurrent(in: snapshot)
+    }
+    func inspectorAction(_ target: GraphInspectorActionTarget?) -> @MainActor () -> Void {
+        guard let target, canPerformInspectorAction(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canPerformInspectorAction(target) else { return }
+            self.perform(
+                commits: target.changesDocument, acceptCommittedCancellation: true,
+                selectionOnly: !target.changesDocument
+            ) { try await $0.performInspectorAction(target: target) }
+        }
+    }
+
     func connect(to id: String) {
         guard let selected = snapshot?.selectedID else { return }
         let command = DocumentCommand.joinNodes(id: Self.identifier(), from: selected, to: id)

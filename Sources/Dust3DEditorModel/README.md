@@ -368,3 +368,11 @@ EditorSession.connectSelectedNodes(target:ownerID:). The existing joinNodes comm
 retains chain/profile validation, metadata and atomic history. Stale, unavailable,
 wrong-owner and cancelled requests cannot publish. See ADR0151 and
 [verification](../../docs/selected-node-connection-verification.md).
+
+`GraphInspectorActionContext(snapshot:)` prepares single-node and selected-edge
+availability once per inspector render. Capture each row with `target(for:)`,
+then use `session.performInspectorAction(target:)`; the session rejects changed
+document, selection or constraint epochs with `GraphInspectorActionError.staleTarget`.
+Unavailable targets never become enabled through later selection. Mutation uses
+one existing normalized document transaction; original document errors propagate.
+Endpoint selection remains transient and works for read-only endpoints.

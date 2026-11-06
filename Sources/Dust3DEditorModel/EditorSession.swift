@@ -601,6 +601,37 @@ public actor EditorSession {
         try update { try $0.edit(id: id, position: position, radius: radius) }
     }
 
+    /// Perform a captured inspector command after source/interaction validation on this window's actor.
+    /// Deletion retains existing split/prune normalization; selection-only actions add no Undo entry.
+    /// - Throws: Stale intent, cancellation or the original document error before atomic publication.
+    public func performInspectorAction(target: GraphInspectorActionTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard target.isCurrent(in: state.snapshot), let action = target.action else {
+                throw GraphInspectorActionError.staleTarget
+            }
+            func identifier() -> String { "{\(UUID().uuidString.lowercased())}" }
+            let commands: [DocumentCommand]
+            switch action {
+            case .connect(let from, let to): commands = [.joinNodes(id: identifier(), from: from, to: to)]
+            case .deleteNode(let id): commands = [.removeNode(id: id)]
+            case .reverseEdge(let id): commands = [.reverseEdges([id])]
+            case .disconnectEdge(let id): commands = [.removeEdge(id: id)]
+            case .selectEndpoints(let id):
+                guard let edge = state.snapshot.edges.first(where: { $0.id.utf8.elementsEqual(id.utf8) }) else {
+                    throw GraphInspectorActionError.staleTarget
+                }
+                try state.selectGraph(nodes: [edge.fromID, edge.toID], edges: [])
+                return
+            case .insertMidpoint:
+                try state.insertSelectedEdgeMidpoint(nodeID: identifier(), edgeID: identifier())
+                return
+            }
+            let prepared = try GraphCommandPreparation.normalizingDeletions(
+                commands, document: state.snapshot.document)
+            try state.apply(prepared)
+        }.snapshot
+    }
+
     /// Atomically apply a graph transaction; cancellation is checked before it begins.
     public func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws -> EditorSnapshot {
         try update { state in

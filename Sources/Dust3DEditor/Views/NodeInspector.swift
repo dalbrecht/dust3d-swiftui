@@ -14,6 +14,7 @@ struct NodeInspector: View {
     var body: some View { ScrollView { content } }
 
     private var content: some View {
+        let actionContext = store.snapshot.map { GraphInspectorActionContext(snapshot: $0) }
         return VStack(alignment: .leading, spacing: 16) {
             Text("Selection inspector").font(.headline)
             AddModeControls(store: store)
@@ -50,8 +51,9 @@ struct NodeInspector: View {
             } else if (store.snapshot?.selectedIDs.count ?? 0) > 1 {
                 GroupInspector(store: store)
             } else if let node = store.snapshot?.selectedNode {
-                let targets = store.snapshot?.connectionTargets ?? []
-                let editableEdges = Set(store.snapshot?.editableEdges.map(\.id) ?? [])
+                let targets = (store.snapshot?.connectionTargets ?? []).filter {
+                    store.canPerformInspectorAction(actionContext?.target(for: .connect(from: node.id, to: $0.id)))
+                }
                 Text(node.title).font(.title3)
                 Button("Select Whole Part", action: store.wholePartSelectionAction(.node(node.id)))
                     .disabled(!store.canSelectWholePart(.node(node.id)))
@@ -70,7 +72,9 @@ struct NodeInspector: View {
                 Divider()
                 Menu("Connect to…") {
                     ForEach(targets) { target in
-                        Button(target.title) { store.connect(to: target.id) }
+                        let intent = actionContext?.target(for: .connect(from: node.id, to: target.id))
+                        Button(target.title, action: store.inspectorAction(intent))
+                            .disabled(!store.canPerformInspectorAction(intent))
                     }
                 }
                 .disabled(store.isWorking || !node.isEditable || targets.isEmpty)
@@ -78,15 +82,20 @@ struct NodeInspector: View {
                 ForEach((store.snapshot?.edges ?? []).filter { $0.fromID == node.id || $0.toID == node.id }) { edge in
                     let from = store.snapshot?.nodes.first { $0.id == edge.fromID }?.title ?? edge.fromID
                     let to = store.snapshot?.nodes.first { $0.id == edge.toID }?.title ?? edge.toID
+                    let reverse = actionContext?.target(for: .reverseEdge(id: edge.id))
+                    let disconnect = actionContext?.target(for: .disconnectEdge(id: edge.id))
                     Menu("\(from) → \(to)") {
-                        Button("Reverse Direction") { store.reverseEdge(edge.id) }
-                        Button("Disconnect") { store.deleteEdge(edge.id) }
+                        Button("Reverse Direction", action: store.inspectorAction(reverse))
+                            .disabled(!store.canPerformInspectorAction(reverse))
+                        Button("Disconnect", action: store.inspectorAction(disconnect))
+                            .disabled(!store.canPerformInspectorAction(disconnect))
                     }
                     .accessibilityLabel("Edge from \(from) to \(to)")
-                    .disabled(store.isWorking || !editableEdges.contains(edge.id))
+                    .disabled(!store.canPerformInspectorAction(reverse) && !store.canPerformInspectorAction(disconnect))
                 }
-                Button("Delete Node", role: .destructive) { store.deleteNode() }
-                    .disabled(store.isWorking || !node.isEditable)
+                let delete = actionContext?.target(for: .deleteNode(id: node.id))
+                Button("Delete Node", role: .destructive, action: store.inspectorAction(delete))
+                    .disabled(!store.canPerformInspectorAction(delete))
                 Text("Coordinates use document units. Dragging moves in the selected canvas plane.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
