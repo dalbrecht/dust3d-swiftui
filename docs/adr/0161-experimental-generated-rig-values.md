@@ -39,8 +39,19 @@ No actual generated-rig UI is wired yet. Next preview must capture document
 identity/revision/immutable encoded bytes/rig settings plus fresh request UUID:
 rig-only commands deliberately do not change ordinary mesh geometry identity.
 Use GeneratedRig.mesh with its own bones, not the ungrounded store.mesh. Shared
-body-derived bounds and a deliberate skeleton overlay-depth pass are needed;
-separate normalization or simple opaque concatenation cannot establish overlay
-parity. Keep zero-axis joints listed even when not drawable. Avoid the old #199
+combined-stream bounds are required. The Qt reference draws skeleton first, then
+body at alpha 0.8, with source-alpha blending and depth testing in one pass;
+there is no skeleton-specific always-on-top depth override. Separate normalization
+or opaque body rendering cannot establish that parity. Keep zero-axis joints listed even when not drawable. Avoid the old #199
 pose controller. Real-world rig/UV/import/export, physical GPU/HIG/VoiceOver and
 full Qt parity remain open; QA52 default and all quarantines remain unchanged.
+
+The surface-local preview state captures the immutable request and a fresh UUID
+for each load. Detached generation is cancelled on replacement or view cancellation;
+only the matching UUID may publish data or render errors. An already-cancelled
+caller returns before changing state, so an obsolete view task cannot cancel a
+newer load. Views must immediately hide results when the document request changes.
+No document writes or pose evaluation occur. TDD exposed and fixed the obsolete
+caller race; ten pure request/state tests and eleven experimental request/state
+tests pass. Measured pure request/state line and region coverage is 100%. These
+checks do not establish rendered GPU, physical UI, or VoiceOver acceptance.
