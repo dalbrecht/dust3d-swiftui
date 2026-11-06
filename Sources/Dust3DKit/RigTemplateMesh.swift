@@ -11,7 +11,8 @@ public enum RigTemplateMeshRole: UInt32, Sendable {
     case ring = 2
 }
 
-/// A copied triangle vertex. No native buffer survives its owning handle.
+/// A copied triangle vertex with a flat normal; consecutive triples form triangles.
+/// boneIndex addresses the owning mesh's source-order boneNames. No native buffer escapes.
 public struct RigTemplateMeshVertex: Sendable {
     public let position: SIMD3<Float>
     public let normal: SIMD3<Float>
@@ -26,8 +27,14 @@ public struct RigTemplateMesh: Sendable {
 
     #if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE
         /// Read a verified bundled template and copy the portable core visualization.
-        /// None returns nil. Resource, metadata and native failures preserve their causes.
         /// The synchronous work must be scheduled off the main actor by UI callers.
+        /// - Parameters:
+        ///   - sourceType: Exact pinned template type; nil, empty or None means no template.
+        ///   - selectedBoneName: Exact UTF-8 name whose solid vertices receive the selected role.
+        /// - Returns: Independent Swift-owned geometry and names, or nil for no template.
+        /// - Throws: Resource/hierarchy errors, CancellationError, or MeshLoadingError retaining
+        ///   the native status and diagnostic. No document rig or pose is generated.
+        /// - Example: `let preview = try RigTemplateMesh.load(sourceType: "Snake", selectedBoneName: "Root")`.
         public static func load(sourceType: String?, selectedBoneName: String = "") throws -> Self? {
             try Task.checkCancellation()
             guard let data = try RigTemplateResources.data(forSourceType: sourceType), let sourceType else {
@@ -84,7 +91,14 @@ public struct RigTemplateMesh: Sendable {
     #endif
 
     /// Copy role-colored draw records for the renderer using a platform-supplied palette.
-    /// Runs off the main actor with the template worker; no platform colors enter the core.
+    /// No platform colors enter the core. The preview schedules this copy on its worker.
+    /// - Parameters:
+    ///   - boneColor: Finite RGBA value for ordinary bone solids.
+    ///   - selectedBoneColor: Finite RGBA value for selected bone solids.
+    ///   - ringColor: Finite RGBA value for all capsule rings, including the selected bone's ring.
+    /// - Returns: An independent Mesh preserving positions, normals and triangle order.
+    /// - Throws: RigTemplateHierarchyError for non-finite colors, or CancellationError.
+    /// - Example: `let mesh = try template.displayMesh(boneColor: .one, selectedBoneColor: .one, ringColor: .one)`.
     public func displayMesh(boneColor: SIMD4<Float>, selectedBoneColor: SIMD4<Float>, ringColor: SIMD4<Float>)
         throws -> Mesh
     {
