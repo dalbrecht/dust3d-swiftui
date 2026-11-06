@@ -645,3 +645,12 @@ and influenced body-triangle count. This copied-data calculation runs with displ
 preparation off the main actor; values appear only for the accepted current mesh.
 Counts refer to rendered body triangles, not original vertices or skeleton solids.
 Physical VoiceOver and spatial weight-inspection acceptance remain outstanding.
+
+Generated joint hierarchy inspection preserves source indices and parent order,
+including unplaced joints and derived eyelids. It shares the guarded weight
+selection and leaves documents untouched. Read-only properties show model-unit
+endpoints/length/radius and signed closing angles in degrees. Hierarchy preparation
+is off the main actor; its original failure is shown without discarding copied
+rig data. The hierarchy and properties remain available when GPU preparation
+fails. This is native inspection under M5, not a claim that Qt had a separate
+actual-joint numeric editor. Physical keyboard/VoiceOver acceptance is pending.

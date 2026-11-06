@@ -28,9 +28,19 @@ private actor GeneratedPreviewGate {
     }
     func contains(_ key: Int) -> Bool { pending[key] != nil }
     func finish(_ key: Int, _ marker: String) { pending.removeValue(forKey: key)?.resume(returning: copiedRig(marker)) }
+    func finishInvalidParents(_ key: Int) {
+        pending.removeValue(forKey: key)?.resume(returning: invalidParentRig())
+    }
     func fail(_ key: Int) {
         pending.removeValue(forKey: key)?.resume(throwing: RigTemplateHierarchyError.invalidMetadata("original cause"))
     }
+}
+private func invalidParentRig() -> GeneratedRig {
+    let original = copiedRig("invalid parent")
+    let joint = GeneratedRigJoint(
+        name: "Invalid", parentIndex: 0, head: .zero, tail: SIMD3(0, 0, 1),
+        capsuleRadius: 0.1, closingAngle: 0, restWorld: [], inverseBind: [])
+    return GeneratedRig(mesh: original.mesh, joints: [joint], influences: original.influences, eyelidsGenerated: false)
 }
 @MainActor
 final class GeneratedRigPreviewStateTests: XCTestCase {
@@ -219,6 +229,70 @@ final class GeneratedRigPreviewStateTests: XCTestCase {
         XCTAssertTrue(state.isCurrent(request: request, revision: current))
         state.stop()
         XCTAssertFalse(state.isCurrent(request: request, revision: current))
+    }
+
+    func testHierarchyFailureRetainsCopiedRigAndClearsOnStop() async throws {
+        let state = GeneratedRigPreviewState { _ in invalidParentRig() }
+        let request = try await self.request()
+        await state.load(request)
+        XCTAssertEqual(state.rig?.joints.first?.name, "Invalid")
+        XCTAssertNil(state.error)
+        XCTAssertNil(state.hierarchy)
+        XCTAssertNotNil(state.hierarchyError)
+        XCTAssertTrue(state.isCurrent(request: request, revision: try XCTUnwrap(state.revision)))
+        state.stop()
+        XCTAssertNil(state.hierarchy)
+        XCTAssertNil(state.hierarchyError)
+    }
+
+    func testHierarchyMetadataRejectsObsoleteRigAndClearsDuringReplacement() async throws {
+        let gate = GeneratedPreviewGate()
+        let state = GeneratedRigPreviewState { _ in try await gate.load() }
+        let request = try await self.request()
+        let old = Task { await state.load(request) }
+        try await wait(1, gate)
+        let current = Task { await state.load(request) }
+        try await wait(2, gate)
+        XCTAssertNil(state.hierarchy)
+        await gate.finish(2, "current")
+        await current.value
+        XCTAssertEqual(state.hierarchy?.roots.map(\.index), [0])
+        XCTAssertNil(state.hierarchyError)
+        await gate.finishInvalidParents(1)
+        await old.value
+        XCTAssertEqual(state.rig?.joints.first?.name, "current")
+        XCTAssertEqual(state.hierarchy?.roots.map(\.index), [0])
+        XCTAssertNil(state.hierarchyError)
+        let refresh = Task { await state.load(request) }
+        try await wait(3, gate)
+        XCTAssertNil(state.hierarchy)
+        XCTAssertNil(state.hierarchyError)
+        await gate.finish(3, "refreshed")
+        await refresh.value
+        XCTAssertEqual(state.hierarchy?.roots.map(\.index), [0])
+    }
+
+    func testHierarchyCancellationDoesNotPublishRigOrDegradeIntoMetadataError() async throws {
+        let state = GeneratedRigPreviewState(
+            hierarchyBuilder: { _ in throw CancellationError() }, loader: { _ in copiedRig("cancelled") })
+        await state.load(try await self.request())
+        XCTAssertNil(state.rig)
+        XCTAssertNil(state.hierarchy)
+        XCTAssertNil(state.hierarchyError)
+        XCTAssertNil(state.error)
+        XCTAssertNil(state.request)
+        XCTAssertFalse(state.isLoading)
+    }
+
+    func testHierarchyBuilderRunsOffMainAndPreservesOriginalDiagnostic() async throws {
+        let state = GeneratedRigPreviewState(
+            hierarchyBuilder: { _ in
+                throw RigTemplateHierarchyError.invalidMetadata("hierarchy worker: " + generatedWorkerMarker())
+            }, loader: { _ in copiedRig("retained") })
+        await state.load(try await self.request())
+        XCTAssertEqual(state.rig?.joints.first?.name, "retained")
+        XCTAssertTrue(state.hierarchyError?.contains("hierarchy worker: background") == true)
+        XCTAssertNil(state.error)
     }
 
 }

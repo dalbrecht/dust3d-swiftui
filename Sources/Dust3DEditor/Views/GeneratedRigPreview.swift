@@ -61,6 +61,7 @@
                     Button("Retry Generation") { generationRetry = UUID() }
                 } else if let rig, let revision {
                     jointPicker(rig: rig, revision: revision, selected: selected)
+                    hierarchySection(rig: rig, revision: revision, selected: selected)
                     ZStack {
                         // Keep the view mounted while display colors change, preserving its camera.
                         if let mesh = display.mesh, display.meshRigRevision == revision {
@@ -113,11 +114,7 @@
                         weightSummary(summary)
                     }
                     if let selected {
-                        let joint = rig.joints[selected]
-                        Text(
-                            "Joint head: \(joint.head.x), \(joint.head.y), \(joint.head.z). Tail: \(joint.tail.x), \(joint.tail.y), \(joint.tail.z)."
-                        )
-                        .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                        jointProperties(rig: rig, index: selected)
                     }
                     if !rig.mesh.warning.isEmpty {
                         Text(rig.mesh.warning).font(.caption).textSelection(.enabled)
@@ -159,11 +156,7 @@
                 selection: Binding<Int?>(
                     get: { selected },
                     set: { index in
-                        guard let snapshot = store.snapshot, request.matches(snapshot),
-                            generation.request == request, generation.revision == revision,
-                            index.map({ rig.joints.indices.contains($0) }) ?? true
-                        else { return }
-                        selection = GeneratedRigJointSelection(revision: revision, index: index)
+                        selectJoint(index, rig: rig, revision: revision)
                     })
             ) {
                 Text("No Weight Highlight").tag(nil as Int?)
@@ -173,6 +166,74 @@
                 }
             }
             .accessibilityLabel("Generated joint weight highlight")
+        }
+
+        private func selectJoint(_ index: Int?, rig: GeneratedRig, revision: UUID) {
+            guard canInteract(revision: revision), index.map({ rig.joints.indices.contains($0) }) ?? true else {
+                return
+            }
+            selection = GeneratedRigJointSelection(revision: revision, index: index)
+        }
+
+        @ViewBuilder
+        private func hierarchySection(rig: GeneratedRig, revision: UUID, selected: Int?) -> some View {
+            if let hierarchy = generation.hierarchy {
+                DisclosureGroup("Generated joint hierarchy") {
+                    OutlineGroup(hierarchy.roots, children: \.children) { node in
+                        if rig.joints.indices.contains(node.index) {
+                            let joint = rig.joints[node.index]
+                            Button {
+                                selectJoint(node.index, rig: rig, revision: revision)
+                            } label: {
+                                HStack {
+                                    Text(joint.name)
+                                    Spacer()
+                                    if joint.head == joint.tail {
+                                        Text("Unplaced").font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    if selected == node.index {
+                                        Image(systemName: "checkmark").accessibilityHidden(true)
+                                    }
+                                }
+                                .frame(minHeight: 32)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(joint.head == joint.tail ? "\(joint.name), unplaced joint" : joint.name)
+                            .accessibilityAddTraits(selected == node.index ? .isSelected : [])
+                        }
+                    }
+                }
+                .id(revision)
+            } else if let error = generation.hierarchyError {
+                Text("Joint hierarchy unavailable: \(error)")
+                    .font(.caption).textSelection(.enabled)
+            }
+        }
+
+        private func jointProperties(rig: GeneratedRig, index: Int) -> some View {
+            let joint = rig.joints[index]
+            return VStack(alignment: .leading, spacing: 2) {
+                Text("Selected joint properties").font(.caption.weight(.semibold))
+                if let parent = joint.parentIndex {
+                    if rig.joints.indices.contains(parent) {
+                        Text("Parent: \(rig.joints[parent].name)")
+                    } else {
+                        Text("Parent unavailable")
+                    }
+                } else {
+                    Text("Root joint")
+                }
+                Text("Head: \(joint.head.x), \(joint.head.y), \(joint.head.z)")
+                Text("Tail: \(joint.tail.x), \(joint.tail.y), \(joint.tail.z)")
+                Text("Length: \(joint.lengthInModelUnits, format: .number.precision(.significantDigits(1...6)))")
+                Text("Capsule radius: \(joint.capsuleRadius, format: .number.precision(.significantDigits(1...6)))")
+                Text(
+                    "Closing angle: \(joint.closingAngleDegrees, format: .number.precision(.fractionLength(1))) degrees"
+                )
+                Text("Coordinates, length and radius use model units.")
+            }
+            .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
         }
 
         private func weightSummary(_ summary: GeneratedRigWeightSummary) -> some View {

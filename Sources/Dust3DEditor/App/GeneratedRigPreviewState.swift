@@ -2,6 +2,12 @@ import Dust3DKit
 import Foundation
 import Observation
 
+private struct GeneratedRigPreviewPrepared: Sendable {
+    let rig: GeneratedRig
+    let hierarchy: GeneratedRigHierarchy?
+    let hierarchyError: String?
+}
+
 /// Surface-local rest data only. Never edits documents or evaluates a pose.
 /// The view must hide results whose request no longer matches its current snapshot.
 @MainActor @Observable
@@ -9,13 +15,22 @@ final class GeneratedRigPreviewState {
     private(set) var request: GeneratedRigPreviewRequest?
     private(set) var revision: UUID?
     private(set) var rig: GeneratedRig?
+    private(set) var hierarchy: GeneratedRigHierarchy?
+    private(set) var hierarchyError: String?
     private(set) var error: String?
     private(set) var isLoading = false
-    @ObservationIgnored private var worker: Task<GeneratedRig?, Error>?
+    @ObservationIgnored private var worker: Task<GeneratedRigPreviewPrepared?, Error>?
     @ObservationIgnored private let loader: @Sendable (GeneratedRigPreviewRequest) async throws -> GeneratedRig?
 
-    init(loader: @escaping @Sendable (GeneratedRigPreviewRequest) async throws -> GeneratedRig?) {
+    @ObservationIgnored private let hierarchyBuilder: @Sendable ([GeneratedRigJoint]) throws -> GeneratedRigHierarchy
+
+    init(
+        hierarchyBuilder: @escaping @Sendable ([GeneratedRigJoint]) throws -> GeneratedRigHierarchy = {
+            try GeneratedRigHierarchy(joints: $0)
+        }, loader: @escaping @Sendable (GeneratedRigPreviewRequest) async throws -> GeneratedRig?
+    ) {
         self.loader = loader
+        self.hierarchyBuilder = hierarchyBuilder
     }
 
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
@@ -35,17 +50,33 @@ final class GeneratedRigPreviewState {
         revision = stamp
         self.request = request
         rig = nil
+        hierarchy = nil
+        hierarchyError = nil
         error = nil
         isLoading = true
         let loader = loader
-        let task = Task.detached(priority: .userInitiated) {
+        let hierarchyBuilder = hierarchyBuilder
+        let task = Task.detached(priority: .userInitiated) { () async throws -> GeneratedRigPreviewPrepared? in
             try Task.checkCancellation()
             let result = try await loader(request)
             try Task.checkCancellation()
-            return result
+            guard let rig = result else { return nil }
+            let hierarchy: GeneratedRigHierarchy?
+            let hierarchyError: String?
+            do {
+                hierarchy = try hierarchyBuilder(rig.joints)
+                hierarchyError = nil
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                hierarchy = nil
+                hierarchyError = error.localizedDescription
+            }
+            try Task.checkCancellation()
+            return GeneratedRigPreviewPrepared(rig: rig, hierarchy: hierarchy, hierarchyError: hierarchyError)
         }
         worker = task
-        let result: Result<GeneratedRig?, Error>
+        let result: Result<GeneratedRigPreviewPrepared?, Error>
         do {
             result = .success(
                 try await withTaskCancellationHandler {
@@ -65,7 +96,10 @@ final class GeneratedRigPreviewState {
             return
         }
         switch result {
-        case .success(let value): rig = value
+        case .success(let value):
+            rig = value?.rig
+            hierarchy = value?.hierarchy
+            hierarchyError = value?.hierarchyError
         case .failure(is CancellationError):
             revision = nil
             self.request = nil
@@ -89,6 +123,8 @@ final class GeneratedRigPreviewState {
         revision = nil
         request = nil
         rig = nil
+        hierarchy = nil
+        hierarchyError = nil
         error = nil
         isLoading = false
     }
