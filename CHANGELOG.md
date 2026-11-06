@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Resolve About attribution from installed app resources without requiring the original SwiftPM build directory, and report missing packaged attribution safely (#344).
+
 - Add shared Help commands for the native project, issue reporting and upstream Dust3D, with visible link-opening failures (#348).
 
 - Include upstream contributor and supporter credits in both native About panels, available offline (#346).

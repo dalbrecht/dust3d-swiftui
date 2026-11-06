@@ -9,12 +9,16 @@ import Foundation
         NSApplication.shared.orderFrontStandardAboutPanel(options: options(applicationName: applicationName))
     }
 
-    static func options(applicationName: String) -> [NSApplication.AboutPanelOptionKey: Any] {
-        options(
+    static func options(
+        applicationName: String, applicationBundle: Bundle = .main,
+        developmentBundle: () -> Bundle = { Bundle.module }
+    ) -> [NSApplication.AboutPanelOptionKey: Any] {
+        let resources = RenderingResourceBundle.resolve(in: applicationBundle, developmentBundle: developmentBundle)
+        return options(
             applicationName: applicationName,
-            licenseURL: Bundle.module.url(forResource: "ApplicationLicense", withExtension: "txt"),
-            contributorsURL: Bundle.module.url(forResource: "ApplicationContributors", withExtension: "txt"),
-            supportersURL: Bundle.module.url(forResource: "ApplicationSupporters", withExtension: "txt"))
+            licenseURL: resources?.url(forResource: "ApplicationLicense", withExtension: "txt"),
+            contributorsURL: resources?.url(forResource: "ApplicationContributors", withExtension: "txt"),
+            supportersURL: resources?.url(forResource: "ApplicationSupporters", withExtension: "txt"))
     }
 
     static func options(
