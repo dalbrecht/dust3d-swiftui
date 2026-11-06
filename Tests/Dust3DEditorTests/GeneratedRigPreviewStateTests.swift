@@ -194,4 +194,31 @@ final class GeneratedRigPreviewStateTests: XCTestCase {
         XCTAssertNil(state.error)
         XCTAssertEqual(state.rig?.joints.first?.name, "current")
     }
+    func testCameraInteractionRejectsUnpublishedReplacedAndForeignRequests() async throws {
+        let gate = GeneratedPreviewGate()
+        let state = GeneratedRigPreviewState { _ in try await gate.load() }
+        let request = try await self.request()
+        let foreign = try await self.request()
+        XCTAssertFalse(state.isCurrent(request: request, revision: UUID()))
+        let first = Task { await state.load(request) }
+        try await wait(1, gate)
+        let old = try XCTUnwrap(state.revision)
+        XCTAssertFalse(state.isCurrent(request: request, revision: old))
+        await gate.finish(1, "first")
+        await first.value
+        XCTAssertTrue(state.isCurrent(request: request, revision: old))
+        XCTAssertFalse(state.isCurrent(request: foreign, revision: old))
+        let replacement = Task { await state.load(request) }
+        try await wait(2, gate)
+        let current = try XCTUnwrap(state.revision)
+        XCTAssertFalse(state.isCurrent(request: request, revision: old))
+        XCTAssertFalse(state.isCurrent(request: request, revision: current))
+        await gate.finish(2, "replacement")
+        await replacement.value
+        XCTAssertFalse(state.isCurrent(request: request, revision: old))
+        XCTAssertTrue(state.isCurrent(request: request, revision: current))
+        state.stop()
+        XCTAssertFalse(state.isCurrent(request: request, revision: current))
+    }
+
 }

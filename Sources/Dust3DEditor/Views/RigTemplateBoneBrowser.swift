@@ -21,6 +21,11 @@ struct RigTemplateBoneBrowser: View {
                 #if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE
                     RigTemplatePreview(sourceType: hierarchy.type, selectedBoneName: selectedName ?? "")
                 #endif
+                #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                    GeneratedRigPreview(
+                        store: store, request: GeneratedRigPreviewRequest(snapshot: snapshot),
+                        selectedBoneName: selectedName ?? "")
+                #endif
                 BoneAssignmentProgressControls(store: store, overview: context.overview)
                 OutlineGroup(hierarchy.roots, children: \.children) { bone in
                     let target = context.overview.target(for: .named(bone.name))

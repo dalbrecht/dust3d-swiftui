@@ -630,3 +630,12 @@ zoom and Fit; selection remains explicit text and list state. Palette resolution
 follows light/dark and increased contrast. This is template visualization only;
 actual generated rigs/weights/IK/deformation and physical UI/VoiceOver acceptance
 remain outstanding. See ADR0160 and issue365. Production core pin is unchanged.
+
+The experimental `MOTE3D_EXPERIMENTAL_GENERATED_RIG` local-core build adds a
+read-only Generated rest preview in Rig settings. Its independent generation and
+display tasks preserve the camera during weight-selection and appearance changes.
+The picker includes unplaced and generated eyelid joints; choosing a highlight
+does not assign document edges. Native View-menu/Fit actions provide keyboard
+alternatives to dragging. Production builds retain the pinned core and do not
+enable this experimental surface. Physical UI and VoiceOver acceptance remain
+outstanding; the old pose controller is not used. See ADR 0163.

@@ -73,6 +73,11 @@ final class GeneratedRigPreviewState {
         }
     }
 
+    /// Queued interactions belong to one successfully published source request.
+    func isCurrent(request: GeneratedRigPreviewRequest, revision: UUID) -> Bool {
+        self.request == request && self.revision == revision && rig != nil
+    }
+
     func recordRenderFailure(_ cause: String, revision: UUID) {
         guard self.revision == revision, rig != nil, !isLoading else { return }
         error = cause

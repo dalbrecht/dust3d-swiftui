@@ -34,7 +34,7 @@ failed with disk ENOSPC before tests; obsolete completed build caches were
 retired with source snapshots and identity records retained, then the identical
 focused run passed with source identities guarded before/after.
 
-No generated preview view is wired yet. No GUI/GPU/pose/animation/GLB/writer or
+The subsequent experimental view wiring is recorded in ADR 0163. No GUI/GPU/pose/animation/GLB/writer or
 broad catalog runtime acceptance is claimed. Offline Metal compilation could
 not run because the host Metal Toolchain is absent. Full make ci for this branch
 and physical UI/HIG/VoiceOver acceptance remain outstanding. Production core
