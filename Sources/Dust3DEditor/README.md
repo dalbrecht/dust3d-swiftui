@@ -694,3 +694,11 @@ active. They share the window's existing preferences and display preparation,
 without changing documents. Old menu actions are ignored after document or
 presentation replacement. The ordinary build's menus stay unchanged. Physical
 menu navigation and VoiceOver acceptance remain outstanding. See ADR 0169.
+
+Mesh previews support trackpad pinch to zoom and twist to orbit horizontally:
+counterclockwise rotation follows Orbit Left, clockwise follows Orbit Right.
+The gestures change the camera, never the document. Automatic rotation pauses
+during gestures, honors Reduce Motion, and resumes without a catch-up jump.
+Changing the source/window or hiding the preview clears incomplete input. Existing
+camera menus remain available for keyboard navigation. Physical trackpad and
+VoiceOver acceptance remains outstanding. See ADR 0170.

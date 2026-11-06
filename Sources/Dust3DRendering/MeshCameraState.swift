@@ -48,7 +48,8 @@ public final class MeshCameraState {
     }
 
     /// Resize or backing changes invalidate projection-dependent picks without moving the camera.
-    package func invalidateProjection() {
+    package func invalidateProjection(interactionAllowed: @MainActor () -> Bool = { true }) {
+        guard interactionAllowed() else { return }
         inputRevision = UUID()
     }
 
