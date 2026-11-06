@@ -22,6 +22,7 @@ struct NodeCanvas: View {
             let colorizeActions = GraphColorizeActions(store: store)
             let nodes = store.snapshot?.nodes ?? []
             let addModeID = store.addModeID
+            let shiftContext = store.canvasRotationContext
             let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
             ZStack {
                 if store.showsReferenceImage,
@@ -160,7 +161,9 @@ struct NodeCanvas: View {
                             }
                             guard let snapshot = store.snapshot else { return }
                             if let drag = shiftedDrag, drag.token == token {
-                                guard drag.plan.isCurrent(in: snapshot) else {
+                                guard store.canvasRotationContext == shiftContext,
+                                    drag.plan.isCurrent(in: snapshot)
+                                else {
                                     shiftedDrag = nil
                                     return
                                 }
@@ -177,6 +180,7 @@ struct NodeCanvas: View {
                             }
                             if let drag = shiftedDrag, drag.token == token {
                                 shiftedDrag = nil
+                                guard store.canvasRotationContext == shiftContext else { return }
                                 store.commitCanvasShiftDrag(drag.plan, translation: translation)
                                 return
                             }
@@ -188,7 +192,8 @@ struct NodeCanvas: View {
                             nodeDrag.cancel(token: token)
                         },
                         beginShiftDrag: { token in
-                            guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin,
+                            guard store.canvasRotationContext == shiftContext, store.addModeID == addModeID,
+                                !store.isAddingNodes, !store.isMovingOrigin,
                                 let snapshot = store.snapshot,
                                 let plan = try? CanvasShiftDrag(
                                     anchorID: node.id, snapshot: snapshot, projection: projection)

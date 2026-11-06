@@ -29,8 +29,8 @@ final class EndpointIKDragTests: XCTestCase {
         _ = try await session.select("tip")
         let initial = try await session.setLock(.z, isLocked: true)
         let projection = CanvasProjection(bounds: .init(nodes: initial.nodes), plane: .front, width: 400, height: 400)
-        XCTAssertNil(EndpointIKDrag(endpointID: "root", snapshot: initial, projection: projection))
-        XCTAssertNil(EndpointIKDrag(endpointID: "joint", snapshot: initial, projection: projection))
+        XCTAssertNil(EndpointIKTarget(endpointID: "root", snapshot: initial))
+        XCTAssertNil(EndpointIKTarget(endpointID: "joint", snapshot: initial))
         let drag = try CanvasShiftDrag(anchorID: "tip", snapshot: initial, projection: projection)
         let result = try await session.commitCanvasShiftDrag(drag, translation: .init(x: -30, y: -60))
         XCTAssertEqual(result.selectedID, "tip")
@@ -67,6 +67,45 @@ final class EndpointIKDragTests: XCTestCase {
         XCTAssertEqual(try result.document.node(id: "root"), try original.node(id: "root"))
         let undone = try await session.undo()
         XCTAssertEqual(undone.document.encoded(), original.encoded())
+    }
+
+    func testExplicitEndpointTargetMatchesPointerResultAndRejectsStaleDraft() async throws {
+        let original = try archive()
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let snapshot = try await session.select("tip")
+        let projection = CanvasProjection(bounds: .init(nodes: snapshot.nodes), plane: .front, width: 400, height: 400)
+        let target = try XCTUnwrap(EndpointIKTarget(endpointID: "tip", snapshot: snapshot))
+        let shift = try CanvasShiftDrag(anchorID: "tip", snapshot: snapshot, projection: projection)
+        let translation = CanvasPoint(x: -30, y: -60)
+        let destination = projection.moving(target.endpointPosition, by: translation)
+        let expected = try shift.updates(by: translation).map(\.value)
+        XCTAssertFalse(expected.isEmpty)
+        XCTAssertEqual(try target.updates(toward: destination).map(\.value), expected)
+
+        let result = try await session.bendEndpoint(target, toward: destination)
+        XCTAssertTrue(result.canUndo)
+        XCTAssertEqual(result.selectedID, "tip")
+        do {
+            _ = try await session.bendEndpoint(target, toward: destination)
+            XCTFail("A draft from before the committed bend must be stale")
+        } catch { XCTAssertEqual(error as? EditorError, .staleCanvasAdjustment) }
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), original.encoded())
+    }
+
+    func testLockedAxisOutsideBoundsIsIgnoredButNonfiniteInputStillRejects() async throws {
+        let original = try archive()
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let snapshot = try await session.setLock(.x, isLocked: true)
+        let target = try XCTUnwrap(EndpointIKTarget(endpointID: "tip", snapshot: snapshot))
+        let masked = try target.updates(toward: .init(x: 2_000_000, y: 1, z: 0.5))
+        let bounded = try target.updates(toward: .init(x: 2, y: 1, z: 0.5))
+        XCTAssertFalse(masked.isEmpty)
+        XCTAssertEqual(masked.map(\.value), bounded.map(\.value))
+        XCTAssertThrowsError(try target.updates(toward: .init(x: .nan, y: 1, z: 0.5)))
+        XCTAssertThrowsError(try target.updates(toward: .init(x: 2, y: 2_000_000, z: 0.5)))
     }
 
 }
