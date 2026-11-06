@@ -4,8 +4,7 @@ Editor and Viewer now invoke AppKit's standard About panel through the shared
 ApplicationAboutPanel boundary. The app's existing immutable build identity
 supplies its QA-aware human name. AppKit uses the packaged icon, short version
 and build defaults; raw source/core hashes do not replace the product version.
-The exact root MIT notice is copied into the rendering resource bundle and
-supplied as attributed credits, with its copyright line. Both app packagers
+The exact root MIT notice and root CONTRIBUTORS/SUPPORTERS lists are copied into the rendering resource bundle and supplied as attributed credits, with the license copyright line and clearly separated credit headings. The lists remain available offline, retain upstream ordering and text, and do not initiate external navigation. Both app packagers
 already copy that shared bundle. Missing/unreadable attribution appears as an
 explicit message, retaining a read failure's localized cause.
 
@@ -31,6 +30,23 @@ thin manual-verification boundary, not a fake-window acceptance claim.
 
 Full local build/test/archive and both packaged attribution checks are required
 before publishing this stage. Physical panel layout, keyboard, appearance and
-VoiceOver remain open. Full contributor/supporter/project-link inventory,
+VoiceOver remain open. Project-link inventory,
 dependency license/release auditing, native inspector contrast and full Apple
 HIG/Qt parity remain separate. Production core pin and all quarantines remain.
+
+
+## Offline upstream credits (#346)
+
+A new regression against the license-only implementation failed one assertion:
+the native credits omitted both checked-in lists. All six scoped About tests
+then passed with the resource-backed lists. The combined attributed string is
+compared exactly with the three root files, preserving their Unicode text and
+ordering. Tests also verify explicit missing-resource messages and the original
+localized read-error cause for each resource. They never open an About panel.
+
+Both packaged apps must retain exact root bytes for ApplicationLicense.txt,
+ApplicationContributors.txt and ApplicationSupporters.txt in their Rendering
+resource bundles. This is upstream project attribution; it does not claim a
+complete native dependency-license inventory or full Qt/HIG acceptance.
+Physical standard-panel scrolling, dark/light layout, keyboard and VoiceOver
+remain outstanding.

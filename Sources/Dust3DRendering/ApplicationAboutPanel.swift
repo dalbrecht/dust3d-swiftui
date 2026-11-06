@@ -12,14 +12,22 @@ import Foundation
     static func options(applicationName: String) -> [NSApplication.AboutPanelOptionKey: Any] {
         options(
             applicationName: applicationName,
-            licenseURL: Bundle.module.url(forResource: "ApplicationLicense", withExtension: "txt"))
+            licenseURL: Bundle.module.url(forResource: "ApplicationLicense", withExtension: "txt"),
+            contributorsURL: Bundle.module.url(forResource: "ApplicationContributors", withExtension: "txt"),
+            supportersURL: Bundle.module.url(forResource: "ApplicationSupporters", withExtension: "txt"))
     }
 
-    static func options(applicationName: String, licenseURL: URL?) -> [NSApplication.AboutPanelOptionKey: Any] {
-        let license = licenseText(at: licenseURL)
+    static func options(
+        applicationName: String, licenseURL: URL?, contributorsURL: URL? = nil, supportersURL: URL? = nil
+    ) -> [NSApplication.AboutPanelOptionKey: Any] {
+        let license = resourceText(at: licenseURL, resource: "ApplicationLicense.txt", title: "License")
+        let contributors = resourceText(
+            at: contributorsURL, resource: "ApplicationContributors.txt", title: "Contributors")
+        let supporters = resourceText(at: supportersURL, resource: "ApplicationSupporters.txt", title: "Supporters")
+        let credits = license + "\n\nContributors\n\n" + contributors + "\n\nSupporters\n\n" + supporters
         var result: [NSApplication.AboutPanelOptionKey: Any] = [
             .applicationName: applicationName,
-            .credits: NSAttributedString(string: license),
+            .credits: NSAttributedString(string: credits),
         ]
         if let copyright = license.split(separator: "\n").first(where: { $0.hasPrefix("Copyright") }) {
             // AppKit documents this additional dictionary key alongside AboutPanelOptionKey.
@@ -28,15 +36,15 @@ import Foundation
         return result
     }
 
-    private static func licenseText(at url: URL?) -> String {
+    private static func resourceText(at url: URL?, resource: String, title: String) -> String {
         guard let url else {
             return
-                "License information unavailable: the bundled ApplicationLicense.txt file is missing."
+                "\(title) information unavailable: the bundled \(resource) file is missing."
         }
         do {
             return try String(contentsOf: url, encoding: .utf8)
         } catch {
-            return "Unable to read ApplicationLicense.txt: \(error.localizedDescription)"
+            return "Unable to read \(resource): \(error.localizedDescription)"
         }
     }
 }
