@@ -16,12 +16,20 @@ final class ApplicationAboutPanelTests: XCTestCase {
         try license.write(
             to: try XCTUnwrap(embedded.resourceURL).appendingPathComponent("ApplicationLicense.txt"), atomically: true,
             encoding: .utf8)
+        try "Embedded contributors".write(
+            to: try XCTUnwrap(embedded.resourceURL).appendingPathComponent("ApplicationContributors.txt"),
+            atomically: true, encoding: .utf8)
+        try "Embedded supporters".write(
+            to: try XCTUnwrap(embedded.resourceURL).appendingPathComponent("ApplicationSupporters.txt"),
+            atomically: true, encoding: .utf8)
         var usedDevelopment = false
         let options = ApplicationAboutPanel.options(applicationName: "Copied", applicationBundle: app) {
             usedDevelopment = true
             return app
         }
-        XCTAssertEqual((options[.credits] as? NSAttributedString)?.string, license)
+        XCTAssertEqual(
+            (options[.credits] as? NSAttributedString)?.string,
+            license + "\n\nContributors\n\nEmbedded contributors\n\nSupporters\n\nEmbedded supporters")
         XCTAssertFalse(usedDevelopment)
     }
 
@@ -53,7 +61,7 @@ final class ApplicationAboutPanelTests: XCTestCase {
             return development
         }
         XCTAssertTrue(usedDevelopment)
-        XCTAssertEqual((options[.credits] as? NSAttributedString)?.string, "Development license")
+        XCTAssertTrue(((options[.credits] as? NSAttributedString)?.string ?? "").hasPrefix("Development license"))
     }
 
     private func resourceFixture(at url: URL, identifier: String) throws -> Bundle {
@@ -73,12 +81,49 @@ final class ApplicationAboutPanelTests: XCTestCase {
         let license = try String(contentsOf: root.appendingPathComponent("LICENSE"), encoding: .utf8)
         let options = ApplicationAboutPanel.options(applicationName: "Dust3D Editor QA")
         XCTAssertEqual(options[.applicationName] as? String, "Dust3D Editor QA")
-        XCTAssertEqual((options[.credits] as? NSAttributedString)?.string, license)
+        XCTAssertTrue((options[.credits] as? NSAttributedString)?.string.hasPrefix(license) == true)
         XCTAssertEqual(
             options[NSApplication.AboutPanelOptionKey(rawValue: "Copyright")] as? String,
             "Copyright (c) 2018 Dust3D Project")
         XCTAssertNil(options[.applicationVersion])
         XCTAssertNil(options[.version])
+    }
+
+    func testCreditsRetainExactRootContributorAndSupporterListsOffline() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let license = try String(contentsOf: root.appendingPathComponent("LICENSE"), encoding: .utf8)
+        let contributors = try String(contentsOf: root.appendingPathComponent("CONTRIBUTORS"), encoding: .utf8)
+        let supporters = try String(contentsOf: root.appendingPathComponent("SUPPORTERS"), encoding: .utf8)
+        let options = ApplicationAboutPanel.options(applicationName: "Dust3D Viewer")
+        XCTAssertEqual(
+            (options[.credits] as? NSAttributedString)?.string,
+            license + "\n\nContributors\n\n" + contributors + "\n\nSupporters\n\n" + supporters)
+    }
+
+    func testMissingContributorAndSupporterResourcesRemainVisible() {
+        let options = ApplicationAboutPanel.options(applicationName: "Dust3D Viewer", licenseURL: nil)
+        let credits = (options[.credits] as? NSAttributedString)?.string ?? ""
+        XCTAssertTrue(credits.contains("the bundled ApplicationContributors.txt file is missing"))
+        XCTAssertTrue(credits.contains("the bundled ApplicationSupporters.txt file is missing"))
+    }
+
+    func testUnreadableCreditsRetainEachResourceAndReadFailureCause() throws {
+        let missing = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        let cause: String
+        do {
+            _ = try String(contentsOf: missing, encoding: .utf8)
+            return XCTFail("The unique absent resource unexpectedly exists")
+        } catch {
+            cause = error.localizedDescription
+        }
+        let options = ApplicationAboutPanel.options(
+            applicationName: "Dust3D Viewer", licenseURL: missing, contributorsURL: missing,
+            supportersURL: missing)
+        let credits = (options[.credits] as? NSAttributedString)?.string ?? ""
+        for resource in ["ApplicationLicense.txt", "ApplicationContributors.txt", "ApplicationSupporters.txt"] {
+            XCTAssertTrue(credits.contains("Unable to read \(resource): \(cause)"))
+        }
     }
 
     func testCurrentGraphQABundleKeepsItsQADistinctionInNativeAbout() {
