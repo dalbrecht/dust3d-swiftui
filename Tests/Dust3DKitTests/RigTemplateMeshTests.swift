@@ -78,5 +78,23 @@
                 XCTAssertTrue(error is CancellationError)
             }
         }
+
+        func testDisplayCopyRetainsGeometryAndMapsSemanticRoles() throws {
+            let raw = try XCTUnwrap(RigTemplateMesh.load(sourceType: "Snake", selectedBoneName: "Root"))
+            let bone = SIMD4<Float>(0.1, 0.2, 0.3, 1)
+            let selected = SIMD4<Float>(0.4, 0.5, 0.6, 1)
+            let ring = SIMD4<Float>(0.7, 0.8, 0.9, 1)
+            let display = try raw.displayMesh(boneColor: bone, selectedBoneColor: selected, ringColor: ring)
+            XCTAssertEqual(display.vertices.count, raw.vertices.count)
+            for (source, vertex) in zip(raw.vertices, display.vertices) {
+                XCTAssertEqual(source.position, vertex.position)
+                XCTAssertEqual(source.normal, vertex.normal)
+                let expected = source.role == .bone ? bone : source.role == .selectedBone ? selected : ring
+                XCTAssertEqual(vertex.color, expected)
+            }
+            XCTAssertThrowsError(
+                try raw.displayMesh(
+                    boneColor: SIMD4<Float>(.nan, 0, 0, 1), selectedBoneColor: selected, ringColor: ring))
+        }
     }
 #endif

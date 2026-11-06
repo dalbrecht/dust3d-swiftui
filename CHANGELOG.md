@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add isolated experimental rig-template Swift copies with exact UTF-8 names, checked flat draw buffers and source roles; preserve the production core pin (#144).
+- Add an isolated experimental native rig-template preview with complete solids/rings, exact-name selection, background preparation, stale-result protection and camera menu controls; preserve the production core pin (#144).
 
 - Show rig assignment progress with stored/selectable counts, select unassigned or chosen-bone edges, and highlight matches on hover without changing document history (#363).
 

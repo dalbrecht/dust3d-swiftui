@@ -1,27 +1,30 @@
+import Foundation
+
 #if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE
     import Dust3DEngine
-    import Foundation
+#endif
 
-    /// Semantic roles retain source ownership independently of platform colors.
-    public enum RigTemplateMeshRole: UInt32, Sendable {
-        case bone = 0
-        case selectedBone = 1
-        case ring = 2
-    }
+/// Semantic roles retain source ownership independently of platform colors.
+public enum RigTemplateMeshRole: UInt32, Sendable {
+    case bone = 0
+    case selectedBone = 1
+    case ring = 2
+}
 
-    /// A copied triangle vertex. No native buffer survives its owning handle.
-    public struct RigTemplateMeshVertex: Sendable {
-        public let position: SIMD3<Float>
-        public let normal: SIMD3<Float>
-        public let boneIndex: Int
-        public let role: RigTemplateMeshRole
-    }
+/// A copied triangle vertex. No native buffer survives its owning handle.
+public struct RigTemplateMeshVertex: Sendable {
+    public let position: SIMD3<Float>
+    public let normal: SIMD3<Float>
+    public let boneIndex: Int
+    public let role: RigTemplateMeshRole
+}
 
-    /// Immutable, template-only geometry. Does not generate a document rig or pose.
-    public struct RigTemplateMesh: Sendable {
-        public let vertices: [RigTemplateMeshVertex]
-        public let boneNames: [String]
+/// Immutable, template-only geometry. Does not generate a document rig or pose.
+public struct RigTemplateMesh: Sendable {
+    public let vertices: [RigTemplateMeshVertex]
+    public let boneNames: [String]
 
+    #if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE
         /// Read a verified bundled template and copy the portable core visualization.
         /// None returns nil. Resource, metadata and native failures preserve their causes.
         /// The synchronous work must be scheduled off the main actor by UI callers.
@@ -78,6 +81,35 @@
             }
         }
 
+    #endif
+
+    /// Copy role-colored draw records for the renderer using a platform-supplied palette.
+    /// Runs off the main actor with the template worker; no platform colors enter the core.
+    public func displayMesh(boneColor: SIMD4<Float>, selectedBoneColor: SIMD4<Float>, ringColor: SIMD4<Float>)
+        throws -> Mesh
+    {
+        guard
+            [boneColor, selectedBoneColor, ringColor].allSatisfy({ color in
+                (0..<4).allSatisfy { color[$0].isFinite }
+            })
+        else { throw Self.invalid("non-finite template display color") }
+        var copied: [MeshVertex] = []
+        copied.reserveCapacity(vertices.count)
+        for (index, vertex) in vertices.enumerated() {
+            if index.isMultiple(of: 1024) { try Task.checkCancellation() }
+            let color: SIMD4<Float>
+            switch vertex.role {
+            case .bone: color = boneColor
+            case .selectedBone: color = selectedBoneColor
+            case .ring: color = ringColor
+            }
+            copied.append(MeshVertex(position: vertex.position, normal: vertex.normal, color: color))
+        }
+        try Task.checkCancellation()
+        return Mesh(vertices: copied, nodeCount: 0, partCount: 0, warning: "")
+    }
+
+    #if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE
         private static func position(_ element: XMLElement, child: String) throws -> (Float, Float, Float) {
             let children = element.elements(forName: child)
             guard children.count == 1 else { throw invalid("missing or duplicate \(child)") }
@@ -130,6 +162,7 @@
             return Self(vertices: copied, boneNames: names)
         }
 
-        private static func invalid(_ reason: String) -> RigTemplateHierarchyError { .invalidMetadata(reason) }
-    }
-#endif
+    #endif
+
+    private static func invalid(_ reason: String) -> RigTemplateHierarchyError { .invalidMetadata(reason) }
+}
