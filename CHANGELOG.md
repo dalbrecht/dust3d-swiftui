@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add shared Help commands for the native project, issue reporting and upstream Dust3D, with visible link-opening failures (#348).
+
 - Include upstream contributor and supporter credits in both native About panels, available offline (#346).
 
 - Use native About panels with bundled project MIT attribution and separate Help > Build Diagnostics commands in both apps, retaining the graph QA name (#344).
