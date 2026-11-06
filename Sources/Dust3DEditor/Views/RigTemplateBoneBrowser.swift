@@ -10,6 +10,7 @@ struct RigTemplateBoneBrowser: View {
     @State private var hierarchy: RigTemplateHierarchy?
     @State private var loadError: String?
     @State private var selectedName: String?
+    @State private var hoverSurface = UUID()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -17,7 +18,11 @@ struct RigTemplateBoneBrowser: View {
                 let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: snapshot)
                 Text("Template bones").font(.headline)
                 Text(hierarchy.description).font(.caption).foregroundStyle(.secondary)
+                BoneAssignmentProgressControls(store: store, overview: context.overview)
                 OutlineGroup(hierarchy.roots, children: \.children) { bone in
+                    let target = context.overview.target(for: .named(bone.name))
+                    let hover = store.boneEdgeHoverAction(
+                        target, owner: .init(surface: hoverSurface, row: bone.id))
                     Button {
                         guard let current = store.snapshot, context.isCurrent(in: current) else { return }
                         selectedName = bone.name
@@ -36,9 +41,17 @@ struct RigTemplateBoneBrowser: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(bone.name), \(context.assignmentCount(bone.name)) assigned edges")
                     .accessibilityAddTraits(
-                        selectedName?.utf8.elementsEqual(bone.name.utf8) == true ? .isSelected : [])
+                        selectedName?.utf8.elementsEqual(bone.name.utf8) == true ? .isSelected : []
+                    )
+                    .onHover(perform: hover)
+                    .onDisappear { hover(false) }
                 }
                 if let selectedName, context.contains(selectedName) {
+                    if let target = context.selectionTarget(name: selectedName) {
+                        Button("Select Bone Edges", action: store.boneEdgeSelectionAction(target))
+                            .frame(minHeight: 40)
+                            .disabled(!store.canSelectBoneEdges(target))
+                    }
                     Button(
                         "Assign \(selectedName) to Selected Edges",
                         action: store.assignBoneNameAction(selectedName, target: context.assignment)

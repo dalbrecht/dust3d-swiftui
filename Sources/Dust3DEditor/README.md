@@ -613,3 +613,11 @@ Assignments with exact matching counts. These explicit global metadata actions
 include hidden/locked parts and commit one Undo step. Selected-edge Clear All
 retains its distinct editable-edge scope. Physical UI/VoiceOver remains pending.
 See ADR0158 and #361.
+
+Rig settings shows native assignment progress and separate stored/selectable
+unassigned counts. Select Unassigned Edges replaces graph selection; the chosen
+template bone also has Select Bone Edges, including zero-match clearing. Hovering
+progress or a bone row highlights raw matches with an accent halo/dashed edge,
+without history or selection changes. Exact surface/row/source ownership prevents
+late exits from clearing a newer highlight; changes and stop clear stale state.
+Physical pointer/keyboard/VoiceOver acceptance remains pending. See ADR0159/#363.

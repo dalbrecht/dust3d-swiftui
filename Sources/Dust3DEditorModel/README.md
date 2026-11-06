@@ -396,3 +396,10 @@ restores captured text; exact UTF-8 name differences remain meaningful.
 window/source/interaction epochs. `EditorSession.clearBoneAssignments(target:)`
 clears one frozen set atomically without changing selection or preview inputs;
 stale/unavailable/cancelled intent never retargets. See ADR0158 and #361.
+
+`BoneEdgeOverview` prepares Qt-compatible assignment counts and separate raw
+highlight/selectable groups. `BoneEdgeSelectionTarget` captures exact source and
+interaction epochs; `EditorSession.selectBoneEdges(target:)` changes selection
+without archive/history/preview edits. Named zero-match selection clears graph
+sets, while empty named and all-assigned unassigned intent stay unavailable.
+See ADR0159 and #363.

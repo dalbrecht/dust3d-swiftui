@@ -12,6 +12,9 @@ import os
 final class EditorStore {
     private(set) var snapshot: EditorSnapshot? {
         didSet {
+            if let hover = boneEdgeHover, snapshot.map({ !hover.target.isCurrent(in: $0) }) ?? true {
+                boneEdgeHover = nil
+            }
             if oldValue?.documentIdentity != snapshot?.documentIdentity { clearCanvasHover() }
             if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
@@ -1272,6 +1275,46 @@ final class EditorStore {
         }
     }
 
+    private struct BoneEdgeHoverPresentation {
+        let owner: BoneEdgeHoverOwner
+        let target: BoneEdgeSelectionTarget
+    }
+    private var boneEdgeHover: BoneEdgeHoverPresentation?
+    var highlightedBoneEdgeIDs: Set<String> {
+        guard !stopped, !isWorking, let snapshot, let hover = boneEdgeHover,
+            hover.target.isCurrent(in: snapshot)
+        else { return [] }
+        return hover.target.matchingEdgeIDs
+    }
+    func canSelectBoneEdges(_ target: BoneEdgeSelectionTarget) -> Bool {
+        guard !stopped, !isWorking, let snapshot else { return false }
+        return target.isCurrent(in: snapshot)
+    }
+    func boneEdgeSelectionAction(_ target: BoneEdgeSelectionTarget) -> @MainActor () -> Void {
+        guard canSelectBoneEdges(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canSelectBoneEdges(target) else { return }
+            self.boneEdgeHover = nil
+            self.perform(commits: false, acceptCommittedCancellation: true, selectionOnly: true) {
+                try await $0.selectBoneEdges(target: target)
+            }
+        }
+    }
+    func boneEdgeHoverAction(_ target: BoneEdgeSelectionTarget, owner: BoneEdgeHoverOwner) -> @MainActor (Bool) -> Void
+    {
+        guard canSelectBoneEdges(target), !target.matchingEdgeIDs.isEmpty else { return { _ in } }
+        return { [weak self] entering in
+            guard let self else { return }
+            if entering {
+                guard self.canSelectBoneEdges(target) else { return }
+                self.boneEdgeHover = .init(owner: owner, target: target)
+            } else if self.boneEdgeHover?.owner == owner, self.boneEdgeHover?.target == target {
+                // An old exit must not erase another row or a newer source epoch on this row.
+                self.boneEdgeHover = nil
+            }
+        }
+    }
+
     func canClearBoneAssignments(_ target: BoneAssignmentClearTarget) -> Bool {
         guard !stopped, !isWorking, let snapshot else { return false }
         return target.isCurrent(in: snapshot)
@@ -1886,6 +1929,7 @@ final class EditorStore {
     }
 
     func stop() {
+        boneEdgeHover = nil
         previewCameraCommand = nil
         pendingComponentDrag = nil
         invalidateReferenceColors()

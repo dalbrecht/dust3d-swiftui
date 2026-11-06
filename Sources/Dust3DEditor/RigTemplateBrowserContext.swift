@@ -10,7 +10,7 @@ struct RigTemplateBrowserContext {
     private let context: CanvasAdjustmentTarget
     private let matchesTemplate: Bool
     private let names: Set<Data>
-    private let counts: [Data: Int]
+    let overview: BoneEdgeOverview
 
     init(hierarchy: RigTemplateHierarchy, snapshot: EditorSnapshot) {
         self.hierarchy = hierarchy
@@ -19,14 +19,16 @@ struct RigTemplateBrowserContext {
         context = CanvasAdjustmentTarget(snapshot: snapshot)
         matchesTemplate = hierarchy.type.utf8.elementsEqual((snapshot.rigSettings.sourceRigType ?? "").utf8)
         names = Set(hierarchy.bones.map(\.id))
-        counts = snapshot.edges.reduce(into: [:]) { result, edge in
-            if !edge.boneName.isEmpty { result[Data(edge.boneName.utf8), default: 0] += 1 }
-        }
+        overview = BoneEdgeOverview(snapshot: snapshot)
     }
 
     func isCurrent(in snapshot: EditorSnapshot) -> Bool { matchesTemplate && context.isCurrent(in: snapshot) }
     func contains(_ name: String) -> Bool { names.contains(Data(name.utf8)) }
-    func assignmentCount(_ name: String) -> Int { counts[Data(name.utf8), default: 0] }
+    func assignmentCount(_ name: String) -> Int { overview.target(for: .named(name)).matchingEdgeIDs.count }
+    func selectionTarget(name: String) -> BoneEdgeSelectionTarget? {
+        guard matchesTemplate, contains(name) else { return nil }
+        return overview.target(for: .named(name))
+    }
     /// Freeze all stored matches for this bone or its verified template descendants.
     func clearTarget(name: String, includeDescendants: Bool) -> BoneAssignmentClearTarget? {
         guard matchesTemplate, contains(name) else { return nil }
