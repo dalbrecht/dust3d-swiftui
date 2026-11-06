@@ -19,6 +19,8 @@ public struct DocumentPreviewIdentity: Equatable, Sendable {
             .setComponentSurfacePattern, .setComponentSurfaceScalar, .setComponentSurfaceColor:
             // Finish fields affect baked color/normal pixels; each bake regenerates its own fold-placement snapshot.
             materials = UUID()
+        case .editComponentWrapping(_, let edit) where edit.isSurfaceOnly:
+            materials = UUID()
         case .setComponentColor, .setComponentColors:
             // Component colors also feed vertex-color fallback, including the bulk command.
             geometry = UUID()

@@ -71,41 +71,13 @@ public struct ComponentSurfaceDetails: Equatable, Sendable {
 /// Only the requested attribute changes; disabling wrapping never destroys retained finish settings.
 enum ComponentSurfaceMetadata {
     static func pattern(_ model: XMLDocument, id: String, pattern: ComponentSurfacePattern) throws -> Bool {
-        let (current, element) = try group(model, id: id)
-        guard current.pattern != pattern else { return false }
-        replace(element, name: "wrapPattern", value: pattern == .none ? nil : pattern.rawValue)
-        return true
+        try ComponentWrappingBatch.apply(model, ids: [id], edit: .surfacePattern(pattern))
     }
     static func scalar(_ model: XMLDocument, id: String, property: ComponentSurfaceScalar, value: Double) throws -> Bool
     {
-        guard EngineScalar.isValid(value, in: property.bounds) else { throw DocumentError.invalidComponentWrapping }
-        let (current, element) = try group(model, id: id)
-        guard current.scalarValue(property) != value else { return false }
-        replace(element, name: property.rawValue, value: value == property.defaultValue ? nil : String(value))
-        return true
+        try ComponentWrappingBatch.apply(model, ids: [id], edit: .surfaceScalar(property, value))
     }
     static func color(_ model: XMLDocument, id: String, color: DocumentColor?) throws -> Bool {
-        guard color == nil || color?.alpha == 255 else { throw DocumentError.invalidComponentWrapping }
-        let (current, element) = try group(model, id: id)
-        guard current.ink != color.map(ComponentColorValue.value) ?? .unset else { return false }
-        replace(element, name: "wrapPatternColor", value: color?.archiveValue)
-        return true
-    }
-    private static func group(_ model: XMLDocument, id: String) throws -> (ComponentSurfaceDetails, XMLElement) {
-        guard let component = try ComponentHierarchy.read(model).first(where: { $0.id.utf8.elementsEqual(id.utf8) }),
-            let element = PartSplitting.componentElements(model).first(where: {
-                $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(id.utf8) == true
-            })
-        else { throw DocumentError.missingComponent(id) }
-        guard component.isGroup else { throw DocumentError.invalidComponentWrapping }
-        return (component.wrapping.surfaceDetails, element)
-    }
-    private static func replace(_ element: XMLElement, name: String, value: String?) {
-        element.removeAttribute(forName: name)
-        guard let value else { return }
-        let attribute = XMLNode(kind: .attribute)
-        attribute.name = name
-        attribute.stringValue = value
-        element.addAttribute(attribute)
+        try ComponentWrappingBatch.apply(model, ids: [id], edit: .surfaceInk(color))
     }
 }

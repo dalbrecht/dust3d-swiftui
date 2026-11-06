@@ -35,6 +35,7 @@ struct NodeInspector: View {
             ComponentMeshSelectionControls(store: store)
             if store.snapshot?.selectedComponentIDs.isEmpty == false {
                 ComponentPartRoleControls(store: store)
+                ComponentWrappingSelectionControls(store: store)
             }
             if let component = store.snapshot?.selectedComponent {
                 ComponentInspector(store: store, component: component)
