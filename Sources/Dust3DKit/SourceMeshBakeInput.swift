@@ -12,7 +12,8 @@ enum SourceMeshBakeInput {
             (1...maximum).contains(options.maximumCopiedPayloadBytes),
             (1...maximum).contains(options.maximumInputImageBytes),
             (0...100_000).contains(options.maximumChartCount),
-            (0...1_000_000_000).contains(options.maximumRasterSamples)
+            (0...1_000_000_000).contains(options.maximumRasterSamples),
+            (0...14).contains(options.maximumMipLevels)
         else { throw SourceMeshBakeError.invalidLimits }
         try MeshBakedInput.validate(dataCount: dataCount, options: options.bake)
     }
