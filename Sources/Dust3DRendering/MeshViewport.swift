@@ -26,6 +26,7 @@ public struct MeshViewport: NSViewRepresentable {
     let mesh: RenderMesh
     let isWireframe: Bool
     let showsColor: Bool
+    let automaticallyOrbits: Bool
     let cameraReset: Int
     let cameraCommand: MeshCameraCommand?
     let onError: (String) -> Void
@@ -38,7 +39,8 @@ public struct MeshViewport: NSViewRepresentable {
     /// GPU setup errors are delivered through onError on the main actor.
     public init(
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
-        cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true, onError: @escaping (String) -> Void
+        cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true, automaticallyOrbits: Bool = false,
+        onError: @escaping (String) -> Void
     ) {
         onMaterialRendered = {}
         materials = nil
@@ -46,6 +48,7 @@ public struct MeshViewport: NSViewRepresentable {
         self.mesh = .expanded(mesh)
         self.isWireframe = isWireframe
         self.showsColor = showsColor
+        self.automaticallyOrbits = automaticallyOrbits
         self.cameraReset = cameraReset
         self.cameraCommand = cameraCommand
         self.meshRevision = meshRevision
@@ -56,6 +59,7 @@ public struct MeshViewport: NSViewRepresentable {
     /// - Parameters:
     ///   - mesh: Immutable copied geometry.
     ///   - isWireframe: Draw triangle edges.
+    ///   - automaticallyOrbits: Opt-in turntable, paused by Reduce Motion, visibility and direct manipulation.
     ///   - showsColor: Display source colors and materials; false uses neutral shading while preserving alpha policy.
     ///   - cameraReset: Increment to fit the model.
     ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
@@ -67,12 +71,14 @@ public struct MeshViewport: NSViewRepresentable {
     public init(
         mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
         bakedMesh: MeshWithBakedTextures? = nil, cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true,
+        automaticallyOrbits: Bool = false,
         onMaterialError: ((String) -> Void)? = nil,
         onMaterialRendered: @escaping () -> Void = {}, onError: @escaping (String) -> Void
     ) {
         self.init(
             mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset, meshRevision: meshRevision,
             materials: bakedMesh.map(MeshMaterialContent.baked), cameraCommand: cameraCommand, showsColor: showsColor,
+            automaticallyOrbits: automaticallyOrbits,
             onMaterialError: onMaterialError,
             onMaterialRendered: onMaterialRendered, onError: onError)
     }
@@ -81,6 +87,7 @@ public struct MeshViewport: NSViewRepresentable {
     /// - Parameters:
     ///   - mesh: Immutable copied indexed geometry, retained as the failure fallback.
     ///   - isWireframe: Draw triangle edges.
+    ///   - automaticallyOrbits: Opt-in turntable, paused by Reduce Motion, visibility and direct manipulation.
     ///   - showsColor: Display source colors and materials; false uses neutral shading while preserving alpha policy.
     ///   - cameraReset: Increment to fit the model.
     ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
@@ -92,6 +99,7 @@ public struct MeshViewport: NSViewRepresentable {
     public init(
         mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
         materials: MeshMaterialContent?, cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true,
+        automaticallyOrbits: Bool = false,
         onMaterialError: ((String) -> Void)? = nil,
         onMaterialRendered: @escaping () -> Void = {}, onError: @escaping (String) -> Void
     ) {
@@ -101,6 +109,7 @@ public struct MeshViewport: NSViewRepresentable {
         self.mesh = .indexed(mesh)
         self.isWireframe = isWireframe
         self.showsColor = showsColor
+        self.automaticallyOrbits = automaticallyOrbits
         self.cameraReset = cameraReset
         self.cameraCommand = cameraCommand
         self.meshRevision = meshRevision
@@ -116,13 +125,18 @@ public struct MeshViewport: NSViewRepresentable {
         view.enableSetNeedsDisplay = true
         return view
     }
-    public func updateNSView(_ view: InteractiveMeshView, context: Context) { updateRenderer(in: view) }
+    public func updateNSView(_ view: InteractiveMeshView, context: Context) {
+        updateRenderer(in: view, reduceMotion: context.environment.accessibilityReduceMotion)
+    }
     public static func dismantleNSView(_ view: InteractiveMeshView, coordinator: ()) {
+        view.automaticOrbitBinding.dismantle()
         view.cancelMaterialUpload()
         view.delegate = nil
     }
 
-    func updateRenderer(in view: InteractiveMeshView) {
+    // Direct renderer tests have no installed SwiftUI environment; production passes the context's current value.
+    func updateRenderer(in view: InteractiveMeshView, reduceMotion: Bool = false) {
+        defer { view.automaticOrbitBinding.update(requested: automaticallyOrbits, reduceMotion: reduceMotion) }
         if materials == nil || view.meshRevision != meshRevision {
             view.cancelMaterialUpload()
             view.materialRenderer = nil
@@ -156,6 +170,7 @@ public struct MeshViewport: NSViewRepresentable {
         if view.cameraReset != cameraReset {
             view.orbitCamera = OrbitCamera()
             view.cameraReset = cameraReset
+            view.automaticOrbitBinding.cameraInputChanged()
         }
         if let cameraCommand { view.applyCameraCommand(cameraCommand) }
         view.renderer?.showsColor = showsColor
@@ -197,12 +212,15 @@ public class InteractiveMeshView: MTKView {
     let materialBuilder = TexturedMetalResourcesBuilder()
     let importedMaterialBuilder = ImportedMetalResourcesBuilder()
 
+    lazy var automaticOrbitBinding = AutomaticOrbitViewBinding(view: self)
+
     private var fallbackCamera = OrbitCamera()
     private var lastCameraCommand: UUID?
 
     func applyCameraCommand(_ command: MeshCameraCommand) {
         guard lastCameraCommand != command.id else { return }
         lastCameraCommand = command.id
+        automaticOrbitBinding.cameraInputChanged()
         switch command.action {
         case .orbitLeft: orbitCamera.orbit(horizontal: -18, vertical: 0)
         case .orbitRight: orbitCamera.orbit(horizontal: 18, vertical: 0)
@@ -371,12 +389,29 @@ public class InteractiveMeshView: MTKView {
     var failedMeshRevision: Int?
     var cameraReset = 0
     private var lastDragLocation: CGPoint?
+    var isDraggingCamera: Bool { lastDragLocation != nil }
+
+    public override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        automaticOrbitBinding.movedToWindow()
+    }
+
+    public override func viewDidHide() {
+        super.viewDidHide()
+        automaticOrbitBinding.visibilityChanged()
+    }
+
+    public override func viewDidUnhide() {
+        super.viewDidUnhide()
+        automaticOrbitBinding.visibilityChanged()
+    }
 
     public override var acceptsFirstResponder: Bool { true }
 
     public override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         lastDragLocation = event.locationInWindow
+        automaticOrbitBinding.cameraInputChanged()
     }
 
     public override func mouseDragged(with event: NSEvent) {
@@ -393,14 +428,17 @@ public class InteractiveMeshView: MTKView {
 
     public override func mouseUp(with event: NSEvent) {
         lastDragLocation = nil
+        automaticOrbitBinding.cameraInputChanged()
     }
 
     public override func scrollWheel(with event: NSEvent) {
+        automaticOrbitBinding.cameraInputChanged()
         orbitCamera.zoom(delta: Float(event.scrollingDeltaY))
         needsDisplay = true
     }
 
     public override func keyDown(with event: NSEvent) {
+        automaticOrbitBinding.cameraInputChanged()
         switch event.keyCode {
         case 123: orbitCamera.orbit(horizontal: -10, vertical: 0)
         case 124: orbitCamera.orbit(horizontal: 10, vertical: 0)

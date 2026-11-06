@@ -79,6 +79,14 @@ struct Dust3DEditorApp: App {
                 )
                 .disabled(store == nil)
                 Divider()
+                Toggle(
+                    "Rotate Preview Automatically",
+                    isOn: Binding(
+                        get: { store?.automaticallyOrbitsPreview == true },
+                        set: { store?.automaticallyOrbitsPreview = $0 })
+                )
+                .disabled(store?.canMovePreviewCamera != true)
+                .help("Pauses during dragging, while inactive, and when Reduce Motion is enabled.")
                 PreviewCameraMenu(
                     title: "Preview Camera", isEnabled: store?.canMovePreviewCamera == true,
                     move: { store?.movePreviewCamera($0) }, fit: { store?.fitPreviewCamera() })

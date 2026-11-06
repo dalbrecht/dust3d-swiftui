@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add opt-in automatic preview rotation that respects Reduce Motion and pauses while dragging or inactive (#326).
+
 - Add window-local Model Colors and Wireframe controls to the View menu, preserving material transparency in neutral preview mode (#324).
 
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
