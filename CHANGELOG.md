@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Mark the common role of selected parts in the Part Role menu.
+
 - Enter a target in the node inspector to bend a chain from the keyboard.
 
 - Shift-drag a graph selection to rotate it or bend a single endpoint chain.

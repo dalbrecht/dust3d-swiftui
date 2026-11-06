@@ -6,11 +6,19 @@ import SwiftUI
 struct ComponentPartRoleMenu: View {
     let store: EditorStore
     var body: some View {
+        let appliedRole = store.snapshot?.selectedComponentPartRole
         Menu("Part Role") {
             ForEach(PartTarget.allCases, id: \.self) { role in
-                Button(title(role), action: store.componentPartRoleAction(role))
-                    .disabled(!store.canAssignComponentPartRole(role))
-                    .accessibilityLabel("Set selected component parts to \(title(role))")
+                let apply = store.componentPartRoleAction(role)
+                Toggle(
+                    title(role),
+                    isOn: Binding(get: { appliedRole == role }, set: { _ in apply() })
+                )
+                .accessibilityValue(
+                    appliedRole == role ? "Applied to all selected parts" : "Not applied to all selected parts"
+                )
+                .disabled(!store.canAssignComponentPartRole(role))
+                .accessibilityLabel("Set selected component parts to \(title(role))")
             }
         }
         .accessibilityIdentifier("component-part-role-menu")
