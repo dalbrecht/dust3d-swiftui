@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show the selected joint’s numerical weight range and influenced body-triangle count in the experimental rest preview, publishing these values with their matching mesh (#367).
+
 - Add an isolated experimental generated-rest rig preview with grounded skeleton/body geometry, weight highlighting, all-joint selection, and guarded camera controls; keep the production core pin unchanged (#367).
 
 - Add an isolated experimental native rig-template preview with complete solids/rings, exact-name selection, background preparation, stale-result protection and camera menu controls; preserve the production core pin (#144).

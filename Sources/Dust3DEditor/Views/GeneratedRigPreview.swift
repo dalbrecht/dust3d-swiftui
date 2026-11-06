@@ -107,6 +107,11 @@
                         "Weight colors: gray means no selected influence; blue to red means increasing selected weight."
                     )
                     .font(.caption).foregroundStyle(.secondary)
+                    if display.acceptedRequest == displayRequest, !display.isLoading, display.error == nil,
+                        let summary = display.weightSummary
+                    {
+                        weightSummary(summary)
+                    }
                     if let selected {
                         let joint = rig.joints[selected]
                         Text(
@@ -168,6 +173,18 @@
                 }
             }
             .accessibilityLabel("Generated joint weight highlight")
+        }
+
+        private func weightSummary(_ summary: GeneratedRigWeightSummary) -> some View {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(
+                    "Selected weight range: \(summary.minimumWeight, format: .percent) to \(summary.maximumWeight, format: .percent)"
+                )
+                Text("Influences \(summary.influencedTriangleCount) of \(summary.triangleCount) body triangles")
+            }
+            .font(.caption).foregroundStyle(.secondary)
+            .textSelection(.enabled)
+            .accessibilityElement(children: .combine)
         }
 
         private func cameraMenu(revision: UUID?, enabled: Bool) -> some View {

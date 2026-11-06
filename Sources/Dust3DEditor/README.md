@@ -639,3 +639,9 @@ does not assign document edges. Native View-menu/Fit actions provide keyboard
 alternatives to dragging. Production builds retain the pinned core and do not
 enable this experimental surface. Physical UI and VoiceOver acceptance remain
 outstanding; the old pose controller is not used. See ADR 0163.
+
+The generated preview also reports the selected joint's numerical weight range
+and influenced body-triangle count. This copied-data calculation runs with display
+preparation off the main actor; values appear only for the accepted current mesh.
+Counts refer to rendered body triangles, not original vertices or skeleton solids.
+Physical VoiceOver and spatial weight-inspection acceptance remain outstanding.
