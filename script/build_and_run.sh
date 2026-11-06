@@ -53,6 +53,7 @@ cp "$BUILD_DIR/$APP_NAME" "$APP_BINARY"
 cp "$ROOT_DIR/assets/app-icons/$APP_NAME.icns" "$APP_CONTENTS/Resources/$APP_NAME.icns"
 
 cp -R "$BUILD_DIR/Dust3DNative_Dust3DRendering.bundle" "$APP_CONTENTS/Resources/"
+cp -R "$BUILD_DIR/Dust3DNative_Dust3DKit.bundle" "$APP_CONTENTS/Resources/"
 chmod +x "$APP_BINARY"
 CLIPBOARD_TYPE_DECLARATION=""
 if [ "$APP_NAME" = "Dust3DEditor" ]; then

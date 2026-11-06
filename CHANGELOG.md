@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Package and verify the seven pinned rig templates for native SDK consumers and installed file-preview bundles (#195).
+
 - Add searchable Keyboard Shortcuts help with native command focus restrictions (#333).
 - Archive exactly the signed app tree without generated Finder metadata, retaining executable permissions and framework links (#329).
 

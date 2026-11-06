@@ -177,3 +177,7 @@ FBX retains static position/topology/corner streams supplied by the generator;
 it does not request baking, imported assets, material, rig or animation output.
 Use `NativeGeometryExportEncoder()` for explicit format routing without fallback.
 See ADR 0121 and the scoped independent Assimp verification.
+
+## Pinned rig template resources
+
+`RigTemplateResources.data(forSourceType:)` returns owned, size/hash-verified XML bytes for the seven inherited templates. Absent, empty and `None` return nil; unknown types or missing/changed resources throw `RigTemplateResourceError`. Reads are bounded to 16 KiB plus one detection byte. Installed app/extension lookup uses only its packaged SDK bundle; CLI/tests use SwiftPM resources. `RigTemplates/provenance.json` records the exact core source revision and byte hashes, with the upstream MIT license. This API does not generate a skeleton or enable rig/pose evaluation.
