@@ -98,6 +98,7 @@ public enum MeshPNGDecoder {
         let zerosTransparentGray =
             !preservesTransparentGrayRGB && dimensions.hasTransparencyKey && dimensions.colorType == 0
             && [2, 4, 8].contains(dimensions.bitDepth)
+        let singlePixel = try PNGSinglePixel.rgba8(data, dimensions: dimensions)
         var pixels = Data(count: outputBytes)
         try pixels.withUnsafeMutableBytes { (output: UnsafeMutableRawBufferPointer) in
             for row in 0..<image.height {
@@ -105,7 +106,7 @@ public enum MeshPNGDecoder {
                 for column in 0..<image.width {
                     let inputOffset = row * image.bytesPerRow + column * layout.bytesPerPixel
                     let outputOffset = (row * image.width + column) * 4
-                    var pixel = try layout.rgba(storage.advanced(by: inputOffset))
+                    var pixel = try singlePixel ?? layout.rgba(storage.advanced(by: inputOffset))
                     if zerosTransparentGray && pixel.3 == 0 { pixel = (0, 0, 0, 0) }
                     output[outputOffset] = pixel.0
                     output[outputOffset + 1] = pixel.1
