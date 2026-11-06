@@ -600,3 +600,10 @@ icon/version, QA-aware application name and exact bundled project MIT notice.
 Build Diagnostics remains a separate Help command and preserves the immutable
 startup source/core capture. Standard-panel physical/VoiceOver acceptance and
 full upstream attribution/help inventory remain separate.
+
+Rig settings offers an expandable pinned template bone hierarchy with counts of
+all stored edge assignments. Choosing a bone is local browsing; Assign applies
+its exact name only to explicitly selected editable edges through the captured
+atomic batch action. Unknown names remain manually editable. Generated skeleton
+and skin display, and physical keyboard/VoiceOver acceptance remain pending.
+See ADR0157 and #359.

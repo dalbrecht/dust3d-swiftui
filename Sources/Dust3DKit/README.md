@@ -185,3 +185,8 @@ See ADR 0121 and the scoped independent Assimp verification.
 ## Pinned rig template resources
 
 `RigTemplateResources.data(forSourceType:)` returns owned, size/hash-verified XML bytes for the seven inherited templates. Absent, empty and `None` return nil; unknown types or missing/changed resources throw `RigTemplateResourceError`. Reads are bounded to 16 KiB plus one detection byte. Installed app/extension lookup uses only its packaged SDK bundle; CLI/tests use SwiftPM resources. `RigTemplates/provenance.json` records the exact core source revision and byte hashes, with the upstream MIT license. This API does not generate a skeleton or enable rig/pose evaluation.
+
+`RigTemplateHierarchy.load(sourceType:)` exposes ordered names, parents and roots
+from verified template resources. None returns nil; unsupported types and resource
+failures retain their typed errors. Invalid/cyclic metadata rejects atomically.
+This API performs no skeleton generation or pose evaluation.
