@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 
 /// Camera ownership for one logical viewport across replacement SwiftUI surfaces.
@@ -6,6 +7,8 @@ import Observation
 @MainActor @Observable
 public final class MeshCameraState {
     public private(set) var revision = 0
+    /// Input lease invalidates pending picks without rebuilding observation-driven UI.
+    @ObservationIgnored package private(set) var inputRevision = UUID()
     @ObservationIgnored private(set) var camera = OrbitCamera()
     @ObservationIgnored private let interactionAllowed: @MainActor () -> Bool
 
@@ -32,6 +35,7 @@ public final class MeshCameraState {
         case .zoomIn: camera.zoom(delta: 6)
         case .zoomOut: camera.zoom(delta: -6)
         }
+        inputRevision = UUID()
         revision += 1
     }
 
@@ -39,7 +43,13 @@ public final class MeshCameraState {
     /// interaction gate is closed during a source transition.
     public func fit() {
         camera = OrbitCamera()
+        inputRevision = UUID()
         revision += 1
+    }
+
+    /// Resize or backing changes invalidate projection-dependent picks without moving the camera.
+    package func invalidateProjection() {
+        inputRevision = UUID()
     }
 
     /// Raw input is drawn by its existing view and must not invalidate SwiftUI.
@@ -50,6 +60,7 @@ public final class MeshCameraState {
     ) -> Bool {
         guard interactionAllowed(), self.interactionAllowed() else { return false }
         self.camera = camera
+        inputRevision = UUID()
         return true
     }
 }

@@ -19,14 +19,22 @@ final class GeneratedRigPreviewSession {
     private(set) var presentationRevision = UUID()
     private(set) var selection: GeneratedRigJointSelection?
     var isWireframe = false
-    var showsModel = true
-    var showsBones = true
+    var showsModel = true { didSet { if oldValue != showsModel { invalidatePicking() } } }
+    var showsBones = true { didSet { if oldValue != showsBones { invalidatePicking() } } }
+    private(set) var pickingRevision = UUID()
+    private(set) var isPicking = false
+    private(set) var pickingStatus: String?
+    private var hitError: String?
     private(set) var showsWeights = true
     private var templateName = Data()
     private var appearance: RigTemplatePreviewAppearance?
     @ObservationIgnored private let readSnapshot: @MainActor () -> EditorSnapshot?
     @ObservationIgnored private var generationTask: Task<Void, Never>?
     @ObservationIgnored private var displayTask: Task<Void, Never>?
+    @ObservationIgnored private var pickingTask: Task<Void, Never>?
+    @ObservationIgnored private var pickingJob = UUID()
+    @ObservationIgnored private let picker:
+        @Sendable (MeshPickingGeometry, MeshPickInput, Range<Int>?) async throws -> MeshPickResult
     @ObservationIgnored private var generationEpoch = UUID()
     @ObservationIgnored private var displayEpoch = UUID()
     @ObservationIgnored private var stopped = false
@@ -37,11 +45,15 @@ final class GeneratedRigPreviewSession {
 
     init(
         generation: GeneratedRigPreviewState, display: GeneratedRigDisplayState,
-        readSnapshot: @escaping @MainActor () -> EditorSnapshot?
+        readSnapshot: @escaping @MainActor () -> EditorSnapshot?,
+        picker: @escaping @Sendable (MeshPickingGeometry, MeshPickInput, Range<Int>?) async throws -> MeshPickResult = {
+            geometry, input, range in try geometry.pick(input, drawRange: range)
+        }
     ) {
         self.generation = generation
         self.display = display
         self.readSnapshot = readSnapshot
+        self.picker = picker
     }
 
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
@@ -91,6 +103,75 @@ final class GeneratedRigPreviewSession {
         prepareDisplay()
     }
 
+    var canPick: Bool {
+        isReady && showsBones && display.pickingGeometry?.hasBones == true
+    }
+    var pickingError: String? {
+        guard sourceIsCurrent, display.acceptedRequest == desiredDisplay else { return nil }
+        return hitError ?? display.pickingError
+    }
+
+    func pick(_ input: MeshPickInput, lease: UUID) {
+        guard !Task.isCancelled, pickingRevision == lease, canPick, let geometry = display.pickingGeometry else {
+            return
+        }
+        pickingTask?.cancel()
+        let job = UUID()
+        pickingJob = job
+        let cameraInput = cameraState.inputRevision
+        let range = drawRange
+        let picker = picker
+        isPicking = true
+        hitError = nil
+        pickingStatus = nil
+        pickingTask = Task { [weak self] in
+            let worker = Task.detached(priority: .userInitiated) {
+                try Task.checkCancellation()
+                let result = try await picker(geometry, input, range)
+                try Task.checkCancellation()
+                return result
+            }
+            let result: Result<MeshPickResult, Error>
+            do {
+                result = .success(
+                    try await withTaskCancellationHandler {
+                        try await worker.value
+                    } onCancel: {
+                        worker.cancel()
+                    })
+            } catch { result = .failure(error) }
+            self?.finishPicking(result, job: job, lease: lease, cameraInput: cameraInput)
+        }
+    }
+
+    private func finishPicking(_ result: Result<MeshPickResult, Error>, job: UUID, lease: UUID, cameraInput: UUID) {
+        guard pickingJob == job else { return }
+        pickingTask = nil
+        isPicking = false
+        guard !Task.isCancelled, pickingRevision == lease, canPick, cameraState.inputRevision == cameraInput else {
+            return
+        }
+        switch result {
+        case .success(.bone(let index)):
+            guard let revision = currentRevision else { return }
+            selectJoint(index, revision: revision)
+        case .success(.body): pickingStatus = "Model surface at this point. Hide Model to select bones behind it."
+        case .success(.miss): pickingStatus = "No bone at this point; selection is unchanged."
+        case .failure(is CancellationError): break
+        case .failure(let cause): hitError = EditorStore.message(cause)
+        }
+    }
+
+    private func invalidatePicking() {
+        pickingRevision = UUID()
+        pickingJob = UUID()
+        pickingTask?.cancel()
+        pickingTask = nil
+        isPicking = false
+        pickingStatus = nil
+        hitError = nil
+    }
+
     private var sourceIsCurrent: Bool {
         guard !stopped, let request, let snapshot = readSnapshot() else { return false }
         // New inputs are byte-validated in update. Actor-owned snapshots advance
@@ -129,6 +210,7 @@ final class GeneratedRigPreviewSession {
         guard !stopped, !Task.isCancelled, let snapshot = readSnapshot(), request.matchesVersion(snapshot) else {
             return
         }
+        invalidatePicking()
         let bytes = Data(name.utf8)
         if self.request != request {
             pendingTemplate = (request, bytes)
@@ -144,21 +226,25 @@ final class GeneratedRigPreviewSession {
         guard !stopped, self.presentation != presentation else { return }
         self.presentation = presentation
         presentationRevision = UUID()
+        invalidatePicking()
     }
 
     func selectJoint(_ index: Int?, revision: UUID) {
         guard canInteract(revision), let rig = currentRig, index.map({ rig.joints.indices.contains($0) }) ?? true else {
             return
         }
+        invalidatePicking()
         selection = GeneratedRigJointSelection(revision: revision, index: index)
         prepareDisplay()
     }
     func move(_ action: MeshCameraCommand.Action, revision: UUID?) {
         guard let revision, canInteract(revision), canMoveCamera else { return }
+        invalidatePicking()
         cameraState.move(action)
     }
     func fit(revision: UUID?) {
         guard let revision, canInteract(revision), canMoveCamera else { return }
+        invalidatePicking()
         cameraState.fit()
     }
     func allowsCameraInteraction(revision: UUID, presentationRevision: UUID) -> Bool {
@@ -183,6 +269,7 @@ final class GeneratedRigPreviewSession {
 
     private func beginGeneration() {
         guard let request else { return }
+        invalidatePicking()
         generationTask?.cancel()
         displayTask?.cancel()
         displayEpoch = UUID()
@@ -205,6 +292,7 @@ final class GeneratedRigPreviewSession {
         {
             return
         }
+        invalidatePicking()
         displayTask?.cancel()
         let epoch = UUID()
         displayEpoch = epoch
@@ -217,6 +305,7 @@ final class GeneratedRigPreviewSession {
     }
     func stop() {
         stopped = true
+        invalidatePicking()
         generationEpoch = UUID()
         displayEpoch = UUID()
         generationTask?.cancel()

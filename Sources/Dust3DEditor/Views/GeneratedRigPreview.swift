@@ -43,6 +43,7 @@
             let displayRequest = rig == nil ? nil : session.desiredDisplay
             let appearance = RigTemplatePreviewPalette.resolve(colorScheme: colorScheme, contrast: contrast)
             let presentationRevision = session.presentationRevision
+            let pickLease = session.pickingRevision
             let generationRevision = generation.revision
             let displayRevision = display.revision
             VStack(alignment: .leading, spacing: 6) {
@@ -80,6 +81,18 @@
                             .secondary)
                     }
                     hierarchySection(rig: rig, revision: revision, selected: selected)
+                    if session.canPick {
+                        Text(
+                            "Click a bone to select it; drag to orbit. Hide Model to select bones behind model surfaces."
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Select joints using the hierarchy or Weight highlight picker.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    if session.isPicking { ProgressView("Selecting bone…").controlSize(.small) }
+                    if let error = session.pickingError { Text(error).font(.caption).textSelection(.enabled) }
+                    if let status = session.pickingStatus { Text(status).font(.caption).foregroundStyle(.secondary) }
                     ZStack {
                         // Keep the view mounted while display colors change, preserving its camera.
                         if let mesh = display.mesh, display.meshRigRevision == revision {
@@ -89,6 +102,8 @@
                                 meshRevision: display.meshRevision, blendsVertexAlpha: true,
                                 drawRange: session.drawRange,
                                 cameraState: session.cameraState,
+                                pickingRevision: session.canPick ? pickLease : nil,
+                                onPick: { [weak session] input in session?.pick(input, lease: pickLease) },
                                 cameraInteractionAllowed: { [weak session] in
                                     session?.allowsCameraInteraction(
                                         revision: revision, presentationRevision: presentationRevision)

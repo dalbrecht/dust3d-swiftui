@@ -66,9 +66,15 @@ struct RenderBounds: Sendable {
     let center: SIMD3<Float>
     let radius: Float
 
-    init(vertices: [MeshVertex]) throws {
-        let minimum = vertices.reduce(SIMD3<Float>(repeating: .infinity)) { simd_min($0, $1.position) }
-        let maximum = vertices.reduce(SIMD3<Float>(repeating: -.infinity)) { simd_max($0, $1.position) }
+    init(vertices: [MeshVertex], cancellationCheck: () throws -> Void = {}) throws {
+        var minimum = SIMD3<Float>(repeating: .infinity)
+        var maximum = SIMD3<Float>(repeating: -.infinity)
+        for (index, vertex) in vertices.enumerated() {
+            if index.isMultiple(of: 1024) { try cancellationCheck() }
+            minimum = simd_min(minimum, vertex.position)
+            maximum = simd_max(maximum, vertex.position)
+        }
+        try cancellationCheck()
         center = (minimum + maximum) * 0.5
         radius = max(simd_length(maximum - minimum) * 0.5, 0.001)
         guard radius.isFinite, (0..<3).allSatisfy({ center[$0].isFinite }) else {
