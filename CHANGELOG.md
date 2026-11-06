@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use the native adjustable inspector, standard Control–Command–I visibility command and an accessible toolbar visibility toggle (#341).
+
 - Announce completed geometry exports and warnings to assistive technologies, with one notification per export even for repeated destinations (#339).
 
 - Match Qt reference-image pixel selection and alpha fitting while preserving 16-bit sample precision; retain correct RGB16 transparency decoding despite a Qt reader defect (#337).

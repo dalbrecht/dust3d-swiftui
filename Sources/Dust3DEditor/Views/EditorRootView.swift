@@ -138,24 +138,11 @@ struct EditorRootView: View {
                 }
                 .font(.caption).foregroundStyle(.secondary).padding(10)
             }
-            if isInspectorPresented {
-                Divider()
-                VStack(spacing: 0) {
-                    Picker("Inspector section", selection: $inspectorSection) {
-                        ForEach(EditorInspectorSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented).padding(10)
-                    Divider()
-                    if inspectorSection == .animations {
-                        AnimationPanel(store: store)
-                    } else {
-                        NodeInspector(store: store)
-                    }
-                }
-                .frame(width: 250)
-            }
         }
-        .frame(minWidth: 1050, minHeight: 600)
+        .frame(minWidth: 800, minHeight: 600)
+        .inspector(isPresented: $isInspectorPresented) {
+            inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
+        }
         .toolbar {
             ToolbarItemGroup {
                 Button {
@@ -187,11 +174,7 @@ struct EditorRootView: View {
                 } label: {
                     Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
-                Button {
-                    isInspectorPresented.toggle()
-                } label: {
-                    Label("Inspector", systemImage: "sidebar.right")
-                }
+                EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
                 Button {
                     isInspectorPresented = true
                     inspectorSection = .animations
@@ -237,6 +220,21 @@ struct EditorRootView: View {
             recoveryRegistrationID = nil
             exportWorkflow.stop()
             store.stop()
+        }
+    }
+
+    private var inspectorContent: some View {
+        VStack(spacing: 0) {
+            Picker("Inspector section", selection: $inspectorSection) {
+                ForEach(EditorInspectorSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented).padding(10)
+            Divider()
+            if inspectorSection == .animations {
+                AnimationPanel(store: store)
+            } else {
+                NodeInspector(store: store)
+            }
         }
     }
 
