@@ -126,7 +126,7 @@ public struct GraphInspectorActionContext: Sendable {
                     else { continue }
                     result.boneEdgeIDs.insert(candidate.id)
                 }
-                if !result.boneEdgeIDs.isEmpty { result.boneAnchor = key }
+                result.boneAnchor = key
             }
         }
         return result

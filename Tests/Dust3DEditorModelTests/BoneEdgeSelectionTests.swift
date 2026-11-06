@@ -88,7 +88,7 @@ final class BoneEdgeSelectionTests: XCTestCase {
     }
 
     func testEmptyUnavailableAndUnrelatedBoneTargetsNeverAcquireLaterIntent() async throws {
-        for original in [try source(name: ""), try source(sourceLocked: true, peerLocked: true)] {
+        for original in [try source(name: ""), try source(name: "", sourceLocked: true, peerLocked: true)] {
             let session = EditorSession()
             _ = try await session.open(data: original.encoded())
             let selected = try await session.selectGraph(nodes: [], edges: ["anchor"])
@@ -108,6 +108,23 @@ final class BoneEdgeSelectionTests: XCTestCase {
                 GraphInspectorActionContext(snapshot: nodes).target(for: .selectBoneEdges(edgeID: "anchor")).isCurrent(
                     in: nodes))
         }
+    }
+
+    func testNonemptyBoneWithNoEditableMatchesClearsSelectionWithoutHistory() async throws {
+        let original = try source(sourceLocked: true, peerLocked: true)
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let selected = try await session.selectGraph(nodes: [], edges: ["anchor"])
+        let target = GraphInspectorActionContext(snapshot: selected).target(for: .selectBoneEdges(edgeID: "anchor"))
+        XCTAssertTrue(target.isCurrent(in: selected))
+        XCTAssertFalse(target.changesDocument)
+        let result = try await session.performInspectorAction(target: target)
+        XCTAssertTrue(result.selectedIDs.isEmpty)
+        XCTAssertTrue(result.selectedEdgeIDs.isEmpty)
+        XCTAssertEqual(result.selectionRevision, selected.selectionRevision + 1)
+        XCTAssertEqual(result.documentRevision, selected.documentRevision)
+        XCTAssertEqual(result.document.encoded(), original.encoded())
+        XCTAssertFalse(result.canUndo)
     }
 
     func testRepeatedSingleMatchIsSelectionNoOpAndCancellationPublishesNothing() async throws {

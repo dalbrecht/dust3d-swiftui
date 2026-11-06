@@ -377,8 +377,9 @@ Unavailable targets never become enabled through later selection. Mutation uses
 one existing normalized document transaction; original document errors propagate.
 Endpoint selection remains transient and works for read-only endpoints.
 
-`GraphInspectorAction.selectBoneEdges(edgeID:)` captures a nonempty group from
-the selected edge’s exact stored bone name. The context admits editable assigned
+`GraphInspectorAction.selectBoneEdges(edgeID:)` captures the group from
+the selected edge’s nonempty exact stored bone name. An empty group clears
+the graph selection, matching Qt. The context admits editable assigned
 edge owners and supported editable endpoints; no XML parsing or rig generation
 is needed. The session replaces explicit graph selection after epoch validation
 without dirtying the document, consuming history or changing another window.
