@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add searchable Keyboard Shortcuts help with native command focus restrictions (#333).
 - Archive exactly the signed app tree without generated Finder metadata, retaining executable permissions and framework links (#329).
 
 - Prepare lossless hollow-thickness history and an explicitly gated local-core inspector experiment; production geometry support remains unchanged (#96).
