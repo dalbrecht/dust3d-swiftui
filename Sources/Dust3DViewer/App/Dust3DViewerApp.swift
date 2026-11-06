@@ -27,6 +27,10 @@ struct Dust3DViewerApp: App {
             }
             CommandGroup(after: .help) {
                 Button("Build Diagnostics") { openWindow(id: "build-diagnostics") }
+                Divider()
+                ForEach(ApplicationHelpLink.allCases, id: \.self) { link in
+                    Button(link.title) { link.open() }
+                }
             }
             CommandGroup(replacing: .newItem) {
                 Button("Open…") {

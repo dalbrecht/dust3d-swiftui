@@ -204,6 +204,17 @@ Build Diagnostics remains a separate Help command and preserves the immutable
 startup source/core capture. Standard-panel physical/VoiceOver acceptance and
 full upstream attribution/help inventory remain separate.
 
+
+### Project Help commands
+
+Editor and Viewer enumerate the same ApplicationHelpLink destinations under Help:
+Project on GitHub, Report an Issue and Upstream Dust3D Website. Reports target
+the native repository rather than the upstream tracker. Navigation happens only
+inside the explicit menu action. A small main-actor NSWorkspace boundary reports
+invalid destinations or macOS's declined-open result through the standard error
+UI, retaining the address. Injected opener/reporter tests invoke no external
+application. See docs/native-project-help-verification.md for acceptance limits.
+
 About resolves the rendering bundle under the application's Resources directory
 first. Installed apps never consult SwiftPM's absolute development path, including
 when packaged attribution is missing. Command-line builds retain a lazy fallback.

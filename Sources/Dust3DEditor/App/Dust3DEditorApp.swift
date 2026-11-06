@@ -44,6 +44,10 @@ struct Dust3DEditorApp: App {
             CommandGroup(after: .help) {
                 Button("Build Diagnostics") { openWindow(id: "build-diagnostics") }
                 Button("Keyboard Shortcuts") { openWindow(id: "keyboard-shortcuts") }
+                Divider()
+                ForEach(ApplicationHelpLink.allCases, id: \.self) { link in
+                    Button(link.title) { link.open() }
+                }
             }
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
