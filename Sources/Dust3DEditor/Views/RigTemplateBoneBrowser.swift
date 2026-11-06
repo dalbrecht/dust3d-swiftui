@@ -7,6 +7,9 @@ import SwiftUI
 struct RigTemplateBoneBrowser: View {
     let store: EditorStore
     let sourceType: String?
+    #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+        @Environment(GeneratedRigPreviewSession.self) private var restSession: GeneratedRigPreviewSession?
+    #endif
     @State private var hierarchy: RigTemplateHierarchy?
     @State private var loadError: String?
     @State private var selectedName: String?
@@ -22,9 +25,14 @@ struct RigTemplateBoneBrowser: View {
                     RigTemplatePreview(sourceType: hierarchy.type, selectedBoneName: selectedName ?? "")
                 #endif
                 #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
-                    GeneratedRigPreview(
-                        store: store, request: GeneratedRigPreviewRequest(snapshot: snapshot),
-                        selectedBoneName: selectedName ?? "")
+                    if restSession?.presentation != .generatedRest {
+                        GeneratedRigPreview(
+                            store: store, request: GeneratedRigPreviewRequest(snapshot: snapshot),
+                            selectedBoneName: selectedName ?? "")
+                    } else {
+                        Text("Generated rest preview is shown in the workspace.").font(.caption).foregroundStyle(
+                            .secondary)
+                    }
                 #endif
                 BoneAssignmentProgressControls(store: store, overview: context.overview)
                 OutlineGroup(hierarchy.roots, children: \.children) { bone in
@@ -34,6 +42,10 @@ struct RigTemplateBoneBrowser: View {
                     Button {
                         guard let current = store.snapshot, context.isCurrent(in: current) else { return }
                         selectedName = bone.name
+                        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                            restSession?.setTemplateSelection(
+                                bone.name, request: GeneratedRigPreviewRequest(snapshot: current))
+                        #endif
                     } label: {
                         HStack {
                             Text(bone.name)

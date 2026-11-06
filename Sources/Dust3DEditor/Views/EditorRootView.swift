@@ -19,6 +19,9 @@ struct EditorRootView: View {
     @State private var isInspectorPresented = true
     @State private var inspectorSection = EditorInspectorSection.selection
     @State private var recoveryRegistrationID: UUID?
+    #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+        @State private var restPreview: GeneratedRigPreviewSession
+    #endif
 
     init(file: Binding<EditorFileDocument>, sourceURL: URL? = nil) {
         let store = EditorStore(
@@ -30,9 +33,14 @@ struct EditorRootView: View {
         _store = State(initialValue: store)
         _exportDestinations = State(initialValue: destinations)
         _exportWorkflow = State(initialValue: EditorGeometryExportWorkflow(store: store, destinations: destinations))
+        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+            _restPreview = State(
+                initialValue: GeneratedRigPreviewSession(readSnapshot: { [weak store] in store?.snapshot }))
+        #endif
     }
 
     var body: some View {
+        let fitAction = toolbarFitAction
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
@@ -77,7 +85,7 @@ struct EditorRootView: View {
                     phase: exportWorkflow.phase, format: exportWorkflow.format,
                     onCancel: exportWorkflow.cancel, onDismiss: exportWorkflow.dismissResult,
                     onReveal: { NSWorkspace.shared.activateFileViewerSelecting([$0]) })
-                HStack(spacing: 0) {
+                HSplitView {
                     VStack(spacing: 0) {
                         HStack {
                             Text("Node canvas").font(.headline)
@@ -119,8 +127,7 @@ struct EditorRootView: View {
                         NodeCanvas(store: store)
                     }
                     .frame(minWidth: 300)
-                    Divider()
-                    preview.frame(width: 320)
+                    preview.frame(minWidth: 240, idealWidth: 320)
                 }
                 Divider()
                 HStack {
@@ -143,6 +150,9 @@ struct EditorRootView: View {
         .inspector(isPresented: $isInspectorPresented) {
             inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
         }
+        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+            .environment(restPreview)
+        #endif
         .toolbar {
             ToolbarItemGroup {
                 Button {
@@ -170,7 +180,7 @@ struct EditorRootView: View {
                     Label("Redo", systemImage: "arrow.uturn.forward")
                 }.disabled(!store.canRedo)
                 Button {
-                    store.fit()
+                    fitAction()
                 } label: {
                     Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
@@ -183,11 +193,13 @@ struct EditorRootView: View {
                 }
                 .keyboardShortcut("a", modifiers: [.command, .option])
                 .accessibilityLabel("Show animations inspector")
-                Toggle(isOn: $store.isWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+                Toggle(isOn: previewWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
             }
         }
         .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
         .focusedSceneValue(\.editorStore, store)
+        .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
+        .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
         .focusedSceneValue(
             \.editorGeometryExportAction,
             EditorGeometryExportAction(
@@ -219,6 +231,9 @@ struct EditorRootView: View {
             if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
             recoveryRegistrationID = nil
             exportWorkflow.stop()
+            #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                restPreview.stop()
+            #endif
             store.stop()
         }
     }
@@ -238,7 +253,113 @@ struct EditorRootView: View {
         }
     }
 
+    private var previewCameraActions: EditorPreviewCameraActions {
+        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+            let mode = restPreview.presentation
+            let presentation = restPreview.presentationRevision
+            if mode == .generatedRest {
+                let revision = restPreview.currentRevision
+                return EditorPreviewCameraActions(
+                    canMove: restPreview.isReady, supportsAutomaticOrbit: false,
+                    isCurrent: { [weak restPreview] in
+                        restPreview?.presentationRevision == presentation && restPreview?.currentRevision == revision
+                    },
+                    move: { [weak restPreview] in restPreview?.move($0, revision: revision) },
+                    fit: { [weak restPreview] in restPreview?.fit(revision: revision) })
+            }
+            return EditorPreviewCameraActions(
+                canMove: store.canMovePreviewCamera,
+                isCurrent: { [weak restPreview, weak store] in
+                    restPreview?.presentationRevision == presentation && store?.canMovePreviewCamera == true
+                },
+                move: { [weak store] in store?.movePreviewCamera($0) },
+                fit: { [weak store] in store?.fitPreviewCamera() })
+        #else
+            return EditorPreviewCameraActions(
+                canMove: store.canMovePreviewCamera,
+                isCurrent: { [weak store] in store?.canMovePreviewCamera == true },
+                move: { [weak store] in store?.movePreviewCamera($0) },
+                fit: { [weak store] in store?.fitPreviewCamera() })
+        #endif
+    }
+
+    private var previewDisplayActions: EditorPreviewDisplayActions {
+        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+            let presentation = restPreview.presentationRevision
+            if restPreview.presentation == .generatedRest {
+                return EditorPreviewDisplayActions(
+                    isCurrent: { [weak restPreview] in restPreview?.presentationRevision == presentation },
+                    wireframe: { [weak restPreview] in restPreview?.isWireframe == true },
+                    setWireframe: { [weak restPreview] in restPreview?.isWireframe = $0 })
+            }
+            return EditorPreviewDisplayActions(
+                isCurrent: { [weak restPreview, weak store] in
+                    restPreview?.presentationRevision == presentation && store != nil
+                },
+                wireframe: { [weak store] in store?.isWireframe == true },
+                setWireframe: { [weak store] in store?.isWireframe = $0 },
+                modelColors: { [weak store] in store?.showsPreviewColor == true },
+                setModelColors: { [weak store] in store?.showsPreviewColor = $0 })
+        #else
+            return EditorPreviewDisplayActions(
+                isCurrent: { [weak store] in store != nil },
+                wireframe: { [weak store] in store?.isWireframe == true },
+                setWireframe: { [weak store] in store?.isWireframe = $0 },
+                modelColors: { [weak store] in store?.showsPreviewColor == true },
+                setModelColors: { [weak store] in store?.showsPreviewColor = $0 })
+        #endif
+    }
+
+    private var previewWireframe: Binding<Bool> {
+        let actions = previewDisplayActions
+        return Binding(get: { actions.isWireframe }, set: { actions.setWireframe($0) })
+    }
+
+    private var toolbarFitAction: @MainActor () -> Void {
+        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+            let mode = restPreview.presentation
+            let presentation = restPreview.presentationRevision
+            let revision = restPreview.currentRevision
+            return { [weak restPreview, weak store] in
+                guard restPreview?.presentationRevision == presentation else { return }
+                if mode == .generatedRest { restPreview?.fit(revision: revision) } else { store?.fit() }
+            }
+        #else
+            return { [weak store] in store?.fit() }
+        #endif
+    }
+
     private var preview: some View {
+        VStack(spacing: 0) {
+            #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                Picker(
+                    "Preview mode",
+                    selection: Binding(get: { restPreview.presentation }, set: { restPreview.setPresentation($0) })
+                ) {
+                    ForEach(GeneratedRigPreviewSession.Presentation.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented).padding(10)
+                if restPreview.presentation == .generatedRest {
+                    if let snapshot = store.snapshot {
+                        ScrollView {
+                            GeneratedRigPreview(
+                                store: store, request: GeneratedRigPreviewRequest(snapshot: snapshot), isWorkspace: true
+                            )
+                            .padding(12)
+                        }
+                    } else {
+                        MeshPreviewPlaceholder(message: "Open a document to inspect a generated rest rig.")
+                    }
+                } else {
+                    modelPreview
+                }
+            #else
+                modelPreview
+            #endif
+        }
+    }
+
+    private var modelPreview: some View {
         VStack(spacing: 0) {
             HStack {
                 Text("Mesh preview").font(.headline)

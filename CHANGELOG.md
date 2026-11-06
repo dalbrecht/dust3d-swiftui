@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a resizable Model/Generated Rest workspace with one per-window rest session, shared camera and stale-safe focused controls; preserve selection and camera across presentation changes (#367).
+
 - Add a source-ordered generated-joint hierarchy and read-only parent, endpoint, length, radius and signed-angle inspection to the experimental rest preview; preserve copied rig data if hierarchy preparation fails (#367).
 
 - Show the selected joint’s numerical weight range and influenced body-triangle count in the experimental rest preview, publishing these values with their matching mesh (#367).

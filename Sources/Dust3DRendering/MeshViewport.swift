@@ -30,6 +30,9 @@ public struct MeshViewport: NSViewRepresentable {
     let automaticallyOrbits: Bool
     let cameraReset: Int
     let cameraCommand: MeshCameraCommand?
+    let cameraState: MeshCameraState?
+    let cameraRevision: Int?
+    let cameraInteractionAllowed: @MainActor () -> Bool
     let onError: (String) -> Void
     let meshRevision: Int
     let materials: MeshMaterialContent?
@@ -40,15 +43,23 @@ public struct MeshViewport: NSViewRepresentable {
     /// GPU setup errors are delivered through onError on the main actor.
     /// blendsVertexAlpha opts into straight-alpha blending with ordinary depth testing;
     /// triangle order remains caller-owned. The default preserves opaque previews.
+    /// With cameraState, the shared owner supplies the camera across remounts and
+    /// cameraReset/cameraCommand are ignored. Invoke the owner's move/fit controls.
+    /// cameraInteractionAllowed admits owned-camera raw input from this surface;
+    /// capture its source/presentation epoch to reject obsolete mounted views.
     public init(
         mesh: Mesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
         cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true, automaticallyOrbits: Bool = false,
-        blendsVertexAlpha: Bool = false, onError: @escaping (String) -> Void
+        blendsVertexAlpha: Bool = false, cameraState: MeshCameraState? = nil,
+        cameraInteractionAllowed: @escaping @MainActor () -> Bool = { true }, onError: @escaping (String) -> Void
     ) {
         onMaterialRendered = {}
         materials = nil
         onMaterialError = { _ in }
         self.blendsVertexAlpha = blendsVertexAlpha
+        self.cameraState = cameraState
+        cameraRevision = cameraState?.revision
+        self.cameraInteractionAllowed = cameraInteractionAllowed
         self.mesh = .expanded(mesh)
         self.isWireframe = isWireframe
         self.showsColor = showsColor
@@ -111,6 +122,9 @@ public struct MeshViewport: NSViewRepresentable {
         self.materials = materials
         self.onMaterialError = onMaterialError ?? onError
         blendsVertexAlpha = false
+        cameraState = nil
+        cameraRevision = nil
+        cameraInteractionAllowed = { true }
         self.mesh = .indexed(mesh)
         self.isWireframe = isWireframe
         self.showsColor = showsColor
@@ -142,6 +156,8 @@ public struct MeshViewport: NSViewRepresentable {
     // Direct renderer tests have no installed SwiftUI environment; production passes the context's current value.
     func updateRenderer(in view: InteractiveMeshView, reduceMotion: Bool = false) {
         defer { view.automaticOrbitBinding.update(requested: automaticallyOrbits, reduceMotion: reduceMotion) }
+        view.cameraInteractionAllowed = cameraInteractionAllowed
+        view.adoptCameraState(cameraState)
         if view.alphaRequest.update(blendsVertexAlpha: blendsVertexAlpha) {
             view.meshRevision = nil
             view.failedMeshRevision = nil
@@ -179,12 +195,14 @@ public struct MeshViewport: NSViewRepresentable {
                 return
             }
         }
-        if view.cameraReset != cameraReset {
-            view.orbitCamera = OrbitCamera()
-            view.cameraReset = cameraReset
-            view.automaticOrbitBinding.cameraInputChanged()
+        if cameraState == nil {
+            if view.cameraReset != cameraReset {
+                view.orbitCamera = OrbitCamera()
+                view.cameraReset = cameraReset
+                view.automaticOrbitBinding.cameraInputChanged()
+            }
+            if let cameraCommand { view.applyCameraCommand(cameraCommand) }
         }
-        if let cameraCommand { view.applyCameraCommand(cameraCommand) }
         view.renderer?.showsColor = showsColor
         view.materialRenderer?.showsColor = showsColor
         view.importedRenderer?.showsColor = showsColor
@@ -228,6 +246,8 @@ public class InteractiveMeshView: MTKView {
     lazy var automaticOrbitBinding = AutomaticOrbitViewBinding(view: self)
 
     private var fallbackCamera = OrbitCamera()
+    private var cameraState: MeshCameraState?
+    var cameraInteractionAllowed: @MainActor () -> Bool = { true }
     private var lastCameraCommand: UUID?
 
     func applyCameraCommand(_ command: MeshCameraCommand) {
@@ -249,13 +269,33 @@ public class InteractiveMeshView: MTKView {
         needsDisplay = true
     }
 
+    /// Synchronize a newly mounted view without issuing any movement or reset.
+    func adoptCameraState(_ state: MeshCameraState?) {
+        guard state != nil || cameraState != nil else { return }
+        let camera = state?.camera ?? orbitCamera
+        cameraState = state
+        synchronizeCamera(camera)
+    }
+
+    private func synchronizeCamera(_ camera: OrbitCamera) {
+        fallbackCamera = camera
+        renderer?.camera = camera
+        materialRenderer?.camera = camera
+        importedRenderer?.camera = camera
+    }
+
     var orbitCamera: OrbitCamera {
-        get { importedRenderer?.camera ?? materialRenderer?.camera ?? renderer?.camera ?? fallbackCamera }
+        get {
+            cameraState?.camera ?? importedRenderer?.camera ?? materialRenderer?.camera ?? renderer?.camera
+                ?? fallbackCamera
+        }
         set {
-            fallbackCamera = newValue
-            renderer?.camera = newValue
-            materialRenderer?.camera = newValue
-            importedRenderer?.camera = newValue
+            if let cameraState,
+                !cameraState.replaceFromInteraction(newValue, interactionAllowed: cameraInteractionAllowed)
+            {
+                return
+            }
+            synchronizeCamera(newValue)
         }
     }
 

@@ -7,50 +7,52 @@
     struct GeneratedRigPreview: View {
         let store: EditorStore
         let request: GeneratedRigPreviewRequest
-        let selectedBoneName: String
+        let selectedBoneName: String?
+        let isWorkspace: Bool
         @Environment(\.colorScheme) private var colorScheme
         @Environment(\.colorSchemeContrast) private var contrast
-        @State private var generation = GeneratedRigPreviewState()
-        @State private var display = GeneratedRigDisplayState()
-        @State private var selection: GeneratedRigJointSelection?
-        @State private var generationRetry = UUID()
-        @State private var displayRetry = UUID()
-        @State private var cameraReset = 0
-        @State private var cameraCommand: MeshCameraCommand?
+        @Environment(GeneratedRigPreviewSession.self) private var shared: GeneratedRigPreviewSession?
+        @State private var fallback: GeneratedRigPreviewSession
 
-        private struct GenerationKey: Hashable {
-            let request: GeneratedRigPreviewRequest
-            let retry: UUID
+        init(
+            store: EditorStore, request: GeneratedRigPreviewRequest, selectedBoneName: String? = nil,
+            isWorkspace: Bool = false
+        ) {
+            self.store = store
+            self.request = request
+            self.selectedBoneName = selectedBoneName
+            self.isWorkspace = isWorkspace
+            _fallback = State(
+                initialValue: GeneratedRigPreviewSession(readSnapshot: { [weak store] in store?.snapshot }))
         }
-        private struct DisplayKey: Hashable {
-            let request: GeneratedRigDisplayRequest?
-            let retry: UUID
+        private var session: GeneratedRigPreviewSession { shared ?? fallback }
+        private var generation: GeneratedRigPreviewState { session.generation }
+        private var display: GeneratedRigDisplayState { session.display }
+        private struct UpdateKey: Hashable {
+            let request: GeneratedRigPreviewRequest
+            let selectedName: Data?
+            let appearance: RigTemplatePreviewAppearance
         }
 
         var body: some View {
-            let current = store.snapshot.map { request.matches($0) } ?? false
-            let rig = current && generation.request == request ? generation.rig : nil
-            let revision = rig == nil ? nil : generation.revision
-            let selected = rig.flatMap { rig in
-                revision.flatMap { revision in
-                    selection?.resolvedIndex(in: rig, revision: revision, incomingName: selectedBoneName)
-                        ?? (selection?.revision == revision
-                            ? nil
-                            : rig.joints.firstIndex {
-                                $0.name.utf8.elementsEqual(selectedBoneName.utf8)
-                            })
-                }
-            }
-            let name = selected.flatMap { rig?.joints[$0].name } ?? ""
-            let displayRequest = revision.map {
-                GeneratedRigDisplayRequest(
-                    rigRevision: $0, selectedBoneName: name,
-                    appearance: RigTemplatePreviewPalette.resolve(colorScheme: colorScheme, contrast: contrast))
-            }
+            let current = store.snapshot.map { request.matchesVersion($0) } ?? false
+            let rig = current && session.request == request ? session.currentRig : nil
+            let revision = rig == nil ? nil : session.currentRevision
+            let selected = rig == nil ? nil : session.selectedIndex
+            let name = rig == nil ? "" : session.selectedName
+            let displayRequest = rig == nil ? nil : session.desiredDisplay
+            let appearance = RigTemplatePreviewPalette.resolve(colorScheme: colorScheme, contrast: contrast)
+            let presentationRevision = session.presentationRevision
+            let generationRevision = generation.revision
+            let displayRevision = display.revision
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("Generated rest preview").font(.caption.weight(.semibold))
                     Spacer()
+                    if !isWorkspace, shared != nil {
+                        Button("Expand") { session.setPresentation(.generatedRest) }
+                            .accessibilityLabel("Show generated rest preview in workspace")
+                    }
                     cameraMenu(
                         revision: revision,
                         enabled: display.acceptedRequest == displayRequest && !display.isLoading && display.error == nil
@@ -58,7 +60,9 @@
                 }
                 if current, generation.request == request, let error = generation.error {
                     Text(error).font(.caption).textSelection(.enabled)
-                    Button("Retry Generation") { generationRetry = UUID() }
+                    Button("Retry Generation") {
+                        session.retryGeneration(request: request, revision: generationRevision)
+                    }
                 } else if let rig, let revision {
                     jointPicker(rig: rig, revision: revision, selected: selected)
                     hierarchySection(rig: rig, revision: revision, selected: selected)
@@ -67,9 +71,14 @@
                         if let mesh = display.mesh, display.meshRigRevision == revision {
                             let renderRevision = display.revision
                             MeshViewport(
-                                mesh: mesh, isWireframe: false, cameraReset: cameraReset,
-                                meshRevision: display.meshRevision, cameraCommand: cameraCommand,
-                                blendsVertexAlpha: true,
+                                mesh: mesh, isWireframe: session.isWireframe, cameraReset: 0,
+                                meshRevision: display.meshRevision, blendsVertexAlpha: true,
+                                cameraState: session.cameraState,
+                                cameraInteractionAllowed: { [weak session] in
+                                    session?.allowsCameraInteraction(
+                                        revision: revision, presentationRevision: presentationRevision)
+                                        == true
+                                },
                                 onError: { cause in
                                     guard let renderRevision, let snapshot = store.snapshot,
                                         request.matches(snapshot), generation.request == request,
@@ -91,13 +100,17 @@
                         if let error = display.error, display.request == displayRequest {
                             VStack(alignment: .leading) {
                                 Text(error).font(.caption).textSelection(.enabled)
-                                Button("Retry Preview") { displayRetry = UUID() }
+                                Button("Retry Preview") {
+                                    session.retryDisplay(request: displayRequest, revision: displayRevision)
+                                }
                             }
                         } else if display.acceptedRequest != displayRequest || display.isLoading {
                             ProgressView("Preparing rest preview…").controlSize(.small)
                         }
                     }
-                    .frame(minHeight: 160, idealHeight: 180, maxHeight: 220)
+                    .frame(
+                        minHeight: isWorkspace ? 260 : 160, idealHeight: isWorkspace ? 400 : 180,
+                        maxHeight: isWorkspace ? .infinity : 220)
                     Text(
                         "\(rig.joints.count) generated joints. \(rig.eyelidsGenerated ? "Eyelids included." : "No generated eyelids.")"
                     )
@@ -129,25 +142,17 @@
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Generated rest preview")
-            .task(id: GenerationKey(request: request, retry: generationRetry)) {
-                guard !Task.isCancelled, let snapshot = store.snapshot, request.matches(snapshot) else { return }
-                cameraCommand = nil
-                cameraReset = 0
-                await generation.load(request)
-            }
-            .task(id: DisplayKey(request: displayRequest, retry: displayRetry)) {
+            .task(
+                id: UpdateKey(
+                    request: request, selectedName: selectedBoneName.map { Data($0.utf8) }, appearance: appearance)
+            ) {
                 guard !Task.isCancelled else { return }
-                guard let displayRequest, let rig, let snapshot = store.snapshot,
-                    request.matches(snapshot), generation.request == request,
-                    generation.revision == displayRequest.rigRevision
-                else { return }
-                await display.load(displayRequest, rig: rig)
+                session.update(request: request, selectedBoneName: selectedBoneName, appearance: appearance)
+                if shared == nil, let selectedBoneName {
+                    session.setTemplateSelection(selectedBoneName, request: request)
+                }
             }
-            .onChange(of: Data(selectedBoneName.utf8)) { _, _ in selection = nil }
-            .onDisappear {
-                generation.stop()
-                display.stop()
-            }
+            .onDisappear { if shared == nil { fallback.stop() } }
         }
 
         private func jointPicker(rig: GeneratedRig, revision: UUID, selected: Int?) -> some View {
@@ -169,10 +174,7 @@
         }
 
         private func selectJoint(_ index: Int?, rig: GeneratedRig, revision: UUID) {
-            guard canInteract(revision: revision), index.map({ rig.joints.indices.contains($0) }) ?? true else {
-                return
-            }
-            selection = GeneratedRigJointSelection(revision: revision, index: index)
+            session.selectJoint(index, revision: revision)
         }
 
         @ViewBuilder
@@ -272,19 +274,9 @@
             .disabled(!enabled)
         }
 
-        private func canInteract(revision: UUID?) -> Bool {
-            guard let revision, let snapshot = store.snapshot, request.matches(snapshot) else { return false }
-            return generation.isCurrent(request: request, revision: revision)
-        }
-
-        private func fit(revision: UUID?) {
-            guard canInteract(revision: revision) else { return }
-            cameraReset += 1
-        }
-
+        private func fit(revision: UUID?) { session.fit(revision: revision) }
         private func move(_ action: MeshCameraCommand.Action, revision: UUID?) {
-            guard canInteract(revision: revision) else { return }
-            cameraCommand = MeshCameraCommand(action)
+            session.move(action, revision: revision)
         }
     }
 #endif
