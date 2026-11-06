@@ -214,3 +214,9 @@ inside the explicit menu action. A small main-actor NSWorkspace boundary reports
 invalid destinations or macOS's declined-open result through the standard error
 UI, retaining the address. Injected opener/reporter tests invoke no external
 application. See docs/native-project-help-verification.md for acceptance limits.
+
+About resolves the rendering bundle under the application's Resources directory
+first. Installed apps never consult SwiftPM's absolute development path, including
+when packaged attribution is missing. Command-line builds retain a lazy fallback.
+The archive gate compiles the production options/resolver into an owned metadata
+checker inside extracted app copies, without launching the GUI or opening About.
