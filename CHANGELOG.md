@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
+
 - Preserve existing recovery copies and receipts if preparing a private replacement fails.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
@@ -10,7 +12,7 @@
 
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
 
-- Apply one Qt XML fragment at launch with `-paste-xml` and explicit `.ds3` inputs, with one Undo step per newly opened eligible document.
+- Apply one Qt XML fragment at launch with `-paste-xml` in one Undo step per newly opened eligible document. With no `.ds3` input or output option, open one untitled document with default model colors. A read or validation error leaves that document blank and displays a diagnostic.
 
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
