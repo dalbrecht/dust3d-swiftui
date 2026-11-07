@@ -6,7 +6,13 @@
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
+- Support Qt’s `-toggle-color` launch option for newly opened document windows.
+
+- Apply one Qt XML fragment at launch with `-paste-xml` and explicit `.ds3` inputs, with one Undo step per newly opened eligible document.
+
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
+
+- Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
 
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
