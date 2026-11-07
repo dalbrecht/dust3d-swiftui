@@ -136,6 +136,51 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(value.canUndo)
     }
 
+    func testFreshPartStateHandlerDoesNotAcquireHoverFromBeforeResizeOrNodeMove() async throws {
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: try source().encoded())
+        try await settle(value)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        let lock = CanvasPrecisionKeyInput(keyCode: 37, characters: "l", modifiers: [])
+        let initial = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+        let originalPosition = NodePosition(x: 0.2, y: 0.5, z: 0.5)
+        value.updateCanvasHover(at: initial.point(for: originalPosition), projection: initial)
+        XCTAssertEqual(value.canvasGraphHover, .node("a"))
+
+        let resized = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 520, height: 360)
+        value.setCanvasContext(projection: resized, width: 520, height: 360)
+        value.updateCanvasHover(at: initial.point(for: originalPosition), projection: initial)
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(lock))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.isLocked, false)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "q" }?.isLocked, true)
+        value.undo()
+        try await settle(value)
+
+        value.selectGraph(nodes: ["a", "x"], edges: [])
+        try await settle(value)
+        value.updateCanvasHover(at: resized.point(for: originalPosition), projection: resized)
+        XCTAssertEqual(value.canvasGraphHover, .node("a"))
+        let movedPosition = NodePosition(x: 0.2, y: 0.75, z: 0.5)
+        value.move(id: "a", to: movedPosition)
+        try await settle(value)
+        XCTAssertFalse(value.canvasPartStateKeyHandler(profileLease: nil)(lock))
+        XCTAssertFalse(value.isWorking)
+        try await settle(value)
+
+        let current = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 520, height: 360)
+        value.setCanvasContext(projection: current, width: 520, height: 360)
+        value.updateCanvasHover(at: current.point(for: movedPosition), projection: current)
+        XCTAssertEqual(value.canvasGraphHover, .node("a"))
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(lock))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.isLocked, true)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "q" }?.isLocked, false)
+    }
+
     func testCanvasPartStateRetiresOldPaneAndStaysUnavailableDuringAdd() async throws {
         let original = try source().encoded()
         let value = store()

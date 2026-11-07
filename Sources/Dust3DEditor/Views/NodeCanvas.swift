@@ -204,7 +204,7 @@ struct NodeCanvas: View {
                             guard admitsNodeInput(), store.addModeID == addModeID, !store.isAddingNodes else {
                                 return false
                             }
-                            store.setHoveredNode(node.id)
+                            store.setHoveredNode(node.id, projection: projection)
                             return store.handleCanvasWheel(input)
                         },
                         radiusKey: { admitsNodeInput() && adjustRadius($0) },
