@@ -23,7 +23,7 @@ final class PartMirrorTests: XCTestCase {
             XCTAssertTrue(String(decoding: doc.modelXML, as: UTF8.self).contains("ImportedModel"))
         }
     }
-    func testChangeCentersOnlyUnavailableOriginAndUndoIsExactDespitePartFlags() throws {
+    func testEnablingCentersAbsentOriginAndUndoIsExactDespitePartFlags() throws {
         for role in ["Model", ""] {
             let doc = try source(role: role)
             var history = DocumentHistory(document: doc)
@@ -42,20 +42,52 @@ final class PartMirrorTests: XCTestCase {
             XCTAssertEqual(history.document.encoded(), after.encoded())
         }
     }
-    func testUnsupportedOriginAndFlagRepairAreFieldLocalAndEmptyGraphSettlesToSupportedZero() throws {
-        let original = try source(
-            "xMirrored='future'", origin: "originX='future' originY='0' originZ='0'")
-        let repaired = try original.applying(.setPartXMirrored(id: "p", value: false))
-        XCTAssertEqual(try repaired.origin(), .init(x: 0.625, y: 0.5, z: 0.5))
-        let xml = String(decoding: repaired.modelXML, as: UTF8.self)
-        let root = try XCTUnwrap(XMLDocument(data: repaired.modelXML).rootElement())
-        XCTAssertEqual(root.attribute(forName: "future")?.stringValue, "keep")
-        XCTAssertFalse(xml.contains("xMirrored="))
+    func testDisablingPreservesMalformedPartialAndAbsentOrigins() throws {
+        for origin in ["originX='future' originY='0' originZ='0'", "originZ='0'", ""] {
+            let original = try source("xMirrored='future'", origin: origin)
+            let repaired = try original.applying(.setPartXMirrored(id: "p", value: false))
+            XCTAssertEqual(try originAttributes(repaired), try originAttributes(original))
+            XCTAssertEqual(try repaired.editorContents().parts.first?.xMirrored, false)
+        }
+    }
+
+    func testEnablingPreservesCoreCompatibleOriginSpellings() throws {
+        let original = try source(origin: "originX='1,25' originY='  -0.0' originZ='1e-50'")
+        let mirrored = try original.applying(.setPartXMirrored(id: "p", value: true))
+        XCTAssertEqual(try originAttributes(mirrored), try originAttributes(original))
+        XCTAssertEqual(try mirrored.editorContents().parts.first?.xMirrored, true)
+    }
+
+    func testEnablingRejectsPartialAndUnsupportedAuthoredOrigins() throws {
+        for origin in [
+            "originX='1' originY='2'",
+            "originX='future' originY='0' originZ='0'",
+            "originX='1 ' originY='0' originZ='0'",
+            "originX='1e-999' originY='0' originZ='0'",
+            "originX='1000001' originY='0' originZ='0'",
+        ] {
+            let original = try source(origin: origin)
+            var history = DocumentHistory(document: original)
+            XCTAssertThrowsError(try history.apply(.setPartXMirrored(id: "p", value: true)), origin) {
+                XCTAssertEqual($0 as? DocumentError, .invalidPartMirrorOrigin)
+            }
+            XCTAssertEqual(history.document.encoded(), original.encoded())
+            XCTAssertFalse(history.canUndo)
+        }
+    }
+
+    func testEnablingOnAnEmptyGraphWithAbsentOriginSettlesToZero() throws {
         let empty = try Dust3DDocument(
             snapshotXML: Data("<canvas><nodes/><edges/><parts><part id='p'/></parts><components/></canvas>".utf8))
         let changed = try empty.applying(.setPartXMirrored(id: "p", value: true))
         XCTAssertEqual(try changed.origin(), .init(x: 0, y: 0, z: 0))
     }
+
+    private func originAttributes(_ document: Dust3DDocument) throws -> [String?] {
+        let root = try XCTUnwrap(XMLDocument(data: document.modelXML).rootElement())
+        return ["originX", "originY", "originZ"].map { root.attribute(forName: $0)?.stringValue }
+    }
+
     func testUnsupportedRolesRejectEditsAndRetainAuthoredMetadata() throws {
         for role in ["ImportedModel", "CutFace", "StitchingLine", "StitchingLoop", "Future"] {
             let doc = try source("xMirrored='future'", role: role)

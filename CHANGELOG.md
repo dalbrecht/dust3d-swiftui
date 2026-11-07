@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Author reflected copies from the part inspector and settle an unavailable canvas origin in the same Undo step.
+- Author reflected copies from the part inspector and initialize an absent canvas origin in the same Undo step.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
