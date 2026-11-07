@@ -61,6 +61,18 @@ extension EditorSnapshot {
     /// Whether a targeted whole-part action has a real owner, including hidden/read-only inspection targets.
     public func canSelectWholePart(_ target: PartGraphTarget) -> Bool { partID(for: target) != nil }
 
+    package func canRevealOwningComponent(_ target: PartGraphTarget) -> Bool {
+        owningComponentID(for: target) != nil
+    }
+
+    func owningComponentID(for target: PartGraphTarget) -> String? {
+        guard let partID = partID(for: target) else { return nil }
+        let owners = componentTree.rows.filter { row in
+            row.component.partID?.utf8.elementsEqual(partID.utf8) == true
+        }
+        return owners.count == 1 ? owners.first?.id : nil
+    }
+
     func resolvedPartGraphID(for target: PartGraphTarget) throws -> String {
         let partID: String
         switch target {

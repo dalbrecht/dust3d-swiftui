@@ -12,6 +12,8 @@
 
 - Add global Hide All Parts in Canvas and group visibility commands under Canvas > Part Visibility, preserving one-step Undo and mesh inputs (#343).
 
+- Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
+
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
 
 - Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
@@ -191,6 +193,8 @@
 
 - Add an injectable document-snapshot export file service with source protection, atomic publication and retained diagnostics; native encoder/UI adoption remains pending (#146).
 
+- Open multiple .ds3 documents at launch using positional paths or repeated --open-document flags.
+
 - Add an explicit-fixture QA launcher using process-local AppKit restoration isolation while preserving normal launches and saved state (#257).
 
 - Recheck actual recovery storage before each write so failed shrinking replacements cannot fund growth beyond the retained-byte budget (#248).
@@ -361,6 +365,8 @@
 - Add a bounded composition recovery command that cancels only the newest unapplied draft when accessibility control is unavailable, preserving documents and in-flight Apply operations.
 
 - Add a native Front/Side reference-image composer with crop previews, numeric and pointer crop selection, mirror/swap, cancellable drafts and one-step undoable image/origin Apply guarded against stale documents.
+
+- Paste nodes from a Qt XML file into the focused document in one Undo step.
 
 - Accept bounded Qt snapshot XML on node Paste and publish a Qt text fallback alongside richer native clipboard data; native transfers retain embedded assets and selection metadata.
 
