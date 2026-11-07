@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep component selection visible when collapsing groups, and prevent sidebar Delete from targeting hidden rows.
+
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.

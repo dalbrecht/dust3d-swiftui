@@ -63,6 +63,98 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertNil(ComponentGroupBrowse(tree: tree, groupID: "missing"))
     }
 
+    func testCollapsingPrunesOnlyHiddenComponentPicksAndExpansionDoesNotRestoreThem() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.workingGroupAction(.group("other"), snapshot: try XCTUnwrap(value.snapshot))()
+        value.selectComponents(["leaf", "other"])
+        try await settle(value)
+        let disclosure = ComponentSidebarDisclosure()
+        let before = try XCTUnwrap(value.snapshot)
+        var writes = 0
+        value.onDocumentChanged = { _ in writes += 1 }
+        value.componentDisclosureAction("g", collapsed: true, snapshot: before, disclosure: disclosure)()
+        try await settle(value)
+        XCTAssertEqual(disclosure.collapsedIDs, ["g"])
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["other"])
+        XCTAssertEqual(value.addPlacementDestination, .group("other"))
+
+        value.componentDisclosureAction(
+            "g", collapsed: false, snapshot: try XCTUnwrap(value.snapshot), disclosure: disclosure)()
+        XCTAssertTrue(disclosure.collapsedIDs.isEmpty)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["other"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+        XCTAssertEqual(writes, 0)
+    }
+
+    func testSidebarDeleteRejectsHiddenAndRetainedDisclosureActions() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.selectComponents(["leaf", "other"])
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        let disclosure = ComponentSidebarDisclosure()
+        let oldDelete = value.componentSidebarDeleteAction(snapshot: before, disclosure: disclosure)
+        let oldCollapse = value.componentDisclosureAction(
+            "g", collapsed: true, snapshot: before, disclosure: disclosure)
+        disclosure.collapsedIDs.insert("g")
+        oldDelete()
+        XCTAssertFalse(value.isWorking)
+        value.componentSidebarDeleteAction(snapshot: before, disclosure: disclosure)()
+        XCTAssertFalse(value.isWorking)
+        disclosure.collapsedIDs.remove("g")
+        oldDelete()
+        oldCollapse()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertTrue(disclosure.collapsedIDs.isEmpty)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["leaf", "other"])
+        XCTAssertFalse(value.canUndo)
+
+        value.selectComponents(["leaf"])
+        try await settle(value)
+        value.componentSidebarDeleteAction(snapshot: try XCTUnwrap(value.snapshot), disclosure: disclosure)()
+        try await settle(value)
+        XCTAssertFalse(value.snapshot?.componentTree.rows.contains(where: { $0.id == "leaf" }) ?? true)
+        XCTAssertTrue(value.canUndo)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testDisclosurePreservesGraphPicksAndRejectsFailedSourceOrScopedBrowse() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.select("z")
+        try await settle(value)
+        let disclosure = ComponentSidebarDisclosure()
+        let before = try XCTUnwrap(value.snapshot)
+        value.componentDisclosureAction("g", collapsed: true, snapshot: before, disclosure: disclosure)()
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["z"])
+        XCTAssertEqual(value.snapshot?.selectionRevision, before.selectionRevision)
+        XCTAssertEqual(disclosure.collapsedIDs, ["g"])
+
+        value.componentBrowseAction("g", snapshot: before)()
+        value.componentDisclosureAction("g", collapsed: false, snapshot: before, disclosure: disclosure)()
+        XCTAssertEqual(disclosure.collapsedIDs, ["g"])
+        value.componentBrowseAction(nil, snapshot: before)()
+        let expand = value.componentDisclosureAction("g", collapsed: false, snapshot: before, disclosure: disclosure)
+        await value.load(data: Data("invalid source".utf8))
+        expand()
+        XCTAssertEqual(disclosure.collapsedIDs, ["g"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
     func testBrowsingPreservesGraphAndWorkingGroupAndRejectsRetainedScope() async throws {
         let original = try source().encoded()
         let value = store()
