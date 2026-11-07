@@ -12,13 +12,20 @@ struct RigTemplateBoneBrowser: View {
     #endif
     @State private var hierarchy: RigTemplateHierarchy?
     @State private var loadError: String?
-    @State private var selectedName: String?
+    @State private var browserSelection = RigAssignmentBrowserSelection()
     @State private var hoverSurface = UUID()
 
     var body: some View {
+        let snapshot = store.snapshot
+        let context: RigTemplateBrowserContext? = hierarchy.flatMap { hierarchy in
+            guard hierarchy.type == sourceType, let snapshot else { return nil }
+            return RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: snapshot)
+        }
+        let selectedName = browserSelection.selectedName
+        let assignment = context.flatMap { browserSelection.command(store: store, context: $0) }
         VStack(alignment: .leading, spacing: 8) {
-            if let hierarchy, hierarchy.type == sourceType, let snapshot = store.snapshot {
-                let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: snapshot)
+            if let context, let snapshot {
+                let hierarchy = context.hierarchy
                 Text("Template bones").font(.headline)
                 Text(hierarchy.description).font(.caption).foregroundStyle(.secondary)
                 #if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE
@@ -41,7 +48,7 @@ struct RigTemplateBoneBrowser: View {
                         target, owner: .init(surface: hoverSurface, row: bone.id))
                     Button {
                         guard let current = store.snapshot, context.isCurrent(in: current) else { return }
-                        selectedName = bone.name
+                        browserSelection.select(bone.name)
                         #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
                             restSession?.setTemplateSelection(
                                 bone.name, request: GeneratedRigPreviewRequest(snapshot: current))
@@ -72,12 +79,9 @@ struct RigTemplateBoneBrowser: View {
                             .frame(minHeight: 40)
                             .disabled(!store.canSelectBoneEdges(target))
                     }
-                    Button(
-                        "Assign \(selectedName) to Selected Edges",
-                        action: store.assignBoneNameAction(selectedName, target: context.assignment)
-                    )
-                    .frame(minHeight: 40)
-                    .disabled(!store.canAssignBoneName(selectedName, target: context.assignment))
+                    Button("Assign \(selectedName) to Selected Edges") { assignment?.invoke(in: store) }
+                        .frame(minHeight: 40)
+                        .disabled(assignment == nil)
                     if let target = context.clearTarget(name: selectedName, includeDescendants: false) {
                         Button(
                             "Clear Bone Assignments (\(target.matchingEdgeCount))",
@@ -109,10 +113,13 @@ struct RigTemplateBoneBrowser: View {
                 ProgressView("Loading template bones…")
             }
         }
+        .focusedSceneValue(\.rigAssignmentCommand, assignment)
+        .onAppear { browserSelection.setVisible(true) }
+        .onDisappear { browserSelection.setVisible(false) }
         .task(id: sourceType) {
             hierarchy = nil
             loadError = nil
-            selectedName = nil
+            browserSelection.select(nil)
             let type = sourceType
             let result = await Task.detached {
                 Result { try RigTemplateHierarchy.load(sourceType: type) }

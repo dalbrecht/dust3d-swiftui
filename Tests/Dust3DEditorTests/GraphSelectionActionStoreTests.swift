@@ -142,6 +142,83 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(value.isAddingNodes)
         XCTAssertEqual(value.snapshot?.document.encoded(), original)
     }
+    func testRigAssignmentCommandUsesOnlyTheCurrentBrowserAndWindow() async throws {
+        let xml = String(decoding: try source().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "<canvas>", with: "<canvas rigType='Biped'>")
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8)).encoded()
+        let value = store()
+        let other = store()
+        defer {
+            value.stop()
+            other.stop()
+        }
+        await value.load(data: original)
+        await other.load(data: original)
+        value.selectEdges(["ab", "bc"])
+        try await settle(value)
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let browser = RigAssignmentBrowserSelection()
+        let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: try XCTUnwrap(value.snapshot))
+        XCTAssertNil(browser.command(store: value, context: context))
+        browser.setVisible(true)
+        browser.select("Spine")
+        let old = try XCTUnwrap(browser.command(store: value, context: context))
+        XCTAssertFalse(old.invoke(in: other))
+        XCTAssertFalse(old.invoke(in: value, focus: .init(hasKeyWindow: false)))
+        XCTAssertFalse(old.invoke(in: value, focus: .init(hasSheet: true)))
+        XCTAssertFalse(old.invoke(in: value, focus: .init(textEditing: true)))
+        XCTAssertFalse(old.invoke(in: value, focus: .init(animationFocused: true)))
+        browser.select("Head")
+        browser.select("Spine")
+        XCTAssertFalse(old.invoke(in: value))
+        let beforeHide = try XCTUnwrap(browser.command(store: value, context: context))
+        browser.setVisible(false)
+        XCTAssertNil(browser.command(store: value, context: context))
+        browser.setVisible(true)
+        XCTAssertFalse(beforeHide.invoke(in: value))
+
+        let current = try XCTUnwrap(browser.command(store: value, context: context))
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        XCTAssertTrue(current.invoke(in: value))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.edges.map(\.boneName), ["Spine", "Spine"])
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab", "bc"])
+        XCTAssertEqual(publications, 1)
+        XCTAssertFalse(current.invoke(in: value))
+        XCTAssertEqual(other.snapshot?.document.encoded(), original)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testRigAssignmentCommandRetiresOnSelectionAndFailedSource() async throws {
+        let xml = String(decoding: try source().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "<canvas>", with: "<canvas rigType='Biped'>")
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8)).encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        value.selectEdges(["ab", "bc"])
+        try await settle(value)
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let browser = RigAssignmentBrowserSelection()
+        browser.setVisible(true)
+        browser.select("Spine")
+        let first = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: try XCTUnwrap(value.snapshot))
+        let beforeSelection = try XCTUnwrap(browser.command(store: value, context: first))
+        value.selectEdge("ab")
+        try await settle(value)
+        XCTAssertFalse(beforeSelection.invoke(in: value))
+        let second = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: try XCTUnwrap(value.snapshot))
+        let beforeFailure = try XCTUnwrap(browser.command(store: value, context: second))
+        await value.load(data: Data("invalid".utf8))
+        XCTAssertFalse(beforeFailure.invoke(in: value))
+        XCTAssertNil(browser.command(store: value, context: second))
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testContextEntriesContainOnlyAvailableActionsAndPlaceDeleteLast() async throws {
         let value = store()
         defer { value.stop() }

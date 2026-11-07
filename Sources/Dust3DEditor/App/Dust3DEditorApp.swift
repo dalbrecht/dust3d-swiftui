@@ -12,6 +12,7 @@ struct Dust3DEditorApp: App {
         @FocusedValue(\.editorRestPreviewActions) private var restPreviewActions
     #endif
     @FocusedValue(\.editorStore) private var store
+    @FocusedValue(\.rigAssignmentCommand) private var rigAssignmentCommand
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
     @FocusedValue(\.editorPreviewDisplayActions) private var previewDisplayActions
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
@@ -31,6 +32,15 @@ struct Dust3DEditorApp: App {
         _ = isEditingText
         guard let view = NSApp.keyWindow?.firstResponder as? NSTextView, view.isEditable else { return nil }
         return view
+    }
+
+    private var rigAssignmentFocus: RigAssignmentCommandFocus {
+        let window = NSApp.keyWindow
+        return RigAssignmentCommandFocus(
+            hasKeyWindow: window != nil,
+            hasSheet: window?.attachedSheet != nil || window?.sheetParent != nil || NSApp.modalWindow != nil,
+            textEditing: isEditingText == true || nativeTextEditor != nil,
+            animationFocused: isAnimationFocused == true)
     }
 
     var body: some Scene {
@@ -235,6 +245,17 @@ struct Dust3DEditorApp: App {
                     )
                     .keyboardShortcut(shortcut(for: constraint), modifiers: [.command, .option])
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
+                }
+            }
+            CommandMenu("Rig") {
+                if let rigAssignmentCommand, rigAssignmentCommand.canInvoke(in: store, focus: rigAssignmentFocus) {
+                    Button("Assign Selected Edges to Bone") {
+                        rigAssignmentCommand.invoke(in: store, focus: rigAssignmentFocus)
+                    }
+                    .keyboardShortcut(.return, modifiers: [.command])
+                } else {
+                    Button("Assign Selected Edges to Bone") {}
+                        .disabled(true)
                 }
             }
         }
