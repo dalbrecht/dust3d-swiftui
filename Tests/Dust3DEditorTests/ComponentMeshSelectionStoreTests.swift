@@ -75,6 +75,58 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertTrue(store.canUndo)
     }
 
+    func testGraphOwnerColorSingletonAndFailedSourcePreserveExactHistory() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes>
+                <parts><part id='p'/></parts><components>
+                <component id='owner' linkDataType='partId' linkData='p' color='future'/>
+                </components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        value.selectComponent("owner")
+        try await settle(value)
+        value.setSelectedComponentColors(
+            ComponentMeshSelectionTarget(snapshot: try XCTUnwrap(value.snapshot)), value: "#80102030")
+        XCTAssertFalse(value.isWorking, "Sidebar singleton continues to use its own inspector")
+        value.select("a")
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        let target = ComponentMeshSelectionTarget(graphSelection: before)
+        var writes = 0
+        value.onDocumentChanged = { _ in writes += 1 }
+        value.setSelectedComponentColors(target, value: "#80102030")
+        try await settle(value)
+        let colored = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(
+            colored.componentTree.rows.first?.component.color, .value(.init(red: 16, green: 32, blue: 48, alpha: 128)))
+        XCTAssertEqual(colored.selectedIDs, ["a"])
+        XCTAssertTrue(colored.selectedComponentIDs.isEmpty)
+        XCTAssertEqual(writes, 1)
+        value.setSelectedComponentColors(ComponentMeshSelectionTarget(graphSelection: colored), value: "#80102030")
+        try await settle(value)
+        XCTAssertEqual(writes, 1)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+        value.redo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), colored.document.encoded())
+
+        let retained = ComponentMeshSelectionTarget(graphSelection: try XCTUnwrap(value.snapshot))
+        await value.load(data: Data("invalid archive".utf8), fileIdentity: UUID())
+        let loadError = try XCTUnwrap(value.errorMessage)
+        value.setSelectedComponentColors(retained, value: "invalid")
+        value.setSelectedComponentColors(retained, value: nil)
+        try await settle(value)
+        XCTAssertEqual(value.errorMessage, loadError)
+        XCTAssertEqual(value.snapshot?.document.encoded(), colored.document.encoded())
+        XCTAssertEqual(writes, 3)
+    }
+
     func testDanglingPartAliasCannotEnableOrPublishComponentStateActions() async throws {
         let original = try Dust3DDocument(
             snapshotXML: Data(
