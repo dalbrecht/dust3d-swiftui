@@ -4,6 +4,7 @@ import Foundation
 /// Serializes XML parsing and commands away from the UI actor. A window owns one session.
 public actor EditorSession {
     private var state: EditorState?
+    private var hasAcceptedSource = false
     private var selectedAnimationID: String?
     private var lastPasteIdentifier: String?
     private var pasteOrdinal = 0
@@ -13,9 +14,11 @@ public actor EditorSession {
 
     public func open(data: Data) throws -> EditorSnapshot {
         try Task.checkCancellation()
+        hasAcceptedSource = false
         let next = try EditorState(document: Dust3DDocument(data: data))
         try Task.checkCancellation()
         state = next
+        hasAcceptedSource = true
         selectedAnimationID = nil
         lastPasteIdentifier = nil
         pasteOrdinal = 0
@@ -552,7 +555,10 @@ public actor EditorSession {
     public func applyReferenceComposition(
         png: Data, origin: NodePosition?, target: ReferenceCompositionTarget
     ) throws -> EditorSnapshot {
-        try update { try $0.applyReferenceComposition(png: png, origin: origin, target: target) }
+        try update {
+            guard hasAcceptedSource else { throw EditorError.staleReferenceComposition }
+            try $0.applyReferenceComposition(png: png, origin: origin, target: target)
+        }
     }
 
     /// Rotate connected descendants around the selected pivot without changing selection or radii.

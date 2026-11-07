@@ -576,15 +576,20 @@ final class EditorStore {
     var canSave: Bool { snapshot != nil && !isWorking && !stopped }
     var canEditRigSettings: Bool { canSave }
 
-    private var acceptedAnimationSource: EditorSnapshot? {
+    private var acceptedDocumentSource: EditorSnapshot? {
         guard !stopped, case .success(let accepted) = recoveryLoadResult,
             let snapshot, snapshot.documentIdentity == accepted.documentIdentity
         else { return nil }
         return snapshot
     }
 
+    var referenceCompositionTarget: ReferenceCompositionTarget? {
+        guard canSave, let source = acceptedDocumentSource else { return nil }
+        return ReferenceCompositionTarget(snapshot: source)
+    }
+
     var animationSnapshot: EditorAnimationSnapshot? {
-        guard let source = acceptedAnimationSource, let value = animationValue,
+        guard let source = acceptedDocumentSource, let value = animationValue,
             value.editor.documentIdentity == source.documentIdentity,
             value.editor.documentRevision == source.documentRevision
         else { return nil }
@@ -592,7 +597,7 @@ final class EditorStore {
     }
 
     var animationQueryIssue: (any Error)? {
-        guard let failure = animationQueryFailure, let source = acceptedAnimationSource,
+        guard let failure = animationQueryFailure, let source = acceptedDocumentSource,
             source.documentIdentity == failure.documentIdentity,
             source.documentRevision == failure.documentRevision
         else { return nil }
@@ -664,7 +669,7 @@ final class EditorStore {
     private func requestAnimations(
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorAnimationSnapshot
     ) {
-        guard !isWorking, let source = acceptedAnimationSource else { return }
+        guard !isWorking, let source = acceptedDocumentSource else { return }
         let sourceIdentity = source.documentIdentity
         let sourceRevision = source.documentRevision
         let requestID = UUID()
@@ -679,14 +684,14 @@ final class EditorStore {
             do {
                 let result = try await action(session)
                 guard !Task.isCancelled, let self, self.animationRequestID == requestID, !self.isWorking,
-                    let current = self.acceptedAnimationSource,
+                    let current = self.acceptedDocumentSource,
                     current.documentIdentity == result.editor.documentIdentity,
                     current.documentRevision == result.editor.documentRevision
                 else { return }
                 self.animationValue = result
             } catch {
                 guard !Task.isCancelled, let self, self.animationRequestID == requestID,
-                    let current = self.acceptedAnimationSource,
+                    let current = self.acceptedDocumentSource,
                     current.documentIdentity == sourceIdentity, current.documentRevision == sourceRevision
                 else { return }
                 self.animationQueryFailure = .init(
@@ -1843,7 +1848,12 @@ final class EditorStore {
     func applyReferenceComposition(
         _ result: ReferenceCompositionResult, target: ReferenceCompositionTarget, setsOrigin: Bool
     ) async -> Bool {
-        await withCheckedContinuation { continuation in
+        guard canSave else { return false }
+        guard acceptedDocumentSource != nil else {
+            errorMessage = Self.message(EditorError.staleReferenceComposition)
+            return false
+        }
+        return await withCheckedContinuation { continuation in
             perform(
                 reloadReferenceImage: true,
                 completion: { continuation.resume(returning: $0) }

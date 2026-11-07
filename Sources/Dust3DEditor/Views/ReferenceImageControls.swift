@@ -14,10 +14,10 @@ struct ReferenceImageControls: View {
             HStack {
                 Menu("Reference Image", systemImage: "photo") {
                     Button("Compose Reference Image…") {
-                        guard let snapshot = store.snapshot else { return }
-                        composition = ReferenceCompositionPresentation(snapshot: snapshot)
+                        guard let target = store.referenceCompositionTarget else { return }
+                        composition = ReferenceCompositionPresentation(target: target)
                     }
-                    .disabled(store.isWorking || store.snapshot == nil)
+                    .disabled(store.referenceCompositionTarget == nil)
                     Button("Import Reference Image…") { isImporting = true }
                         .disabled(store.isWorking || store.snapshot == nil)
                     Button("Remove Reference Image", role: .destructive) { store.removeReferenceImage() }
@@ -50,10 +50,10 @@ struct ReferenceImageControls: View {
                     "Drop one or two local images to compose a reference image. The first is Front and the second is Side."
                 )
                 .dropDestination(for: URL.self) { urls, _ in
-                    guard composition == nil, store.canSave, let snapshot = store.snapshot,
+                    guard composition == nil, let target = store.referenceCompositionTarget,
                         let drop = ReferenceCompositionDrop(urls: urls)
                     else { return false }
-                    composition = ReferenceCompositionPresentation(snapshot: snapshot, droppedSources: drop)
+                    composition = ReferenceCompositionPresentation(target: target, droppedSources: drop)
                     return true
                 } isTargeted: {
                     isDropTargeted = $0
@@ -99,8 +99,8 @@ struct ReferenceCompositionPresentation: Identifiable {
     let target: ReferenceCompositionTarget
     let droppedSources: ReferenceCompositionDrop?
 
-    init(snapshot: EditorSnapshot, droppedSources: ReferenceCompositionDrop? = nil) {
-        target = ReferenceCompositionTarget(snapshot: snapshot)
+    init(target: ReferenceCompositionTarget, droppedSources: ReferenceCompositionDrop? = nil) {
+        self.target = target
         self.droppedSources = droppedSources
     }
 }
