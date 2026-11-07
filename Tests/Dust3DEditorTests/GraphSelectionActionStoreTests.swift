@@ -262,6 +262,176 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(value.canUndo)
     }
 
+    func testRigEdgeModeKeepsEdgesLocksAndExactAssignmentUndo() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.setLock(.x, isLocked: true)
+        try await settle(value)
+        value.selectGraph(nodes: ["a"], edges: ["ab"])
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        let oldEpoch = value.rigEdgeSelectionEpoch
+        let retiredToggle = value.rigEdgeSelectionToggleAction()
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        value.setRigEdgeSelection(true)
+        try await settle(value)
+        let active = try XCTUnwrap(value.snapshot)
+        XCTAssertTrue(value.isSelectingRigEdges)
+        XCTAssertTrue(active.selectedIDs.isEmpty)
+        XCTAssertEqual(active.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(active.locks, before.locks)
+        XCTAssertEqual(active.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+        XCTAssertEqual(publications, 0)
+        XCTAssertFalse(value.admitsCanvasSelectionInput(epoch: oldEpoch, lease: nil))
+        retiredToggle(false)
+        XCTAssertTrue(value.isSelectingRigEdges)
+
+        value.select("b")
+        value.selectGraph(nodes: ["b"], edges: [], mode: .add)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertTrue(value.snapshot?.selectedIDs.isEmpty == true)
+        value.assignBoneNameAction("Spine", target: EdgeBoneAssignmentTarget(snapshot: active))()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.edges.first { $0.id == "ab" }?.boneName, "Spine")
+        XCTAssertTrue(value.isSelectingRigEdges)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testRigEdgeMarqueeKeepsNodePicksAndInferredTransformsOut() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        prepareCanvas(value)
+        value.setRigEdgeSelection(true)
+        let activeEpoch = value.rigEdgeSelectionEpoch
+        XCTAssertTrue(value.admitsCanvasSelectionInput(epoch: activeEpoch, lease: nil))
+        let projection = CanvasProjection(bounds: value.bounds, plane: .front, width: 400, height: 300)
+        let from = projection.point(for: .init(x: 0.2, y: 0.5, z: 0.5))
+        let middle = projection.point(for: .init(x: 0.3, y: 0.5, z: 0.5))
+        let endpointAndStroke = CanvasSelectionRectangle(
+            from: .init(x: from.x - 2, y: from.y - 2), to: .init(x: middle.x + 2, y: middle.y + 2))
+        value.selectMarquee(endpointAndStroke, projection: projection, mode: .replace)
+        try await settle(value)
+        XCTAssertTrue(value.snapshot?.selectedIDs.isEmpty == true)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertFalse(value.canTransform)
+        XCTAssertFalse(value.canAdjustSelectionRadius)
+        XCTAssertFalse(value.canPerformCanvasPrecision(.right))
+        value.moveSelection(by: .init(x: 1, y: 0, z: 0))
+        let second = projection.point(for: .init(x: 0.5, y: 0.5, z: 0.5))
+        let crossing = CanvasSelectionRectangle(
+            from: .init(x: second.x - 2, y: second.y - 2), to: .init(x: second.x + 2, y: second.y + 2))
+        value.selectMarquee(crossing, projection: projection, mode: .add)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab", "bc"])
+        value.selectMarquee(endpointAndStroke, projection: projection, mode: .toggle)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["bc"])
+        value.selectMarquee(crossing, projection: projection, mode: .subtract)
+        try await settle(value)
+        XCTAssertTrue(value.snapshot?.selectedEdgeIDs.isEmpty == true)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        value.setRigEdgeSelection(false)
+        XCTAssertFalse(value.admitsCanvasSelectionInput(epoch: activeEpoch, lease: nil))
+        value.setRigEdgeSelection(true)
+        XCTAssertFalse(value.admitsCanvasSelectionInput(epoch: activeEpoch, lease: nil))
+        await value.load(data: original)
+        XCTAssertFalse(value.isSelectingRigEdges)
+    }
+
+    func testRigEdgeHoverMatchesClickEligibilityAndRestoresOrdinaryHover() async throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                <node id='a' partId='p' x='.2' y='.3' z='.5' radius='.1'/>
+                <node id='b' partId='p' x='.8' y='.3' z='.5' radius='.1'/>
+                <node id='c' partId='q' x='.2' y='.7' z='.5' radius='.1'/>
+                <node id='d' partId='q' x='.8' y='.7' z='.5' radius='.1'/>
+                </nodes><edges>
+                <edge id='ab' partId='p' from='a' to='b'/>
+                <edge id='cd' partId='q' from='c' to='d'/>
+                </edges><parts><part id='p'/><part id='q' locked='true'/></parts></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: document.encoded())
+        try await settle(value)
+        let projection = CanvasProjection(bounds: value.bounds, plane: .front, width: 400, height: 300)
+        let endpoint = projection.point(for: .init(x: 0.2, y: 0.3, z: 0.5))
+        let lockedMiddle = projection.point(for: .init(x: 0.5, y: 0.7, z: 0.5))
+
+        value.updateCanvasHover(at: endpoint, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .node("a"))
+        value.updateCanvasHover(at: lockedMiddle, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .edge("cd"))
+
+        value.setRigEdgeSelection(true)
+        value.updateCanvasHover(at: endpoint, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .edge("ab"))
+        value.pickEdge(at: endpoint, projection: projection, mode: .replace)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+        value.updateCanvasHover(at: lockedMiddle, projection: projection)
+        XCTAssertNil(value.canvasGraphHover)
+        value.pickEdge(at: lockedMiddle, projection: projection, mode: .add)
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+
+        value.setRigEdgeSelection(false)
+        value.updateCanvasHover(at: endpoint, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .node("a"))
+        value.updateCanvasHover(at: lockedMiddle, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .edge("cd"))
+    }
+
+    func testKeyboardAssignmentUsesEdgeOnlyCanvasSelectionAndExactUndo() async throws {
+        let xml = String(decoding: try source().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "<canvas>", with: "<canvas rigType='Biped'>")
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8)).encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.setRigEdgeSelection(true)
+        let projection = CanvasProjection(bounds: value.bounds, plane: .front, width: 400, height: 300)
+        let endpoint = projection.point(for: .init(x: 0.2, y: 0.5, z: 0.5))
+        value.pickEdge(at: endpoint, projection: projection, mode: .replace)
+        try await settle(value)
+        let picked = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(picked.selectedEdgeIDs, ["ab"])
+        XCTAssertTrue(picked.selectedIDs.isEmpty)
+
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let browser = RigAssignmentBrowserSelection()
+        browser.setVisible(true)
+        browser.select("Spine")
+        let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: picked)
+        let command = try XCTUnwrap(browser.command(store: value, context: context))
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        XCTAssertTrue(command.invoke(in: value))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.edges.first { $0.id == "ab" }?.boneName, "Spine")
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertTrue(value.isSelectingRigEdges)
+        XCTAssertEqual(publications, 1)
+        XCTAssertTrue(value.canUndo)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testContextEntriesContainOnlyAvailableActionsAndPlaceDeleteLast() async throws {
         let value = store()
         defer { value.stop() }
