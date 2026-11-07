@@ -240,6 +240,15 @@ public actor EditorSession {
     }
     /// Replace selection with an explicit edge set, clearing node/component/part selection.
     public func selectEdges(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.selectEdges(ids) } }
+
+    package func selectEdges(_ ids: Set<String>, target: CanvasAdjustmentTarget) throws -> EditorSnapshot {
+        try update { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.selectEdges(ids)
+        }
+    }
     /// Toggle one explicit edge while preserving the other graph selections.
     public func toggleEdgeSelection(_ id: String) throws -> EditorSnapshot {
         try update { try $0.toggleEdgeSelection(id) }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Scope Edit → Select All to edges when the Edges sidebar has keyboard focus.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
