@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open multiple .ds3 documents at launch using positional paths or repeated --open-document flags.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).

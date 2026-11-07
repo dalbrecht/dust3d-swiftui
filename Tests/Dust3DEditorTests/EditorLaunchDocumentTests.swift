@@ -9,13 +9,16 @@ final class EditorLaunchDocumentTests: XCTestCase {
         let path = "/tmp/QA model.DS3"
         XCTAssertEqual(
             try EditorLaunchRequest(arguments: ["Editor", "--open-document", path]),
-            .open(URL(fileURLWithPath: path)))
+            .open([URL(fileURLWithPath: path)]))
     }
 
     func testRejectsMissingDuplicateRelativeAndInvalidDocumentArguments() {
         for arguments in [
             ["Editor", "--open-document"],
-            ["Editor", "--open-document", "/tmp/a.ds3", "--open-document", "/tmp/b.ds3"],
+            ["Editor", "--open-document", "/tmp/a.ds3", "--open-document", "/tmp/./a.ds3"],
+            ["Editor", "/tmp/a.ds3", "--open-document", "/tmp/b.txt"],
+            ["Editor", "https://example.com/a.ds3"],
+            ["Editor"] + (0...64).map { "/tmp/\($0).ds3" },
             ["Editor", "--open-document", "relative.ds3"],
             ["Editor", "--open-document", "https://example.com/a.ds3"],
             ["Editor", "--open-document", "/tmp/a.txt"],
@@ -26,6 +29,71 @@ final class EditorLaunchDocumentTests: XCTestCase {
                 XCTAssertEqual($0 as? EditorLaunchError, .invalidDocumentArgument)
             }
         }
+    }
+
+    func testMixedInputsKeepOrderAndSkipPlatformAndLegacyOptionValues() throws {
+        let arguments = [
+            "Editor", "-psn_0_12345", "-ApplePersistenceIgnoreState", "YES",
+            "relative.DS3", "-paste-xml", "/tmp/ignored.ds3",
+            "--open-document", "/tmp/second.ds3", "-toggle-color", "true",
+            "--open-document", "/tmp/third.ds3", "--", "-fourth.ds3",
+        ]
+        let paths = ["relative.DS3", "/tmp/second.ds3", "/tmp/third.ds3", "-fourth.ds3"]
+        XCTAssertEqual(
+            try EditorLaunchRequest(arguments: arguments),
+            .open(paths.map { URL(fileURLWithPath: $0).standardizedFileURL }))
+        XCTAssertEqual(
+            try EditorLaunchRequest(arguments: ["Editor", "--unknown", "/tmp/operand.ds3"]),
+            .none)
+        XCTAssertEqual(
+            try EditorLaunchRequest(
+                arguments: ["Editor", "--unknown", "/tmp/operand.ds3", "--open-document", "/tmp/explicit.ds3"]),
+            .open([URL(fileURLWithPath: "/tmp/explicit.ds3")]))
+    }
+
+    @MainActor
+    func testInvalidBatchAndUnsupportedExportNeverOpenAnyDocument() async {
+        for (arguments, expected) in [
+            (
+                ["Editor", "/tmp/first.ds3", "--open-document", "relative.ds3"],
+                EditorLaunchError.invalidDocumentArgument
+            ),
+            (["Editor", "/tmp/first.ds3", "-o", "/tmp/result.obj"], .unsupportedExportArgument),
+            (["Editor", "/tmp/first.ds3", "-output", "/tmp/result.obj"], .unsupportedExportArgument),
+        ] {
+            let opener = EditorLaunchDocumentOpener(arguments: arguments)
+            XCTAssertTrue(opener.shouldSuppressUntitledDocument)
+            var errors: [EditorLaunchError] = []
+            await opener.openRequestedDocument(
+                open: { _ in XCTFail("A rejected batch must not open any of its paths") },
+                reportError: { error in
+                    if let error = error as? EditorLaunchError { errors.append(error) }
+                })
+            XCTAssertEqual(errors, [expected])
+        }
+    }
+
+    @MainActor
+    func testOpensEveryValidatedPathOnceDespiteReentryAndIndividualFailure() async {
+        enum OpenFailure: Error { case denied }
+        let paths = ["/tmp/first.ds3", "/tmp/second.ds3", "/tmp/third.ds3"]
+        let opener = EditorLaunchDocumentOpener(arguments: ["Editor"] + paths)
+        XCTAssertTrue(opener.shouldSuppressUntitledDocument)
+        var opened: [String] = []
+        var errors: [Error] = []
+        let report: @MainActor (Error) -> Void = { errors.append($0) }
+        await opener.openRequestedDocument(
+            open: { url in
+                opened.append(url.path)
+                await opener.openRequestedDocument(
+                    open: { _ in XCTFail("Reentrant dispatch") }, reportError: report)
+                if url.path == paths[1] { throw OpenFailure.denied }
+            }, reportError: report)
+        await opener.openRequestedDocument(
+            open: { _ in XCTFail("Duplicate lifecycle callback") }, reportError: report)
+        XCTAssertEqual(opened, paths)
+        XCTAssertEqual(errors.count, 1)
+        XCTAssertTrue(errors.first is OpenFailure)
     }
 
     @MainActor

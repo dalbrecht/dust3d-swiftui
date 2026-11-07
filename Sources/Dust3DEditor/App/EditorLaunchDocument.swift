@@ -2,30 +2,67 @@ import Foundation
 
 enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
     case invalidDocumentArgument
+    case unsupportedExportArgument
 
     var errorDescription: String? {
-        "Use --open-document followed by one absolute local .ds3 file path (at most 4096 UTF-8 bytes)."
+        switch self {
+        case .invalidDocumentArgument:
+            "Supply up to 64 distinct local .ds3 paths, each at most 4096 UTF-8 bytes. Paths after --open-document must be absolute."
+        case .unsupportedExportArgument:
+            "Export at launch is unavailable. Open the document and use File > Export Geometry."
+        }
     }
 }
 
 enum EditorLaunchRequest: Sendable, Equatable {
     case none
-    case open(URL)
+    case open([URL])
 
     init(arguments: [String]) throws(EditorLaunchError) {
-        let flags = arguments.indices.dropFirst().filter { arguments[$0] == "--open-document" }
-        guard let index = flags.first else {
-            self = .none
-            return
+        var arguments = arguments.dropFirst()
+        var urls: [URL] = []
+        var seen = Set<URL>()
+        var acceptsPositionals = true
+        var parsesOptions = true
+
+        while let argument = arguments.popFirst() {
+            let path: String
+            let isExplicit = parsesOptions && argument == "--open-document"
+            if isExplicit {
+                guard let operand = arguments.popFirst() else { throw .invalidDocumentArgument }
+                path = operand
+            } else if parsesOptions && argument.hasPrefix("-") {
+                switch argument {
+                case "--":
+                    parsesOptions = false
+                    acceptsPositionals = true
+                case "-o", "-output":
+                    throw .unsupportedExportArgument
+                case "-ApplePersistenceIgnoreState", "-paste-xml", "-toggle-color":
+                    if let operand = arguments.first, !operand.hasPrefix("-") { _ = arguments.popFirst() }
+                default:
+                    // Unknown options may take a path operand. Explicit paths still work.
+                    if !argument.hasPrefix("-psn_") { acceptsPositionals = false }
+                }
+                continue
+            } else {
+                guard acceptsPositionals, (argument as NSString).pathExtension.lowercased() == "ds3" else {
+                    continue
+                }
+                path = argument
+            }
+
+            let isAbsolute = path.hasPrefix("/")
+            guard !isExplicit || isAbsolute, isAbsolute || URLComponents(string: path)?.scheme == nil,
+                path.utf8.count <= 4096, !path.utf8.contains(0), urls.count < 64
+            else { throw .invalidDocumentArgument }
+            let url = URL(fileURLWithPath: path).standardizedFileURL
+            guard url.pathExtension.lowercased() == "ds3", seen.insert(url).inserted else {
+                throw .invalidDocumentArgument
+            }
+            urls.append(url)
         }
-        guard flags.count == 1, index + 1 < arguments.count else { throw EditorLaunchError.invalidDocumentArgument }
-        let path = arguments[index + 1]
-        guard path.hasPrefix("/"), path.utf8.count <= 4096, !path.utf8.contains(0) else {
-            throw EditorLaunchError.invalidDocumentArgument
-        }
-        let url = URL(fileURLWithPath: path)
-        guard url.pathExtension.lowercased() == "ds3" else { throw EditorLaunchError.invalidDocumentArgument }
-        self = .open(url)
+        self = urls.isEmpty ? .none : .open(urls)
     }
 }
 
@@ -42,7 +79,7 @@ final class EditorLaunchDocumentOpener {
 
     init(arguments: [String]) {
         do { request = .success(try EditorLaunchRequest(arguments: arguments)) } catch {
-            request = .failure(.invalidDocumentArgument)
+            request = .failure(error)
         }
     }
 
@@ -53,8 +90,13 @@ final class EditorLaunchDocumentOpener {
         guard !hasHandledRequest else { return }
         // Claim before suspension so duplicate lifecycle callbacks cannot open twice.
         hasHandledRequest = true
-        do {
-            if case .open(let url) = try request.get() { try await open(url) }
-        } catch { reportError(error) }
+        switch request {
+        case .success(.none): break
+        case .success(.open(let urls)):
+            for url in urls {
+                do { try await open(url) } catch { reportError(error) }
+            }
+        case .failure(let error): reportError(error)
+        }
     }
 }

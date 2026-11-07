@@ -13,12 +13,18 @@ The underlying role of retained state/registration and latency is unconfirmed
 
 ## Decision
 
-Accept `--open-document` followed by one absolute local `.ds3` path at editor
-process startup. Bound it to 4096 UTF-8 bytes and reject NUL, relative paths,
-wrong extensions, missing operands and duplicate flags. Ignore unrelated system
-launch arguments. Claim each request before awaiting so lifecycle callbacks
-cannot replay it. Present invalid arguments and original document-open errors
-through native error presentation.
+Accept up to 64 distinct local `.ds3` paths in argument order. Each
+`--open-document` operand must be absolute. Positional paths can be relative
+to the process working directory. Standardize file URLs and reject duplicate
+paths, NUL, missing explicit operands, wrong explicit extensions and paths
+over 4096 UTF-8 bytes before opening any document.
+
+Skip known platform and legacy option operands. After an unknown option, use
+`--open-document` or the `--` delimiter to identify paths unambiguously.
+Report the unsupported Qt export-at-launch flags `-o` and `-output`.
+Claim the batch before awaiting the first open so lifecycle callbacks cannot
+replay it. Report each original document-open error and continue opening
+later documents.
 
 Use a narrow AppKit delegate hook to suppress untitled startup for explicit
 requests and call `NSDocumentController.openDocument`. SwiftUI `DocumentGroup`
@@ -28,7 +34,7 @@ Ordinary startup behavior remains unchanged while #170 is investigated.
 
 ## Verification and limits
 
-Pure launch contracts cover validation, single execution and original errors.
+Pure launch contracts cover batch validation, ordered single dispatch and continuation after an open error. Multi-window launch remains to be verified in the running App.
 Native QA opened ImportedSurface directly, then Capsule through standard Open.
 Fresh-start New and Open also succeeded in the regular bundle after controlled
 same-identity packaging checks. A comparison bundle worked with and without
