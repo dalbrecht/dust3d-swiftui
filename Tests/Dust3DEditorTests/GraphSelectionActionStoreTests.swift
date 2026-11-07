@@ -63,6 +63,40 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         }
         XCTFail("Context actions did not settle")
     }
+    func testEscapeCanvasActionRejectsRetiredAddAndOriginModesAndPreservesSource() async throws {
+        let original = try source().applying(.setOrigin(.init(x: 0.5, y: 0.5, z: 0.5))).encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        var writes = 0
+        value.onDocumentChanged = { _ in writes += 1 }
+
+        XCTAssertNil(value.canvasInputCancellationAction())
+        value.beginAddMode()
+        XCTAssertTrue(value.isAddingNodes)
+        let oldAdd = try XCTUnwrap(value.canvasInputCancellationAction())
+        value.cancelAddMode()
+        value.beginAddMode()
+        oldAdd()
+        XCTAssertTrue(value.isAddingNodes)
+        try XCTUnwrap(value.canvasInputCancellationAction())()
+        XCTAssertFalse(value.isAddingNodes)
+
+        value.setMovingOrigin(true)
+        XCTAssertTrue(value.isMovingOrigin)
+        let oldOrigin = try XCTUnwrap(value.canvasInputCancellationAction())
+        value.setMovingOrigin(false)
+        value.setMovingOrigin(true)
+        oldOrigin()
+        XCTAssertTrue(value.isMovingOrigin)
+        try XCTUnwrap(value.canvasInputCancellationAction())()
+        XCTAssertFalse(value.isMovingOrigin)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+        XCTAssertEqual(writes, 0)
+    }
+
     func testContextDeletePublishesOnceWithExactUndoAndIndependentWindow() async throws {
         let original = try source()
         let value = store()

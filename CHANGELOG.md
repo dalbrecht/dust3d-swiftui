@@ -22,6 +22,8 @@
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
+- Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
+
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
 - Add Command-Option-click and marquee subtraction for independent node/edge picks, preserving other selection and document history (#343).
