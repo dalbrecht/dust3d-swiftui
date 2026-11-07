@@ -17,6 +17,7 @@ final class EditorGeometryExportWorkflow {
     private let store: EditorStore
     private let destinations: any EditorGeometryExportDestinationChoosing
     private var task: Task<Completion, Never>?
+    private var cancellationID: UUID?
     private var stopped = false
     private(set) var format = DocumentExportFormat.obj
     private(set) var phase = EditorGeometryExportPhase.idle
@@ -42,9 +43,11 @@ final class EditorGeometryExportWorkflow {
             store.errorMessage = nil
         }
         phase = .choosing
+        cancellationID = UUID()
         let operation = Task<Completion, Never> { [self] in
             defer {
                 task = nil
+                cancellationID = nil
                 if stopped { phase = .idle }
             }
             do {
@@ -85,6 +88,14 @@ final class EditorGeometryExportWorkflow {
 
     private func isCurrent(identity: UUID, revision: Int) -> Bool {
         store.snapshot?.documentIdentity == identity && store.snapshot?.documentRevision == revision
+    }
+
+    func cancellationAction() -> (@MainActor () -> Void)? {
+        guard canCancel, let cancellationID else { return nil }
+        return { [weak self] in
+            guard let self, self.cancellationID == cancellationID else { return }
+            self.cancel()
+        }
     }
 
     func cancel() {
