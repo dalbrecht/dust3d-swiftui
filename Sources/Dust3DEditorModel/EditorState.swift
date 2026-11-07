@@ -151,6 +151,12 @@ public struct EditorSnapshot: Sendable {
     }
     public var selectedPart: DocumentPart? { parts.first { $0.id == selectedPartID } }
 
+    /// The part shown in the Part inspector, respecting singleton component inspector precedence.
+    package var inspectedPart: DocumentPart? {
+        guard selectedComponent == nil else { return nil }
+        return selectedPart ?? selectedLinkedComponentPart
+    }
+
     /// The sole part linked directly by the selected component rows, counting shared links once.
     public var selectedLinkedComponentPart: DocumentPart? {
         let owners = Set(selectedComponentRows.compactMap { $0.component.partID.map { Data($0.utf8) } })

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
@@ -19,6 +21,8 @@
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
 
 - Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
+
+- Click a companion profile to make it the editing pane without placing or selecting a graph element.
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
@@ -310,6 +314,8 @@
 
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
+- Reset a Model part’s saved width or thickness scale to 1 independently, with one undo step.
+
 - Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
 
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
@@ -350,11 +356,15 @@
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
 
+- Add File > Save All to save edited documents through the native document controller.
+
 - Reject native save payloads while edits are applying or their document snapshot has been superseded, preserving the native File menu and providing retry guidance.
 
 - Add a bounded composition recovery command that cancels only the newest unapplied draft when accessibility control is unavailable, preserving documents and in-flight Apply operations.
 
 - Add a native Front/Side reference-image composer with crop previews, numeric and pointer crop selection, mirror/swap, cancellable drafts and one-step undoable image/origin Apply guarded against stale documents.
+
+- Paste nodes from a Qt XML file into the focused document in one Undo step.
 
 - Accept bounded Qt snapshot XML on node Paste and publish a Qt text fallback alongside richer native clipboard data; native transfers retain embedded assets and selection metadata.
 
