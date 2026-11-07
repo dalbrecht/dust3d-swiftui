@@ -1,5 +1,6 @@
 import Dust3DDocument
 import Dust3DEditorModel
+import Foundation
 import XCTest
 
 final class PartSelectionTests: XCTestCase {
@@ -36,6 +37,27 @@ final class PartSelectionTests: XCTestCase {
         try state.selectPart(nil)
         XCTAssertNil(state.snapshot.selectedPartID)
     }
+    func testPartSelectionRejectsAnUnauthoredUnicodeAliasWithoutChangingTheEpoch() throws {
+        let authored = "e\u{301}"
+        let alias = "\u{e9}"
+        let document = try Dust3DDocument(
+            snapshotXML: Data("<canvas><parts><part id='\(authored)'/></parts></canvas>".utf8))
+        var state = try EditorState(document: document)
+        try state.selectPart(authored)
+        let epoch = state.snapshot.selectionRevision
+        XCTAssertThrowsError(try state.selectPart(alias)) {
+            guard case .missingPart(let rejected) = $0 as? DocumentError else {
+                return XCTFail("Expected the unauthored part spelling to be rejected")
+            }
+            XCTAssertEqual(Data(rejected.utf8), Data(alias.utf8))
+        }
+        XCTAssertEqual(state.snapshot.selectedPartID.map { Data($0.utf8) }, Data(authored.utf8))
+        XCTAssertEqual(state.snapshot.selectionRevision, epoch)
+        try state.selectPart(authored)
+        XCTAssertEqual(state.snapshot.selectionRevision, epoch)
+        XCTAssertEqual(state.snapshot.document.encoded(), document.encoded())
+    }
+
     func testDisabledPartsHideEditingButVisibilityDoesNotSuppressGeneration() throws {
         var state = try EditorState(document: separateParts())
         XCTAssertTrue(state.snapshot.hasEnabledGeometry)

@@ -326,6 +326,8 @@
 
 - Set a Model part’s cross-section rotation to −90°, 0°, or +90° with one click and one undo step.
 
+- Author reflected copies from the part inspector and initialize an absent canvas origin in the same Undo step.
+
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
 - Reset a Model part’s saved width or thickness scale to 1 independently, with one undo step.

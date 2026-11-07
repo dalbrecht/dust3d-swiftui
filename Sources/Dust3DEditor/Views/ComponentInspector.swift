@@ -62,10 +62,13 @@ struct ComponentInspector: View {
                     .focusedValue(\.editorTextEditing, true)
             }
             Text("\(component.childIDs.count) child components").font(.caption).foregroundStyle(.secondary)
-            if let partID = component.partID, let part = store.snapshot?.parts.first(where: { $0.id == partID }) {
+            if let partID = component.partID,
+                let part = store.snapshot?.parts.first(where: { $0.id.utf8.elementsEqual(partID.utf8) })
+            {
                 if part.target == .cutFace {
                     CutFaceReferenceCountLabel(count: part.cutFaceReferenceCount)
                 }
+                PartMirrorControls(store: store)
                 Button("Inspect Linked Part") { store.selectPart(partID) }
             } else if let kind = component.linkDataType {
                 Text("Link: \(kind) · \(component.linkData ?? "")").font(.caption).textSelection(.enabled)
