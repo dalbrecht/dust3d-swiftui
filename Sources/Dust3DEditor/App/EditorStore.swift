@@ -19,6 +19,9 @@ final class EditorStore {
                 canvasProfileMotion = nil
             }
             if oldValue?.documentIdentity != snapshot?.documentIdentity { clearCanvasHover() }
+            if case .group(let id) = addPlacementDestination, snapshot?.addPlacementGroup(id) == nil {
+                changeAddPlacementDestination(.documentRoot)
+            }
             if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
             if case .edge = canvasGraphHover, oldValue?.documentRevision != snapshot?.documentRevision {
                 clearCanvasHover()
@@ -166,10 +169,10 @@ final class EditorStore {
     var frozenAddProjection: CanvasProjection? { addPlacement.isActive ? addPlacement.projection : nil }
     var addAnchorPosition: NodePosition? { snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.value.position }
     var canBeginAddMode: Bool {
-        !isWorking && !stopped && snapshot != nil && canvasWidth > 0 && canvasHeight > 0
+        acceptedAddPlacementSource != nil && canvasWidth > 0 && canvasHeight > 0
     }
     var canPlaceAddGhost: Bool {
-        guard isAddingNodes, !isWorking, addGhostPoint != nil else { return false }
+        guard isAddingNodes, acceptedAddPlacementSource != nil, addGhostPoint != nil else { return false }
         return addPlacement.anchorID == nil
             || snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.isEditable == true
     }
@@ -198,8 +201,73 @@ final class EditorStore {
         // Mode entry rebuilds against current bounds/plane, which may change before SwiftUI renders again.
         if !projection.scale.isFinite { canvasWidth = 0 }
     }
+    private(set) var addPlacementDestination = AddPlacementDestination.selection
+    private var workingGroupRevision = UUID()
+
+    private var acceptedAddPlacementSource: EditorSnapshot? {
+        guard canSave, case .success(let accepted) = recoveryLoadResult, let snapshot,
+            accepted.documentIdentity == snapshot.documentIdentity
+        else { return nil }
+        return snapshot
+    }
+
+    var canChooseAddPlacementDestination: Bool { acceptedAddPlacementSource != nil }
+
+    var addPlacementDestinationTitle: String {
+        switch addPlacementDestination {
+        case .selection: "Selected group or root for pointer Add"
+        case .documentRoot: "Document root"
+        case .group(let id): snapshot?.addPlacementGroup(id)?.title ?? "Unavailable group"
+        }
+    }
+
+    private func capturedAddPlacementAction(
+        snapshot: EditorSnapshot?,
+        perform action: @escaping @MainActor (EditorStore, EditorSnapshot) -> Void
+    ) -> @MainActor () -> Void {
+        guard let snapshot else { return {} }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let revision = workingGroupRevision
+        return { [weak self] in
+            guard let self, self.workingGroupRevision == revision,
+                let current = self.acceptedAddPlacementSource, target.isCurrent(in: current)
+            else { return }
+            action(self, current)
+        }
+    }
+
+    func workingGroupAction(
+        _ destination: AddPlacementDestination, snapshot: EditorSnapshot
+    ) -> @MainActor () -> Void {
+        capturedAddPlacementAction(snapshot: snapshot) { store, current in
+            if case .group(let id) = destination, current.addPlacementGroup(id) == nil { return }
+            store.changeAddPlacementDestination(destination)
+        }
+    }
+
+    func addPlacementToggleAction() -> @MainActor (Bool) -> Void {
+        let begin = capturedAddPlacementAction(snapshot: acceptedAddPlacementSource) { store, _ in
+            store.beginAddMode()
+        }
+        let modeID = addModeID
+        return { [weak self] active in
+            if active {
+                begin()
+            } else if let self, self.addModeID == modeID {
+                self.cancelAddMode()
+            }
+        }
+    }
+
+    private func changeAddPlacementDestination(_ destination: AddPlacementDestination) {
+        guard addPlacementDestination != destination else { return }
+        addPlacementDestination = destination
+        workingGroupRevision = UUID()
+        cancelAddMode()
+    }
+
     func beginAddMode() {
-        guard canBeginAddMode, let snapshot else { return }
+        guard canBeginAddMode, let snapshot = acceptedAddPlacementSource else { return }
         cancelReferenceColorCommit()
         let currentCanvasProjection = CanvasProjection(
             bounds: bounds, plane: plane, width: canvasWidth, height: canvasHeight)
@@ -208,7 +276,8 @@ final class EditorStore {
         do {
             addPlacementNotice = nil
             try addPlacement.begin(
-                snapshot: snapshot, projection: currentCanvasProjection, canvasHeight: canvasHeight, parentID: nil)
+                snapshot: snapshot, projection: currentCanvasProjection, canvasHeight: canvasHeight,
+                destination: addPlacementDestination)
             addModeID = UUID()
         } catch { errorMessage = Self.message(error) }
     }
@@ -238,7 +307,9 @@ final class EditorStore {
         do { try addPlacement.updatePointer(point) } catch { errorMessage = Self.message(error) }
     }
     func placeAddNode(at point: CanvasPoint, modeID: UUID) {
-        guard modeID == addModeID, canPlaceAddGhost, let snapshot, let projection = frozenAddProjection else { return }
+        guard modeID == addModeID, canPlaceAddGhost, let snapshot = acceptedAddPlacementSource,
+            let projection = frozenAddProjection
+        else { return }
         do {
             try addPlacement.updatePointer(point)
             let candidate = snapshot.nodes.last(where: {
@@ -912,6 +983,7 @@ final class EditorStore {
         pendingWholePartPick = nil
         isSelectingGraph = false
         cancelAddMode(refit: false)
+        changeAddPlacementDestination(.selection)
         cancelAnimationQuery()
         cancelExport()
         cancelColorImagePreparation()
@@ -1932,24 +2004,39 @@ final class EditorStore {
         perform { try await $0.edit(id: id, position: position, radius: radius) }
     }
 
-    var canAddNode: Bool { !isWorking && snapshot?.canAddNode == true }
+    var canAddNode: Bool { acceptedAddPlacementSource?.canAddNode == true }
+    var canAddNewPart: Bool { acceptedAddPlacementSource != nil }
+
+    func addNodeAction(newPart: Bool = false) -> @MainActor () -> Void {
+        capturedAddPlacementAction(snapshot: acceptedAddPlacementSource) { store, _ in
+            store.addNode(newPart: newPart)
+        }
+    }
 
     func addNode(newPart: Bool = false) {
-        guard let snapshot, newPart || canAddNode else { return }
+        guard let snapshot = acceptedAddPlacementSource, newPart || snapshot.canAddNode else { return }
         let selected = newPart ? nil : snapshot.selectedNode
         let nodeID = Self.identifier()
         let partID = selected?.partID ?? Self.identifier()
         let position = newPart ? NodePosition(x: 0.5, y: 0.5, z: 0.5) : snapshot.nextNodePosition
+        let componentID = selected?.partID == nil ? Self.identifier() : nil
         var commands: [DocumentCommand] = [
             .addNode(
-                id: nodeID, partID: partID, componentID: selected?.partID == nil ? Self.identifier() : nil,
+                id: nodeID, partID: partID, componentID: componentID,
                 position: position, radius: selected?.value.radius ?? 0.1)
         ]
+        // Automatic group placement belongs to pointer Add. The Nodes menu defaults to the root.
         if let selected, selected.partID != nil {
             commands.append(.joinNodes(id: Self.identifier(), from: selected.id, to: nodeID))
+        } else if let componentID, case .group(let parentID) = addPlacementDestination {
+            guard snapshot.addPlacementGroup(parentID) != nil else { return }
+            commands.append(.reparentComponent(id: componentID, parentID: parentID))
         }
         let transaction = commands
-        perform { try await $0.apply(transaction, selecting: nodeID) }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        perform(acceptCommittedCancellation: true) {
+            try await $0.apply(transaction, selecting: nodeID, target: target)
+        }
     }
 
     func canConnectSelectedNodes(_ target: NodeConnectionTarget, ownerID: String? = nil) -> Bool {
@@ -2292,6 +2379,7 @@ final class EditorStore {
         pendingWholePartPick = nil
         isSelectingGraph = false
         cancelAddMode(refit: false)
+        changeAddPlacementDestination(.selection)
         authoringCatalog.stop()
         cancelAnimationQuery()
         cancelExport()

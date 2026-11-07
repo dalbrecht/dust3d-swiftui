@@ -5,12 +5,14 @@ import SwiftUI
 @MainActor struct EditorGetStartedActions {
     private weak var store: EditorStore?
     private let admitsInput: @MainActor () -> Bool
+    private let setAddMode: @MainActor (Bool) -> Void
 
     init?(
         store: EditorStore, fileIdentity: UUID, ownsWindow: @escaping @MainActor () -> Bool = { true }
     ) {
         guard ownsWindow(), let admitsSource = store.getStartedAdmission(fileIdentity: fileIdentity) else { return nil }
         self.store = store
+        setAddMode = store.addPlacementToggleAction()
         admitsInput = { ownsWindow() && admitsSource() }
     }
 
@@ -26,7 +28,7 @@ import SwiftUI
     }
 
     func drawFirstNode() {
-        if canDrawFirstNode { store?.beginAddMode() }
+        if canDrawFirstNode { setAddMode(true) }
     }
 }
 
