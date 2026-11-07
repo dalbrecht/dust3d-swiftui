@@ -4,8 +4,14 @@ import SwiftUI
 
 struct PartMirrorControls: View {
     let store: EditorStore
+    var graphTarget: GraphModelPartTarget? = nil
+
     var body: some View {
-        if let snapshot = store.snapshot, let part = snapshot.mirrorInspectorPart {
+        if let graphTarget {
+            if let part = graphTarget.part {
+                editor(for: part, target: PartMirrorTarget(graphTarget: graphTarget))
+            }
+        } else if let snapshot = store.snapshot, let part = snapshot.mirrorInspectorPart {
             editor(for: part, target: PartMirrorTarget(snapshot: snapshot, partID: part.id))
         }
     }
