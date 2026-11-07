@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- Support Qt’s -toggle-color launch option for newly opened document windows.
-
-- Open multiple .ds3 documents at launch using positional paths or repeated --open-document flags.
+- Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
@@ -190,6 +188,10 @@
 - Reject export targets hard-linked to a document opened through a symlink before encoding or publication (#146).
 
 - Add an injectable document-snapshot export file service with source protection, atomic publication and retained diagnostics; native encoder/UI adoption remains pending (#146).
+
+- Open multiple .ds3 documents at launch using positional paths or repeated --open-document flags.
+
+- Support Qt’s -toggle-color launch option for newly opened document windows.
 
 - Add an explicit-fixture QA launcher using process-local AppKit restoration isolation while preserving normal launches and saved state (#257).
 
