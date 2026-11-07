@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
+
+- Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
+
 - Add Command-Option-click and marquee subtraction for independent node/edge picks, preserving other selection and document history (#343).
 
 - Add global Hide All Parts in Canvas and group visibility commands under Canvas > Part Visibility, preserving one-step Undo and mesh inputs (#343).
@@ -13,6 +17,8 @@
 - Reveal selected generated joints by expanding their hierarchy ancestors, with window-owned disclosure and guarded scrolling (#367).
 
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
+
+- Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
@@ -79,6 +85,8 @@
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
 
+- Mirror live node and origin movement in the companion profile during canvas edits (#388).
+
 - Add shared Weights From editing across selected wrapping groups with common target eligibility, exact retained references and one atomic Undo.
 
 - Add explicit multi-group wrapping and surface-finish edits with mixed values, captured selection protection and one atomic Undo.
@@ -106,6 +114,8 @@
 - Apply or clear color across selected components with the native color picker and one-step Undo.
 
 - Drag component rows before or after siblings, into groups, or to the document root.
+
+- Select all visible component rows with Command-A when the component sidebar has focus (#386).
 
 - Place selected components before or after a sibling from the inspector, with one-step Undo.
 
@@ -296,13 +306,19 @@
 
 - Add native cut-face presets, searchable linked-profile selection and half-turn rotation drafts with preserved unsupported/unresolved source metadata.
 
+- Set a Model part’s cross-section rotation to −90°, 0°, or +90° with one click and one undo step.
+
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
 - Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
 
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
 
+- Show the built-in cross-section outlines next to their names in the native preset picker.
+
 - Add lossless part cut-face preset/profile and rotation commands, cycle-safe history and regenerated previews; native controls follow separately.
+
+- Show how many part defaults and node overrides reference a Cut Face profile in the Part and linked Component inspectors.
 
 - Add bounded, lossless part width/thickness and unified-deformation commands with exact undo/redo, preserved fine scales and regenerated previews; native controls follow separately.
 
@@ -329,6 +345,8 @@
 - Add undoable component sibling ordering (Up, Down, Top and Bottom), with boundary availability, lossless archive preservation and mesh regeneration.
 
 - Add an ordered, collapsible component sidebar and name inspector with independent selection, linked-part inspection, undo/redo and lossless saving.
+
+- Keep the current Add chain and radius when switching the editing profile in the Side by Side workspace.
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
 

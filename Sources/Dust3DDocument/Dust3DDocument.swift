@@ -127,6 +127,9 @@ public enum DocumentCommand: Sendable {
     case setPartName(id: String, name: String)
     /// Rename one component independently of its linked part; empty input removes its name.
     case setComponentName(id: String, name: String)
+    /// Replace the final equipment suffix on a linked Model component. Blank input removes it.
+    /// The exact component ID selects the owner; the trimmed slot is stored as entered, for example `armor/2`.
+    case setComponentEquipmentSlot(id: String, slot: String)
     /// Set or remove one explicit component color without changing descendants or unknown metadata.
     /// - Parameters: `id` is the exact component identity; `color` is bounded channels or nil to remove.
     /// Throws `missingComponent` for an absent identity; semantic no-ops retain original archive bytes.
@@ -784,6 +787,11 @@ public struct Dust3DDocument: Sendable {
                 .setComponentColorImage(id: id, imageID: imageID))
         case .setComponentColor(let id, let color):
             guard try ComponentColorValue.set(model, id: id, color: color) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentEquipmentSlot(let id, let slot):
+            guard try ComponentHierarchy.setEquipmentSlot(model, parts: contents.parts, id: id, slot: slot) else {
+                return self
+            }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }
@@ -1639,6 +1647,9 @@ public struct Dust3DDocument: Sendable {
         func isTrue(_ value: String?) -> Bool { value == "true" || value == "True" || value == "1" }
         let partElements = partContainers.first?.elements(forName: "part") ?? []
         guard partElements.count <= 10_000 else { throw DocumentError.limitExceeded }
+        let elements = try Self.nodes(xml)
+        guard elements.count <= 10_000 else { throw DocumentError.limitExceeded }
+        let cutFaceReferenceCounts = CutFaceLinks.referenceCounts(parts: partElements, nodes: elements)
         for (index, part) in partElements.enumerated() {
             guard let id = part.attribute(forName: "id")?.stringValue, !id.isEmpty, parts[id] == nil else {
                 throw DocumentError.invalidNode
@@ -1651,12 +1662,11 @@ public struct Dust3DDocument: Sendable {
                 modifiers: PartModifiers.values(part), deformationScales: PartDeformation.scales(part),
                 isDeformationUnified: PartDeformation.unified(part), cutFace: PartCutFace.selection(part),
                 cutRotation: PartCutFace.rotation(part), target: PartTargetMetadata.value(part),
-                isLoopInteriorFilled: PartLoopInterior.value(part), materials: PartMaterial.values(part))
+                isLoopInteriorFilled: PartLoopInterior.value(part), materials: PartMaterial.values(part),
+                cutFaceReferenceCount: cutFaceReferenceCounts[id, default: 0])
             parts[id] = value
             orderedParts.append(value)
         }
-        let elements = try Self.nodes(xml)
-        guard elements.count <= 10_000 else { throw DocumentError.limitExceeded }
         let nodes = try elements.enumerated().map { index, node -> DocumentNode in
             guard let id = node.attribute(forName: "id")?.stringValue else { throw DocumentError.invalidNode }
             let partID = node.attribute(forName: "partId")?.stringValue

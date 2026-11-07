@@ -154,7 +154,20 @@ final class EditorStore {
     ) {
         guard ownsCanvasProfile(lease), lease == nil || projection.plane == plane else { return }
         canvasGeometryUsesProfileLease = lease != nil
-        if isAddingNodes && (canvasWidth != width || canvasHeight != height) { cancelAddMode() }
+        if isAddingNodes, frozenAddProjection == nil {
+            guard projection.plane == plane, width.isFinite, width > 0, height.isFinite, height > 0,
+                let snapshot
+            else { return }
+            do {
+                try addPlacement.reproject(snapshot: snapshot, projection: projection, canvasHeight: height)
+            } catch {
+                cancelAddMode()
+                errorMessage = Self.message(error)
+                return
+            }
+        } else if isAddingNodes && (canvasWidth != width || canvasHeight != height) {
+            cancelAddMode()
+        }
         updatePrecisionCanvasIdentity(projection: projection, width: width, height: height)
         canvasWidth = width
         setCanvasHeight(height)
@@ -408,7 +421,9 @@ final class EditorStore {
         set {
             guard newValue != plane else { return }
             canvasProfiles.activate(newValue)
-            resetCanvasProfileContext(clearGeometry: canvasGeometryUsesProfileLease)
+            resetCanvasProfileContext(
+                clearGeometry: canvasGeometryUsesProfileLease,
+                transferAdd: canvasProfiles.isDualProfile && !isWorking && addPlacementRequestID == nil)
         }
     }
 
@@ -449,14 +464,19 @@ final class EditorStore {
         canvasProfileMotion = nil
     }
 
-    private func resetCanvasProfileContext(clearGeometry: Bool) {
+    private func resetCanvasProfileContext(clearGeometry: Bool, transferAdd: Bool = false) {
         canvasProfileMotion = nil
         rotationInputContextID = UUID()
         precisionLayoutEpoch = UUID()
         precisionCanvasIdentity = nil
         clearReferenceColorCanvasContext()
         setReferenceColorInteractionActive(false)
-        cancelAddMode()
+        if transferAdd && isAddingNodes {
+            addPlacement.suspendProjectionForProfileChange()
+            addModeID = UUID()
+        } else {
+            cancelAddMode()
+        }
         cancelOriginDrag()
         if clearGeometry {
             canvasWidth = 0
@@ -1045,6 +1065,16 @@ final class EditorStore {
         guard let value = ComponentMeshSmoothingInput.value(text) else { return {} }
         return componentMeshAction(.smoothCutoffDegrees(value), target: target)
     }
+    func canSelectAllVisibleComponents(_ target: ComponentSidebarSelectAllTarget) -> Bool {
+        guard !stopped, !isWorking, let snapshot, !target.ids.isEmpty else { return false }
+        return target.context.isCurrent(in: snapshot)
+    }
+
+    func selectAllVisibleComponents(_ target: ComponentSidebarSelectAllTarget) {
+        guard canSelectAllVisibleComponents(target) else { return }
+        perform(commits: false) { try await $0.selectComponents(target.ids, target: target.context) }
+    }
+
     func selectComponents(_ ids: Set<String>) { perform(commits: false) { try await $0.selectComponents(ids) } }
     func selectOnlyComponent(_ id: String) {
         guard snapshot?.selectedComponentIDs.contains(id) == true else { return }
@@ -1293,6 +1323,17 @@ final class EditorStore {
         }
         perform { try await $0.apply([.setPartCutRotation(id: id, rotation: value)]) }
     }
+    func partCutRotationPresetAction(_ preset: PartCutRotationPreset, partID: String) -> @MainActor () -> Void {
+        guard let snapshot, snapshot.allowsCutRotationPreset(for: partID) else { return {} }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        return { [weak self] in
+            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+                target.isCurrent(in: current)
+            else { return }
+            self.perform { try await $0.setPartCutRotationPreset(preset, partID: partID, target: target) }
+        }
+    }
+
     func setPartMaterial(_ id: String, property: PartMaterialProperty, value: String) {
         guard !isWorking, !stopped else { return }
         guard let scalar = EngineScalar.parse(value, in: property.bounds) else {
@@ -1448,6 +1489,11 @@ final class EditorStore {
     func renameComponent(_ id: String, name: String) {
         perform { try await $0.apply([.setComponentName(id: id, name: name)]) }
     }
+    func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) {
+        guard !isWorking, !stopped, let snapshot, target.isCurrent(in: snapshot) else { return }
+        perform { try await $0.setComponentEquipmentSlot(slot, target: target) }
+    }
+
     func selectPart(_ id: String?) { perform(commits: false) { try await $0.selectPart(id) } }
     func setOrigin(x: String, y: String, z: String) {
         guard !isWorking, !stopped else { return }
@@ -1492,15 +1538,28 @@ final class EditorStore {
         perform { try await $0.bendEndpoint(target, toward: destination) }
     }
 
-    func moveSelection(by delta: NodePosition) { perform { try await $0.moveSelection(by: delta) } }
+    func moveSelection(by delta: NodePosition) {
+        guard canTransform, let snapshot,
+            let effective = SelectionTransformInput.move(delta: delta, locks: snapshot.locks)
+        else { return }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        perform { try await $0.moveSelection(by: effective, target: target) }
+    }
+
     func scaleSelection(positionFactor: Double, radiusFactor: Double) {
-        perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
+        guard canTransform, let snapshot,
+            let effective = SelectionTransformInput.scale(
+                positionFactor: positionFactor, radiusFactor: radiusFactor, locks: snapshot.locks)
+        else { return }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        perform {
+            try await $0.scaleSelection(
+                positionFactor: effective.positionFactor, radiusFactor: effective.radiusFactor, target: target)
+        }
     }
     var canTransform: Bool { !isWorking && snapshot?.transformNodes.contains(where: \.isEditable) == true }
     func canTransformSelection(_ transform: SelectionTransform) -> Bool {
-        guard !isWorking, let snapshot, !transform.usesOrigin || snapshot.origin != nil else { return false }
-        let nodes = transform == .exchangeXZ ? snapshot.selectedNodes : snapshot.transformNodes
-        return nodes.contains(where: \.isEditable)
+        !isWorking && !stopped && snapshot.map { transform.canApply(in: $0) } == true
     }
     func canPerformCanvasPrecision(_ action: CanvasPrecisionAction) -> Bool {
         guard !isWorking, !stopped, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
@@ -1572,12 +1631,13 @@ final class EditorStore {
             }
         }
     }
-    var canRotateCanvasSelection: Bool {
-        guard !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot,
-            snapshot.transformNodes.contains(where: \.isEditable)
-        else { return false }
-        return !locks.contains(.y) || !locks.contains(plane == .front ? .x : .z)
+    var canRotateCanvasSelection: Bool { canRotateCanvasSelection(in: plane) }
+
+    private func canRotateCanvasSelection(in plane: EditingPlane) -> Bool {
+        guard !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot else { return false }
+        return snapshot.canRotateSelection(in: plane)
     }
+
     func canvasRotationAction(degrees: Double) -> @MainActor () -> Void {
         let commit = canvasRotationHandler()
         return { commit(degrees) }
@@ -1599,9 +1659,9 @@ final class EditorStore {
         }
     }
     func rotateCanvasSelection(degrees: Double, target: CanvasAdjustmentTarget? = nil, plane: EditingPlane? = nil) {
-        guard canRotateCanvasSelection, let snapshot else { return }
-        let capturedTarget = target ?? CanvasAdjustmentTarget(snapshot: snapshot)
         let capturedPlane = plane ?? self.plane
+        guard canRotateCanvasSelection(in: capturedPlane), let snapshot else { return }
+        let capturedTarget = target ?? CanvasAdjustmentTarget(snapshot: snapshot)
         perform { try await $0.rotateSelection(degrees: degrees, plane: capturedPlane, target: capturedTarget) }
     }
     @discardableResult
@@ -1619,7 +1679,10 @@ final class EditorStore {
     }
     var canRotateDescendants: Bool { !isWorking && snapshot?.canRotateDescendants == true }
     func rotateDescendants(_ rotation: DescendantRotation) { perform { try await $0.rotateDescendants(rotation) } }
-    func transformSelection(_ transform: SelectionTransform) { perform { try await $0.transformSelection(transform) } }
+    func transformSelection(_ transform: SelectionTransform) {
+        guard canTransformSelection(transform) else { return }
+        perform { try await $0.transformSelection(transform) }
+    }
     var canReduceSelectedNodes: Bool { !isWorking && snapshot?.canReduceSelectedNodes == true }
 
     func reduceSelectedNodes() {
