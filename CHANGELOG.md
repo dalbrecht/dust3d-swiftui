@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+- Browse a component group’s direct children and navigate back through its breadcrumb.
+
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
+
+- Select edges without moving or selecting nodes while preparing a bone assignment.
 
 - Open a local .ds3 document by dropping it into the editor without replacing the current document.
 
@@ -25,6 +29,8 @@
 - Keep a working component group as the destination for new parts while graph selection changes.
 
 - Paste native or Qt clipboard nodes and Qt XML files into an explicitly chosen working group.
+
+- Start a blank document by drawing a first node, composing a reference image, or opening an existing document from the canvas.
 
 - Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
 

@@ -30,7 +30,9 @@ struct PartInspector: View {
             Button("Select Whole Part", action: store.wholePartSelectionAction(.part(part.id)))
                 .disabled(!store.canSelectWholePart(.part(part.id)))
             Button("Select Part Nodes", action: store.partNodesSelectionAction(part.id))
-                .disabled(store.snapshot?.nodes.contains(where: { $0.partID == part.id }) != true)
+                .disabled(
+                    store.isSelectingRigEdges || store.snapshot?.nodes.contains(where: { $0.partID == part.id }) != true
+                )
             Text(
                 "Visibility hides editing overlays. Disabled parts are excluded from the mesh. These controls remain available to restore hidden, locked or disabled parts. Each change is one undo step."
             )
