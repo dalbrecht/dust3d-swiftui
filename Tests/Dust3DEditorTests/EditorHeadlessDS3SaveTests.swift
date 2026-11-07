@@ -18,6 +18,35 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         }
     }
 
+    func testMixedRigListAndSaveDeclinesBeforeReadingOrWriting() async throws {
+        let directory = try temporaryDirectory()
+        let source = directory.appendingPathComponent("source.ds3")
+        let destination = directory.appendingPathComponent("output.ds3")
+        let original = try archive().encoded()
+        try original.write(to: source)
+        let arguments = ["Editor", source.path, "-o", destination.path, "-list-rigs"]
+
+        var diagnostics: [String] = []
+        let listStatus = EditorRigListCommand.run(
+            arguments: arguments,
+            load: { _ in
+                XCTFail("Mixed invocation read a rig template")
+                return nil
+            },
+            stdout: { _ in XCTFail("Mixed invocation published a rig list") },
+            stderr: { diagnostics.append($0) })
+        XCTAssertEqual(listStatus, 2)
+        XCTAssertEqual(diagnostics.count, 1)
+        XCTAssertTrue(diagnostics.first?.contains("-list-rigs") == true)
+
+        let save = await run(arguments)
+        XCTAssertNil(save.status)
+        XCTAssertTrue(save.output.isEmpty)
+        XCTAssertTrue(save.errors.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+        XCTAssertEqual(try Data(contentsOf: source), original)
+    }
+
     func testSavePreservesSourceBytesAndContinuesAfterOneDestinationFails() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
