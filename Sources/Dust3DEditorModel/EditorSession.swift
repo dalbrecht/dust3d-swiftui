@@ -795,10 +795,19 @@ public actor EditorSession {
 
     /// Atomically apply a graph transaction; cancellation is checked before it begins.
     public func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws -> EditorSnapshot {
-        try update { state in
+        try apply(commands, selecting: id, target: nil)
+    }
+
+    package func apply(
+        _ commands: [DocumentCommand], selecting id: String?, target: CanvasAdjustmentTarget?
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: target != nil) { state in
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw EditorError.staleCanvasAdjustment
+            }
             let prepared = try GraphCommandPreparation.normalizingDeletions(commands, document: state.snapshot.document)
             try state.apply(prepared, selecting: id)
-        }
+        }.snapshot
     }
 
     /// Commit a projected origin gesture only while its document, revision and locks still match.
@@ -945,6 +954,7 @@ public actor EditorSession {
     public func placeAddNode(_ request: AddPlacementRequest) throws -> AddPlacementReceipt {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
+        guard hasAcceptedSource else { throw EditorError.staleAddPlacement }
         let result = try next.placeAddNode(
             request,
             identities: .init(
