@@ -6,6 +6,9 @@ struct OriginHandle: View {
     let store: EditorStore
     let origin: NodePosition
     let projection: CanvasProjection
+    var profileLease: UUID? = nil
+
+    private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
 
     var body: some View {
         let point = projection.point(for: origin)
@@ -22,11 +25,12 @@ struct OriginHandle: View {
             .overlay {
                 NodePointerSurface(
                     enabled: store.isMovingOrigin && !store.isWorking, canDrag: true,
-                    begin: { store.beginOriginDrag(token: $0, projection: projection) },
-                    update: { store.updateOriginDrag(token: $0, translation: $1) },
-                    finish: { store.finishOriginDrag(token: $0, translation: $1) },
+                    begin: { if ownsProfile { store.beginOriginDrag(token: $0, projection: projection) } },
+                    update: { if ownsProfile { store.updateOriginDrag(token: $0, translation: $1) } },
+                    finish: { if ownsProfile { store.finishOriginDrag(token: $0, translation: $1) } },
                     cancel: { store.cancelOriginDrag(token: $0) }, select: {}, toggle: {},
-                    precisionKey: precisionKey, isRectangular: true, clickCancel: { store.endOriginClick(token: $0) }
+                    precisionKey: { ownsProfile && precisionKey($0) }, isRectangular: true,
+                    clickCancel: { store.endOriginClick(token: $0) }
                 )
             }
             .position(x: point.x, y: point.y)
