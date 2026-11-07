@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
+
 - Browse a component group’s direct children and navigate back through its breadcrumb.
 
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.

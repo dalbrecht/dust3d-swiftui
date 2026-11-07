@@ -63,6 +63,105 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         }
         XCTFail("Context actions did not settle")
     }
+    func testCanvasPartStateHoverFirstThenUnambiguousFallbackWithExactUndo() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+        value.updateCanvasHover(at: projection.point(for: .init(x: 0.3, y: 0.5, z: 0.5)), projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .edge("ab"))
+        var writes = 0
+        value.onDocumentChanged = { _ in writes += 1 }
+        let lock = CanvasPrecisionKeyInput(keyCode: 37, characters: "l", modifiers: [])
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(lock))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.isLocked, true)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "q" }?.isLocked, false)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+        XCTAssertEqual(writes, 1)
+
+        value.clearCanvasHover()
+        let disable = try XCTUnwrap(value.canvasPartStateAction(.disabled))
+        disable()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "q" }?.isDisabled, true)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+        XCTAssertEqual(writes, 2)
+        let enable = CanvasPrecisionKeyInput(keyCode: 38, characters: "j", modifiers: [])
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(enable))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "q" }?.isDisabled, false)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+        XCTAssertEqual(writes, 3)
+        for _ in 0..<3 {
+            value.undo()
+            try await settle(value)
+        }
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testCanvasPartStateRejectsRetainedHoverAndToolEpochAndIgnoresRepeat() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.selectGraph(nodes: ["a", "x"], edges: [])
+        try await settle(value)
+        XCTAssertNil(value.canvasPartStateAction(.locked))
+        value.setHoveredNode("a")
+        let stale = value.canvasPartStateKeyHandler(profileLease: nil)
+        let lock = CanvasPrecisionKeyInput(keyCode: 37, characters: "l", modifiers: [])
+        value.setHoveredNode("x")
+        value.setHoveredNode("a")
+        XCTAssertFalse(stale(lock))
+        let current = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertFalse(current(.init(keyCode: 37, characters: "l", modifiers: [.command])))
+        XCTAssertTrue(current(.init(keyCode: 37, characters: "L", modifiers: [.capsLock], isRepeat: true)))
+        XCTAssertFalse(value.canUndo)
+        value.setRigEdgeSelection(true)
+        try await settle(value)
+        XCTAssertFalse(current(lock))
+        XCTAssertNil(value.canvasPartStateAction(.locked))
+        value.setRigEdgeSelection(false)
+        value.setHoveredNode("a")
+        let retained = try XCTUnwrap(value.canvasPartStateAction(.locked))
+        await value.load(data: Data("broken".utf8))
+        retained()
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testCanvasPartStateRetiresOldPaneAndStaysUnavailableDuringAdd() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        value.setDualCanvasProfile(true)
+        prepareCanvas(value)
+        value.select("a")
+        try await settle(value)
+        let frontLease = value.canvasProfiles.lease
+        let old = value.canvasPartStateKeyHandler(profileLease: frontLease)
+        let lock = CanvasPrecisionKeyInput(keyCode: 37, characters: "l", modifiers: [])
+        let sideLease = try XCTUnwrap(value.switchSelectedCanvasProfile(expectedLease: frontLease))
+        XCTAssertFalse(old(lock))
+        prepareCanvas(value)
+        let side = value.canvasPartStateKeyHandler(profileLease: sideLease)
+        value.beginAddMode()
+        XCTAssertTrue(value.isAddingNodes)
+        XCTAssertFalse(side(lock))
+        XCTAssertNil(value.canvasPartStateAction(.locked))
+        value.cancelAddMode()
+        XCTAssertFalse(side(lock))
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testContextDeletePublishesOnceWithExactUndoAndIndependentWindow() async throws {
         let original = try source()
         let value = store()

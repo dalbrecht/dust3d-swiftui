@@ -196,6 +196,9 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.wholePartActionTarget.map { store?.canSelectWholePart($0) == true } != true)
                 Button("Clear Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
+                CanvasPartStateMenu(store: store) { [capturedStore = store, capturedWindow = NSApp.keyWindow] in
+                    store === capturedStore && NSApp.keyWindow === capturedWindow && rigAssignmentFocus.allowsAssignment
+                }
                 Menu("Part Visibility") {
                     CanvasHideAllPartsButton(store: store)
                     CanvasPartIsolationButtons(store: store)

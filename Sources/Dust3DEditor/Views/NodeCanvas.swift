@@ -33,7 +33,10 @@ struct NodeCanvas: View {
             let graphActions = GraphSelectionMenuActions(store: store, admitsInput: admitsInput)
             let cancelAddInput = store.canvasAddCancellationAction()
             let handlePrecisionKey = store.canvasPrecisionKeyHandler()
-            let precisionKey: (CanvasPrecisionKeyInput) -> Bool = { admitsInput() && handlePrecisionKey($0) }
+            let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
+            let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
+                admitsInput() && (handlePartStateKey($0) || handlePrecisionKey($0))
+            }
             let precisionActions = CanvasPrecisionActions(store: store)
             let nodes = store.snapshot?.nodes ?? []
             let boneHighlights = store.highlightedBoneEdgeIDs

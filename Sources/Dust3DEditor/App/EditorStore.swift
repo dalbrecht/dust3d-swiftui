@@ -404,7 +404,12 @@ final class EditorStore {
     }
     private(set) var canvasHeight: Double = 0
     @ObservationIgnored private var canvasGraphHoverCache = CanvasGraphHover.Cache()
-    private(set) var canvasGraphHover: CanvasGraphHover?
+    private var canvasPartStateHoverEpoch = UUID()
+    private(set) var canvasGraphHover: CanvasGraphHover? {
+        didSet {
+            if oldValue != canvasGraphHover { canvasPartStateHoverEpoch = UUID() }
+        }
+    }
     var hoveredNodeID: String? {
         if case .node(let id) = canvasGraphHover { return id }
         return nil
@@ -1930,6 +1935,54 @@ final class EditorStore {
     func renamePart(_ id: String, name: String) {
         perform { try await $0.apply([.setPartName(id: id, name: name)]) }
     }
+    func canvasPartStateAction(_ property: PartStateProperty) -> (@MainActor () -> Void)? {
+        let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
+        guard let handle = canvasPartStateHandler(profileLease: lease) else { return nil }
+        return { _ = handle(property, false) }
+    }
+
+    func canvasPartStateKeyHandler(profileLease: UUID?) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
+        let handle = canvasPartStateHandler(profileLease: profileLease)
+        return { input in
+            guard let property = input.partStateProperty, let handle else { return false }
+            return handle(property, input.isRepeat)
+        }
+    }
+
+    private var canToggleCanvasPartState: Bool {
+        canSave && !isSelectingRigEdges && !isAddingNodes && !isMovingOrigin
+            && !referenceColorInteractionActive && canvasProfileMotion == nil
+    }
+
+    private func canvasPartStateHandler(profileLease: UUID?) -> (@MainActor (PartStateProperty, Bool) -> Bool)? {
+        guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
+            let context = canvasRotationContext
+        else { return nil }
+        let hover: PartGraphTarget? =
+            switch canvasGraphHover {
+            case .node(let id): .node(id)
+            case .edge(let id): .edge(id)
+            case nil: nil
+            }
+        guard let target = CanvasPartStateTarget(snapshot: snapshot, hovered: hover) else { return nil }
+        let hoverEpoch = canvasPartStateHoverEpoch
+        let layout = precisionLayoutEpoch
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] property, isRepeat in
+            guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
+                canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
+                precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction,
+                property == .locked || property == .disabled
+            else { return false }
+            if !isRepeat {
+                perform(acceptCommittedCancellation: true) {
+                    try await $0.toggleCanvasPartState(property, target: target)
+                }
+            }
+            return true
+        }
+    }
+
     func setPartState(_ id: String, property: PartStateProperty, value: Bool) {
         perform {
             try await $0.apply([.setPartState(id: id, property: property, value: value)])

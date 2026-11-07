@@ -555,6 +555,18 @@ public actor EditorSession {
     }
 
     /// Change one flag on directly linked parts from the captured component selection.
+    package func toggleCanvasPartState(
+        _ property: PartStateProperty, target: CanvasPartStateTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), property == .locked || property == .disabled
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([
+                .setPartsState(ids: [target.part.id], property: property, value: !target.part.state(property))
+            ])
+        }.snapshot
+    }
+
     public func setSelectedComponentPartState(
         _ property: PartStateProperty, value: Bool, target: ComponentMeshSelectionTarget
     ) throws -> EditorSnapshot {
