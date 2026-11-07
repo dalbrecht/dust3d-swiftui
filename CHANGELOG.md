@@ -12,6 +12,8 @@
 
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
+- Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
+
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
