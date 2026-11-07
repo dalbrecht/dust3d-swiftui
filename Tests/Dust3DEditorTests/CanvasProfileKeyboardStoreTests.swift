@@ -122,6 +122,31 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.canUndo, before.canUndo)
     }
 
+    func testRevealAvailabilityDoesNotCarryUniqueOwnerAcrossReplacement() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let document = try makeDocument()
+        await store.load(data: document.encoded())
+        try await settle(store)
+        let first = try XCTUnwrap(store.snapshot)
+        let reveal = try XCTUnwrap(
+            store.revealOwningComponentAction(.node("a"), context: PartGraphSelectionContext(snapshot: first)))
+        let xml = String(decoding: document.modelXML, as: UTF8.self)
+            .replacingOccurrences(
+                of: "</components>", with: "<component id='duplicate' linkData='p' linkDataType='partId'/></components>"
+            )
+        let replacement = try Dust3DDocument(snapshotXML: Data(xml.utf8))
+        await store.load(data: replacement.encoded())
+        try await settle(store)
+        let context = PartGraphSelectionContext(snapshot: try XCTUnwrap(store.snapshot))
+        XCTAssertNil(store.revealOwningComponentAction(.node("a"), context: context))
+        XCTAssertNil(store.revealOwningComponentAction(.edge("ab"), context: context))
+        reveal()
+        XCTAssertFalse(store.isWorking)
+        XCTAssertNil(store.snapshot?.componentRevealHint)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testEdgeSidebarActionsRejectReplacedSourceAndSubtractOnlyTheirEdge() async throws {
         let store = makeStore()
         defer { store.stop() }
