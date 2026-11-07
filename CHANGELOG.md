@@ -304,11 +304,15 @@
 
 - Add native cut-face presets, searchable linked-profile selection and half-turn rotation drafts with preserved unsupported/unresolved source metadata.
 
+- Set a Model part’s cross-section rotation to −90°, 0°, or +90° with one click and one undo step.
+
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
 - Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
 
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
+
+- Show the built-in cross-section outlines next to their names in the native preset picker.
 
 - Add lossless part cut-face preset/profile and rotation commands, cycle-safe history and regenerated previews; native controls follow separately.
 
