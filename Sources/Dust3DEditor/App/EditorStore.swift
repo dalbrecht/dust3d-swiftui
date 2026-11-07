@@ -1458,6 +1458,17 @@ final class EditorStore {
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
+    func canEditGraphPartShape(_ target: GraphPartShapeTarget) -> Bool {
+        !isWorking && acceptedAnimationSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func setGraphPartShape(_ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget) {
+        guard canEditGraphPartShape(target) else { return }
+        perform(acceptCommittedCancellation: true) {
+            try await $0.setGraphPartShape(property, value: value, target: target)
+        }
+    }
+
     func canAssignBoneName(_ name: String, target: EdgeBoneAssignmentTarget) -> Bool {
         guard !stopped, !isWorking, let snapshot else { return false }
         return target.isCurrent(in: snapshot) && target.hasChanges(name: name)

@@ -6,6 +6,8 @@
 
 - Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
 
+- Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
+
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
