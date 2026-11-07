@@ -25,6 +25,19 @@ public struct DocumentComponent: Identifiable, Equatable, Sendable {
     public let hasChildXML: Bool
     public let linkDataType: String?
     public let linkData: String?
+    /// Qt stores the equipment assignment after the final space-at marker.
+    public var equipmentSlot: String? {
+        equipmentMarker.map { String(name[$0.upperBound...]) }
+    }
+
+    var equipmentBaseName: String {
+        equipmentMarker.map { String(name[..<$0.lowerBound]) } ?? name
+    }
+
+    private var equipmentMarker: Range<String.Index>? {
+        name.range(of: " @", options: .backwards)
+    }
+
     /// A supported unlinked group, including an empty group. Unknown links remain opaque.
     public var isGroup: Bool { (linkDataType ?? "").isEmpty && (linkData ?? "").isEmpty }
     public var partID: String? { linkDataType == "partId" ? linkData : nil }
@@ -81,12 +94,7 @@ enum ComponentHierarchy {
     }
 
     static func rename(_ model: XMLDocument, id: String, name: String) throws -> Bool {
-        guard name.utf8.count <= 1024,
-            name.unicodeScalars.allSatisfy({
-                $0.value != 0xFFFE && $0.value != 0xFFFF && !CharacterSet.controlCharacters.contains($0)
-                    && !CharacterSet.newlines.contains($0)
-            })
-        else { throw DocumentError.invalidComponentName }
+        try validateName(name)
         let components = try read(model)
         guard let component = components.first(where: { $0.id == id }),
             let element = PartSplitting.componentElements(model).first(where: {
@@ -95,6 +103,38 @@ enum ComponentHierarchy {
         else { throw DocumentError.missingComponent(id) }
         let value = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard component.name != value else { return false }
+        writeName(value, on: element)
+        return true
+    }
+
+    static func setEquipmentSlot(_ model: XMLDocument, parts: [DocumentPart], id: String, slot: String) throws -> Bool {
+        let components = try read(model)
+        guard let component = components.first(where: { $0.id.utf8.elementsEqual(id.utf8) }),
+            let element = PartSplitting.componentElements(model).first(where: {
+                $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(id.utf8) == true
+            })
+        else { throw DocumentError.missingComponent(id) }
+        guard let partID = component.partID,
+            parts.first(where: { $0.id.utf8.elementsEqual(partID.utf8) })?.target == .model
+        else { throw DocumentError.invalidComponent }
+        let value = slot.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = value.isEmpty ? component.equipmentBaseName : component.equipmentBaseName + " @" + value
+        guard !component.name.utf8.elementsEqual(name.utf8) else { return false }
+        try validateName(name)
+        writeName(name, on: element)
+        return true
+    }
+
+    private static func validateName(_ name: String) throws {
+        guard name.utf8.count <= 1024,
+            name.unicodeScalars.allSatisfy({
+                $0.value != 0xFFFE && $0.value != 0xFFFF && !CharacterSet.controlCharacters.contains($0)
+                    && !CharacterSet.newlines.contains($0)
+            })
+        else { throw DocumentError.invalidComponentName }
+    }
+
+    private static func writeName(_ value: String, on element: XMLElement) {
         element.removeAttribute(forName: "name")
         if !value.isEmpty {
             let attribute = XMLNode(kind: .attribute)
@@ -102,6 +142,5 @@ enum ComponentHierarchy {
             attribute.stringValue = value
             element.addAttribute(attribute)
         }
-        return true
     }
 }

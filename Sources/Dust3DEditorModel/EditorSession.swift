@@ -317,6 +317,19 @@ public actor EditorSession {
         }
     }
 
+    /// Set an absolute cross-section rotation on the originally inspected Model part.
+    package func setPartCutRotationPreset(
+        _ preset: PartCutRotationPreset, partID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), snapshot.allowsCutRotationPreset(for: partID)
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([.setPartCutRotation(id: partID, rotation: preset.halfTurns)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Assign supported roles and perform any necessary stitching grouping in one undo/publication.
     /// Fresh group identities belong to this session, never the pure document planner.
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws
@@ -327,6 +340,17 @@ public actor EditorSession {
             let plan = try state.snapshot.componentPartRolePlan(role)
             try state.setSelectedComponentPartRole(
                 role, target: target, newGroupID: plan.requiresNewGroup ? Self.identifier() : nil)
+            try Task.checkCancellation()
+        }
+    }
+
+    /// Apply one equipment assignment to the originally selected Model component.
+    package func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) throws
+        -> EditorSnapshot
+    {
+        try update { state in
+            guard target.isCurrent(in: state.snapshot) else { throw ComponentEquipmentSlotError.staleTarget }
+            try state.apply([.setComponentEquipmentSlot(id: target.componentID, slot: slot)])
             try Task.checkCancellation()
         }
     }

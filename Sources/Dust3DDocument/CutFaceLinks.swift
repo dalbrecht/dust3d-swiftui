@@ -24,6 +24,28 @@ enum CutFaceLinks {
         Set(ids.filter { canonicalID($0) != nil })
     }
 
+    /// Count saved defaults and owned node overrides using the same link resolution as generation.
+    static func referenceCounts(parts: [XMLElement], nodes: [XMLElement]) -> [String: Int] {
+        let profiles = Set(
+            parts.compactMap { part -> Data? in
+                guard PartTargetMetadata.value(part) == .cutFace,
+                    let id = part.attribute(forName: "id")?.stringValue, canonicalID(id) != nil
+                else { return nil }
+                return Data(id.utf8)
+            })
+        guard !profiles.isEmpty else { return [:] }
+
+        var counts: [String: Int] = [:]
+        func count(_ element: XMLElement) {
+            if let id = element.attribute(forName: "cutFace")?.stringValue, profiles.contains(Data(id.utf8)) {
+                counts[id, default: 0] += 1
+            }
+        }
+        for part in parts { count(part) }
+        for node in nodes where node.attribute(forName: "partId") != nil { count(node) }
+        return counts
+    }
+
     static func target(_ value: String?, in parts: Set<String>) -> String? {
         guard let value, parts.contains(value) else { return nil }
         return value

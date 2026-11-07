@@ -21,6 +21,12 @@ struct ComponentInspector: View {
                 Spacer()
                 Button("Apply Name") { store.renameComponent(component.id, name: name) }
             }
+            if let snapshot = store.snapshot, let target = snapshot.equipmentSlotTarget,
+                target.componentID == component.id
+            {
+                ComponentEquipmentSlotControls(store: store, component: component, target: target)
+                    .id(snapshot.documentIdentity)
+            }
             Picker(
                 "Combine mode",
                 selection: Binding<ComponentCombineMode?>(
@@ -56,7 +62,10 @@ struct ComponentInspector: View {
                     .focusedValue(\.editorTextEditing, true)
             }
             Text("\(component.childIDs.count) child components").font(.caption).foregroundStyle(.secondary)
-            if let partID = component.partID, store.snapshot?.parts.contains(where: { $0.id == partID }) == true {
+            if let partID = component.partID, let part = store.snapshot?.parts.first(where: { $0.id == partID }) {
+                if part.target == .cutFace {
+                    CutFaceReferenceCountLabel(count: part.cutFaceReferenceCount)
+                }
                 Button("Inspect Linked Part") { store.selectPart(partID) }
             } else if let kind = component.linkDataType {
                 Text("Link: \(kind) · \(component.linkData ?? "")").font(.caption).textSelection(.enabled)
