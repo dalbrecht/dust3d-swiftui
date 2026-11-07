@@ -1064,6 +1064,7 @@ final class EditorStore {
         isWorking = true
         recoveryLoadResult = nil
         qtXMLFilePasteRequest = nil
+        referenceImageFileRequest = nil
         defer { if operationRequestID == requestID { isWorking = false } }
         do {
             let next = try await session.open(data: data)
@@ -2773,16 +2774,119 @@ final class EditorStore {
         }
     }
 
+    private struct ReferenceImageFileRequest {
+        let id = UUID()
+        let fileIdentity: UUID?
+        let target: ReferenceCompositionTarget
+    }
+
+    private var referenceImageFileRequest: ReferenceImageFileRequest?
+    var referenceImageFileRequestID: UUID? { referenceImageFileRequest?.id }
+
+    private func referenceImageEditTarget(fileIdentity: UUID?) -> ReferenceCompositionTarget? {
+        guard case .success(let accepted) = recoveryLoadResult, accepted.fileIdentity == fileIdentity else {
+            return nil
+        }
+        return referenceCompositionTarget
+    }
+
+    private func isCurrentReferenceImageTarget(_ target: ReferenceCompositionTarget, fileIdentity: UUID?) -> Bool {
+        guard let source = acceptedDocumentSource, case .success(let accepted) = recoveryLoadResult,
+            accepted.fileIdentity == fileIdentity
+        else { return false }
+        return target.isCurrent(in: source)
+    }
+
+    func canChooseReferenceImage(fileIdentity: UUID?) -> Bool {
+        referenceImageFileRequest == nil && referenceImageEditTarget(fileIdentity: fileIdentity) != nil
+    }
+
+    @discardableResult
+    func chooseReferenceImage(fileIdentity: UUID?) -> UUID? {
+        guard referenceImageFileRequest == nil, let target = referenceImageEditTarget(fileIdentity: fileIdentity)
+        else { return nil }
+        let request = ReferenceImageFileRequest(fileIdentity: fileIdentity, target: target)
+        referenceImageFileRequest = request
+        return request.id
+    }
+
+    func cancelReferenceImageChoice(requestID: UUID) {
+        guard referenceImageFileRequestID == requestID else { return }
+        referenceImageFileRequest = nil
+    }
+
+    @discardableResult
+    func finishReferenceImageChoice(
+        requestID: UUID, result: Result<[URL], any Error>, currentFileIdentity: @escaping @MainActor () -> UUID?
+    ) -> Task<Void, Never>? {
+        guard let request = referenceImageFileRequest, request.id == requestID else { return nil }
+        referenceImageFileRequest = nil
+        guard !isWorking, currentFileIdentity() == request.fileIdentity,
+            isCurrentReferenceImageTarget(request.target, fileIdentity: request.fileIdentity)
+        else { return nil }
+        do {
+            let urls = try result.get()
+            guard urls.count == 1, let url = urls.first else {
+                throw ReferenceImageError.fileReadFailed("Choose one image file.")
+            }
+            startReferenceImageImport(
+                from: url, target: request.target, fileIdentity: request.fileIdentity,
+                currentFileIdentity: { currentFileIdentity() })
+            return operation
+        } catch {
+            if (error as? CocoaError)?.code != .userCancelled { errorMessage = Self.message(error) }
+            return nil
+        }
+    }
+
     func importReferenceImage(from url: URL) {
+        guard case .success(let accepted) = recoveryLoadResult,
+            let target = referenceImageEditTarget(fileIdentity: accepted.fileIdentity)
+        else { return }
+        startReferenceImageImport(
+            from: url, target: target, fileIdentity: accepted.fileIdentity,
+            currentFileIdentity: { accepted.fileIdentity })
+    }
+
+    private func startReferenceImageImport(
+        from url: URL, target: ReferenceCompositionTarget, fileIdentity: UUID?,
+        currentFileIdentity: @escaping @MainActor () -> UUID?
+    ) {
         let service = referenceImages
-        perform(reloadReferenceImage: true) { session in
-            let png = try await service.importImage(url: url)
-            return try await session.apply([.setReferenceImagePNG(png)])
+        let isCurrent: @MainActor () -> Bool = { [weak self] in
+            currentFileIdentity() == fileIdentity
+                && self?.isCurrentReferenceImageTarget(target, fileIdentity: fileIdentity) == true
+        }
+        perform(
+            reloadReferenceImage: true, admitsPublication: { isCurrent() },
+            { session in
+                try Task.checkCancellation()
+                guard await isCurrent() else { throw CancellationError() }
+                let png = try await service.importImage(url: url)
+                try Task.checkCancellation()
+                guard await isCurrent() else { throw CancellationError() }
+                return try await session.applyReferenceComposition(png: png, origin: nil, target: target)
+            })
+    }
+
+    func referenceImageRemovalAction(
+        fileIdentity: UUID?, currentFileIdentity: @escaping @MainActor () -> UUID?
+    ) -> (@MainActor () -> Void)? {
+        guard hasReferenceImage, let target = referenceImageEditTarget(fileIdentity: fileIdentity) else { return nil }
+        return { [weak self] in
+            guard let self, self.canSave, currentFileIdentity() == fileIdentity,
+                self.isCurrentReferenceImageTarget(target, fileIdentity: fileIdentity)
+            else { return }
+            self.perform(
+                reloadReferenceImage: true, admitsPublication: { currentFileIdentity() == fileIdentity },
+                { try await $0.removeReferenceImage(target: target) })
         }
     }
 
     func removeReferenceImage() {
-        perform(reloadReferenceImage: true) { try await $0.apply([.setReferenceImagePNG(nil)]) }
+        guard case .success(let accepted) = recoveryLoadResult else { return }
+        referenceImageRemovalAction(
+            fileIdentity: accepted.fileIdentity, currentFileIdentity: { accepted.fileIdentity })?()
     }
 
     func movePreviewCamera(_ action: MeshCameraCommand.Action) {
@@ -2815,6 +2919,7 @@ final class EditorStore {
         changeComponentBrowseGroup(nil)
         canvasGraphHoverCache = CanvasGraphHover.Cache()
         qtXMLFilePasteRequest = nil
+        referenceImageFileRequest = nil
         canvasProfileMotion = nil
         boneEdgeHover = nil
         previewCameraCommand = nil
@@ -2846,6 +2951,7 @@ final class EditorStore {
     private func perform(
         commits: Bool = true, reloadReferenceImage: Bool = false, acceptCommittedCancellation: Bool = false,
         selectionOnly: Bool = false, preserveOriginMode: Bool = false,
+        admitsPublication: @escaping @MainActor () -> Bool = { true },
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
@@ -2871,7 +2977,9 @@ final class EditorStore {
             }
             do {
                 let next = try await action(session)
-                guard !Task.isCancelled || acceptCommittedCancellation, !stopped, operationRequestID == requestID else {
+                guard !Task.isCancelled || acceptCommittedCancellation, !stopped, operationRequestID == requestID,
+                    admitsPublication()
+                else {
                     return
                 }
                 if acceptCommittedCancellation && next.documentIdentity != snapshot?.documentIdentity { return }
@@ -2907,7 +3015,9 @@ final class EditorStore {
                 }
                 succeeded = true
             } catch {
-                if !Task.isCancelled, operationRequestID == requestID { errorMessage = Self.message(error) }
+                if !Task.isCancelled, operationRequestID == requestID, admitsPublication() {
+                    errorMessage = Self.message(error)
+                }
             }
         }
     }

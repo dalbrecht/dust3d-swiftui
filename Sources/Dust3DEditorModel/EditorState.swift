@@ -737,6 +737,12 @@ public struct EditorState: Sendable {
     public mutating func applyReferenceComposition(
         png: Data, origin: NodePosition?, target: ReferenceCompositionTarget
     ) throws {
+        try applyReferenceImage(png: png, origin: origin, target: target)
+    }
+
+    mutating func applyReferenceImage(png: Data?, origin: NodePosition? = nil, target: ReferenceCompositionTarget)
+        throws
+    {
         guard target.documentIdentity == documentIdentity, target.documentRevision == revision,
             target.constraintRevision == constraintRevision
         else { throw EditorError.staleReferenceComposition }
