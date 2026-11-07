@@ -28,7 +28,7 @@
 
 - Click a companion profile to make it the editing pane without placing or selecting a graph element.
 
-- Prevent editor writes and Cut from using a retained preview after a replacement document fails to load.
+- Press E with a graph selection and canvas focus, or choose Switch Editing Profile in the Canvas menu, to edit the selection in the opposite profile.
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
@@ -204,6 +204,8 @@
 - Recheck actual recovery storage before each write so failed shrinking replacements cannot fund growth beyond the retained-byte budget (#248).
 
 - Reject recovery capture after a failed replacement load, preserving its original error and the previous accepted document (#248).
+
+- Prevent editor writes and Cut from using a retained preview after a replacement document fails to load.
 
 - Require an exact PID and versioned notification channel for composition cancellation, ignoring older broadcast requests and bounding pending cancellation work (#56, #248).
 
