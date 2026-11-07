@@ -91,6 +91,42 @@ final class GraphPartCrossSectionTests: XCTestCase {
         XCTAssertFalse(undone.canUndo)
     }
 
+    func testFailedReplacementRejectsCapturedCrossSectionAndDeformationEdits() async throws {
+        let source = try document().encoded()
+        let session = EditorSession()
+        _ = try await session.open(data: source)
+        let before = try await session.selectGraph(nodes: ["a"], edges: ["edge"])
+        let target = GraphPartCrossSectionTarget(snapshot: before)
+        do {
+            _ = try await session.open(data: Data("invalid archive".utf8))
+            XCTFail("Invalid replacement opened")
+        } catch {}
+        let retained = try await session.animationSnapshot().editor
+        XCTAssertTrue(target.isCurrent(in: retained))
+
+        let edits: [GraphPartCrossSectionEdit] = [.rotation(0.5), .deformationScale(.width, 1.75)]
+        for edit in edits {
+            do {
+                _ = try await session.editGraphPartCrossSection(edit, target: target)
+                XCTFail("A captured edit reached the retained document")
+            } catch { XCTAssertEqual(error as? EditorError, .staleCanvasAdjustment) }
+            let unchanged = try await session.animationSnapshot().editor
+            XCTAssertEqual(unchanged.documentIdentity, before.documentIdentity)
+            XCTAssertEqual(unchanged.documentRevision, before.documentRevision)
+            XCTAssertEqual(unchanged.document.encoded(), source)
+            XCTAssertFalse(unchanged.canUndo)
+        }
+
+        _ = try await session.open(data: source)
+        let fresh = try await session.selectGraph(nodes: ["a"], edges: ["edge"])
+        let edited = try await session.editGraphPartCrossSection(
+            .rotation(0.5), target: .init(snapshot: fresh))
+        XCTAssertEqual(edited.parts.first?.cutRotation, 0.5)
+        let restored = try await session.undo()
+        XCTAssertEqual(restored.document.encoded(), source)
+        XCTAssertFalse(restored.canUndo)
+    }
+
     private func document(profileCutFace: String = "Quad") throws -> Dust3DDocument {
         try Dust3DDocument(
             snapshotXML: Data(

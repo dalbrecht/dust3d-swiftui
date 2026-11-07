@@ -363,7 +363,7 @@ public actor EditorSession {
         _ edit: GraphPartCrossSectionEdit, target: GraphPartCrossSectionTarget
     ) throws -> EditorSnapshot {
         try updateWithResult(checkCancellationBeforePublication: true) { state in
-            guard target.isCurrent(in: state.snapshot), let part = target.part else {
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let part = target.part else {
                 throw EditorError.staleCanvasAdjustment
             }
             let command: DocumentCommand
