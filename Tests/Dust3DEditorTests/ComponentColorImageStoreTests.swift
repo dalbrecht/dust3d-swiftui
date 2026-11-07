@@ -27,6 +27,22 @@ private actor DelayedColorImages: ColorImageServing {
     }
 }
 
+private struct GraphTextureNoNative: EditorPreviewServing, ArchiveTextureBaking, ArchiveSourceTextureBaking,
+    ArchiveImportedMaterialLoading, AnimationCatalogLoading
+{
+    func generate(_ data: Data, scopeID: UUID) async throws -> EditorPreviewResult { throw CancellationError() }
+    func reset(scopeID: UUID) async throws {}
+    func load() async throws -> AnimationAuthoringCatalog { throw CancellationError() }
+    func load(data: Data, options: MeshBakeOptions, limits: ArchiveTextureLimits) async throws -> MeshWithBakedTextures
+    { throw CancellationError() }
+    func load(data: Data, options: SourceMeshBakeOptions, limits: ArchiveSourceTextureLimits) async throws
+        -> SourceBakedMesh
+    { throw CancellationError() }
+    func loadIfPresent(data: Data, limits: ImportedMaterialRenderLimits) async throws -> ImportedMaterialRenderData? {
+        nil
+    }
+}
+
 @MainActor
 final class ComponentColorImageStoreTests: XCTestCase {
     private let component = "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}"
@@ -65,6 +81,54 @@ final class ComponentColorImageStoreTests: XCTestCase {
         }
         XCTFail("Import did not start")
         return request
+    }
+
+    func testGraphTextureRejectsPreparedResultAfterFailedReplacement() async throws {
+        let source = try document()
+        let service = DelayedColorImages()
+        let stub = GraphTextureNoNative()
+        let store = EditorStore(
+            colorImages: service, preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        store.select(try XCTUnwrap(store.snapshot?.nodes.first?.id))
+        try await ready(store)
+        let target = ComponentMeshSelectionTarget(graphSelection: try XCTUnwrap(store.snapshot))
+        store.importComponentColorImage(url: URL(fileURLWithPath: "/unused.png"), destination: .graph(target))
+        let task = try XCTUnwrap(store.colorImagePreparation)
+        for _ in 0..<500 {
+            if await service.count == 1 { break }
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        let count = await service.count
+        guard count == 1 else { return XCTFail("Graph image preparation did not start") }
+        await store.load(data: Data("invalid archive".utf8))
+        let loadError = try XCTUnwrap(store.errorMessage)
+        await service.finish(try png)
+        await task.value
+        store.clearComponentColorImage(destination: .graph(target))
+        XCTAssertEqual(store.errorMessage, loadError)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+        XCTAssertFalse(store.isPreparingColorImage)
+
+        await store.load(data: source.encoded())
+        store.select(try XCTUnwrap(store.snapshot?.nodes.first?.id))
+        try await ready(store)
+        let recovered = ComponentMeshSelectionTarget(graphSelection: try XCTUnwrap(store.snapshot))
+        store.importComponentColorImage(url: URL(fileURLWithPath: "/unused.png"), destination: .graph(recovered))
+        let next = try XCTUnwrap(store.colorImagePreparation)
+        for _ in 0..<500 {
+            if await service.count == 2 { break }
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        guard await service.count == 2 else { return XCTFail("Recovered graph image preparation did not start") }
+        await service.finish(try png, index: 1)
+        await next.value
+        try await ready(store)
+        XCTAssertEqual(store.snapshot?.colorImageAssets.count, 1)
+        XCTAssertTrue(store.canUndo)
     }
 
     func testImportPublishesOneHistoryStepWithoutRegeneratingGeometry() async throws {
