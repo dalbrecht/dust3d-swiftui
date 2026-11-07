@@ -406,7 +406,7 @@ public actor EditorSession {
                 throw PartMirrorError.staleTarget
             }
             try state.apply([.setPartXMirrored(id: id, value: value)])
-        }
+        }.snapshot
     }
 
     package func setGraphPartShape(
