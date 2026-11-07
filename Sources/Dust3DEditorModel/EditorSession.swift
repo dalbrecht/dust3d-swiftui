@@ -399,6 +399,20 @@ public actor EditorSession {
         return result.snapshot
     }
 
+    package func setGraphPartShape(
+        _ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard GraphPartShapeTarget.properties.contains(property) else {
+                throw GraphPartShapeError.unsupportedModifier
+            }
+            guard target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw GraphPartShapeError.staleTarget
+            }
+            try state.apply([.setPartModifier(id: part.id, property: property, value: value)])
+        }.snapshot
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }
