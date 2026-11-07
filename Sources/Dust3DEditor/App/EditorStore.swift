@@ -369,10 +369,17 @@ final class EditorStore {
         else { return }
         do {
             try addPlacement.updatePointer(point)
-            let candidate = snapshot.nodes.last(where: {
-                let center = projection.point(for: $0.value.position)
-                return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
-            })?.id
+            var candidate: String?
+            var nearestDistance = 18.0
+            for node in snapshot.nodes where node.isVisible {
+                let center = projection.point(for: node.value.position)
+                let distance = hypot(center.x - point.x, center.y - point.y)
+                // On an exact tie the later, topmost node keeps precedence.
+                if distance <= nearestDistance {
+                    nearestDistance = distance
+                    candidate = node.id
+                }
+            }
             guard let request = addPlacement.request(connectingTo: candidate) else { return }
             let placementID = UUID()
             addPlacementRequestID = placementID

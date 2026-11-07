@@ -12,6 +12,8 @@
 
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
+- Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
+
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
@@ -43,6 +45,8 @@
 - Add global Hide All Parts in Canvas and group visibility commands under Canvas > Part Visibility, preserving one-step Undo and mesh inputs (#343).
 
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
+
+- Connect to the nearest existing node in Add mode when node hit areas overlap.
 
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
 
