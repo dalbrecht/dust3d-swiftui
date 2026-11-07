@@ -60,6 +60,8 @@
 
 - Browse the pinned rig template bone hierarchy and stored assignment counts, then assign the chosen exact name to selected edges in one Undo step (#359).
 
+- View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
+
 - Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
 
 - Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
@@ -128,6 +130,8 @@
 - Add batch component part roles with atomic stitching grouping, shared-group reveal and one-step Undo (#45).
 
 - Apply or clear color across selected components with the native color picker and one-step Undo.
+
+- Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
 
 - Drag component rows before or after siblings, into groups, or to the document root.
 
@@ -213,6 +217,8 @@
 
 - Reject recovery capture after a failed replacement load, preserving its original error and the previous accepted document (#248).
 
+- Prevent editor writes and Cut from using a retained preview after a replacement document fails to load.
+
 - Require an exact PID and versioned notification channel for composition cancellation, ignoring older broadcast requests and bounding pending cancellation work (#56, #248).
 
 - Add bounded app-owned recovery copies targeted to an exact process, with PID/UUID-correlated receipts, preserving original files and undo history (#248).
@@ -274,6 +280,8 @@
 
 - Add native component image import, retained-image selection and clearing with background pixel validation, cancellation, material refresh, shared-asset preservation and exact undo/save.
 
+- Import, assign or clear a shared texture image for the Model components owning graph picks in one undo step.
+
 - Add lossless component color-image assignment, removal and atomic PNG asset import commands with exact asset-aware history and shared bounded PNG envelope validation; native import controls remain pending.
 
 - Bound cumulative XML namespace expansion across clipboard and asset/header transfers, rejecting excessive growth with a typed limit error and preserving normal namespace meanings, assets and exact history.
@@ -325,6 +333,8 @@
 - Add native cut-face presets, searchable linked-profile selection and half-turn rotation drafts with preserved unsupported/unresolved source metadata.
 
 - Set a Model part’s cross-section rotation to −90°, 0°, or +90° with one click and one undo step.
+
+- Author reflected copies from the part inspector and initialize an absent canvas origin in the same Undo step.
 
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 

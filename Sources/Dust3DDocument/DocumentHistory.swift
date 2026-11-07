@@ -17,6 +17,7 @@ public struct DocumentPreviewIdentity: Equatable, Sendable {
             .setPartsState(_, let property, _) where property != .disabled:
             break
         case .setPartMaterial, .setComponentColorImage, .importComponentColorImage,
+            .setComponentColorImages, .importComponentColorImages,
             .setComponentSurfacePattern, .setComponentSurfaceScalar, .setComponentSurfaceColor:
             // Finish fields affect baked color/normal pixels; each bake regenerates its own fold-placement snapshot.
             materials = UUID()
@@ -81,7 +82,8 @@ public struct DocumentHistory: Sendable {
         } else {
             switch command {
             case .setNode(let id, _, _): transactionNodes.insert(id)
-            case .setReferenceImagePNG, .pasteNodes, .importComponentColorImage: transactionChangesAssets = true
+            case .setReferenceImagePNG, .pasteNodes, .importComponentColorImage, .importComponentColorImages:
+                transactionChangesAssets = true
             default: transactionRequiresModelComparison = true
             }
         }

@@ -155,7 +155,7 @@ final class WorkingGroupStoreTests: XCTestCase {
         store.onDocumentChanged = { _ in writes += 1 }
 
         await store.load(data: Data("invalid archive".utf8), fileIdentity: UUID())
-        XCTAssertTrue(store.canSave)
+        XCTAssertFalse(store.canSave)
         XCTAssertFalse(store.canChooseAddPlacementDestination)
         XCTAssertFalse(store.canBeginAddMode)
         XCTAssertFalse(store.canAddNode)
