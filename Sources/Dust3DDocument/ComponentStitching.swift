@@ -51,6 +51,48 @@ public struct ComponentStitchingSettings: Equatable, Sendable {
     }
 }
 
+/// One explicit stitching value applied to all captured groups.
+public enum ComponentStitchingEdit: Sendable {
+    case closure(ComponentStitchingClosureProperty, Bool)
+    case segments(Int)
+    case scalar(ComponentStitchingScalarProperty, Double)
+}
+
+package struct ComponentStitchingBatchSupport: Sendable {
+    package let line: Bool
+    package let loop: Bool
+    package let back: Bool
+
+    package init(groups: [DocumentComponent], components: [DocumentComponent], parts: [DocumentPart]) {
+        guard groups.count > 1, groups.allSatisfy(\.isGroup) else {
+            (line, loop, back) = (false, false, false)
+            return
+        }
+        let roles = Dictionary(
+            uniqueKeysWithValues: parts.compactMap { part in
+                part.target.map { (Data(part.id.utf8), $0) }
+            })
+        let links = Dictionary(
+            uniqueKeysWithValues: components.compactMap { component in
+                component.partID.map { (Data(component.id.utf8), Data($0.utf8)) }
+            })
+        let families = groups.map { group in
+            Set(group.childIDs.compactMap { links[Data($0.utf8)].flatMap { roles[$0] } })
+        }
+        line = families.allSatisfy { $0.contains(.stitchingLine) }
+        loop = families.allSatisfy { $0.contains(.stitchingLoop) }
+        back = families.allSatisfy { $0.contains(.stitchingLine) || $0.contains(.stitchingLoop) }
+    }
+
+    package func permits(_ edit: ComponentStitchingEdit) -> Bool {
+        switch edit {
+        case .closure(.back, _): back
+        case .closure, .segments: line
+        case .scalar: loop
+        }
+    }
+}
+
 enum ComponentStitching {
     static func read(_ element: XMLElement) -> ComponentStitchingSettings {
         var closures: [ComponentStitchingClosureProperty: Bool] = [:]
@@ -106,6 +148,51 @@ enum ComponentStitching {
         guard current.stitching.targetSegments != segments else { return false }
         replace(element, name: "targetSegments", value: segments == 0 ? nil : String(segments))
         return true
+    }
+
+    static func setBatch(
+        _ model: XMLDocument, parts: [DocumentPart], ids: [String], edit: ComponentStitchingEdit
+    ) throws -> Bool {
+        guard ids.count <= ComponentHierarchy.maximumCount else { throw DocumentError.limitExceeded }
+        let keys = Set(ids.map { Data($0.utf8) })
+        guard keys.count == ids.count else { throw DocumentError.invalidComponentStructure }
+        let components = try ComponentHierarchy.read(model)
+        let groups = components.filter { keys.contains(Data($0.id.utf8)) }
+        guard groups.count == ids.count,
+            ComponentStitchingBatchSupport(groups: groups, components: components, parts: parts).permits(edit)
+        else { throw DocumentError.invalidComponentStructure }
+        let elements = Dictionary(
+            uniqueKeysWithValues: PartSplitting.componentElements(model).compactMap { element in
+                element.attribute(forName: "id")?.stringValue.map { (Data($0.utf8), element) }
+            })
+        let update: (name: String, value: String?)
+        switch edit {
+        case .closure(let property, let value):
+            update = (property.rawValue, value ? "true" : nil)
+        case .segments(let segments):
+            guard (0...100).contains(segments) else { throw DocumentError.invalidComponentTargetSegments }
+            update = ("targetSegments", segments == 0 ? nil : String(segments))
+        case .scalar(let property, let value):
+            guard EngineScalar.isValid(value, in: property.bounds) else {
+                throw DocumentError.invalidComponentStitchingScalar
+            }
+            update = (property.rawValue, value == property.defaultValue ? nil : String(value))
+        }
+        var changed = false
+        for group in groups {
+            try Task.checkCancellation()
+            guard let element = elements[Data(group.id.utf8)] else { throw DocumentError.invalidComponentStructure }
+            let isCurrent: Bool
+            switch edit {
+            case .closure(let property, let value): isCurrent = group.stitching.closureValue(property) == value
+            case .segments(let segments): isCurrent = group.stitching.targetSegments == segments
+            case .scalar(let property, let value): isCurrent = group.stitching.scalarValue(property) == value
+            }
+            guard !isCurrent else { continue }
+            replace(element, name: update.name, value: update.value)
+            changed = true
+        }
+        return changed
     }
 
     private static func component(_ model: XMLDocument, id: String) throws -> (DocumentComponent, XMLElement) {

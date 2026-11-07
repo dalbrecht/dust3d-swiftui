@@ -32,6 +32,12 @@ struct NodeInspector: View {
                 ComponentReparentControls(store: store, selection: snapshot.selectedComponentIDs)
                 ComponentBatchOrderMenu(store: store, snapshot: snapshot)
                 if snapshot.selectedComponentIDs.count > 1 {
+                    let stitching = ComponentStitchingBatchTarget(snapshot: snapshot)
+                    if stitching.supportsBack {
+                        let identity = "\(snapshot.documentIdentity)-\(snapshot.selectionRevision)"
+                        ComponentStitchingBatchControls(store: store, target: stitching, identity: identity)
+                            .id(identity)
+                    }
                     let colorTarget = ComponentMeshSelectionTarget(snapshot: snapshot)
                     ComponentBatchPartStateMenu(store: store, target: colorTarget)
                     ComponentBatchColorControls(store: store, target: colorTarget)
