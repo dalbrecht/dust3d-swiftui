@@ -1539,8 +1539,12 @@ final class EditorStore {
         }
     }
 
+    func canEditSelectedComponentColors(_ target: ComponentMeshSelectionTarget) -> Bool {
+        acceptedAnimationSource != nil && canEditComponentMeshSettings(target)
+    }
+
     func setSelectedComponentColors(_ target: ComponentMeshSelectionTarget, value: String?) {
-        guard canEditComponentMeshSettings(target) else { return }
+        guard canEditSelectedComponentColors(target) else { return }
         let color = value.flatMap { DocumentColor(archiveValue: $0) }
         if value != nil, color == nil {
             errorMessage = Self.message(DocumentError.invalidComponentColor)

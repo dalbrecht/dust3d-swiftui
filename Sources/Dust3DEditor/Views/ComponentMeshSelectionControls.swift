@@ -49,6 +49,10 @@ struct ComponentMeshSelectionControls: View {
                                 .id(target)
                         }
                     }
+                    DisclosureGroup("Owning Component Colors") {
+                        ComponentBatchColorControls(store: store, target: target)
+                            .id(target)
+                    }
                 }
             }
         }
