@@ -71,6 +71,9 @@ struct Dust3DEditorApp: App {
                 .disabled(nativeTextEditor.map { $0.undoManager?.canRedo != true } ?? (store?.canRedo != true))
             }
             EditorClipboardCommands(pasteboard: pasteboard)
+            CommandGroup(after: .saveItem) {
+                Button("Save All") { EditorSaveAllCommand.perform(in: NSDocumentController.shared) }
+            }
             EditorGeometryExportCommands()
             InspectorCommands()
             CommandGroup(after: .windowArrangement) {
@@ -261,6 +264,22 @@ struct Dust3DEditorApp: App {
         case .z: "z"
         case .radius: "r"
         }
+    }
+}
+
+@MainActor
+protocol EditorSaveAllDocumentControlling {
+    var hasEditedDocuments: Bool { get }
+    func saveAllDocuments(_ sender: Any?)
+}
+
+extension NSDocumentController: EditorSaveAllDocumentControlling {}
+
+@MainActor
+enum EditorSaveAllCommand {
+    static func perform(in controller: any EditorSaveAllDocumentControlling) {
+        guard controller.hasEditedDocuments else { return }
+        controller.saveAllDocuments(nil)
     }
 }
 
