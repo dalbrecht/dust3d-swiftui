@@ -1378,6 +1378,26 @@ final class EditorStore {
         }
     }
 
+    func canEditGraphPartCrossSection(_ target: GraphPartCrossSectionTarget) -> Bool {
+        !isWorking && acceptedAnimationSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func editGraphPartCrossSection(_ edit: GraphPartCrossSectionEdit, target: GraphPartCrossSectionTarget) {
+        guard canEditGraphPartCrossSection(target) else { return }
+        perform(acceptCommittedCancellation: true) {
+            try await $0.editGraphPartCrossSection(edit, target: target)
+        }
+    }
+
+    func setGraphPartCutRotation(_ rotation: String, target: GraphPartCrossSectionTarget) {
+        guard canEditGraphPartCrossSection(target) else { return }
+        guard let value = EngineScalar.parse(rotation, in: -1...1) else {
+            errorMessage = Self.message(DocumentError.invalidPartCutRotation)
+            return
+        }
+        editGraphPartCrossSection(.rotation(value), target: target)
+    }
+
     func setPartMaterial(_ id: String, property: PartMaterialProperty, value: String) {
         guard !isWorking, !stopped else { return }
         guard let scalar = EngineScalar.parse(value, in: property.bounds) else {
@@ -1416,6 +1436,17 @@ final class EditorStore {
         perform {
             try await $0.setNodeDeformationScale(property, value: value, nodeID: nodeID, target: target)
         }
+    }
+
+    func setGraphPartDeformationScale(
+        _ property: PartDeformationProperty, value: String, target: GraphPartCrossSectionTarget
+    ) {
+        guard canEditGraphPartCrossSection(target) else { return }
+        guard let scale = EngineScalar.parse(value, in: 0...2) else {
+            errorMessage = Self.message(DocumentError.invalidPartDeformation)
+            return
+        }
+        editGraphPartCrossSection(.deformationScale(property, scale), target: target)
     }
 
     func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {

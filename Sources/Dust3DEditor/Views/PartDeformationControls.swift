@@ -1,21 +1,22 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct PartDeformationControls: View {
     let store: EditorStore
     let part: DocumentPart
+    var graphTarget: GraphPartCrossSectionTarget? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Cross-section deformation").font(.headline)
             ForEach(PartDeformationProperty.allCases, id: \.self) { property in
-                PartDeformationScaleControl(store: store, part: part, property: property)
+                PartDeformationScaleControl(store: store, part: part, property: property, graphTarget: graphTarget)
             }
             if let value = part.isDeformationUnified {
                 Toggle(
                     "Unified deformation",
-                    isOn: Binding(
-                        get: { value }, set: { store.setPartDeformationUnified(part.id, value: $0) })
+                    isOn: Binding(get: { value }, set: setUnified)
                 )
                 .accessibilityIdentifier("part-deformation-unified")
             } else {
@@ -26,7 +27,7 @@ struct PartDeformationControls: View {
                         selection: Binding<Bool?>(
                             get: { nil },
                             set: {
-                                if let value = $0 { store.setPartDeformationUnified(part.id, value: value) }
+                                if let value = $0 { setUnified(value) }
                             })
                     ) {
                         Text("Unsupported source value").tag(nil as Bool?)
@@ -45,12 +46,21 @@ struct PartDeformationControls: View {
             .font(.caption).foregroundStyle(.primary)
         }
     }
+
+    private func setUnified(_ value: Bool) {
+        if let graphTarget {
+            store.editGraphPartCrossSection(.deformationUnified(value), target: graphTarget)
+        } else {
+            store.setPartDeformationUnified(part.id, value: value)
+        }
+    }
 }
 
 private struct PartDeformationScaleControl: View {
     let store: EditorStore
     let part: DocumentPart
     let property: PartDeformationProperty
+    let graphTarget: GraphPartCrossSectionTarget?
     @State private var draft = ""
 
     private var title: String { property == .width ? "Width scale" : "Thickness scale" }
@@ -69,7 +79,7 @@ private struct PartDeformationScaleControl: View {
             HStack {
                 Button("Reset Draft") { reset() }
                     .accessibilityLabel("Reset \(title.lowercased()) draft")
-                if let resetScale = store.partDeformationResetAction(property, partID: part.id) {
+                if let resetScale = resetScaleAction {
                     Button("Reset to 1", action: resetScale)
                         .accessibilityLabel("Reset \(title.lowercased()) to 1")
                         .disabled(part.deformationScale(property) == 1)
@@ -84,5 +94,18 @@ private struct PartDeformationScaleControl: View {
     }
 
     private func reset() { draft = part.deformationScale(property).map { String($0) } ?? "" }
-    private func apply() { store.setPartDeformationScale(part.id, property: property, value: draft) }
+    private var resetScaleAction: (@MainActor () -> Void)? {
+        if let graphTarget {
+            return { store.editGraphPartCrossSection(.deformationScale(property, 1), target: graphTarget) }
+        }
+        return store.partDeformationResetAction(property, partID: part.id)
+    }
+
+    private func apply() {
+        if let graphTarget {
+            store.setGraphPartDeformationScale(property, value: draft, target: graphTarget)
+        } else {
+            store.setPartDeformationScale(part.id, property: property, value: draft)
+        }
+    }
 }

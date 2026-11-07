@@ -75,6 +75,66 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertTrue(store.canUndo)
     }
 
+    func testGraphCrossSectionStoreRejectsRetainedTargetsAndFailedLoadDrafts() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='a' partId='p' x='.5' y='.5' z='.5' radius='.1'/></nodes>
+                <parts><part id='p'/></parts><components><component id='owner' linkDataType='partId' linkData='p'/>
+                </components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        value.select("a")
+        try await settle(value)
+        let target = GraphPartCrossSectionTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.setGraphPartCutRotation("-0.25", target: target)
+        try await settle(value)
+        let changed = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(changed.parts.first?.cutRotation, -0.25)
+        XCTAssertEqual(changed.selectedIDs, ["a"])
+        value.editGraphPartCrossSection(.profile(.preset(.triangle)), target: target)
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
+        let retained = GraphPartCrossSectionTarget(snapshot: changed)
+        await value.load(data: Data("invalid archive".utf8))
+        let loadError = try XCTUnwrap(value.errorMessage)
+        value.setGraphPartCutRotation("invalid", target: retained)
+        XCTAssertEqual(value.errorMessage, loadError)
+        XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
+    }
+
+    func testGraphDeformationStoreGuardsRetainedDraftsBeforeParsing() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='a' partId='p' x='.5' y='.5' z='.5' radius='.1'/></nodes>
+                <parts><part id='p'/></parts><components><component id='owner' linkDataType='partId' linkData='p'/>
+                </components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        value.select("a")
+        try await settle(value)
+        let target = GraphPartCrossSectionTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.setGraphPartDeformationScale(.width, value: "1.25", target: target)
+        try await settle(value)
+        let changed = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(changed.parts.first?.deformationScale(.width), 1.25)
+        XCTAssertEqual(changed.selectedIDs, ["a"])
+        value.setGraphPartDeformationScale(.width, value: "invalid", target: target)
+        XCTAssertNil(value.errorMessage)
+        let retained = GraphPartCrossSectionTarget(snapshot: changed)
+        await value.load(data: Data("invalid archive".utf8))
+        let loadError = try XCTUnwrap(value.errorMessage)
+        value.setGraphPartDeformationScale(.width, value: "invalid", target: retained)
+        value.editGraphPartCrossSection(.deformationUnified(true), target: retained)
+        XCTAssertEqual(value.errorMessage, loadError)
+        XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
+    }
+
     func testDanglingPartAliasCannotEnableOrPublishComponentStateActions() async throws {
         let original = try Dust3DDocument(
             snapshotXML: Data(

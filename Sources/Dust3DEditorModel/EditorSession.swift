@@ -350,6 +350,25 @@ public actor EditorSession {
         }
     }
 
+    package func editGraphPartCrossSection(
+        _ edit: GraphPartCrossSectionEdit, target: GraphPartCrossSectionTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            let command: DocumentCommand
+            switch edit {
+            case .profile(let selection): command = .setPartCutFace(id: part.id, selection: selection)
+            case .rotation(let value): command = .setPartCutRotation(id: part.id, rotation: value)
+            case .deformationScale(let property, let value):
+                command = .setPartDeformationScale(id: part.id, property: property, value: value)
+            case .deformationUnified(let value): command = .setPartDeformationUnified(id: part.id, value: value)
+            }
+            try state.apply([command])
+        }.snapshot
+    }
+
     /// Assign supported roles and perform any necessary stitching grouping in one undo/publication.
     /// Fresh group identities belong to this session, never the pure document planner.
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws
