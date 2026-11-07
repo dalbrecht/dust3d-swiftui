@@ -1329,6 +1329,17 @@ final class EditorStore {
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
+    func canEditPartMirror(_ target: PartMirrorTarget) -> Bool {
+        !stopped && !isWorking && snapshot.map { target.isCurrent(in: $0) } == true
+    }
+
+    func partMirrorAction(_ value: Bool, target: PartMirrorTarget) -> @MainActor () -> Void {
+        { [weak self] in
+            guard let self, self.canEditPartMirror(target) else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.setPartXMirrored(value, target: target) }
+        }
+    }
+
     func canAssignBoneName(_ name: String, target: EdgeBoneAssignmentTarget) -> Bool {
         guard !stopped, !isWorking, let snapshot else { return false }
         return target.isCurrent(in: snapshot) && target.hasChanges(name: name)
@@ -2378,6 +2389,7 @@ final class EditorStore {
             case .invalidPartCutRotation:
                 return "Enter a cut rotation from -1 to 1 that the modeling engine can represent."
             case .invalidPartHollowThickness: return "Enter a hollow thickness from 0 to 1."
+            case .invalidPartMirrorRole: return "Mirrored copies can be authored only on Model parts."
             case .invalidPartMaterial: return "Enter a material value within its supported range."
             case .invalidPartDeformation: return "Enter a scale from 0 to 2 that the modeling engine can represent."
             case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."

@@ -66,6 +66,7 @@ struct ComponentInspector: View {
                 if part.target == .cutFace {
                     CutFaceReferenceCountLabel(count: part.cutFaceReferenceCount)
                 }
+                PartMirrorControls(store: store)
                 Button("Inspect Linked Part") { store.selectPart(partID) }
             } else if let kind = component.linkDataType {
                 Text("Link: \(kind) · \(component.linkData ?? "")").font(.caption).textSelection(.enabled)

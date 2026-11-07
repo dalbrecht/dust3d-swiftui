@@ -366,6 +366,16 @@ public actor EditorSession {
         return result.snapshot
     }
 
+    /// Apply the captured mirror edit as one undoable publication, including any initial origin.
+    public func setPartXMirrored(_ value: Bool, target: PartMirrorTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard target.isCurrent(in: state.snapshot), let id = target.partID else {
+                throw PartMirrorError.staleTarget
+            }
+            try state.apply([.setPartXMirrored(id: id, value: value)])
+        }.snapshot
+    }
+
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
     public func selectComponent(_ id: String?) throws -> EditorSnapshot {
         try update { try $0.selectComponent(id) }

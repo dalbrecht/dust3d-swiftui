@@ -22,6 +22,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidPartCutFace
     case invalidPartCutRotation
     case invalidPartHollowThickness
+    case invalidPartMirrorRole
     case invalidPartDeformation
     case invalidPartMaterial
     case invalidPartName
@@ -216,6 +217,8 @@ public enum DocumentCommand: Sendable {
     /// Change one procedural part flag, preserving all other metadata, source graph and assets.
     /// Part locks constrain node editing; modifier metadata remains editable as in the inherited app.
     case setPartModifier(id: String, property: PartModifierProperty, value: Bool)
+    /// Set the exact part’s mirror flag and initialize an unavailable origin in the same edit.
+    case setPartXMirrored(id: String, value: Bool)
     /// Set a finite width/thickness scale in 0...2 that does not overflow or underflow in the engine Float; one restores the absent default.
     /// Throws `invalidPartDeformation` for invalid scales or `missingPart` for absent identities.
     /// Example: `.setPartDeformationScale(id: id, property: .width, value: 0.995)`.
@@ -907,6 +910,12 @@ public struct Dust3DDocument: Sendable {
             guard try PartDeformation.setUnified(model, parts: contents.parts, id: id, value: value) else {
                 return self
             }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setPartXMirrored(let id, let value):
+            guard
+                try PartMirrorMetadata.set(
+                    model, contents: contents, origin: Self.decodeOrigin(root), id: id, value: value)
+            else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartModifier(let id, let property, let value):
             guard try PartModifiers.set(model, parts: contents.parts, id: id, property: property, value: value) else {
@@ -1663,7 +1672,8 @@ public struct Dust3DDocument: Sendable {
                 isDeformationUnified: PartDeformation.unified(part), cutFace: PartCutFace.selection(part),
                 cutRotation: PartCutFace.rotation(part), target: PartTargetMetadata.value(part),
                 isLoopInteriorFilled: PartLoopInterior.value(part), materials: PartMaterial.values(part),
-                cutFaceReferenceCount: cutFaceReferenceCounts[id, default: 0])
+                cutFaceReferenceCount: cutFaceReferenceCounts[id, default: 0],
+                xMirrored: PartMirrorMetadata.value(part))
             parts[id] = value
             orderedParts.append(value)
         }
