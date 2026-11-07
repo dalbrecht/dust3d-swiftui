@@ -895,11 +895,11 @@ public actor EditorSession {
     /// - Returns: One undoable origin edit, or the unchanged snapshot for a no-op.
     /// - Throws: `EditorError.staleOriginDrag`, load/cancellation errors, or invalid-origin errors atomically.
     public func commitOriginDrag(_ drag: OriginDrag, translation: CanvasPoint) throws -> EditorSnapshot {
-        try update { state in
-            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleOriginDrag }
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, drag.isCurrent(in: state.snapshot) else { throw EditorError.staleOriginDrag }
             guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidOrigin }
             try state.apply([.setOrigin(drag.position(by: translation))])
-        }
+        }.snapshot
     }
 
     /// Copy without dirtying the archive/history; Cut callers can restrict copying to editable nodes.
