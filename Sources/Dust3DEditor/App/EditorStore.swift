@@ -1420,7 +1420,7 @@ final class EditorStore {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
     func canEditGraphPartShape(_ target: GraphPartShapeTarget) -> Bool {
-        !isWorking && acceptedAnimationSource.map { target.isCurrent(in: $0) } == true
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
     }
 
     func setGraphPartShape(_ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget) {
