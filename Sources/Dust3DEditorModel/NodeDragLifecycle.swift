@@ -31,7 +31,12 @@ public struct NodeDragLifecycle: Sendable {
         retained = nil
         invalidated = false
         let baseline = try NodeDrag(anchorID: anchorID, snapshot: snapshot, projection: projection)
+        begin(token: token, baseline: baseline)
+    }
+
+    package mutating func begin(token: UUID, baseline: NodeDrag) {
         self.token = token
+        invalidated = false
         retained = Preview(baseline: baseline, translation: .init(x: 0, y: 0))
     }
 

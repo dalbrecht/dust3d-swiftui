@@ -762,11 +762,14 @@ public actor EditorSession {
     /// - Returns: The resulting snapshot as one undoable edit.
     /// - Throws: `EditorError.staleNodeDrag` or the original geometry and state error.
     public func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) throws -> EditorSnapshot {
-        try update { state in
-            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
             guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidNode }
+            if let edgeID = drag.edgeID, !state.snapshot.selectedEdgeIDs.contains(edgeID) {
+                try state.selectEdge(edgeID)
+            }
             try state.move(id: drag.anchorID, to: drag.position(by: translation))
-        }
+        }.snapshot
     }
 
     /// Publish the captured Shift-drag result as one undoable graph edit.

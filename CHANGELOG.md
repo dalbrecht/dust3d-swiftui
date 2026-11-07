@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Drag an edge stroke in the canvas to move its endpoints or the current graph selection in one undoable edit.
+
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
