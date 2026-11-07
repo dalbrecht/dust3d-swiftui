@@ -303,6 +303,20 @@ public actor EditorSession {
         }
     }
 
+    /// Apply one taper field to the original editable Model node without changing its position or radius.
+    package func setNodeDeformationScale(
+        _ property: PartDeformationProperty, value: Double, nodeID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), snapshot.allowsNodeDeformation(for: nodeID) else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.apply([.setNodeDeformationScale(id: nodeID, property: property, value: value)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Assign supported roles and perform any necessary stitching grouping in one undo/publication.
     /// Fresh group identities belong to this session, never the pure document planner.
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws
