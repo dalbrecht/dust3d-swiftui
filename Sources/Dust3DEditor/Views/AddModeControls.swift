@@ -3,14 +3,13 @@ import SwiftUI
 struct AddModeControls: View {
     let store: EditorStore
     var body: some View {
+        let modeID = store.addModeID
         VStack(alignment: .leading, spacing: 8) {
             Toggle(
                 "Add Nodes with Pointer",
                 isOn: Binding(
                     get: { store.isAddingNodes },
-                    set: { active in
-                        if active { store.beginAddMode() } else { store.cancelAddMode() }
-                    })
+                    set: store.addPlacementToggleAction())
             )
             .disabled(!store.isAddingNodes && !store.canBeginAddMode)
             if store.isAddingNodes {
@@ -44,7 +43,7 @@ struct AddModeControls: View {
                     Button("Larger Preview") { store.adjustSelectionRadius(direction: 1) }
                 }.disabled(store.addGhostPoint == nil || store.isWorking)
                 Button("Place Preview Node") {
-                    if let point = store.addGhostPoint { store.placeAddNode(at: point, modeID: store.addModeID) }
+                    if let point = store.addGhostPoint { store.placeAddNode(at: point, modeID: modeID) }
                 }.disabled(!store.canPlaceAddGhost)
                 if store.addAnchorIsReadOnly {
                     Label("The anchor is read-only.", systemImage: "lock").font(.caption)

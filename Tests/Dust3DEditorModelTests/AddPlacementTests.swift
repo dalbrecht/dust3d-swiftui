@@ -188,6 +188,34 @@ final class AddPlacementTests: XCTestCase {
         XCTAssertTrue(undone.canUndo)
     }
 
+    func testActorRejectsRetainedPlacementTargetsAfterFailedOpen() async throws {
+        let session = EditorSession()
+        let opened = try await session.open(data: Dust3DDocument.emptyArchive())
+        let projected = projection(opened)
+        var ghost = AddPlacementState()
+        try ghost.begin(snapshot: opened, projection: projected, canvasHeight: 400)
+        try ghost.updatePointer(projected.point(for: .init(x: 0.3, y: 0.4, z: 0.5)))
+        let request = try XCTUnwrap(ghost.request())
+        do {
+            _ = try await session.open(data: Data("invalid archive".utf8))
+            XCTFail("Invalid archive opened")
+        } catch {}
+        do {
+            _ = try await session.placeAddNode(request)
+            XCTFail("Retained pointer target committed after failed open")
+        } catch { XCTAssertEqual(error as? EditorError, .staleAddPlacement) }
+        do {
+            _ = try await session.apply(
+                [
+                    .addNode(
+                        id: "node", partID: "part", componentID: "component",
+                        position: .init(x: 0.3, y: 0.4, z: 0.5), radius: 0.1)
+                ],
+                selecting: "node", target: CanvasAdjustmentTarget(snapshot: opened))
+            XCTFail("Retained toolbar target committed after failed open")
+        } catch { XCTAssertEqual(error as? EditorError, .staleCanvasAdjustment) }
+    }
+
     func testConnectionExitsButInvalidTargetFallsThroughToPlacement() async throws {
         let session = EditorSession()
         _ = try await session.open(data: document().encoded())
