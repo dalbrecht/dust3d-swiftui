@@ -412,18 +412,17 @@ private struct NodeHandle: View {
 
     var body: some View {
         let point = projection.point(for: position)
+        let marker = CanvasNodeMarkerGeometry(
+            projectedDiameter: node.value.radius * projection.scale * 2, selected: selected, hovered: hovered)
         ZStack {
             Circle().stroke(
                 selected || hovered ? Color.accentColor : .secondary.opacity(0.4),
-                lineWidth: hovered ? 3 : (selected ? 2 : 1)
+                lineWidth: marker.outlineWidth
             )
-            .frame(
-                width: max(8, min(node.value.radius * projection.scale * 2, 600)),
-                height: max(8, min(node.value.radius * projection.scale * 2, 600))
-            )
+            .frame(width: marker.outlineDiameter, height: marker.outlineDiameter)
             .allowsHitTesting(false)
             Circle().fill(selected ? Color.accentColor : (node.isEditable ? .primary : .secondary))
-                .frame(width: 12, height: 12)
+                .frame(width: CanvasNodeMarkerGeometry.centerDiameter, height: CanvasNodeMarkerGeometry.centerDiameter)
             NodePointerSurface(
                 enabled: enabled, canDrag: canDrag, begin: begin, update: update, finish: finish,
                 cancel: cancel,

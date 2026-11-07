@@ -37,13 +37,14 @@ struct CanvasProfileCompanion: View {
                 guard let point = points[node.id] else { continue }
                 let selected = snapshot?.selectedIDs.contains(node.id) == true
                 let hovered = graphHover == .node(node.id)
-                let diameter = max(8, min(node.value.radius * projection.scale * 2, 600))
+                let marker = CanvasNodeMarkerGeometry(
+                    projectedDiameter: node.value.radius * projection.scale * 2, selected: selected, hovered: hovered)
                 context.stroke(
-                    circle(at: point, diameter: diameter),
+                    circle(at: point, diameter: marker.outlineDiameter),
                     with: .color(selected || hovered ? .accentColor : .secondary.opacity(0.4)),
-                    lineWidth: hovered ? 3 : (selected ? 2 : 1))
+                    lineWidth: marker.outlineWidth)
                 context.fill(
-                    circle(at: point, diameter: 12),
+                    circle(at: point, diameter: CanvasNodeMarkerGeometry.centerDiameter),
                     with: .color(selected ? .accentColor : (node.isEditable ? .primary : .secondary)))
             }
             if let origin {
