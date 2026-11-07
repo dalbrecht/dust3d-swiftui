@@ -115,7 +115,7 @@ struct ComponentSidebar: View {
                 Label("Add destination: \(store.addPlacementDestinationTitle)", systemImage: "folder.badge.plus")
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
                     .help(
-                        "An explicit working group applies to the canvas and Nodes menu. Automatic placement uses the selected group for pointer Add and the document root for the Nodes menu. Extending a chain keeps its part."
+                        "An explicit working group receives new parts and pasted components. Automatic placement uses the selected group for canvas Add and the document root for menu Add and Paste. Extending a chain keeps its part."
                     )
                 if let count = store.snapshot?.selectedComponentIDs.count, count > 1 {
                     Text("\(count) components selected")

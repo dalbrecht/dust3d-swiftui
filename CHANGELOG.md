@@ -28,6 +28,8 @@
 
 - Keep a working component group as the destination for new parts while graph selection changes.
 
+- Paste native or Qt clipboard nodes into an explicitly chosen working group.
+
 - Start a blank document by drawing a first node, composing a reference image, or opening an existing document from the canvas.
 
 - Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
