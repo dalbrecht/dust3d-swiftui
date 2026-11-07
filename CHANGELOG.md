@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Paste nodes from a Qt XML file into the focused document in one Undo step.
+- Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
@@ -355,6 +355,8 @@
 - Add a bounded composition recovery command that cancels only the newest unapplied draft when accessibility control is unavailable, preserving documents and in-flight Apply operations.
 
 - Add a native Front/Side reference-image composer with crop previews, numeric and pointer crop selection, mirror/swap, cancellable drafts and one-step undoable image/origin Apply guarded against stale documents.
+
+- Paste nodes from a Qt XML file into the focused document in one Undo step.
 
 - Accept bounded Qt snapshot XML on node Paste and publish a Qt text fallback alongside richer native clipboard data; native transfers retain embedded assets and selection metadata.
 

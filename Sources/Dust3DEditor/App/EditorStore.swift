@@ -1043,7 +1043,8 @@ final class EditorStore {
 
     func selectComponent(_ id: String?) { perform(commits: false) { try await $0.selectComponent(id) } }
     func canEditComponentMeshSettings(_ target: ComponentMeshSelectionTarget) -> Bool {
-        !stopped && !isWorking && target.count > 1 && snapshot.map { target.isCurrent(in: $0) } == true
+        !stopped && !isWorking && target.count > (target.isGraphSelection ? 0 : 1)
+            && snapshot.map { target.isCurrent(in: $0) } == true
     }
     func componentMeshAction(_ edit: ComponentMeshEdit, target: ComponentMeshSelectionTarget) -> @MainActor () -> Void {
         guard canEditComponentMeshSettings(target) else { return {} }
