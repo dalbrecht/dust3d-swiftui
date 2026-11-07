@@ -334,6 +334,8 @@
 
 - Add bounded, lossless part width/thickness and unified-deformation commands with exact undo/redo, preserved fine scales and regenerated previews; native controls follow separately.
 
+- Author independent per-node width and thickness taper for editable Model nodes, with lossless saving and one-step Undo.
+
 - Add typed, undoable part subdivision, chamfer, rounded ends, extra rings and hard-join commands with lossless saving and regenerated previews; native inspector controls follow separately.
 
 - Update the pinned core to fix rounded crossing mesh generation and preserve thin solids near weld boundaries.
