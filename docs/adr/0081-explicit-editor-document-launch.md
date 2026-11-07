@@ -21,8 +21,23 @@ over 4096 UTF-8 bytes before opening any document.
 
 Skip known platform option operands. After an unknown option, use
 `--open-document` or the `--` delimiter to identify paths unambiguously.
-Reject unsupported Qt launch options `-o`, `-output`, `-paste-xml`, and
-`-toggle-color` before opening any document.
+Reject unsupported Qt launch options `-o` and `-output` before opening any
+document. A single `-paste-xml` operand requires explicit document inputs.
+Validate the bounded XML fragment before opening the first document, then
+apply it once at the document root of each newly opened eligible document.
+A reused document does not receive the fragment. The import is one Undo step.
+
+The last `-toggle-color` operand sets launch neutral
+preview for new document windows. Qt treats `true`, `True`, and `1` as true
+and other operands as false. An absent operand is an argument error.
+A window can claim the preference only once from a matching live native
+document returned by the launch open call. A failed or reused document open
+does not grant the preference. An early claim waits at most one second. A
+timeout leaves that native document at its normal preview setting and expires
+its claim. A window whose native document is not registered when its task starts
+uses normal colors because it has no object identity to claim or expire. The App
+uses its existing neutral shading,
+which retains alpha and can differ from Qt's rendered output.
 Claim the batch before awaiting the first open so lifecycle callbacks cannot
 replay it. Report each original document-open error and continue opening
 later documents.

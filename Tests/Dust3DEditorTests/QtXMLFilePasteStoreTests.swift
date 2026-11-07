@@ -203,6 +203,58 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         XCTAssertTrue(writes.isEmpty)
     }
 
+    func testStartupPasteRequiresPristineAcceptedFileAndCommitsOneUndoStep() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data("<canvas><components><component id='working'/></components></canvas>".utf8)
+        ).encoded()
+        let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let store = makeStore()
+        defer { store.stop() }
+        let identity = UUID()
+        await store.load(data: original, fileIdentity: identity)
+        store.selectComponent("working")
+        try await settle(store)
+        let selected = try XCTUnwrap(store.snapshot)
+        store.workingGroupAction(.group("working"), snapshot: selected)()
+        XCTAssertEqual(store.addPlacementDestination, .group("working"))
+        XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: UUID()))
+        var writes: [Data] = []
+        store.onDocumentChanged = { writes.append($0) }
+        let operation = try XCTUnwrap(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
+        await operation.value
+        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        let pasted = try XCTUnwrap(store.snapshot?.componentTree.rows.first { $0.component.partID != nil })
+        XCTAssertNil(pasted.component.parentID)
+        XCTAssertEqual(store.addPlacementDestination, .group("working"))
+        XCTAssertTrue(store.canUndo)
+        XCTAssertEqual(writes.count, 1)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
+        await store.load(data: original, fileIdentity: identity)
+        let retainedIdentity = try XCTUnwrap(store.snapshot?.documentIdentity)
+        let rejectedFileIdentity = UUID()
+        await store.load(data: Data("invalid archive".utf8), fileIdentity: rejectedFileIdentity)
+        let loadError = try XCTUnwrap(store.errorMessage)
+        XCTAssertFalse(store.canSave)
+        XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
+        XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: rejectedFileIdentity))
+        XCTAssertEqual(store.snapshot?.documentIdentity, retainedIdentity)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertEqual(store.errorMessage, loadError)
+        XCTAssertEqual(writes.count, 2)
+
+        await store.load(data: original, fileIdentity: rejectedFileIdentity)
+        XCTAssertTrue(store.canSave)
+        let retried = try XCTUnwrap(store.applyStartupQtXML(source.modelXML, fileIdentity: rejectedFileIdentity))
+        await retried.value
+        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        XCTAssertTrue(store.canUndo)
+        XCTAssertEqual(writes.count, 3)
+    }
+
     func testReaderRejectsOversizedAndNonRegularFiles() async throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
