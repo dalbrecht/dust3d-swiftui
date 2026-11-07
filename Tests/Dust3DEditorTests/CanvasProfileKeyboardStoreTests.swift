@@ -91,6 +91,37 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertEqual(store.plane, .front)
     }
 
+    func testCapturedNodeRevealDoesNotCrossEditingProfileSwitch() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: try makeDocument().encoded())
+        try await settle(store)
+        store.setDualCanvasProfile(true)
+        store.select("a")
+        try await settle(store)
+        let before = try XCTUnwrap(store.snapshot)
+        let context = PartGraphSelectionContext(snapshot: before)
+        let frontLease = store.canvasProfiles.lease
+        let reveal = try XCTUnwrap(
+            store.revealOwningComponentAction(.node("a"), context: context, profileLease: frontLease))
+
+        let sideLease = try XCTUnwrap(store.switchSelectedCanvasProfile(expectedLease: frontLease))
+        let previousHint = store.snapshot?.componentRevealHint?.revision
+        reveal()
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.componentRevealHint?.revision, previousHint)
+        XCTAssertNil(store.revealOwningComponentAction(.node("a"), context: context, profileLease: frontLease))
+
+        let currentReveal = try XCTUnwrap(
+            store.revealOwningComponentAction(.node("a"), context: context, profileLease: sideLease))
+        currentReveal()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentRevealHint?.componentID, "c")
+        XCTAssertEqual(store.snapshot?.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(store.snapshot?.document.encoded(), before.document.encoded())
+        XCTAssertEqual(store.snapshot?.canUndo, before.canUndo)
+    }
+
     private func makeStore() -> EditorStore {
         let stub = ProfileKeyboardNoNative()
         return EditorStore(

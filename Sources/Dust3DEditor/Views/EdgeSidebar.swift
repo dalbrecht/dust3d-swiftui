@@ -17,6 +17,8 @@ struct EdgeSidebar: View {
                 LazyVStack(alignment: .leading) {
                     ForEach(edges) { edge in
                         let selectWholePart = store.wholePartSelectionAction(.edge(edge.id))
+                        let revealOwningComponent = store.revealOwningComponentAction(
+                            .edge(edge.id), context: partContext)
                         let title = "\(titles[edge.fromID] ?? edge.fromID) → \(titles[edge.toID] ?? edge.toID)"
                         Button {
                             let flags = NSApp.currentEvent?.modifierFlags ?? []
@@ -54,8 +56,13 @@ struct EdgeSidebar: View {
                                 store.toggleEdgeSelection(edge.id)
                             }
                         }
+                        .accessibilityActions {
+                            if let reveal = revealOwningComponent {
+                                Button("Reveal Owning Component", action: reveal)
+                            }
+                        }
                         .contextMenu {
-                            if let reveal = store.revealOwningComponentAction(.edge(edge.id), context: partContext) {
+                            if let reveal = revealOwningComponent {
                                 Button("Reveal Owning Component", action: reveal)
                             }
                             Button("Select Whole Part", action: selectWholePart)
