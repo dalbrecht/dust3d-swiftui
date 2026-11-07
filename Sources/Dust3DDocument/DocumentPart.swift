@@ -17,6 +17,8 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     /// Known loop-interior fill flag, false when absent/empty, or nil for unsupported source text.
     /// Only stitching-loop geometry consumes this flag; it remains preserved for other roles.
     public let isLoopInteriorFilled: Bool?
+    /// The effective mirror flag, or nil for unsupported source text.
+    public let xMirrored: Bool?
     public let isVisible: Bool
     public let isLocked: Bool
     public let isDisabled: Bool
@@ -75,10 +77,12 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
         id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool,
         modifiers: [PartModifierProperty: Bool], deformationScales: [PartDeformationProperty: Double],
         isDeformationUnified: Bool?, cutFace: CutFaceSelection?, cutRotation: Double?, target: PartTarget?,
-        isLoopInteriorFilled: Bool?, materials: [PartMaterialProperty: Double], cutFaceReferenceCount: Int
+        isLoopInteriorFilled: Bool?, materials: [PartMaterialProperty: Double], cutFaceReferenceCount: Int,
+        xMirrored: Bool?
     ) {
         self.materials = materials
         self.isLoopInteriorFilled = isLoopInteriorFilled
+        self.xMirrored = xMirrored
         self.target = target
         self.cutFace = cutFace
         self.cutFaceReferenceCount = cutFaceReferenceCount

@@ -18,6 +18,32 @@ extension ComponentColorImageValue {
         return element
     }
 
+    static func elements(_ model: XMLDocument, ids: [String]) throws -> [XMLElement] {
+        guard ids.count <= ComponentHierarchy.maximumCount else { throw DocumentError.limitExceeded }
+        guard !ids.isEmpty else { return [] }
+        let keys = ids.map { Data($0.utf8) }
+        guard Set(keys).count == keys.count else { throw DocumentError.invalidComponentStructure }
+        _ = try ComponentHierarchy.read(model)
+        let indexed = Dictionary(
+            uniqueKeysWithValues: PartSplitting.componentElements(model).compactMap { element in
+                element.attribute(forName: "id")?.stringValue.map { (Data($0.utf8), element) }
+            })
+        return try zip(ids, keys).map { id, key in
+            try Task.checkCancellation()
+            guard let element = indexed[key] else { throw DocumentError.missingComponent(id) }
+            return element
+        }
+    }
+
+    static func set(_ elements: [XMLElement], imageID: String?) throws -> Bool {
+        var changed = false
+        for element in elements {
+            try Task.checkCancellation()
+            if set(element, imageID: imageID) { changed = true }
+        }
+        return changed
+    }
+
     static func set(_ element: XMLElement, imageID: String?) -> Bool {
         let current = read(element)
         if let imageID, case .reference(let existing) = current,
