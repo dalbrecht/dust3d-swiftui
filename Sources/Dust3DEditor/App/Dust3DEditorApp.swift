@@ -33,6 +33,18 @@ struct Dust3DEditorApp: App {
         return view
     }
 
+    private var hasTextEditingFocus: Bool {
+        EditorCommandScope.hasTextEditingFocus(
+            swiftUIFocus: isEditingText == true, hasNativeEditor: nativeTextEditor != nil)
+    }
+
+    private var canDeleteGraphSelection: Bool {
+        EditorCommandScope.allowsGraphDelete(
+            animationFocus: isAnimationFocused == true, nativeTextFocus: hasTextEditingFocus,
+            componentSidebarFocus: isComponentSidebarFocused == true)
+            && store?.canDeleteGraphSelection == true
+    }
+
     var body: some Scene {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
             EditorRootView(file: file.$document, sourceURL: file.fileURL)
@@ -204,7 +216,7 @@ struct Dust3DEditorApp: App {
                 CanvasRotationMenuButtons(
                     store: store,
                     animationFocus: isAnimationFocused == true,
-                    nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
+                    nativeTextFocus: hasTextEditingFocus)
                 CanvasPrecisionMenu(store: store)
                 GraphColorizeMenu(store: store)
                 DescendantRotationMenu(store: store)
@@ -219,13 +231,12 @@ struct Dust3DEditorApp: App {
                     .accessibilityLabel("Insert Midpoints on Selected Edges")
                 Button("Reverse Selected Edges") { store?.reverseExplicitlySelectedEdges() }
                     .disabled(store?.canReverseSelectedEdges != true)
-                Button("Delete Graph Selection") { store?.deleteSelection() }
-                    .keyboardShortcut(.delete, modifiers: [])
-                    .disabled(
-                        !EditorCommandScope.allowsGraphDelete(
-                            animationFocus: isAnimationFocused == true, nativeTextFocus: isEditingText == true,
-                            componentSidebarFocus: isComponentSidebarFocused == true)
-                            || store?.canDeleteGraphSelection != true)
+                Button("Delete Graph Selection") {
+                    guard canDeleteGraphSelection else { return }
+                    store?.deleteSelection()
+                }
+                .keyboardShortcut(.delete, modifiers: [])
+                .disabled(!canDeleteGraphSelection)
                 Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
                     Toggle(

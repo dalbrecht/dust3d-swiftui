@@ -17,6 +17,10 @@ enum EditorCommandScope {
         return componentSidebarFocus ? .components : .graph
     }
 
+    static func hasTextEditingFocus(swiftUIFocus: Bool, hasNativeEditor: Bool) -> Bool {
+        swiftUIFocus || hasNativeEditor
+    }
+
     static func allowsGraphShortcuts(animationFocus: Bool, nativeTextFocus: Bool) -> Bool {
         !animationFocus && !nativeTextFocus
     }
