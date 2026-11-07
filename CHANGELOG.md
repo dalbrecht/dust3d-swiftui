@@ -334,6 +334,8 @@
 
 - Add an ordered, collapsible component sidebar and name inspector with independent selection, linked-part inspection, undo/redo and lossless saving.
 
+- Keep the current Add chain and radius when switching the editing profile in the Side by Side workspace.
+
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
 
 - Reject native save payloads while edits are applying or their document snapshot has been superseded, preserving the native File menu and providing retry guidance.
