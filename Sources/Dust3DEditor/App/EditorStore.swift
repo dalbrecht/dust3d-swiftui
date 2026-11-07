@@ -2200,6 +2200,29 @@ final class EditorStore {
         rotateCanvasSelection(degrees: degrees)
         return true
     }
+    private func canRotateOrthogonalQuarterTurn(profileLease: UUID?) -> Bool {
+        !isSelectingRigEdges && canSave && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
+            && ownsCanvasProfile(profileLease) && snapshot?.canRotateOrthogonalQuarterTurn(from: plane) == true
+    }
+
+    func orthogonalQuarterTurnAction(
+        _ turn: OrthogonalQuarterTurn, profileLease: UUID? = nil
+    ) -> (@MainActor () -> Void)? {
+        guard canRotateOrthogonalQuarterTurn(profileLease: profileLease), let context = canvasRotationContext else {
+            return nil
+        }
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] in
+            guard let self, self.canvasRotationContext == context,
+                self.referenceColorInteractionEpoch == interaction,
+                self.canRotateOrthogonalQuarterTurn(profileLease: profileLease)
+            else { return }
+            self.perform {
+                try await $0.rotateOrthogonalQuarterTurn(turn, from: context.plane, target: context.target)
+            }
+        }
+    }
+
     var canRotateDescendants: Bool {
         !isSelectingRigEdges && !isWorking && snapshot?.canRotateDescendants == true
     }

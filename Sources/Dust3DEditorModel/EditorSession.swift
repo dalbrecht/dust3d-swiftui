@@ -702,6 +702,14 @@ public actor EditorSession {
     {
         try update { try $0.rotateSelection(degrees: degrees, plane: plane, target: target) }
     }
+    package func rotateOrthogonalQuarterTurn(
+        _ turn: OrthogonalQuarterTurn, from profile: EditingPlane, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update {
+            guard hasAcceptedSource else { throw EditorError.staleCanvasAdjustment }
+            try $0.rotateOrthogonalQuarterTurn(turn, from: profile, target: target)
+        }
+    }
     public func transformSelection(_ transform: SelectionTransform) throws -> EditorSnapshot {
         try update { try $0.transformSelection(transform) }
     }
