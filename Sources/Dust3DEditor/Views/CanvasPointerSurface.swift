@@ -137,13 +137,12 @@ final class CanvasPointerView: NSView {
             addPress(point(event))
             return
         }
-        if event.clickCount == 2, let doubleClick {
+        let mode = GraphSelectionMode.pointerMode(modifiers: event.modifierFlags)
+        if mode != .subtract, event.clickCount == 2, let doubleClick {
             invalidate()
             doubleClick(point(event))
             return
         }
-        let mode: GraphSelectionMode =
-            event.modifierFlags.contains(.command) ? .toggle : event.modifierFlags.contains(.shift) ? .add : .replace
         start = (point(event), mode)
     }
     override func mouseDragged(with event: NSEvent) {

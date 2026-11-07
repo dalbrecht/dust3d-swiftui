@@ -81,6 +81,7 @@ struct NodeCanvas: View {
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"
                 )
                 .accessibilityLabel("Marquee selection canvas")
+                .help("Drag to select. Shift adds, Command toggles, and Command-Option removes hit nodes and edges.")
                 if let marquee {
                     let frame = CGRect(
                         x: marquee.minimum.x, y: marquee.minimum.y,
@@ -150,6 +151,11 @@ struct NodeCanvas: View {
                         add: {
                             if store.addModeID == addModeID && !store.isAddingNodes {
                                 store.selectGraph(nodes: [node.id], edges: [], mode: .add)
+                            }
+                        },
+                        subtract: {
+                            if store.addModeID == addModeID && !store.isAddingNodes {
+                                store.selectGraph(nodes: [node.id], edges: [], mode: .subtract)
                             }
                         },
                         wheel: { input in
@@ -348,6 +354,7 @@ private struct NodeHandle: View {
     let select: () -> Void
     let toggle: () -> Void
     let add: () -> Void
+    let subtract: () -> Void
     let wheel: (CanvasWheelInput) -> Bool
     let radiusKey: (Int) -> Bool
     let begin: (UUID) -> Void
@@ -370,7 +377,8 @@ private struct NodeHandle: View {
             NodePointerSurface(
                 enabled: enabled, canDrag: canDrag, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle, add: add, wheel: wheel, radiusKey: radiusKey, doubleClick: doubleClick,
+                select: select, toggle: toggle, add: add, subtract: subtract, wheel: wheel, radiusKey: radiusKey,
+                doubleClick: doubleClick,
                 precisionKey: precisionKey,
                 beginShiftDrag: beginShiftDrag
             ).frame(width: 36, height: 36)
@@ -391,7 +399,7 @@ private struct NodeHandle: View {
         }
         .accessibilityAction(named: Text("Add node to selection")) { add() }
         .accessibilityAction(named: Text("Remove node from selection")) {
-            if selected { toggle() }
+            subtract()
         }
         .help(
             "\(node.title) · \(node.isEditable ? "Drag to move, Shift-drag to rotate or bend" : "Locked, hidden or disabled part")"

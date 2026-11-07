@@ -360,6 +360,27 @@ public struct EditorState: Sendable {
         try selectGraph(nodes: selectedIDs.union(nodes), edges: selectedEdgeIDs.union(edges))
     }
 
+    /// Remove existing explicit graph identities without adding unselected hits or inferring endpoints.
+    /// - Parameters: `nodes` and `edges` are independently validated exact UTF-8 source identities.
+    /// - Throws: `missingNode` or `invalidNode` before any selection changes for an unknown identity.
+    /// - Note: An empty or unselected hit set preserves selection epochs, inspector and reveal intent.
+    /// - Example: `try state.removeFromSelection(nodes: ["a"], edges: ["edge"])`.
+    public mutating func removeFromSelection(nodes: Set<String>, edges: Set<String>) throws {
+        let existingNodes = Set(contents.nodes.map { Data($0.id.utf8) })
+        if let missing = nodes.filter({ !existingNodes.contains(Data($0.utf8)) }).sorted().first {
+            throw DocumentError.missingNode(missing)
+        }
+        let nodeKeys = Set(nodes.map { Data($0.utf8) })
+        let edgeKeys = Set(edges.map { Data($0.utf8) })
+        guard edgeKeys.isSubset(of: Set(contents.edges.map { Data($0.id.utf8) })) else {
+            throw DocumentError.invalidNode
+        }
+        let remainingNodes = selectedIDs.filter { !nodeKeys.contains(Data($0.utf8)) }
+        let remainingEdges = selectedEdgeIDs.filter { !edgeKeys.contains(Data($0.utf8)) }
+        guard remainingNodes.count != selectedIDs.count || remainingEdges.count != selectedEdgeIDs.count else { return }
+        try selectGraph(nodes: remainingNodes, edges: remainingEdges)
+    }
+
     /// Toggle each independent graph identity once, preserving the other picks; invalid identities reject atomically.
     public mutating func toggleGraphSelection(nodes: Set<String>, edges: Set<String>) throws {
         guard nodes.isSubset(of: Set(contents.nodes.map(\.id))), edges.isSubset(of: Set(contents.edges.map(\.id)))
