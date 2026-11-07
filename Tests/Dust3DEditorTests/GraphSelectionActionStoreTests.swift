@@ -317,6 +317,64 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertEqual(writes, 0)
     }
 
+    func testOrthogonalQuarterTurnCapturesProfileAndSelectionAndPublishesOneEdit() async throws {
+        let original = try source()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectGraph(nodes: ["a"], edges: ["ab"])
+        try await settle(value)
+        let staleProfile = try XCTUnwrap(value.orthogonalQuarterTurnAction(.positive))
+        value.plane = .side
+        staleProfile()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+
+        let staleSelection = try XCTUnwrap(value.orthogonalQuarterTurnAction(.positive))
+        value.select("x")
+        try await settle(value)
+        staleSelection()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertNil(value.orthogonalQuarterTurnAction(.positive))
+
+        value.selectGraph(nodes: ["a"], edges: ["ab"])
+        try await settle(value)
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        try XCTUnwrap(value.orthogonalQuarterTurnAction(.positive))()
+        try await settle(value)
+        XCTAssertEqual(value.plane, .side)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["a"])
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertNotEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertEqual(publications, 1)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testOrthogonalQuarterTurnRejectsRetainedActionAfterReferenceInteraction() async throws {
+        let original = try source()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectGraph(nodes: ["a"], edges: ["ab"])
+        try await settle(value)
+        value.plane = .side
+        let old = try XCTUnwrap(value.orthogonalQuarterTurnAction(.positive))
+        value.setReferenceColorInteractionActive(true)
+        XCTAssertNil(value.orthogonalQuarterTurnAction(.positive))
+        value.setReferenceColorInteractionActive(false)
+        old()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testContextDeletePublishesOnceWithExactUndoAndIndependentWindow() async throws {
         let original = try source()
         let value = store()
