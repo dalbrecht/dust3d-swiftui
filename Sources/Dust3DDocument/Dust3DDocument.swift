@@ -155,6 +155,10 @@ public enum DocumentCommand: Sendable {
     /// Pixel/CRC validation is a platform import responsibility; this validates the PNG envelope.
     /// Example: `.importComponentColorImage(id: componentID, imageID: freshID, png: bytes)`.
     case importComponentColorImage(id: String, imageID: String, png: Data)
+    /// Assign or clear one retained image on unique exact component identities in one archive update.
+    case setComponentColorImages(ids: [String], imageID: String?)
+    /// Append one PNG and assign its identity to all captured components in one archive update.
+    case importComponentColorImages(ids: [String], imageID: String, png: Data)
     /// Replace one mesh setting across literal component IDs in one indexed transaction.
     /// All roles and links are eligible. Invalid IDs or cutoff reject atomically. Empty arrays are no-ops.
     case editComponentMeshSettings(ids: [String], edit: ComponentMeshEdit)
@@ -642,7 +646,7 @@ public struct Dust3DDocument: Sendable {
         switch command {
         case .createAnimation, .setAnimationName, .setAnimationType, .setAnimationParameter, .duplicateAnimation,
             .deleteAnimation, .setRigType, .setHeadHasEyelids, .setNode, .setNodes, .setReferenceImagePNG, .setOrigin,
-            .setComponentName,
+            .setComponentName, .setComponentColorImages, .importComponentColorImages,
             .setComponentCombineMode, .editComponentMeshSettings,
             .setComponentSmoothCutoffDegrees, .setComponentWrapMode, .editComponentWrapping, .setComponentWrapBinding,
             .setComponentWrapScalar,
@@ -784,6 +788,26 @@ public struct Dust3DDocument: Sendable {
             guard try ComponentColorValue.set(model, updates: updates) else { return self }
             try Task.checkCancellation()
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentColorImages(let ids, let imageID):
+            let elements = try ComponentColorImageValue.elements(model, ids: ids)
+            guard !elements.isEmpty else { return self }
+            let canonical = try imageID.map {
+                try DocumentTextureImages.reference(imageID: $0, assets: textureAssetMetadata()).imageID
+            }
+            guard try ComponentColorImageValue.set(elements, imageID: canonical) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .importComponentColorImages(let ids, let imageID, let png):
+            let elements = try ComponentColorImageValue.elements(model, ids: ids)
+            guard !elements.isEmpty else { return self }
+            _ = try PNGContainerMetadata(data: png)
+            guard let identity = DocumentTextureImages.identityBytes(imageID) else {
+                throw TextureImageReferenceError.invalidImageIdentity(imageID)
+            }
+            let canonical = "{" + String(decoding: identity, as: UTF8.self) + "}"
+            let changed = try ComponentColorImageValue.set(elements, imageID: canonical)
+            return try importingColorImage(
+                imageID: imageID, png: png, replacementModel: changed ? model.xmlData(options: [.nodePreserveAll]) : nil
+            )
         case .setComponentColorImage(let id, let imageID):
             let element = try ComponentColorImageValue.element(model, id: id)
             let canonical: String?
@@ -1440,7 +1464,9 @@ public struct Dust3DDocument: Sendable {
         items.map { DocumentTextureAssetMetadata(name: $0.name, kind: $0.type, byteCount: $0.range.count) }
     }
 
-    private func importingColorImage(imageID: String, png: Data) throws -> Dust3DDocument {
+    private func importingColorImage(
+        imageID: String, png: Data, replacementModel: Data? = nil
+    ) throws -> Dust3DDocument {
         guard let identity = DocumentTextureImages.identityBytes(imageID),
             !identity.contains(47), !identity.contains(46),
             imageID.unicodeScalars.allSatisfy({
@@ -1454,7 +1480,7 @@ public struct Dust3DDocument: Sendable {
             guard asset(named: existing.assetName) == png else {
                 throw DocumentError.conflictingAsset(existing.assetName)
             }
-            return self
+            return try replacementModel.map { try replacingModel($0) } ?? self
         } catch TextureImageReferenceError.missingAsset {
             // A fresh import must not implicitly repair other components' missing resources.
             let model = try Self.xml(modelXML, root: "canvas")
@@ -1469,10 +1495,19 @@ public struct Dust3DDocument: Sendable {
         guard items.count < 10_000, bytes.count - payloadOffset <= 256 * 1024 * 1024 - png.count else {
             throw DocumentError.limitExceeded
         }
-        let xml = try Self.xml(header, root: "ds3")
+        let xml: XMLDocument
+        var payload: Data
+        if let replacementModel {
+            guard replacementModel.count <= 16 * 1024 * 1024 else { throw DocumentError.limitExceeded }
+            (xml, payload) = try replacingItemPayload(at: modelIndex, with: replacementModel)
+        } else {
+            xml = try Self.xml(header, root: "ds3")
+            payload = Data(bytes[payloadOffset...])
+        }
+        guard payload.count <= 256 * 1024 * 1024 - png.count else { throw DocumentError.limitExceeded }
         let asset = XMLElement(name: "asset")
         for (name, value) in [
-            ("name", assetName), ("offset", String(bytes.count - payloadOffset)), ("size", String(png.count)),
+            ("name", assetName), ("offset", String(payload.count)), ("size", String(png.count)),
         ] {
             let attribute = XMLNode(kind: .attribute)
             attribute.name = name
@@ -1480,7 +1515,6 @@ public struct Dust3DDocument: Sendable {
             asset.addAttribute(attribute)
         }
         xml.rootElement()?.addChild(asset)
-        var payload = Data(bytes[payloadOffset...])
         payload.append(png)
         return try rebuildingArchive(xml, payload: payload)
     }
@@ -1519,6 +1553,11 @@ public struct Dust3DDocument: Sendable {
 
     /// Replace or remove one item, preserving all unrelated payload bytes, including gaps and trailing data.
     private func replacingItem(at itemIndex: Int, with replacement: Data?) throws -> Dust3DDocument {
+        let (xml, payload) = try replacingItemPayload(at: itemIndex, with: replacement)
+        return try rebuildingArchive(xml, payload: payload)
+    }
+
+    private func replacingItemPayload(at itemIndex: Int, with replacement: Data?) throws -> (XMLDocument, Data) {
         let old = items[itemIndex].range
         let data = replacement ?? Data()
         let nextPayloadCount = bytes.count - payloadOffset - old.count + data.count
@@ -1543,7 +1582,7 @@ public struct Dust3DDocument: Sendable {
         }
         var payload = Data(bytes[payloadOffset...])
         payload.replaceSubrange(old, with: data)
-        return try rebuildingArchive(xml, payload: payload)
+        return (xml, payload)
     }
 
     private func rebuildingArchive(_ xml: XMLDocument, payload: Data) throws -> Dust3DDocument {
