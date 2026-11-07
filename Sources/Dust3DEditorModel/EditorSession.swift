@@ -309,6 +309,19 @@ public actor EditorSession {
         }
     }
 
+    /// Set an absolute cross-section rotation on the originally inspected Model part.
+    package func setPartCutRotationPreset(
+        _ preset: PartCutRotationPreset, partID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), snapshot.allowsCutRotationPreset(for: partID)
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([.setPartCutRotation(id: partID, rotation: preset.halfTurns)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Assign supported roles and perform any necessary stitching grouping in one undo/publication.
     /// Fresh group identities belong to this session, never the pure document planner.
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws

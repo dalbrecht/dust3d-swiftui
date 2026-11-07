@@ -42,6 +42,39 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         }
         XCTFail("Store did not settle")
     }
+    func testGraphSingletonCanEditWhileSidebarSingletonKeepsItsOwnRoute() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id="a" partId="p" x="0" y="0" z="0" radius=".1"/></nodes>
+                <parts><part id="p"/></parts><components>
+                <component id="owner" linkDataType="partId" linkData="p"/>
+                </components></canvas>
+                """.utf8))
+        let store = store()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+
+        store.selectComponent("owner")
+        try await settle(store)
+        let sidebarTarget = ComponentMeshSelectionTarget(snapshot: try XCTUnwrap(store.snapshot))
+        XCTAssertEqual(sidebarTarget.count, 1)
+        XCTAssertFalse(store.canEditComponentMeshSettings(sidebarTarget))
+
+        store.selectGraph(nodes: ["a"], edges: [])
+        try await settle(store)
+        let graphTarget = ComponentMeshSelectionTarget(graphSelection: try XCTUnwrap(store.snapshot))
+        XCTAssertEqual(graphTarget.count, 1)
+        XCTAssertTrue(store.canEditComponentMeshSettings(graphTarget))
+        store.componentMeshAction(.combineMode(.inversion), target: graphTarget)()
+        try await settle(store)
+        let changed = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(changed.componentTree.rows.first?.component.combineMode, .inversion)
+        XCTAssertEqual(changed.selectedIDs, ["a"])
+        XCTAssertTrue(store.canUndo)
+    }
+
     func testDanglingPartAliasCannotEnableOrPublishComponentStateActions() async throws {
         let original = try Dust3DDocument(
             snapshotXML: Data(
