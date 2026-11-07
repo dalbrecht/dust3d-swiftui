@@ -108,6 +108,17 @@ final class CanvasPointerView: NSView {
     private var activity = CanvasPointerActivity()
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
+    override class var defaultFocusRingType: NSFocusRingType { .exterior }
+
+    override var focusRingMaskBounds: NSRect {
+        // Leave room for the native ring inside the drawing pane.
+        guard bounds.width > 8, bounds.height > 8 else { return .zero }
+        return bounds.insetBy(dx: 4, dy: 4)
+    }
+
+    override func drawFocusRingMask() {
+        NSBezierPath(rect: focusRingMaskBounds).fill()
+    }
 
     override func updateTrackingAreas() {
         if let tracking { removeTrackingArea(tracking) }
