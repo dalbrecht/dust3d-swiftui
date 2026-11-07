@@ -63,6 +63,13 @@ struct NodeInspector: View {
                             .id(snapshot.documentIdentity)
                             .disabled(!store.canEditGraphPartCrossSection(crossSectionTarget))
                     }
+                    DisclosureGroup("Owning Part Material") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartMaterialControls(store: store, part: part, graphTarget: crossSectionTarget)
+                            .id(snapshot.selectionRevision)
+                            .id(snapshot.documentIdentity)
+                            .disabled(!store.canEditGraphPartMaterial(crossSectionTarget))
+                    }
                 }
             }
             ComponentMeshSelectionControls(store: store)
