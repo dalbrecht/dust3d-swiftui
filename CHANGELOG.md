@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open a local .ds3 document by dropping it into the editor without replacing the current document.
+
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
@@ -17,6 +19,8 @@
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
 
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
+
+- Keep a working component group as the destination for new parts while graph selection changes.
 
 - Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
 
@@ -320,6 +324,8 @@
 
 - Set a Model part’s cross-section rotation to −90°, 0°, or +90° with one click and one undo step.
 
+- Author reflected copies from the part inspector and initialize an absent canvas origin in the same Undo step.
+
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
 - Reset a Model part’s saved width or thickness scale to 1 independently, with one undo step.
@@ -397,6 +403,8 @@
 - Align selected editable nodes to their local Front/Side center on either or both axes, respecting locks with one-step lossless undo/redo.
 
 - Add native part selection, naming, visibility, locking and mesh-disable controls with lossless undo/redo and save support.
+
+- Drop one or two image files into the reference controls to compose Front and Side images before applying them to the document.
 
 - Import/render bounded native reference images with undoable removal, per-window opacity/visibility and lossless existing asset handling; align the canvas and clockwise transforms with Qt’s positive-Y-down image coordinates.
 

@@ -61,6 +61,54 @@ final class GraphPartShapeStoreTests: XCTestCase {
         XCTAssertEqual(writes, 0)
     }
 
+    func testRetainedMirrorActionRejectsFailedReplacementAndCurrentSourceUndoesExactly() async throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes><parts><part id='p'/></parts></canvas>"
+                    .utf8))
+        let stub = GraphPartShapeNoNative()
+        let store = EditorStore(
+            preview: stub, materialBaker: stub, importedMaterialLoader: stub, sourceMaterialBaker: stub,
+            animationCatalog: stub)
+        defer { store.stop() }
+        await store.load(data: document.encoded())
+        store.selectPart("p")
+        try await settle(store)
+        let before = try XCTUnwrap(store.snapshot)
+        let target = PartMirrorTarget(snapshot: before, partID: "p")
+        XCTAssertTrue(store.canEditPartMirror(target))
+        let retained = store.partMirrorAction(true, target: target)
+        var writes: [Data] = []
+        store.onDocumentChanged = { writes.append($0) }
+
+        await store.load(data: Data("invalid archive".utf8), fileIdentity: UUID())
+        XCTAssertEqual(store.snapshot?.documentIdentity, before.documentIdentity)
+        XCTAssertFalse(store.canEditPartMirror(target))
+        retained()
+        XCTAssertFalse(store.isWorking)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), before.document.encoded())
+        XCTAssertFalse(store.canUndo)
+        XCTAssertTrue(writes.isEmpty)
+
+        await store.load(data: document.encoded())
+        store.selectPart("p")
+        try await settle(store)
+        let current = try XCTUnwrap(store.snapshot)
+        let currentTarget = PartMirrorTarget(snapshot: current, partID: "p")
+        XCTAssertTrue(store.canEditPartMirror(currentTarget))
+        retained()
+        XCTAssertFalse(store.isWorking)
+        store.partMirrorAction(true, target: currentTarget)()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.parts.first?.xMirrored, true)
+        XCTAssertEqual(writes.count, 1)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), current.document.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     private func settle(_ store: EditorStore) async throws {
         for _ in 0..<300 {
             if !store.isWorking && !store.isGenerating && !store.isBakingMaterials { return }
