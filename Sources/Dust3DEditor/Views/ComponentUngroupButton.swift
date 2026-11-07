@@ -14,10 +14,13 @@ enum ComponentUngroupPresentation {
 struct ComponentUngroupButton: View {
     let store: EditorStore
     let target: ComponentUngroupTarget
+    var admitsInput: @MainActor () -> Bool = { true }
+
     var body: some View {
+        let invoke = store.componentUngroupAction(target)
         Button(
             ComponentUngroupPresentation.title(wrapperCount: target.wrapperCount),
-            action: store.componentUngroupAction(target)
+            action: { if admitsInput() { invoke() } }
         )
         .disabled(!store.canUngroupComponents(target))
         .accessibilityIdentifier("component-ungroup")
