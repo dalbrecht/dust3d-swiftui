@@ -8,7 +8,7 @@ import SwiftUI
     }
     let entries: [Entry]
 
-    init(store: EditorStore?) {
+    init(store: EditorStore?, admitsInput: @escaping @MainActor () -> Bool = { true }) {
         guard let store, let snapshot = store.snapshot else {
             entries = []
             return
@@ -16,7 +16,8 @@ import SwiftUI
         entries = GraphSelectionAction.allCases.compactMap { action in
             let target = GraphSelectionActionTarget(snapshot: snapshot, action: action)
             guard store.canPerformGraphSelectionAction(target) else { return nil }
-            return Entry(action: action, invoke: store.graphSelectionAction(target))
+            let invoke = store.graphSelectionAction(target)
+            return Entry(action: action) { if admitsInput() { invoke() } }
         }
     }
 }

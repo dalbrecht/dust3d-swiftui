@@ -90,7 +90,15 @@ struct EditorRootView: View {
                         HStack {
                             Text("Node canvas").font(.headline)
                             Spacer()
-                            Picker("View", selection: $store.plane) {
+                            Toggle(
+                                "Side by Side",
+                                isOn: Binding(
+                                    get: { store.canvasProfiles.isDualProfile },
+                                    set: { store.setDualCanvasProfile($0) })
+                            )
+                            .toggleStyle(.button)
+                            .help("Show both profiles. Use the Editing Profile picker to choose where to edit.")
+                            Picker("Editing Profile", selection: $store.plane) {
                                 ForEach(EditingPlane.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                             }
                             .frame(width: 180)
@@ -124,7 +132,36 @@ struct EditorRootView: View {
                         ReferenceImageControls(store: store)
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
-                        NodeCanvas(store: store)
+                        if store.canvasProfiles.isDualProfile {
+                            HStack(spacing: 0) {
+                                ForEach(store.canvasProfiles.visiblePlanes, id: \.self) { plane in
+                                    if plane == .side { Divider() }
+                                    VStack(spacing: 0) {
+                                        Group {
+                                            if plane == store.plane {
+                                                Text("\(plane.rawValue) · Editing")
+                                                    .accessibilityAddTraits(.isHeader)
+                                            } else {
+                                                Button("Edit \(plane.rawValue)") { store.plane = plane }
+                                                    .buttonStyle(.link)
+                                            }
+                                        }
+                                        .font(.caption).padding(6)
+                                        Divider()
+                                        if plane == store.plane {
+                                            NodeCanvas(store: store, profileLease: store.canvasProfiles.lease)
+                                                .id(store.canvasProfiles.lease)
+                                        } else {
+                                            CanvasProfileCompanion(store: store, plane: plane)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                }
+                            }
+                        } else {
+                            NodeCanvas(store: store, profileLease: store.canvasProfiles.lease)
+                                .id(store.canvasProfiles.lease)
+                        }
                     }
                     .frame(minWidth: 300)
                     preview.frame(minWidth: 240, idealWidth: 320)

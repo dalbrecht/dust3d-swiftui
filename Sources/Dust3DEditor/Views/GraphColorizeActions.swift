@@ -5,12 +5,14 @@
     let clear: @MainActor () -> Void
     let autoColor: @MainActor () -> Void
 
-    init(store: EditorStore?) {
+    init(store: EditorStore?, admitsInput: @escaping @MainActor () -> Bool = { true }) {
         canClear = store?.canClearSelectionColors == true
         canAutoColor = store?.canAutoColorSelection == true
         if let store {
-            clear = store.clearSelectionColorsAction()
-            autoColor = store.referenceColorAction()
+            let clearColors = store.clearSelectionColorsAction()
+            let applyColors = store.referenceColorAction()
+            clear = { if admitsInput() { clearColors() } }
+            autoColor = { if admitsInput() { applyColors() } }
         } else {
             clear = {}
             autoColor = {}

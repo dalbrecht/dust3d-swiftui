@@ -111,6 +111,7 @@ final class EditorStore {
     private(set) var addPlacement = AddPlacementState()
     private(set) var addModeID = UUID()
     private var canvasWidth: Double = 0
+    private var canvasGeometryUsesProfileLease = false
     private var addPlacementRequestID: UUID?
     private(set) var addPlacementNotice: String?
     private let addPlacements: any AddPlacementServing
@@ -142,7 +143,11 @@ final class EditorStore {
         return addPlacement.anchorID == nil
             || snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.isEditable == true
     }
-    func setCanvasContext(projection: CanvasProjection, width: Double, height: Double) {
+    func setCanvasContext(
+        projection: CanvasProjection, width: Double, height: Double, lease: UUID? = nil
+    ) {
+        guard ownsCanvasProfile(lease), lease == nil || projection.plane == plane else { return }
+        canvasGeometryUsesProfileLease = lease != nil
         if isAddingNodes && (canvasWidth != width || canvasHeight != height) { cancelAddMode() }
         updatePrecisionCanvasIdentity(projection: projection, width: width, height: height)
         canvasWidth = width
@@ -386,17 +391,47 @@ final class EditorStore {
     private var precisionLayoutEpoch = UUID()
     private var precisionCanvasIdentity: ReferenceColorCanvasIdentity?
     private var rotationInputContextID = UUID()
-    var plane = EditingPlane.front {
-        didSet {
-            if plane != oldValue {
-                rotationInputContextID = UUID()
-                invalidateReferenceColors()
-                cancelAddMode()
-                cancelOriginDrag()
-                clearCanvasHover()
-            }
+    private(set) var canvasProfiles = CanvasProfileWorkspace()
+    var plane: EditingPlane {
+        get { canvasProfiles.activePlane }
+        set {
+            guard newValue != plane else { return }
+            canvasProfiles.activate(newValue)
+            resetCanvasProfileContext(clearGeometry: canvasGeometryUsesProfileLease)
         }
     }
+
+    func setDualCanvasProfile(_ enabled: Bool) {
+        guard enabled != canvasProfiles.isDualProfile else { return }
+        canvasProfiles.setDualProfile(enabled)
+        resetCanvasProfileContext(clearGeometry: true)
+    }
+
+    func ownsCanvasProfile(_ lease: UUID?) -> Bool {
+        !stopped && (lease.map(canvasProfiles.owns) ?? true)
+    }
+
+    func releaseCanvasProfile(lease: UUID?) {
+        guard ownsCanvasProfile(lease) else { return }
+        if lease != nil { canvasProfiles.retireLease() }
+        resetCanvasProfileContext(clearGeometry: true)
+    }
+
+    private func resetCanvasProfileContext(clearGeometry: Bool) {
+        rotationInputContextID = UUID()
+        precisionLayoutEpoch = UUID()
+        precisionCanvasIdentity = nil
+        clearReferenceColorCanvasContext()
+        setReferenceColorInteractionActive(false)
+        cancelAddMode()
+        cancelOriginDrag()
+        if clearGeometry {
+            canvasWidth = 0
+            setCanvasHeight(0)
+        }
+        clearCanvasHover()
+    }
+
     private(set) var isMovingOrigin = false {
         didSet {
             if isMovingOrigin != oldValue {
