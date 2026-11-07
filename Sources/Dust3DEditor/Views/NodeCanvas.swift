@@ -90,7 +90,8 @@ struct NodeCanvas: View {
                         else { return }
                         store.selectWholePart(at: point, projection: projection, context: partContext)
                     },
-                    precisionKey: precisionKey, isAddingNodes: store.isAddingNodes,
+                    precisionKey: precisionKey, tracksHoverWhileDisabled: store.tracksPartStateHoverWhileWorking,
+                    isAddingNodes: store.isAddingNodes,
                     addPress: { if admitsInput() { store.placeAddNode(at: $0, modeID: addModeID) } },
                     cancelInput: { if admitsInput() { cancelAddInput() } },
                     admitsPrimaryPress: { admitsInput() && admitPrimaryPress($0) },

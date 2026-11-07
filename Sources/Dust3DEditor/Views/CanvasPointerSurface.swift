@@ -40,6 +40,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
+    var tracksHoverWhileDisabled = false
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
@@ -57,7 +58,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.switchProfile = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
-        if !enabled { view.cancelActivation() }
+        view.tracksHoverWhileDisabled = tracksHoverWhileDisabled
+        if !enabled { view.cancelActivation(preservingHover: tracksHoverWhileDisabled) }
         view.enabled = enabled
         view.select = select
         view.tap = tap
@@ -80,7 +82,10 @@ struct CanvasPointerSurface: NSViewRepresentable {
 }
 
 final class CanvasPointerView: NSView {
-    var enabled = false { didSet { if oldValue && !enabled { cancelActivation() } } }
+    var tracksHoverWhileDisabled = false
+    var enabled = false {
+        didSet { if oldValue && !enabled { cancelActivation(preservingHover: tracksHoverWhileDisabled) } }
+    }
     var select: (CanvasSelectionRectangle, GraphSelectionMode) -> Void = { _, _ in }
     var tap: (CanvasPoint, GraphSelectionMode) -> Void = { _, _ in }
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
@@ -191,13 +196,13 @@ final class CanvasPointerView: NSView {
         }
     }
     override func mouseEntered(with event: NSEvent) {
-        if enabled {
+        if enabled || tracksHoverWhileDisabled {
             activity.hasHover = true
             hover(point(event))
         }
     }
     override func mouseMoved(with event: NSEvent) {
-        if enabled {
+        if enabled || tracksHoverWhileDisabled {
             activity.hasHover = true
             hover(point(event))
         }
@@ -209,9 +214,11 @@ final class CanvasPointerView: NSView {
         }
     }
     /// Lifecycle updates cancel native input only; SwiftUI lifecycle hooks clear presentation and hover.
-    func cancelActivation() {
+    func cancelActivation(preservingHover: Bool = false) {
         start = nil
+        let hadHover = activity.hasHover
         activity = CanvasPointerActivity()
+        activity.hasHover = preservingHover && hadHover
     }
     func invalidate() {
         start = nil

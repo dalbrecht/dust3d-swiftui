@@ -104,6 +104,82 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertEqual(value.snapshot?.document.encoded(), original)
     }
 
+    func testStationaryPartStateHoverLocksAndUnlocksTheSameOwner() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+
+        let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+        value.updateCanvasHover(at: projection.point(for: .init(x: 0.3, y: 0.5, z: 0.5)), projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .edge("ab"))
+        let lock = CanvasPrecisionKeyInput(keyCode: 37, characters: "l", modifiers: [])
+        let retained = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertTrue(retained(lock))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.isLocked, true)
+
+        XCTAssertFalse(retained(lock))
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(lock))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.isLocked, false)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "q" }?.isLocked, false)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.isLocked, true)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testPointerMoveAndExitDuringPartLockRetireFormerHover() async throws {
+        for exits in [false, true] {
+            let value = store()
+            defer { value.stop() }
+            await value.load(data: try source().encoded())
+            prepareCanvas(value)
+            value.selectGraph(nodes: ["a", "x"], edges: [])
+            try await settle(value)
+
+            let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+            value.updateCanvasHover(at: projection.point(for: .init(x: 0.3, y: 0.5, z: 0.5)), projection: projection)
+            let lock = CanvasPrecisionKeyInput(keyCode: 37, characters: "l", modifiers: [])
+            XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(lock))
+            XCTAssertTrue(value.tracksPartStateHoverWhileWorking)
+            let point = projection.point(for: .init(x: 0.8, y: 0.5, z: 0.5))
+            value.updateCanvasHover(at: exits ? nil : point, projection: projection)
+            try await settle(value)
+            XCTAssertFalse(value.tracksPartStateHoverWhileWorking)
+            XCTAssertEqual(value.canvasPartStateKeyHandler(profileLease: nil)(lock), !exits)
+            try await settle(value)
+            XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.isLocked, true)
+            XCTAssertEqual(value.snapshot?.parts.first { $0.id == "q" }?.isLocked, !exits)
+        }
+    }
+
+    func testDisablingPartRetiresItsHoverWhenTheGraphChanges() async throws {
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: try source().encoded())
+        prepareCanvas(value)
+        value.selectGraph(nodes: ["a", "x"], edges: [])
+        try await settle(value)
+        let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+        value.updateCanvasHover(at: projection.point(for: .init(x: 0.3, y: 0.5, z: 0.5)), projection: projection)
+        let disable = CanvasPrecisionKeyInput(keyCode: 38, characters: "j", modifiers: [])
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(disable))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.isDisabled, true)
+        XCTAssertNil(value.canvasGraphHover)
+        XCTAssertFalse(value.canvasPartStateKeyHandler(profileLease: nil)(disable))
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["a", "x"])
+    }
+
     func testCanvasPartStateRejectsRetainedHoverAndToolEpochAndIgnoresRepeat() async throws {
         let original = try source().encoded()
         let value = store()

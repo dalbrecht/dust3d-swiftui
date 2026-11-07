@@ -28,8 +28,8 @@ final class EditorStore {
             }
             if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
             if oldValue?.documentRevision != snapshot?.documentRevision {
-                canvasPartStateHover = nil
-                if case .edge = canvasGraphHover { clearCanvasHover() }
+                if !preservesCanvasPartStateHover { canvasPartStateHover = nil }
+                if case .edge = canvasGraphHover { canvasGraphHover = nil }
             }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
                 clearCanvasHover()
@@ -406,6 +406,9 @@ final class EditorStore {
     private(set) var canvasHeight: Double = 0
     @ObservationIgnored private var canvasGraphHoverCache = CanvasGraphHover.Cache()
     private var canvasPartStateHoverEpoch = UUID()
+    @ObservationIgnored private var canvasPartStateHoverOperation: UUID?
+    private var preservesCanvasPartStateHover: Bool { canvasPartStateHoverOperation == operationRequestID }
+    var tracksPartStateHoverWhileWorking: Bool { isWorking && preservesCanvasPartStateHover }
     private var canvasPartStateHover: CanvasGraphHover? {
         didSet {
             if oldValue != canvasPartStateHover { canvasPartStateHoverEpoch = UUID() }
@@ -455,7 +458,7 @@ final class EditorStore {
         }
         let hover = canvasGraphHoverCache.hit(
             at: point, projection: projection, snapshot: snapshot, rigEdgesOnly: isSelectingRigEdges)
-        if hover != canvasGraphHover { canvasGraphHover = hover }
+        if !tracksPartStateHoverWhileWorking, hover != canvasGraphHover { canvasGraphHover = hover }
         if projection == currentCanvasProjection { canvasPartStateHover = hover }
     }
     var canAdjustSelectionRadius: Bool {
@@ -499,7 +502,10 @@ final class EditorStore {
     }
     private(set) var isWorking = false {
         didSet {
-            if isWorking { clearCanvasHover() }
+            if isWorking {
+                canvasGraphHover = nil
+                if !preservesCanvasPartStateHover { canvasPartStateHover = nil }
+            }
             onEditingChanged?(isWorking)
         }
     }
@@ -2049,7 +2055,8 @@ final class EditorStore {
                 property == .locked || property == .disabled
             else { return false }
             if !isRepeat {
-                perform(acceptCommittedCancellation: true) {
+                // A lock changes editability while the same visible graph item remains under the pointer.
+                perform(acceptCommittedCancellation: true, preservePartStateHover: property == .locked) {
                     try await $0.toggleCanvasPartState(property, target: target)
                 }
             }
@@ -2832,7 +2839,7 @@ final class EditorStore {
 
     private func perform(
         commits: Bool = true, reloadReferenceImage: Bool = false, acceptCommittedCancellation: Bool = false,
-        selectionOnly: Bool = false, preserveOriginMode: Bool = false,
+        selectionOnly: Bool = false, preserveOriginMode: Bool = false, preservePartStateHover: Bool = false,
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
@@ -2844,11 +2851,13 @@ final class EditorStore {
         cancelOriginDrag(preservingMode: preserveOriginMode)
         let requestID = UUID()
         operationRequestID = requestID
+        canvasPartStateHoverOperation = preservePartStateHover ? requestID : nil
         isSelectingGraph = selectionOnly
         isWorking = true
         operation = Task {
             var succeeded = false
             defer {
+                if canvasPartStateHoverOperation == requestID { canvasPartStateHoverOperation = nil }
                 if operationRequestID == requestID {
                     isWorking = false
                     isSelectingGraph = false
