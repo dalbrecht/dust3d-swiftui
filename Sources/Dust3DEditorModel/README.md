@@ -403,3 +403,9 @@ interaction epochs; `EditorSession.selectBoneEdges(target:)` changes selection
 without archive/history/preview edits. Named zero-match selection clears graph
 sets, while empty named and all-assigned unassigned intent stay unavailable.
 See ADR0159 and #363.
+
+CanvasPartIsolationTarget captures exact component/part membership and the
+CanvasAdjustmentTarget document, selection and constraint epochs.
+EditorSession.setCanvasPartIsolation(target:) applies the captured visibility
+batch atomically with cancellation checked before publication. It preserves
+preview input identities; see [ADR 0173](../../docs/adr/0173-canvas-part-isolation.md).

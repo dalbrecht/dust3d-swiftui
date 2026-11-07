@@ -1661,6 +1661,21 @@ final class EditorStore {
         }
     }
 
+    func canPerformCanvasPartIsolation(_ target: CanvasPartIsolationTarget?) -> Bool {
+        guard !stopped, !isWorking, !isAddingNodes, !isMovingOrigin, !referenceColorInteractionActive,
+            let target, let snapshot
+        else { return false }
+        return target.isAvailable && target.isCurrent(in: snapshot)
+    }
+
+    func canvasPartIsolationAction(_ target: CanvasPartIsolationTarget?) -> @MainActor () -> Void {
+        guard let target, canPerformCanvasPartIsolation(target) else { return {} }
+        return { [weak self] in
+            guard let self, self.canPerformCanvasPartIsolation(target) else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.setCanvasPartIsolation(target: target) }
+        }
+    }
+
     func canPerformInspectorAction(_ target: GraphInspectorActionTarget?) -> Bool {
         guard !stopped, !isWorking, let target, let snapshot else { return false }
         return target.isCurrent(in: snapshot)

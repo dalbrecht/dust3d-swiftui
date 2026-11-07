@@ -24,6 +24,7 @@ struct PartInspector: View {
             PartTargetControls(store: store, part: part)
             if part.target == .stitchingLoop { PartLoopInteriorControls(store: store, part: part) }
             Toggle("Visible in canvas", isOn: state(.visible, value: part.isVisible))
+            CanvasPartIsolationControls(store: store, partID: part.id)
             Toggle("Locked", isOn: state(.locked, value: part.isLocked))
             Toggle("Disabled in mesh", isOn: state(.disabled, value: part.isDisabled))
             Button("Select Whole Part", action: store.wholePartSelectionAction(.part(part.id)))

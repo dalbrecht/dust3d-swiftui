@@ -47,6 +47,7 @@ struct ComponentInspector: View {
                 ComponentWrappingControls(store: store, component: component)
                 ComponentStitchingControls(store: store, component: component)
             }
+            CanvasPartIsolationControls(store: store, componentID: component.id)
             ComponentOrderMenu(store: store)
             if let parent = component.parentID {
                 Text("Parent: \(parent)").font(.caption).textSelection(.enabled)
