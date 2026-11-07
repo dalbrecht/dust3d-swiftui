@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Support Qt’s -toggle-color launch option for newly opened document windows.
+
 - Open multiple .ds3 documents at launch using positional paths or repeated --open-document flags.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.

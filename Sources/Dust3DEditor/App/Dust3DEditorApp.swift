@@ -35,9 +35,12 @@ struct Dust3DEditorApp: App {
 
     var body: some Scene {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
-            EditorRootView(file: file.$document, sourceURL: file.fileURL)
-                .environment(pasteboard)
-                .id(file.document.identity)
+            EditorRootView(
+                file: file.$document, sourceURL: file.fileURL,
+                claimLaunchNeutralPreview: appDelegate.claimLaunchNeutralPreview
+            )
+            .environment(pasteboard)
+            .id(file.document.identity)
         }
         .defaultSize(width: 1300, height: 820)
         .commands {
@@ -271,6 +274,11 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     private let recoveryRequestGate = EditorRecoveryRequestGate()
     private let compositionRequestGate = EditorRecoveryRequestGate()
 
+    func claimLaunchNeutralPreview(for url: URL) async -> Bool {
+        let document = NSDocumentController.shared.document(for: url)
+        return await launchDocument.claimNeutralPreview(for: url, document: document)
+    }
+
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         !launchDocument.shouldSuppressUntitledDocument
     }
@@ -288,7 +296,9 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             await launchDocument.openRequestedDocument(
                 open: { url in
-                    _ = try await NSDocumentController.shared.openDocument(withContentsOf: url, display: true)
+                    let (document, alreadyOpen) = try await NSDocumentController.shared.openDocument(
+                        withContentsOf: url, display: true)
+                    return alreadyOpen ? nil : document
                 },
                 reportError: { error in NSApp.presentError(error) })
         }
