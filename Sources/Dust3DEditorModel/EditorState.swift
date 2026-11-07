@@ -156,7 +156,10 @@ public struct EditorSnapshot: Sendable {
     public var selectedComponent: DocumentComponent? {
         componentTree.rows.first { $0.id == selectedComponentID }?.component
     }
-    public var selectedPart: DocumentPart? { parts.first { $0.id == selectedPartID } }
+    public var selectedPart: DocumentPart? {
+        guard let selectedPartID else { return nil }
+        return parts.first { $0.id.utf8.elementsEqual(selectedPartID.utf8) }
+    }
 
     /// The part shown in the Part inspector, respecting singleton component inspector precedence.
     package var inspectedPart: DocumentPart? {
@@ -428,9 +431,12 @@ public struct EditorState: Sendable {
 
     /// Inspect an existing part or clear selection. Missing IDs throw DocumentError.missingPart atomically.
     public mutating func selectPart(_ id: String?) throws {
-        if let id, !contents.parts.contains(where: { $0.id == id }) { throw DocumentError.missingPart(id) }
+        if let id, !contents.parts.contains(where: { $0.id.utf8.elementsEqual(id.utf8) }) {
+            throw DocumentError.missingPart(id)
+        }
         componentRevealHint = nil
-        if id != selectedPartID || !selectedEdgeIDs.isEmpty || !selectedComponentIDs.isEmpty || !selectedIDs.isEmpty {
+        let partChanged = id.map { Data($0.utf8) } != selectedPartID.map { Data($0.utf8) }
+        if partChanged || !selectedEdgeIDs.isEmpty || !selectedComponentIDs.isEmpty || !selectedIDs.isEmpty {
             selectionRevision += 1
         }
         selectedPartID = id
@@ -984,7 +990,7 @@ public struct EditorState: Sendable {
         selectedIDs.formIntersection(contents.nodes.map(\.id))
         selectedEdgeIDs.formIntersection(contents.edges.map(\.id))
         selectedID = contents.nodes.first { selectedIDs.contains($0.id) }?.id
-        if let selectedPartID, !contents.parts.contains(where: { $0.id == selectedPartID }) {
+        if let selectedPartID, !contents.parts.contains(where: { $0.id.utf8.elementsEqual(selectedPartID.utf8) }) {
             self.selectedPartID = nil
         }
         if previousNodes != selectedIDs || previousEdges != selectedEdgeIDs
