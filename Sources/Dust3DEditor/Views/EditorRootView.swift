@@ -64,7 +64,7 @@ struct EditorRootView: View {
                     }
                 }
                 .listStyle(.sidebar)
-                .disabled(store.isWorking)
+                .disabled(store.isWorking || store.isSelectingRigEdges)
                 ComponentSidebar(store: store)
                 PartSidebar(store: store)
                 EdgeSidebar(store: store)
@@ -110,7 +110,7 @@ struct EditorRootView: View {
                             isOn: Binding(get: { store.isMovingOrigin }, set: { store.setMovingOrigin($0) })
                         )
                         .toggleStyle(.button)
-                        .disabled(store.isWorking || store.snapshot?.origin == nil)
+                        .disabled(store.isWorking || store.snapshot?.origin == nil || store.isSelectingRigEdges)
                         .help("Drag the origin marker; Escape cancels. Node picking resumes when this mode is off.")
                         .padding(.horizontal, 12).padding(.bottom, 8)
                         ReferenceImageControls(store: store)
