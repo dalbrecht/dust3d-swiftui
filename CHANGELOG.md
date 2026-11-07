@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add File > Save All to save edited documents through the native document controller.
+- Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
@@ -86,6 +86,8 @@
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
+
+- Mirror live node and origin movement in the companion profile during canvas edits (#388).
 
 - Add shared Weights From editing across selected wrapping groups with common target eligibility, exact retained references and one atomic Undo.
 
@@ -304,11 +306,15 @@
 
 - Add native cut-face presets, searchable linked-profile selection and half-turn rotation drafts with preserved unsupported/unresolved source metadata.
 
+- Set a Model part’s cross-section rotation to −90°, 0°, or +90° with one click and one undo step.
+
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
 - Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
 
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
+
+- Show the built-in cross-section outlines next to their names in the native preset picker.
 
 - Add lossless part cut-face preset/profile and rotation commands, cycle-safe history and regenerated previews; native controls follow separately.
 
@@ -343,6 +349,8 @@
 - Keep the current Add chain and radius when switching the editing profile in the Side by Side workspace.
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
+
+- Add File > Save All to save edited documents through the native document controller.
 
 - Reject native save payloads while edits are applying or their document snapshot has been superseded, preserving the native File menu and providing retry guidance.
 
