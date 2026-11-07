@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
+
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
 - Add Command-Option-click and marquee subtraction for independent node/edge picks, preserving other selection and document history (#343).
