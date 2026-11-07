@@ -4,12 +4,14 @@ Status: Implemented; full local gate and physical acceptance tracked separately
 
 ## Decision
 
-Expose Connect Selected Nodes in the multi-node inspector and Canvas menu, using
-the existing document joinNodes operation. Metadata admission requires exactly
-two editable, assigned endpoints with spare degree, no connecting edge, no mixed
-edge/component/part selection and room for another edge. UI metadata never parses
-XML or invokes geometry; complete chain/profile validation stays in the existing
-document command, whose original failures propagate without partial publication.
+Expose Connect Selected Nodes in the multi-node and mixed graph inspectors and
+the Canvas menu, using the existing document joinNodes operation. Metadata
+admission requires exactly two explicitly selected, editable, assigned nodes with
+spare degree, no connecting edge, no component or part selection, and room for
+another edge. Existing edge picks do not supply endpoints and remain selected
+after the join. UI metadata never parses XML or invokes geometry; complete
+chain/profile validation stays in the existing document command, whose original
+failures propagate without partial publication.
 
 When parts differ, a native menu asks which part's settings survive. The payload
 contains both document-ordered choices; it never derives ownership from Set

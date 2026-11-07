@@ -48,12 +48,13 @@ final class NodeConnectionTests: XCTestCase {
     func testSamePartUsesOneChoiceAndExistingJoinSemanticsCanCloseItsChain() throws {
         let original = try source().applying(.joinNodes(id: "first", from: "a", to: "c"))
         var state = try EditorState(document: original)
-        try state.select(["b", "d"])
+        try state.selectGraph(nodes: ["b", "d"], edges: ["first"])
         let target = NodeConnectionTarget(snapshot: state.snapshot)
         XCTAssertEqual(target.owners.count, 2)
         XCTAssertFalse(target.requiresOwnershipChoice)
         try state.connectSelectedNodes(target: target, ownerID: "b", edgeID: "close")
         XCTAssertEqual(state.snapshot.edges.count, 4)
+        XCTAssertEqual(state.snapshot.selectedEdgeIDs, ["first"])
         try state.undo()
         XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
         XCTAssertFalse(state.snapshot.canUndo)
@@ -90,14 +91,32 @@ final class NodeConnectionTests: XCTestCase {
         }
     }
 
-    func testWrongCardinalityMixedEdgesAdjacentAndReadonlySelectionsStayUnavailable() throws {
+    func testMixedCrossPartConnectionRetainsExplicitEdgesAndNodesAndExactUndo() throws {
+        let original = try source()
+        var state = try EditorState(document: original)
+        try state.selectGraph(nodes: ["a", "c"], edges: ["ab", "cd"])
+        let target = NodeConnectionTarget(snapshot: state.snapshot)
+        XCTAssertEqual(target.owners.map(\.nodeID), ["a", "c"])
+        XCTAssertTrue(target.requiresOwnershipChoice)
+        try state.connectSelectedNodes(target: target, ownerID: "c", edgeID: "join")
+        XCTAssertEqual(state.snapshot.selectedIDs, ["a", "c"])
+        XCTAssertEqual(state.snapshot.selectedEdgeIDs, ["ab", "cd"])
+        XCTAssertEqual(Set(state.snapshot.edges.map(\.id)), ["ab", "cd", "join"])
+        XCTAssertEqual(state.snapshot.parts.map(\.id), ["q"])
+        try state.undo()
+        XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+        XCTAssertEqual(state.snapshot.selectedEdgeIDs, ["ab", "cd"])
+        XCTAssertFalse(state.snapshot.canUndo)
+    }
+
+    func testWrongCardinalityEdgeOnlyAdjacentAndReadonlySelectionsStayUnavailable() throws {
         for ids: Set<String> in [[], ["a"], ["a", "b"], ["a", "b", "c"]] {
             var state = try EditorState(document: source())
             try state.select(ids)
             XCTAssertTrue(NodeConnectionTarget(snapshot: state.snapshot).owners.isEmpty)
         }
         var state = try EditorState(document: source())
-        try state.selectGraph(nodes: ["a", "c"], edges: ["ab"])
+        try state.selectEdges(["ab", "cd"])
         XCTAssertTrue(NodeConnectionTarget(snapshot: state.snapshot).owners.isEmpty)
         var locked = try EditorState(document: source(locked: true))
         try locked.select(["a", "c"])

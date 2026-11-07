@@ -293,6 +293,7 @@ public actor EditorSession {
     /// - Throws: Stale intent, cancellation or the original joining error before atomic publication.
     public func connectSelectedNodes(target: NodeConnectionTarget, ownerID: String) throws -> EditorSnapshot {
         try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource else { throw NodeConnectionSelectionError.staleTarget }
             try state.connectSelectedNodes(
                 target: target, ownerID: ownerID, edgeID: "{\(UUID().uuidString.lowercased())}")
         }.snapshot
