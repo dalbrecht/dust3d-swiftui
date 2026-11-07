@@ -127,6 +127,9 @@ public enum DocumentCommand: Sendable {
     case setPartName(id: String, name: String)
     /// Rename one component independently of its linked part; empty input removes its name.
     case setComponentName(id: String, name: String)
+    /// Replace the final equipment suffix on a linked Model component. Blank input removes it.
+    /// The exact component ID selects the owner; the trimmed slot is stored as entered, for example `armor/2`.
+    case setComponentEquipmentSlot(id: String, slot: String)
     /// Set or remove one explicit component color without changing descendants or unknown metadata.
     /// - Parameters: `id` is the exact component identity; `color` is bounded channels or nil to remove.
     /// Throws `missingComponent` for an absent identity; semantic no-ops retain original archive bytes.
@@ -784,6 +787,11 @@ public struct Dust3DDocument: Sendable {
                 .setComponentColorImage(id: id, imageID: imageID))
         case .setComponentColor(let id, let color):
             guard try ComponentColorValue.set(model, id: id, color: color) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentEquipmentSlot(let id, let slot):
+            guard try ComponentHierarchy.setEquipmentSlot(model, parts: contents.parts, id: id, slot: slot) else {
+                return self
+            }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }

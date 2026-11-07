@@ -21,6 +21,12 @@ struct ComponentInspector: View {
                 Spacer()
                 Button("Apply Name") { store.renameComponent(component.id, name: name) }
             }
+            if let snapshot = store.snapshot, let target = snapshot.equipmentSlotTarget,
+                target.componentID == component.id
+            {
+                ComponentEquipmentSlotControls(store: store, component: component, target: target)
+                    .id(snapshot.documentIdentity)
+            }
             Picker(
                 "Combine mode",
                 selection: Binding<ComponentCombineMode?>(
