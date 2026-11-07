@@ -115,6 +115,8 @@ struct EditorRootView: View {
                         .padding(.horizontal, 12).padding(.bottom, 8)
                         ReferenceImageControls(store: store)
                             .padding(.horizontal, 12).padding(.bottom, 8)
+                        EditorDocumentDropControl()
+                            .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
                         CanvasProfilePanes(store: store)
                     }
