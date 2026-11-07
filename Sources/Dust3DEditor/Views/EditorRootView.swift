@@ -13,6 +13,7 @@ private enum EditorInspectorSection: String, CaseIterable, Hashable {
 struct EditorRootView: View {
     @Binding var file: EditorFileDocument
     let sourceURL: URL?
+    private let claimStartupPaste: @MainActor (URL, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery?
     private let claimLaunchNeutralPreview: @MainActor (URL) async -> Bool
     @State private var store: EditorStore
     @State private var exportDestinations: EditorGeometryExportDestinationService
@@ -26,7 +27,10 @@ struct EditorRootView: View {
 
     init(
         file: Binding<EditorFileDocument>, sourceURL: URL? = nil,
-        claimLaunchNeutralPreview: @escaping @MainActor (URL) async -> Bool = { _ in false }
+        claimLaunchNeutralPreview: @escaping @MainActor (URL) async -> Bool = { _ in false },
+        claimStartupPaste: @escaping @MainActor (URL, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery? = {
+            _, _ in nil
+        }
     ) {
         let store = EditorStore(
             exportService: DocumentExportFileService(encoder: NativeGeometryExportEncoder()),
@@ -35,6 +39,7 @@ struct EditorRootView: View {
         _file = file
         self.sourceURL = sourceURL
         self.claimLaunchNeutralPreview = claimLaunchNeutralPreview
+        self.claimStartupPaste = claimStartupPaste
         _store = State(initialValue: store)
         _exportDestinations = State(initialValue: destinations)
         _exportWorkflow = State(initialValue: EditorGeometryExportWorkflow(store: store, destinations: destinations))
@@ -215,6 +220,13 @@ struct EditorRootView: View {
         .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
         .task(id: file.identity) {
             let identifier = file.identity
+            let version = file.saveVersion
+            let launchPaste =
+                if let sourceURL {
+                    await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
+                } else {
+                    nil as StartupQtXMLDelivery?
+                }
             let shouldHidePreviewColors =
                 if let sourceURL {
                     await claimLaunchNeutralPreview(sourceURL)
@@ -233,6 +245,13 @@ struct EditorRootView: View {
             store.onDocumentChanged = { file.data = $0 }
             store.onEditingChanged = { file.setEditing($0) }
             await store.load(data: file.data, fileIdentity: identifier)
+            if let launchPaste, !Task.isCancelled, file.identity == identifier, file.saveVersion == version,
+                launchPaste.document === exportDestinations.attachedDocument,
+                launchPaste.document.fileURL?.standardizedFileURL == sourceURL?.standardizedFileURL,
+                !launchPaste.document.isDocumentEdited
+            {
+                store.applyStartupQtXML(launchPaste.data, fileIdentity: identifier)
+            }
         }
         .onExitCommand {
             EditorCommandScope.routeEscape(

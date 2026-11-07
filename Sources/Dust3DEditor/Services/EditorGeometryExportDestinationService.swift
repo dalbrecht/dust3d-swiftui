@@ -21,6 +21,14 @@ enum EditorGeometryExportDestinationError: LocalizedError, Equatable {
 @MainActor
 final class EditorGeometryExportDestinationService: EditorGeometryExportDestinationChoosing {
     private weak var window: NSWindow?
+    private weak var windowAnchor: NSView?
+
+    var attachedDocument: NSDocument? { windowAnchor?.window?.windowController?.document as? NSDocument }
+
+    func trackWindowAnchor(_ anchor: NSView) { windowAnchor = anchor }
+    func clearWindowAnchor(_ anchor: NSView) {
+        if windowAnchor === anchor { windowAnchor = nil }
+    }
     private var panel: NSSavePanel?
     private var isCancelling = false
 

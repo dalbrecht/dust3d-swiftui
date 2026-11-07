@@ -1796,6 +1796,18 @@ final class EditorStore {
         }
     }
 
+    @discardableResult
+    func applyStartupQtXML(_ data: Data, fileIdentity: UUID) -> Task<Void, Never>? {
+        guard !Task.isCancelled, qtXMLFilePasteRequest == nil, let source = acceptedQtXMLFileSource,
+            source.fileIdentity == fileIdentity, source.snapshot.documentRevision == 0
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: source.snapshot)
+        perform(acceptCommittedCancellation: true) { session in
+            try await session.pasteQtXMLFile(data, target: target)
+        }
+        return operation
+    }
+
     func pasteQtNodes(snapshotXML: Data) {
         perform(reloadReferenceImage: true) { try await $0.paste(snapshotXML: snapshotXML) }
     }

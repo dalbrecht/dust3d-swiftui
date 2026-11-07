@@ -144,6 +144,33 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         XCTAssertTrue(writes.isEmpty)
     }
 
+    func testStartupPasteRequiresPristineAcceptedFileAndCommitsOneUndoStep() async throws {
+        let original = Dust3DDocument.emptyArchive()
+        let source = try Dust3DDocument(data: original).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let store = makeStore()
+        defer { store.stop() }
+        let identity = UUID()
+        await store.load(data: original, fileIdentity: identity)
+        XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: UUID()))
+        var writes: [Data] = []
+        store.onDocumentChanged = { writes.append($0) }
+        let operation = try XCTUnwrap(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
+        await operation.value
+        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        XCTAssertTrue(store.canUndo)
+        XCTAssertEqual(writes.count, 1)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
+        await store.load(data: original, fileIdentity: identity)
+        await store.load(data: Data("invalid archive".utf8), fileIdentity: UUID())
+        XCTAssertTrue(store.canSave)
+        XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
+        XCTAssertEqual(writes.count, 2)
+    }
+
     func testReaderRejectsOversizedAndNonRegularFiles() async throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

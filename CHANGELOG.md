@@ -192,6 +192,7 @@
 - Open multiple .ds3 documents at launch using positional paths or repeated --open-document flags.
 
 - Support Qt’s -toggle-color launch option for newly opened document windows.
+- Apply one Qt XML fragment at launch with -paste-xml and explicit .ds3 inputs, with one undo step per newly opened eligible document.
 
 - Add an explicit-fixture QA launcher using process-local AppKit restoration isolation while preserving normal launches and saved state (#257).
 

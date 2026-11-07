@@ -37,7 +37,8 @@ struct Dust3DEditorApp: App {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
             EditorRootView(
                 file: file.$document, sourceURL: file.fileURL,
-                claimLaunchNeutralPreview: appDelegate.claimLaunchNeutralPreview
+                claimLaunchNeutralPreview: appDelegate.claimLaunchNeutralPreview,
+                claimStartupPaste: appDelegate.claimStartupPaste
             )
             .environment(pasteboard)
             .id(file.document.identity)
@@ -268,6 +269,12 @@ struct Dust3DEditorApp: App {
 }
 
 @MainActor
+struct StartupQtXMLDelivery {
+    let document: NSDocument
+    let data: Data
+}
+
+@MainActor
 final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     private let buildIdentity = RuntimeBuildIdentity.current
     private let launchDocument = EditorLaunchDocumentOpener(arguments: CommandLine.arguments)
@@ -277,6 +284,23 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     func claimLaunchNeutralPreview(for url: URL) async -> Bool {
         let document = NSDocumentController.shared.document(for: url)
         return await launchDocument.claimNeutralPreview(for: url, document: document)
+    }
+
+    func claimStartupPaste(
+        for url: URL, attachedDocument: @MainActor () -> NSDocument?
+    ) async -> StartupQtXMLDelivery? {
+        // The existing window anchor can attach after SwiftUI starts the file task.
+        while launchDocument.hasStartupPaste(for: url), !Task.isCancelled {
+            if let document = attachedDocument() {
+                guard document.fileURL?.standardizedFileURL == url.standardizedFileURL,
+                    let data = launchDocument.claimStartupPaste(
+                        for: url, document: document, isEdited: document.isDocumentEdited)
+                else { return nil }
+                return StartupQtXMLDelivery(document: document, data: data)
+            }
+            do { try await Task.sleep(for: .milliseconds(25)) } catch { return nil }
+        }
+        return nil
     }
 
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
@@ -297,8 +321,14 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
             await launchDocument.openRequestedDocument(
                 open: { url in
                     let (document, alreadyOpen) = try await NSDocumentController.shared.openDocument(
-                        withContentsOf: url, display: true)
+                        withContentsOf: url, display: !self.launchDocument.hasPasteRequest)
+                    if alreadyOpen && self.launchDocument.hasPasteRequest { document.showWindows() }
                     return alreadyOpen ? nil : document
+                },
+                displayNew: { object in
+                    guard let document = object as? NSDocument else { return }
+                    document.makeWindowControllers()
+                    document.showWindows()
                 },
                 reportError: { error in NSApp.presentError(error) })
         }
