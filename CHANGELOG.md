@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Start a blank document by drawing a first node, composing a reference image, or opening an existing document from the canvas.
+
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.

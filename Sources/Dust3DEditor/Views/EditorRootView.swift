@@ -19,6 +19,7 @@ struct EditorRootView: View {
     @State private var isInspectorPresented = true
     @State private var inspectorSection = EditorInspectorSection.selection
     @State private var recoveryRegistrationID: UUID?
+    @State private var referenceComposition: ReferenceCompositionPresentation?
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
         @State private var restPreview: GeneratedRigPreviewSession
     #endif
@@ -113,10 +114,11 @@ struct EditorRootView: View {
                         .disabled(store.isWorking || store.snapshot?.origin == nil)
                         .help("Drag the origin marker; Escape cancels. Node picking resumes when this mode is off.")
                         .padding(.horizontal, 12).padding(.bottom, 8)
-                        ReferenceImageControls(store: store)
+                        ReferenceImageControls(store: store, composition: $referenceComposition)
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
                         CanvasProfilePanes(store: store)
+                            .overlay(alignment: .bottom) { getStartedCard }
                     }
                     .frame(minWidth: 300)
                     preview.frame(minWidth: 240, idealWidth: 320)
@@ -145,11 +147,13 @@ struct EditorRootView: View {
         #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
             .environment(restPreview)
         #endif
+        .sheet(item: $referenceComposition) { presentation in
+            ReferenceCompositionSheet(
+                store: store, target: presentation.target, droppedSources: presentation.droppedSources)
+        }
         .toolbar {
             ToolbarItemGroup {
-                Button {
-                    NSDocumentController.shared.openDocument(nil)
-                } label: {
+                Button(action: openDocument) {
                     Label("Open", systemImage: "folder")
                 }
                 Button {
@@ -236,6 +240,22 @@ struct EditorRootView: View {
             store.stop()
         }
     }
+
+    @ViewBuilder private var getStartedCard: some View {
+        let identity = file.identity
+        let source = $file
+        if let actions = EditorGetStartedActions(
+            store: store, fileIdentity: identity, ownsWindow: { source.wrappedValue.identity == identity })
+        {
+            EditorGetStartedCard(actions: actions, openDocument: openDocument) { target in
+                guard referenceComposition == nil else { return }
+                referenceComposition = ReferenceCompositionPresentation(target: target)
+            }
+            .padding(12)
+        }
+    }
+
+    private func openDocument() { NSDocumentController.shared.openDocument(nil) }
 
     private var inspectorContent: some View {
         VStack(spacing: 0) {

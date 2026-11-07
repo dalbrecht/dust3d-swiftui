@@ -272,14 +272,6 @@ struct NodeCanvas: View {
                     OriginHandle(store: store, origin: origin, projection: projection, profileLease: profileLease)
                         .allowsHitTesting(!store.isAddingNodes)
                 }
-                if nodes.isEmpty && store.referenceImage == nil {
-                    VStack {
-                        Spacer()
-                        Text("Add a node from the Nodes menu or open a model.")
-                            .font(.callout).foregroundStyle(.secondary).padding(24)
-                    }
-                    .allowsHitTesting(false)
-                }
             }
             .onChange(of: referenceCanvas, initial: true) { _, _ in
                 guard ownsProfile else { return }
