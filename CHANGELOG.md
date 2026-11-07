@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Show the exact authored values applied at the current replay property step.
+- Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
@@ -130,6 +130,8 @@
 - Add window-local Model Colors and Wireframe controls to the View menu, preserving material transparency in neutral preview mode (#324).
 
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
+
+- Show the exact authored values applied at the current replay property step.
 
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
 
