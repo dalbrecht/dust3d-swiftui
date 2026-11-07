@@ -12,6 +12,7 @@ struct NodeCanvas: View {
     @State private var nodeDrag = NodeDragLifecycle()
     @State private var shiftedDrag: (token: UUID, plan: CanvasShiftDrag, positions: [String: NodePosition])?
     @State private var marquee: CanvasSelectionRectangle?
+    @State private var lasso: CanvasLasso?
 
     var body: some View {
         GeometryReader { geometry in
@@ -69,7 +70,11 @@ struct NodeCanvas: View {
                         else { return }
                         store.pickEdge(at: point, projection: projection, mode: mode)
                     },
-                    rectangle: { if admitsInput() { marquee = $0 } },
+                    rectangle: { region in
+                        guard admitsInput() else { return }
+                        marquee = region
+                        if region == nil { lasso = nil }
+                    },
                     hover: { point in
                         guard admitsInput(), store.addModeID == addModeID else { return }
                         if store.isAddingNodes {
@@ -88,6 +93,13 @@ struct NodeCanvas: View {
                         else { return }
                         store.selectWholePart(at: point, projection: projection, context: partContext)
                     },
+                    lassoCanvas: store.canvasUsesLasso ? referenceCanvas : nil,
+                    lassoSelection: {
+                        guard admitsInput(), store.addModeID == addModeID else { return nil }
+                        return store.lassoSelectionAction(
+                            projection: projection, canvas: referenceCanvas, lease: profileLease)
+                    },
+                    lassoPreview: { if admitsInput() { lasso = $0 } },
                     precisionKey: precisionKey, isAddingNodes: store.isAddingNodes,
                     addPress: { if admitsInput() { store.placeAddNode(at: $0, modeID: addModeID) } },
                     cancelInput: { if admitsInput() { cancelAddInput() } },
@@ -111,6 +123,13 @@ struct NodeCanvas: View {
                     Path { $0.addRect(frame) }.stroke(
                         Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [4, 3])
                     ).allowsHitTesting(false)
+                }
+                if let lasso {
+                    let shape = lassoPath(lasso)
+                    shape.fill(Color.accentColor.opacity(0.12), style: FillStyle(eoFill: true))
+                        .allowsHitTesting(false).accessibilityHidden(true)
+                    shape.stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        .allowsHitTesting(false).accessibilityHidden(true)
                 }
                 Canvas { context, _ in
                     let positions = Dictionary(
@@ -295,10 +314,12 @@ struct NodeCanvas: View {
             }
             .onChange(of: referenceCanvas, initial: true) { _, _ in
                 guard ownsProfile else { return }
+                lasso = nil
                 store.setReferenceColorCanvasContext(
                     projection: projection, width: geometry.size.width, height: geometry.size.height)
             }
-            .onChange(of: nodeDrag.preview != nil || shiftedDrag != nil || marquee != nil) { _, active in
+            .onChange(of: nodeDrag.preview != nil || shiftedDrag != nil || marquee != nil || lasso != nil) {
+                _, active in
                 guard ownsProfile else { return }
                 store.setReferenceColorInteractionActive(active)
             }
@@ -319,10 +340,13 @@ struct NodeCanvas: View {
                         lease: profileLease)
                 }
             }
+            .onChange(of: store.canvasUsesLasso) { _, _ in
+                clearSelectionRegion()
+            }
             .onChange(of: store.isAddingNodes) { _, active in
                 if ownsProfile { store.clearCanvasHover() }
                 invalidateNodeDrag()
-                marquee = nil
+                clearSelectionRegion()
                 if !active {
                     store.setCanvasContext(
                         projection: projection, width: geometry.size.width, height: geometry.size.height,
@@ -332,7 +356,7 @@ struct NodeCanvas: View {
             .onDisappear {
                 invalidateNodeDrag()
                 store.releaseCanvasProfile(lease: profileLease)
-                marquee = nil
+                clearSelectionRegion()
             }
             .contextMenu {
                 GraphSelectionMenu(actions: graphActions)
@@ -344,28 +368,28 @@ struct NodeCanvas: View {
             .clipped()
             .onChange(of: store.rigEdgeSelectionEpoch) { _, _ in
                 invalidateNodeDrag()
-                marquee = nil
+                clearSelectionRegion()
             }
             .onChange(of: store.isMovingOrigin) { _, _ in
                 invalidateNodeDrag()
-                marquee = nil
+                clearSelectionRegion()
                 if ownsProfile { store.clearCanvasHover() }
             }
             .onChange(of: store.plane) { _, _ in
                 invalidateNodeDrag()
-                marquee = nil
+                clearSelectionRegion()
                 if ownsProfile { store.clearCanvasHover() }
             }
             .onChange(of: store.snapshot?.documentIdentity) { _, _ in
                 invalidateNodeDrag()
-                marquee = nil
+                clearSelectionRegion()
                 if ownsProfile { store.clearCanvasHover() }
             }
             .onChange(of: geometry.size) { _, _ in
                 store.setCanvasContext(
                     projection: projection, width: geometry.size.width, height: geometry.size.height,
                     lease: profileLease)
-                marquee = nil
+                clearSelectionRegion()
                 if ownsProfile { store.clearCanvasHover() }
                 invalidateNodeDrag()
                 if ownsProfile { store.cancelOriginDrag() }
@@ -373,12 +397,30 @@ struct NodeCanvas: View {
             .onChange(of: store.isWorking) { _, working in
                 if working {
                     invalidateNodeDrag()
-                    marquee = nil
+                    clearSelectionRegion()
                 }
             }
         }
         .background(.background)
     }
+    private func clearSelectionRegion() {
+        marquee = nil
+        lasso = nil
+    }
+
+    private func lassoPath(_ lasso: CanvasLasso) -> Path {
+        if lasso.points.count < 3, let bounds = lasso.bounds {
+            return Path(
+                CGRect(
+                    x: bounds.minimum.x, y: bounds.minimum.y,
+                    width: bounds.maximum.x - bounds.minimum.x, height: bounds.maximum.y - bounds.minimum.y))
+        }
+        return Path { path in
+            path.addLines(lasso.points.map { CGPoint(x: $0.x, y: $0.y) })
+            path.closeSubpath()
+        }
+    }
+
     private func admitPrimaryPress(_ clickCount: Int) -> Bool {
         store.admitsCanvasPrimaryPress(clickCount: clickCount, lease: profileLease)
     }

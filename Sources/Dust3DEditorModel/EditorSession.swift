@@ -198,6 +198,22 @@ public actor EditorSession {
     public func selectGraph(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
         try update { try $0.selectGraph(nodes: nodes, edges: edges) }
     }
+    package func applyGraphPicks(
+        nodes: Set<String>, edges: Set<String>, mode: GraphSelectionMode, target: CanvasAdjustmentTarget? = nil
+    ) throws -> EditorSnapshot {
+        try update { state in
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw EditorError.staleCanvasAdjustment
+            }
+            switch mode {
+            case .replace: try state.selectGraph(nodes: nodes, edges: edges)
+            case .add: try state.addToSelection(nodes: nodes, edges: edges)
+            case .toggle: try state.toggleGraphSelection(nodes: nodes, edges: edges)
+            case .subtract: try state.removeFromSelection(nodes: nodes, edges: edges)
+            }
+        }
+    }
+
     /// Select a target part's complete owned graph and request an independent owning-component reveal.
     /// - Parameters: `target` is a part/node/edge; `context` captures the originating document epoch.
     /// - Returns: Unchanged archive/history with atomic explicit graph selection and reveal metadata.

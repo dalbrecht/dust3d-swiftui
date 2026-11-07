@@ -1269,15 +1269,13 @@ final class EditorStore {
         perform(commits: false, selectionOnly: true) { try await $0.select(ids) }
     }
     func selectEdge(_ id: String?) { perform(commits: false, selectionOnly: true) { try await $0.selectEdge(id) } }
-    func selectGraph(nodes: Set<String>, edges: Set<String>, mode: GraphSelectionMode = .replace) {
+    func selectGraph(
+        nodes: Set<String>, edges: Set<String>, mode: GraphSelectionMode = .replace,
+        target: CanvasAdjustmentTarget? = nil
+    ) {
         guard !isSelectingRigEdges || nodes.isEmpty else { return }
-        perform(commits: false, selectionOnly: true) { session in
-            switch mode {
-            case .replace: try await session.selectGraph(nodes: nodes, edges: edges)
-            case .add: try await session.addToSelection(nodes: nodes, edges: edges)
-            case .toggle: try await session.toggleGraphSelection(nodes: nodes, edges: edges)
-            case .subtract: try await session.removeFromSelection(nodes: nodes, edges: edges)
-            }
+        perform(commits: false, selectionOnly: true) {
+            try await $0.applyGraphPicks(nodes: nodes, edges: edges, mode: mode, target: target)
         }
     }
     func selectEdges(_ ids: Set<String>) {
@@ -1303,6 +1301,42 @@ final class EditorStore {
             edges: projection.edgeIDs(
                 in: rectangle, nodes: snapshot.nodes, edges: edges, selectedEdgeIDs: snapshot.selectedEdgeIDs),
             mode: mode)
+    }
+
+    private(set) var canvasUsesLasso = false
+    private var canvasLassoModeEpoch = UUID()
+
+    func setCanvasUsesLasso(_ enabled: Bool) {
+        guard canvasUsesLasso != enabled, canPickGraph, !isAddingNodes, !isMovingOrigin else { return }
+        canvasUsesLasso = enabled
+        canvasLassoModeEpoch = UUID()
+    }
+
+    func lassoSelectionAction(
+        projection: CanvasProjection, canvas: ReferenceColorCanvasIdentity, lease: UUID?
+    ) -> (@MainActor (CanvasLasso, GraphSelectionMode) -> Void)? {
+        guard canvasUsesLasso, ownsCanvasProfile(lease), !isWorking, !isAddingNodes, !isMovingOrigin,
+            referenceColorCanvas?.identity == canvas, let source = acceptedDocumentSource
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: source)
+        let layout = precisionLayoutEpoch
+        let tool = rotationInputContextID
+        let modeEpoch = canvasLassoModeEpoch
+        let selectionEpoch = rigEdgeSelectionEpoch
+        return { [weak self] path, mode in
+            guard let self, !self.isWorking, !self.isAddingNodes, !self.isMovingOrigin,
+                self.admitsCanvasSelectionInput(epoch: selectionEpoch, lease: lease),
+                self.precisionLayoutEpoch == layout, self.rotationInputContextID == tool,
+                self.canvasLassoModeEpoch == modeEpoch, self.referenceColorCanvas?.identity == canvas,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current)
+            else { return }
+            let edges = self.isSelectingRigEdges ? self.rigEdgePickCandidates(in: current, mode: mode) : current.edges
+            self.selectGraph(
+                nodes: self.isSelectingRigEdges ? [] : projection.nodeIDs(in: path, nodes: current.nodes),
+                edges: projection.edgeIDs(
+                    in: path, nodes: current.nodes, edges: edges, selectedEdgeIDs: current.selectedEdgeIDs),
+                mode: mode, target: target)
+        }
     }
 
     private func rigEdgePickCandidates(in snapshot: EditorSnapshot, mode: GraphSelectionMode) -> [DocumentEdge] {
