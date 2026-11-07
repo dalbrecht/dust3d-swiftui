@@ -1,4 +1,5 @@
 import Dust3DEditorModel
+import Foundation
 
 /// Keep ordinary graph shortcuts out of animation and native text-editing contexts.
 enum EditorCommandScope {
@@ -44,9 +45,11 @@ enum EditorCommandScope {
 struct ComponentSidebarSelectAllTarget {
     let ids: Set<String>
     let context: CanvasAdjustmentTarget
+    let scopeEpoch: UUID?
 
-    init(snapshot: EditorSnapshot, visibleIDs: Set<String>) {
+    init(snapshot: EditorSnapshot, visibleIDs: Set<String>, scopeEpoch: UUID? = nil) {
         ids = visibleIDs
         context = CanvasAdjustmentTarget(snapshot: snapshot)
+        self.scopeEpoch = scopeEpoch
     }
 }
