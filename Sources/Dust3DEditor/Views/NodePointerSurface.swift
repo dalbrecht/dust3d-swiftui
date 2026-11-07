@@ -87,7 +87,23 @@ final class NodePointerView: NSView {
         return dx * dx + dy * dy <= 18 * 18 ? self : nil
     }
 
+    override func rightMouseDown(with event: NSEvent) {
+        cancelActivation(deferred: true, restoringFocus: false)
+        super.rightMouseDown(with: event)
+    }
     override func mouseDown(with event: NSEvent) {
+        switch CanvasContextClick.decision(
+            buttonNumber: event.buttonNumber, modifiers: event.modifierFlags, isAddingNodes: false)
+        {
+        case .showMenu:
+            rightMouseDown(with: event)
+            return
+        case .cancelAdd: return
+        case .unhandled:
+            super.mouseDown(with: event)
+            return
+        case .primary: break
+        }
         guard enabled else { return }
         if activation != nil { cancelActivation() }
         if event.clickCount == 2, let doubleClick {

@@ -409,3 +409,9 @@ CanvasAdjustmentTarget document, selection and constraint epochs.
 EditorSession.setCanvasPartIsolation(target:) applies the captured visibility
 batch atomically with cancellation checked before publication. It preserves
 preview input identities; see [ADR 0173](../../docs/adr/0173-canvas-part-isolation.md).
+
+GraphSelectionActionTarget captures eligibility and CanvasAdjustmentTarget epochs
+for midpoint insertion, explicit-edge reversal, node reduction and graph deletion.
+EditorSession.performGraphSelectionAction(target:) rechecks them without suspension
+before delegating to the existing atomic operations. See
+[ADR 0174](../../docs/adr/0174-canvas-context-actions.md).

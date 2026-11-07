@@ -101,7 +101,34 @@ final class CanvasPointerView: NSView {
         let point = convert(event.locationInWindow, from: nil)
         return .init(x: point.x, y: point.y)
     }
+    override func rightMouseDown(with event: NSEvent) {
+        cancelActivation()
+        if isAddingNodes {
+            cancelInput()
+            return
+        }
+        super.rightMouseDown(with: event)
+    }
+    override func menu(for event: NSEvent) -> NSMenu? {
+        if isAddingNodes {
+            cancelActivation()
+            cancelInput()
+            return nil
+        }
+        return super.menu(for: event)
+    }
     override func mouseDown(with event: NSEvent) {
+        switch CanvasContextClick.decision(
+            buttonNumber: event.buttonNumber, modifiers: event.modifierFlags, isAddingNodes: isAddingNodes)
+        {
+        case .showMenu, .cancelAdd:
+            rightMouseDown(with: event)
+            return
+        case .unhandled:
+            super.mouseDown(with: event)
+            return
+        case .primary: break
+        }
         guard enabled else {
             super.mouseDown(with: event)
             return

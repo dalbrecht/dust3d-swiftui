@@ -725,3 +725,13 @@ preserve locked/disabled settings and mesh inputs. Native keyboard access uses
 the Canvas menu; the Qt Shift-H shortcut is not added as a global text binding.
 Physical keyboard/VoiceOver acceptance remains outstanding. See
 [ADR 0173](../../docs/adr/0173-canvas-part-isolation.md).
+
+Canvas and node context menus now include Edit Graph Selection for available
+midpoint, reversal, reduction and deletion commands. These act on the current
+explicit selection; Select Whole Part remains targeted to the clicked node.
+Unavailable context actions are omitted and Delete is marked destructive.
+Secondary click or Control-click cancels Add mode without placing a node; normal
+context-menu routing remains available in Select mode. Captured actions reject
+replacement, selection/constraint changes and Add-mode ABA. Physical context-menu,
+keyboard and VoiceOver acceptance remain outstanding. See
+[ADR 0174](../../docs/adr/0174-canvas-context-actions.md).

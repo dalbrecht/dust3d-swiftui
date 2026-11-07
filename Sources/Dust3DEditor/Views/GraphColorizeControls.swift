@@ -30,16 +30,29 @@ struct GraphColorizeControls: View {
 
 struct GraphColorizeMenu: View {
     let actions: GraphColorizeActions
-    init(store: EditorStore?) { actions = GraphColorizeActions(store: store) }
-    init(actions: GraphColorizeActions) { self.actions = actions }
+    let contextual: Bool
+    init(store: EditorStore?, contextual: Bool = false) {
+        actions = GraphColorizeActions(store: store)
+        self.contextual = contextual
+    }
+    init(actions: GraphColorizeActions, contextual: Bool = false) {
+        self.actions = actions
+        self.contextual = contextual
+    }
     var body: some View {
-        Menu("Colorize Selection") {
-            Button("Clear Part Colors", action: actions.clear).disabled(!actions.canClear)
-            Button("Auto Color", action: actions.autoColor).disabled(!actions.canAutoColor)
+        if !contextual || actions.canClear || actions.canAutoColor {
+            Menu("Colorize Selection") {
+                if !contextual || actions.canClear {
+                    Button("Clear Part Colors", action: actions.clear).disabled(!actions.canClear)
+                }
+                if !contextual || actions.canAutoColor {
+                    Button("Auto Color", action: actions.autoColor).disabled(!actions.canAutoColor)
+                }
+            }
+            .disabled(!actions.canClear && !actions.canAutoColor)
+            .help(
+                "Select at least one node. Auto Color also samples selected edge midpoints. Repeated source colors count once; locked parts and positions outside the reference are skipped."
+            )
         }
-        .disabled(!actions.canClear && !actions.canAutoColor)
-        .help(
-            "Select at least one node. Auto Color also samples selected edge midpoints. Repeated source colors count once; locked parts and positions outside the reference are skipped."
-        )
     }
 }
