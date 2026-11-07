@@ -47,6 +47,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var focusControl: CanvasProfileFocusControl? = nil
+    var focusTarget: CanvasProfileFocusTarget? = nil
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
@@ -55,6 +57,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.precisionKey = nil
         view.profileFocusRequest = nil
         view.switchProfile = nil
+        view.focusControl?.detach(view)
+        view.focusControl = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         if !enabled { view.cancelActivation() }
@@ -75,6 +79,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.profileFocusRequest = profileFocusRequest
         view.ownsProfile = ownsProfile
         view.switchProfile = switchProfile
+        view.focusControl = focusControl
+        if let focusTarget, ownsProfile() { focusControl?.attach(view, target: focusTarget) }
         view.scheduleProfileFocus()
     }
 }
@@ -96,6 +102,7 @@ final class CanvasPointerView: NSView {
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    weak var focusControl: CanvasProfileFocusControl?
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var tracking: NSTrackingArea?
     private var activity = CanvasPointerActivity()

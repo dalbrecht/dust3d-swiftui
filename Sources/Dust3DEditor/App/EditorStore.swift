@@ -594,6 +594,28 @@ final class EditorStore {
         return !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
     }
 
+    func focusCanvasAction(
+        fileIdentity: UUID? = nil, ownsWindow: @escaping @MainActor () -> Bool = { true },
+        _ focus: @escaping @MainActor (CanvasProfileFocusTarget) -> Bool
+    ) -> (@MainActor () -> Bool)? {
+        guard canSave, !referenceColorInteractionActive, originDrag == nil, let source = acceptedDocumentSource,
+            case .success(let accepted) = recoveryLoadResult, accepted.fileIdentity == fileIdentity, ownsWindow()
+        else { return nil }
+        let target = CanvasProfileFocusTarget(documentIdentity: source.documentIdentity, lease: canvasProfiles.lease)
+        let tool = rotationInputContextID
+        let add = addModeID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] in
+            guard let self, ownsWindow(), self.canSave,
+                self.acceptedDocumentSource?.documentIdentity == target.documentIdentity,
+                self.ownsCanvasProfile(target.lease), self.rotationInputContextID == tool, self.addModeID == add,
+                self.referenceColorInteractionEpoch == interaction, !self.referenceColorInteractionActive,
+                self.originDrag == nil
+            else { return false }
+            return focus(target)
+        }
+    }
+
     func switchSelectedCanvasProfile(expectedLease: UUID? = nil) -> UUID? {
         guard canSwitchSelectedCanvasProfile, ownsCanvasProfile(expectedLease) else { return nil }
         plane = plane == .front ? .side : .front

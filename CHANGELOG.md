@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
+
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
