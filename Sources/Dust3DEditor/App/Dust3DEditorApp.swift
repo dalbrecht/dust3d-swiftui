@@ -247,6 +247,8 @@ struct Dust3DEditorApp: App {
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 }
             }
+        }
+        .commands {
             CommandMenu("Rig") {
                 if let rigAssignmentCommand, rigAssignmentCommand.canInvoke(in: store, focus: rigAssignmentFocus) {
                     Button("Assign Selected Edges to Bone") {
