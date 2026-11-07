@@ -30,7 +30,8 @@ struct OriginHandle: View {
                     finish: { if ownsProfile { store.finishOriginDrag(token: $0, translation: $1) } },
                     cancel: { store.cancelOriginDrag(token: $0) }, select: {}, toggle: {},
                     precisionKey: { ownsProfile && precisionKey($0) }, isRectangular: true,
-                    clickCancel: { store.endOriginClick(token: $0) }
+                    clickCancel: { store.endOriginClick(token: $0) },
+                    admitsPrimaryPress: { store.admitsCanvasPrimaryPress(clickCount: $0, lease: profileLease) }
                 )
             }
             .position(x: point.x, y: point.y)

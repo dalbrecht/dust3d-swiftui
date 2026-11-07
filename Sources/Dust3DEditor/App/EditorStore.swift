@@ -425,6 +425,19 @@ final class EditorStore {
         resetCanvasProfileContext(clearGeometry: true)
     }
 
+    func activateCanvasCompanion(plane: EditingPlane, expectedLease: UUID) -> UUID? {
+        guard canvasProfiles.isDualProfile, plane != self.plane, ownsCanvasProfile(expectedLease) else { return nil }
+        self.plane = plane
+        canvasProfiles.markActivationClick()
+        return canvasProfiles.lease
+    }
+
+    func admitsCanvasPrimaryPress(clickCount: Int, lease: UUID?) -> Bool {
+        guard ownsCanvasProfile(lease) else { return false }
+        guard let lease else { return true }
+        return canvasProfiles.admitsPrimaryPress(clickCount: clickCount, lease: lease)
+    }
+
     func ownsCanvasProfile(_ lease: UUID?) -> Bool {
         !stopped && (lease.map(canvasProfiles.owns) ?? true)
     }
