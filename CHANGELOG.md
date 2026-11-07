@@ -308,6 +308,8 @@
 
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
 
+- Show the built-in cross-section outlines next to their names in the native preset picker.
+
 - Add lossless part cut-face preset/profile and rotation commands, cycle-safe history and regenerated previews; native controls follow separately.
 
 - Show how many part defaults and node overrides reference a Cut Face profile in the Part and linked Component inspectors.

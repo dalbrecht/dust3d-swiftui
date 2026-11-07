@@ -18,7 +18,19 @@ struct PartCutFaceControls: View {
                 )
             ) {
                 ForEach(PartCutFaceOptions.selections(current: part.cutFace), id: \.self) { selection in
-                    Text(title(selection)).tag(selection).disabled(selection == nil)
+                    Group {
+                        if case .preset(let preset) = selection {
+                            Label {
+                                Text(title(selection))
+                            } icon: {
+                                CutFacePresetIcon(preset: preset)
+                            }
+                        } else {
+                            Text(title(selection))
+                        }
+                    }
+                    .tag(selection)
+                    .disabled(selection == nil)
                 }
             }
             .labelsHidden().pickerStyle(.menu)
