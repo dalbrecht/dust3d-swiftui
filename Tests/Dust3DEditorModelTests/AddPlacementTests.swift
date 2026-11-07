@@ -5,10 +5,10 @@ import XCTest
 @testable import Dust3DEditorModel
 
 final class AddPlacementTests: XCTestCase {
-    private func document(state: String = "") throws -> Dust3DDocument {
+    private func document(state: String = "", extraComponents: String = "") throws -> Dust3DDocument {
         try Dust3DDocument(
             snapshotXML: Data(
-                "<canvas originX='0.2' originY='0.3' originZ='0.4'><nodes><node id='a' partId='p' x='0' y='0' z='0.7' radius='0.1'/><node id='b' partId='p' x='1' y='1' z='0.8' radius='0.2'/><node id='c' partId='p' x='2' y='2' z='0.9' radius='0.3'/></nodes><edges><edge id='ab' partId='p' from='a' to='b'/><edge id='bc' partId='p' from='b' to='c'/></edges><parts><part id='p' \(state)/></parts><components><component id='group'><component id='component' linkData='p' linkDataType='partId'/></component></components></canvas>"
+                "<canvas originX='0.2' originY='0.3' originZ='0.4'><nodes><node id='a' partId='p' x='0' y='0' z='0.7' radius='0.1'/><node id='b' partId='p' x='1' y='1' z='0.8' radius='0.2'/><node id='c' partId='p' x='2' y='2' z='0.9' radius='0.3'/></nodes><edges><edge id='ab' partId='p' from='a' to='b'/><edge id='bc' partId='p' from='b' to='c'/></edges><parts><part id='p' \(state)/></parts><components><component id='group'><component id='component' linkData='p' linkDataType='partId'/></component>\(extraComponents)</components></canvas>"
                     .utf8))
     }
     private func projection(_ snapshot: EditorSnapshot, plane: EditingPlane = .front) -> CanvasProjection {
@@ -103,6 +103,49 @@ final class AddPlacementTests: XCTestCase {
         }
     }
 
+    func testExplicitRootAndWorkingGroupOverrideTransientComponentSelection() throws {
+        let original = try document()
+        for (destination, parentID) in [
+            (AddPlacementDestination.documentRoot, nil),
+            (.group("group"), "group"),
+        ] {
+            var state = try EditorState(document: original)
+            try state.selectComponent(destination == .documentRoot ? "group" : nil)
+            let projected = projection(state.snapshot)
+            var ghost = AddPlacementState()
+            try ghost.begin(
+                snapshot: state.snapshot, projection: projected, canvasHeight: 400, destination: destination)
+            try ghost.updatePointer(projected.point(for: .init(x: 3, y: 4, z: 0)))
+            let request = try XCTUnwrap(ghost.request())
+            _ = try state.placeAddNode(request, identities: ids("x"))
+            let component = try XCTUnwrap(state.snapshot.componentTree.rows.first { $0.id == "componentx" })
+            XCTAssertEqual(component.component.parentID, parentID)
+            try state.undo()
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            XCTAssertFalse(state.snapshot.canUndo)
+        }
+    }
+
+    func testWorkingGroupIsExactAndDoesNotReparentAnAnchoredChain() throws {
+        let document = try document(extraComponents: "<component id='e\u{301}'/>")
+        var state = try EditorState(document: document)
+        let projected = projection(state.snapshot)
+        var ghost = AddPlacementState()
+        XCTAssertThrowsError(
+            try ghost.begin(
+                snapshot: state.snapshot, projection: projected, canvasHeight: 400, destination: .group("\u{e9}")))
+        try state.select("a")
+        try ghost.begin(
+            snapshot: state.snapshot, projection: projected, canvasHeight: 400, destination: .group("e\u{301}"))
+        try ghost.updatePointer(projected.point(for: .init(x: 3, y: 4, z: 0)))
+        let request = try XCTUnwrap(ghost.request())
+        XCTAssertNil(request.parentID)
+        _ = try state.placeAddNode(request, identities: ids("x"))
+        XCTAssertEqual(state.snapshot.nodes.last?.partID, "p")
+        XCTAssertEqual(state.snapshot.componentTree.rows.first { $0.id == "component" }?.component.parentID, "group")
+        XCTAssertFalse(state.snapshot.componentTree.rows.contains { $0.id == "componentx" })
+    }
+
     func testDegreeTwoFallsBackToNewPartInsideCapturedGroup() throws {
         var state = try EditorState(document: document())
         try state.select("b")
@@ -143,6 +186,34 @@ final class AddPlacementTests: XCTestCase {
         let undone = try await session.undo()
         XCTAssertEqual(undone.document.encoded(), first.snapshot.document.encoded())
         XCTAssertTrue(undone.canUndo)
+    }
+
+    func testActorRejectsRetainedPlacementTargetsAfterFailedOpen() async throws {
+        let session = EditorSession()
+        let opened = try await session.open(data: Dust3DDocument.emptyArchive())
+        let projected = projection(opened)
+        var ghost = AddPlacementState()
+        try ghost.begin(snapshot: opened, projection: projected, canvasHeight: 400)
+        try ghost.updatePointer(projected.point(for: .init(x: 0.3, y: 0.4, z: 0.5)))
+        let request = try XCTUnwrap(ghost.request())
+        do {
+            _ = try await session.open(data: Data("invalid archive".utf8))
+            XCTFail("Invalid archive opened")
+        } catch {}
+        do {
+            _ = try await session.placeAddNode(request)
+            XCTFail("Retained pointer target committed after failed open")
+        } catch { XCTAssertEqual(error as? EditorError, .staleAddPlacement) }
+        do {
+            _ = try await session.apply(
+                [
+                    .addNode(
+                        id: "node", partID: "part", componentID: "component",
+                        position: .init(x: 0.3, y: 0.4, z: 0.5), radius: 0.1)
+                ],
+                selecting: "node", target: CanvasAdjustmentTarget(snapshot: opened))
+            XCTFail("Retained toolbar target committed after failed open")
+        } catch { XCTAssertEqual(error as? EditorError, .staleCanvasAdjustment) }
     }
 
     func testConnectionExitsButInvalidTargetFallsThroughToPlacement() async throws {
