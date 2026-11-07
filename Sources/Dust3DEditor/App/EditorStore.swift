@@ -520,6 +520,19 @@ final class EditorStore {
         resetCanvasProfileContext(clearGeometry: true)
     }
 
+    var canSwitchSelectedCanvasProfile: Bool {
+        guard canvasProfiles.isDualProfile, !stopped, !isWorking, !isAddingNodes, !isMovingOrigin, let snapshot else {
+            return false
+        }
+        return !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
+    }
+
+    func switchSelectedCanvasProfile(expectedLease: UUID? = nil) -> UUID? {
+        guard canSwitchSelectedCanvasProfile, ownsCanvasProfile(expectedLease) else { return nil }
+        plane = plane == .front ? .side : .front
+        return canvasProfiles.lease
+    }
+
     func activateCanvasCompanion(plane: EditingPlane, expectedLease: UUID) -> UUID? {
         guard canvasProfiles.isDualProfile, plane != self.plane, ownsCanvasProfile(expectedLease) else { return nil }
         self.plane = plane
