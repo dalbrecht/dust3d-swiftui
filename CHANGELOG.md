@@ -46,6 +46,8 @@
 
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
 
+- Connect to the nearest existing node in Add mode when node hit areas overlap.
+
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
 
 - Keep a working component group as the destination for new parts while graph selection changes.
