@@ -5,6 +5,99 @@ import XCTest
 @testable import Dust3DEditor
 
 final class ReferenceCompositionDraftTests: XCTestCase {
+    func testDropAcceptsOnlyOneOrTwoLocalSupportedImagesInDeliveryOrder() throws {
+        let front = URL(fileURLWithPath: "/tmp/first.PNG")
+        let side = URL(fileURLWithPath: "/tmp/second.jpeg")
+        let pair = try XCTUnwrap(ReferenceCompositionDrop(urls: [front, side]))
+        XCTAssertEqual(pair.front, front)
+        XCTAssertEqual(pair.side, side)
+        let single = try XCTUnwrap(ReferenceCompositionDrop(urls: [side]))
+        XCTAssertEqual(single.front, side)
+        XCTAssertNil(single.side)
+        for rejected in [
+            [], [front, side, front], [front, URL(fileURLWithPath: "/tmp/model.ds3")],
+            [try XCTUnwrap(URL(string: "https://example.com/source.png"))],
+            [try XCTUnwrap(URL(string: "file://remote.example/tmp/source.png"))],
+        ] {
+            XCTAssertNil(ReferenceCompositionDrop(urls: rejected))
+        }
+    }
+
+    @MainActor func testDropPublishesBothSourcesAndPreviewTogether() async throws {
+        let input = try source()
+        let service = HeldDropCompositionService(source: input)
+        let draft = ReferenceCompositionDraft(service: service)
+        defer { draft.stop() }
+        draft.importDroppedSources(try dropPair())
+        try await waitForDropSide(service)
+        XCTAssertTrue(draft.isWorking)
+        XCTAssertNil(draft.front)
+        XCTAssertNil(draft.side)
+        XCTAssertNil(draft.result)
+        let ordered = await service.paths
+        XCTAssertEqual(ordered, ["front.png", "side.png"])
+        await service.finishSide(.success(input))
+        try await settle(draft)
+        XCTAssertTrue(draft.canApply)
+        XCTAssertEqual(draft.front?.crop, input.crop)
+        XCTAssertEqual(draft.side?.crop, input.crop)
+        XCTAssertNotNil(draft.result)
+        XCTAssertEqual(draft.sourceEpoch, 1)
+    }
+
+    @MainActor func testDropPartialFailureLeavesPreviouslyApplicableDraftIntact() async throws {
+        let input = try source()
+        let service = HeldDropCompositionService(source: input)
+        let draft = ReferenceCompositionDraft(service: service)
+        defer { draft.stop() }
+        draft.useExisting(input.image)
+        try await settle(draft)
+        let original = try XCTUnwrap(draft.result?.png)
+        let epoch = draft.sourceEpoch
+
+        draft.importDroppedSources(try dropPair())
+        try await waitForDropSide(service)
+        await service.finishSide(.failure(.invalidImage))
+        try await settle(draft)
+        XCTAssertEqual(draft.sourceEpoch, epoch)
+        XCTAssertEqual(draft.result?.png, original)
+        XCTAssertNil(draft.side)
+        XCTAssertTrue(draft.canApply)
+        XCTAssertNotNil(draft.errorMessage)
+    }
+
+    @MainActor func testReplacedOrStoppedDraftIgnoresLateDroppedSide() async throws {
+        let input = try source()
+        for stop in [false, true] {
+            let service = HeldDropCompositionService(source: input)
+            let draft = ReferenceCompositionDraft(service: service)
+            defer { draft.stop() }
+            draft.importDroppedSources(try dropPair())
+            try await waitForDropSide(service)
+            if stop { draft.stop() } else { draft.useExisting(input.image) }
+            await service.finishSide(.success(input))
+            try await settle(draft)
+            XCTAssertNil(draft.side)
+            XCTAssertEqual(draft.canApply, !stop)
+            XCTAssertEqual(draft.sourceEpoch, stop ? 0 : 1)
+        }
+    }
+
+    private func dropPair() throws -> ReferenceCompositionDrop {
+        try XCTUnwrap(
+            ReferenceCompositionDrop(urls: [
+                URL(fileURLWithPath: "/tmp/front.png"), URL(fileURLWithPath: "/tmp/side.png"),
+            ]))
+    }
+
+    @MainActor private func waitForDropSide(_ service: HeldDropCompositionService) async throws {
+        for _ in 0..<300 {
+            if await service.isWaiting { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("Side import did not reach its controlled barrier")
+    }
+
     @MainActor func testMovingAndResizingAMirroredSideCropMapsBackToOriginalPixels() async throws {
         let input = try source()
         let draft = ReferenceCompositionDraft(service: ImmediateCompositionService(source: input))
@@ -295,5 +388,34 @@ private actor HeldPreviewCompositionService: ReferenceCompositionServing {
         guard !pending.isEmpty else { throw ReferenceImageError.invalidImage }
         let item = pending.removeFirst()
         item.2.resume(returning: try ReferenceCompositionRaster.compose(front: item.0, side: item.1))
+    }
+}
+
+private actor HeldDropCompositionService: ReferenceCompositionServing {
+    let source: ReferenceCompositionSource
+    private(set) var paths: [String] = []
+    private var pendingSide: CheckedContinuation<ReferenceCompositionSource, any Error>?
+    var isWaiting: Bool { pendingSide != nil }
+
+    init(source: ReferenceCompositionSource) { self.source = source }
+
+    func importSource(url: URL) async throws -> ReferenceCompositionSource {
+        paths.append(url.lastPathComponent)
+        if url.lastPathComponent == "side.png" {
+            return try await withCheckedThrowingContinuation { pendingSide = $0 }
+        }
+        return source
+    }
+
+    func finishSide(_ result: Result<ReferenceCompositionSource, ReferenceImageError>) {
+        let pending = pendingSide
+        pendingSide = nil
+        pending?.resume(with: result.mapError { $0 as any Error })
+    }
+
+    func compose(front: ReferenceCompositionSource?, side: ReferenceCompositionSource?) throws
+        -> ReferenceCompositionResult
+    {
+        try ReferenceCompositionRaster.compose(front: front, side: side)
     }
 }

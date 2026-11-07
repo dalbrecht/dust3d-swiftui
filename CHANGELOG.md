@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Drop one or two image files into the reference controls to compose Front and Side images before applying them to the document.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
