@@ -154,6 +154,12 @@ public struct EditorSnapshot: Sendable {
         return parts.first { $0.id.utf8.elementsEqual(selectedPartID.utf8) }
     }
 
+    /// The part shown in the Part inspector, respecting singleton component inspector precedence.
+    package var inspectedPart: DocumentPart? {
+        guard selectedComponent == nil else { return nil }
+        return selectedPart ?? selectedLinkedComponentPart
+    }
+
     /// The sole part linked directly by the selected component rows, counting shared links once.
     public var selectedLinkedComponentPart: DocumentPart? {
         let owners = Set(selectedComponentRows.compactMap { $0.component.partID.map { Data($0.utf8) } })
@@ -340,6 +346,19 @@ public struct EditorState: Sendable {
         componentRevealRevision += 1
         componentRevealHint = ComponentRevealHint.make(
             partID: partID, tree: componentTree, revision: componentRevealRevision)
+    }
+
+    package mutating func revealOwningComponent(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext
+    ) throws {
+        let current = snapshot
+        guard context.isCurrent(in: current) else { throw EditorError.stalePartGraphSelection }
+        guard let id = current.owningComponentID(for: target),
+            let hint = ComponentRevealHint.make(
+                componentID: id, tree: componentTree, revision: componentRevealRevision + 1)
+        else { throw DocumentError.invalidComponent }
+        componentRevealRevision = hint.revision
+        componentRevealHint = hint
     }
 
     /// Select only a targeted part's owned nodes, preserving the separate node-only convenience.
