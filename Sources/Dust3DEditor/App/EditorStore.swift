@@ -1698,6 +1698,13 @@ final class EditorStore {
     func setPartFillLoopInterior(_ id: String, value: Bool) {
         perform { try await $0.apply([.setPartFillLoopInterior(id: id, value: value)]) }
     }
+    func canEditGraphLoopInterior(_ target: GraphLoopInteriorTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+    func setGraphLoopInterior(_ value: Bool, target: GraphLoopInteriorTarget) {
+        guard canEditGraphLoopInterior(target) else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.setGraphLoopInterior(value, target: target) }
+    }
     func setPartTarget(_ id: String, target: PartTarget) {
         perform { try await $0.apply([.setPartTarget(id: id, target: target)]) }
     }
