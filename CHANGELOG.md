@@ -16,6 +16,8 @@
 
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
 
+- Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
+
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
 - Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
