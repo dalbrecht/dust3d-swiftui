@@ -150,6 +150,9 @@ struct Dust3DEditorApp: App {
                     move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() })
             }
             CommandMenu("Canvas") {
+                Button("Switch Editing Profile") { _ = store?.switchSelectedCanvasProfile() }
+                    .disabled(store?.canSwitchSelectedCanvasProfile != true)
+                Divider()
                 Toggle(
                     "Add Nodes with Pointer",
                     isOn: Binding(
