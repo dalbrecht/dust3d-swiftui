@@ -204,6 +204,12 @@ public actor EditorSession {
     {
         try update { try $0.selectWholePart(target, context: context) }
     }
+    package func revealOwningComponent(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext
+    ) throws -> EditorSnapshot {
+        try update { try $0.revealOwningComponent(target, context: context) }
+    }
+
     /// Select only the captured existing part's nodes without edge inference, history or reveal side effects.
     /// - Throws: Missing-part or stale-document errors without changing the current selection.
     public func selectPartNodes(_ partID: String, context: PartGraphSelectionContext? = nil) throws -> EditorSnapshot {
@@ -299,6 +305,20 @@ public actor EditorSession {
     public func deleteComponentSubtrees(target: ComponentDeletionTarget) throws -> EditorSnapshot {
         try update { state in
             try state.deleteComponentSubtrees(target: target)
+            try Task.checkCancellation()
+        }
+    }
+
+    /// Restore just one saved deformation scale on the originally inspected Model part.
+    package func resetPartDeformationScale(
+        _ property: PartDeformationProperty, partID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), let part = snapshot.inspectedPart, part.target == .model,
+                part.id.utf8.elementsEqual(partID.utf8)
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([.setPartDeformationScale(id: partID, property: property, value: 1)])
             try Task.checkCancellation()
         }
     }

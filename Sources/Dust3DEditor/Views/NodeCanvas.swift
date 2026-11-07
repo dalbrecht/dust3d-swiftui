@@ -5,6 +5,7 @@ import SwiftUI
 struct NodeCanvas: View {
     let store: EditorStore
     var profileLease: UUID? = nil
+    var profileFocusRequest: CanvasProfileFocusRequest? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
     @State private var nodeDrag = NodeDragLifecycle()
@@ -82,7 +83,9 @@ struct NodeCanvas: View {
                     },
                     precisionKey: precisionKey, isAddingNodes: store.isAddingNodes,
                     addPress: { if ownsProfile { store.placeAddNode(at: $0, modeID: addModeID) } },
-                    cancelInput: { if ownsProfile { cancelAddInput() } }
+                    cancelInput: { if ownsProfile { cancelAddInput() } },
+                    admitsPrimaryPress: admitPrimaryPress, profileFocusRequest: profileFocusRequest,
+                    ownsProfile: { ownsProfile }
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"
@@ -145,6 +148,10 @@ struct NodeCanvas: View {
                         canSelectWholePart: store.canPickGraph && node.partID != nil,
                         colorizeActions: colorizeActions, graphActions: graphActions, precisionKey: precisionKey,
                         precisionActions: precisionActions,
+                        revealOwningComponent: {
+                            store.revealOwningComponentAction(
+                                .node(node.id), context: partContext, profileLease: profileLease)
+                        },
                         doubleClick: {
                             guard ownsProfile, store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin
                             else {
@@ -249,7 +256,8 @@ struct NodeCanvas: View {
                             else { return }
                             shiftedDrag = (token, plan, [:])
                             store.beginCanvasProfileMotion(token: token, lease: profileLease)
-                        }
+                        },
+                        admitsPrimaryPress: admitPrimaryPress
                     )
                     .id(addModeID)
                     .allowsHitTesting(!store.isMovingOrigin && !store.isAddingNodes)
@@ -347,6 +355,10 @@ struct NodeCanvas: View {
         }
         .background(.background)
     }
+    private func admitPrimaryPress(_ clickCount: Int) -> Bool {
+        store.admitsCanvasPrimaryPress(clickCount: clickCount, lease: profileLease)
+    }
+
     private func adjustRadius(_ direction: Int) -> Bool {
         guard ownsProfile, store.canAdjustRadiusInput else { return false }
         store.adjustSelectionRadius(direction: Double(direction))
@@ -390,6 +402,7 @@ private struct NodeHandle: View {
     let graphActions: GraphSelectionMenuActions
     let precisionKey: (CanvasPrecisionKeyInput) -> Bool
     let precisionActions: CanvasPrecisionActions
+    let revealOwningComponent: () -> (@MainActor () -> Void)?
     let doubleClick: () -> Void
     let select: () -> Void
     let toggle: () -> Void
@@ -402,6 +415,7 @@ private struct NodeHandle: View {
     let finish: (UUID, CanvasPoint) -> Void
     let cancel: (UUID) -> Void
     let beginShiftDrag: (UUID) -> Void
+    let admitsPrimaryPress: (Int) -> Bool
 
     var body: some View {
         let point = projection.point(for: position)
@@ -420,7 +434,7 @@ private struct NodeHandle: View {
                 select: select, toggle: toggle, add: add, subtract: subtract, wheel: wheel, radiusKey: radiusKey,
                 doubleClick: doubleClick,
                 precisionKey: precisionKey,
-                beginShiftDrag: beginShiftDrag
+                beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
@@ -432,6 +446,9 @@ private struct NodeHandle: View {
         .accessibilityAction { select() }
         .accessibilityAction(named: Text("Select Whole Part")) { if canSelectWholePart { doubleClick() } }
         .contextMenu {
+            if let reveal = revealOwningComponent() {
+                Button("Reveal Owning Component", action: reveal)
+            }
             if canSelectWholePart { Button("Select Whole Part", action: doubleClick) }
             GraphSelectionMenu(actions: graphActions)
             GraphColorizeMenu(actions: colorizeActions, contextual: true)
