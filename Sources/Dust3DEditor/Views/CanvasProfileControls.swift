@@ -23,6 +23,7 @@ struct CanvasProfileHeader: View {
                 ForEach(EditingPlane.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.menu)
+            .help("With a graph selection in Side by Side, press E while the canvas has focus to switch profiles.")
         }
     }
 }
@@ -94,9 +95,17 @@ struct CanvasProfilePanes: View {
 
     private var editingCanvas: some View {
         let lease = store.canvasProfiles.lease
+        let switchProfile: ((CanvasProfileFocusRequest) -> Bool)? =
+            store.canSwitchSelectedCanvasProfile
+            ? { request in
+                guard let activeLease = store.switchSelectedCanvasProfile(expectedLease: lease) else { return false }
+                requestedFocus = (activeLease, request)
+                return true
+            } : nil
         return NodeCanvas(
             store: store, profileLease: lease,
-            profileFocusRequest: requestedFocus?.lease == lease ? requestedFocus?.request : nil
+            profileFocusRequest: requestedFocus?.lease == lease ? requestedFocus?.request : nil,
+            switchProfile: switchProfile
         )
         .id(lease)
     }

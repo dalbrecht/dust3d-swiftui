@@ -449,6 +449,19 @@ final class EditorStore {
         resetCanvasProfileContext(clearGeometry: true)
     }
 
+    var canSwitchSelectedCanvasProfile: Bool {
+        guard canvasProfiles.isDualProfile, !stopped, !isWorking, !isAddingNodes, !isMovingOrigin, let snapshot else {
+            return false
+        }
+        return !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
+    }
+
+    func switchSelectedCanvasProfile(expectedLease: UUID? = nil) -> UUID? {
+        guard canSwitchSelectedCanvasProfile, ownsCanvasProfile(expectedLease) else { return nil }
+        plane = plane == .front ? .side : .front
+        return canvasProfiles.lease
+    }
+
     func activateCanvasCompanion(plane: EditingPlane, expectedLease: UUID) -> UUID? {
         guard canvasProfiles.isDualProfile, plane != self.plane, ownsCanvasProfile(expectedLease) else { return nil }
         self.plane = plane
@@ -1389,6 +1402,21 @@ final class EditorStore {
             }
         }
     #endif
+
+    func setNodeDeformationScale(
+        _ property: PartDeformationProperty, draft: String, nodeID: String, target: CanvasAdjustmentTarget
+    ) {
+        guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot),
+            snapshot.allowsNodeDeformation(for: nodeID)
+        else { return }
+        guard let value = NodeDeformation.parse(draft) else {
+            errorMessage = Self.message(DocumentError.invalidNodeDeformation)
+            return
+        }
+        perform {
+            try await $0.setNodeDeformationScale(property, value: value, nodeID: nodeID, target: target)
+        }
+    }
 
     func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
         guard !isWorking, !stopped else { return }
@@ -2541,6 +2569,8 @@ final class EditorStore {
             case .invalidBoneName:
                 return "Use an exact bone name of at most 1024 UTF-8 bytes without controls or newlines."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
+            case .invalidNodeDeformation:
+                return "Enter a positive node scale up to 1,000,000 that the mesh engine can represent."
             case .conflictingAsset(let name): return "Clipboard asset \(name) conflicts with this document."
             case .cyclicProfile: return "This edit would create a cyclic cut-face reference."
             case .transactionAlreadyOpen: return "An edit transaction is already in progress."

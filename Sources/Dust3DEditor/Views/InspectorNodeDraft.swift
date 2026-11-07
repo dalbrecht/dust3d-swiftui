@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import Foundation
 import Observation
 
@@ -17,5 +18,21 @@ final class InspectorNodeDraft {
         z = node.position.z
         radius = node.radius
         resetID = UUID()
+    }
+}
+
+/// Only source identity, selection, and committed geometry reset the numeric fields.
+struct InspectorNodeDraftSource: Equatable {
+    private let documentIdentity: UUID
+    private let selectionRevision: Int
+    private let nodeID: Data
+    let geometry: EditableNode
+
+    init?(_ snapshot: EditorSnapshot?) {
+        guard let snapshot, let node = snapshot.selectedNode else { return nil }
+        documentIdentity = snapshot.documentIdentity
+        selectionRevision = snapshot.selectionRevision
+        nodeID = Data(node.id.utf8)
+        geometry = node.value
     }
 }

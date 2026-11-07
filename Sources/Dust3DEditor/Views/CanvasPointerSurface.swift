@@ -46,6 +46,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var admitsPrimaryPress: ((Int) -> Bool)? = nil
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
+    var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
@@ -53,6 +54,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.enabled = false
         view.precisionKey = nil
         view.profileFocusRequest = nil
+        view.switchProfile = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         if !enabled { view.cancelActivation() }
@@ -72,6 +74,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.admitsPrimaryPress = admitsPrimaryPress
         view.profileFocusRequest = profileFocusRequest
         view.ownsProfile = ownsProfile
+        view.switchProfile = switchProfile
         view.scheduleProfileFocus()
     }
 }
@@ -92,6 +95,7 @@ final class CanvasPointerView: NSView {
     var admitsPrimaryPress: ((Int) -> Bool)? = nil
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
+    var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var tracking: NSTrackingArea?
     private var activity = CanvasPointerActivity()
@@ -226,10 +230,12 @@ final class CanvasPointerView: NSView {
     }
     override func keyDown(with event: NSEvent) {
         // The captured precision handler admits keyboard edits independently of pointer picking.
-        if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self,
-            precisionKey?(CanvasPrecisionKeyInput(event)) == true
-        {
-            return
+        if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self {
+            if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
+                || precisionKey?(CanvasPrecisionKeyInput(event)) == true
+            {
+                return
+            }
         }
         if routeRadiusKey(event) { return }
         if event.keyCode == 53, start != nil || isAddingNodes {

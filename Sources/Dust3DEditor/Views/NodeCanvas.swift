@@ -6,6 +6,7 @@ struct NodeCanvas: View {
     let store: EditorStore
     var profileLease: UUID? = nil
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
+    var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
     @State private var nodeDrag = NodeDragLifecycle()
@@ -85,7 +86,7 @@ struct NodeCanvas: View {
                     addPress: { if ownsProfile { store.placeAddNode(at: $0, modeID: addModeID) } },
                     cancelInput: { if ownsProfile { cancelAddInput() } },
                     admitsPrimaryPress: admitPrimaryPress, profileFocusRequest: profileFocusRequest,
-                    ownsProfile: { ownsProfile }
+                    ownsProfile: { ownsProfile }, switchProfile: switchProfile
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"
@@ -257,7 +258,7 @@ struct NodeCanvas: View {
                             shiftedDrag = (token, plan, [:])
                             store.beginCanvasProfileMotion(token: token, lease: profileLease)
                         },
-                        admitsPrimaryPress: admitPrimaryPress
+                        admitsPrimaryPress: admitPrimaryPress, switchProfile: switchProfile
                     )
                     .id(addModeID)
                     .allowsHitTesting(!store.isMovingOrigin && !store.isAddingNodes)
@@ -416,6 +417,7 @@ private struct NodeHandle: View {
     let cancel: (UUID) -> Void
     let beginShiftDrag: (UUID) -> Void
     let admitsPrimaryPress: (Int) -> Bool
+    let switchProfile: ((CanvasProfileFocusRequest) -> Bool)?
 
     var body: some View {
         let point = projection.point(for: position)
@@ -434,7 +436,7 @@ private struct NodeHandle: View {
                 select: select, toggle: toggle, add: add, subtract: subtract, wheel: wheel, radiusKey: radiusKey,
                 doubleClick: doubleClick,
                 precisionKey: precisionKey,
-                beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress
+                beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress, switchProfile: switchProfile
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)

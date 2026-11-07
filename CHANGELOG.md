@@ -30,6 +30,8 @@
 
 - Click a companion profile to make it the editing pane without placing or selecting a graph element.
 
+- Press E with a graph selection and canvas focus, or choose Switch Editing Profile in the Canvas menu, to edit the selection in the opposite profile.
+
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
 - Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
@@ -333,6 +335,8 @@
 - Show how many part defaults and node overrides reference a Cut Face profile in the Part and linked Component inspectors.
 
 - Add bounded, lossless part width/thickness and unified-deformation commands with exact undo/redo, preserved fine scales and regenerated previews; native controls follow separately.
+
+- Author independent per-node width and thickness taper for editable Model nodes, with lossless saving and one-step Undo.
 
 - Add typed, undoable part subdivision, chamfer, rounded ends, extra rings and hard-join commands with lossless saving and regenerated previews; native inspector controls follow separately.
 
