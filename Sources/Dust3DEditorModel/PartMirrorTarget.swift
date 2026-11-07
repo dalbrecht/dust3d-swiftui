@@ -2,18 +2,35 @@ import Dust3DDocument
 
 /// An inspector edit belongs to one exact owner and the originating document, selection and constraint epochs.
 public struct PartMirrorTarget: Sendable {
-    private let context: CanvasAdjustmentTarget
+    private enum Scope: Sendable {
+        case inspected(CanvasAdjustmentTarget)
+        case graph(GraphModelPartTarget)
+    }
+
+    private let scope: Scope
     public let partID: String?
 
     /// Capture the exact currently inspected part without normalizing its stored identity.
     public init(snapshot: EditorSnapshot, partID: String) {
-        context = CanvasAdjustmentTarget(snapshot: snapshot)
+        scope = .inspected(CanvasAdjustmentTarget(snapshot: snapshot))
         self.partID = snapshot.mirrorInspectorPart.flatMap { $0.id.utf8.elementsEqual(partID.utf8) ? $0.id : nil }
     }
 
+    package init(graphTarget: GraphModelPartTarget) {
+        scope = .graph(graphTarget)
+        partID = graphTarget.part?.id
+    }
+
     public func isCurrent(in snapshot: EditorSnapshot) -> Bool {
-        guard let partID, context.isCurrent(in: snapshot), let part = snapshot.mirrorInspectorPart else { return false }
-        return part.id.utf8.elementsEqual(partID.utf8)
+        switch scope {
+        case .graph(let target):
+            return target.isCurrent(in: snapshot)
+        case .inspected(let context):
+            guard let partID, context.isCurrent(in: snapshot), let part = snapshot.mirrorInspectorPart else {
+                return false
+            }
+            return part.id.utf8.elementsEqual(partID.utf8)
+        }
     }
 }
 

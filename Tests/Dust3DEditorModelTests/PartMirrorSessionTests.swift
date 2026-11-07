@@ -10,6 +10,93 @@ import XCTest
                 "<canvas><nodes><node id='n' partId='p' x='2' y='.5' z='.5' radius='.2'/></nodes><edges/><parts><part id='p' target='Model' locked='true' visible='false' disabled='true'/><part id='q' target='CutFace' xMirrored='future'/></parts><components><component id='a' linkDataType='partId' linkData='p'/><component id='b' linkDataType='partId' linkData='p'/><component id='c' linkDataType='partId' linkData='q'/></components></canvas>"
                     .utf8))
     }
+    private func graphSource(flag: String = "0", duplicateOwner: Bool = false) throws -> Dust3DDocument {
+        try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                <node id='a' partId='p' x='0' y='0' z='0' radius='.125'/>
+                <node id='b' partId='p' x='2' y='0' z='0' radius='.125'/>
+                <node id='c' partId='q' x='4' y='0' z='0' radius='.125'/>
+                </nodes><edges><edge id='ab' partId='p' from='a' to='b'/></edges>
+                <parts><part id='p' xMirrored='\(flag)' locked='true' unknown='keep'/><part id='q' target='CutFace'/></parts>
+                <components><component id='cp' linkDataType='partId' linkData='p'/>
+                <component id='cq' linkDataType='partId' linkData='q'/>
+                \(duplicateOwner ? "<component id='second' linkDataType='partId' linkData='p'/>" : "")
+                </components></canvas>
+                """.utf8))
+    }
+
+    func testGraphMirrorRequiresOneUniqueModelOwner() throws {
+        var state = try EditorState(document: graphSource())
+        try state.selectGraph(nodes: ["a"], edges: ["ab"])
+        let target = PartMirrorTarget(graphTarget: GraphModelPartTarget(snapshot: state.snapshot))
+        XCTAssertEqual(target.partID, "p")
+        XCTAssertTrue(target.isCurrent(in: state.snapshot))
+        XCTAssertNil(state.snapshot.mirrorInspectorPart)
+
+        try state.selectGraph(nodes: ["c"], edges: ["ab"])
+        XCTAssertNil(PartMirrorTarget(graphTarget: GraphModelPartTarget(snapshot: state.snapshot)).partID)
+        try state.select("c")
+        XCTAssertNil(PartMirrorTarget(graphTarget: GraphModelPartTarget(snapshot: state.snapshot)).partID)
+        var duplicate = try EditorState(document: graphSource(duplicateOwner: true))
+        try duplicate.selectEdges(["ab"])
+        XCTAssertNil(PartMirrorTarget(graphTarget: GraphModelPartTarget(snapshot: duplicate.snapshot)).partID)
+    }
+
+    func testGraphMirrorPreservesPicksAndSettlesOriginInOneUndo() async throws {
+        let original = try graphSource()
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let selection = try await session.selectGraph(nodes: ["a"], edges: ["ab"])
+        let target = PartMirrorTarget(graphTarget: GraphModelPartTarget(snapshot: selection))
+        let unchanged = try await session.setPartXMirrored(false, target: target)
+        XCTAssertEqual(unchanged.document.encoded(), original.encoded())
+        XCTAssertNil(unchanged.origin)
+        XCTAssertFalse(unchanged.canUndo)
+
+        let mirrored = try await session.setPartXMirrored(true, target: target)
+        XCTAssertEqual(mirrored.parts.first?.xMirrored, true)
+        XCTAssertEqual(mirrored.origin, .init(x: 2, y: 0, z: 0))
+        XCTAssertEqual(mirrored.selectedIDs, ["a"])
+        XCTAssertEqual(mirrored.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(mirrored.nodes, selection.nodes)
+        let model = try XMLDocument(data: mirrored.document.modelXML)
+        let part = try XCTUnwrap(try model.nodes(forXPath: "//part[@id='p']").first as? XMLElement)
+        XCTAssertEqual(part.attribute(forName: "unknown")?.stringValue, "keep")
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), original.encoded())
+        XCTAssertFalse(undone.canUndo)
+    }
+
+    func testGraphMirrorPreservesUnsupportedLexemeUntilAcceptedExplicitEdit() async throws {
+        let original = try graphSource(flag: "future")
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let first = try await session.selectEdges(["ab"])
+        let stale = PartMirrorTarget(graphTarget: GraphModelPartTarget(snapshot: first))
+        XCTAssertNil(first.parts.first?.xMirrored)
+        _ = try await session.select("c")
+        let current = try await session.selectEdges(["ab"])
+        do {
+            _ = try await session.setPartXMirrored(false, target: stale)
+            XCTFail("A retired selection acquired a mirror edit")
+        } catch { XCTAssertEqual(error as? PartMirrorError, .staleTarget) }
+        let target = PartMirrorTarget(graphTarget: GraphModelPartTarget(snapshot: current))
+        do {
+            _ = try await session.open(data: Data("bad archive".utf8))
+            XCTFail("Invalid replacement opened")
+        } catch {}
+        do {
+            _ = try await session.setPartXMirrored(false, target: target)
+            XCTFail("A retired document acquired a mirror edit")
+        } catch { XCTAssertEqual(error as? PartMirrorError, .staleTarget) }
+        let retained = try await session.selectEdges(["ab"])
+        XCTAssertEqual(retained.document.encoded(), original.encoded())
+        XCTAssertNil(retained.parts.first?.xMirrored)
+        XCTAssertFalse(retained.canUndo)
+    }
+
     func testSharedOwnerInspectorIgnoresLocksAndEditsWithOneUndo() async throws {
         let doc = try source()
         let session = EditorSession()
