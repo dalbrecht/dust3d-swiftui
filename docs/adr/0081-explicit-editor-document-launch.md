@@ -19,9 +19,10 @@ to the process working directory. Standardize file URLs and reject duplicate
 paths, NUL, missing explicit operands, wrong explicit extensions and paths
 over 4096 UTF-8 bytes before opening any document.
 
-Skip known platform and legacy option operands. After an unknown option, use
+Skip known platform option operands. After an unknown option, use
 `--open-document` or the `--` delimiter to identify paths unambiguously.
-Report the unsupported Qt export-at-launch flags `-o` and `-output`.
+Reject unsupported Qt launch options `-o`, `-output`, `-paste-xml`, and
+`-toggle-color` before opening any document.
 Claim the batch before awaiting the first open so lifecycle callbacks cannot
 replay it. Report each original document-open error and continue opening
 later documents.

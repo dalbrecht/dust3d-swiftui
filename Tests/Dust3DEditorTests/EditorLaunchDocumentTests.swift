@@ -31,14 +31,13 @@ final class EditorLaunchDocumentTests: XCTestCase {
         }
     }
 
-    func testMixedInputsKeepOrderAndSkipPlatformAndLegacyOptionValues() throws {
+    func testMixedInputsKeepOrderAndSkipPlatformOptionValues() throws {
         let arguments = [
             "Editor", "-psn_0_12345", "-ApplePersistenceIgnoreState", "YES",
-            "relative.DS3", "-paste-xml", "/tmp/ignored.ds3",
-            "--open-document", "/tmp/second.ds3", "-toggle-color", "true",
-            "--open-document", "/tmp/third.ds3", "--", "-fourth.ds3",
+            "relative.DS3", "--open-document", "/tmp/second.ds3",
+            "--open-document", "/tmp/third.ds3", "--", "-paste-xml.ds3", "-toggle-color.ds3",
         ]
-        let paths = ["relative.DS3", "/tmp/second.ds3", "/tmp/third.ds3", "-fourth.ds3"]
+        let paths = ["relative.DS3", "/tmp/second.ds3", "/tmp/third.ds3", "-paste-xml.ds3", "-toggle-color.ds3"]
         XCTAssertEqual(
             try EditorLaunchRequest(arguments: arguments),
             .open(paths.map { URL(fileURLWithPath: $0).standardizedFileURL }))
@@ -52,7 +51,7 @@ final class EditorLaunchDocumentTests: XCTestCase {
     }
 
     @MainActor
-    func testInvalidBatchAndUnsupportedExportNeverOpenAnyDocument() async {
+    func testInvalidBatchAndUnsupportedQtOptionsNeverOpenAnyDocument() async {
         for (arguments, expected) in [
             (
                 ["Editor", "/tmp/first.ds3", "--open-document", "relative.ds3"],
@@ -60,6 +59,8 @@ final class EditorLaunchDocumentTests: XCTestCase {
             ),
             (["Editor", "/tmp/first.ds3", "-o", "/tmp/result.obj"], .unsupportedExportArgument),
             (["Editor", "/tmp/first.ds3", "-output", "/tmp/result.obj"], .unsupportedExportArgument),
+            (["Editor", "/tmp/first.ds3", "-paste-xml", "/tmp/edits.xml"], .unsupportedPasteArgument),
+            (["Editor", "/tmp/first.ds3", "-toggle-color", "true"], .unsupportedColorArgument),
         ] {
             let opener = EditorLaunchDocumentOpener(arguments: arguments)
             XCTAssertTrue(opener.shouldSuppressUntitledDocument)

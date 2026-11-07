@@ -3,6 +3,8 @@ import Foundation
 enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
     case invalidDocumentArgument
     case unsupportedExportArgument
+    case unsupportedPasteArgument
+    case unsupportedColorArgument
 
     var errorDescription: String? {
         switch self {
@@ -10,6 +12,10 @@ enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
             "Supply up to 64 distinct local .ds3 paths, each at most 4096 UTF-8 bytes. Paths after --open-document must be absolute."
         case .unsupportedExportArgument:
             "Export at launch is unavailable. Open the document and use File > Export Geometry."
+        case .unsupportedPasteArgument:
+            "Pasting XML at launch is unavailable. Open the document, copy the node XML, and choose Edit > Paste."
+        case .unsupportedColorArgument:
+            "Changing model colors at launch is unavailable. Open the document and use Model Colors in the View menu."
         }
     }
 }
@@ -38,7 +44,11 @@ enum EditorLaunchRequest: Sendable, Equatable {
                     acceptsPositionals = true
                 case "-o", "-output":
                     throw .unsupportedExportArgument
-                case "-ApplePersistenceIgnoreState", "-paste-xml", "-toggle-color":
+                case "-paste-xml":
+                    throw .unsupportedPasteArgument
+                case "-toggle-color":
+                    throw .unsupportedColorArgument
+                case "-ApplePersistenceIgnoreState":
                     if let operand = arguments.first, !operand.hasPrefix("-") { _ = arguments.popFirst() }
                 default:
                     // Unknown options may take a path operand. Explicit paths still work.
