@@ -4,6 +4,8 @@
 
 - Keep component selection visible when collapsing groups, and prevent sidebar Delete from targeting hidden rows.
 
+- Print the authored rig templates as XML with the headless `-list-rigs` command.
+
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
@@ -45,6 +47,8 @@
 - Add global Hide All Parts in Canvas and group visibility commands under Canvas > Part Visibility, preserving one-step Undo and mesh inputs (#343).
 
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
+
+- Connect to the nearest existing node in Add mode when node hit areas overlap.
 
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
 
