@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep reference image import and removal tied to the document where the action started.
+
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.

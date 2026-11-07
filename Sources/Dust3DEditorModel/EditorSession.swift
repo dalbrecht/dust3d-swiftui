@@ -677,6 +677,13 @@ public actor EditorSession {
         }
     }
 
+    package func removeReferenceImage(target: ReferenceCompositionTarget) throws -> EditorSnapshot {
+        try update {
+            guard hasAcceptedSource else { throw EditorError.staleReferenceComposition }
+            try $0.applyReferenceImage(png: nil, target: target)
+        }
+    }
+
     /// Rotate connected descendants around the selected pivot without changing selection or radii.
     /// - Parameter rotation: Explicit Front/Side quarter-turn direction.
     /// - Returns: One undoable snapshot, or unchanged history for a no-op.

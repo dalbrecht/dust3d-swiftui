@@ -52,6 +52,7 @@ struct EditorRootView: View {
 
     var body: some View {
         let fitAction = toolbarFitAction
+        let referenceFile = $file
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
@@ -124,8 +125,12 @@ struct EditorRootView: View {
                         .disabled(store.isWorking || store.snapshot?.origin == nil || store.isSelectingRigEdges)
                         .help("Drag the origin marker; Escape cancels. Node picking resumes when this mode is off.")
                         .padding(.horizontal, 12).padding(.bottom, 8)
-                        ReferenceImageControls(store: store, composition: $referenceComposition)
-                            .padding(.horizontal, 12).padding(.bottom, 8)
+                        ReferenceImageControls(
+                            store: store, fileIdentity: file.identity,
+                            currentFileIdentity: { referenceFile.wrappedValue.identity },
+                            composition: $referenceComposition
+                        )
+                        .padding(.horizontal, 12).padding(.bottom, 8)
                         EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
