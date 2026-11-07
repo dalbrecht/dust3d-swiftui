@@ -205,6 +205,52 @@ final class WorkingGroupStoreTests: XCTestCase {
         XCTAssertNil(store.snapshot?.componentTree.rows.first { $0.component.partID != nil }?.component.parentID)
     }
 
+    func testRetainedClipboardDeliveryCannotAcquireChangedWorkingGroupOrAnotherWindow() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data("<canvas><components><component id='group'/></components></canvas>".utf8))
+        let fragment = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let store = makeStore()
+        let other = makeStore()
+        defer {
+            store.stop()
+            other.stop()
+        }
+        await store.load(data: original.encoded())
+        await other.load(data: original.encoded())
+        store.selectComponent("group")
+        try await settle(store)
+        let selected = try XCTUnwrap(store.snapshot)
+        store.workingGroupAction(.group("group"), snapshot: selected)()
+        let retained = try XCTUnwrap(store.clipboardPasteRequest())
+        store.workingGroupAction(.documentRoot, snapshot: selected)()
+        store.workingGroupAction(.group("group"), snapshot: selected)()
+        store.pasteQtNodes(snapshotXML: fragment.modelXML, request: retained)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(store.canUndo)
+
+        let current = try XCTUnwrap(store.clipboardPasteRequest())
+        other.pasteQtNodes(snapshotXML: fragment.modelXML, request: current)
+        XCTAssertFalse(other.isWorking)
+        store.pasteQtNodes(snapshotXML: fragment.modelXML, request: current)
+        try await settle(store)
+        XCTAssertEqual(
+            store.snapshot?.componentTree.rows.first { $0.component.partID != nil }?.component.parentID, "group")
+        XCTAssertEqual(other.snapshot?.document.encoded(), original.encoded())
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(store.canUndo)
+
+        let restored = try XCTUnwrap(store.snapshot)
+        store.workingGroupAction(.documentRoot, snapshot: restored)()
+        store.pasteQtNodes(snapshotXML: fragment.modelXML)
+        try await settle(store)
+        let rootPart = try XCTUnwrap(store.snapshot?.componentTree.rows.first { $0.component.partID != nil })
+        XCTAssertNil(rootPart.component.parentID)
+    }
+
     private func makeStore() -> EditorStore {
         let stub = WorkingGroupNoNative()
         return EditorStore(
