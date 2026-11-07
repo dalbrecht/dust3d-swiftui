@@ -4,17 +4,21 @@ import Dust3DDocument
 package struct GraphModelPartTarget: Sendable {
     private let owner: ComponentMeshSelectionTarget
     package let part: DocumentPart?
+    package let component: DocumentComponent?
 
     package init(snapshot: EditorSnapshot) {
         owner = ComponentMeshSelectionTarget(graphSelection: snapshot)
         guard owner.ids.count == 1, let componentID = owner.ids.first,
-            let partID = snapshot.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(componentID.utf8) })?
-                .component.partID
+            let row = snapshot.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(componentID.utf8) }),
+            let partID = row.component.partID,
+            let part = snapshot.parts.first(where: { $0.target == .model && $0.id.utf8.elementsEqual(partID.utf8) })
         else {
             part = nil
+            component = nil
             return
         }
-        part = snapshot.parts.first { $0.target == .model && $0.id.utf8.elementsEqual(partID.utf8) }
+        self.part = part
+        component = row.component
     }
 
     package func isCurrent(in snapshot: EditorSnapshot) -> Bool {
