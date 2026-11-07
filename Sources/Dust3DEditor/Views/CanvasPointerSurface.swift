@@ -52,6 +52,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
     var focusControl: CanvasProfileFocusControl? = nil
     var focusTarget: CanvasProfileFocusTarget? = nil
+    var addModeKey: CanvasAddModeKey.Handler? = nil
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
@@ -63,6 +64,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.switchProfile = nil
         view.focusControl?.detach(view)
         view.focusControl = nil
+        view.addModeKey = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         view.tracksHoverWhileDisabled = tracksHoverWhileDisabled
@@ -88,6 +90,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.switchProfile = switchProfile
         view.focusControl = focusControl
         if let focusTarget, ownsProfile() { focusControl?.attach(view, target: focusTarget) }
+        view.addModeKey = addModeKey
         view.scheduleProfileFocus()
     }
 }
@@ -115,6 +118,7 @@ final class CanvasPointerView: NSView {
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
     weak var focusControl: CanvasProfileFocusControl?
+    var addModeKey: CanvasAddModeKey.Handler? = nil
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var tracking: NSTrackingArea?
     private var activity = CanvasPointerActivity()
@@ -265,6 +269,7 @@ final class CanvasPointerView: NSView {
         if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self {
             let input = CanvasPrecisionKeyInput(event)
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
+                || CanvasAddModeKey.route(event, in: window, handle: addModeKey)
                 || (input.permitsDispatch(in: window) && precisionKey?(input) == true)
             {
                 return

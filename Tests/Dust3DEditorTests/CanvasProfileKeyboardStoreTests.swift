@@ -107,6 +107,86 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertFalse(action())
     }
 
+    func testAddSelectKeysSwitchOnlyTheCurrentToolWithoutArchiveOrSelectionChanges() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let archive = try makeDocument().encoded()
+        await store.load(data: archive)
+        try await settle(store)
+        store.select("a")
+        try await settle(store)
+        let before = try XCTUnwrap(store.snapshot)
+        let lease = store.canvasProfiles.lease
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 420, height: 240)
+        store.setCanvasContext(projection: projection, width: 420, height: 240, lease: lease)
+        let selectionHandler = store.canvasAddModeKeyHandler(profileLease: lease)
+        XCTAssertFalse(selectionHandler(.select))
+        XCTAssertTrue(selectionHandler(.toggleAdd))
+        XCTAssertTrue(store.isAddingNodes)
+        XCTAssertFalse(selectionHandler(.toggleAdd))
+
+        let addHandler = store.canvasAddModeKeyHandler(profileLease: lease)
+        let addID = store.addModeID
+        XCTAssertTrue(addHandler(.consumeRepeat))
+        XCTAssertEqual(store.addModeID, addID)
+        XCTAssertTrue(addHandler(.select))
+        XCTAssertFalse(store.isAddingNodes)
+        XCTAssertFalse(addHandler(.toggleAdd))
+
+        XCTAssertTrue(store.canvasAddModeKeyHandler(profileLease: lease)(.toggleAdd))
+        XCTAssertTrue(store.canvasAddModeKeyHandler(profileLease: lease)(.toggleAdd))
+        XCTAssertFalse(store.isAddingNodes)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a"])
+        XCTAssertEqual(store.snapshot?.selectionRevision, before.selectionRevision)
+        XCTAssertEqual(store.snapshot?.document.encoded(), archive)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testAddSelectKeysRejectRetainedPaneSourceToolAndWorkingGroup() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let archive = try makeDocument().encoded()
+        await store.load(data: archive)
+        try await settle(store)
+        let lease = store.canvasProfiles.lease
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 420, height: 240)
+        store.setCanvasContext(projection: projection, width: 420, height: 240, lease: lease)
+
+        let workingGroup = store.canvasAddModeKeyHandler(profileLease: lease)
+        let snapshot = try XCTUnwrap(store.snapshot)
+        store.workingGroupAction(.documentRoot, snapshot: snapshot)()
+        store.workingGroupAction(.selection, snapshot: snapshot)()
+        XCTAssertFalse(workingGroup(.toggleAdd))
+
+        let oldTool = store.canvasAddModeKeyHandler(profileLease: lease)
+        store.setMovingOrigin(true)
+        XCTAssertFalse(store.canvasAddModeKeyHandler(profileLease: lease)(.toggleAdd))
+        XCTAssertFalse(store.canvasAddModeKeyHandler(profileLease: lease)(.select))
+        XCTAssertTrue(store.isMovingOrigin)
+        store.setMovingOrigin(false)
+        XCTAssertFalse(oldTool(.toggleAdd))
+
+        store.setRigEdgeSelection(true)
+        XCTAssertFalse(store.canvasAddModeKeyHandler(profileLease: lease)(.toggleAdd))
+        XCTAssertTrue(store.isSelectingRigEdges)
+        store.setRigEdgeSelection(false)
+
+        let oldPane = store.canvasAddModeKeyHandler(profileLease: lease)
+        store.plane = .side
+        store.plane = .front
+        XCTAssertFalse(oldPane(.toggleAdd))
+        let currentLease = store.canvasProfiles.lease
+        store.setCanvasContext(projection: projection, width: 420, height: 240, lease: currentLease)
+        let oldSource = store.canvasAddModeKeyHandler(profileLease: currentLease)
+        await store.load(data: Data("invalid archive".utf8))
+        XCTAssertFalse(oldSource(.toggleAdd))
+        XCTAssertFalse(store.canvasAddModeKeyHandler(profileLease: currentLease)(.toggleAdd))
+        await store.load(data: archive)
+        try await settle(store)
+        XCTAssertFalse(oldSource(.toggleAdd))
+        XCTAssertFalse(store.isAddingNodes)
+    }
+
     func testSwitchRequiresDualLayoutAndExplicitGraphSelectionAndPreservesDocumentState() async throws {
         let store = makeStore()
         defer { store.stop() }
