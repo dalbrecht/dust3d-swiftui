@@ -303,6 +303,20 @@ public actor EditorSession {
         }
     }
 
+    /// Restore just one saved deformation scale on the originally inspected Model part.
+    package func resetPartDeformationScale(
+        _ property: PartDeformationProperty, partID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), let part = snapshot.inspectedPart, part.target == .model,
+                part.id.utf8.elementsEqual(partID.utf8)
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([.setPartDeformationScale(id: partID, property: property, value: 1)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Set an absolute cross-section rotation on the originally inspected Model part.
     package func setPartCutRotationPreset(
         _ preset: PartCutRotationPreset, partID: String, target: CanvasAdjustmentTarget
