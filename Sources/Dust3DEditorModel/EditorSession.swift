@@ -273,14 +273,13 @@ public actor EditorSession {
     public func editSelectedComponentColors(_ color: DocumentColor?, target: ComponentMeshSelectionTarget) throws
         -> EditorSnapshot
     {
-        try update { state in
-            guard target.count > 1, target.isCurrent(in: state.snapshot) else {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard target.count > (target.isGraphSelection ? 0 : 1), target.isCurrent(in: state.snapshot) else {
                 throw ComponentMeshSelectionError.staleTarget
             }
             let updates = target.ids.map { DocumentComponentColorUpdate(componentID: $0, color: color) }
             try state.apply([.setComponentColors(updates)])
-            try Task.checkCancellation()
-        }
+        }.snapshot
     }
 
     /// Connect exactly two captured eligible endpoints, allocating one fresh edge off the UI actor.
@@ -416,6 +415,16 @@ public actor EditorSession {
         return result.snapshot
     }
 
+    /// Apply the captured mirror edit as one undoable publication, including any initial origin.
+    public func setPartXMirrored(_ value: Bool, target: PartMirrorTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let id = target.partID else {
+                throw PartMirrorError.staleTarget
+            }
+            try state.apply([.setPartXMirrored(id: id, value: value)])
+        }.snapshot
+    }
+
     package func setGraphPartShape(
         _ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget
     ) throws -> EditorSnapshot {
@@ -468,6 +477,28 @@ public actor EditorSession {
         try update { state in
             try state.applyColorImage(.setComponentColorImage(id: target.componentID, imageID: imageID), target: target)
         }
+    }
+
+    package func importComponentColorImages(png: Data, target: ComponentMeshSelectionTarget) throws -> EditorSnapshot {
+        try updateGraphColorImages(
+            .importComponentColorImages(ids: target.ids, imageID: Self.identifier(), png: png), target: target)
+    }
+
+    package func setComponentColorImages(imageID: String?, target: ComponentMeshSelectionTarget) throws
+        -> EditorSnapshot
+    {
+        try updateGraphColorImages(.setComponentColorImages(ids: target.ids, imageID: imageID), target: target)
+    }
+
+    private func updateGraphColorImages(_ command: DocumentCommand, target: ComponentMeshSelectionTarget) throws
+        -> EditorSnapshot
+    {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard !target.graphColorImageComponents(in: state.snapshot).isEmpty else {
+                throw EditorError.staleColorImageTarget
+            }
+            try state.apply([command])
+        }.snapshot
     }
 
     /// Move a captured selected subtree to an explicit root/group destination atomically.
@@ -795,10 +826,19 @@ public actor EditorSession {
 
     /// Atomically apply a graph transaction; cancellation is checked before it begins.
     public func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws -> EditorSnapshot {
-        try update { state in
+        try apply(commands, selecting: id, target: nil)
+    }
+
+    package func apply(
+        _ commands: [DocumentCommand], selecting id: String?, target: CanvasAdjustmentTarget?
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: target != nil) { state in
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw EditorError.staleCanvasAdjustment
+            }
             let prepared = try GraphCommandPreparation.normalizingDeletions(commands, document: state.snapshot.document)
             try state.apply(prepared, selecting: id)
-        }
+        }.snapshot
     }
 
     /// Commit a projected origin gesture only while its document, revision and locks still match.
@@ -945,6 +985,7 @@ public actor EditorSession {
     public func placeAddNode(_ request: AddPlacementRequest) throws -> AddPlacementReceipt {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
+        guard hasAcceptedSource else { throw EditorError.staleAddPlacement }
         let result = try next.placeAddNode(
             request,
             identities: .init(

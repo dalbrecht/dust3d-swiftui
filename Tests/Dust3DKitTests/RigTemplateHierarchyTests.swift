@@ -25,6 +25,36 @@ final class RigTemplateHierarchyTests: XCTestCase {
         }
     }
 
+    func testEveryVerifiedTemplateHasAuthoredSegmentsWithExactEndpoints() throws {
+        for type in ["Biped", "Quadruped", "Bird", "Fish", "Snake", "Insect", "Spider"] {
+            let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: type))
+            XCTAssertTrue(hierarchy.bones.allSatisfy { $0.segment != nil }, type)
+            XCTAssertEqual(hierarchy.roots.first?.segment, hierarchy.bones.first?.segment)
+        }
+        let biped = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let root = try XCTUnwrap(biped.roots.first?.segment)
+        XCTAssertEqual(root.start, SIMD3(0, 0, 0))
+        XCTAssertEqual(root.end, SIMD3(0, 0.9, 0))
+        let hair = try XCTUnwrap(biped.bones.first { $0.name == "HairBack1" }?.segment)
+        XCTAssertEqual(hair.start, SIMD3(0, 1.8, -0.08))
+        XCTAssertEqual(hair.end, SIMD3(0, 1.65, -0.12))
+    }
+
+    func testUnavailableSegmentsDoNotPreventHierarchyBrowsing() throws {
+        let xml = """
+            <rig type="Test">
+            <bone name="Root"/>
+            <bone name="Nonfinite" parent="Root"><position x="0" y="nan" z="0"/><endPosition x="0" y="1" z="0"/></bone>
+            <bone name="Zero" parent="Root"><position x="0" y="0" z="0"/><endPosition x="0" y="0" z="0"/></bone>
+            <bone name="Huge" parent="Root"><position x="1e100" y="0" z="0"/><endPosition x="0" y="1" z="0"/></bone>
+            <bone name="Partial" parent="Root"><position x="0" y="0"/><endPosition x="0" y="1" z="0"/></bone>
+            </rig>
+            """
+        let hierarchy = try RigTemplateHierarchy.parse(Data(xml.utf8), expectedType: "Test")
+        XCTAssertEqual(hierarchy.roots.first?.children?.map(\.name), ["Nonfinite", "Zero", "Huge", "Partial"])
+        XCTAssertTrue(hierarchy.bones.allSatisfy { $0.segment == nil })
+    }
+
     func testHierarchyResolvesForwardParentsAndPreservesExactUnicodeAndSiblingOrder() throws {
         let xml = """
             <rig type="Test"><description>Exact hierarchy</description>

@@ -91,7 +91,7 @@ final class ReferenceCompositionSourceAdmissionTests: XCTestCase {
 
         await store.load(data: Data("invalid archive".utf8), fileIdentity: UUID())
 
-        XCTAssertTrue(store.canSave)
+        XCTAssertFalse(store.canSave)
         XCTAssertNil(store.referenceCompositionTarget)
         let applied = await store.applyReferenceComposition(result, target: target, setsOrigin: true)
         XCTAssertFalse(applied)
