@@ -212,33 +212,9 @@
         @ViewBuilder
         private func hierarchySection(rig: GeneratedRig, revision: UUID, selected: Int?) -> some View {
             if let hierarchy = generation.hierarchy {
-                DisclosureGroup("Generated joint hierarchy") {
-                    OutlineGroup(hierarchy.roots, children: \.children) { node in
-                        if rig.joints.indices.contains(node.index) {
-                            let joint = rig.joints[node.index]
-                            Button {
-                                selectJoint(node.index, rig: rig, revision: revision)
-                            } label: {
-                                HStack {
-                                    Text(joint.name)
-                                    Spacer()
-                                    if joint.head == joint.tail {
-                                        Text("Unplaced").font(.caption).foregroundStyle(.secondary)
-                                    }
-                                    if selected == node.index {
-                                        Image(systemName: "checkmark").accessibilityHidden(true)
-                                    }
-                                }
-                                .frame(minHeight: 32)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(joint.head == joint.tail ? "\(joint.name), unplaced joint" : joint.name)
-                            .accessibilityAddTraits(selected == node.index ? .isSelected : [])
-                        }
-                    }
-                }
-                .id(revision)
+                GeneratedRigHierarchyView(
+                    session: session, rig: rig, hierarchy: hierarchy, revision: revision,
+                    selected: selected, presentationRevision: session.presentationRevision)
             } else if let error = generation.hierarchyError {
                 Text("Joint hierarchy unavailable: \(error)")
                     .font(.caption).textSelection(.enabled)

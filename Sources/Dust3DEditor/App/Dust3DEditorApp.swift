@@ -109,6 +109,9 @@ struct Dust3DEditorApp: App {
                             isOn: Binding(
                                 get: { restPreviewActions?.showsWeights == true },
                                 set: { restPreviewActions?.setShowsWeights($0) }))
+                        Divider()
+                        Button("Reveal Selected Joint") { restPreviewActions?.revealSelectedJoint() }
+                            .disabled(restPreviewActions?.canRevealSelectedJoint != true)
                     }
                     .disabled(restPreviewActions?.canChangeVisibility != true)
                     Divider()

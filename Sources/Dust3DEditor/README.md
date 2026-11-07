@@ -708,3 +708,10 @@ drag still orbits. In generated-rest picking, pan intent cannot select a bone,
 even if movement stays below the click threshold. Camera commands remain available
 in the menu. Physical pointer/keyboard/VoiceOver acceptance remains outstanding.
 See [ADR 0171](../../docs/adr/0171-preview-pointer-pan.md).
+
+Generated-joint selections reveal their ancestors in the hierarchy. Use Reveal
+Selected Joint above the hierarchy or in View > Generated Rest to reveal the same
+selection again after collapsing rows. Expansion belongs to the window session;
+color and weight refreshes preserve manual collapse. The hierarchy scrolls within
+its own bounded area. Physical scrolling, keyboard and VoiceOver acceptance remain
+outstanding; see [ADR 0172](../../docs/adr/0172-generated-joint-reveal.md).

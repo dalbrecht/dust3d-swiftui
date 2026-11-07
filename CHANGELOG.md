@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reveal selected generated joints by expanding their hierarchy ancestors, with window-owned disclosure and guarded scrolling (#367).
+
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).

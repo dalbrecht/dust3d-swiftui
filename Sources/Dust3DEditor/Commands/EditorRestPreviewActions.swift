@@ -12,6 +12,8 @@ struct EditorRestPreviewActions {
     private let writeBones: @MainActor (Bool) -> Void
     private let readWeights: @MainActor () -> Bool
     private let writeWeights: @MainActor (Bool) -> Void
+    private let readCanReveal: @MainActor () -> Bool
+    private let revealJoint: @MainActor () -> Void
 
     init(
         isCurrent: @escaping @MainActor () -> Bool = { true },
@@ -19,7 +21,9 @@ struct EditorRestPreviewActions {
         setMode: @escaping @MainActor (GeneratedRigPreviewSession.Presentation) -> Void,
         showsModel: @escaping @MainActor () -> Bool, setShowsModel: @escaping @MainActor (Bool) -> Void,
         showsBones: @escaping @MainActor () -> Bool, setShowsBones: @escaping @MainActor (Bool) -> Void,
-        showsWeights: @escaping @MainActor () -> Bool, setShowsWeights: @escaping @MainActor (Bool) -> Void
+        showsWeights: @escaping @MainActor () -> Bool, setShowsWeights: @escaping @MainActor (Bool) -> Void,
+        canRevealSelectedJoint: @escaping @MainActor () -> Bool = { false },
+        revealSelectedJoint: @escaping @MainActor () -> Void = {}
     ) {
         self.isCurrent = isCurrent
         readMode = mode
@@ -30,6 +34,8 @@ struct EditorRestPreviewActions {
         writeBones = setShowsBones
         readWeights = showsWeights
         writeWeights = setShowsWeights
+        readCanReveal = canRevealSelectedJoint
+        revealJoint = revealSelectedJoint
     }
 
     var canChangeMode: Bool { isCurrent() }
@@ -38,6 +44,12 @@ struct EditorRestPreviewActions {
     var showsModel: Bool { canChangeVisibility && readModel() }
     var showsBones: Bool { canChangeVisibility && readBones() }
     var showsWeights: Bool { canChangeVisibility && readWeights() }
+
+    var canRevealSelectedJoint: Bool { canChangeVisibility && readCanReveal() }
+    func revealSelectedJoint() {
+        guard canRevealSelectedJoint else { return }
+        revealJoint()
+    }
 
     func setMode(_ value: GeneratedRigPreviewSession.Presentation) {
         guard canChangeMode else { return }

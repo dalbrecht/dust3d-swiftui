@@ -14,6 +14,7 @@ final class GeneratedRigPreviewSession {
 
     let generation: GeneratedRigPreviewState
     let display: GeneratedRigDisplayState
+    let hierarchyDisclosure = GeneratedRigHierarchyDisclosure()
     private(set) var request: GeneratedRigPreviewRequest?
     private(set) var presentation = Presentation.model
     private(set) var presentationRevision = UUID()
@@ -226,6 +227,7 @@ final class GeneratedRigPreviewSession {
         guard !stopped, self.presentation != presentation else { return }
         self.presentation = presentation
         presentationRevision = UUID()
+        hierarchyDisclosure.invalidateReveal()
         invalidatePicking()
     }
 
@@ -237,6 +239,23 @@ final class GeneratedRigPreviewSession {
         selection = GeneratedRigJointSelection(revision: revision, index: index)
         prepareDisplay()
     }
+    func setHierarchyExpanded(_ value: Bool, index: Int?, revision: UUID, presentationRevision: UUID) {
+        guard self.presentationRevision == presentationRevision, canInteract(revision) else { return }
+        hierarchyDisclosure.setExpanded(value, index: index, revision: revision)
+    }
+
+    func revealSelectedJoint(revision: UUID, presentationRevision: UUID) {
+        guard self.presentationRevision == presentationRevision, canInteract(revision) else { return }
+        hierarchyDisclosure.revealSelected(revision: revision)
+    }
+
+    func acceptsHierarchyReveal(
+        _ reveal: GeneratedRigHierarchyDisclosure.Reveal, presentationRevision: UUID
+    ) -> Bool {
+        self.presentationRevision == presentationRevision && canInteract(reveal.revision)
+            && hierarchyDisclosure.accepts(reveal)
+    }
+
     func move(_ action: MeshCameraCommand.Action, revision: UUID?) {
         guard let revision, canInteract(revision), canMoveCamera else { return }
         invalidatePicking()
@@ -269,6 +288,7 @@ final class GeneratedRigPreviewSession {
 
     private func beginGeneration() {
         guard let request else { return }
+        hierarchyDisclosure.sync(hierarchy: nil, revision: nil, selected: nil)
         invalidatePicking()
         generationTask?.cancel()
         displayTask?.cancel()
@@ -286,6 +306,9 @@ final class GeneratedRigPreviewSession {
         }
     }
     private func prepareDisplay(force: Bool = false) {
+        hierarchyDisclosure.sync(
+            hierarchy: currentRig == nil ? nil : generation.hierarchy,
+            revision: currentRevision, selected: selectedIndex)
         guard let desired = desiredDisplay, let rig = currentRig else { return }
         if !force, display.request == desired,
             display.isLoading || display.acceptedRequest == desired || display.error != nil
@@ -305,6 +328,7 @@ final class GeneratedRigPreviewSession {
     }
     func stop() {
         stopped = true
+        hierarchyDisclosure.sync(hierarchy: nil, revision: nil, selected: nil)
         invalidatePicking()
         generationEpoch = UUID()
         displayEpoch = UUID()
