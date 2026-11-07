@@ -13,6 +13,20 @@ struct AddModeControls: View {
                     set: { active in toggleAction(active) })
             )
             .disabled(!store.isAddingNodes && !store.canBeginAddMode)
+            if store.canvasProfiles.isDualProfile {
+                Toggle(
+                    "Qt Opposite-Profile Depth",
+                    isOn: Binding(
+                        get: { store.usesQtOppositeProfileDepth },
+                        set: { store.setQtOppositeProfileDepth($0) })
+                )
+                .disabled(store.isAddingNodes || !store.canSave)
+                .help("Seed the first node’s depth from the pointer and turnaround width, as in Dust3D for Qt.")
+                if store.qtOppositeProfileDepthNeedsReference {
+                    Text("The embedded reference image must load before starting a new part with Qt depth.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
             if store.isAddingNodes {
                 Text(
                     store.addPlacement.anchorID == nil
@@ -24,6 +38,13 @@ struct AddModeControls: View {
                     "Preview radius: \(store.addGhostModelRadius.formatted(.number.precision(.fractionLength(0...4)))) document units"
                 )
                 .font(.caption).monospacedDigit()
+                if let position = store.qtAddDepthGuidePosition {
+                    let isFront = store.plane == .front
+                    let coordinate = (isFront ? position.z : position.x)
+                        .formatted(.number.precision(.fractionLength(0...4)))
+                    Text(isFront ? "Side Z: \(coordinate)" : "Front X: \(coordinate)")
+                        .font(.caption).monospacedDigit()
+                }
                 if let limit = store.addRadiusLimitNotice {
                     Text(limit).font(.caption).foregroundStyle(.secondary).accessibilityLabel(limit)
                 }

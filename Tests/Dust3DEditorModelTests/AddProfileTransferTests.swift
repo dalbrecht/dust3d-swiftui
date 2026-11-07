@@ -113,4 +113,54 @@ final class AddProfileTransferTests: XCTestCase {
         XCTAssertNil(placement.projection)
         XCTAssertNil(placement.request())
     }
+
+    func testQtSeedUsesAuthoredHorizontalThresholdInBothProfilesAndSurvivesTransfer() throws {
+        let snapshot = try makeState().snapshot
+        let bounds = CanvasBounds(nodes: [], referenceImageAspectRatio: 2)
+        let front = CanvasProjection(bounds: bounds, plane: .front, width: 500, height: 400)
+        let side = CanvasProjection(bounds: bounds, plane: .side, width: 450, height: 200)
+        var placement = AddPlacementState()
+        try placement.begin(
+            snapshot: snapshot, projection: front, canvasHeight: 400, destination: .selection,
+            depthSeed: .qtOppositeProfile(aspect: 2))
+        let frontSample = NodePosition(x: 0.25, y: 0.5, z: 0)
+        try placement.updatePointer(front.point(for: frontSample))
+        let initial = try XCTUnwrap(placement.request())
+        XCTAssertEqual(initial.position.z, 0.75, accuracy: 1e-12)
+        try placement.updatePointer(front.point(for: .init(x: 1, y: 0.5, z: 0)))
+        XCTAssertEqual(try XCTUnwrap(placement.request()).position.z, 0.5, accuracy: 1e-12)
+
+        placement.suspendProjectionForProfileChange()
+        try placement.updatePointer(front.point(for: frontSample))
+        XCTAssertNil(placement.request())
+        try placement.reproject(snapshot: snapshot, projection: side, canvasHeight: 200)
+        XCTAssertNil(placement.request())
+        try placement.updatePointer(side.point(for: .init(x: 0, y: 0.5, z: 1.25)))
+        let transferred = try XCTUnwrap(placement.request())
+        XCTAssertNotEqual(initial.contextID, transferred.contextID)
+        XCTAssertEqual(transferred.position.x, 0.75, accuracy: 1e-12)
+        XCTAssertEqual(transferred.position.z, 1.25, accuracy: 1e-12)
+    }
+
+    func testQtSeedRejectsInvalidAspectAndDoesNotChangeAnAnchoredDepth() throws {
+        var state = try makeState()
+        let bounds = CanvasBounds(nodes: [], referenceImageAspectRatio: 3)
+        let front = CanvasProjection(bounds: bounds, plane: .front, width: 500, height: 400)
+        var placement = AddPlacementState()
+        for aspect in [0, -Double.infinity, .nan] {
+            XCTAssertThrowsError(
+                try placement.begin(
+                    snapshot: state.snapshot, projection: front, canvasHeight: 400, destination: .selection,
+                    depthSeed: .qtOppositeProfile(aspect: aspect)))
+            XCTAssertFalse(placement.isActive)
+        }
+        try state.select("a")
+        try placement.begin(
+            snapshot: state.snapshot, projection: front, canvasHeight: 400, destination: .selection,
+            depthSeed: .qtOppositeProfile(aspect: 3))
+        try placement.updatePointer(front.point(for: .init(x: 1, y: 0.5, z: 0)))
+        let request = try XCTUnwrap(placement.request())
+        XCTAssertEqual(request.anchorID, "a")
+        XCTAssertEqual(request.position.z, 9)
+    }
 }

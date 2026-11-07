@@ -10,6 +10,8 @@ struct CanvasProfileCompanion: View {
         let snapshot = store.snapshot
         let bounds = store.bounds
         let motion = store.canvasProfileMotion
+        let depthGuide = store.qtAddDepthGuidePosition
+        let ghostRadius = store.addGhostModelRadius
         let graphHover = store.canvasGraphHover
         let origin = store.originDragPosition ?? snapshot?.origin
         let isMovingOrigin = store.isMovingOrigin
@@ -46,6 +48,13 @@ struct CanvasProfileCompanion: View {
                 context.fill(
                     circle(at: point, diameter: CanvasNodeMarkerGeometry.centerDiameter),
                     with: .color(selected ? .accentColor : (node.isEditable ? .primary : .secondary)))
+            }
+            if let depthGuide {
+                let point = projection.point(for: depthGuide)
+                let diameter = max(8, min(ghostRadius * projection.scale * 2, 600))
+                context.stroke(
+                    circle(at: CGPoint(x: point.x, y: point.y), diameter: diameter),
+                    with: .color(.accentColor), style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
             }
             if let origin {
                 let point = projection.point(for: origin)
