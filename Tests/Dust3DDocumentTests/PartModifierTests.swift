@@ -3,6 +3,19 @@ import Foundation
 import XCTest
 
 final class PartModifierTests: XCTestCase {
+    func testModifierCommandRejectsAnUnauthoredUnicodeEquivalentPartID() throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data("<canvas><parts><part id='cafe&#769;'/></parts></canvas>".utf8))
+        let alias = "caf\u{e9}"
+        XCTAssertThrowsError(try source.applying(.setPartModifier(id: alias, property: .chamfer, value: true))) {
+            guard case .missingPart(let id) = $0 as? DocumentError else {
+                return XCTFail("Expected a missing literal owner")
+            }
+            XCTAssertEqual(Data(id.utf8), Data(alias.utf8))
+        }
+        XCTAssertEqual(try source.editorContents().parts.first?.modifierValue(.chamfer), false)
+    }
+
     private func document(_ attributes: String = "", parts: String? = nil) throws -> Dust3DDocument {
         let part = parts ?? "<part id='p' future='retained' \(attributes)/>"
         let model = Data(
