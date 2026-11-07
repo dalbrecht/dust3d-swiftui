@@ -2005,8 +2005,12 @@ final class EditorStore {
     func renameComponent(_ id: String, name: String) {
         perform { try await $0.apply([.setComponentName(id: id, name: name)]) }
     }
+    func canEditComponentEquipmentSlot(_ target: ComponentEquipmentSlotTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+
     func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) {
-        guard !isWorking, !stopped, let snapshot, target.isCurrent(in: snapshot) else { return }
+        guard canEditComponentEquipmentSlot(target) else { return }
         perform { try await $0.setComponentEquipmentSlot(slot, target: target) }
     }
 

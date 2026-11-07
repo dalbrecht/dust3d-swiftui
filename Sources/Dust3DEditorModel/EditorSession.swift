@@ -412,12 +412,14 @@ public actor EditorSession {
         }.snapshot
     }
 
-    /// Apply one equipment assignment to the originally selected Model component.
+    /// Apply one equipment assignment to the captured Model component.
     package func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) throws
         -> EditorSnapshot
     {
         try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw ComponentEquipmentSlotError.staleTarget }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw ComponentEquipmentSlotError.staleTarget
+            }
             try state.apply([.setComponentEquipmentSlot(id: target.componentID, slot: slot)])
             try Task.checkCancellation()
         }

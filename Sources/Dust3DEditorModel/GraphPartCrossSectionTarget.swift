@@ -4,6 +4,7 @@ import Dust3DDocument
 package struct GraphModelPartTarget: Sendable {
     private let owner: GraphPartRoleTarget
     package let part: DocumentPart?
+    package let component: DocumentComponent?
 
     package init(snapshot: EditorSnapshot) {
         self.init(owner: GraphPartRoleTarget(snapshot: snapshot))
@@ -12,6 +13,7 @@ package struct GraphModelPartTarget: Sendable {
     package init(owner: GraphPartRoleTarget) {
         self.owner = owner
         part = owner.part?.target == .model ? owner.part : nil
+        component = part == nil ? nil : owner.component
     }
 
     package func isCurrent(in snapshot: EditorSnapshot) -> Bool {

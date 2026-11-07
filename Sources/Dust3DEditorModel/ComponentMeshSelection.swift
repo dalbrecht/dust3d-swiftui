@@ -57,12 +57,14 @@ public struct ComponentMeshSelectionTarget: Hashable, Sendable {
         ids = linkedKeys == partKeys && linkedRows.count == partKeys.count ? linkedRows.map(\.id) : []
     }
 
-    func soleGraphLinkedPart(in snapshot: EditorSnapshot) -> DocumentPart? {
+    func soleGraphLinkedOwner(in snapshot: EditorSnapshot) -> (part: DocumentPart, component: DocumentComponent)? {
         guard isGraphSelection, ids.count == 1, let componentID = ids.first,
-            let partID = snapshot.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(componentID.utf8) })?
-                .component.partID
+            let component = snapshot.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(componentID.utf8) })?
+                .component,
+            let partID = component.partID,
+            let part = snapshot.parts.first(where: { $0.id.utf8.elementsEqual(partID.utf8) })
         else { return nil }
-        return snapshot.parts.first { $0.id.utf8.elementsEqual(partID.utf8) }
+        return (part, component)
     }
 
     /// Graph image authoring requires every explicit owner to be an exact linked Model part.

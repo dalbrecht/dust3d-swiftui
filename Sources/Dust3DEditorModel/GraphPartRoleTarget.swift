@@ -4,10 +4,13 @@ import Dust3DDocument
 package struct GraphPartRoleTarget: Sendable {
     private let owner: ComponentMeshSelectionTarget
     package let part: DocumentPart?
+    let component: DocumentComponent?
 
     package init(snapshot: EditorSnapshot) {
         owner = ComponentMeshSelectionTarget(graphSelection: snapshot)
-        part = owner.soleGraphLinkedPart(in: snapshot)
+        let linked = owner.soleGraphLinkedOwner(in: snapshot)
+        part = linked?.part
+        component = linked?.component
     }
 
     package func isCurrent(in snapshot: EditorSnapshot) -> Bool {
