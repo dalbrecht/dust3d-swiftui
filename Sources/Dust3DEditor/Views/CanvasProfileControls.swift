@@ -27,7 +27,7 @@ struct CanvasProfileHeader: View {
             let setRigEdgeSelection = store.rigEdgeSelectionToggleAction()
             Toggle(
                 "Select Edges for Bone Assignment",
-                isOn: Binding(get: { store.isSelectingRigEdges }, set: setRigEdgeSelection)
+                isOn: Binding(get: { store.isSelectingRigEdges }, set: { setRigEdgeSelection($0) })
             )
             .disabled(!store.canChangeRigEdgeSelection)
             .help("Pick edges in the canvas, then choose a template bone and assign the selected edges.")
