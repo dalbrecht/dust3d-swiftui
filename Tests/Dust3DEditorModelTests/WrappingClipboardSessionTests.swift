@@ -13,15 +13,57 @@ final class WrappingClipboardSessionTests: XCTestCase {
     }
     private func bindings(_ document: Dust3DDocument) throws -> [String: String] {
         let xml = try XMLDocument(data: document.modelXML)
-        let components = xml.rootElement()?.elements(forName: "components").first?.elements(forName: "component") ?? []
-        return Dictionary(
-            uniqueKeysWithValues: components.compactMap { element in
-                guard let id = element.attribute(forName: "id")?.stringValue,
-                    let binding = element.attribute(forName: "wrapBindTo")?.stringValue
-                else { return nil }
-                return (id, binding)
-            })
+        var pending = xml.rootElement()?.elements(forName: "components").first?.elements(forName: "component") ?? []
+        var result: [String: String] = [:]
+        while let element = pending.popLast() {
+            pending.append(contentsOf: element.elements(forName: "component"))
+            if let id = element.attribute(forName: "id")?.stringValue,
+                let binding = element.attribute(forName: "wrapBindTo")?.stringValue
+            {
+                result[id] = binding
+            }
+        }
+        return result
     }
+    @MainActor func testNativeAndQtPasteShareCapturedWorkingGroupAndRejectWrongSource() async throws {
+        let original = try source()
+        let sourceSession = EditorSession()
+        _ = try await sourceSession.open(data: original.encoded())
+        _ = try await sourceSession.select(["n", "m"])
+        let payload = try await sourceSession.copyPayload(identifier: "working")
+        let xml = try await sourceSession.copySelection().document.modelXML
+        let destinationDocument = try Dust3DDocument(
+            snapshotXML: Data("<canvas><components><component id='working'/></components></canvas>".utf8))
+        for qt in [false, true] {
+            let destination = EditorSession()
+            let before = try await destination.open(data: destinationDocument.encoded())
+            let target = CanvasAdjustmentTarget(snapshot: before)
+            do {
+                if qt {
+                    _ = try await sourceSession.paste(snapshotXML: xml, parentID: "working", target: target)
+                } else {
+                    _ = try await sourceSession.paste(data: payload, parentID: "working", target: target)
+                }
+                XCTFail("A clipboard request acquired another document")
+            } catch {
+                XCTAssertEqual(error as? WorkingGroupPasteError, .staleTarget)
+            }
+            let pasted =
+                qt
+                ? try await destination.paste(snapshotXML: xml, parentID: "working", target: target)
+                : try await destination.paste(data: payload, parentID: "working", target: target)
+            let garment = try XCTUnwrap(pasted.componentTree.rows.first { $0.component.name == "Garment" }).component
+            let body = try XCTUnwrap(pasted.componentTree.rows.first { $0.component.name == "Body" }).component
+            XCTAssertEqual(garment.parentID, "working")
+            XCTAssertEqual(body.parentID, "working")
+            XCTAssertEqual(try bindings(pasted.document)[garment.id], body.id)
+            XCTAssertEqual(pasted.selectedIDs.count, 2)
+            let undone = try await destination.undo()
+            XCTAssertEqual(undone.document.encoded(), destinationDocument.encoded())
+            XCTAssertFalse(undone.canUndo)
+        }
+    }
+
     @MainActor func testNativeAndQtActorPastesRemapCopiedBodyAndPreserveSelectionWithOneUndo() async throws {
         let original = try source()
         for sameDocument in [true, false] {

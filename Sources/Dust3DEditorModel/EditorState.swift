@@ -870,6 +870,10 @@ public struct EditorState: Sendable {
     /// Commit graph operations as one undo step. Failed batches preserve document and selection.
     /// The optional selection must exist in the resulting document.
     public mutating func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws {
+        try apply(commands, selecting: id, pasteParentID: nil)
+    }
+
+    mutating func apply(_ commands: [DocumentCommand], selecting id: String? = nil, pasteParentID: String?) throws {
         var next = history
         try next.beginTransaction()
         for command in commands {
@@ -900,6 +904,7 @@ public struct EditorState: Sendable {
                     return NodeUpdate(id: update.id, value: value)
                 }
                 try next.apply(.setNodes(constrained))
+            case .pasteNodes: try next.apply(command, pasteParentID: pasteParentID)
             default: try next.apply(command)
             }
         }

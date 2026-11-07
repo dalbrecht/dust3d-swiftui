@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Paste native or Qt clipboard nodes into an explicitly chosen working group.
+
 - Keep a working component group as the destination for new parts while graph selection changes.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.

@@ -99,7 +99,9 @@ struct ComponentSidebar: View {
                 }.padding(12)
                 Label("Add destination: \(store.addPlacementDestinationTitle)", systemImage: "folder.badge.plus")
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
-                    .help("Sets the destination for new parts. Extending an existing chain keeps its part.")
+                    .help(
+                        "An explicit working group receives new parts and pasted components. Extending a chain keeps its part."
+                    )
                 if let count = store.snapshot?.selectedComponentIDs.count, count > 1 {
                     Text("\(count) components selected")
                         .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)

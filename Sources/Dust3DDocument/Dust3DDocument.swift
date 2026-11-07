@@ -599,7 +599,7 @@ public struct Dust3DDocument: Sendable {
 
     /// Apply one validated command to a new document value, preserving all unrelated archive data.
     public func applying(_ command: DocumentCommand) throws -> Dust3DDocument {
-        try applyingCommand(command)
+        try applying(command, pasteParentID: nil)
     }
 
     /// Discover bounded identity requirements for splitting only the requested parts.
@@ -608,7 +608,7 @@ public struct Dust3DDocument: Sendable {
             model: Self.xml(modelXML, root: "canvas"), contents: editorContents(), partIDs: partIDs)
     }
 
-    private func applyingCommand(_ command: DocumentCommand) throws -> Dust3DDocument {
+    package func applying(_ command: DocumentCommand, pasteParentID: String?) throws -> Dust3DDocument {
         if case .setComponentColors(let updates) = command {
             guard updates.count <= DocumentComponentColorUpdate.maximumBatchCount else {
                 throw DocumentError.limitExceeded
@@ -1047,7 +1047,7 @@ public struct Dust3DDocument: Sendable {
             var namespaceBudget = DocumentXML.NamespaceBudget()
             try NodeClipboardMutation.paste(
                 clipboard, identities: identities, offset: offset, into: model, contents: contents,
-                namespaceBudget: &namespaceBudget)
+                namespaceBudget: &namespaceBudget, parentID: pasteParentID)
             let pastedEdges = try clipboard.document.editorContents().edges.sorted {
                 $0.id.utf8.lexicographicallyPrecedes($1.id.utf8)
             }

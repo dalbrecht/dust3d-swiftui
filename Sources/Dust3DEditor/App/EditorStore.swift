@@ -1775,13 +1775,50 @@ final class EditorStore {
         }
     }
 
-    /// The system PasteButton delivers data asynchronously; the session validates it away from the UI actor.
+    struct ClipboardPasteRequest: Hashable, Sendable {
+        fileprivate let context: CanvasAdjustmentTarget
+        fileprivate let workingGroupRevision: UUID
+        fileprivate let parentID: String?
+    }
+
+    func clipboardPasteRequest() -> ClipboardPasteRequest? {
+        guard canSave, let snapshot, case .success(let accepted) = recoveryLoadResult,
+            accepted.documentIdentity == snapshot.documentIdentity
+        else { return nil }
+        let parentID: String?
+        if case .group(let id) = addPlacementDestination {
+            guard snapshot.addPlacementGroup(id) != nil else { return nil }
+            parentID = id
+        } else {
+            parentID = nil
+        }
+        return ClipboardPasteRequest(
+            context: CanvasAdjustmentTarget(snapshot: snapshot), workingGroupRevision: workingGroupRevision,
+            parentID: parentID)
+    }
+
     func pasteNodes(data: Data) {
-        perform(reloadReferenceImage: true) { try await $0.paste(data: data) }
+        guard let request = clipboardPasteRequest() else { return }
+        pasteNodes(data: data, request: request)
+    }
+
+    func pasteNodes(data: Data, request: ClipboardPasteRequest) {
+        guard request == clipboardPasteRequest() else { return }
+        perform(reloadReferenceImage: true, acceptCommittedCancellation: true) {
+            try await $0.paste(data: data, parentID: request.parentID, target: request.context)
+        }
     }
 
     func pasteQtNodes(snapshotXML: Data) {
-        perform(reloadReferenceImage: true) { try await $0.paste(snapshotXML: snapshotXML) }
+        guard let request = clipboardPasteRequest() else { return }
+        pasteQtNodes(snapshotXML: snapshotXML, request: request)
+    }
+
+    func pasteQtNodes(snapshotXML: Data, request: ClipboardPasteRequest) {
+        guard request == clipboardPasteRequest() else { return }
+        perform(reloadReferenceImage: true, acceptCommittedCancellation: true) {
+            try await $0.paste(snapshotXML: snapshotXML, parentID: request.parentID, target: request.context)
+        }
     }
 
     func deleteSelection() { perform { try await $0.deleteSelection() } }

@@ -66,7 +66,11 @@ public struct DocumentHistory: Sendable {
 
     /// Validate and commit a command. A rejected or no-op command preserves history and redo.
     public mutating func apply(_ command: DocumentCommand) throws {
-        let next = try document.applying(command)
+        try apply(command, pasteParentID: nil)
+    }
+
+    package mutating func apply(_ command: DocumentCommand, pasteParentID: String?) throws {
+        let next = try document.applying(command, pasteParentID: pasteParentID)
         guard next.encoded() != document.encoded() || !next.hasSameGraphOrder(as: document) else { return }
         guard document.historyByteCost <= maximumUndoBytes, next.historyByteCost <= maximumUndoBytes else {
             throw DocumentError.limitExceeded
