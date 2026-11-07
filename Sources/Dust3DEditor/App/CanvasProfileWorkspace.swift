@@ -11,6 +11,11 @@ struct CanvasProfileWorkspace {
         isDualProfile ? EditingPlane.allCases : [activePlane]
     }
 
+    static func paneWidth(totalWidth: Double, dividerWidth: Double) -> Double {
+        guard totalWidth.isFinite, dividerWidth.isFinite, totalWidth >= 0, dividerWidth >= 0 else { return 0 }
+        return max(0, (totalWidth - dividerWidth) / 2)
+    }
+
     mutating func activate(_ plane: EditingPlane) {
         guard activePlane != plane else { return }
         activePlane = plane

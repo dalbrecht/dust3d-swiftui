@@ -1639,6 +1639,9 @@ public struct Dust3DDocument: Sendable {
         func isTrue(_ value: String?) -> Bool { value == "true" || value == "True" || value == "1" }
         let partElements = partContainers.first?.elements(forName: "part") ?? []
         guard partElements.count <= 10_000 else { throw DocumentError.limitExceeded }
+        let elements = try Self.nodes(xml)
+        guard elements.count <= 10_000 else { throw DocumentError.limitExceeded }
+        let cutFaceReferenceCounts = CutFaceLinks.referenceCounts(parts: partElements, nodes: elements)
         for (index, part) in partElements.enumerated() {
             guard let id = part.attribute(forName: "id")?.stringValue, !id.isEmpty, parts[id] == nil else {
                 throw DocumentError.invalidNode
@@ -1651,12 +1654,11 @@ public struct Dust3DDocument: Sendable {
                 modifiers: PartModifiers.values(part), deformationScales: PartDeformation.scales(part),
                 isDeformationUnified: PartDeformation.unified(part), cutFace: PartCutFace.selection(part),
                 cutRotation: PartCutFace.rotation(part), target: PartTargetMetadata.value(part),
-                isLoopInteriorFilled: PartLoopInterior.value(part), materials: PartMaterial.values(part))
+                isLoopInteriorFilled: PartLoopInterior.value(part), materials: PartMaterial.values(part),
+                cutFaceReferenceCount: cutFaceReferenceCounts[id, default: 0])
             parts[id] = value
             orderedParts.append(value)
         }
-        let elements = try Self.nodes(xml)
-        guard elements.count <= 10_000 else { throw DocumentError.limitExceeded }
         let nodes = try elements.enumerated().map { index, node -> DocumentNode in
             guard let id = node.attribute(forName: "id")?.stringValue else { throw DocumentError.invalidNode }
             let partID = node.attribute(forName: "partId")?.stringValue

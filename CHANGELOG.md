@@ -18,6 +18,8 @@
 
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
 
+- Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
+
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
 - Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
@@ -307,6 +309,8 @@
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
 
 - Add lossless part cut-face preset/profile and rotation commands, cycle-safe history and regenerated previews; native controls follow separately.
+
+- Show how many part defaults and node overrides reference a Cut Face profile in the Part and linked Component inspectors.
 
 - Add bounded, lossless part width/thickness and unified-deformation commands with exact undo/redo, preserved fine scales and regenerated previews; native controls follow separately.
 

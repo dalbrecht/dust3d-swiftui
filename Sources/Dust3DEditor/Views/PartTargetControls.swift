@@ -25,6 +25,9 @@ struct PartTargetControls: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel("Part role")
             .accessibilityIdentifier("part-target")
+            if part.target == .cutFace {
+                CutFaceReferenceCountLabel(count: part.cutFaceReferenceCount)
+            }
             Text(
                 "Profiles supply cross-sections without joining the mesh. Stitching roles supply component boundaries; stitching settings are separate. Each choice is one undo step."
             )
@@ -39,5 +42,15 @@ struct PartTargetControls: View {
         case .stitchingLine: return "Stitching line"
         case .stitchingLoop: return "Stitching loop"
         }
+    }
+}
+
+struct CutFaceReferenceCountLabel: View {
+    let count: Int
+
+    var body: some View {
+        LabeledContent("Linked references", value: count.formatted())
+            .font(.caption)
+            .accessibilityIdentifier("cut-face-reference-count")
     }
 }
