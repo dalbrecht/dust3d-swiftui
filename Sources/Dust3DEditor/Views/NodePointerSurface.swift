@@ -21,6 +21,7 @@ struct NodePointerSurface: NSViewRepresentable {
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)? = nil
     var beginShiftDrag: ((UUID) -> Void)? = nil
+    var admitsPrimaryPress: ((Int) -> Bool)? = nil
 
     func makeNSView(context: Context) -> NodePointerView { NodePointerView() }
     static func dismantleNSView(_ view: NodePointerView, coordinator: ()) {
@@ -47,6 +48,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.precisionKey = precisionKey
         view.isRectangular = isRectangular
         view.clickCancel = clickCancel
+        view.admitsPrimaryPress = admitsPrimaryPress
     }
 }
 
@@ -68,6 +70,7 @@ final class NodePointerView: NSView {
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)?
+    var admitsPrimaryPress: ((Int) -> Bool)?
     private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, mode: GraphSelectionMode)?
     private weak var previousResponder: NSResponder?
     private weak var activationResponder: NSResponder?
@@ -109,6 +112,7 @@ final class NodePointerView: NSView {
         }
         guard enabled else { return }
         if activation != nil { cancelActivation() }
+        guard admitsPrimaryPress?(event.clickCount) != false else { return }
         var mode = GraphSelectionMode.pointerMode(modifiers: event.modifierFlags)
         // Non-graph handles keep their existing modifier behavior.
         if mode == .subtract && subtract == nil { mode = .toggle }

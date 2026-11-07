@@ -55,6 +55,30 @@ final class EditorStore {
             self?.selectWholePart(target, context: context)
         }
     }
+    func revealOwningComponentAction(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil
+    ) -> (@MainActor () -> Void)? {
+        guard let context, canRevealOwningComponent(target, context: context, profileLease: profileLease) else {
+            return nil
+        }
+        let modeID = addModeID
+        return { [weak self] in
+            guard let self, self.addModeID == modeID,
+                self.canRevealOwningComponent(target, context: context, profileLease: profileLease)
+            else { return }
+            self.perform(commits: false) { try await $0.revealOwningComponent(target, context: context) }
+        }
+    }
+
+    private func canRevealOwningComponent(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext, profileLease: UUID?
+    ) -> Bool {
+        guard ownsCanvasProfile(profileLease), !isWorking, !isAddingNodes, !isMovingOrigin, let snapshot,
+            context.isCurrent(in: snapshot)
+        else { return false }
+        return snapshot.canRevealOwningComponent(target)
+    }
+
     func selectComponentGraph(_ target: ComponentGraphSelectionTarget) {
         guard !stopped, !isWorking, snapshot?.canSelectComponentGraph(target) == true else { return }
         cancelAddMode()
@@ -423,6 +447,19 @@ final class EditorStore {
         guard enabled != canvasProfiles.isDualProfile else { return }
         canvasProfiles.setDualProfile(enabled)
         resetCanvasProfileContext(clearGeometry: true)
+    }
+
+    func activateCanvasCompanion(plane: EditingPlane, expectedLease: UUID) -> UUID? {
+        guard canvasProfiles.isDualProfile, plane != self.plane, ownsCanvasProfile(expectedLease) else { return nil }
+        self.plane = plane
+        canvasProfiles.markActivationClick()
+        return canvasProfiles.lease
+    }
+
+    func admitsCanvasPrimaryPress(clickCount: Int, lease: UUID?) -> Bool {
+        guard ownsCanvasProfile(lease) else { return false }
+        guard let lease else { return true }
+        return canvasProfiles.admitsPrimaryPress(clickCount: clickCount, lease: lease)
     }
 
     func ownsCanvasProfile(_ lease: UUID?) -> Bool {
@@ -837,6 +874,7 @@ final class EditorStore {
         stopped = false
         isWorking = true
         recoveryLoadResult = nil
+        qtXMLFilePasteRequest = nil
         defer { if operationRequestID == requestID { isWorking = false } }
         do {
             let next = try await session.open(data: data)
@@ -1360,12 +1398,38 @@ final class EditorStore {
         }
         perform { try await $0.apply([.setPartDeformationScale(id: id, property: property, value: scale)]) }
     }
+    func partDeformationResetAction(
+        _ property: PartDeformationProperty, partID: String
+    ) -> (@MainActor () -> Void)? {
+        guard let snapshot, let part = snapshot.inspectedPart, part.target == .model,
+            part.id.utf8.elementsEqual(partID.utf8)
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        return { [weak self] in
+            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+                target.isCurrent(in: current)
+            else { return }
+            self.perform { try await $0.resetPartDeformationScale(property, partID: partID, target: target) }
+        }
+    }
+
     func setPartDeformationUnified(_ id: String, value: Bool) {
         perform { try await $0.apply([.setPartDeformationUnified(id: id, value: value)]) }
     }
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
+    func canEditGraphPartShape(_ target: GraphPartShapeTarget) -> Bool {
+        !isWorking && acceptedAnimationSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func setGraphPartShape(_ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget) {
+        guard canEditGraphPartShape(target) else { return }
+        perform(acceptCommittedCancellation: true) {
+            try await $0.setGraphPartShape(property, value: value, target: target)
+        }
+    }
+
     func canAssignBoneName(_ name: String, target: EdgeBoneAssignmentTarget) -> Bool {
         guard !stopped, !isWorking, let snapshot else { return false }
         return target.isCurrent(in: snapshot) && target.hasChanges(name: name)
@@ -1747,6 +1811,60 @@ final class EditorStore {
         perform(reloadReferenceImage: true) { try await $0.paste(data: data) }
     }
 
+    private struct QtXMLFilePasteRequest {
+        let id = UUID()
+        let fileIdentity: UUID
+        let target: CanvasAdjustmentTarget
+    }
+
+    private var qtXMLFilePasteRequest: QtXMLFilePasteRequest?
+    var qtXMLFilePasteRequestID: UUID? { qtXMLFilePasteRequest?.id }
+    var canChooseQtXMLFile: Bool {
+        qtXMLFilePasteRequest == nil && acceptedQtXMLFileSource != nil
+    }
+
+    private var acceptedQtXMLFileSource: (snapshot: EditorSnapshot, fileIdentity: UUID)? {
+        guard canSave, case .success(let accepted) = recoveryLoadResult, let fileIdentity = accepted.fileIdentity,
+            let snapshot, accepted.documentIdentity == snapshot.documentIdentity
+        else { return nil }
+        return (snapshot, fileIdentity)
+    }
+
+    func chooseQtXMLFile() {
+        guard qtXMLFilePasteRequest == nil, let source = acceptedQtXMLFileSource else { return }
+        qtXMLFilePasteRequest = QtXMLFilePasteRequest(
+            fileIdentity: source.fileIdentity, target: CanvasAdjustmentTarget(snapshot: source.snapshot))
+    }
+
+    func cancelQtXMLFileChoice(requestID: UUID) {
+        guard qtXMLFilePasteRequestID == requestID else { return }
+        qtXMLFilePasteRequest = nil
+    }
+
+    @discardableResult
+    func finishQtXMLFileChoice(
+        requestID: UUID, result: Result<[URL], any Error>,
+        read: @escaping @Sendable (URL) async throws -> Data = { try await QtXMLFileReader().read($0) }
+    ) -> Task<Void, Never>? {
+        guard let request = qtXMLFilePasteRequest, request.id == requestID else { return nil }
+        qtXMLFilePasteRequest = nil
+        guard let source = acceptedQtXMLFileSource, request.fileIdentity == source.fileIdentity,
+            request.target.isCurrent(in: source.snapshot)
+        else { return nil }
+        do {
+            let urls = try result.get()
+            guard urls.count == 1, let url = urls.first else { throw QtXMLFileReader.Failure.invalidFile }
+            perform(acceptCommittedCancellation: true) { session in
+                let data = try await read(url)
+                return try await session.pasteQtXMLFile(data, target: request.target)
+            }
+            return operation
+        } catch {
+            if (error as? CocoaError)?.code != .userCancelled { errorMessage = Self.message(error) }
+            return nil
+        }
+    }
+
     func pasteQtNodes(snapshotXML: Data) {
         perform(reloadReferenceImage: true) { try await $0.paste(snapshotXML: snapshotXML) }
     }
@@ -2100,6 +2218,7 @@ final class EditorStore {
     }
 
     func stop() {
+        qtXMLFilePasteRequest = nil
         canvasProfileMotion = nil
         boneEdgeHover = nil
         previewCameraCommand = nil

@@ -34,6 +34,8 @@ struct EditorClipboardCommands: Commands {
             } else {
                 NodeClipboardPasteButton(store: store).keyboardShortcut("v")
             }
+            Button("Paste Nodes from Qt XML File…") { store?.chooseQtXMLFile() }
+                .disabled(store?.canChooseQtXMLFile != true)
             Divider()
             Button("Select All", action: selectAll)
                 .keyboardShortcut("a")
