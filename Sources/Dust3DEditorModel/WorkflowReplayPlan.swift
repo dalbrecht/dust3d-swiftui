@@ -34,6 +34,14 @@ package struct WorkflowReplayPlan: Sendable {
     private let enabledNodes: [String: DocumentNode]
     private let finalMeshStep: Int
 
+    /// Return only the property just applied at this step, without reconstructing its frame.
+    package func appliedProperty(after completedSteps: Int) -> ReplayProperty? {
+        guard completedSteps > 0, completedSteps <= steps.count,
+            case .property(let property) = steps[completedSteps - 1]
+        else { return nil }
+        return property
+    }
+
     package func frame(after completedSteps: Int) -> (nodes: [DocumentNode], edges: [DocumentEdge]) {
         var nodes = Set<String>()
         var edges = Set<String>()
@@ -61,7 +69,7 @@ package struct WorkflowReplayPlan: Sendable {
         let pendingEnabledParts = Set(
             steps.dropFirst(max(0, completedSteps)).compactMap { step -> String? in
                 guard case .property(let property) = step, property.owner == .part,
-                    property.attributes.contains("disabled")
+                    property.fields.contains(where: { $0.name == "disabled" })
                 else { return nil }
                 return property.id
             })
@@ -249,7 +257,8 @@ package struct WorkflowReplayPlan: Sendable {
                     steps.append(
                         .property(
                             ReplayProperty(
-                                owner: .animation, id: animation.id, attributes: [parameter.name],
+                                owner: .animation, id: animation.id,
+                                fields: [.init(name: parameter.name, value: parameter.value)],
                                 title: "\(name) — \(parameter.name)", profilePartID: nil)))
                 }
             }
