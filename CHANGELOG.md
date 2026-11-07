@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Open a paused replay step as a new editable document.
+- Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
@@ -132,6 +132,8 @@
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
+
+- Open a paused replay step as a new editable document.
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
 
