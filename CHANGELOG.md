@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Paste native or Qt clipboard nodes into an explicitly chosen working group.
+- Paste native or Qt clipboard nodes and Qt XML files into an explicitly chosen working group.
 
 - Keep a working component group as the destination for new parts while graph selection changes.
 
