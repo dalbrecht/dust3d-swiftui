@@ -4,7 +4,7 @@ import Foundation
 /// Captures the selected components and editing context for a placement interaction.
 public struct ComponentPlacementTarget: Sendable {
     private let context: CanvasAdjustmentTarget
-    let ids: [String]
+    package let ids: [String]
 
     public init?(snapshot: EditorSnapshot) {
         guard !snapshot.selectedComponentIDs.isEmpty else { return nil }
