@@ -1491,20 +1491,36 @@ final class EditorStore {
     }
     func clearComponentSelection() { selectComponents([]) }
     func canAssignComponentPartRole(_ role: PartTarget) -> Bool {
-        !isWorking && !stopped && (try? snapshot?.componentPartRolePlan(role)) != nil
+        canSave && (try? snapshot?.componentPartRolePlan(role)) != nil
     }
 
     /// Capture once at menu/inspector construction; an unavailable action never acquires a later selection.
     func componentPartRoleAction(_ role: PartTarget) -> @MainActor () -> Void {
-        guard canAssignComponentPartRole(role), let snapshot else { return {} }
+        guard canSave, let snapshot, let plan = try? snapshot.componentPartRolePlan(role) else { return {} }
         let target = ComponentPartRoleTarget(snapshot: snapshot)
+        let sourceID = snapshot.documentIdentity
+        let scope = componentBrowseEpoch
+        let entersGroup = plan.requiresNewGroup || plan.revealGroupID != nil
         return { [weak self] in
-            guard let self, let current = self.snapshot, target.isCurrent(in: current),
-                self.canAssignComponentPartRole(role)
+            guard let self, self.canSave, self.componentBrowseEpoch == scope,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current)
             else { return }
-            self.perform(acceptCommittedCancellation: true) {
-                try await $0.setSelectedComponentPartRole(role, target: target)
-            }
+            self.perform(
+                acceptCommittedCancellation: true,
+                completion: { [weak self] succeeded in
+                    guard succeeded, entersGroup, let self, self.componentBrowseEpoch == scope,
+                        let next = self.acceptedDocumentSource, next.documentIdentity == sourceID,
+                        let firstID = plan.componentIDs.first,
+                        let groupID = next.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(firstID.utf8) })?
+                            .component.parentID,
+                        plan.revealGroupID.map({ $0.utf8.elementsEqual(groupID.utf8) }) != false,
+                        let group = ComponentGroupBrowse(tree: next.componentTree, groupID: groupID),
+                        plan.componentIDs.allSatisfy(group.contains),
+                        next.selectedComponentIDs.allSatisfy(group.contains)
+                    else { return }
+                    self.componentBrowseAction(groupID, snapshot: next)()
+                },
+                { try await $0.setSelectedComponentPartRole(role, target: target, retainingBrowsePicks: entersGroup) })
         }
     }
 

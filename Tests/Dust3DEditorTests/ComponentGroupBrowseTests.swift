@@ -195,6 +195,96 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertTrue(value.admitsComponentSidebarInput(context: updated, scopeEpoch: scope))
     }
 
+    func testBatchStitchingEntersNewGroupWithSelectedChildrenAndExactUndo() async throws {
+        let original = try stitchingSource(reusingGroup: false)
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.workingGroupAction(.group("keep"), snapshot: try XCTUnwrap(value.snapshot))()
+        value.selectComponents(["a", "b", "keep"])
+        try await settle(value)
+        let oldScope = value.componentBrowseEpoch
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        value.componentPartRoleAction(.stitchingLine)()
+        try await settle(value)
+
+        let snapshot = try XCTUnwrap(value.snapshot)
+        let browse = try XCTUnwrap(value.componentGroupBrowse)
+        let group = try XCTUnwrap(browse.path.last)
+        XCTAssertEqual(browse.children.map(\.id), ["a", "b"])
+        XCTAssertEqual(snapshot.selectedComponentIDs, ["a", "b"])
+        XCTAssertEqual(snapshot.parts.map(\.target), [.stitchingLine, .stitchingLine])
+        XCTAssertNotEqual(value.componentBrowseEpoch, oldScope)
+        XCTAssertEqual(value.addPlacementDestination, .group("keep"))
+        XCTAssertEqual(publications, 1)
+
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertNil(value.snapshot?.componentTree.rows.first { $0.id == group.id })
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testBatchStitchingEntersReusedGroupEvenWhenRolesAlreadyMatch() async throws {
+        let original = try stitchingSource(reusingGroup: true)
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        value.componentPartRoleAction(.stitchingLoop)()
+        try await settle(value)
+
+        XCTAssertEqual(value.componentGroupBrowse?.path.map(\.id), ["g"])
+        XCTAssertEqual(value.componentGroupBrowse?.children.map(\.id), ["a", "b", "unselected"])
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["a", "b"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testBatchStitchingRejectsRetainedBrowseScopeAndFailedSource() async throws {
+        let original = try stitchingSource(reusingGroup: true)
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        let snapshot = try XCTUnwrap(value.snapshot)
+        let retained = value.componentPartRoleAction(.stitchingLine)
+        value.componentBrowseAction("g", snapshot: snapshot)()
+        value.componentBrowseAction(nil, snapshot: snapshot)()
+        retained()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+
+        let failedSource = value.componentPartRoleAction(.stitchingLine)
+        await value.load(data: Data("invalid archive".utf8))
+        failedSource()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
+    private func stitchingSource(reusingGroup: Bool) throws -> Dust3DDocument {
+        let rows =
+            "<component id='a' linkDataType='partId' linkData='p'/><component id='b' linkDataType='partId' linkData='q'/>"
+        let hierarchy =
+            reusingGroup ? "<component id='g'>\(rows)<component id='unselected'/></component>" : rows
+        let role = reusingGroup ? "target='StitchingLoop'" : ""
+        let xml = """
+            <canvas><nodes/><edges/><parts><part id='p' \(role)/><part id='q' \(role)/></parts>
+            <components>\(hierarchy)<component id='keep'/></components></canvas>
+            """
+        return try Dust3DDocument(snapshotXML: Data(xml.utf8))
+    }
+
     func testNestedNavigationRetiresOldDragAndDeletedScope() async throws {
         let original = try source().encoded()
         let value = store()

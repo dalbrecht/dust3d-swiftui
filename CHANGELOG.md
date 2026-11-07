@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open the shared group in the component sidebar after assigning stitching roles to multiple parts.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.

@@ -55,10 +55,9 @@ final class ComponentPartRoleStoreTests: XCTestCase {
             try await settle(store)
             XCTAssertNil(store.errorMessage)
             let result = try XCTUnwrap(store.snapshot)
-            let group = try XCTUnwrap(result.selectedComponent)
-            XCTAssertTrue(group.isGroup)
-            XCTAssertEqual(group.childIDs, components)
-            XCTAssertEqual(result.componentRevealHint?.componentID, group.id)
+            let browse = try XCTUnwrap(store.componentGroupBrowse)
+            XCTAssertEqual(browse.children.map(\.id), components)
+            XCTAssertEqual(result.selectedComponentIDs, Set(components))
             XCTAssertEqual(publications, 1)
             XCTAssertEqual(result.document.asset(named: "opaque.bin"), source.asset(named: "opaque.bin"))
             let mesh = try XCTUnwrap(store.mesh)
@@ -108,7 +107,7 @@ final class ComponentPartRoleStoreTests: XCTestCase {
             }
         }
     }
-    @MainActor func testReusedGroupWithUnselectedSiblingIsActuallyRevealedInHostedSidebar() async throws {
+    @MainActor func testReusedGroupWithUnselectedSiblingOpensInHostedSidebar() async throws {
         let baseline = try StitchingFixture.document(loop: false)
         let xml = try XMLDocument(data: baseline.modelXML)
         let container = try XCTUnwrap(xml.rootElement()?.elements(forName: "components").first)
@@ -154,21 +153,20 @@ final class ComponentPartRoleStoreTests: XCTestCase {
         host.layoutSubtreeIfNeeded()
         try await Task.sleep(for: .milliseconds(100))
         host.layoutSubtreeIfNeeded()
-        XCTAssertEqual(store.snapshot?.selectedComponentID, StitchingFixture.groupID)
-        XCTAssertEqual(store.snapshot?.selectedComponent?.childIDs.last, "unselected")
+        let browse = try XCTUnwrap(store.componentGroupBrowse)
+        XCTAssertEqual(browse.path.map(\.id), ["outer", StitchingFixture.groupID])
+        XCTAssertEqual(browse.children.last?.id, "unselected")
+        XCTAssertFalse(store.snapshot?.selectedComponentIDs.contains("unselected") == true)
         XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
         XCTAssertFalse(store.snapshot?.canUndo == true)
-        XCTAssertEqual(disclosure.collapsedIDs, [StitchingFixture.groupID])
+        XCTAssertEqual(disclosure.collapsedIDs, ["outer", StitchingFixture.groupID])
         func table(in view: NSView) -> NSTableView? {
             if let table = view as? NSTableView { return table }
             return view.subviews.lazy.compactMap { table(in: $0) }.first
         }
         let nativeTable = try XCTUnwrap(table(in: host))
-        let row = try XCTUnwrap(
-            store.snapshot?.componentTree.visibleRows(collapsing: disclosure.collapsedIDs).firstIndex {
-                $0.id == StitchingFixture.groupID
-            })
-        XCTAssertTrue(NSLocationInRange(row, nativeTable.rows(in: nativeTable.visibleRect)))
+        XCTAssertEqual(nativeTable.numberOfRows, browse.children.count)
+        XCTAssertTrue(NSLocationInRange(0, nativeTable.rows(in: nativeTable.visibleRect)))
     }
 
 }
