@@ -1425,16 +1425,22 @@ final class EditorStore {
     }
 
     func moveSelection(by delta: NodePosition) {
-        guard canTransform, let snapshot else { return }
+        guard canTransform, let snapshot,
+            let effective = SelectionTransformInput.move(delta: delta, locks: snapshot.locks)
+        else { return }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
-        perform { try await $0.moveSelection(by: delta, target: target) }
+        perform { try await $0.moveSelection(by: effective, target: target) }
     }
 
     func scaleSelection(positionFactor: Double, radiusFactor: Double) {
-        guard canTransform, let snapshot else { return }
+        guard canTransform, let snapshot,
+            let effective = SelectionTransformInput.scale(
+                positionFactor: positionFactor, radiusFactor: radiusFactor, locks: snapshot.locks)
+        else { return }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         perform {
-            try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor, target: target)
+            try await $0.scaleSelection(
+                positionFactor: effective.positionFactor, radiusFactor: effective.radiusFactor, target: target)
         }
     }
     var canTransform: Bool { !isWorking && snapshot?.transformNodes.contains(where: \.isEditable) == true }
