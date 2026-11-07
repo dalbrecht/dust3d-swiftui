@@ -62,7 +62,7 @@ final class EditorLaunchNeutralPreviewTests: XCTestCase {
         XCTAssertFalse(untitled)
     }
 
-    func testEarlyTimeoutAndCancellationLeavePreferenceForMatchingWindow() async {
+    func testTimedOutDocumentCannotApplyThePreferenceAfterOpenFinishes() async {
         let url = URL(fileURLWithPath: "/tmp/a.ds3")
         let document = NSObject()
         let opener = EditorLaunchDocumentOpener(arguments: ["Editor", "-toggle-color", "1", url.path])
@@ -70,6 +70,23 @@ final class EditorLaunchNeutralPreviewTests: XCTestCase {
             open: { _ in
                 let timedOut = await opener.claimNeutralPreview(
                     for: url, document: document, waitLimit: .milliseconds(1))
+                XCTAssertFalse(timedOut)
+                return document
+            },
+            reportError: { _ in XCTFail("Unexpected open failure") })
+        let late = await opener.claimNeutralPreview(for: url, document: document)
+        XCTAssertFalse(late)
+    }
+
+    func testUnrelatedTimeoutAndCancellationLeavePreferenceForMatchingWindow() async {
+        let url = URL(fileURLWithPath: "/tmp/a.ds3")
+        let document = NSObject()
+        let unrelated = NSObject()
+        let opener = EditorLaunchDocumentOpener(arguments: ["Editor", "-toggle-color", "1", url.path])
+        await opener.openRequestedDocument(
+            open: { _ in
+                let timedOut = await opener.claimNeutralPreview(
+                    for: url, document: unrelated, waitLimit: .milliseconds(1))
                 XCTAssertFalse(timedOut)
                 let claim = Task { await opener.claimNeutralPreview(for: url, document: document) }
                 await Task.yield()

@@ -115,7 +115,7 @@ final class EditorLaunchDocumentOpener {
                 do {
                     let opened = try await open(url)
                     claim?.finish(document: opened)
-                    if opened == nil { neutralPreviewClaims[url] = nil }
+                    if claim?.document == nil { neutralPreviewClaims[url] = nil }
                 } catch {
                     claim?.finish(document: nil)
                     neutralPreviewClaims[url] = nil
@@ -133,7 +133,7 @@ final class EditorLaunchDocumentOpener {
         guard !Task.isCancelled, let url = source?.standardizedFileURL,
             let document, let claim = neutralPreviewClaims[url]
         else { return false }
-        await claim.waitForOpen(upTo: waitLimit)
+        await claim.waitForOpen(upTo: waitLimit, document: document)
         guard !Task.isCancelled, claim.document === document, neutralPreviewClaims[url] === claim else {
             return false
         }
@@ -146,29 +146,42 @@ final class EditorLaunchDocumentOpener {
 private final class LaunchNeutralPreviewClaim {
     private(set) weak var document: AnyObject?
     private var didFinish = false
+    private let expiredDocuments = NSHashTable<AnyObject>(options: [.weakMemory, .objectPointerPersonality])
     private var waiters: [UUID: AsyncStream<Void>.Continuation] = [:]
 
     func finish(document: AnyObject?) {
-        self.document = document
+        self.document = document.flatMap { expiredDocuments.contains($0) ? nil : $0 }
         didFinish = true
         for waiter in waiters.values { waiter.finish() }
         waiters.removeAll()
     }
 
-    func waitForOpen(upTo limit: Duration) async {
-        guard !didFinish, limit > .zero else { return }
+    private func expire(document: AnyObject) {
+        expiredDocuments.add(document)
+    }
+
+    func waitForOpen(upTo limit: Duration, document: AnyObject) async {
+        guard !didFinish else { return }
+        guard limit > .zero else {
+            expire(document: document)
+            return
+        }
         let id = UUID()
         let (stream, continuation) = AsyncStream<Void>.makeStream()
         waiters[id] = continuation
-        defer { waiters.removeValue(forKey: id)?.finish() }
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                var iterator = stream.makeAsyncIterator()
-                _ = await iterator.next()
-            }
-            group.addTask { try? await Task.sleep(for: limit) }
-            _ = await group.next()
-            group.cancelAll()
+        let deadline = Task { [weak document] in
+            do { try await Task.sleep(for: limit) } catch { return }
+            guard !Task.isCancelled, !didFinish else { return }
+            if let document { expire(document: document) }
+            continuation.finish()
         }
+        defer { waiters.removeValue(forKey: id)?.finish() }
+        await withTaskCancellationHandler {
+            var iterator = stream.makeAsyncIterator()
+            _ = await iterator.next()
+        } onCancel: {
+            deadline.cancel()
+        }
+        deadline.cancel()
     }
 }
