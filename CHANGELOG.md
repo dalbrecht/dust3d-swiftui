@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Support Qt’s `-toggle-color` launch option for newly opened document windows.
+
+- Apply one Qt XML fragment at launch with `-paste-xml` and explicit `.ds3` inputs, with one Undo step per newly opened eligible document.
+
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
@@ -224,9 +228,6 @@
 - Add an injectable document-snapshot export file service with source protection, atomic publication and retained diagnostics; native encoder/UI adoption remains pending (#146).
 
 - Open multiple .ds3 documents at launch using positional paths or repeated --open-document flags.
-
-- Support Qt’s -toggle-color launch option for newly opened document windows.
-- Apply one Qt XML fragment at launch with -paste-xml and explicit .ds3 inputs, with one undo step per newly opened eligible document.
 
 - Add an explicit-fixture QA launcher using process-local AppKit restoration isolation while preserving normal launches and saved state (#257).
 

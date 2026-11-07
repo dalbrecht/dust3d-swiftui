@@ -21,8 +21,13 @@ over 4096 UTF-8 bytes before opening any document.
 
 Skip known platform option operands. After an unknown option, use
 `--open-document` or the `--` delimiter to identify paths unambiguously.
-Reject unsupported Qt launch options `-o`, `-output`, and `-paste-xml` before
-opening any document. The last `-toggle-color` operand sets launch neutral
+Reject unsupported Qt launch options `-o` and `-output` before opening any
+document. A single `-paste-xml` operand requires explicit document inputs.
+Validate the bounded XML fragment before opening the first document, then
+apply it once at the document root of each newly opened eligible document.
+A reused document does not receive the fragment. The import is one Undo step.
+
+The last `-toggle-color` operand sets launch neutral
 preview for new document windows. Qt treats `true`, `True`, and `1` as true
 and other operands as false. An absent operand is an argument error.
 A window can claim the preference only once from a matching live native
