@@ -1,6 +1,24 @@
 import Dust3DEditorModel
 import Dust3DKit
 import SwiftUI
+import simd
+
+struct RigTemplateOrbit: Equatable {
+    static let initial = Self().rotated(yaw: -0.35, pitch: 0.15)
+
+    private(set) var yaw = 0.0
+    private(set) var pitch = 0.0
+
+    func rotated(yaw deltaYaw: Double, pitch deltaPitch: Double) -> Self {
+        guard deltaYaw.isFinite, deltaPitch.isFinite else { return self }
+        let revolution = 2 * Double.pi
+        var next = self
+        next.yaw = (yaw + deltaYaw.truncatingRemainder(dividingBy: revolution))
+            .truncatingRemainder(dividingBy: revolution)
+        next.pitch = min(.pi / 2, max(-Double.pi / 2, pitch + deltaPitch))
+        return next
+    }
+}
 
 enum RigTemplateDiagramLayout {
     struct Line: Equatable {
@@ -39,23 +57,91 @@ enum RigTemplateDiagramLayout {
         }
         return source.map { Line(name: $0.name, start: fit($0.start), end: fit($0.end)) }
     }
+
+    static func lines(
+        in hierarchy: RigTemplateHierarchy, orbit: RigTemplateOrbit, width: Double, height: Double
+    ) -> [Line] {
+        guard width.isFinite, height.isFinite, width > 0, height > 0 else { return [] }
+        let source: [(name: String, segment: RigTemplateSegment)] = hierarchy.bones.compactMap { bone in
+            bone.segment.map { (bone.name, $0) }
+        }
+        let endpoints = source.flatMap { [$0.segment.start, $0.segment.end] }
+        guard let first = endpoints.first else { return [] }
+        let minimum = endpoints.reduce(first, simd_min)
+        let maximum = endpoints.reduce(first, simd_max)
+        let span = maximum - minimum
+        // Fit a rotation-invariant envelope so dragging does not change magnification.
+        let diameter = hypot(hypot(span.x, span.y), span.z)
+        guard diameter > 0 else { return [] }
+        let normalizedCenter = (span / diameter) * 0.5
+        let screenDiameter = min(width, height) * 0.8
+        let yawCosine = cos(orbit.yaw)
+        let yawSine = sin(orbit.yaw)
+        let pitchCosine = cos(orbit.pitch)
+        let pitchSine = sin(orbit.pitch)
+        func project(_ point: SIMD3<Double>) -> (point: CanvasPoint, depth: Double) {
+            let normalized = (point - minimum) / diameter - normalizedCenter
+            let x = yawCosine * normalized.x + yawSine * normalized.z
+            let yawDepth = -yawSine * normalized.x + yawCosine * normalized.z
+            let y = pitchCosine * normalized.y - pitchSine * yawDepth
+            let depth = pitchSine * normalized.y + pitchCosine * yawDepth
+            return (.init(x: width / 2 + x * screenDiameter, y: height / 2 - y * screenDiameter), depth)
+        }
+        let projected: [(line: Line, depth: Double, index: Int)] = source.enumerated().map { index, item in
+            let start = project(item.segment.start)
+            let end = project(item.segment.end)
+            let line = Line(name: item.name, start: start.point, end: end.point)
+            return (line, start.depth + end.depth, index)
+        }
+        return
+            projected
+            .sorted { $0.depth == $1.depth ? $0.index < $1.index : $0.depth < $1.depth }
+            .map(\.line)
+    }
 }
 
 struct RigTemplateDiagram: View {
+    private enum Viewpoint: Hashable {
+        case front
+        case side
+        case orbit
+
+        var name: String {
+            switch self {
+            case .front: EditingPlane.front.rawValue
+            case .side: EditingPlane.side.rawValue
+            case .orbit: String(localized: "Orbit")
+            }
+        }
+    }
+
     let hierarchy: RigTemplateHierarchy
     let selectedName: String?
-    @State private var plane: EditingPlane = .front
+    @State private var viewpoint: Viewpoint = .front
+    @State private var orbit = RigTemplateOrbit.initial
+    @GestureState private var orbitDrag = CGSize.zero
 
     var body: some View {
         if hierarchy.bones.contains(where: { $0.segment != nil }) {
-            Picker("Template Diagram View", selection: $plane) {
-                Text("Front").tag(EditingPlane.front)
-                Text("Side").tag(EditingPlane.side)
+            Picker("Template Diagram View", selection: $viewpoint) {
+                Text("Front").tag(Viewpoint.front)
+                Text("Side").tag(Viewpoint.side)
+                Text("Orbit").tag(Viewpoint.orbit)
             }
             .pickerStyle(.segmented)
+            if viewpoint == .orbit {
+                Menu("Rotate Template") {
+                    Button("Rotate Left") { orbit = orbit.rotated(yaw: -.pi / 12, pitch: 0) }
+                    Button("Rotate Right") { orbit = orbit.rotated(yaw: .pi / 12, pitch: 0) }
+                    Button("Rotate Up") { orbit = orbit.rotated(yaw: 0, pitch: -.pi / 12) }
+                    Button("Rotate Down") { orbit = orbit.rotated(yaw: 0, pitch: .pi / 12) }
+                    Divider()
+                    Button("Reset Orbit") { orbit = .initial }
+                }
+                .controlSize(.small)
+            }
             Canvas { context, size in
-                let lines = RigTemplateDiagramLayout.lines(
-                    in: hierarchy, plane: plane, width: size.width, height: size.height)
+                let lines = lines(in: size)
                 for line in lines where !line.isSelected(selectedName) {
                     draw(line, context: context, color: .secondary, lineWidth: 1.5)
                 }
@@ -64,6 +150,8 @@ struct RigTemplateDiagram: View {
                 }
             }
             .frame(height: 140)
+            .contentShape(Rectangle())
+            .gesture(orbitGesture, including: viewpoint == .orbit ? .all : .none)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Rig template diagram")
             .accessibilityValue(accessibilityValue)
@@ -73,11 +161,30 @@ struct RigTemplateDiagram: View {
     }
 
     private var accessibilityValue: Text {
-        guard let selectedName else { return Text("\(plane.rawValue), no bone selected") }
+        guard let selectedName else { return Text("\(viewpoint.name), no bone selected") }
         if hierarchy.bones.contains(where: { $0.segment != nil && $0.name.utf8.elementsEqual(selectedName.utf8) }) {
-            return Text("\(plane.rawValue), \(selectedName) highlighted")
+            return Text("\(viewpoint.name), \(selectedName) highlighted")
         }
-        return Text("\(plane.rawValue), \(selectedName) has no diagram segment")
+        return Text("\(viewpoint.name), \(selectedName) has no diagram segment")
+    }
+
+    private var orbitGesture: some Gesture {
+        DragGesture()
+            .updating($orbitDrag) { gesture, drag, _ in drag = gesture.translation }
+            .onEnded { gesture in
+                guard viewpoint == .orbit else { return }
+                orbit = orbit.rotated(yaw: gesture.translation.width * 0.01, pitch: gesture.translation.height * 0.01)
+            }
+    }
+
+    private func lines(in size: CGSize) -> [RigTemplateDiagramLayout.Line] {
+        if viewpoint == .orbit {
+            return RigTemplateDiagramLayout.lines(
+                in: hierarchy, orbit: orbit.rotated(yaw: orbitDrag.width * 0.01, pitch: orbitDrag.height * 0.01),
+                width: size.width, height: size.height)
+        }
+        return RigTemplateDiagramLayout.lines(
+            in: hierarchy, plane: viewpoint == .front ? .front : .side, width: size.width, height: size.height)
     }
 
     private func draw(_ line: RigTemplateDiagramLayout.Line, context: GraphicsContext, color: Color, lineWidth: Double)

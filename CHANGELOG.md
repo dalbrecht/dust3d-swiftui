@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- View Front and Side rig-template diagrams with the selected bone highlighted while assigning edges.
+- View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
 
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
