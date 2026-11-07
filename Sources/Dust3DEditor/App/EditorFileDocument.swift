@@ -7,7 +7,7 @@ struct EditorFileDocument: FileDocument {
     static var readableContentTypes: [UTType] { [UTType(importedAs: "org.dust3d.document")] }
     let identity = UUID()
     private let saveState: EditorSaveState
-    private var saveVersion: UUID
+    private(set) var saveVersion: UUID
     var data: Data { didSet { saveVersion = saveState.publish() } }
 
     init() { self.init(validatedData: Dust3DDocument.emptyArchive()) }
