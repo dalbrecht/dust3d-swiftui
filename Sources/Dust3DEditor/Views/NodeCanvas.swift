@@ -32,7 +32,7 @@ struct NodeCanvas: View {
             let colorizeActions = GraphColorizeActions(store: store, admitsInput: admitsInput)
             let graphActions = GraphSelectionMenuActions(store: store, admitsInput: admitsInput)
             let cancelAddInput = store.canvasAddCancellationAction()
-            let handlePrecisionKey = store.canvasPrecisionKeyHandler()
+            let handlePrecisionKey = store.canvasPrecisionKeyHandler(profileLease: profileLease)
             let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
                 admitsInput() && (handlePartStateKey($0) || handlePrecisionKey($0))

@@ -189,6 +189,102 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
     }
 
+    func testRapidPrecisionKeysApplyEachNudgeInOrderAndUndoSeparately() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let source = try makeDocument()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectEdges(["ab"])
+        try await settle(store)
+        store.setCanvasHeight(100)
+        let key = store.canvasPrecisionKeyHandler()
+        XCTAssertTrue(key(.init(keyCode: 124, characters: "", modifiers: [])))
+        XCTAssertTrue(key(.init(keyCode: 125, characters: "", modifiers: [])))
+        XCTAssertTrue(key(.init(keyCode: 125, characters: "", modifiers: [], isRepeat: true)))
+        try await settle(store)
+        let moved = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(try moved.document.node(id: "a").position.x, 0.21, accuracy: 1e-12)
+        XCTAssertEqual(try moved.document.node(id: "a").position.y, 0.52, accuracy: 1e-12)
+        XCTAssertEqual(try moved.document.node(id: "a").radius, 0.1)
+        XCTAssertEqual(moved.selectedEdgeIDs, ["ab"])
+
+        for y in [0.51, 0.50] {
+            store.undo()
+            try await settle(store)
+            let position = try XCTUnwrap(store.snapshot).document.node(id: "a").position
+            XCTAssertEqual(position.x, 0.21, accuracy: 1e-12)
+            XCTAssertEqual(position.y, y, accuracy: 1e-12)
+        }
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testRapidPrecisionDiscardsQueuedRemainderAfterPlaneABA() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let source = try makeDocument()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.select("a")
+        try await settle(store)
+        store.setCanvasHeight(100)
+        let key = store.canvasPrecisionKeyHandler()
+        XCTAssertTrue(key(.init(keyCode: 124, characters: "", modifiers: [])))
+        XCTAssertTrue(key(.init(keyCode: 125, characters: "", modifiers: [])))
+        store.plane = .side
+        store.plane = .front
+        try await settle(store)
+        let position = try XCTUnwrap(store.snapshot).document.node(id: "a").position
+        XCTAssertEqual(position.x, 0.21, accuracy: 1e-12)
+        XCTAssertEqual(position.y, 0.5, accuracy: 1e-12)
+        XCTAssertFalse(key(.init(keyCode: 125, characters: "", modifiers: [])))
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testRapidOriginNudgesSurviveTheirOwnCanvasRefit() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let source = try makeDocument().applying(.setOrigin(.init(x: 2, y: 0.5, z: 0.5)))
+        await store.load(data: source.encoded())
+        try await settle(store)
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 400, height: 100)
+        store.setCanvasContext(projection: projection, width: 400, height: 100)
+        store.setReferenceColorCanvasContext(projection: projection, width: 400, height: 100)
+        store.setMovingOrigin(true)
+        let key = store.canvasPrecisionKeyHandler()
+        XCTAssertTrue(key(.init(keyCode: 124, characters: "", modifiers: [])))
+        XCTAssertTrue(key(.init(keyCode: 124, characters: "", modifiers: [], isRepeat: true)))
+        try await settle(store)
+        XCTAssertEqual(try XCTUnwrap(store.snapshot?.origin).x, 2.02, accuracy: 1e-12)
+        XCTAssertTrue(store.isMovingOrigin)
+        XCTAssertEqual(try XCTUnwrap(store.snapshot).document.node(id: "a"), try source.node(id: "a"))
+    }
+
+    func testRapidPrecisionDiscardsQueuedRemainderWhenFirstEditFails() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let source = try makeDocument().applying(
+            .setNode(id: "a", position: .init(x: 1_000_000, y: 0.5, z: 0.5), radius: 0.1))
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.select("a")
+        try await settle(store)
+        store.setCanvasHeight(100)
+        let key = store.canvasPrecisionKeyHandler()
+        XCTAssertTrue(key(.init(keyCode: 124, characters: "", modifiers: [])))
+        XCTAssertTrue(key(.init(keyCode: 125, characters: "", modifiers: [])))
+        try await settle(store)
+        XCTAssertNotNil(store.errorMessage)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     private func makeStore() -> EditorStore {
         let stub = ProfileKeyboardNoNative()
         return EditorStore(

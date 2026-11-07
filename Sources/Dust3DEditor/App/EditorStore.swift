@@ -432,6 +432,7 @@ final class EditorStore {
     func setCanvasHeight(_ height: Double) {
         let next = height.isFinite && height > 0 ? height : 0
         if next != canvasHeight {
+            precisionHeightEpoch = UUID()
             precisionLayoutEpoch = UUID()
             canvasPartStateHover = nil
         }
@@ -610,6 +611,7 @@ final class EditorStore {
         }
     }
     private var precisionLayoutEpoch = UUID()
+    private var precisionHeightEpoch = UUID()
     private var precisionCanvasIdentity: ReferenceColorCanvasIdentity?
     private var rotationInputContextID = UUID()
     private(set) var canvasProfiles = CanvasProfileWorkspace()
@@ -1079,6 +1081,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        canvasPrecisionQueue = nil
         graphComponentRevealLookup = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil, reset: true)
@@ -2189,8 +2192,13 @@ final class EditorStore {
         !isSelectingRigEdges && !isWorking && !stopped && snapshot.map { transform.canApply(in: $0) } == true
     }
     func canPerformCanvasPrecision(_ action: CanvasPrecisionAction) -> Bool {
-        guard !isSelectingRigEdges, canSave, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
-            canvasHeight.isFinite, canvasHeight > 0, let snapshot
+        guard canSave, let snapshot else { return false }
+        return admitsCanvasPrecision(action, snapshot: snapshot)
+    }
+
+    private func admitsCanvasPrecision(_ action: CanvasPrecisionAction, snapshot: EditorSnapshot) -> Bool {
+        guard !isSelectingRigEdges, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
+            canvasHeight.isFinite, canvasHeight > 0
         else { return false }
         if action.isSpacing {
             let factor = 1 + (action == .increaseSpacing ? 10 : -10) / canvasHeight
@@ -2207,12 +2215,86 @@ final class EditorStore {
         let admitted = canPerformCanvasPrecision(action)
         return { if admitted { _ = handler(action) } }
     }
-    func canvasPrecisionKeyHandler() -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
-        let handler = canvasPrecisionHandler()
-        return { input in
-            guard let action = input.action else { return false }
-            return handler(action)
+    private struct CanvasPrecisionKeyScope: Equatable {
+        let documentIdentity: UUID
+        let selectionRevision: Int
+        let constraintRevision: Int
+        let lease: UUID?
+        let heightEpoch: UUID
+        let toolEpoch: UUID
+        let addEpoch: UUID
+        let interactionEpoch: UUID
+    }
+
+    private struct CanvasPrecisionQueue {
+        let id = UUID()
+        let scope: CanvasPrecisionKeyScope
+        let firstRevision: Int
+        var revision: Int
+        var operationID: UUID?
+        var pending: [CanvasPrecisionAction] = []
+    }
+
+    @ObservationIgnored private var canvasPrecisionQueue: CanvasPrecisionQueue?
+
+    func canvasPrecisionKeyHandler(profileLease: UUID? = nil) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
+        guard let snapshot = acceptedDocumentSource else { return { _ in false } }
+        let scope = canvasPrecisionKeyScope(snapshot: snapshot, lease: profileLease)
+        let capturedRevision = snapshot.documentRevision
+        return { [weak self] input in
+            guard let self, let action = input.action, let current = self.canvasPrecisionSource(scope),
+                self.admitsCanvasPrecision(action, snapshot: current)
+            else { return false }
+            if let queue = self.canvasPrecisionQueue {
+                guard queue.scope == scope, queue.operationID == self.operationRequestID,
+                    (queue.firstRevision...queue.revision).contains(capturedRevision),
+                    current.documentRevision == queue.revision
+                else { return false }
+                if queue.pending.count < 32 { self.canvasPrecisionQueue?.pending.append(action) }
+                return true
+            }
+            guard !self.isWorking, capturedRevision == current.documentRevision else { return false }
+            self.canvasPrecisionQueue = CanvasPrecisionQueue(
+                scope: scope, firstRevision: capturedRevision, revision: capturedRevision)
+            self.dispatchQueuedCanvasPrecision(action, snapshot: current)
+            return true
         }
+    }
+
+    private func canvasPrecisionKeyScope(snapshot: EditorSnapshot, lease: UUID?) -> CanvasPrecisionKeyScope {
+        CanvasPrecisionKeyScope(
+            documentIdentity: snapshot.documentIdentity, selectionRevision: snapshot.selectionRevision,
+            constraintRevision: snapshot.constraintRevision, lease: lease, heightEpoch: precisionHeightEpoch,
+            toolEpoch: rotationInputContextID, addEpoch: addModeID, interactionEpoch: referenceColorInteractionEpoch)
+    }
+
+    private func canvasPrecisionSource(_ scope: CanvasPrecisionKeyScope) -> EditorSnapshot? {
+        guard ownsCanvasProfile(scope.lease), let current = acceptedDocumentSource,
+            canvasPrecisionKeyScope(snapshot: current, lease: scope.lease) == scope
+        else { return nil }
+        return current
+    }
+
+    private func dispatchQueuedCanvasPrecision(_ action: CanvasPrecisionAction, snapshot: EditorSnapshot) {
+        guard let queue = canvasPrecisionQueue else { return }
+        dispatchCanvasPrecision(
+            action, height: canvasHeight, plane: plane, target: CanvasAdjustmentTarget(snapshot: snapshot),
+            completion: { [weak self] succeeded in
+                guard let self, var active = canvasPrecisionQueue, active.id == queue.id else { return }
+                guard succeeded, active.operationID == operationRequestID, !isWorking,
+                    let current = canvasPrecisionSource(queue.scope),
+                    current.documentRevision == queue.revision || current.documentRevision == queue.revision + 1,
+                    let next = active.pending.first, admitsCanvasPrecision(next, snapshot: current)
+                else {
+                    canvasPrecisionQueue = nil
+                    return
+                }
+                active.revision = current.documentRevision
+                active.pending.removeFirst()
+                canvasPrecisionQueue = active
+                dispatchQueuedCanvasPrecision(next, snapshot: current)
+            })
+        if canvasPrecisionQueue?.id == queue.id { canvasPrecisionQueue?.operationID = operationRequestID }
     }
     private func canvasPrecisionHandler() -> @MainActor (CanvasPrecisionAction) -> Bool {
         let target = snapshot.map(CanvasAdjustmentTarget.init)
@@ -2235,12 +2317,13 @@ final class EditorStore {
     func performCanvasPrecision(_ action: CanvasPrecisionAction) { canvasPrecisionAction(action)() }
     private func dispatchCanvasPrecision(
         _ action: CanvasPrecisionAction, height: Double, plane: EditingPlane,
-        target: CanvasAdjustmentTarget
+        target: CanvasAdjustmentTarget, completion: (@MainActor (Bool) -> Void)? = nil
     ) {
         let preservesOriginMode = isMovingOrigin
         if action.isSpacing {
             let factor = 1 + (action == .increaseSpacing ? 10 : -10) / height
-            perform(acceptCommittedCancellation: true, preserveOriginMode: preservesOriginMode) {
+            perform(acceptCommittedCancellation: true, preserveOriginMode: preservesOriginMode, completion: completion)
+            {
                 try await $0.scaleSelectionPositions(factor: factor, target: target)
             }
         } else {
@@ -2250,11 +2333,13 @@ final class EditorStore {
                 x: plane == .front ? horizontal / height : 0,
                 y: vertical / height, z: plane == .side ? horizontal / height : 0)
             if preservesOriginMode {
-                perform(acceptCommittedCancellation: true, preserveOriginMode: true) {
+                perform(acceptCommittedCancellation: true, preserveOriginMode: true, completion: completion) {
                     try await $0.nudgeOrigin(by: delta, target: target)
                 }
             } else {
-                perform(acceptCommittedCancellation: true) { try await $0.moveSelection(by: delta, target: target) }
+                perform(acceptCommittedCancellation: true, completion: completion) {
+                    try await $0.moveSelection(by: delta, target: target)
+                }
             }
         }
     }
@@ -2917,6 +3002,7 @@ final class EditorStore {
     }
 
     func stop() {
+        canvasPrecisionQueue = nil
         graphComponentRevealLookup = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil)
