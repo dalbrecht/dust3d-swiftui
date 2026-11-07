@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- Import, assign or clear a shared texture image for the Model components owning graph picks in one undo step.
-
-- Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
+- Open a local .ds3 document by dropping it into the editor without replacing the current document.
 
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
@@ -21,6 +19,8 @@
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
 
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
+
+- Keep a working component group as the destination for new parts while graph selection changes.
 
 - Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
 
@@ -126,6 +126,8 @@
 - Add batch component part roles with atomic stitching grouping, shared-group reveal and one-step Undo (#45).
 
 - Apply or clear color across selected components with the native color picker and one-step Undo.
+
+- Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
 
 - Drag component rows before or after siblings, into groups, or to the document root.
 
@@ -271,6 +273,8 @@
 - Make viewer and Quick Look material notices reflect current baked or fallback rendering, preserving legacy limitations and original source-interpretation errors without blocking valid geometry.
 
 - Add native component image import, retained-image selection and clearing with background pixel validation, cancellation, material refresh, shared-asset preservation and exact undo/save.
+
+- Import, assign or clear a shared texture image for the Model components owning graph picks in one undo step.
 
 - Add lossless component color-image assignment, removal and atomic PNG asset import commands with exact asset-aware history and shared bounded PNG envelope validation; native import controls remain pending.
 

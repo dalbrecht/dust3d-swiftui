@@ -156,13 +156,12 @@ struct Dust3DEditorApp: App {
                 Button("Switch Editing Profile") { _ = store?.switchSelectedCanvasProfile() }
                     .disabled(store?.canSwitchSelectedCanvasProfile != true)
                 Divider()
+                let setAddMode = store?.addPlacementToggleAction()
                 Toggle(
                     "Add Nodes with Pointer",
                     isOn: Binding(
                         get: { store?.isAddingNodes == true },
-                        set: { active in
-                            if active { store?.beginAddMode() } else { store?.cancelAddMode() }
-                        })
+                        set: { setAddMode?($0) })
                 ).disabled(store?.isAddingNodes != true && store?.canBeginAddMode != true)
                 Toggle(
                     "Move Origin",
