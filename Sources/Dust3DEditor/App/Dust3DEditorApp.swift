@@ -34,12 +34,24 @@ struct Dust3DEditorApp: App {
         return view
     }
 
+    private var hasTextEditingFocus: Bool {
+        EditorCommandScope.hasTextEditingFocus(
+            swiftUIFocus: isEditingText == true, hasNativeEditor: nativeTextEditor != nil)
+    }
+
+    private var canDeleteGraphSelection: Bool {
+        EditorCommandScope.allowsGraphDelete(
+            animationFocus: isAnimationFocused == true, nativeTextFocus: hasTextEditingFocus,
+            componentSidebarFocus: isComponentSidebarFocused == true)
+            && store?.canDeleteGraphSelection == true
+    }
+
     private var rigAssignmentFocus: RigAssignmentCommandFocus {
         let window = NSApp.keyWindow
         return RigAssignmentCommandFocus(
             hasKeyWindow: window != nil,
             hasSheet: window?.attachedSheet != nil || window?.sheetParent != nil || NSApp.modalWindow != nil,
-            textEditing: isEditingText == true || nativeTextEditor != nil,
+            textEditing: hasTextEditingFocus,
             animationFocused: isAnimationFocused == true)
     }
 
@@ -217,7 +229,7 @@ struct Dust3DEditorApp: App {
                 CanvasRotationMenuButtons(
                     store: store,
                     animationFocus: isAnimationFocused == true,
-                    nativeTextFocus: isEditingText == true || nativeTextEditor != nil)
+                    nativeTextFocus: hasTextEditingFocus)
                 CanvasPrecisionMenu(store: store)
                 GraphColorizeMenu(store: store)
                 DescendantRotationMenu(store: store)
@@ -232,13 +244,12 @@ struct Dust3DEditorApp: App {
                     .accessibilityLabel("Insert Midpoints on Selected Edges")
                 Button("Reverse Selected Edges") { store?.reverseExplicitlySelectedEdges() }
                     .disabled(store?.canReverseSelectedEdges != true)
-                Button("Delete Graph Selection") { store?.deleteSelection() }
-                    .keyboardShortcut(.delete, modifiers: [])
-                    .disabled(
-                        !EditorCommandScope.allowsGraphDelete(
-                            animationFocus: isAnimationFocused == true, nativeTextFocus: isEditingText == true,
-                            componentSidebarFocus: isComponentSidebarFocused == true)
-                            || store?.canDeleteGraphSelection != true)
+                Button("Delete Graph Selection") {
+                    guard canDeleteGraphSelection else { return }
+                    store?.deleteSelection()
+                }
+                .keyboardShortcut(.delete, modifiers: [])
+                .disabled(!canDeleteGraphSelection)
                 Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
                     Toggle(
