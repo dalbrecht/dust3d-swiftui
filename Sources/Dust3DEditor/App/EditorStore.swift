@@ -1469,6 +1469,11 @@ final class EditorStore {
     func renameComponent(_ id: String, name: String) {
         perform { try await $0.apply([.setComponentName(id: id, name: name)]) }
     }
+    func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) {
+        guard !isWorking, !stopped, let snapshot, target.isCurrent(in: snapshot) else { return }
+        perform { try await $0.setComponentEquipmentSlot(slot, target: target) }
+    }
+
     func selectPart(_ id: String?) { perform(commits: false) { try await $0.selectPart(id) } }
     func setOrigin(x: String, y: String, z: String) {
         guard !isWorking, !stopped else { return }

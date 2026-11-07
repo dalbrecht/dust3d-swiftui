@@ -323,6 +323,17 @@ public actor EditorSession {
         }
     }
 
+    /// Apply one equipment assignment to the originally selected Model component.
+    package func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) throws
+        -> EditorSnapshot
+    {
+        try update { state in
+            guard target.isCurrent(in: state.snapshot) else { throw ComponentEquipmentSlotError.staleTarget }
+            try state.apply([.setComponentEquipmentSlot(id: target.componentID, slot: slot)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Apply one captured wrap-finish replacement away from the UI actor with one undo entry.
     /// - Parameters: edit is a typed field replacement; target belongs to the originating inspector.
     /// - Returns: The committed snapshot, preserving geometry identity for a finish-only edit.
