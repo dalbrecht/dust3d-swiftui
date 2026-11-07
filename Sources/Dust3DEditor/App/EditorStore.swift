@@ -2426,6 +2426,24 @@ final class EditorStore {
         }
     }
 
+    func canvasInputCancellationAction() -> (@MainActor () -> Void)? {
+        guard let source = acceptedDocumentSource, isAddingNodes || isMovingOrigin else { return nil }
+        let sourceIdentity = source.documentIdentity
+        let add = addModeID
+        let tool = rotationInputContextID
+        let origin = originDragToken
+        return { [weak self] in
+            guard let self, self.acceptedDocumentSource?.documentIdentity == sourceIdentity,
+                self.addModeID == add, self.rotationInputContextID == tool, self.originDragToken == origin
+            else { return }
+            if self.isAddingNodes {
+                self.cancelAddMode()
+            } else if self.isMovingOrigin {
+                self.cancelOriginDrag()
+            }
+        }
+    }
+
     /// A replaced pointer surface cannot cancel a later Add activation.
     func canvasAddCancellationAction() -> @MainActor () -> Void {
         let modeID = addModeID
