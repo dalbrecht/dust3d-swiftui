@@ -34,13 +34,25 @@ struct NodeInspector: View {
                 }
             }
             if let snapshot = store.snapshot {
-                let target = GraphPartCrossSectionTarget(snapshot: snapshot)
+                let target = GraphPartShapeTarget(snapshot: snapshot)
                 if let part = target.part {
+                    DisclosureGroup("Owning Part Shape") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartModifierControls(part: part, properties: GraphPartShapeTarget.properties) {
+                            property, value in
+                            store.setGraphPartShape(property, value: value, target: target)
+                        }
+                        .disabled(!store.canEditGraphPartShape(target))
+                    }
+                    .help("Change subdivision, chamfer or rounded ends on \(part.title). Each edit is one Undo step.")
+                }
+                let crossSectionTarget = GraphPartCrossSectionTarget(snapshot: snapshot)
+                if let part = crossSectionTarget.part {
                     DisclosureGroup("Owning Part Cross-section") {
                         Text(part.title).font(.caption).foregroundStyle(.secondary)
-                        PartCutFaceControls(store: store, part: part, graphTarget: target)
+                        PartCutFaceControls(store: store, part: part, graphTarget: crossSectionTarget)
                             .id(snapshot.documentIdentity)
-                            .disabled(!store.canEditGraphPartCrossSection(target))
+                            .disabled(!store.canEditGraphPartCrossSection(crossSectionTarget))
                     }
                 }
             }

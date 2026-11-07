@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
+- Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
