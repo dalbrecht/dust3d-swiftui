@@ -63,6 +63,13 @@ enum ComponentStructure {
         attribute.name = "id"
         attribute.stringValue = groupID
         group.addAttribute(attribute)
+        // Qt counts components minus parts. Count groups directly so incomplete or extra owners
+        // do not skew the numbering when the archive has no one-to-one component/part mapping.
+        let groupNumber = context.ordered.lazy.filter { $0.component.isGroup }.count + 1
+        let name = XMLNode(kind: .attribute)
+        name.name = "name"
+        name.stringValue = "Group \(groupNumber)"
+        group.addAttribute(name)
         let original = parent.children ?? []
         for child in original { child.detach() }
         var inserted = false
