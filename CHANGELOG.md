@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Preview applied and retained component color images in the inspector without changing image assignments.
+- Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
@@ -17,6 +17,8 @@
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
+
+- Preview applied and retained component color images in the inspector without changing image assignments.
 
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
