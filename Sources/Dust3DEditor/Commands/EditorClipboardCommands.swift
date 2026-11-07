@@ -52,7 +52,7 @@ struct EditorClipboardCommands: Commands {
         case .text: true
         case .components:
             sidebarSelectAll.map { store?.canSelectAllVisibleComponents($0) == true } ?? false
-        case .graph: store?.snapshot != nil && store?.isWorking == false
+        case .graph: store?.canSave == true
         case .unavailable: false
         }
     }

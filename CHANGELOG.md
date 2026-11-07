@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Prevent editor writes and Cut from using a retained preview after a replacement document fails to load.
+
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.

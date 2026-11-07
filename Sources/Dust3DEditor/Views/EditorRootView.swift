@@ -53,7 +53,7 @@ struct EditorRootView: View {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("Create node or part")
-                    .disabled(store.isWorking || store.snapshot == nil)
+                    .disabled(!store.canSave)
                 }.padding(12)
                 Divider()
                 List(selection: Binding(get: { store.snapshot?.selectedIDs ?? [] }, set: { store.select($0) })) {

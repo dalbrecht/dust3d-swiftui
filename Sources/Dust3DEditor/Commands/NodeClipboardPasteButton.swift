@@ -31,6 +31,6 @@ struct NodeClipboardPasteButton: View {
                 store?.pasteNodes(data: value.data)
             }
         }
-        .disabled(isAnimationFocused == true || store?.snapshot == nil || store?.isWorking != false)
+        .disabled(isAnimationFocused == true || store?.canSave != true)
     }
 }
