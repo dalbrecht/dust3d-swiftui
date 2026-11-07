@@ -851,6 +851,7 @@ public actor EditorSession {
             case .connect(let from, let to): commands = [.joinNodes(id: identifier(), from: from, to: to)]
             case .deleteNode(let id): commands = [.removeNode(id: id)]
             case .reverseEdge(let id): commands = [.reverseEdges([id])]
+            case .repairEdgeDirections: commands = [.reverseEdges(target.edgeDirectionRepairs)]
             case .disconnectEdge(let id): commands = [.removeEdge(id: id)]
             case .selectEndpoints(let id):
                 guard let edge = state.snapshot.edges.first(where: { $0.id.utf8.elementsEqual(id.utf8) }) else {
