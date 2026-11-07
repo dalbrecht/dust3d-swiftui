@@ -416,6 +416,16 @@ public actor EditorSession {
         return result.snapshot
     }
 
+    /// Apply the captured mirror edit as one undoable publication, including any initial origin.
+    public func setPartXMirrored(_ value: Bool, target: PartMirrorTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let id = target.partID else {
+                throw PartMirrorError.staleTarget
+            }
+            try state.apply([.setPartXMirrored(id: id, value: value)])
+        }.snapshot
+    }
+
     package func setGraphPartShape(
         _ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget
     ) throws -> EditorSnapshot {
