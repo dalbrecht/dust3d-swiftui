@@ -5,6 +5,7 @@ import SwiftUI
 struct PartCutFaceControls: View {
     let store: EditorStore
     let part: DocumentPart
+    var graphTarget: GraphPartCrossSectionTarget? = nil
     @State private var rotation = ""
 
     var body: some View {
@@ -14,7 +15,7 @@ struct PartCutFaceControls: View {
                 "Cut-face preset",
                 selection: Binding<CutFaceSelection?>(
                     get: { part.cutFace },
-                    set: { if let value = $0 { store.setPartCutFace(part.id, selection: value) } }
+                    set: { if let value = $0 { applyProfile(value) } }
                 )
             ) {
                 ForEach(PartCutFaceOptions.selections(current: part.cutFace), id: \.self) { selection in
@@ -44,13 +45,13 @@ struct PartCutFaceControls: View {
                     .focusedValue(\.editorTextEditing, true)
             }
             DisclosureGroup("Link profile…") {
-                PartProfileChooser(store: store, part: part)
+                PartProfileChooser(store: store, part: part, choose: applyProfile)
             }
-            if store.snapshot?.allowsCutRotationPreset(for: part.id) == true {
+            if graphTarget != nil || store.snapshot?.allowsCutRotationPreset(for: part.id) == true {
                 LabeledContent("Quick rotation") {
                     HStack {
                         ForEach(PartCutRotationPreset.allCases, id: \.self) { preset in
-                            Button(action: store.partCutRotationPresetAction(preset, partID: part.id)) {
+                            Button(action: presetAction(preset)) {
                                 Text("\(preset.rawValue)°").monospacedDigit()
                             }
                             .accessibilityLabel("Set cross-section rotation to \(preset.rawValue) degrees")
@@ -91,5 +92,26 @@ struct PartCutFaceControls: View {
     }
 
     private func resetRotation() { rotation = part.cutRotation.map { String($0) } ?? "" }
-    private func applyRotation() { store.setPartCutRotation(part.id, rotation: rotation) }
+    private func applyProfile(_ selection: CutFaceSelection) {
+        if let graphTarget {
+            store.editGraphPartCrossSection(.profile(selection), target: graphTarget)
+        } else {
+            store.setPartCutFace(part.id, selection: selection)
+        }
+    }
+
+    private func applyRotation() {
+        if let graphTarget {
+            store.setGraphPartCutRotation(rotation, target: graphTarget)
+        } else {
+            store.setPartCutRotation(part.id, rotation: rotation)
+        }
+    }
+
+    private func presetAction(_ preset: PartCutRotationPreset) -> @MainActor () -> Void {
+        if let graphTarget {
+            return { store.editGraphPartCrossSection(.rotation(preset.halfTurns), target: graphTarget) }
+        }
+        return store.partCutRotationPresetAction(preset, partID: part.id)
+    }
 }

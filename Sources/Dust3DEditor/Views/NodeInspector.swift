@@ -33,6 +33,17 @@ struct NodeInspector: View {
                         .id(colorTarget)
                 }
             }
+            if let snapshot = store.snapshot {
+                let target = GraphPartCrossSectionTarget(snapshot: snapshot)
+                if let part = target.part {
+                    DisclosureGroup("Owning Part Cross-section") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartCutFaceControls(store: store, part: part, graphTarget: target)
+                            .id(snapshot.documentIdentity)
+                            .disabled(!store.canEditGraphPartCrossSection(target))
+                    }
+                }
+            }
             ComponentMeshSelectionControls(store: store)
             if store.snapshot?.selectedComponentIDs.isEmpty == false {
                 ComponentPartRoleControls(store: store)

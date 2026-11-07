@@ -1341,6 +1341,26 @@ final class EditorStore {
         }
     }
 
+    func canEditGraphPartCrossSection(_ target: GraphPartCrossSectionTarget) -> Bool {
+        !isWorking && acceptedAnimationSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func editGraphPartCrossSection(_ edit: GraphPartCrossSectionEdit, target: GraphPartCrossSectionTarget) {
+        guard canEditGraphPartCrossSection(target) else { return }
+        perform(acceptCommittedCancellation: true) {
+            try await $0.editGraphPartCrossSection(edit, target: target)
+        }
+    }
+
+    func setGraphPartCutRotation(_ rotation: String, target: GraphPartCrossSectionTarget) {
+        guard canEditGraphPartCrossSection(target) else { return }
+        guard let value = EngineScalar.parse(rotation, in: -1...1) else {
+            errorMessage = Self.message(DocumentError.invalidPartCutRotation)
+            return
+        }
+        editGraphPartCrossSection(.rotation(value), target: target)
+    }
+
     func setPartMaterial(_ id: String, property: PartMaterialProperty, value: String) {
         guard !isWorking, !stopped else { return }
         guard let scalar = EngineScalar.parse(value, in: property.bounds) else {
