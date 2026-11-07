@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
+
 - Open a local .ds3 document by dropping it into the editor without replacing the current document.
 
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
@@ -57,6 +59,8 @@
 - Clear exact stored assignments for a template bone or its descendant chain across the document in one Undo step, including hidden and locked parts (#361).
 
 - Browse the pinned rig template bone hierarchy and stored assignment counts, then assign the chosen exact name to selected edges in one Undo step (#359).
+
+- View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
 
 - Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
 
@@ -126,6 +130,8 @@
 - Add batch component part roles with atomic stitching grouping, shared-group reveal and one-step Undo (#45).
 
 - Apply or clear color across selected components with the native color picker and one-step Undo.
+
+- Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
 
 - Drag component rows before or after siblings, into groups, or to the document root.
 
@@ -211,6 +217,8 @@
 
 - Reject recovery capture after a failed replacement load, preserving its original error and the previous accepted document (#248).
 
+- Prevent editor writes and Cut from using a retained preview after a replacement document fails to load.
+
 - Require an exact PID and versioned notification channel for composition cancellation, ignoring older broadcast requests and bounding pending cancellation work (#56, #248).
 
 - Add bounded app-owned recovery copies targeted to an exact process, with PID/UUID-correlated receipts, preserving original files and undo history (#248).
@@ -271,6 +279,8 @@
 - Make viewer and Quick Look material notices reflect current baked or fallback rendering, preserving legacy limitations and original source-interpretation errors without blocking valid geometry.
 
 - Add native component image import, retained-image selection and clearing with background pixel validation, cancellation, material refresh, shared-asset preservation and exact undo/save.
+
+- Import, assign or clear a shared texture image for the Model components owning graph picks in one undo step.
 
 - Add lossless component color-image assignment, removal and atomic PNG asset import commands with exact asset-aware history and shared bounded PNG envelope validation; native import controls remain pending.
 
