@@ -59,14 +59,20 @@ final class EditorLaunchDocumentTests: XCTestCase {
             ),
             (["Editor", "/tmp/first.ds3", "-o", "/tmp/result.obj"], .unsupportedExportArgument),
             (["Editor", "/tmp/first.ds3", "-output", "/tmp/result.obj"], .unsupportedExportArgument),
-            (["Editor", "/tmp/first.ds3", "-paste-xml", "/tmp/edits.xml"], .unsupportedPasteArgument),
-            (["Editor", "/tmp/first.ds3", "-toggle-color", "true"], .unsupportedColorArgument),
+            (["Editor", "-paste-xml", "/tmp/edits.xml"], .unsupportedPasteArgument),
+            (["Editor", "/tmp/first.ds3", "-paste-xml"], .invalidPasteArgument),
+            (["Editor", "/tmp/first.ds3", "-paste-xml", "https://example.com/edits.xml"], .invalidPasteArgument),
+            (["Editor", "/tmp/first.ds3", "-paste-xml", "/tmp/edits.ds3"], .invalidPasteArgument),
+            (["Editor", "/tmp/first.ds3", "-toggle-color"], .invalidColorArgument),
         ] {
             let opener = EditorLaunchDocumentOpener(arguments: arguments)
             XCTAssertTrue(opener.shouldSuppressUntitledDocument)
             var errors: [EditorLaunchError] = []
             await opener.openRequestedDocument(
-                open: { _ in XCTFail("A rejected batch must not open any of its paths") },
+                open: { _ in
+                    XCTFail("A rejected batch must not open any of its paths")
+                    return nil
+                },
                 reportError: { error in
                     if let error = error as? EditorLaunchError { errors.append(error) }
                 })
@@ -87,11 +93,18 @@ final class EditorLaunchDocumentTests: XCTestCase {
             open: { url in
                 opened.append(url.path)
                 await opener.openRequestedDocument(
-                    open: { _ in XCTFail("Reentrant dispatch") }, reportError: report)
+                    open: { _ in
+                        XCTFail("Reentrant dispatch")
+                        return nil
+                    }, reportError: report)
                 if url.path == paths[1] { throw OpenFailure.denied }
+                return nil
             }, reportError: report)
         await opener.openRequestedDocument(
-            open: { _ in XCTFail("Duplicate lifecycle callback") }, reportError: report)
+            open: { _ in
+                XCTFail("Duplicate lifecycle callback")
+                return nil
+            }, reportError: report)
         XCTAssertEqual(opened, paths)
         XCTAssertEqual(errors.count, 1)
         XCTAssertTrue(errors.first is OpenFailure)
@@ -108,8 +121,12 @@ final class EditorLaunchDocumentTests: XCTestCase {
                 open: { url in
                     opened.append(url)
                     await opener.openRequestedDocument(
-                        open: { _ in XCTFail("Reentrant request opened twice") },
+                        open: { _ in
+                            XCTFail("Reentrant request opened twice")
+                            return nil
+                        },
                         reportError: { _ in XCTFail("Reentrant request reported an error") })
+                    return nil
                 }, reportError: { errors.append($0) })
         }
         XCTAssertEqual(opened, [URL(fileURLWithPath: "/tmp/a.ds3")])
@@ -127,13 +144,19 @@ final class EditorLaunchDocumentTests: XCTestCase {
         let invalid = EditorLaunchDocumentOpener(arguments: ["Editor", "--open-document"])
         XCTAssertTrue(invalid.shouldSuppressUntitledDocument)
         await invalid.openRequestedDocument(
-            open: { _ in XCTFail("Invalid path opened") }, reportError: { errors.append($0) })
+            open: { _ in
+                XCTFail("Invalid path opened")
+                return nil
+            }, reportError: { errors.append($0) })
         XCTAssertEqual(errors.last as? EditorLaunchError, .invalidDocumentArgument)
         XCTAssertTrue(errors.last?.localizedDescription.contains("--open-document") == true)
         let ordinary = EditorLaunchDocumentOpener(arguments: ["Editor"])
         XCTAssertFalse(ordinary.shouldSuppressUntitledDocument)
         await ordinary.openRequestedDocument(
-            open: { _ in XCTFail("Ordinary launch opened a document") },
+            open: { _ in
+                XCTFail("Ordinary launch opened a document")
+                return nil
+            },
             reportError: { _ in XCTFail("Unexpected error") })
     }
 }

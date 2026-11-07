@@ -2191,6 +2191,29 @@ final class EditorStore {
         rotateCanvasSelection(degrees: degrees)
         return true
     }
+    private func canRotateOrthogonalQuarterTurn(profileLease: UUID?) -> Bool {
+        !isSelectingRigEdges && canSave && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
+            && ownsCanvasProfile(profileLease) && snapshot?.canRotateOrthogonalQuarterTurn(from: plane) == true
+    }
+
+    func orthogonalQuarterTurnAction(
+        _ turn: OrthogonalQuarterTurn, profileLease: UUID? = nil
+    ) -> (@MainActor () -> Void)? {
+        guard canRotateOrthogonalQuarterTurn(profileLease: profileLease), let context = canvasRotationContext else {
+            return nil
+        }
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] in
+            guard let self, self.canvasRotationContext == context,
+                self.referenceColorInteractionEpoch == interaction,
+                self.canRotateOrthogonalQuarterTurn(profileLease: profileLease)
+            else { return }
+            self.perform {
+                try await $0.rotateOrthogonalQuarterTurn(turn, from: context.plane, target: context.target)
+            }
+        }
+    }
+
     var canRotateDescendants: Bool {
         !isSelectingRigEdges && !isWorking && snapshot?.canRotateDescendants == true
     }
@@ -2367,6 +2390,19 @@ final class EditorStore {
             if (error as? CocoaError)?.code != .userCancelled { errorMessage = Self.message(error) }
             return nil
         }
+    }
+
+    @discardableResult
+    func applyStartupQtXML(_ data: Data, fileIdentity: UUID) -> Task<Void, Never>? {
+        guard !Task.isCancelled, !isWorking, qtXMLFilePasteRequest == nil, let snapshot = acceptedDocumentSource,
+            snapshot.documentRevision == 0, case .success(let accepted) = recoveryLoadResult,
+            accepted.fileIdentity == fileIdentity
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        perform(acceptCommittedCancellation: true) { session in
+            try await session.pasteQtXMLFile(data, target: target, parentID: nil)
+        }
+        return operation
     }
 
     func pasteQtNodes(snapshotXML: Data) {

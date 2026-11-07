@@ -6,6 +6,10 @@
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
+- Support Qt’s `-toggle-color` launch option for newly opened document windows.
+
+- Apply one Qt XML fragment at launch with `-paste-xml` and explicit `.ds3` inputs, with one Undo step per newly opened eligible document.
+
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
@@ -29,6 +33,8 @@
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
+
+- Rotate the canvas selection by a quarter turn around the other profile’s world axis while staying in the current profile.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
