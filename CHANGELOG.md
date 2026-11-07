@@ -34,7 +34,7 @@
 
 - Keep a working component group as the destination for new parts while graph selection changes.
 
-- Paste native or Qt clipboard nodes into an explicitly chosen working group.
+- Paste native or Qt clipboard nodes and Qt XML files into an explicitly chosen working group.
 
 - Start a blank document by drawing a first node, composing a reference image, or opening an existing document from the canvas.
 

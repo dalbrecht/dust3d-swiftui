@@ -89,6 +89,7 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         store.finishQtXMLFileChoice(requestID: current, result: .success([url]))
         try await settle(store)
         XCTAssertEqual(store.snapshot?.nodes.count, 2)
+        XCTAssertTrue(store.snapshot?.componentTree.rows.allSatisfy { $0.component.parentID == nil } == true)
         XCTAssertEqual(other.snapshot?.document.encoded(), source.encoded())
         XCTAssertEqual(writes.count, 1)
         XCTAssertTrue(store.canUndo)
@@ -99,6 +100,60 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
     }
 
+    func testXMLPickerCapturesWorkingGroupAndRejectsChangedOrDeletedDestination() async throws {
+        let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let destination = try Dust3DDocument(
+            snapshotXML: Data("<canvas><components><component id='working'/></components></canvas>".utf8))
+        let url = URL(fileURLWithPath: "/unused/fragment.xml")
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: destination.encoded(), fileIdentity: UUID())
+        store.selectComponent("working")
+        try await settle(store)
+        let selected = try XCTUnwrap(store.snapshot)
+        store.workingGroupAction(.group("working"), snapshot: selected)()
+
+        store.chooseQtXMLFile()
+        let old = try XCTUnwrap(store.qtXMLFilePasteRequestID)
+        store.workingGroupAction(.documentRoot, snapshot: selected)()
+        store.workingGroupAction(.group("working"), snapshot: selected)()
+        XCTAssertNil(
+            store.finishQtXMLFileChoice(requestID: old, result: .success([url]), read: { _ in source.modelXML }))
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.document.encoded(), destination.encoded())
+        XCTAssertFalse(store.canUndo)
+
+        var writes: [Data] = []
+        store.onDocumentChanged = { writes.append($0) }
+        store.chooseQtXMLFile()
+        let current = try XCTUnwrap(store.qtXMLFilePasteRequestID)
+        let paste = try XCTUnwrap(
+            store.finishQtXMLFileChoice(requestID: current, result: .success([url]), read: { _ in source.modelXML }))
+        await paste.value
+        let part = try XCTUnwrap(store.snapshot?.componentTree.rows.first { $0.component.partID != nil })
+        XCTAssertEqual(part.component.parentID, "working")
+        XCTAssertEqual(writes.count, 1)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), destination.encoded())
+        XCTAssertFalse(store.canUndo)
+
+        store.selectComponent("working")
+        try await settle(store)
+        let beforeDeletion = try XCTUnwrap(store.snapshot)
+        store.chooseQtXMLFile()
+        let deleted = try XCTUnwrap(store.qtXMLFilePasteRequestID)
+        store.componentDeletionAction(ComponentDeletionTarget(snapshot: beforeDeletion))()
+        try await settle(store)
+        let afterDeletion = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(store.addPlacementDestination, .documentRoot)
+        XCTAssertNil(
+            store.finishQtXMLFileChoice(requestID: deleted, result: .success([url]), read: { _ in source.modelXML }))
+        XCTAssertEqual(store.snapshot?.document.encoded(), afterDeletion.document.encoded())
+        XCTAssertTrue(store.snapshot?.nodes.isEmpty == true)
+    }
+
     func testOldReadCannotPublishIntoReplacementOrEndItsNewOperation() async throws {
         let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
             .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
@@ -106,8 +161,12 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         let url = URL(fileURLWithPath: "/unused/fragment.xml")
         let store = makeStore()
         defer { store.stop() }
-        await store.load(data: source.encoded(), fileIdentity: UUID())
-        let originalID = try XCTUnwrap(store.snapshot?.documentIdentity)
+        let original = try Dust3DDocument(
+            snapshotXML: Data("<canvas><components><component id='working'/></components></canvas>".utf8))
+        await store.load(data: original.encoded(), fileIdentity: UUID())
+        let originalSnapshot = try XCTUnwrap(store.snapshot)
+        let originalID = originalSnapshot.documentIdentity
+        store.workingGroupAction(.group("working"), snapshot: originalSnapshot)()
         var writes: [Data] = []
         store.onDocumentChanged = { writes.append($0) }
 
@@ -145,19 +204,29 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
     }
 
     func testStartupPasteRequiresPristineAcceptedFileAndCommitsOneUndoStep() async throws {
-        let original = Dust3DDocument.emptyArchive()
-        let source = try Dust3DDocument(data: original).applying(
+        let original = try Dust3DDocument(
+            snapshotXML: Data("<canvas><components><component id='working'/></components></canvas>".utf8)
+        ).encoded()
+        let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
             .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
         let store = makeStore()
         defer { store.stop() }
         let identity = UUID()
         await store.load(data: original, fileIdentity: identity)
+        store.selectComponent("working")
+        try await settle(store)
+        let selected = try XCTUnwrap(store.snapshot)
+        store.workingGroupAction(.group("working"), snapshot: selected)()
+        XCTAssertEqual(store.addPlacementDestination, .group("working"))
         XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: UUID()))
         var writes: [Data] = []
         store.onDocumentChanged = { writes.append($0) }
         let operation = try XCTUnwrap(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
         await operation.value
         XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        let pasted = try XCTUnwrap(store.snapshot?.componentTree.rows.first { $0.component.partID != nil })
+        XCTAssertNil(pasted.component.parentID)
+        XCTAssertEqual(store.addPlacementDestination, .group("working"))
         XCTAssertTrue(store.canUndo)
         XCTAssertEqual(writes.count, 1)
         store.undo()

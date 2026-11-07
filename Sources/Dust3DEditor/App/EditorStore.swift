@@ -2278,7 +2278,7 @@ final class EditorStore {
     private struct QtXMLFilePasteRequest {
         let id = UUID()
         let fileIdentity: UUID
-        let target: CanvasAdjustmentTarget
+        let clipboard: ClipboardPasteRequest
     }
 
     private var qtXMLFilePasteRequest: QtXMLFilePasteRequest?
@@ -2287,17 +2287,27 @@ final class EditorStore {
         qtXMLFilePasteRequest == nil && acceptedQtXMLFileSource != nil
     }
 
-    private var acceptedQtXMLFileSource: (snapshot: EditorSnapshot, fileIdentity: UUID)? {
-        guard canSave, case .success(let accepted) = recoveryLoadResult, let fileIdentity = accepted.fileIdentity,
-            let snapshot, accepted.documentIdentity == snapshot.documentIdentity
+    private var acceptedQtXMLFileSource: (clipboard: ClipboardPasteRequest, fileIdentity: UUID)? {
+        guard let clipboard = clipboardPasteRequest(), case .success(let accepted) = recoveryLoadResult,
+            let fileIdentity = accepted.fileIdentity
         else { return nil }
-        return (snapshot, fileIdentity)
+        return (clipboard, fileIdentity)
+    }
+
+    private func isCurrentQtXMLFileSource(_ request: QtXMLFilePasteRequest) -> Bool {
+        guard !stopped, let snapshot, case .success(let accepted) = recoveryLoadResult,
+            accepted.fileIdentity == request.fileIdentity, accepted.documentIdentity == snapshot.documentIdentity,
+            request.clipboard.workingGroupRevision == workingGroupRevision,
+            request.clipboard.context.isCurrent(in: snapshot)
+        else { return false }
+        if let parentID = request.clipboard.parentID { return snapshot.addPlacementGroup(parentID) != nil }
+        return true
     }
 
     func chooseQtXMLFile() {
         guard qtXMLFilePasteRequest == nil, let source = acceptedQtXMLFileSource else { return }
         qtXMLFilePasteRequest = QtXMLFilePasteRequest(
-            fileIdentity: source.fileIdentity, target: CanvasAdjustmentTarget(snapshot: source.snapshot))
+            fileIdentity: source.fileIdentity, clipboard: source.clipboard)
     }
 
     func cancelQtXMLFileChoice(requestID: UUID) {
@@ -2312,15 +2322,18 @@ final class EditorStore {
     ) -> Task<Void, Never>? {
         guard let request = qtXMLFilePasteRequest, request.id == requestID else { return nil }
         qtXMLFilePasteRequest = nil
-        guard let source = acceptedQtXMLFileSource, request.fileIdentity == source.fileIdentity,
-            request.target.isCurrent(in: source.snapshot)
-        else { return nil }
+        guard !isWorking, isCurrentQtXMLFileSource(request) else { return nil }
         do {
             let urls = try result.get()
             guard urls.count == 1, let url = urls.first else { throw QtXMLFileReader.Failure.invalidFile }
-            perform(acceptCommittedCancellation: true) { session in
+            perform(acceptCommittedCancellation: true) { [weak self] session in
                 let data = try await read(url)
-                return try await session.pasteQtXMLFile(data, target: request.target)
+                try Task.checkCancellation()
+                guard await self?.isCurrentQtXMLFileSource(request) == true else {
+                    throw QtXMLFilePasteError.staleTarget
+                }
+                return try await session.pasteQtXMLFile(
+                    data, target: request.clipboard.context, parentID: request.clipboard.parentID)
             }
             return operation
         } catch {
@@ -2331,12 +2344,13 @@ final class EditorStore {
 
     @discardableResult
     func applyStartupQtXML(_ data: Data, fileIdentity: UUID) -> Task<Void, Never>? {
-        guard !Task.isCancelled, qtXMLFilePasteRequest == nil, let source = acceptedQtXMLFileSource,
-            source.fileIdentity == fileIdentity, source.snapshot.documentRevision == 0
+        guard !Task.isCancelled, !isWorking, qtXMLFilePasteRequest == nil, let snapshot = acceptedDocumentSource,
+            snapshot.documentRevision == 0, case .success(let accepted) = recoveryLoadResult,
+            accepted.fileIdentity == fileIdentity
         else { return nil }
-        let target = CanvasAdjustmentTarget(snapshot: source.snapshot)
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
         perform(acceptCommittedCancellation: true) { session in
-            try await session.pasteQtXMLFile(data, target: target)
+            try await session.pasteQtXMLFile(data, target: target, parentID: nil)
         }
         return operation
     }
