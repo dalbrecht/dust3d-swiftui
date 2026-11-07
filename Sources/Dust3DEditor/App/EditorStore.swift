@@ -812,6 +812,7 @@ final class EditorStore {
         stopped = false
         isWorking = true
         recoveryLoadResult = nil
+        qtXMLFilePasteRequest = nil
         defer { if operationRequestID == requestID { isWorking = false } }
         do {
             let next = try await session.open(data: data)
@@ -1704,6 +1705,54 @@ final class EditorStore {
         perform(reloadReferenceImage: true) { try await $0.paste(data: data) }
     }
 
+    private struct QtXMLFilePasteRequest {
+        let id = UUID()
+        let fileIdentity: UUID
+        let target: CanvasAdjustmentTarget
+    }
+
+    private var qtXMLFilePasteRequest: QtXMLFilePasteRequest?
+    var qtXMLFilePasteRequestID: UUID? { qtXMLFilePasteRequest?.id }
+    var canChooseQtXMLFile: Bool {
+        qtXMLFilePasteRequest == nil && acceptedQtXMLFileSource != nil
+    }
+
+    private var acceptedQtXMLFileSource: (snapshot: EditorSnapshot, fileIdentity: UUID)? {
+        guard canSave, case .success(let accepted) = recoveryLoadResult, let fileIdentity = accepted.fileIdentity,
+            let snapshot, accepted.documentIdentity == snapshot.documentIdentity
+        else { return nil }
+        return (snapshot, fileIdentity)
+    }
+
+    func chooseQtXMLFile() {
+        guard qtXMLFilePasteRequest == nil, let source = acceptedQtXMLFileSource else { return }
+        qtXMLFilePasteRequest = QtXMLFilePasteRequest(
+            fileIdentity: source.fileIdentity, target: CanvasAdjustmentTarget(snapshot: source.snapshot))
+    }
+
+    func cancelQtXMLFileChoice(requestID: UUID) {
+        guard qtXMLFilePasteRequestID == requestID else { return }
+        qtXMLFilePasteRequest = nil
+    }
+
+    func finishQtXMLFileChoice(requestID: UUID, result: Result<[URL], any Error>) {
+        guard let request = qtXMLFilePasteRequest, request.id == requestID else { return }
+        qtXMLFilePasteRequest = nil
+        guard let source = acceptedQtXMLFileSource, request.fileIdentity == source.fileIdentity,
+            request.target.isCurrent(in: source.snapshot)
+        else { return }
+        do {
+            let urls = try result.get()
+            guard urls.count == 1, let url = urls.first else { throw QtXMLFileReader.Failure.invalidFile }
+            perform(acceptCommittedCancellation: true) { session in
+                let data = try await QtXMLFileReader().read(url)
+                return try await session.pasteQtXMLFile(data, target: request.target)
+            }
+        } catch {
+            if (error as? CocoaError)?.code != .userCancelled { errorMessage = Self.message(error) }
+        }
+    }
+
     func pasteQtNodes(snapshotXML: Data) {
         perform(reloadReferenceImage: true) { try await $0.paste(snapshotXML: snapshotXML) }
     }
@@ -2057,6 +2106,7 @@ final class EditorStore {
     }
 
     func stop() {
+        qtXMLFilePasteRequest = nil
         boneEdgeHover = nil
         previewCameraCommand = nil
         pendingComponentDrag = nil
