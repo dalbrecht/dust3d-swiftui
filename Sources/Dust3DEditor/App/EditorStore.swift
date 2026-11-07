@@ -1378,6 +1378,21 @@ final class EditorStore {
         }
         perform { try await $0.apply([.setPartDeformationScale(id: id, property: property, value: scale)]) }
     }
+    func partDeformationResetAction(
+        _ property: PartDeformationProperty, partID: String
+    ) -> (@MainActor () -> Void)? {
+        guard let snapshot, let part = snapshot.inspectedPart, part.target == .model,
+            part.id.utf8.elementsEqual(partID.utf8)
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        return { [weak self] in
+            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+                target.isCurrent(in: current)
+            else { return }
+            self.perform { try await $0.resetPartDeformationScale(property, partID: partID, target: target) }
+        }
+    }
+
     func setPartDeformationUnified(_ id: String, value: Bool) {
         perform { try await $0.apply([.setPartDeformationUnified(id: id, value: value)]) }
     }
