@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Browse a component group’s direct children and navigate back through its breadcrumb.
+
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
 
 - Open a local .ds3 document by dropping it into the editor without replacing the current document.

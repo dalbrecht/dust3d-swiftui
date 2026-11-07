@@ -251,11 +251,18 @@ public actor EditorSession {
     /// - Returns: One undoable snapshot with a fresh UUID component selected.
     /// - Throws: Load/cancellation, hierarchy, identity or bounded-archive errors without partial state.
     public func groupComponents(_ ids: Set<String>) throws -> EditorSnapshot {
-        try update { state in
+        try groupComponents(ids, target: nil)
+    }
+
+    package func groupComponents(_ ids: Set<String>, target: CanvasAdjustmentTarget?) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: target != nil) { state in
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw ComponentGroupingError.staleTarget
+            }
             let groupID = Self.identifier()
             try state.apply([.groupComponents(ids: ids.sorted(), groupID: groupID)])
             try state.selectComponent(groupID)
-        }
+        }.snapshot
     }
 
     /// Atomically replace one mesh setting on the captured component selection.
@@ -1071,6 +1078,12 @@ public actor EditorSession {
         state = next
         return (next.snapshot, result)
     }
+}
+
+private enum ComponentGroupingError: LocalizedError {
+    case staleTarget
+
+    var errorDescription: String? { "The document or component selection changed. Group the components again." }
 }
 
 package enum WorkingGroupPasteError: LocalizedError, Equatable, Sendable {

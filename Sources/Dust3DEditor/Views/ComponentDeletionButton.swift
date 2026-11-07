@@ -16,10 +16,13 @@ struct ComponentDeletionButton: View {
     let store: EditorStore
     let target: ComponentDeletionTarget
 
+    var admitsInput: @MainActor () -> Bool = { true }
+
     var body: some View {
+        let invoke = store.componentDeletionAction(target)
         Button(
             ComponentDeletionPresentation.title(rootCount: target.rootCount), role: .destructive,
-            action: store.componentDeletionAction(target)
+            action: { if admitsInput() { invoke() } }
         )
         .disabled(!store.canDeleteComponentSubtrees(target))
         .accessibilityIdentifier("component-delete")
