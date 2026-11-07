@@ -1461,7 +1461,7 @@ final class EditorStore {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
     func canEditPartMirror(_ target: PartMirrorTarget) -> Bool {
-        !stopped && !isWorking && snapshot.map { target.isCurrent(in: $0) } == true
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
     }
 
     func partMirrorAction(_ value: Bool, target: PartMirrorTarget) -> @MainActor () -> Void {

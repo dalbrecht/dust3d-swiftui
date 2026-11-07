@@ -87,6 +87,28 @@ import XCTest
         try state.selectPart(nfd)
         XCTAssertNotNil(state.snapshot.mirrorInspectorPart)
     }
+    func testFailedReplacementRejectsRetainedMirrorTarget() async throws {
+        let doc = try source()
+        let session = EditorSession()
+        _ = try await session.open(data: doc.encoded())
+        let before = try await session.selectComponent("a")
+        let target = PartMirrorTarget(snapshot: before, partID: "p")
+        do {
+            _ = try await session.open(data: Data("invalid archive".utf8))
+            XCTFail("Invalid replacement opened")
+        } catch {}
+        do {
+            _ = try await session.setPartXMirrored(true, target: target)
+            XCTFail("Mirror edit reached the retained document")
+        } catch {
+            XCTAssertEqual(error as? PartMirrorError, .staleTarget)
+        }
+        let retained = try await session.selectComponent("a")
+        XCTAssertEqual(retained.documentIdentity, before.documentIdentity)
+        XCTAssertEqual(retained.document.encoded(), before.document.encoded())
+        XCTAssertFalse(retained.canUndo)
+    }
+
     func testCancellationDoesNotPublish() async throws {
         let doc = try source()
         let session = EditorSession()
