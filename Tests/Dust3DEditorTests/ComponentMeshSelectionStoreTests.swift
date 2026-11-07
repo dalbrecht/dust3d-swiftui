@@ -135,6 +135,37 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
     }
 
+    func testGraphOwnerMirrorReplacesUnsupportedValueAndPreservesExactUndo() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes>
+                <parts><part id='p' xMirrored='future'/></parts><components>
+                <component id='owner' linkDataType='partId' linkData='p'/>
+                </components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        value.select("a")
+        try await settle(value)
+        let initial = PartMirrorTarget(graphTarget: GraphModelPartTarget(snapshot: try XCTUnwrap(value.snapshot)))
+        XCTAssertTrue(value.canEditPartMirror(initial))
+        value.partMirrorAction(false, target: initial)()
+        try await settle(value)
+        let changed = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(changed.parts.first?.xMirrored, false)
+        XCTAssertEqual(changed.selectedIDs, ["a"])
+        XCTAssertNil(changed.origin)
+        value.partMirrorAction(true, target: initial)()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testGraphOwnerMaterialApplyAndResetRejectRetiredAndFailedSourceTargets() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(

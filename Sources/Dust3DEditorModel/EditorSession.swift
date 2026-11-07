@@ -975,11 +975,7 @@ public actor EditorSession {
     {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
-        let document = try Dust3DDocument(snapshotXML: snapshotXML)
-        let contents = try document.editorContents()
-        if allowsEmptyGraph, contents.nodes.isEmpty, contents.edges.isEmpty, contents.parts.isEmpty,
-            try document.components().isEmpty
-        {
+        guard let fragment = try Self.qtXMLFragment(snapshotXML, allowsEmptyGraph: allowsEmptyGraph) else {
             try Task.checkCancellation()
             return state.snapshot
         }
@@ -989,11 +985,28 @@ public actor EditorSession {
         } else {
             identifier = Self.identifier()
         }
-        let fragment = try NodeClipboard(document: document, selectedNodeIDs: Set(contents.nodes.map(\.id)))
         let payload = try NodeClipboardPayload(fragment: fragment, identifier: identifier)
         let next = try paste(payload: payload, parentID: parentID)
         lastQtTransfer = (Data(snapshotXML), identifier)
         return next
+    }
+
+    /// Validate launch input before creating any of its destination windows.
+    package func validateQtXMLFile(_ snapshotXML: Data) throws {
+        try Task.checkCancellation()
+        _ = try Self.qtXMLFragment(snapshotXML, allowsEmptyGraph: true)
+        try Task.checkCancellation()
+    }
+
+    private static func qtXMLFragment(_ snapshotXML: Data, allowsEmptyGraph: Bool) throws -> NodeClipboard? {
+        let document = try Dust3DDocument(snapshotXML: snapshotXML)
+        let contents = try document.editorContents()
+        if allowsEmptyGraph, contents.nodes.isEmpty, contents.edges.isEmpty, contents.parts.isEmpty,
+            try document.components().isEmpty
+        {
+            return nil
+        }
+        return try NodeClipboard(document: document, selectedNodeIDs: Set(contents.nodes.map(\.id)))
     }
 
     /// Paste fresh graph identities and normalize copied groups in one undo transaction.
