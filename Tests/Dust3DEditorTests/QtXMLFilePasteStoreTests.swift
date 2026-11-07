@@ -22,6 +22,29 @@ private struct QtXMLPasteNoNative: EditorPreviewServing, ArchiveTextureBaking, A
     }
 }
 
+private actor HeldQtXMLReader {
+    private var result: CheckedContinuation<Data, Never>?
+    private var start: CheckedContinuation<Void, Never>?
+
+    func read(_ url: URL) async -> Data {
+        await withCheckedContinuation { continuation in
+            result = continuation
+            start?.resume()
+            start = nil
+        }
+    }
+
+    func waitForRead() async {
+        if result != nil { return }
+        await withCheckedContinuation { start = $0 }
+    }
+
+    func release(_ data: Data) {
+        result?.resume(returning: data)
+        result = nil
+    }
+}
+
 @MainActor
 final class QtXMLFilePasteStoreTests: XCTestCase {
     func testPickerLeaseRejectsStaleDeliveryAndPublishesOnlyToTheCapturedStore() async throws {
@@ -74,6 +97,51 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         try await settle(store)
         XCTAssertEqual(writes.last, source.encoded())
         XCTAssertFalse(store.canUndo)
+    }
+
+    func testOldReadCannotPublishIntoReplacementOrEndItsNewOperation() async throws {
+        let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let replacement = Dust3DDocument.emptyArchive()
+        let url = URL(fileURLWithPath: "/unused/fragment.xml")
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded(), fileIdentity: UUID())
+        let originalID = try XCTUnwrap(store.snapshot?.documentIdentity)
+        var writes: [Data] = []
+        store.onDocumentChanged = { writes.append($0) }
+
+        let oldReader = HeldQtXMLReader()
+        store.chooseQtXMLFile()
+        let oldID = try XCTUnwrap(store.qtXMLFilePasteRequestID)
+        let oldOperation = try XCTUnwrap(
+            store.finishQtXMLFileChoice(requestID: oldID, result: .success([url]), read: oldReader.read))
+        await oldReader.waitForRead()
+
+        await store.load(data: replacement, fileIdentity: UUID())
+        let replacementID = try XCTUnwrap(store.snapshot?.documentIdentity)
+        XCTAssertNotEqual(originalID, replacementID)
+        let newReader = HeldQtXMLReader()
+        store.chooseQtXMLFile()
+        let newID = try XCTUnwrap(store.qtXMLFilePasteRequestID)
+        let newOperation = try XCTUnwrap(
+            store.finishQtXMLFileChoice(requestID: newID, result: .success([url]), read: newReader.read))
+        await newReader.waitForRead()
+
+        await oldReader.release(source.modelXML)
+        await oldOperation.value
+        XCTAssertTrue(store.isWorking)
+        XCTAssertEqual(store.snapshot?.documentIdentity, replacementID)
+        XCTAssertEqual(store.snapshot?.document.encoded(), replacement)
+        XCTAssertNil(store.errorMessage)
+        XCTAssertFalse(store.canUndo)
+        XCTAssertTrue(writes.isEmpty)
+
+        await newReader.release(Data("<canvas/>".utf8))
+        await newOperation.value
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.document.encoded(), replacement)
+        XCTAssertTrue(writes.isEmpty)
     }
 
     func testReaderRejectsOversizedAndNonRegularFiles() async throws {

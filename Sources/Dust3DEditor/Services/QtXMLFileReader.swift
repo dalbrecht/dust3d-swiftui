@@ -16,7 +16,7 @@ actor QtXMLFileReader {
 
     private static let maximumBytes = 16 * 1024 * 1024
 
-    func read(_ url: URL) throws -> Data {
+    func read(_ url: URL) async throws -> Data {
         try Task.checkCancellation()
         guard url.isFileURL, url.pathExtension.lowercased() == "xml" else { throw Failure.invalidFile }
         let scoped = url.startAccessingSecurityScopedResource()

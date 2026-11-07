@@ -1735,21 +1735,27 @@ final class EditorStore {
         qtXMLFilePasteRequest = nil
     }
 
-    func finishQtXMLFileChoice(requestID: UUID, result: Result<[URL], any Error>) {
-        guard let request = qtXMLFilePasteRequest, request.id == requestID else { return }
+    @discardableResult
+    func finishQtXMLFileChoice(
+        requestID: UUID, result: Result<[URL], any Error>,
+        read: @escaping @Sendable (URL) async throws -> Data = { try await QtXMLFileReader().read($0) }
+    ) -> Task<Void, Never>? {
+        guard let request = qtXMLFilePasteRequest, request.id == requestID else { return nil }
         qtXMLFilePasteRequest = nil
         guard let source = acceptedQtXMLFileSource, request.fileIdentity == source.fileIdentity,
             request.target.isCurrent(in: source.snapshot)
-        else { return }
+        else { return nil }
         do {
             let urls = try result.get()
             guard urls.count == 1, let url = urls.first else { throw QtXMLFileReader.Failure.invalidFile }
             perform(acceptCommittedCancellation: true) { session in
-                let data = try await QtXMLFileReader().read(url)
+                let data = try await read(url)
                 return try await session.pasteQtXMLFile(data, target: request.target)
             }
+            return operation
         } catch {
             if (error as? CocoaError)?.code != .userCancelled { errorMessage = Self.message(error) }
+            return nil
         }
     }
 
