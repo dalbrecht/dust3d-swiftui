@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Confirm a component drop into a group before changing the hierarchy.
+
 - Wrap long component breadcrumb labels in narrow sidebars.
 
 - Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.

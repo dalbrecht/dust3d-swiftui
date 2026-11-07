@@ -626,7 +626,9 @@ public actor EditorSession {
         at placement: ComponentDropPlacement, target: ComponentPlacementTarget
     ) throws -> EditorSnapshot {
         try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleComponentMove }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw EditorError.staleComponentMove
+            }
             try state.apply([.placeComponents(ids: target.ids, placement: placement)])
             try Task.checkCancellation()
         }

@@ -91,6 +91,8 @@ final class ComponentOrderStoreTests: XCTestCase {
         try await settle(store)
         let block = try XCTUnwrap(store.beginComponentDrag(grabbedID: "a"))
         XCTAssertTrue(store.dropComponents(token: block, in: .component("group")))
+        let proposal = try XCTUnwrap(store.pendingComponentGroupDrop)
+        XCTAssertTrue(store.confirmComponentGroupDrop(proposal.id))
         try await settle(store)
         let result = try XCTUnwrap(store.snapshot)
         XCTAssertEqual(result.componentTree.rows.map(\.id), ["group", "x", "a", "b"])
