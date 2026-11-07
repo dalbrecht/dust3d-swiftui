@@ -7,14 +7,14 @@ struct ReferenceImageControls: View {
     let store: EditorStore
     @State private var isImporting = false
     @State private var isDropTargeted = false
-    @State private var composition: ReferenceCompositionPresentation?
+    @Binding var composition: ReferenceCompositionPresentation?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Menu("Reference Image", systemImage: "photo") {
                     Button("Compose Reference Image…") {
-                        guard let target = store.referenceCompositionTarget else { return }
+                        guard composition == nil, let target = store.referenceCompositionTarget else { return }
                         composition = ReferenceCompositionPresentation(target: target)
                     }
                     .disabled(store.referenceCompositionTarget == nil)
@@ -79,10 +79,6 @@ struct ReferenceImageControls: View {
         .help(
             "PNG, JPEG, BMP, GIF or TIFF. Uses the first frame. Maximum 32 MiB, 8192 pixels per side and 16 megapixels. Display settings stay in this window."
         )
-        .sheet(item: $composition) { presentation in
-            ReferenceCompositionSheet(
-                store: store, target: presentation.target, droppedSources: presentation.droppedSources)
-        }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.png, .jpeg, .bmp, .gif, .tiff]) { result in
             switch result {
             case .success(let url): store.importReferenceImage(from: url)
