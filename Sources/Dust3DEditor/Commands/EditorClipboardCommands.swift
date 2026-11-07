@@ -7,6 +7,8 @@ struct EditorClipboardCommands: Commands {
     @FocusedValue(\.editorStore) private var store
     @FocusedValue(\.editorTextEditing) private var isEditingText
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
+    @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
+    @FocusedValue(\.editorComponentSidebarSelectAll) private var sidebarSelectAll
 
     private var textView: NSTextView? {
         _ = isEditingText
@@ -33,14 +35,40 @@ struct EditorClipboardCommands: Commands {
                 NodeClipboardPasteButton(store: store).keyboardShortcut("v")
             }
             Divider()
-            Button("Select All") { route(#selector(NSText.selectAll(_:))) { store?.selectAll() } }
+            Button("Select All", action: selectAll)
                 .keyboardShortcut("a")
-                .disabled(
-                    textView == nil
-                        && (isAnimationFocused == true || store?.snapshot == nil || store?.isWorking != false))
-
+                .disabled(!canSelectAll)
         }
     }
+
+    private var selectAllDestination: EditorCommandScope.SelectAllDestination {
+        EditorCommandScope.selectAllDestination(
+            nativeTextFocus: textView != nil, componentSidebarFocus: isComponentSidebarFocused == true,
+            animationFocus: isAnimationFocused == true)
+    }
+
+    private var canSelectAll: Bool {
+        switch selectAllDestination {
+        case .text: true
+        case .components:
+            sidebarSelectAll.map { store?.canSelectAllVisibleComponents($0) == true } ?? false
+        case .graph: store?.snapshot != nil && store?.isWorking == false
+        case .unavailable: false
+        }
+    }
+
+    private func selectAll() {
+        guard canSelectAll else { return }
+        switch selectAllDestination {
+        case .text:
+            if let textView { NSApp.sendAction(#selector(NSText.selectAll(_:)), to: textView, from: nil) }
+        case .components:
+            if let sidebarSelectAll { store?.selectAllVisibleComponents(sidebarSelectAll) }
+        case .graph: store?.selectAll()
+        case .unavailable: break
+        }
+    }
+
     private func route(_ action: Selector, nodes: () -> Void) {
         if let textView {
             NSApp.sendAction(action, to: textView, from: nil)

@@ -151,7 +151,20 @@ final class EditorStore {
     ) {
         guard ownsCanvasProfile(lease), lease == nil || projection.plane == plane else { return }
         canvasGeometryUsesProfileLease = lease != nil
-        if isAddingNodes && (canvasWidth != width || canvasHeight != height) { cancelAddMode() }
+        if isAddingNodes, frozenAddProjection == nil {
+            guard projection.plane == plane, width.isFinite, width > 0, height.isFinite, height > 0,
+                let snapshot
+            else { return }
+            do {
+                try addPlacement.reproject(snapshot: snapshot, projection: projection, canvasHeight: height)
+            } catch {
+                cancelAddMode()
+                errorMessage = Self.message(error)
+                return
+            }
+        } else if isAddingNodes && (canvasWidth != width || canvasHeight != height) {
+            cancelAddMode()
+        }
         updatePrecisionCanvasIdentity(projection: projection, width: width, height: height)
         canvasWidth = width
         setCanvasHeight(height)
@@ -400,7 +413,9 @@ final class EditorStore {
         set {
             guard newValue != plane else { return }
             canvasProfiles.activate(newValue)
-            resetCanvasProfileContext(clearGeometry: canvasGeometryUsesProfileLease)
+            resetCanvasProfileContext(
+                clearGeometry: canvasGeometryUsesProfileLease,
+                transferAdd: canvasProfiles.isDualProfile && !isWorking && addPlacementRequestID == nil)
         }
     }
 
@@ -441,14 +456,19 @@ final class EditorStore {
         canvasProfileMotion = nil
     }
 
-    private func resetCanvasProfileContext(clearGeometry: Bool) {
+    private func resetCanvasProfileContext(clearGeometry: Bool, transferAdd: Bool = false) {
         canvasProfileMotion = nil
         rotationInputContextID = UUID()
         precisionLayoutEpoch = UUID()
         precisionCanvasIdentity = nil
         clearReferenceColorCanvasContext()
         setReferenceColorInteractionActive(false)
-        cancelAddMode()
+        if transferAdd && isAddingNodes {
+            addPlacement.suspendProjectionForProfileChange()
+            addModeID = UUID()
+        } else {
+            cancelAddMode()
+        }
         cancelOriginDrag()
         if clearGeometry {
             canvasWidth = 0
@@ -1037,6 +1057,16 @@ final class EditorStore {
         guard let value = ComponentMeshSmoothingInput.value(text) else { return {} }
         return componentMeshAction(.smoothCutoffDegrees(value), target: target)
     }
+    func canSelectAllVisibleComponents(_ target: ComponentSidebarSelectAllTarget) -> Bool {
+        guard !stopped, !isWorking, let snapshot, !target.ids.isEmpty else { return false }
+        return target.context.isCurrent(in: snapshot)
+    }
+
+    func selectAllVisibleComponents(_ target: ComponentSidebarSelectAllTarget) {
+        guard canSelectAllVisibleComponents(target) else { return }
+        perform(commits: false) { try await $0.selectComponents(target.ids, target: target.context) }
+    }
+
     func selectComponents(_ ids: Set<String>) { perform(commits: false) { try await $0.selectComponents(ids) } }
     func selectOnlyComponent(_ id: String) {
         guard snapshot?.selectedComponentIDs.contains(id) == true else { return }

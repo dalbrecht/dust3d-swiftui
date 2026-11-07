@@ -111,6 +111,8 @@
 
 - Drag component rows before or after siblings, into groups, or to the document root.
 
+- Select all visible component rows with Command-A when the component sidebar has focus (#386).
+
 - Place selected components before or after a sibling from the inspector, with one-step Undo.
 
 - Move selected components to a new parent in one Undo step while preserving hierarchy order.
@@ -331,6 +333,8 @@
 - Add undoable component sibling ordering (Up, Down, Top and Bottom), with boundary availability, lossless archive preservation and mesh regeneration.
 
 - Add an ordered, collapsible component sidebar and name inspector with independent selection, linked-part inspection, undo/redo and lossless saving.
+
+- Keep the current Add chain and radius when switching the editing profile in the Side by Side workspace.
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
 

@@ -366,6 +366,13 @@ public actor EditorSession {
     public func selectComponents(_ ids: Set<String>) throws -> EditorSnapshot {
         try update { try $0.selectComponents(ids) }
     }
+    package func selectComponents(_ ids: Set<String>, target: CanvasAdjustmentTarget) throws -> EditorSnapshot {
+        try update { state in
+            guard target.isCurrent(in: state.snapshot) else { throw ComponentMeshSelectionError.staleTarget }
+            try state.selectComponents(ids)
+        }
+    }
+
     /// Import validated PNG data and assign a fresh image identity to the captured component.
     /// - Parameters: png is platform-validated encoded data; target captures document/revision/selection.
     /// - Returns: One undoable snapshot with the component still selected.

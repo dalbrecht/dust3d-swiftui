@@ -368,6 +368,10 @@ private struct EditorTextEditingKey: FocusedValueKey { typealias Value = Bool }
 
 private struct EditorComponentSidebarFocusKey: FocusedValueKey { typealias Value = Bool }
 
+private struct EditorComponentSidebarSelectAllKey: FocusedValueKey {
+    typealias Value = ComponentSidebarSelectAllTarget
+}
+
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 
 extension FocusedValues {
@@ -384,6 +388,11 @@ extension FocusedValues {
     var editorComponentSidebarFocus: Bool? {
         get { self[EditorComponentSidebarFocusKey.self] }
         set { self[EditorComponentSidebarFocusKey.self] = newValue }
+    }
+
+    var editorComponentSidebarSelectAll: ComponentSidebarSelectAllTarget? {
+        get { self[EditorComponentSidebarSelectAllKey.self] }
+        set { self[EditorComponentSidebarSelectAllKey.self] = newValue }
     }
 
     var editorStore: EditorStore? {
