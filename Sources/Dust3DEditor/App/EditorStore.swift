@@ -1348,6 +1348,19 @@ final class EditorStore {
         }
         return true
     }
+    func canReorderSidebarComponent(_ move: ComponentOrderMove, target: ComponentPlacementTarget) -> Bool {
+        guard canSave, let snapshot, let placement = target.siblingPlacement(for: move, in: snapshot) else {
+            return false
+        }
+        return target.canPlace(at: placement, in: snapshot)
+    }
+
+    @discardableResult
+    func reorderSidebarComponent(_ move: ComponentOrderMove, target: ComponentPlacementTarget) -> Bool {
+        guard let snapshot, let placement = target.siblingPlacement(for: move, in: snapshot) else { return false }
+        return placeComponents(at: placement, target: target)
+    }
+
     func canReorderComponent(_ direction: ComponentOrderMove) -> Bool {
         !isWorking && !stopped && snapshot?.availableComponentOrderMoves.contains(direction) == true
     }

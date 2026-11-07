@@ -43,6 +43,11 @@ struct ComponentSidebar: View {
                         if let snapshot = store.snapshot {
                             selectInCanvasButton(snapshot: snapshot, ids: snapshot.selectedComponentIDs)
                         }
+                        if let id = sidebarSnapshot.selectedComponentID,
+                            let target = ComponentPlacementTarget(snapshot: sidebarSnapshot, singleComponentID: id)
+                        {
+                            ComponentSidebarOrderMenu(store: store, target: target)
+                        }
                         ComponentPartRoleMenu(store: store)
                         if let snapshot = store.snapshot {
                             ComponentBatchPartStateMenu(
@@ -167,6 +172,11 @@ struct ComponentSidebar: View {
                             if let snapshot = store.snapshot, snapshot.documentIdentity == documentIdentity,
                                 !ids.isEmpty
                             {
+                                if ids.count == 1, let id = ids.first,
+                                    let target = ComponentPlacementTarget(snapshot: snapshot, singleComponentID: id)
+                                {
+                                    ComponentSidebarOrderMenu(store: store, target: target)
+                                }
                                 selectInCanvasButton(snapshot: snapshot, ids: ids)
                                 ComponentDeletionButton(
                                     store: store,

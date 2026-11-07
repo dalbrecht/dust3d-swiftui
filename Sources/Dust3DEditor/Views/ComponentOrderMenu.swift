@@ -8,7 +8,7 @@ struct ComponentOrderMenu: View {
     var body: some View {
         Menu("Reorder Component") {
             ForEach(ComponentOrderMove.allCases, id: \.self) { direction in
-                Button(title(direction)) { store.reorderComponent(direction) }
+                Button(direction.menuTitle) { store.reorderComponent(direction) }
                     .disabled(!store.canReorderComponent(direction))
             }
         }
@@ -17,8 +17,26 @@ struct ComponentOrderMenu: View {
         .help("Changes order within this parent in one undo step. Component order can affect mesh combination.")
     }
 
-    private func title(_ direction: ComponentOrderMove) -> String {
-        switch direction {
+}
+
+struct ComponentSidebarOrderMenu: View {
+    let store: EditorStore
+    let target: ComponentPlacementTarget
+
+    var body: some View {
+        Menu("Reorder Among Siblings") {
+            ForEach(ComponentOrderMove.allCases, id: \.self) { move in
+                Button(move.menuTitle) { store.reorderSidebarComponent(move, target: target) }
+                    .disabled(!store.canReorderSidebarComponent(move, target: target))
+            }
+        }
+        .disabled(!ComponentOrderMove.allCases.contains { store.canReorderSidebarComponent($0, target: target) })
+    }
+}
+
+extension ComponentOrderMove {
+    fileprivate var menuTitle: String {
+        switch self {
         case .up: "Move Up"
         case .down: "Move Down"
         case .first: "Move to Top"
