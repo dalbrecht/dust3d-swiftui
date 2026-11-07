@@ -7,6 +7,7 @@ struct NodeCanvas: View {
     var profileLease: UUID? = nil
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var previewCamera: EditorPreviewCameraActions? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
     @State private var nodeDrag = NodeDragLifecycle()
@@ -33,6 +34,7 @@ struct NodeCanvas: View {
             let graphActions = GraphSelectionMenuActions(store: store, admitsInput: admitsInput)
             let cancelAddInput = store.canvasAddCancellationAction()
             let handlePrecisionKey = store.canvasPrecisionKeyHandler()
+            let zoomPreview = store.canvasPreviewWheelAction(lease: profileLease, camera: previewCamera)
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = { admitsInput() && handlePrecisionKey($0) }
             let precisionActions = CanvasPrecisionActions(store: store)
             let quarterTurns = OrthogonalQuarterTurnActions(store: store, profileLease: profileLease)
@@ -81,6 +83,12 @@ struct NodeCanvas: View {
                         guard admitsInput(), store.addModeID == addModeID else { return false }
                         return store.handleCanvasWheel(input)
                     },
+                    unhandledWheel: store.canvasWheelZoomEnabled
+                        ? { input in
+                            guard admitsInput(), nodeDrag.preview == nil, shiftedDrag == nil, marquee == nil
+                            else { return false }
+                            return zoomPreview(input)
+                        } : nil,
                     radiusKey: { admitsInput() && adjustRadius($0) },
                     doubleClick: { point in
                         guard admitsInput(), store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin,

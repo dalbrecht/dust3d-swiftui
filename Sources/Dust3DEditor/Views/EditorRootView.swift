@@ -129,7 +129,7 @@ struct EditorRootView: View {
                         EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
-                        CanvasProfilePanes(store: store)
+                        CanvasProfilePanes(store: store, previewCamera: previewCameraActions)
                             .overlay(alignment: .bottom) { getStartedCard }
                     }
                     .frame(minWidth: 300)
@@ -360,13 +360,15 @@ struct EditorRootView: View {
                     restPreview?.presentationRevision == presentation && store?.canMovePreviewCamera == true
                 },
                 move: { [weak store] in store?.movePreviewCamera($0) },
-                fit: { [weak store] in store?.fitPreviewCamera() })
+                fit: { [weak store] in store?.fitPreviewCamera() },
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
         #else
             return EditorPreviewCameraActions(
                 canMove: store.canMovePreviewCamera,
                 isCurrent: { [weak store] in store?.canMovePreviewCamera == true },
                 move: { [weak store] in store?.movePreviewCamera($0) },
-                fit: { [weak store] in store?.fitPreviewCamera() })
+                fit: { [weak store] in store?.fitPreviewCamera() },
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
         #endif
     }
 
@@ -471,6 +473,7 @@ struct EditorRootView: View {
                     onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                     onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                 ) { store.renderError = $0 }
+                .withCanvasWheelZoom(store.canvasWheelZoom)
                 .accessibilityLabel("3D mesh preview")
                 if store.isUpdatingMaterials {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)

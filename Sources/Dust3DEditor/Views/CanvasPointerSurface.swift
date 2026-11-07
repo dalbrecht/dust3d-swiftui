@@ -37,6 +37,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let rectangle: (CanvasSelectionRectangle?) -> Void
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    var unhandledWheel: ((CanvasWheelInput) -> Bool)? = nil
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
@@ -64,6 +65,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.rectangle = rectangle
         view.hover = hover
         view.wheel = wheel
+        view.unhandledWheel = unhandledWheel
         view.radiusKey = radiusKey
         view.doubleClick = doubleClick
         view.precisionKey = precisionKey
@@ -86,6 +88,7 @@ final class CanvasPointerView: NSView {
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var unhandledWheel: ((CanvasWheelInput) -> Bool)?
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
@@ -271,6 +274,12 @@ final class CanvasPointerView: NSView {
 
     func routeWheel(_ input: CanvasWheelInput) -> Bool { enabled && input.isSupported && wheel(input) }
     override func scrollWheel(with event: NSEvent) {
-        if !routeWheel(CanvasWheelInput(event)) { super.scrollWheel(with: event) }
+        let input = CanvasWheelInput(event)
+        if routeWheel(input) { return }
+        if enabled, input.isSupported, start == nil, let unhandledWheel {
+            hover(point(event))
+            if unhandledWheel(input) { return }
+        }
+        super.scrollWheel(with: event)
     }
 }
