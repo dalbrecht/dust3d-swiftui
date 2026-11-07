@@ -207,6 +207,12 @@ public actor EditorSession {
     {
         try update { try $0.selectWholePart(target, context: context) }
     }
+    package func revealOwningComponent(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext
+    ) throws -> EditorSnapshot {
+        try update { try $0.revealOwningComponent(target, context: context) }
+    }
+
     /// Select only the captured existing part's nodes without edge inference, history or reveal side effects.
     /// - Throws: Missing-part or stale-document errors without changing the current selection.
     public func selectPartNodes(_ partID: String, context: PartGraphSelectionContext? = nil) throws -> EditorSnapshot {
@@ -306,6 +312,20 @@ public actor EditorSession {
         }
     }
 
+    /// Restore just one saved deformation scale on the originally inspected Model part.
+    package func resetPartDeformationScale(
+        _ property: PartDeformationProperty, partID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), let part = snapshot.inspectedPart, part.target == .model,
+                part.id.utf8.elementsEqual(partID.utf8)
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([.setPartDeformationScale(id: partID, property: property, value: 1)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Set an absolute cross-section rotation on the originally inspected Model part.
     package func setPartCutRotationPreset(
         _ preset: PartCutRotationPreset, partID: String, target: CanvasAdjustmentTarget
@@ -380,6 +400,20 @@ public actor EditorSession {
             try state.editComponentWrapBinding(choice, target: target)
         }
         return result.snapshot
+    }
+
+    package func setGraphPartShape(
+        _ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard GraphPartShapeTarget.properties.contains(property) else {
+                throw GraphPartShapeError.unsupportedModifier
+            }
+            guard target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw GraphPartShapeError.staleTarget
+            }
+            try state.apply([.setPartModifier(id: part.id, property: property, value: value)])
+        }.snapshot
     }
 
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.

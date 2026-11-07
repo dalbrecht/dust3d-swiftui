@@ -58,6 +58,30 @@ final class EditorStore {
             self?.selectWholePart(target, context: context)
         }
     }
+    func revealOwningComponentAction(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil
+    ) -> (@MainActor () -> Void)? {
+        guard let context, canRevealOwningComponent(target, context: context, profileLease: profileLease) else {
+            return nil
+        }
+        let modeID = addModeID
+        return { [weak self] in
+            guard let self, self.addModeID == modeID,
+                self.canRevealOwningComponent(target, context: context, profileLease: profileLease)
+            else { return }
+            self.perform(commits: false) { try await $0.revealOwningComponent(target, context: context) }
+        }
+    }
+
+    private func canRevealOwningComponent(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext, profileLease: UUID?
+    ) -> Bool {
+        guard ownsCanvasProfile(profileLease), !isWorking, !isAddingNodes, !isMovingOrigin, let snapshot,
+            context.isCurrent(in: snapshot)
+        else { return false }
+        return snapshot.canRevealOwningComponent(target)
+    }
+
     func selectComponentGraph(_ target: ComponentGraphSelectionTarget) {
         guard !stopped, !isWorking, snapshot?.canSelectComponentGraph(target) == true else { return }
         cancelAddMode()
@@ -494,6 +518,32 @@ final class EditorStore {
         guard enabled != canvasProfiles.isDualProfile else { return }
         canvasProfiles.setDualProfile(enabled)
         resetCanvasProfileContext(clearGeometry: true)
+    }
+
+    var canSwitchSelectedCanvasProfile: Bool {
+        guard canvasProfiles.isDualProfile, !stopped, !isWorking, !isAddingNodes, !isMovingOrigin, let snapshot else {
+            return false
+        }
+        return !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
+    }
+
+    func switchSelectedCanvasProfile(expectedLease: UUID? = nil) -> UUID? {
+        guard canSwitchSelectedCanvasProfile, ownsCanvasProfile(expectedLease) else { return nil }
+        plane = plane == .front ? .side : .front
+        return canvasProfiles.lease
+    }
+
+    func activateCanvasCompanion(plane: EditingPlane, expectedLease: UUID) -> UUID? {
+        guard canvasProfiles.isDualProfile, plane != self.plane, ownsCanvasProfile(expectedLease) else { return nil }
+        self.plane = plane
+        canvasProfiles.markActivationClick()
+        return canvasProfiles.lease
+    }
+
+    func admitsCanvasPrimaryPress(clickCount: Int, lease: UUID?) -> Bool {
+        guard ownsCanvasProfile(lease) else { return false }
+        guard let lease else { return true }
+        return canvasProfiles.admitsPrimaryPress(clickCount: clickCount, lease: lease)
     }
 
     func ownsCanvasProfile(_ lease: UUID?) -> Bool {
@@ -1433,12 +1483,38 @@ final class EditorStore {
         }
         perform { try await $0.apply([.setPartDeformationScale(id: id, property: property, value: scale)]) }
     }
+    func partDeformationResetAction(
+        _ property: PartDeformationProperty, partID: String
+    ) -> (@MainActor () -> Void)? {
+        guard let snapshot, let part = snapshot.inspectedPart, part.target == .model,
+            part.id.utf8.elementsEqual(partID.utf8)
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        return { [weak self] in
+            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+                target.isCurrent(in: current)
+            else { return }
+            self.perform { try await $0.resetPartDeformationScale(property, partID: partID, target: target) }
+        }
+    }
+
     func setPartDeformationUnified(_ id: String, value: Bool) {
         perform { try await $0.apply([.setPartDeformationUnified(id: id, value: value)]) }
     }
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
+    func canEditGraphPartShape(_ target: GraphPartShapeTarget) -> Bool {
+        !isWorking && acceptedAnimationSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func setGraphPartShape(_ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget) {
+        guard canEditGraphPartShape(target) else { return }
+        perform(acceptCommittedCancellation: true) {
+            try await $0.setGraphPartShape(property, value: value, target: target)
+        }
+    }
+
     func canAssignBoneName(_ name: String, target: EdgeBoneAssignmentTarget) -> Bool {
         guard !stopped, !isWorking, let snapshot else { return false }
         return target.isCurrent(in: snapshot) && target.hasChanges(name: name)
