@@ -48,25 +48,28 @@ struct ComponentSidebar: View {
                             ComponentBatchPartStateMenu(
                                 store: store, target: ComponentMeshSelectionTarget(snapshot: snapshot))
                         }
-                        if let groupID = sidebarSnapshot.selectedComponentID,
-                            sidebarSnapshot.addPlacementGroup(groupID) != nil
-                        {
+                        Group {
+                            if let groupID = sidebarSnapshot.selectedComponentID,
+                                sidebarSnapshot.addPlacementGroup(groupID) != nil
+                            {
+                                Button(
+                                    "Set Working Group",
+                                    action: store.workingGroupAction(.group(groupID), snapshot: sidebarSnapshot)
+                                )
+                                .disabled(store.addPlacementDestination == .group(groupID))
+                            }
                             Button(
-                                "Set Working Group",
-                                action: store.workingGroupAction(.group(groupID), snapshot: sidebarSnapshot)
+                                "Use Document Root",
+                                action: store.workingGroupAction(.documentRoot, snapshot: sidebarSnapshot)
                             )
-                            .disabled(store.addPlacementDestination == .group(groupID))
+                            .disabled(store.addPlacementDestination == .documentRoot)
+                            Button(
+                                "Use Selected Group for Pointer Add",
+                                action: store.workingGroupAction(.selection, snapshot: sidebarSnapshot)
+                            )
+                            .disabled(store.addPlacementDestination == .selection)
                         }
-                        Button(
-                            "Use Document Root",
-                            action: store.workingGroupAction(.documentRoot, snapshot: sidebarSnapshot)
-                        )
-                        .disabled(store.addPlacementDestination == .documentRoot)
-                        Button(
-                            "Use Selected Group Automatically",
-                            action: store.workingGroupAction(.selection, snapshot: sidebarSnapshot)
-                        )
-                        .disabled(store.addPlacementDestination == .selection)
+                        .disabled(!store.canChooseAddPlacementDestination)
                         Divider()
                         Button("Group Selected Components") { store.groupSelectedComponents() }
                             .disabled(!store.canGroupComponents)
@@ -100,7 +103,7 @@ struct ComponentSidebar: View {
                 Label("Add destination: \(store.addPlacementDestinationTitle)", systemImage: "folder.badge.plus")
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
                     .help(
-                        "An explicit working group receives new parts and pasted components. Extending a chain keeps its part."
+                        "An explicit working group receives new parts and pasted components. Automatic placement uses the selected group for canvas Add and the document root for menu Add and Paste. Extending a chain keeps its part."
                     )
                 if let count = store.snapshot?.selectedComponentIDs.count, count > 1 {
                     Text("\(count) components selected")

@@ -139,6 +139,72 @@ final class WorkingGroupStoreTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
     }
 
+    func testFailedReloadDisablesAllPlacementAgainstRetainedSnapshot() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data("<canvas><components><component id='group'/></components></canvas>".utf8))
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        let original = try XCTUnwrap(store.snapshot)
+        store.workingGroupAction(.group("group"), snapshot: original)()
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 500, height: 300)
+        store.setCanvasContext(projection: projection, width: 500, height: 300)
+        let retainedBegin = store.addPlacementToggleAction()
+        let retainedToolbar = store.addNodeAction(newPart: true)
+        var writes = 0
+        store.onDocumentChanged = { _ in writes += 1 }
+
+        await store.load(data: Data("invalid archive".utf8), fileIdentity: UUID())
+        XCTAssertTrue(store.canSave)
+        XCTAssertFalse(store.canChooseAddPlacementDestination)
+        XCTAssertFalse(store.canBeginAddMode)
+        XCTAssertFalse(store.canAddNode)
+        XCTAssertFalse(store.canAddNewPart)
+        retainedBegin(true)
+        store.beginAddMode()
+        XCTAssertFalse(store.isAddingNodes)
+        retainedToolbar()
+        store.addNode(newPart: true)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertEqual(writes, 0)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testRetainedToolbarCannotFallBackAfterGroupDeletionOrReplacement() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data("<canvas><components><component id='group'/></components></canvas>".utf8))
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        store.selectComponent("group")
+        try await settle(store)
+        let selected = try XCTUnwrap(store.snapshot)
+        store.workingGroupAction(.group("group"), snapshot: selected)()
+        let retained = store.addNodeAction(newPart: true)
+        store.componentDeletionAction(ComponentDeletionTarget(snapshot: selected))()
+        try await settle(store)
+        retained()
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.nodes.isEmpty == true)
+        store.undo()
+        try await settle(store)
+        retained()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+
+        await store.load(data: source.encoded())
+        store.selectComponent("group")
+        try await settle(store)
+        retained()
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.nodes.isEmpty == true)
+        store.addNodeAction(newPart: true)()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        XCTAssertNil(store.snapshot?.componentTree.rows.first { $0.component.partID != nil }?.component.parentID)
+    }
+
     func testRetainedClipboardDeliveryCannotAcquireChangedWorkingGroupOrAnotherWindow() async throws {
         let original = try Dust3DDocument(
             snapshotXML: Data("<canvas><components><component id='group'/></components></canvas>".utf8))

@@ -64,6 +64,30 @@ final class WrappingClipboardSessionTests: XCTestCase {
         }
     }
 
+    @MainActor func testCapturedPasteRejectsRetainedSourceAfterFailedActorOpen() async throws {
+        let original = try source()
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let selected = try await session.select(["n", "m"])
+        let payload = try await session.copyPayload(identifier: "retained")
+        let target = CanvasAdjustmentTarget(snapshot: selected)
+        do {
+            _ = try await session.open(data: Data("bad archive".utf8))
+            XCTFail("Malformed replacement opened")
+        } catch {
+            XCTAssertEqual(error as? DocumentError, .invalidArchive)
+        }
+        do {
+            _ = try await session.paste(data: payload, parentID: "garment", target: target)
+            XCTFail("A failed replacement kept its prior paste admission")
+        } catch {
+            XCTAssertEqual(error as? WorkingGroupPasteError, .staleTarget)
+        }
+        let retained = try await session.select(["n", "m"])
+        XCTAssertEqual(retained.document.encoded(), original.encoded())
+        XCTAssertFalse(retained.canUndo)
+    }
+
     @MainActor func testNativeAndQtActorPastesRemapCopiedBodyAndPreserveSelectionWithOneUndo() async throws {
         let original = try source()
         for sameDocument in [true, false] {

@@ -4,6 +4,7 @@ import Foundation
 /// Serializes XML parsing and commands away from the UI actor. A window owns one session.
 public actor EditorSession {
     private var state: EditorState?
+    private var hasAcceptedSource = false
     private var selectedAnimationID: String?
     private var lastPasteIdentifier: String?
     private var pasteOrdinal = 0
@@ -13,9 +14,11 @@ public actor EditorSession {
 
     public func open(data: Data) throws -> EditorSnapshot {
         try Task.checkCancellation()
+        hasAcceptedSource = false
         let next = try EditorState(document: Dust3DDocument(data: data))
         try Task.checkCancellation()
         state = next
+        hasAcceptedSource = true
         selectedAnimationID = nil
         lastPasteIdentifier = nil
         pasteOrdinal = 0
@@ -748,7 +751,9 @@ public actor EditorSession {
         _ commands: [DocumentCommand], selecting id: String?, target: CanvasAdjustmentTarget?
     ) throws -> EditorSnapshot {
         try updateWithResult(checkCancellationBeforePublication: target != nil) { state in
-            if let target, !target.isCurrent(in: state.snapshot) { throw EditorError.staleCanvasAdjustment }
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw EditorError.staleCanvasAdjustment
+            }
             let prepared = try GraphCommandPreparation.normalizingDeletions(commands, document: state.snapshot.document)
             try state.apply(prepared, selecting: id)
         }.snapshot
@@ -849,7 +854,9 @@ public actor EditorSession {
     private func validatePasteSource(parentID: String?, target: CanvasAdjustmentTarget?) throws {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
-        if let target, !target.isCurrent(in: state.snapshot) { throw WorkingGroupPasteError.staleTarget }
+        if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+            throw WorkingGroupPasteError.staleTarget
+        }
         if let parentID, state.snapshot.addPlacementGroup(parentID) == nil {
             throw DocumentError.invalidComponentStructure
         }
@@ -894,6 +901,7 @@ public actor EditorSession {
     public func placeAddNode(_ request: AddPlacementRequest) throws -> AddPlacementReceipt {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
+        guard hasAcceptedSource else { throw EditorError.staleAddPlacement }
         let result = try next.placeAddNode(
             request,
             identities: .init(

@@ -142,10 +142,10 @@ final class EditorStore {
     var frozenAddProjection: CanvasProjection? { addPlacement.isActive ? addPlacement.projection : nil }
     var addAnchorPosition: NodePosition? { snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.value.position }
     var canBeginAddMode: Bool {
-        !isWorking && !stopped && snapshot != nil && canvasWidth > 0 && canvasHeight > 0
+        acceptedAddPlacementSource != nil && canvasWidth > 0 && canvasHeight > 0
     }
     var canPlaceAddGhost: Bool {
-        guard isAddingNodes, !isWorking, addGhostPoint != nil else { return false }
+        guard isAddingNodes, acceptedAddPlacementSource != nil, addGhostPoint != nil else { return false }
         return addPlacement.anchorID == nil
             || snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.isEditable == true
     }
@@ -177,27 +177,58 @@ final class EditorStore {
     private(set) var addPlacementDestination = AddPlacementDestination.selection
     private var workingGroupRevision = UUID()
 
+    private var acceptedAddPlacementSource: EditorSnapshot? {
+        guard canSave, case .success(let accepted) = recoveryLoadResult, let snapshot,
+            accepted.documentIdentity == snapshot.documentIdentity
+        else { return nil }
+        return snapshot
+    }
+
+    var canChooseAddPlacementDestination: Bool { acceptedAddPlacementSource != nil }
+
     var addPlacementDestinationTitle: String {
         switch addPlacementDestination {
-        case .selection: "Selected group or document root"
+        case .selection: "Selected group or root for pointer Add"
         case .documentRoot: "Document root"
         case .group(let id): snapshot?.addPlacementGroup(id)?.title ?? "Unavailable group"
+        }
+    }
+
+    private func capturedAddPlacementAction(
+        snapshot: EditorSnapshot?,
+        perform action: @escaping @MainActor (EditorStore, EditorSnapshot) -> Void
+    ) -> @MainActor () -> Void {
+        guard let snapshot else { return {} }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let revision = workingGroupRevision
+        return { [weak self] in
+            guard let self, self.workingGroupRevision == revision,
+                let current = self.acceptedAddPlacementSource, target.isCurrent(in: current)
+            else { return }
+            action(self, current)
         }
     }
 
     func workingGroupAction(
         _ destination: AddPlacementDestination, snapshot: EditorSnapshot
     ) -> @MainActor () -> Void {
-        let target = CanvasAdjustmentTarget(snapshot: snapshot)
-        let revision = workingGroupRevision
-        return { [weak self] in
-            guard let self, self.canSave, self.workingGroupRevision == revision,
-                let current = self.snapshot, target.isCurrent(in: current),
-                case .success(let accepted) = self.recoveryLoadResult,
-                accepted.documentIdentity == current.documentIdentity
-            else { return }
+        capturedAddPlacementAction(snapshot: snapshot) { store, current in
             if case .group(let id) = destination, current.addPlacementGroup(id) == nil { return }
-            self.changeAddPlacementDestination(destination)
+            store.changeAddPlacementDestination(destination)
+        }
+    }
+
+    func addPlacementToggleAction() -> @MainActor (Bool) -> Void {
+        let begin = capturedAddPlacementAction(snapshot: acceptedAddPlacementSource) { store, _ in
+            store.beginAddMode()
+        }
+        let modeID = addModeID
+        return { [weak self] active in
+            if active {
+                begin()
+            } else if let self, self.addModeID == modeID {
+                self.cancelAddMode()
+            }
         }
     }
 
@@ -209,7 +240,7 @@ final class EditorStore {
     }
 
     func beginAddMode() {
-        guard canBeginAddMode, let snapshot else { return }
+        guard canBeginAddMode, let snapshot = acceptedAddPlacementSource else { return }
         cancelReferenceColorCommit()
         let currentCanvasProjection = CanvasProjection(
             bounds: bounds, plane: plane, width: canvasWidth, height: canvasHeight)
@@ -249,7 +280,9 @@ final class EditorStore {
         do { try addPlacement.updatePointer(point) } catch { errorMessage = Self.message(error) }
     }
     func placeAddNode(at point: CanvasPoint, modeID: UUID) {
-        guard modeID == addModeID, canPlaceAddGhost, let snapshot, let projection = frozenAddProjection else { return }
+        guard modeID == addModeID, canPlaceAddGhost, let snapshot = acceptedAddPlacementSource,
+            let projection = frozenAddProjection
+        else { return }
         do {
             try addPlacement.updatePointer(point)
             let candidate = snapshot.nodes.last(where: {
@@ -1827,10 +1860,17 @@ final class EditorStore {
         perform { try await $0.edit(id: id, position: position, radius: radius) }
     }
 
-    var canAddNode: Bool { !isWorking && snapshot?.canAddNode == true }
+    var canAddNode: Bool { acceptedAddPlacementSource?.canAddNode == true }
+    var canAddNewPart: Bool { acceptedAddPlacementSource != nil }
+
+    func addNodeAction(newPart: Bool = false) -> @MainActor () -> Void {
+        capturedAddPlacementAction(snapshot: acceptedAddPlacementSource) { store, _ in
+            store.addNode(newPart: newPart)
+        }
+    }
 
     func addNode(newPart: Bool = false) {
-        guard canSave, let snapshot, newPart || canAddNode else { return }
+        guard let snapshot = acceptedAddPlacementSource, newPart || snapshot.canAddNode else { return }
         let selected = newPart ? nil : snapshot.selectedNode
         let nodeID = Self.identifier()
         let partID = selected?.partID ?? Self.identifier()
@@ -1841,6 +1881,7 @@ final class EditorStore {
                 id: nodeID, partID: partID, componentID: componentID,
                 position: position, radius: selected?.value.radius ?? 0.1)
         ]
+        // Automatic group placement belongs to pointer Add. The Nodes menu defaults to the root.
         if let selected, selected.partID != nil {
             commands.append(.joinNodes(id: Self.identifier(), from: selected.id, to: nodeID))
         } else if let componentID, case .group(let parentID) = addPlacementDestination {
