@@ -39,6 +39,14 @@ struct NodeInspector: View {
                 }
             }
             if let snapshot = store.snapshot {
+                let roleTarget = GraphPartRoleTarget(snapshot: snapshot)
+                if let part = roleTarget.part {
+                    DisclosureGroup("Owning Part Role") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartTargetControls(store: store, part: part, graphTarget: roleTarget)
+                            .disabled(!store.canEditGraphPartRole(roleTarget))
+                    }
+                }
                 let target = GraphPartShapeTarget(snapshot: snapshot)
                 if let part = target.part {
                     DisclosureGroup("Owning Part Shape") {

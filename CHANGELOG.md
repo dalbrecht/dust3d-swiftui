@@ -4,6 +4,8 @@
 
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
+- Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
+
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.

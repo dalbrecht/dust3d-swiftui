@@ -7,14 +7,8 @@ package struct GraphPartCrossSectionTarget: Sendable {
 
     package init(snapshot: EditorSnapshot) {
         owner = ComponentMeshSelectionTarget(graphSelection: snapshot)
-        guard owner.ids.count == 1, let componentID = owner.ids.first,
-            let partID = snapshot.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(componentID.utf8) })?
-                .component.partID
-        else {
-            part = nil
-            return
-        }
-        part = snapshot.parts.first { $0.target == .model && $0.id.utf8.elementsEqual(partID.utf8) }
+        let linkedPart = owner.soleGraphLinkedPart(in: snapshot)
+        part = linkedPart?.target == .model ? linkedPart : nil
     }
 
     package func isCurrent(in snapshot: EditorSnapshot) -> Bool {
