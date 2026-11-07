@@ -165,10 +165,25 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
         XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
         await store.load(data: original, fileIdentity: identity)
-        await store.load(data: Data("invalid archive".utf8), fileIdentity: UUID())
-        XCTAssertTrue(store.canSave)
+        let retainedIdentity = try XCTUnwrap(store.snapshot?.documentIdentity)
+        let rejectedFileIdentity = UUID()
+        await store.load(data: Data("invalid archive".utf8), fileIdentity: rejectedFileIdentity)
+        let loadError = try XCTUnwrap(store.errorMessage)
+        XCTAssertFalse(store.canSave)
         XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
+        XCTAssertNil(store.applyStartupQtXML(source.modelXML, fileIdentity: rejectedFileIdentity))
+        XCTAssertEqual(store.snapshot?.documentIdentity, retainedIdentity)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertEqual(store.errorMessage, loadError)
         XCTAssertEqual(writes.count, 2)
+
+        await store.load(data: original, fileIdentity: rejectedFileIdentity)
+        XCTAssertTrue(store.canSave)
+        let retried = try XCTUnwrap(store.applyStartupQtXML(source.modelXML, fileIdentity: rejectedFileIdentity))
+        await retried.value
+        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        XCTAssertTrue(store.canUndo)
+        XCTAssertEqual(writes.count, 3)
     }
 
     func testReaderRejectsOversizedAndNonRegularFiles() async throws {
