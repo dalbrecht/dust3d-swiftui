@@ -64,17 +64,27 @@ struct CanvasPrecisionPanel: View {
 
 struct CanvasPrecisionMenu: View {
     let actions: CanvasPrecisionActions
-    init(store: EditorStore?) { actions = CanvasPrecisionActions(store: store) }
-    init(actions: CanvasPrecisionActions) { self.actions = actions }
+    let contextual: Bool
+    init(store: EditorStore?, contextual: Bool = false) {
+        actions = CanvasPrecisionActions(store: store)
+        self.contextual = contextual
+    }
+    init(actions: CanvasPrecisionActions, contextual: Bool = false) {
+        self.actions = actions
+        self.contextual = contextual
+    }
     var body: some View {
-        Menu("Nudge and Spacing") {
-            ForEach(actions.entries, id: \.action) { entry in
-                Button(entry.action.label, action: entry.invoke).disabled(!entry.enabled)
+        let entries = contextual ? actions.entries.filter(\.enabled) : actions.entries
+        if !contextual || !entries.isEmpty {
+            Menu("Nudge and Spacing") {
+                ForEach(entries, id: \.action) { entry in
+                    Button(entry.action.label, action: entry.invoke).disabled(!entry.enabled)
+                }
             }
+            .disabled(entries.allSatisfy { !$0.enabled })
+            .help(
+                "Arrow and bracket keys apply only while a canvas input view has focus. These menu commands can also be chosen directly."
+            )
         }
-        .disabled(actions.entries.allSatisfy { !$0.enabled })
-        .help(
-            "Arrow and bracket keys apply only while a canvas input view has focus. These menu commands can also be chosen directly."
-        )
     }
 }

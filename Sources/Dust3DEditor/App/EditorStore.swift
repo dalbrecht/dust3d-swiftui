@@ -1661,6 +1661,31 @@ final class EditorStore {
         }
     }
 
+    func canPerformGraphSelectionAction(_ target: GraphSelectionActionTarget) -> Bool {
+        guard !stopped, !isWorking, !isAddingNodes, !isMovingOrigin, !referenceColorInteractionActive,
+            let snapshot
+        else { return false }
+        return target.isAvailable && target.isCurrent(in: snapshot)
+    }
+
+    func graphSelectionAction(_ target: GraphSelectionActionTarget) -> @MainActor () -> Void {
+        guard canPerformGraphSelectionAction(target) else { return {} }
+        let modeID = addModeID
+        return { [weak self] in
+            guard let self, self.addModeID == modeID, self.canPerformGraphSelectionAction(target) else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.performGraphSelectionAction(target: target) }
+        }
+    }
+
+    /// A replaced pointer surface cannot cancel a later Add activation.
+    func canvasAddCancellationAction() -> @MainActor () -> Void {
+        let modeID = addModeID
+        return { [weak self] in
+            guard let self, !self.stopped, self.isAddingNodes, self.addModeID == modeID else { return }
+            self.cancelAddMode()
+        }
+    }
+
     func canPerformCanvasPartIsolation(_ target: CanvasPartIsolationTarget?) -> Bool {
         guard !stopped, !isWorking, !isAddingNodes, !isMovingOrigin, !referenceColorInteractionActive,
             let target, let snapshot

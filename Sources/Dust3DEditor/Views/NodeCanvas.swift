@@ -20,6 +20,8 @@ struct NodeCanvas: View {
             let referenceCanvas = ReferenceColorCanvasIdentity(
                 projection: projection, width: geometry.size.width, height: geometry.size.height)
             let colorizeActions = GraphColorizeActions(store: store)
+            let graphActions = GraphSelectionMenuActions(store: store)
+            let cancelAddInput = store.canvasAddCancellationAction()
             let precisionKey = store.canvasPrecisionKeyHandler()
             let precisionActions = CanvasPrecisionActions(store: store)
             let nodes = store.snapshot?.nodes ?? []
@@ -73,7 +75,7 @@ struct NodeCanvas: View {
                     },
                     precisionKey: precisionKey, isAddingNodes: store.isAddingNodes,
                     addPress: { store.placeAddNode(at: $0, modeID: addModeID) },
-                    cancelInput: { if store.addModeID == addModeID { store.cancelAddMode() } }
+                    cancelInput: cancelAddInput
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"
@@ -133,7 +135,7 @@ struct NodeCanvas: View {
                         enabled: store.canPickGraph && !store.isMovingOrigin && !store.isAddingNodes,
                         canDrag: !store.isWorking && node.isEditable,
                         canSelectWholePart: store.canPickGraph && node.partID != nil,
-                        colorizeActions: colorizeActions, precisionKey: precisionKey,
+                        colorizeActions: colorizeActions, graphActions: graphActions, precisionKey: precisionKey,
                         precisionActions: precisionActions,
                         doubleClick: {
                             guard store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin else {
@@ -263,8 +265,9 @@ struct NodeCanvas: View {
                 marquee = nil
             }
             .contextMenu {
-                GraphColorizeMenu(actions: colorizeActions)
-                CanvasPrecisionMenu(actions: precisionActions)
+                GraphSelectionMenu(actions: graphActions)
+                GraphColorizeMenu(actions: colorizeActions, contextual: true)
+                CanvasPrecisionMenu(actions: precisionActions, contextual: true)
             }
             .coordinateSpace(name: "node-canvas")
             .clipped()
@@ -338,6 +341,7 @@ private struct NodeHandle: View {
     let canDrag: Bool
     let canSelectWholePart: Bool
     let colorizeActions: GraphColorizeActions
+    let graphActions: GraphSelectionMenuActions
     let precisionKey: (CanvasPrecisionKeyInput) -> Bool
     let precisionActions: CanvasPrecisionActions
     let doubleClick: () -> Void
@@ -380,9 +384,10 @@ private struct NodeHandle: View {
         .accessibilityAction { select() }
         .accessibilityAction(named: Text("Select Whole Part")) { if canSelectWholePart { doubleClick() } }
         .contextMenu {
-            Button("Select Whole Part", action: doubleClick).disabled(!canSelectWholePart)
-            GraphColorizeMenu(actions: colorizeActions)
-            CanvasPrecisionMenu(actions: precisionActions)
+            if canSelectWholePart { Button("Select Whole Part", action: doubleClick) }
+            GraphSelectionMenu(actions: graphActions)
+            GraphColorizeMenu(actions: colorizeActions, contextual: true)
+            CanvasPrecisionMenu(actions: precisionActions, contextual: true)
         }
         .accessibilityAction(named: Text("Add node to selection")) { add() }
         .accessibilityAction(named: Text("Remove node from selection")) {

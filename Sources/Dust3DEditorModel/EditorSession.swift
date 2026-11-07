@@ -539,6 +539,24 @@ public actor EditorSession {
     public func reverseSelectedEdges() throws -> EditorSnapshot {
         try update { try $0.reverseSelectedEdges() }
     }
+    /// Validate captured contextual intent and reuse the existing atomic graph edit.
+    /// No suspension separates source admission from delegated UUID/history work.
+    /// - Parameter target: Frozen source, selection, constraints and initial availability.
+    /// - Returns: The existing delegate's committed snapshot and complete history behavior.
+    /// - Throws: Cancellation, notLoaded, stale/unavailable intent or the original edit error.
+    public func performGraphSelectionAction(target: GraphSelectionActionTarget) throws -> EditorSnapshot {
+        try Task.checkCancellation()
+        guard let snapshot = state?.snapshot else { throw EditorError.notLoaded }
+        guard target.isCurrent(in: snapshot) else { throw GraphSelectionActionError.staleTarget }
+        guard target.isAvailable else { throw GraphSelectionActionError.unavailable }
+        switch target.action {
+        case .insertMidpoints: return try insertSelectedEdgeMidpoints()
+        case .reverseEdges: return try reverseExplicitlySelectedEdges()
+        case .reduceNodes: return try reduceSelectedNodes()
+        case .deleteSelection: return try deleteSelection()
+        }
+    }
+
     /// Reverse captured explicit edges only, ordered by Qt UUID, in one history transaction.
     public func reverseExplicitlySelectedEdges() throws -> EditorSnapshot {
         try update { try $0.reverseExplicitlySelectedEdges() }

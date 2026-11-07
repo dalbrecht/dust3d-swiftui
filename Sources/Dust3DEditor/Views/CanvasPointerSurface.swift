@@ -83,8 +83,7 @@ final class CanvasPointerView: NSView {
     var cancelInput: () -> Void = {}
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var tracking: NSTrackingArea?
-    private var hasHover = false
-    private var hasMarquee = false
+    private var activity = CanvasPointerActivity()
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
 
@@ -101,7 +100,34 @@ final class CanvasPointerView: NSView {
         let point = convert(event.locationInWindow, from: nil)
         return .init(x: point.x, y: point.y)
     }
+    override func rightMouseDown(with event: NSEvent) {
+        invalidate()
+        if isAddingNodes {
+            cancelInput()
+            return
+        }
+        super.rightMouseDown(with: event)
+    }
+    override func menu(for event: NSEvent) -> NSMenu? {
+        if isAddingNodes {
+            invalidate()
+            cancelInput()
+            return nil
+        }
+        return super.menu(for: event)
+    }
     override func mouseDown(with event: NSEvent) {
+        switch CanvasContextClick.decision(
+            buttonNumber: event.buttonNumber, modifiers: event.modifierFlags, isAddingNodes: isAddingNodes)
+        {
+        case .showMenu, .cancelAdd:
+            rightMouseDown(with: event)
+            return
+        case .unhandled:
+            super.mouseDown(with: event)
+            return
+        case .primary: break
+        }
         guard enabled else {
             super.mouseDown(with: event)
             return
@@ -112,7 +138,7 @@ final class CanvasPointerView: NSView {
             return
         }
         if event.clickCount == 2, let doubleClick {
-            cancelActivation()
+            invalidate()
             doubleClick(point(event))
             return
         }
@@ -122,22 +148,22 @@ final class CanvasPointerView: NSView {
     }
     override func mouseDragged(with event: NSEvent) {
         if enabled && isAddingNodes {
-            hasHover = true
+            activity.hasHover = true
             hover(point(event))
             return
         }
         guard enabled, let start else { return }
         let end = point(event)
         if hypot(end.x - start.point.x, end.y - start.point.y) >= 3 {
-            hasMarquee = true
+            activity.hasMarquee = true
             rectangle(.init(from: start.point, to: end))
         }
     }
     override func mouseUp(with event: NSEvent) {
         guard let start else { return }
         self.start = nil
-        if hasMarquee { rectangle(nil) }
-        hasMarquee = false
+        let release = activity.finishMarquee()
+        release.notify(rectangle: rectangle, hover: hover)
         guard enabled else { return }
         let end = point(event)
         if hypot(end.x - start.point.x, end.y - start.point.y) >= 3 {
@@ -148,34 +174,31 @@ final class CanvasPointerView: NSView {
     }
     override func mouseEntered(with event: NSEvent) {
         if enabled {
-            hasHover = true
+            activity.hasHover = true
             hover(point(event))
         }
     }
     override func mouseMoved(with event: NSEvent) {
         if enabled {
-            hasHover = true
+            activity.hasHover = true
             hover(point(event))
         }
     }
     override func mouseExited(with event: NSEvent) {
-        if hasHover {
-            hasHover = false
+        if activity.hasHover {
+            activity.hasHover = false
             hover(nil)
         }
     }
     /// Lifecycle updates cancel native input only; SwiftUI lifecycle hooks clear presentation and hover.
     func cancelActivation() {
         start = nil
-        hasMarquee = false
-        hasHover = false
+        activity = CanvasPointerActivity()
     }
     func invalidate() {
         start = nil
-        if hasMarquee { rectangle(nil) }
-        if hasHover { hover(nil) }
-        hasMarquee = false
-        hasHover = false
+        let cancellation = activity.clear()
+        cancellation.notify(rectangle: rectangle, hover: hover)
     }
     @objc private func windowResigned() {
         invalidate()
@@ -189,7 +212,7 @@ final class CanvasPointerView: NSView {
     }
     override func keyDown(with event: NSEvent) {
         // The captured precision handler admits keyboard edits independently of pointer picking.
-        if start == nil, !hasMarquee, superview != nil, let window, window.firstResponder === self,
+        if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self,
             precisionKey?(CanvasPrecisionKeyInput(event)) == true
         {
             return
