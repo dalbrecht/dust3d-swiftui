@@ -79,8 +79,11 @@ struct ComponentSidebar: View {
                         }
                         .disabled(!store.canChooseAddPlacementDestination)
                         Divider()
-                        Button("Group Selected Components") { store.groupSelectedComponents() }
-                            .disabled(!store.canGroupComponents)
+                        Button(
+                            "Group Selected Components",
+                            action: store.componentGroupingAction(snapshot: sidebarSnapshot, scopeEpoch: scopeEpoch)
+                        )
+                        .disabled(!store.canGroupComponents)
                         if let snapshot = store.snapshot {
                             ComponentUngroupButton(
                                 store: store, target: ComponentUngroupTarget(snapshot: snapshot),
@@ -135,7 +138,11 @@ struct ComponentSidebar: View {
                     ScrollViewReader { proxy in
                         let visibleRows = browse?.children ?? tree.visibleRows(collapsing: disclosure.collapsedIDs)
                         let revealKey = revealScrollKey(visibleRows: visibleRows)
-                        let documentIdentity = store.snapshot?.documentIdentity
+                        let documentIdentity = sidebarSnapshot.documentIdentity
+                        let context = PartGraphSelectionContext(snapshot: sidebarSnapshot)
+                        let admitsRows: @MainActor () -> Bool = {
+                            store.admitsComponentSidebarInput(context: context, scopeEpoch: scopeEpoch)
+                        }
                         List(
                             selection: Binding(
                                 get: { store.snapshot?.selectedComponentIDs ?? [] },
@@ -151,37 +158,37 @@ struct ComponentSidebar: View {
                             }
                         }
                         .contextMenu(forSelectionType: String.self) { ids in
-                            if admitsScope(), let snapshot = store.snapshot,
-                                snapshot.documentIdentity == documentIdentity,
-                                !ids.isEmpty
-                            {
+                            let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
+                            if admitsRows(), !ids.isEmpty, ids.allSatisfy({ visibleKeys.contains(Data($0.utf8)) }) {
                                 if ids.count == 1, let id = ids.first,
-                                    visibleRows.contains(where: { $0.id == id && $0.component.isGroup })
+                                    visibleRows.contains(where: {
+                                        $0.id.utf8.elementsEqual(id.utf8) && $0.component.isGroup
+                                    })
                                 {
-                                    browseButton(id, snapshot: snapshot)
+                                    browseButton(id, snapshot: sidebarSnapshot)
                                 }
-                                selectInCanvasButton(snapshot: snapshot, ids: ids, admitsInput: admitsScope)
+                                selectInCanvasButton(snapshot: sidebarSnapshot, ids: ids, admitsInput: admitsRows)
                                 ComponentDeletionButton(
                                     store: store,
-                                    target: ComponentDeletionTarget(snapshot: snapshot, componentIDs: Array(ids)),
-                                    admitsInput: admitsScope)
+                                    target: ComponentDeletionTarget(
+                                        snapshot: sidebarSnapshot, componentIDs: Array(ids)),
+                                    admitsInput: admitsRows)
                                 ComponentUngroupButton(
                                     store: store,
-                                    target: ComponentUngroupTarget(snapshot: snapshot, componentIDs: Array(ids)),
-                                    admitsInput: admitsScope)
+                                    target: ComponentUngroupTarget(snapshot: sidebarSnapshot, componentIDs: Array(ids)),
+                                    admitsInput: admitsRows)
                             }
                         } primaryAction: { ids in
-                            guard admitsScope(), ids.count == 1, let id = ids.first, let snapshot = store.snapshot,
-                                !store.isWorking, snapshot.documentIdentity == documentIdentity,
-                                let row = visibleRows.first(where: { $0.id == id })
+                            guard admitsRows(), ids.count == 1, let id = ids.first,
+                                let row = visibleRows.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
                             else { return }
                             if browse != nil, row.component.isGroup {
-                                store.componentBrowseAction(id, snapshot: snapshot)()
+                                store.componentBrowseAction(id, snapshot: sidebarSnapshot)()
                             } else if row.hasChildren {
                                 disclosure.collapsedIDs.remove(id)
                             } else {
                                 store.selectComponentGraph(
-                                    ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids))
+                                    ComponentGraphSelectionTarget(snapshot: sidebarSnapshot, componentIDs: ids))
                             }
                         }
                         .focusedValue(\.editorComponentSidebarFocus, true)

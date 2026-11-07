@@ -1297,6 +1297,11 @@ final class EditorStore {
         }
     }
 
+    func admitsComponentSidebarInput(context: PartGraphSelectionContext, scopeEpoch: UUID) -> Bool {
+        !isWorking && componentBrowseEpoch == scopeEpoch
+            && acceptedDocumentSource.map { context.isCurrent(in: $0) } == true
+    }
+
     func selectBrowsedComponents(_ ids: Set<String>, scopeEpoch: UUID) {
         guard canBrowseComponents, componentBrowseEpoch == scopeEpoch,
             componentGroupBrowse.map({ ids.allSatisfy($0.contains) }) != false
@@ -1341,7 +1346,7 @@ final class EditorStore {
         }
     }
 
-    var canGroupComponents: Bool { !isWorking && !stopped && snapshot?.canGroupComponents == true }
+    var canGroupComponents: Bool { canSave && snapshot?.canGroupComponents == true }
     // Compatibility entry point for callers; all UI paths use the same captured batch eligibility.
     var canUngroupComponent: Bool {
         guard let snapshot else { return false }
@@ -1358,8 +1363,20 @@ final class EditorStore {
         }
     }
     func groupSelectedComponents() {
-        guard canGroupComponents, let ids = snapshot?.selectedComponentIDs else { return }
-        perform { try await $0.groupComponents(ids) }
+        guard let snapshot else { return }
+        componentGroupingAction(snapshot: snapshot, scopeEpoch: componentBrowseEpoch)()
+    }
+
+    func componentGroupingAction(snapshot: EditorSnapshot, scopeEpoch: UUID) -> @MainActor () -> Void {
+        guard snapshot.canGroupComponents else { return {} }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let ids = Set(snapshot.selectedComponentRows.map(\.id))
+        return { [weak self] in
+            guard let self, !self.isWorking, self.componentBrowseEpoch == scopeEpoch,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current)
+            else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.groupComponents(ids, target: target) }
+        }
     }
     func ungroupSelectedComponent() {
         guard let snapshot else { return }

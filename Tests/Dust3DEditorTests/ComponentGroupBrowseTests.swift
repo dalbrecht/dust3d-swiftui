@@ -121,6 +121,80 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertFalse(value.canUndo)
     }
 
+    func testGroupingActionRejectsRetiredScopeAndAppliesOnlyCapturedSelection() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.componentBrowseAction("g", snapshot: try XCTUnwrap(value.snapshot))()
+        value.selectComponents(["one", "sub"])
+        try await settle(value)
+        let rendered = try XCTUnwrap(value.snapshot)
+        let oldScope = value.componentBrowseEpoch
+        let retired = value.componentGroupingAction(snapshot: rendered, scopeEpoch: oldScope)
+        value.componentBrowseAction(nil, snapshot: rendered)()
+        value.componentBrowseAction("g", snapshot: rendered)()
+        XCTAssertNotEqual(value.componentBrowseEpoch, oldScope)
+        XCTAssertEqual(value.snapshot?.selectionRevision, rendered.selectionRevision)
+        retired()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertFalse(value.canUndo)
+
+        let staleSelection = value.componentGroupingAction(snapshot: rendered, scopeEpoch: value.componentBrowseEpoch)
+        value.selectComponents(["one"])
+        try await settle(value)
+        value.selectComponents(["one", "sub"])
+        try await settle(value)
+        staleSelection()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+
+        let current = try XCTUnwrap(value.snapshot)
+        value.componentGroupingAction(snapshot: current, scopeEpoch: value.componentBrowseEpoch)()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedComponent?.childIDs, ["one", "sub"])
+        XCTAssertTrue(value.canUndo)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+
+        value.selectComponents(["one", "sub"])
+        try await settle(value)
+        let beforeFailure = try XCTUnwrap(value.snapshot)
+        let staleSource = value.componentGroupingAction(snapshot: beforeFailure, scopeEpoch: value.componentBrowseEpoch)
+        XCTAssertTrue(value.canGroupComponents)
+        await value.load(data: Data("invalid archive".utf8))
+        XCTAssertFalse(value.canGroupComponents)
+        staleSource()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testRenderedRowContextRejectsTopologyChangesWithinSameBrowseScope() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.componentBrowseAction("g", snapshot: try XCTUnwrap(value.snapshot))()
+        let rendered = try XCTUnwrap(value.snapshot)
+        let context = PartGraphSelectionContext(snapshot: rendered)
+        let scope = value.componentBrowseEpoch
+        XCTAssertTrue(value.admitsComponentSidebarInput(context: context, scopeEpoch: scope))
+
+        value.selectComponents(["one", "sub"])
+        try await settle(value)
+        XCTAssertTrue(value.admitsComponentSidebarInput(context: context, scopeEpoch: scope))
+        value.groupSelectedComponents()
+        try await settle(value)
+        XCTAssertEqual(value.componentBrowseEpoch, scope)
+        XCTAssertFalse(value.admitsComponentSidebarInput(context: context, scopeEpoch: scope))
+        let updated = PartGraphSelectionContext(snapshot: try XCTUnwrap(value.snapshot))
+        XCTAssertTrue(value.admitsComponentSidebarInput(context: updated, scopeEpoch: scope))
+    }
+
     func testNestedNavigationRetiresOldDragAndDeletedScope() async throws {
         let original = try source().encoded()
         let value = store()
