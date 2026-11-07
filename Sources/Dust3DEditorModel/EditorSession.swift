@@ -439,6 +439,28 @@ public actor EditorSession {
         }
     }
 
+    package func importComponentColorImages(png: Data, target: ComponentMeshSelectionTarget) throws -> EditorSnapshot {
+        try updateGraphColorImages(
+            .importComponentColorImages(ids: target.ids, imageID: Self.identifier(), png: png), target: target)
+    }
+
+    package func setComponentColorImages(imageID: String?, target: ComponentMeshSelectionTarget) throws
+        -> EditorSnapshot
+    {
+        try updateGraphColorImages(.setComponentColorImages(ids: target.ids, imageID: imageID), target: target)
+    }
+
+    private func updateGraphColorImages(_ command: DocumentCommand, target: ComponentMeshSelectionTarget) throws
+        -> EditorSnapshot
+    {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard !target.graphColorImageComponents(in: state.snapshot).isEmpty else {
+                throw EditorError.staleColorImageTarget
+            }
+            try state.apply([command])
+        }.snapshot
+    }
+
     /// Move a captured selected subtree to an explicit root/group destination atomically.
     /// - Parameters:
     ///   - parent: Requested destination; hierarchy and cycles are revalidated before publication.

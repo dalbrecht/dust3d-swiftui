@@ -65,6 +65,18 @@ public struct ComponentMeshSelectionTarget: Hashable, Sendable {
         ids = linkedKeys == partKeys && linkedRows.count == partKeys.count ? linkedRows.map(\.id) : []
     }
 
+    /// Graph image authoring requires every explicit owner to be an exact linked Model part.
+    package func graphColorImageComponents(in snapshot: EditorSnapshot) -> [DocumentComponent] {
+        guard isGraphSelection, isCurrent(in: snapshot) else { return [] }
+        let wanted = Set(ids.map { Data($0.utf8) })
+        let modelParts = Set(snapshot.parts.filter { $0.target == .model }.map { Data($0.id.utf8) })
+        let components = snapshot.componentTree.rows.map(\.component).filter { wanted.contains(Data($0.id.utf8)) }
+        guard components.count == ids.count,
+            components.allSatisfy({ $0.partID.map { modelParts.contains(Data($0.utf8)) } == true })
+        else { return [] }
+        return components
+    }
+
     /// Reject unavailable intent and document, selection or constraint changes, including ABA.
     public func isCurrent(in snapshot: EditorSnapshot) -> Bool {
         guard !ids.isEmpty, context.isCurrent(in: snapshot) else { return false }

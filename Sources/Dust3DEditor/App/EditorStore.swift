@@ -906,30 +906,64 @@ final class EditorStore {
         case retained(String)
     }
 
+    enum ComponentColorImageDestination: Sendable {
+        case component(ComponentColorImageTarget)
+        case graph(ComponentMeshSelectionTarget)
+
+        func isCurrent(in snapshot: EditorSnapshot) -> Bool {
+            switch self {
+            case .component(let target): target.isCurrent(in: snapshot)
+            case .graph(let target): !target.graphColorImageComponents(in: snapshot).isEmpty
+            }
+        }
+    }
+
+    func canEditComponentColorImage(_ destination: ComponentColorImageDestination) -> Bool {
+        !isWorking && acceptedAnimationSource.map { destination.isCurrent(in: $0) } == true
+    }
+
     func importComponentColorImage(url: URL, target: ComponentColorImageTarget) {
-        prepareComponentColorImage(target: target) { [colorImages] in
+        importComponentColorImage(url: url, destination: .component(target))
+    }
+
+    func importComponentColorImage(url: URL, destination: ComponentColorImageDestination) {
+        prepareComponentColorImage(destination: destination) { [colorImages] in
             .imported(try await colorImages.importImage(url: url))
         }
     }
 
     func assignComponentColorImage(_ asset: DocumentColorImageAsset, target: ComponentColorImageTarget) {
-        guard let snapshot, target.isCurrent(in: snapshot), let imageID = asset.imageID else { return }
+        assignComponentColorImage(asset, destination: .component(target))
+    }
+
+    func assignComponentColorImage(_ asset: DocumentColorImageAsset, destination: ComponentColorImageDestination) {
+        guard let snapshot, canEditComponentColorImage(destination), let imageID = asset.imageID else { return }
         let document = snapshot.document
-        prepareComponentColorImage(target: target) { [colorImages] in
+        prepareComponentColorImage(destination: destination) { [colorImages] in
             try await colorImages.validateRetainedImage(document: document, asset: asset)
             return .retained(imageID)
         }
     }
 
     func clearComponentColorImage(target: ComponentColorImageTarget) {
-        perform { try await $0.setComponentColorImage(imageID: nil, target: target) }
+        clearComponentColorImage(destination: .component(target))
+    }
+
+    func clearComponentColorImage(destination: ComponentColorImageDestination) {
+        guard canEditComponentColorImage(destination) else { return }
+        perform { session in
+            switch destination {
+            case .component(let target): try await session.setComponentColorImage(imageID: nil, target: target)
+            case .graph(let target): try await session.setComponentColorImages(imageID: nil, target: target)
+            }
+        }
     }
 
     private func prepareComponentColorImage(
-        target: ComponentColorImageTarget,
+        destination: ComponentColorImageDestination,
         prepare: @escaping @Sendable () async throws -> PreparedColorImage
     ) {
-        guard !isWorking, !stopped, let snapshot, target.isCurrent(in: snapshot) else { return }
+        guard canEditComponentColorImage(destination) else { return }
         cancelColorImagePreparation()
         let requestID = colorImageRequestID
         isPreparingColorImage = true
@@ -944,20 +978,25 @@ final class EditorStore {
             do {
                 let prepared = try await prepare()
                 guard !Task.isCancelled, !stopped, colorImageRequestID == requestID,
-                    let current = self.snapshot, target.isCurrent(in: current)
+                    self.canEditComponentColorImage(destination)
                 else { return }
                 // End preparation before perform invalidates pending image requests.
                 isPreparingColorImage = false
                 colorImagePreparation = nil
                 perform { session in
-                    switch prepared {
-                    case .imported(let png): try await session.importComponentColorImage(png: png, target: target)
-                    case .retained(let imageID):
+                    switch (prepared, destination) {
+                    case (.imported(let png), .component(let target)):
+                        try await session.importComponentColorImage(png: png, target: target)
+                    case (.retained(let imageID), .component(let target)):
                         try await session.setComponentColorImage(imageID: imageID, target: target)
+                    case (.imported(let png), .graph(let target)):
+                        try await session.importComponentColorImages(png: png, target: target)
+                    case (.retained(let imageID), .graph(let target)):
+                        try await session.setComponentColorImages(imageID: imageID, target: target)
                     }
                 }
             } catch {
-                if !Task.isCancelled, !stopped, colorImageRequestID == requestID {
+                if !Task.isCancelled, colorImageRequestID == requestID, canEditComponentColorImage(destination) {
                     errorMessage = Self.message(error)
                 }
             }

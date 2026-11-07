@@ -43,6 +43,12 @@ struct ComponentMeshSelectionControls: View {
                     DisclosureGroup("Owning Component Mesh Settings") {
                         editor(snapshot: snapshot, target: target)
                     }
+                    if !target.graphColorImageComponents(in: snapshot).isEmpty {
+                        DisclosureGroup("Owning Component Texture Image") {
+                            ComponentColorImageControls(store: store, graphTarget: target)
+                                .id(target)
+                        }
+                    }
                 }
             }
         }
