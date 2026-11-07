@@ -1,7 +1,7 @@
 import Dust3DDocument
 import Foundation
 
-/// A shape edit belongs to the sole exact authored owner of the explicit graph selection.
+/// A shape edit belongs to the sole exact authored Model owner of the explicit graph selection.
 package struct GraphPartShapeTarget: Sendable {
     package static let properties: [PartModifierProperty] = [.subdivision, .chamfer, .roundedEnds]
     private let context: CanvasAdjustmentTarget
@@ -10,7 +10,7 @@ package struct GraphPartShapeTarget: Sendable {
     package init(snapshot: EditorSnapshot) {
         context = CanvasAdjustmentTarget(snapshot: snapshot)
         if let owners = snapshot.explicitGraphPartKeys(), owners.count == 1, let owner = owners.first {
-            part = snapshot.parts.first { Data($0.id.utf8) == owner }
+            part = snapshot.parts.first { $0.target == .model && Data($0.id.utf8) == owner }
         } else {
             part = nil
         }

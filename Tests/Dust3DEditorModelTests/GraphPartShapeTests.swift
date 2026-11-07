@@ -38,6 +38,36 @@ final class GraphPartShapeTests: XCTestCase {
         }
     }
 
+    func testOnlyExplicitOrImplicitModelPartsAdmitGraphShapeEdits() async throws {
+        for role in [nil, "Model", "CutFace", "StitchingLine", "StitchingLoop", "ImportedModel", "FutureRole"] {
+            let attribute = role.map { " target='\($0)'" } ?? ""
+            let document = try Dust3DDocument(
+                snapshotXML: Data(
+                    """
+                    <canvas><nodes><node id='node' partId='part' x='0' y='0' z='0' radius='.1'/></nodes>
+                    <parts><part id='part'\(attribute) rounded='future'/></parts></canvas>
+                    """.utf8))
+            let session = EditorSession()
+            _ = try await session.open(data: document.encoded())
+            let snapshot = try await session.select("node")
+            let target = GraphPartShapeTarget(snapshot: snapshot)
+            if role == nil || role == "Model" {
+                XCTAssertEqual(target.part?.target, .model)
+                XCTAssertTrue(target.isCurrent(in: snapshot))
+            } else {
+                XCTAssertNil(target.part, "Unexpected graph shape eligibility for \(role ?? "default")")
+                XCTAssertFalse(target.isCurrent(in: snapshot))
+                do {
+                    _ = try await session.setGraphPartShape(.roundedEnds, value: true, target: target)
+                    XCTFail("A non-Model graph owner accepted a shape edit")
+                } catch { XCTAssertEqual(error as? GraphPartShapeError, .staleTarget) }
+                let after = try await session.select("node")
+                XCTAssertEqual(after.document.encoded(), document.encoded())
+                XCTAssertFalse(after.canUndo)
+            }
+        }
+    }
+
     func testCapturedShapeEditsPreserveGraphPicksAndUndoExactlyEvenWhenPartLocked() async throws {
         let original = try source()
         for property in [PartModifierProperty.subdivision, .chamfer, .roundedEnds] {
