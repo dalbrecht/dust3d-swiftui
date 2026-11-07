@@ -432,7 +432,8 @@ final class EditorStore {
             clearCanvasHover()
             return
         }
-        let hover = canvasGraphHoverCache.hit(at: point, projection: projection, snapshot: snapshot)
+        let hover = canvasGraphHoverCache.hit(
+            at: point, projection: projection, snapshot: snapshot, rigEdgesOnly: isSelectingRigEdges)
         if hover != canvasGraphHover { canvasGraphHover = hover }
     }
     var canAdjustSelectionRadius: Bool {

@@ -228,6 +228,52 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(value.isSelectingRigEdges)
     }
 
+    func testRigEdgeHoverMatchesClickEligibilityAndRestoresOrdinaryHover() async throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                <node id='a' partId='p' x='.2' y='.3' z='.5' radius='.1'/>
+                <node id='b' partId='p' x='.8' y='.3' z='.5' radius='.1'/>
+                <node id='c' partId='q' x='.2' y='.7' z='.5' radius='.1'/>
+                <node id='d' partId='q' x='.8' y='.7' z='.5' radius='.1'/>
+                </nodes><edges>
+                <edge id='ab' partId='p' from='a' to='b'/>
+                <edge id='cd' partId='q' from='c' to='d'/>
+                </edges><parts><part id='p'/><part id='q' locked='true'/></parts></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: document.encoded())
+        try await settle(value)
+        let projection = CanvasProjection(bounds: value.bounds, plane: .front, width: 400, height: 300)
+        let endpoint = projection.point(for: .init(x: 0.2, y: 0.3, z: 0.5))
+        let lockedMiddle = projection.point(for: .init(x: 0.5, y: 0.7, z: 0.5))
+
+        value.updateCanvasHover(at: endpoint, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .node("a"))
+        value.updateCanvasHover(at: lockedMiddle, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .edge("cd"))
+
+        value.setRigEdgeSelection(true)
+        value.updateCanvasHover(at: endpoint, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .edge("ab"))
+        value.pickEdge(at: endpoint, projection: projection, mode: .replace)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+        value.updateCanvasHover(at: lockedMiddle, projection: projection)
+        XCTAssertNil(value.canvasGraphHover)
+        value.pickEdge(at: lockedMiddle, projection: projection, mode: .add)
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+
+        value.setRigEdgeSelection(false)
+        value.updateCanvasHover(at: endpoint, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .node("a"))
+        value.updateCanvasHover(at: lockedMiddle, projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .edge("cd"))
+    }
+
     func testContextEntriesContainOnlyAvailableActionsAndPlaceDeleteLast() async throws {
         let value = store()
         defer { value.stop() }
