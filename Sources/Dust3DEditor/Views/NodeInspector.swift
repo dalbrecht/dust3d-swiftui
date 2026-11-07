@@ -52,6 +52,16 @@ struct NodeInspector: View {
                     .help("Change subdivision, chamfer or rounded ends on \(part.title). Each edit is one Undo step.")
                 }
                 let crossSectionTarget = GraphPartCrossSectionTarget(snapshot: snapshot)
+                if let component = crossSectionTarget.component,
+                    let equipmentTarget = crossSectionTarget.equipmentSlotTarget
+                {
+                    DisclosureGroup("Owning Component Equipment") {
+                        Text(component.name).font(.caption).foregroundStyle(.secondary)
+                        ComponentEquipmentSlotControls(store: store, component: component, target: equipmentTarget)
+                            .id(snapshot.selectionRevision)
+                            .id(snapshot.documentIdentity)
+                    }
+                }
                 if let part = crossSectionTarget.part {
                     DisclosureGroup("Owning Part Cross-section") {
                         Text(part.title).font(.caption).foregroundStyle(.secondary)
