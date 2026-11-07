@@ -1104,6 +1104,41 @@ final class EditorStore {
         !isWorking && acceptedDocumentSource.map { destination.isCurrent(in: $0) } == true
     }
 
+    func componentColorImageInspectionRequest(
+        asset requestedAsset: DocumentColorImageAsset?, destination: ComponentColorImageDestination
+    ) -> ComponentColorImageInspectionRequest? {
+        guard !isWorking, let source = acceptedDocumentSource else { return nil }
+        let components: [DocumentComponent]
+        switch destination {
+        case .component(let target):
+            guard target.isCurrent(in: source), let component = source.selectedComponent else { return nil }
+            components = [component]
+        case .graph(let target):
+            components = target.graphColorImageComponents(in: source)
+            guard !components.isEmpty else { return nil }
+        }
+        let asset: DocumentColorImageAsset?
+        if let requestedAsset {
+            asset = source.colorImageAssets.first { $0 == requestedAsset }
+        } else {
+            guard let first = components.first,
+                let identity = ComponentColorImagePresentation.assetIdentity(first.colorImage),
+                components.dropFirst().allSatisfy({
+                    ComponentColorImagePresentation.assetIdentity($0.colorImage) == identity
+                })
+            else { return nil }
+            asset = source.colorImageAssets.first { $0.id == identity }
+        }
+        guard let asset, asset.canAssign else { return nil }
+        return ComponentColorImageInspectionRequest(
+            document: source.document, asset: asset, context: CanvasAdjustmentTarget(snapshot: source))
+    }
+
+    func canInspectComponentColorImage(_ request: ComponentColorImageInspectionRequest) -> Bool {
+        guard !isWorking, let source = acceptedDocumentSource else { return false }
+        return request.context.isCurrent(in: source)
+    }
+
     func importComponentColorImage(url: URL, target: ComponentColorImageTarget) {
         importComponentColorImage(url: url, destination: .component(target))
     }
