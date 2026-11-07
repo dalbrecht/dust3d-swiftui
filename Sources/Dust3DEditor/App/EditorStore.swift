@@ -1746,13 +1746,40 @@ final class EditorStore {
     }
 
     func setPartMaterial(_ id: String, property: PartMaterialProperty, value: String) {
-        guard !isWorking, !stopped else { return }
-        guard let scalar = EngineScalar.parse(value, in: property.bounds) else {
-            errorMessage = "Enter a value from 0 to \(Int(property.bounds.upperBound)) that the material can represent."
-            return
-        }
+        guard !isWorking, !stopped, let scalar = parsePartMaterial(value, property: property) else { return }
         perform {
             try await $0.apply([.setPartMaterial(id: id, property: property, value: scalar)])
+        }
+    }
+
+    func canEditGraphPartMaterial(_ target: GraphModelPartTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func setGraphPartMaterial(_ property: PartMaterialProperty, value: String, target: GraphModelPartTarget) {
+        guard canEditGraphPartMaterial(target), let scalar = parsePartMaterial(value, property: property) else {
+            return
+        }
+        commitGraphPartMaterial(property, value: scalar, target: target)
+    }
+
+    func resetGraphPartMaterial(_ property: PartMaterialProperty, target: GraphModelPartTarget) {
+        guard canEditGraphPartMaterial(target) else { return }
+        commitGraphPartMaterial(property, value: property.defaultValue, target: target)
+    }
+
+    private func parsePartMaterial(_ value: String, property: PartMaterialProperty) -> Double? {
+        guard let scalar = EngineScalar.parse(value, in: property.bounds) else {
+            errorMessage = "Enter a value from 0 to \(Int(property.bounds.upperBound)) that the material can represent."
+            return nil
+        }
+        return scalar
+    }
+
+    private func commitGraphPartMaterial(_ property: PartMaterialProperty, value: Double, target: GraphModelPartTarget)
+    {
+        perform(acceptCommittedCancellation: true) {
+            try await $0.setGraphPartMaterial(property, value: value, target: target)
         }
     }
     #if MOTE3D_EXPERIMENTAL_HOLLOW

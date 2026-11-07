@@ -135,6 +135,48 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
     }
 
+    func testGraphOwnerMaterialApplyAndResetRejectRetiredAndFailedSourceTargets() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes>
+                <parts><part id='p' emissive='.75'/></parts><components>
+                <component id='owner' linkDataType='partId' linkData='p'/>
+                </components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        value.select("a")
+        try await settle(value)
+        let initial = GraphModelPartTarget(snapshot: try XCTUnwrap(value.snapshot))
+        XCTAssertTrue(value.canEditGraphPartMaterial(initial))
+        value.setGraphPartMaterial(.emissive, value: "2", target: initial)
+        try await settle(value)
+        let changed = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(changed.parts.first?.materialValue(.emissive), 2)
+        value.resetGraphPartMaterial(.emissive, target: initial)
+        XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
+
+        value.resetGraphPartMaterial(.emissive, target: GraphModelPartTarget(snapshot: changed))
+        try await settle(value)
+        let reset = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(reset.parts.first?.materialValue(.emissive), 0)
+        XCTAssertEqual(reset.selectedIDs, ["a"])
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
+
+        let retained = GraphModelPartTarget(snapshot: try XCTUnwrap(value.snapshot))
+        await value.load(data: Data("bad archive".utf8))
+        let loadError = try XCTUnwrap(value.errorMessage)
+        XCTAssertFalse(value.canEditGraphPartMaterial(retained))
+        value.setGraphPartMaterial(.emissive, value: "invalid", target: retained)
+        value.resetGraphPartMaterial(.emissive, target: retained)
+        XCTAssertEqual(value.errorMessage, loadError)
+        XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
+    }
+
     func testGraphOwnerRoleRoutesCapturedPickerAndRejectsFailedReload() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(

@@ -1,6 +1,6 @@
 import Dust3DDocument
 
-/// A role edit targets the one exact linked part owned by the explicit graph picks.
+/// Captures the sole exact linked part behind explicit graph picks, regardless of its role.
 package struct GraphPartRoleTarget: Sendable {
     private let owner: ComponentMeshSelectionTarget
     package let part: DocumentPart?

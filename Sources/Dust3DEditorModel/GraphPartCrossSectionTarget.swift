@@ -1,20 +1,25 @@
 import Dust3DDocument
 
 /// Captures the sole exact linked Model part behind explicit node and edge picks.
-package struct GraphPartCrossSectionTarget: Sendable {
-    private let owner: ComponentMeshSelectionTarget
+package struct GraphModelPartTarget: Sendable {
+    private let owner: GraphPartRoleTarget
     package let part: DocumentPart?
 
     package init(snapshot: EditorSnapshot) {
-        owner = ComponentMeshSelectionTarget(graphSelection: snapshot)
-        let linkedPart = owner.soleGraphLinkedPart(in: snapshot)
-        part = linkedPart?.target == .model ? linkedPart : nil
+        self.init(owner: GraphPartRoleTarget(snapshot: snapshot))
+    }
+
+    package init(owner: GraphPartRoleTarget) {
+        self.owner = owner
+        part = owner.part?.target == .model ? owner.part : nil
     }
 
     package func isCurrent(in snapshot: EditorSnapshot) -> Bool {
         part != nil && owner.isCurrent(in: snapshot)
     }
 }
+
+package typealias GraphPartCrossSectionTarget = GraphModelPartTarget
 
 package enum GraphPartCrossSectionEdit: Sendable {
     case profile(CutFaceSelection)

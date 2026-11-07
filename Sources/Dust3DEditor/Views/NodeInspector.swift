@@ -59,7 +59,7 @@ struct NodeInspector: View {
                     }
                     .help("Change subdivision, chamfer or rounded ends on \(part.title). Each edit is one Undo step.")
                 }
-                let crossSectionTarget = GraphPartCrossSectionTarget(snapshot: snapshot)
+                let crossSectionTarget = GraphPartCrossSectionTarget(owner: roleTarget)
                 if let part = crossSectionTarget.part {
                     DisclosureGroup("Owning Part Cross-section") {
                         Text(part.title).font(.caption).foregroundStyle(.secondary)
@@ -70,6 +70,13 @@ struct NodeInspector: View {
                             .id(snapshot.selectionRevision)
                             .id(snapshot.documentIdentity)
                             .disabled(!store.canEditGraphPartCrossSection(crossSectionTarget))
+                    }
+                    DisclosureGroup("Owning Part Material") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartMaterialControls(store: store, part: part, graphTarget: crossSectionTarget)
+                            .id(snapshot.selectionRevision)
+                            .id(snapshot.documentIdentity)
+                            .disabled(!store.canEditGraphPartMaterial(crossSectionTarget))
                     }
                 }
             }
