@@ -7,8 +7,8 @@ import XCTest
 final class ReferenceCompositionPresentationTests: XCTestCase {
     func testPresentationAlwaysCarriesTheCapturedTargetAndReopeningCreatesFreshIdentity() throws {
         var state = try EditorState(document: Dust3DDocument(data: Dust3DDocument.emptyArchive()))
-        let first = ReferenceCompositionPresentation(snapshot: state.snapshot)
-        let reopened = ReferenceCompositionPresentation(snapshot: state.snapshot)
+        let first = ReferenceCompositionPresentation(target: .init(snapshot: state.snapshot))
+        let reopened = ReferenceCompositionPresentation(target: .init(snapshot: state.snapshot))
         XCTAssertNotEqual(first.id, reopened.id)
         let png = Data([137, 80, 78, 71, 13, 10, 26, 10, 1])
         try state.applyReferenceComposition(png: png, origin: nil, target: first.target)

@@ -67,7 +67,7 @@ public struct CanvasBounds: Sendable {
     }
 }
 
-public struct CanvasProjection: Sendable {
+public struct CanvasProjection: Equatable, Sendable {
     private let center: CanvasPoint
     private let width: Double
     private let height: Double
@@ -180,9 +180,17 @@ public struct CanvasProjection: Sendable {
     public func edgeID(
         near point: CanvasPoint, nodes: [DocumentNode], edges: [DocumentEdge], tolerance: Double = 8
     ) -> String? {
-        guard [point.x, point.y, tolerance].allSatisfy(\.isFinite), tolerance >= 0 else { return nil }
+        guard point.x.isFinite, point.y.isFinite, tolerance.isFinite, tolerance >= 0 else { return nil }
         let positions = Dictionary(
             uniqueKeysWithValues: nodes.filter(\.isVisible).map { ($0.id, self.point(for: $0.value.position)) })
+        return Self.edgeID(near: point, positions: positions, edges: edges, tolerance: tolerance)
+    }
+
+    /// Reuse projected endpoints when hit-testing the same graph repeatedly.
+    package static func edgeID(
+        near point: CanvasPoint, positions: [String: CanvasPoint], edges: [DocumentEdge], tolerance: Double = 8
+    ) -> String? {
+        guard point.x.isFinite, point.y.isFinite, tolerance.isFinite, tolerance >= 0 else { return nil }
         var nearest: String?
         var minimumDistance = tolerance
         for edge in edges {

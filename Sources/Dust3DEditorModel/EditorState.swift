@@ -106,6 +106,13 @@ public struct EditorSnapshot: Sendable {
 
     public var selectedNodes: [DocumentNode] { nodes.filter { selectedIDs.contains($0.id) } }
     public var selectedNode: DocumentNode? { nodes.first { $0.id == selectedID } }
+
+    package func allowsNodeDeformation(for nodeID: String) -> Bool {
+        guard selectedIDs.count == 1, selectedEdgeIDs.isEmpty, let node = selectedNode, node.isEditable,
+            node.id.utf8.elementsEqual(nodeID.utf8), let partID = node.partID
+        else { return false }
+        return parts.first(where: { $0.id.utf8.elementsEqual(partID.utf8) })?.target == .model
+    }
     /// Explicit edges in archive presentation order; this never infers edges from selected endpoint nodes.
     public var selectedEdges: [DocumentEdge] { edges.filter { selectedEdgeIDs.contains($0.id) } }
     /// Unique nodes used by ordinary transforms: explicit nodes plus both endpoints of every explicit edge.

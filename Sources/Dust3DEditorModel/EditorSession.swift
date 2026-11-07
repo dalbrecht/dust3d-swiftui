@@ -312,6 +312,20 @@ public actor EditorSession {
         }
     }
 
+    /// Apply one taper field to the original editable Model node without changing its position or radius.
+    package func setNodeDeformationScale(
+        _ property: PartDeformationProperty, value: Double, nodeID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), snapshot.allowsNodeDeformation(for: nodeID) else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.apply([.setNodeDeformationScale(id: nodeID, property: property, value: value)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Restore just one saved deformation scale on the originally inspected Model part.
     package func resetPartDeformationScale(
         _ property: PartDeformationProperty, partID: String, target: CanvasAdjustmentTarget
@@ -589,7 +603,10 @@ public actor EditorSession {
     public func applyReferenceComposition(
         png: Data, origin: NodePosition?, target: ReferenceCompositionTarget
     ) throws -> EditorSnapshot {
-        try update { try $0.applyReferenceComposition(png: png, origin: origin, target: target) }
+        try update {
+            guard hasAcceptedSource else { throw EditorError.staleReferenceComposition }
+            try $0.applyReferenceComposition(png: png, origin: origin, target: target)
+        }
     }
 
     /// Rotate connected descendants around the selected pivot without changing selection or radii.
