@@ -29,8 +29,14 @@ private struct WorkflowAuthoringCatalog: AnimationCatalogLoading {
         let legacy = try AnimationClipDefinition(
             type: "LegacyBiped", rig: "Biped", generator: "Known", seconds: 4, samples: 90,
             loops: true, isLegacyAlias: true, defaults: [], controls: [])
+        let walk = try AnimationClipDefinition(
+            type: "BipedWalk", rig: "Biped", generator: "Known", seconds: 4, samples: 90,
+            loops: true, isLegacyAlias: false, defaults: [], controls: [])
+        let run = try AnimationClipDefinition(
+            type: "bIPEDRun", rig: "Biped", generator: "Known", seconds: 4, samples: 90,
+            loops: true, isLegacyAlias: false, defaults: [], controls: [])
         return try AnimationAuthoringCatalog(
-            clips: [bird, legacy, known, long], surfaceMaterials: ["Stone", "Wood"],
+            clips: [bird, legacy, known, long, walk, run], surfaceMaterials: ["Stone", "Wood"],
             timing: AnimationTimingDefinition(
                 minimumSeconds: 0.01, maximumSeconds: 59.99, decimalPlaces: 2,
                 secondsStep: 0.1, minimumFrames: 1, maximumFrames: 4999, framesStep: 5))
@@ -45,6 +51,7 @@ private struct WorkflowAuthoringNoPreview: EditorPreviewServing {
 final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
     private func store(
         type: String = "Known", rig: String? = "Biped",
+        extraAnimations: String = "",
         catalog: any AnimationCatalogLoading = WorkflowAuthoringCatalog()
     )
         async throws -> EditorStore
@@ -54,7 +61,8 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         let source = try Dust3DDocument(
             snapshotXML: Data(
                 ("<canvas\(rigAttribute)><animations><animation id='a' name='Original' type='" + type
-                    + "' speed='1.000' frameCount='legacy' opaque='keep'/></animations></canvas>").utf8))
+                    + "' speed='1.000' frameCount='legacy' opaque='keep'/>\(extraAnimations)</animations></canvas>")
+                    .utf8))
         await store.load(data: source.encoded())
         await store.authoringCatalog.load()?.value
         store.selectAnimation("a")
@@ -121,6 +129,56 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         store.undo()
         try await settle(store)
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+    }
+
+    func testCreationSuggestsUnusedNameForChosenTypeAndFreshCopy() async throws {
+        let store = try await store(
+            extraAnimations: "<animation id='walk' name='WALK'/><animation id='second' name='Walk2'/>")
+        defer { store.stop() }
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        workflow.creationAction()()
+        XCTAssertEqual(workflow.name.value, "known")
+        workflow.selectedType = Array("bIPEDRun".utf8)
+        XCTAssertEqual(workflow.name.value, "run")
+        workflow.selectedType = Array("BipedWalk".utf8)
+        XCTAssertEqual(workflow.name.value, "walk3")
+        workflow.submit()
+        try await settle(store)
+        XCTAssertEqual(store.animationSnapshot?.list.selectedRow?.source.name, "walk3")
+
+        workflow.creationAction()()
+        workflow.selectedType = Array("BipedWalk".utf8)
+        XCTAssertEqual(workflow.name.value, "walk4")
+        workflow.cancel()
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+    }
+
+    func testCreationKeepsExactManualNameAcrossTypeChangesAndCancelPublishesNothing() async throws {
+        let store = try await store()
+        defer { store.stop() }
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        let manual = "  Decomposed e\u{301}  "
+        workflow.creationAction()()
+        workflow.selectedType = Array("BipedWalk".utf8)
+        XCTAssertEqual(workflow.name.value, "walk")
+        workflow.name = AnimationNameText(manual)
+        workflow.selectedType = Array("bIPEDRun".utf8)
+        XCTAssertTrue(workflow.name.value.utf8.elementsEqual(manual.utf8))
+        workflow.cancel()
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+
+        workflow.creationAction()()
+        workflow.name = AnimationNameText("Original")
+        workflow.selectedType = Array("bIPEDRun".utf8)
+        workflow.submit()
+        try await settle(store)
+        XCTAssertEqual(store.animationSnapshot?.list.selectedRow?.source.name, "Original")
+        XCTAssertEqual(store.animationSnapshot?.list.selectedRow?.source.type, "bIPEDRun")
     }
 
     func testNoMatchingRigBlocksCreationButKeepsStoredTypeAndParametersEditable() async throws {

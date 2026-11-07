@@ -25,8 +25,19 @@ final class EditorAnimationAuthoringWorkflow {
     private(set) var sourceType: String?
     private(set) var parameterDraft: AnimationParameterDraft?
     private(set) var isSubmitting = false
-    var name = AnimationNameText("")
-    var selectedType: [UInt8] = []
+    private var creationNameKeys: Set<String> = []
+    private var suggestedName = AnimationNameText("")
+    private var manualName: AnimationNameText?
+    var name: AnimationNameText {
+        get { manualName ?? suggestedName }
+        set { manualName = newValue }
+    }
+    var selectedType: [UInt8] = [] {
+        didSet {
+            guard case .create = mode, manualName == nil, isCurrent, let clip = selectedClip else { return }
+            suggestedName = AnimationNameText(suggestedCreationName(for: clip))
+        }
+    }
 
     init(store: EditorStore) { self.store = store }
     var catalog: AnimationAuthoringCatalog? { store.authoringCatalog.catalog }
@@ -102,15 +113,33 @@ final class EditorAnimationAuthoringWorkflow {
             let target = try? AnimationCreationTarget(snapshot: value)
         else { return {} }
         return { [weak self] in
-            guard let self, canBeginCreation, let current = store.animationSnapshot?.editor,
-                target.isCurrent(in: current), let clip = creationClips.first
+            guard let self, canBeginCreation, let current = store.animationSnapshot,
+                target.isCurrent(in: current.editor), let clip = creationClips.first
             else { return }
             reset()
-            name = AnimationNameText(clip.type)
-            selectedType = Array(clip.type.utf8)
+            creationNameKeys = Set(current.list.rows.compactMap { $0.source.name }.map(Self.creationNameKey))
             mode = .create(target)
+            selectedType = Array(clip.type.utf8)
         }
     }
+    private static func creationNameKey(_ name: String) -> String {
+        name.folding(options: .caseInsensitive, locale: nil)
+    }
+
+    private func suggestedCreationName(for clip: AnimationClipDefinition) -> String {
+        let prefix = clip.type.range(of: clip.rig, options: [.anchored, .caseInsensitive])
+        let stripped = prefix.map { clip.type[$0.upperBound...] } ?? clip.type[...]
+        let stem = stripped.isEmpty ? clip.type[...] : stripped
+        let base = stem.prefix(1).lowercased() + stem.dropFirst()
+        var candidate = base
+        var suffix = 2
+        while creationNameKeys.contains(Self.creationNameKey(candidate)) {
+            candidate = base + String(suffix)
+            suffix += 1
+        }
+        return candidate
+    }
+
     func beginType() {
         guard canBeginType, let value = store.animationSnapshot, let row = value.list.selectedRow else { return }
         do {
@@ -197,7 +226,9 @@ final class EditorAnimationAuthoringWorkflow {
         sourceType = nil
         parameterDraft = nil
         selectedType = []
-        name = AnimationNameText("")
+        creationNameKeys = []
+        suggestedName = AnimationNameText("")
+        manualName = nil
         lastIssue = nil
     }
 }

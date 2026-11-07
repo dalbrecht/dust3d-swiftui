@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Offer canonical animation types for the document’s rig when creating a stored animation.
+- Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
 
