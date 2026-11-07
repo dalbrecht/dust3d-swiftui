@@ -345,6 +345,19 @@ public struct EditorState: Sendable {
             partID: partID, tree: componentTree, revision: componentRevealRevision)
     }
 
+    package mutating func revealOwningComponent(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext
+    ) throws {
+        let current = snapshot
+        guard context.isCurrent(in: current) else { throw EditorError.stalePartGraphSelection }
+        guard let id = current.owningComponentID(for: target),
+            let hint = ComponentRevealHint.make(
+                componentID: id, tree: componentTree, revision: componentRevealRevision + 1)
+        else { throw DocumentError.invalidComponent }
+        componentRevealRevision = hint.revision
+        componentRevealHint = hint
+    }
+
     /// Select only a targeted part's owned nodes, preserving the separate node-only convenience.
     /// - Parameters: `partID` is an existing part; `context` captures the originating document epoch.
     /// - Throws: Missing-part or `stalePartGraphSelection` errors atomically. Edges and reveal hints are cleared.
