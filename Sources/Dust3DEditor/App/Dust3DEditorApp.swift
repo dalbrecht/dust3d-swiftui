@@ -189,7 +189,8 @@ struct Dust3DEditorApp: App {
                     "Move Origin",
                     isOn: Binding(get: { store?.isMovingOrigin == true }, set: { store?.setMovingOrigin($0) })
                 )
-                .disabled(store?.canSave != true || store?.snapshot?.origin == nil)
+                .disabled(
+                    store?.canSave != true || store?.snapshot?.origin == nil || store?.isSelectingRigEdges == true)
                 Button("Center Origin on Model") { store?.centerOriginOnModel() }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 Button("Cancel Canvas Input") {
@@ -200,7 +201,7 @@ struct Dust3DEditorApp: App {
                 Divider()
                 Button("Select All Nodes") { store?.selectAllNodes() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
-                    .disabled(store?.snapshot == nil || store?.isWorking != false)
+                    .disabled(store?.snapshot == nil || store?.isWorking != false || store?.isSelectingRigEdges == true)
                 Button("Select Whole Part") {
                     if let target = store?.wholePartActionTarget { store?.selectWholePart(target) }
                 }

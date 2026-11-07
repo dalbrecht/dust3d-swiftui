@@ -76,6 +76,58 @@ final class NodeClipboardTests: XCTestCase {
                 return (id, fresh)
             })
     }
+    func testWorkingGroupPasteRetainsNestedGraphProfilesNamespacesAndAssetHistory() throws {
+        let source = try richSource()
+        let fragment = try source.copyingNodes(["a"])
+        let destination = try archive(
+            "<canvas><components><component id='working'><component id='existing'/></component></components></canvas>")
+        let command = DocumentCommand.pasteNodes(
+            clipboard: fragment, identities: identities(fragment), offset: .init(x: 0, y: 0, z: 0))
+        var history = DocumentHistory(document: destination)
+        try history.apply(command, pasteParentID: "working")
+        let pasted = history.document
+        let rows = try pasted.components()
+        XCTAssertEqual(rows.first { $0.id == "new-group" }?.parentID, "working")
+        XCTAssertEqual(rows.first { $0.id == "new-pc" }?.parentID, "new-group")
+        XCTAssertEqual(rows.first { $0.id == "working" }?.childIDs.first, "existing")
+        XCTAssertEqual(pasted.asset(named: "opaque"), Data([0, 255]))
+        let xml = try XCTUnwrap(XMLDocument(data: pasted.modelXML).rootElement())
+        let part = xml.elements(forName: "parts").first?.elements(forName: "part").first
+        XCTAssertEqual(part?.attribute(forName: "cutFace")?.stringValue, "{99999999-9999-4999-8999-bbbbbbbbbbbb}")
+        let group = xml.elements(forName: "components").first?.elements(forName: "component").first
+        let pastedGroup = group?.elements(forName: "component").first {
+            $0.attribute(forName: "id")?.stringValue == "new-group"
+        }
+        let opaque = pastedGroup?.elements(forName: "component").first?.children?.compactMap { $0 as? XMLElement }
+            .first { $0.localName == "future" }
+        XCTAssertEqual(opaque?.uri, "urn:test")
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), destination.encoded())
+        XCTAssertFalse(history.canUndo)
+        XCTAssertTrue(history.redo())
+        XCTAssertEqual(history.document.encoded(), pasted.encoded())
+    }
+
+    func testGroupedPasteRejectsMissingLinkedAliasAndExcessiveDepthWithoutHistory() throws {
+        let fragment = try source().copyingNodes(["a"])
+        let command = DocumentCommand.pasteNodes(
+            clipboard: fragment, identities: identities(fragment), offset: .init(x: 0, y: 0, z: 0))
+        let ordinary = try archive(
+            "<canvas><components><component id='e\u{301}'/><component id='linked' linkDataType='partId' linkData='p'/></components></canvas>"
+        )
+        let groups = (1...126).map { "<component id='g\($0)'>" }.joined()
+        let deep = try archive(
+            "<canvas><components>\(groups)\(String(repeating: "</component>", count: 126))</components></canvas>")
+        for (document, parentID) in [
+            (ordinary, "missing"), (ordinary, "linked"), (ordinary, "\u{e9}"), (deep, "g126"),
+        ] {
+            var history = DocumentHistory(document: document)
+            XCTAssertThrowsError(try history.apply(command, pasteParentID: parentID))
+            XCTAssertEqual(history.document.encoded(), document.encoded())
+            XCTAssertFalse(history.canUndo)
+        }
+    }
+
     func testProfilesHierarchyNamespacesAndOpaqueMetadataAreRetained() throws {
         let source = try richSource()
         let clipboard = try source.copyingNodes(["a"])
