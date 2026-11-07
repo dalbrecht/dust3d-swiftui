@@ -1,94 +1,66 @@
 # Native editor delivery and acceptance status
 
-Snapshot: October 25, 2026. The full scope remains
-[editor-port-plan.md](editor-port-plan.md), including M0–M8. This snapshot separates
-implemented stages, local work and missing acceptance; it is not a parity signoff.
+Snapshot: November 6, 2026. Scope remains the complete M0–M8 plan in
+[editor-port-plan.md](editor-port-plan.md). This is an evidence checkpoint,
+not a Qt parity, Apple HIG or release signoff. The requirement-level distinctions
+are in [the acceptance matrix](parity-acceptance-matrix.md).
 
-## Public and local baselines
+## Current baselines
 
-- Apple public master at this delivery base: `b8d91a48fb90fa61b62fe838bdac8e4d95d5a836` (stored-animation inspector).
-  Crop adjustment (#249) and the native node-ID accessibility/copy fix (#251) are
-  merged, as are the stored rig document/actor foundations (#253), inspector (#255) and exact edge-bone assignments (#256). Historical modifier/clipboard QA used clean implementation `2011b362`;
-  later documentation and test commits do not retag that captured runtime.
-- Core PR [#212](https://github.com/dalbrecht/dust3d-core/pull/212) is merged at
-  `48b0ce2d6d61cf58731bb0c3e14ef5965a686d68`, following completed exact-head review
-  and six green CI checks. The development XPC host now uses the C request
-  coordinator's current-source admission. Its healthy fixture has one immutable
-  source, connection and job; this does not establish editor adoption, active
-  stop/escalation behavior or complete containment.
-- Apple pins reviewed core `48b0ce2d6d61cf58731bb0c3e14ef5965a686d68` through
-  merged dependency PR #273, explicitly authorized by the user.
-  Local core contracts and helper tests are not evidence of Apple adoption.
-- Every public PR still requires its full local gate, completed exact-head
-  automated review, addressed feedback and all green CI before serial merging.
-  A stale running summary is not proof of worker liveness. The user authorizes
-  one fresh recovery review request per unchanged head before prompting; further
-  recovery requests on that head still require a decision.
+- Merged Apple baseline: `0243cfcaeb81a037225ebb39a473db003b30404e` (#382).
+  It includes canvas context editing, interrupted-marquee cleanup, scoped
+  isolation, global Hide All Parts and Command-Option subtractive selection. The earlier October 25 baseline and
+  pending-publication descriptions in this file are superseded.
+- Production core remains `48b0ce2d6d61cf58731bb0c3e14ef5965a686d68`.
+  Local core work is not a dependency upgrade or production adoption.
+- QA57 was compiled at `f99c87e70678b8dd21fcac1583c26ece5b043019`;
+  its complete tree equals the reviewed #382 head and merged baseline.
+  Full local validation passed 71 support tests and 1,906 XCTest tests
+  (two expected accessibility skips, zero failures), required coverage,
+  Qt-free linkage and signed bundle/archive rebuilding. All exact-head public
+  checks passed and automated review completed without unresolved findings.
+- QA57 and experimental .15 package checks passed. The latter compiled the
+  generated-rest configuration against unchanged local-only core and passed
+  16 focused pure/model/copied-store/pointer-state tests. This does not establish
+  whole-app local-core modeling, evaluated animation or physical acceptance.
+  Earlier QA56 counts (1,899 XCTest tests) describe #381, not this baseline.
+- Local QA tags and verified archives are development checkpoints. They are not
+  published GitHub Releases, notarized distribution or physical acceptance.
+  QA52 remains the designated default; no protected existing QA process was
+  controlled to establish this checkpoint.
 
 ## Milestone evidence and gaps
 
-| Milestone | Evidence established | Acceptance still open |
+| Milestone | Implementation/evidence established | Acceptance still open |
 | --- | --- | --- |
-| M0 — Viewer/baseline | Separate viewer and native editor products; shared standards and maintained MIT downstream. Selected ordinary Qt CPU comparisons are recorded in core issue #35. | Complete action/serialization inventory and broad licensed differential corpus; selected CPU cases are not full Qt GUI/export parity. |
-| M1 — Document/persistence | Lossless document/undo foundation, bounded archives, typed errors and save snapshot guard: [foundation](editor-foundation-verification.md), [native save](native-save-snapshot-verification.md). | Qt reopen of native-created corpus, broader recovery/close-cancel and physical filesystem acceptance. Simulated write failures do not prove all OS failures. |
-| M2 — Canvas/editor | Node/edge creation/deletion/history, selection/transforms, front/side editing, references, separate windows; crop adjustment is merged in #249. Controlled two-window/drag evidence is tracked in [#245](https://github.com/dalbrecht/dust3d-swiftui/issues/245). | Native-created capsule and multi-part sword reopened in Qt; held-gesture Escape, responsiveness/stale-result scenarios, keyboard/VoiceOver/older macOS. |
-| M3 — Modeling | Hierarchy/modifier document/controller suites and scoped native checks, now including [controlled thickness/unified and intersecting hard-join history/reopen](controlled-native-modifier-acceptance.md). | Broader linked topology interactions/replacements, remaining families and Qt comparisons. Hollow-thickness consumer gap remains [#96](https://github.com/dalbrecht/dust3d-swiftui/issues/96); [#120](https://github.com/dalbrecht/dust3d-swiftui/issues/120) stays open. |
-| M4 — Materials/imports | Existing material/import/bake/render stages have [editor evidence](imported-material-editor-verification.md) and [file-preview evidence](mixed-file-preview-verification.md). | Mixed source mip adoption [#172–180](https://github.com/dalbrecht/dust3d-swiftui/issues/172), full alpha/PBR/UV/export parity and malformed-asset containment. Historical render evidence does not enable the quarantined experimental catalog. [#143](https://github.com/dalbrecht/dust3d-swiftui/issues/143) remains open. |
-| M5 — Rigging | Stored-parameter document/actor commands (#246/#253) and inspector controls (#254/#255) are merged. Edge-binding commands and controls (#247/#256) are merged, including exact UTF-8 identity and owned native field Return/Escape tests. Historical whole-app Save/history/reopen was not established after control timeouts. These stages do not establish native rig evaluation. | Rig/pose ownership, skeleton/hierarchy/weights, IK and native save/keyboard acceptance under [#144](https://github.com/dalbrecht/dust3d-swiftui/issues/144) and its staged issues. Preserve Apple #199 quarantine. |
-| M6 — Animation/audio | Stored-animation document commands, list snapshots, actor coordination and inspector are merged (#265–268). These edit retained metadata; no native evaluation/playback/audio acceptance exists. | Bounded pose/audio copies, time-based playback, synchronization and WAV workflows under [#145](https://github.com/dalbrecht/dust3d-swiftui/issues/145). Preserve core #95 quarantine. |
-| M7 — Export/batch | Portable development work and staged issues exist; document Save is not export parity. | Owned OBJ/GLB/FBX/WAV outputs, atomic publication, current-revision admission and independent re-import/batch acceptance under [#146](https://github.com/dalbrecht/dust3d-swiftui/issues/146). |
-| M8 — Release/hardening | Measured Swift suites, explicit Qt-free builds, file-preview integration stages and local core mitigation contracts. | Strong memory/descendant/filesystem/network/parent-death containment, active lifecycle evidence, trusted packaging/signing/notarization, hardware/OS/performance/accessibility/upgrade matrix under [#147](https://github.com/dalbrecht/dust3d-swiftui/issues/147). |
+| M0 — Baseline/inventory | Native editor/viewer separation; activated menu, canvas, component and bone authoring source comparisons. The inspected Qt UI files match the unchanged production-core reference. | Complete action/serialization/type matrix and licensed differential corpus; source correspondence is not behavior equivalence or a feature percentage. |
+| M1 — Document/persistence | Lossless document/history, bounded archives, native snapshot save guards and accepted-state recovery-copy foundations. See [save verification](native-save-snapshot-verification.md) and [recovery ADR](adr/0093-bounded-editor-recovery-copies.md). | Qt reopen of native-created corpus; physical save/close/cancel/recovery and OS failure behavior. Simulated writers do not establish every filesystem failure. |
+| M2 — Canvas/editor | Graph creation/join/removal, explicit node/edge selection, transforms, front/side editing, reference composition, per-window history, captured context edits, global/scoped visibility and subtraction. See ADRs [0174](adr/0174-canvas-context-actions.md), [0175](adr/0175-canvas-hide-all.md) and [0176](adr/0176-subtractive-graph-selection.md). | Physical held-gesture cancellation, keyboard/VoiceOver, multi-window focus and native-created capsule/sword Qt round trips. |
+| M3 — Modeling | Hierarchy, ordering, batch mesh modifiers, deformations, cut profiles, stitching and wrapping have native commands/controls and scoped tests. See [controlled modifier acceptance](controlled-native-modifier-acceptance.md). Endpoint Shift-drag IK also has a native graph-editing counterpart. | Broad interacting topology/modifier numerical comparisons. Hollow #96 includes local work, but its implementation is not implied by the production pin or a visible stored field. Full #120 acceptance remains open. |
+| M4 — Materials/imports | Source-aware material/texture/import routes and rendering foundations, plus staged owned source-mip work. See [material evidence](imported-material-editor-verification.md) and [file preview evidence](mixed-file-preview-verification.md). | Complete UV/PBR/alpha/source-mip/export comparison and malformed-asset containment; local core contracts do not establish production adoption. #143 remains open. |
+| M5 — Rigging | Stored rig/eyelid intent, exact edge assignments, clear bone/chain, matching/unassigned selection, progress and hover are implemented. Experimental generated-rest preview has hierarchy, weight colors, joint inspection, picking and camera controls. See ADRs [0163](adr/0163-generated-rest-preview-surface.md), [0165](adr/0165-generated-joint-inspection.md), [0168](adr/0168-generated-rest-picking.md). | Experimental actual-rest work requires unpublished local core; production adoption, executed Qt rest/weight comparison, evaluated deformation and physical acceptance are unproven. Preserve Apple #199. Endpoint graph IK is distinct from complete skeletal pose/deformation acceptance. |
+| M6 — Animation/audio | Stored animation create/name/type/duplicate/delete and catalog-backed parameter authoring; pure elapsed-time sample projection. See [authoring ADR](adr/0119-catalog-backed-animation-authoring.md) and [timeline ADR](adr/0120-elapsed-animation-timeline.md). | Native evaluated frames, skinning/playback/scrubbing, synchronized procedural sound and WAV workflows. Metadata controls and a pure timeline do not supply these capabilities. Preserve core #95. #145 remains open. |
+| M7 — Export/batch | Captured, admitted OBJ/FBX geometry export routes and parent-owned publication coordination. Save remains distinct from export. | Complete textured/rigged/animated OBJ/GLB/FBX/WAV outputs, independent re-import, batch behavior and recoverable partial multi-file publication. No GLB/writer quarantine is lifted. #146 remains open. |
+| M8 — Hardening/release | Measured Swift gates, Qt isolation, identities/resources, local ad-hoc signatures and exact archive verification; standard About/credits/help and native command foundations. | Physical keyboard/VoiceOver/HIG, GPU/OS/hardware/performance matrix, separate C++ coverage/sanitizers/fuzzing, strong worker containment/lifecycle evidence, signing/notarization, upgrade and distribution acceptance. Native PR CI does not imply legacy release CI succeeds. #147 remains open. |
 
-The public Apple Sources do not establish the planned skeletal evaluation,
-animation/audio playback or complete export parity. Stored-intent controls are distinct from
-those capabilities; an open issue series is not implementation evidence. The
-node-ID fix in #251 closes #250, while the separate staged OBJ-status accessibility
-investigation in #235 remains open. No milestone
-above is accepted solely because its controls or a passing test suite exist.
-Earlier verification files retain historical counts and scope; they are not
-current whole-app coverage claims.
+## Next delivery gates
 
-Explicit accepted-state recovery copies (#248) are prepared locally under
-[ADR 0093](adr/0093-bounded-editor-recovery-copies.md), with pure admission and
-ordinary temporary-file tests. They preserve originals/history and require a
-matching request receipt. Native notification delivery remains unverified and
-cannot retrofit the protected older QA process.
+1. Preserve serial exact-head CI/review gates for subsequent changes. Retain
+   recoverable source and candidate archives; delete only proven clean merged
+   worktrees and inactive generated caches.
+2. Reconcile the remaining M0 requirements with concrete implementation and
+   acceptance evidence. Do not add duplicate controls because Qt names differ,
+   or mistake unused Qt helpers for activated product requirements.
+3. Advance the actual M4–M7 capability gaps through reviewed core/application
+   boundaries, respecting the unchanged production pin and runtime restrictions.
+   Stored intent, a local ABI or an experimental viewport is not production
+   evaluation, playback, audio or export parity.
+4. Obtain actual physical/differential acceptance before closing milestones.
+   Source review and green tests cannot establish full Qt behavior or Apple HIG.
 
-## Next delivery priorities
-
-Per-document preview scheduling (#271) is locally committed, with five pure queue
-and seven fake-backend tests passing. The pure queue has 100% measured line,
-region and function coverage; the focused service profile covers 184/198 lines.
-Full preview-stage local validation passed: 45 support and 1,016 XCTest cases,
-coverage, Qt-free linkage and bundle rebuilds. Queue line coverage is 28/28;
-service line coverage is 194/198 in the full suite. Public CI/review and native
-acceptance remain pending. The separate reviewed
-dependency upgrade #273 removed the automatic stitching debug SVG writer; its
-full local gate and completed clean review/all CI passed. All feature quarantines
-remain. See
-[ADR 0114](adr/0114-per-document-preview-scheduling.md).
-
-1. Finish the current public review gate and publish ready local stages serially.
-   Preserve recoverable source/bundles and use the single shared compiler root.
-2. Complete ordinary controlled M2/M3 acceptance before claiming those milestones:
-   prioritize unsupported linked-profile replacements, further topology combinations and native-created Qt
-   round trips. Do not repeat already-proven cases merely to grow counts.
-3. Continue material adoption and safe domain foundations for rig/animation/export
-   with explicit capability/error behavior. Saved experimental checkpoints require
-   fresh source audit/builds; never run stale binaries or reopen quarantined paths.
-4. Integrate reviewed core/worker stages only through explicit dependency and
-   application PRs with the required acceptance. Runtime metadata is not a sandbox,
-   and local helper tests do not establish complete app containment.
-5. Close release gates with actual evidence. No feature percentage or calendar
-   completion estimate is justified by this partial acceptance snapshot.
-
-Preserve core [#67](https://github.com/dalbrecht/dust3d-core/issues/67)/
-[#69](https://github.com/dalbrecht/dust3d-core/issues/69),
-[#83](https://github.com/dalbrecht/dust3d-core/issues/83),
-[#84](https://github.com/dalbrecht/dust3d-core/issues/84),
-[#95](https://github.com/dalbrecht/dust3d-core/issues/95) and Apple
-[#199](https://github.com/dalbrecht/dust3d-swiftui/issues/199) quarantines.
-Core containment work remains tracked by
-[#123](https://github.com/dalbrecht/dust3d-core/issues/123).
-No crash, allocation-failure, signal-delivery, broken-pipe or resource-exhaustion
-probes, production pin changes or human button requests are introduced by this audit.
+Every public merge still requires the full local gate, completed clean review of
+its exact head, every current check green and zero unresolved findings. Preserve
+core #67/#69 (GLB), #83 (writer), #84 (fault/crash/exhaustion), #95 (animation) and
+Apple #199 quarantines. Do not replay the disabled AX fixture, control the
+protected QA app, retry the rejected broad core CI matrix or change the core pin
+as part of this status reconciliation. Strong containment remains under core #123.
