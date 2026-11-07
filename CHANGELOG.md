@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
+
+- Edit a Model part’s cross-section profile and rotation directly from its graph selection.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
