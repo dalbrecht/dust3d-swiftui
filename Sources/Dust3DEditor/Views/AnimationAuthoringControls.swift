@@ -28,7 +28,7 @@ struct AnimationAuthoringControls: View {
                 }
             } else {
                 availability
-                Button(action: workflow.beginCreation) {
+                Button(action: workflow.creationAction()) {
                     Label("New Animation", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 40)
                 }.disabled(!workflow.canBeginCreation).accessibilityLabel("Create stored animation")
                 HStack(spacing: 8) {
@@ -66,6 +66,9 @@ struct AnimationAuthoringControls: View {
             }.disabled(!state.canLoad)
         } else if state.catalog?.clips.isEmpty == true {
             Text("No declared animation types are available.").font(.caption).foregroundStyle(.secondary)
+        } else if state.catalog != nil, store.animationSnapshot != nil, workflow.creationClips.isEmpty {
+            Text("Choose a rig with declared animation types to create a new animation.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -140,10 +143,8 @@ struct AnimationAuthoringControls: View {
                 if let source = workflow.sourceType, workflow.catalog?.clip(type: source) == nil {
                     Text("Unsupported: \(source)").tag(Array(source.utf8)).disabled(true)
                 }
-                if let catalog = workflow.catalog {
-                    ForEach(Array(catalog.clips.enumerated()), id: \.offset) { _, clip in
-                        Text("\(clip.type) · \(clip.rig)").tag(Array(clip.type.utf8))
-                    }
+                ForEach(Array(workflow.typeChoices.enumerated()), id: \.offset) { _, clip in
+                    Text("\(clip.type) · \(clip.rig)").tag(Array(clip.type.utf8))
                 }
             }
             .pickerStyle(.menu).accessibilityLabel("Stored animation type")
