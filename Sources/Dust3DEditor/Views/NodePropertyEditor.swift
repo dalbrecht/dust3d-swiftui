@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 /// The numeric node draft and its Reset/Apply lifecycle, independent of other inspector commands.
@@ -33,6 +34,11 @@ struct NodePropertyEditor: View {
                 .buttonStyle(.borderedProminent)
             }
             .disabled(store.isWorking || !node.isEditable)
+            if let snapshot = store.snapshot, snapshot.allowsNodeDeformation(for: node.id) {
+                NodeDeformationControls(store: store, node: node, target: CanvasAdjustmentTarget(snapshot: snapshot))
+                    .id(snapshot.documentIdentity)
+                    .disabled(store.isWorking)
+            }
         }
     }
 }

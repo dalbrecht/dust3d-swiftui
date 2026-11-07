@@ -27,6 +27,7 @@ public enum DocumentError: Error, Equatable, Sendable {
     case invalidPartName
     case invalidBoneName
     case invalidNode
+    case invalidNodeDeformation
     case cyclicProfile
     case conflictingAsset(String)
     case transactionAlreadyOpen
@@ -255,6 +256,9 @@ public enum DocumentCommand: Sendable {
     case setReferenceImagePNG(Data?)
     case setNode(id: String, position: NodePosition, radius: Double)
     case setNodes([NodeUpdate])
+    /// Replace one taper scale on an editable Model node. A value of 1 restores the inherited default.
+    /// The value must be finite, positive, at most 1,000,000, and nonzero in the engine's Float representation.
+    case setNodeDeformationScale(id: String, property: PartDeformationProperty, value: Double)
     case addNode(id: String, partID: String, componentID: String?, position: NodePosition, radius: Double)
     case addEdge(id: String, from: String, to: String)
     /// Atomically split an editable edge at the average endpoint position and radius.
@@ -303,6 +307,13 @@ public struct DocumentNode: Identifiable, Equatable, Sendable {
     public let value: EditableNode
     public let isVisible: Bool
     public let isEditable: Bool
+
+    fileprivate let deformation: NodeDeformation
+
+    /// The saved taper scale, 1 when absent or nil when the stored value is unsupported.
+    public func deformationScale(_ property: PartDeformationProperty) -> Double? {
+        deformation.scale(property)
+    }
 }
 
 public struct DocumentEdge: Identifiable, Equatable, Sendable {
@@ -1090,6 +1101,22 @@ public struct Dust3DDocument: Sendable {
             if try !PartSplitting.apply(id: id, identities: identities, model: model, contents: contents) {
                 return self
             }
+        case .setNodeDeformationScale(let id, let property, let value):
+            guard NodeDeformation.isValid(value) else { throw DocumentError.invalidNodeDeformation }
+            guard let node = contents.nodes.first(where: { $0.id.utf8.elementsEqual(id.utf8) }) else {
+                throw DocumentError.missingNode(id)
+            }
+            guard node.isEditable, let partID = node.partID,
+                contents.parts.first(where: { $0.id.utf8.elementsEqual(partID.utf8) })?.target == .model
+            else { throw DocumentError.invalidNode }
+            guard node.deformationScale(property) != value else { return self }
+            guard
+                let element = try Self.nodes(model).first(where: {
+                    $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(id.utf8) == true
+                })
+            else { throw DocumentError.missingNode(id) }
+            NodeDeformation.write(property, value: value, on: element)
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setNode(let id, let position, let radius):
             return try applying(.setNodes([.init(id: id, value: .init(position: position, radius: radius))]))
         case .setNodes(let updates):
@@ -1676,7 +1703,7 @@ public struct Dust3DDocument: Sendable {
             return DocumentNode(
                 id: id, title: name.isEmpty ? "Node \(index + 1)" : name, partID: partID,
                 value: try Self.decodeNode(node), isVisible: part?.isEditVisible ?? true,
-                isEditable: part?.isEditable ?? true)
+                isEditable: part?.isEditable ?? true, deformation: NodeDeformation(node))
         }
         let ids = Set(nodes.map(\.id))
         var edgeIDs = Set<String>()

@@ -6,11 +6,13 @@ import UniformTypeIdentifiers
 @MainActor struct ReferenceCompositionSheet: View {
     let store: EditorStore
     let target: ReferenceCompositionTarget
+    var droppedSources: ReferenceCompositionDrop? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var recoveryIdentity = UUID()
     @State private var draft = ReferenceCompositionDraft()
     @State private var importingProfile = ReferenceProfile.front
     @State private var isImporting = false
+    @State private var didSeedDrop = false
     @State private var setsOrigin = true
     @State private var isApplying = false
     @State private var applyError: String?
@@ -87,6 +89,10 @@ import UniformTypeIdentifiers
             }
         }
         .onAppear {
+            if !didSeedDrop, let droppedSources {
+                didSeedDrop = true
+                draft.importDroppedSources(droppedSources)
+            }
             EditorCompositionRecovery.shared.register(recoveryIdentity) {
                 guard !isApplying else { return false }
                 draft.stop()

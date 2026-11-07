@@ -8,6 +8,26 @@ enum ReferenceProfile: String, CaseIterable, Sendable {
     case side = "Side"
 }
 
+/// Ordered local image URLs delivered together by the drop target.
+struct ReferenceCompositionDrop {
+    let front: URL
+    let side: URL?
+
+    private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff"]
+
+    init?(urls: [URL]) {
+        guard (1...2).contains(urls.count), let first = urls.first,
+            urls.allSatisfy({ url in
+                url.isFileURL
+                    && (url.host(percentEncoded: false).map { $0.isEmpty || $0.lowercased() == "localhost" } ?? true)
+                    && Self.imageExtensions.contains(url.pathExtension.lowercased())
+            })
+        else { return nil }
+        front = first
+        side = urls.dropFirst().first
+    }
+}
+
 /// A sheet owns this transient state; no draft action can access or mutate an editor session.
 @MainActor @Observable final class ReferenceCompositionDraft {
     private(set) var front: ReferenceCompositionSource?
@@ -47,6 +67,41 @@ enum ReferenceProfile: String, CaseIterable, Sendable {
                 assign(source, to: profile)
                 sourceEpoch += 1
                 render()
+            } catch {
+                guard !Task.isCancelled, !stopped, request == requestID else { return }
+                isWorking = false
+                errorMessage = EditorStore.message(error)
+            }
+        }
+    }
+
+    /// Stage both dropped profiles and their composition before publishing any of them.
+    func importDroppedSources(_ drop: ReferenceCompositionDrop) {
+        guard !stopped else { return }
+        let retainedResult = result
+        invalidate()
+        result = retainedResult
+        isWorking = true
+        errorMessage = nil
+        let request = requestID
+        operation = Task {
+            do {
+                let front = try await service.importSource(url: drop.front)
+                try Task.checkCancellation()
+                let side =
+                    if let sideURL = drop.side {
+                        try await service.importSource(url: sideURL) as ReferenceCompositionSource?
+                    } else {
+                        nil as ReferenceCompositionSource?
+                    }
+                try Task.checkCancellation()
+                let composed = try await service.compose(front: front, side: side)
+                guard !Task.isCancelled, !stopped, request == requestID else { return }
+                self.front = front
+                self.side = side
+                result = composed
+                sourceEpoch += 1
+                isWorking = false
             } catch {
                 guard !Task.isCancelled, !stopped, request == requestID else { return }
                 isWorking = false

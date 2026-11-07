@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open a local .ds3 document by dropping it into the editor without replacing the current document.
+
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
@@ -149,6 +151,8 @@
 - Preview a new node and adjust its radius before placing it on the canvas in Add mode. Keep cancellation bound to its placement request, refit on selection exit, discard held presses across tool changes, and allow inward placement at document coordinate limits.
 
 - Adjust selected node radii using canvas-focused keyboard input or the canvas wheel, with one-step Undo. Radius menu and inspector actions remain available independently of canvas focus.
+
+- Highlight the hovered node or edge in both canvas profiles, with node hits taking precedence over edges.
 - Preserve numeric move and scale controls for mixed and edge-only selections, expose additive node accessibility actions, and batch graph edge deletion into one validated XML mutation.
 
 - Select nodes and edges together, with explicit graph editing modes and one-step batch midpoint insertion.
@@ -338,6 +342,8 @@
 
 - Add bounded, lossless part width/thickness and unified-deformation commands with exact undo/redo, preserved fine scales and regenerated previews; native controls follow separately.
 
+- Author independent per-node width and thickness taper for editable Model nodes, with lossless saving and one-step Undo.
+
 - Add typed, undoable part subdivision, chamfer, rounded ends, extra rings and hard-join commands with lossless saving and regenerated previews; native inspector controls follow separately.
 
 - Update the pinned core to fix rounded crossing mesh generation and preserve thin solids near weld boundaries.
@@ -397,6 +403,8 @@
 - Align selected editable nodes to their local Front/Side center on either or both axes, respecting locks with one-step lossless undo/redo.
 
 - Add native part selection, naming, visibility, locking and mesh-disable controls with lossless undo/redo and save support.
+
+- Drop one or two image files into the reference controls to compose Front and Side images before applying them to the document.
 
 - Import/render bounded native reference images with undoable removal, per-window opacity/visibility and lossless existing asset handling; align the canvas and clockwise transforms with Qt’s positive-Y-down image coordinates.
 

@@ -23,6 +23,9 @@ final class EditorStore {
                 changeAddPlacementDestination(.documentRoot)
             }
             if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
+            if case .edge = canvasGraphHover, oldValue?.documentRevision != snapshot?.documentRevision {
+                clearCanvasHover()
+            }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
                 clearCanvasHover()
             }
@@ -41,7 +44,7 @@ final class EditorStore {
         canPickGraph && snapshot?.canSelectWholePart(target) == true
     }
     var wholePartActionTarget: PartGraphTarget? {
-        if let hoveredNodeID { return .node(hoveredNodeID) }
+        if !isAddingNodes, let hoveredNodeID { return .node(hoveredNodeID) }
         guard let snapshot else { return nil }
         if let id = snapshot.selectedPartID { return .part(id) }
         if snapshot.selectedIDs.count == 1, snapshot.selectedEdgeIDs.isEmpty, let id = snapshot.selectedID {
@@ -343,7 +346,12 @@ final class EditorStore {
         }
     }
     private(set) var canvasHeight: Double = 0
-    private(set) var hoveredNodeID: String?
+    @ObservationIgnored private var canvasGraphHoverCache = CanvasGraphHover.Cache()
+    private(set) var canvasGraphHover: CanvasGraphHover?
+    var hoveredNodeID: String? {
+        if case .node(let id) = canvasGraphHover { return id }
+        return nil
+    }
     func setCanvasHeight(_ height: Double) {
         let next = height.isFinite && height > 0 ? height : 0
         if next != canvasHeight { precisionLayoutEpoch = UUID() }
@@ -357,19 +365,19 @@ final class EditorStore {
         }
     }
     func setHoveredNode(_ id: String?) {
-        hoveredNodeID = snapshot?.nodes.first(where: { $0.id == id && $0.isVisible })?.id
+        let visibleID = snapshot?.nodes.first(where: { $0.id == id && $0.isVisible })?.id
+        canvasGraphHover = visibleID.map(CanvasGraphHover.node)
     }
-    func clearCanvasHover() { hoveredNodeID = nil }
+
+    func clearCanvasHover() { canvasGraphHover = nil }
+
     func updateCanvasHover(at point: CanvasPoint?, projection: CanvasProjection) {
-        guard let point else {
+        guard let point, let snapshot else {
             clearCanvasHover()
             return
         }
-        let node = snapshot?.nodes.last(where: {
-            let center = projection.point(for: $0.value.position)
-            return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
-        })
-        setHoveredNode(node?.id)
+        let hover = canvasGraphHoverCache.hit(at: point, projection: projection, snapshot: snapshot)
+        if hover != canvasGraphHover { canvasGraphHover = hover }
     }
     var canAdjustSelectionRadius: Bool {
         !isWorking && !stopped && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
@@ -722,15 +730,20 @@ final class EditorStore {
     var canSave: Bool { snapshot != nil && !isWorking && !stopped }
     var canEditRigSettings: Bool { canSave }
 
-    private var acceptedAnimationSource: EditorSnapshot? {
+    private var acceptedDocumentSource: EditorSnapshot? {
         guard !stopped, case .success(let accepted) = recoveryLoadResult,
             let snapshot, snapshot.documentIdentity == accepted.documentIdentity
         else { return nil }
         return snapshot
     }
 
+    var referenceCompositionTarget: ReferenceCompositionTarget? {
+        guard canSave, let source = acceptedDocumentSource else { return nil }
+        return ReferenceCompositionTarget(snapshot: source)
+    }
+
     var animationSnapshot: EditorAnimationSnapshot? {
-        guard let source = acceptedAnimationSource, let value = animationValue,
+        guard let source = acceptedDocumentSource, let value = animationValue,
             value.editor.documentIdentity == source.documentIdentity,
             value.editor.documentRevision == source.documentRevision
         else { return nil }
@@ -738,7 +751,7 @@ final class EditorStore {
     }
 
     var animationQueryIssue: (any Error)? {
-        guard let failure = animationQueryFailure, let source = acceptedAnimationSource,
+        guard let failure = animationQueryFailure, let source = acceptedDocumentSource,
             source.documentIdentity == failure.documentIdentity,
             source.documentRevision == failure.documentRevision
         else { return nil }
@@ -810,7 +823,7 @@ final class EditorStore {
     private func requestAnimations(
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorAnimationSnapshot
     ) {
-        guard !isWorking, let source = acceptedAnimationSource else { return }
+        guard !isWorking, let source = acceptedDocumentSource else { return }
         let sourceIdentity = source.documentIdentity
         let sourceRevision = source.documentRevision
         let requestID = UUID()
@@ -825,14 +838,14 @@ final class EditorStore {
             do {
                 let result = try await action(session)
                 guard !Task.isCancelled, let self, self.animationRequestID == requestID, !self.isWorking,
-                    let current = self.acceptedAnimationSource,
+                    let current = self.acceptedDocumentSource,
                     current.documentIdentity == result.editor.documentIdentity,
                     current.documentRevision == result.editor.documentRevision
                 else { return }
                 self.animationValue = result
             } catch {
                 guard !Task.isCancelled, let self, self.animationRequestID == requestID,
-                    let current = self.acceptedAnimationSource,
+                    let current = self.acceptedDocumentSource,
                     current.documentIdentity == sourceIdentity, current.documentRevision == sourceRevision
                 else { return }
                 self.animationQueryFailure = .init(
@@ -1475,6 +1488,21 @@ final class EditorStore {
         }
     #endif
 
+    func setNodeDeformationScale(
+        _ property: PartDeformationProperty, draft: String, nodeID: String, target: CanvasAdjustmentTarget
+    ) {
+        guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot),
+            snapshot.allowsNodeDeformation(for: nodeID)
+        else { return }
+        guard let value = NodeDeformation.parse(draft) else {
+            errorMessage = Self.message(DocumentError.invalidNodeDeformation)
+            return
+        }
+        perform {
+            try await $0.setNodeDeformationScale(property, value: value, nodeID: nodeID, target: target)
+        }
+    }
+
     func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
         guard !isWorking, !stopped else { return }
         guard let scale = EngineScalar.parse(value, in: 0...2) else {
@@ -1505,7 +1533,7 @@ final class EditorStore {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
     func canEditGraphPartShape(_ target: GraphPartShapeTarget) -> Bool {
-        !isWorking && acceptedAnimationSource.map { target.isCurrent(in: $0) } == true
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
     }
 
     func setGraphPartShape(_ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget) {
@@ -2124,7 +2152,12 @@ final class EditorStore {
     func applyReferenceComposition(
         _ result: ReferenceCompositionResult, target: ReferenceCompositionTarget, setsOrigin: Bool
     ) async -> Bool {
-        await withCheckedContinuation { continuation in
+        guard canSave else { return false }
+        guard acceptedDocumentSource != nil else {
+            errorMessage = Self.message(EditorError.staleReferenceComposition)
+            return false
+        }
+        return await withCheckedContinuation { continuation in
             perform(
                 reloadReferenceImage: true,
                 completion: { continuation.resume(returning: $0) }
@@ -2349,6 +2382,7 @@ final class EditorStore {
     }
 
     func stop() {
+        canvasGraphHoverCache = CanvasGraphHover.Cache()
         qtXMLFilePasteRequest = nil
         canvasProfileMotion = nil
         boneEdgeHover = nil
@@ -2679,6 +2713,8 @@ final class EditorStore {
             case .invalidBoneName:
                 return "Use an exact bone name of at most 1024 UTF-8 bytes without controls or newlines."
             case .invalidNode: return "The document contains invalid node, part, or edge data."
+            case .invalidNodeDeformation:
+                return "Enter a positive node scale up to 1,000,000 that the mesh engine can represent."
             case .conflictingAsset(let name): return "Clipboard asset \(name) conflicts with this document."
             case .cyclicProfile: return "This edit would create a cyclic cut-face reference."
             case .transactionAlreadyOpen: return "An edit transaction is already in progress."
