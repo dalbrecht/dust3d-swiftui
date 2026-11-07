@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Drop one or two image files into the reference controls to compose Front and Side images before applying them to the document.
+- Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
@@ -86,6 +86,8 @@
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
+
+- Mirror live node and origin movement in the companion profile during canvas edits (#388).
 
 - Add shared Weights From editing across selected wrapping groups with common target eligibility, exact retained references and one atomic Undo.
 
@@ -375,6 +377,8 @@
 - Align selected editable nodes to their local Front/Side center on either or both axes, respecting locks with one-step lossless undo/redo.
 
 - Add native part selection, naming, visibility, locking and mesh-disable controls with lossless undo/redo and save support.
+
+- Drop one or two image files into the reference controls to compose Front and Side images before applying them to the document.
 
 - Import/render bounded native reference images with undoable removal, per-window opacity/visibility and lossless existing asset handling; align the canvas and clockwise transforms with Qt’s positive-Y-down image coordinates.
 
