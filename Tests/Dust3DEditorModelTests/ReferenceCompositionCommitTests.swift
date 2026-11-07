@@ -92,4 +92,19 @@ final class ReferenceCompositionCommitTests: XCTestCase {
             XCTFail("Reopened identical document must reject old draft")
         } catch { XCTAssertEqual(error as? EditorError, .staleReferenceComposition) }
     }
+    @MainActor func testSessionRejectsReferenceCompositionAfterFailedOpen() async throws {
+        let original = try document().encoded()
+        let session = EditorSession()
+        let snapshot = try await session.open(data: original)
+        let target = ReferenceCompositionTarget(snapshot: snapshot)
+        do {
+            _ = try await session.open(data: Data("invalid archive".utf8))
+            XCTFail("Invalid archive opened")
+        } catch {}
+        do {
+            _ = try await session.applyReferenceComposition(png: png, origin: nil, target: target)
+            XCTFail("The retained session must reject a draft after a failed open")
+        } catch { XCTAssertEqual(error as? EditorError, .staleReferenceComposition) }
+    }
+
 }
