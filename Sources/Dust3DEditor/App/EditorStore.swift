@@ -15,6 +15,9 @@ final class EditorStore {
             if let hover = boneEdgeHover, snapshot.map({ !hover.target.isCurrent(in: $0) }) ?? true {
                 boneEdgeHover = nil
             }
+            if let motion = canvasProfileMotion, snapshot.map({ motion.isCurrent(in: $0) }) != true {
+                canvasProfileMotion = nil
+            }
             if oldValue?.documentIdentity != snapshot?.documentIdentity { clearCanvasHover() }
             if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
@@ -432,7 +435,29 @@ final class EditorStore {
         resetCanvasProfileContext(clearGeometry: true)
     }
 
+    private(set) var canvasProfileMotion: CanvasProfileMotion?
+
+    func beginCanvasProfileMotion(token: UUID, lease: UUID?) {
+        guard canvasProfiles.isDualProfile, let lease, ownsCanvasProfile(lease), let snapshot else { return }
+        canvasProfileMotion = CanvasProfileMotion(snapshot: snapshot, lease: lease, token: token)
+    }
+
+    func updateCanvasProfileMotion(_ payload: CanvasProfileMotion.Payload, token: UUID, lease: UUID?) {
+        guard let lease, ownsCanvasProfile(lease), let snapshot, var motion = canvasProfileMotion,
+            motion.update(payload, lease: lease, token: token, snapshot: snapshot)
+        else { return }
+        canvasProfileMotion = motion
+    }
+
+    func clearCanvasProfileMotion(token: UUID? = nil, lease: UUID?) {
+        guard let lease, ownsCanvasProfile(lease), let motion = canvasProfileMotion, motion.lease == lease,
+            token == nil || motion.token == token
+        else { return }
+        canvasProfileMotion = nil
+    }
+
     private func resetCanvasProfileContext(clearGeometry: Bool, transferAdd: Bool = false) {
+        canvasProfileMotion = nil
         rotationInputContextID = UUID()
         precisionLayoutEpoch = UUID()
         precisionCanvasIdentity = nil
@@ -2124,6 +2149,7 @@ final class EditorStore {
 
     func stop() {
         qtXMLFilePasteRequest = nil
+        canvasProfileMotion = nil
         boneEdgeHover = nil
         previewCameraCommand = nil
         pendingComponentDrag = nil
