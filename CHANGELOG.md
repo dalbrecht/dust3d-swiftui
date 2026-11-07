@@ -18,6 +18,8 @@
 
 - Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
 
+- Click a companion profile to make it the editing pane without placing or selecting a graph element.
+
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
 - Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
