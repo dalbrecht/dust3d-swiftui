@@ -145,6 +145,10 @@ struct NodeCanvas: View {
                         canSelectWholePart: store.canPickGraph && node.partID != nil,
                         colorizeActions: colorizeActions, graphActions: graphActions, precisionKey: precisionKey,
                         precisionActions: precisionActions,
+                        revealOwningComponent: {
+                            store.revealOwningComponentAction(
+                                .node(node.id), context: partContext, profileLease: profileLease)
+                        },
                         doubleClick: {
                             guard ownsProfile, store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin
                             else {
@@ -374,6 +378,7 @@ private struct NodeHandle: View {
     let graphActions: GraphSelectionMenuActions
     let precisionKey: (CanvasPrecisionKeyInput) -> Bool
     let precisionActions: CanvasPrecisionActions
+    let revealOwningComponent: () -> (@MainActor () -> Void)?
     let doubleClick: () -> Void
     let select: () -> Void
     let toggle: () -> Void
@@ -416,6 +421,9 @@ private struct NodeHandle: View {
         .accessibilityAction { select() }
         .accessibilityAction(named: Text("Select Whole Part")) { if canSelectWholePart { doubleClick() } }
         .contextMenu {
+            if let reveal = revealOwningComponent() {
+                Button("Reveal Owning Component", action: reveal)
+            }
             if canSelectWholePart { Button("Select Whole Part", action: doubleClick) }
             GraphSelectionMenu(actions: graphActions)
             GraphColorizeMenu(actions: colorizeActions, contextual: true)

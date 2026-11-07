@@ -18,6 +18,46 @@ final class PartGraphSelectionTests: XCTestCase {
                     .utf8))
     }
 
+    func testRevealOwningComponentPreservesGraphPicksAndHistory() async throws {
+        let source = try document(malformed: true)
+        let session = EditorSession()
+        _ = try await session.open(data: source.encoded())
+        let before = try await session.selectGraph(nodes: ["a"], edges: ["ab", "uv"])
+        let context = PartGraphSelectionContext(snapshot: before)
+
+        let node = try await session.revealOwningComponent(.node("c"), context: context)
+        XCTAssertEqual(node.componentRevealHint?.componentID, "leafp")
+        XCTAssertEqual(node.componentRevealHint?.ancestorIDs, ["root", "group"])
+
+        // The edge's stored owner differs from the owner of both endpoints.
+        let edge = try await session.revealOwningComponent(.edge("foreign"), context: context)
+        XCTAssertEqual(edge.componentRevealHint?.componentID, "leafq")
+        XCTAssertEqual(edge.componentRevealHint?.ancestorIDs, ["root"])
+        XCTAssertEqual(edge.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(edge.selectedEdgeIDs, before.selectedEdgeIDs)
+        XCTAssertEqual(edge.selectionRevision, before.selectionRevision)
+        XCTAssertEqual(edge.documentRevision, before.documentRevision)
+        XCTAssertEqual(edge.document.encoded(), before.document.encoded())
+        XCTAssertEqual(edge.previewIdentity, before.previewIdentity)
+        XCTAssertFalse(edge.canUndo)
+    }
+
+    func testRevealOwningComponentRejectsStaleOrUnresolvedTargets() throws {
+        let source = try document(malformed: true)
+        var state = try EditorState(document: source)
+        let context = PartGraphSelectionContext(snapshot: state.snapshot)
+        XCTAssertTrue(state.snapshot.canRevealOwningComponent(.node("a")))
+        XCTAssertFalse(state.snapshot.canRevealOwningComponent(.node("orphan")))
+        XCTAssertFalse(state.snapshot.canRevealOwningComponent(.edge("unowned")))
+        XCTAssertThrowsError(try state.revealOwningComponent(.edge("unowned"), context: context))
+        XCTAssertNil(state.snapshot.componentRevealHint)
+        try state.edit(id: "a", position: .init(x: 2, y: 0, z: 0), radius: 0.1)
+        XCTAssertThrowsError(try state.revealOwningComponent(.node("a"), context: context)) {
+            XCTAssertEqual($0 as? EditorError, .stalePartGraphSelection)
+        }
+        XCTAssertNil(state.snapshot.componentRevealHint)
+    }
+
     func testComponentGraphUsesCapturedRowsAndRejectsStaleActivation() throws {
         let original = try document(partState: "locked='true'")
         var state = try EditorState(document: original)

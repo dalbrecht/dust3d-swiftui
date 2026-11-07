@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
+
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
 - Add Command-Option-click and marquee subtraction for independent node/edge picks, preserving other selection and document history (#343).
