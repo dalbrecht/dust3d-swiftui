@@ -71,6 +71,10 @@ struct NodeInspector: View {
                             .id(snapshot.documentIdentity)
                             .disabled(!store.canEditGraphPartCrossSection(crossSectionTarget))
                     }
+                    DisclosureGroup("Owning Part Mirror") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartMirrorControls(store: store, graphTarget: crossSectionTarget)
+                    }
                     DisclosureGroup("Owning Part Material") {
                         Text(part.title).font(.caption).foregroundStyle(.secondary)
                         PartMaterialControls(store: store, part: part, graphTarget: crossSectionTarget)

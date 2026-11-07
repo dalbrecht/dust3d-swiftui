@@ -1,10 +1,12 @@
+import Dust3DEditorModel
 import Foundation
 
 enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
     case invalidDocumentArgument
     case unsupportedExportArgument
     case unsupportedPasteArgument
-    case unsupportedColorArgument
+    case invalidPasteArgument
+    case invalidColorArgument
 
     var errorDescription: String? {
         switch self {
@@ -13,16 +15,18 @@ enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
         case .unsupportedExportArgument:
             "Export at launch is unavailable. Open the document and use File > Export Geometry."
         case .unsupportedPasteArgument:
-            "Pasting XML at launch is unavailable. Open the document, copy the node XML, and choose Edit > Paste."
-        case .unsupportedColorArgument:
-            "Changing model colors at launch is unavailable. Open the document and use Model Colors in the View menu."
+            "Pasting XML at launch requires at least one .ds3 document. For a new document, use Edit > Paste Qt XML File."
+        case .invalidPasteArgument:
+            "Supply one local .xml path after -paste-xml, at most 4096 UTF-8 bytes."
+        case .invalidColorArgument:
+            "Use -toggle-color followed by true or false, or choose Model Colors in the View menu."
         }
     }
 }
 
 enum EditorLaunchRequest: Sendable, Equatable {
     case none
-    case open([URL])
+    case open([URL], hidesPreviewColors: Bool = false, pasteXML: URL? = nil)
 
     init(arguments: [String]) throws(EditorLaunchError) {
         var arguments = arguments.dropFirst()
@@ -30,6 +34,8 @@ enum EditorLaunchRequest: Sendable, Equatable {
         var seen = Set<URL>()
         var acceptsPositionals = true
         var parsesOptions = true
+        var hidesPreviewColors = false
+        var pasteXML: URL?
 
         while let argument = arguments.popFirst() {
             let path: String
@@ -45,9 +51,18 @@ enum EditorLaunchRequest: Sendable, Equatable {
                 case "-o", "-output":
                     throw .unsupportedExportArgument
                 case "-paste-xml":
-                    throw .unsupportedPasteArgument
+                    guard pasteXML == nil, let operand = arguments.popFirst(), !operand.hasPrefix("-"),
+                        operand.hasPrefix("/") || URLComponents(string: operand)?.scheme == nil,
+                        operand.utf8.count <= 4096, !operand.utf8.contains(0)
+                    else { throw .invalidPasteArgument }
+                    let url = URL(fileURLWithPath: operand).standardizedFileURL
+                    guard url.pathExtension.lowercased() == "xml" else { throw .invalidPasteArgument }
+                    pasteXML = url
                 case "-toggle-color":
-                    throw .unsupportedColorArgument
+                    guard let operand = arguments.popFirst(), !operand.hasPrefix("-") else {
+                        throw .invalidColorArgument
+                    }
+                    hidesPreviewColors = ["true", "True", "1"].contains(operand)
                 case "-ApplePersistenceIgnoreState":
                     if let operand = arguments.first, !operand.hasPrefix("-") { _ = arguments.popFirst() }
                 default:
@@ -72,7 +87,8 @@ enum EditorLaunchRequest: Sendable, Equatable {
             }
             urls.append(url)
         }
-        self = urls.isEmpty ? .none : .open(urls)
+        guard pasteXML == nil || !urls.isEmpty else { throw .unsupportedPasteArgument }
+        self = urls.isEmpty ? .none : .open(urls, hidesPreviewColors: hidesPreviewColors, pasteXML: pasteXML)
     }
 }
 
@@ -81,6 +97,13 @@ enum EditorLaunchRequest: Sendable, Equatable {
 final class EditorLaunchDocumentOpener {
     private let request: Result<EditorLaunchRequest, EditorLaunchError>
     private var hasHandledRequest = false
+    private var neutralPreviewClaims: [URL: LaunchNeutralPreviewClaim] = [:]
+    private var startupPasteClaims: [URL: LaunchStartupPasteClaim] = [:]
+
+    var hasPasteRequest: Bool {
+        if case .success(.open(_, _, let url)) = request { return url != nil }
+        return false
+    }
 
     var shouldSuppressUntitledDocument: Bool {
         if case .success(.none) = request { return false }
@@ -93,8 +116,11 @@ final class EditorLaunchDocumentOpener {
         }
     }
 
+    /// A successful open returns the newly created native document, or nil for an existing one.
     func openRequestedDocument(
-        open: @MainActor (URL) async throws -> Void,
+        readPaste: @MainActor (URL) async throws -> Data = { try await QtXMLFileReader().read($0) },
+        open: @MainActor (URL) async throws -> AnyObject?,
+        displayNew: @MainActor (AnyObject) -> Void = { _ in },
         reportError: @MainActor (Error) -> Void
     ) async {
         guard !hasHandledRequest else { return }
@@ -102,11 +128,132 @@ final class EditorLaunchDocumentOpener {
         hasHandledRequest = true
         switch request {
         case .success(.none): break
-        case .success(.open(let urls)):
+        case .success(.open(let urls, let hidesPreviewColors, let pasteXML)):
+            let pasteData: Data?
+            do {
+                if let pasteXML {
+                    let data = try await readPaste(pasteXML)
+                    try await EditorSession().validateQtXMLFile(data)
+                    pasteData = data
+                } else {
+                    pasteData = nil
+                }
+                try Task.checkCancellation()
+            } catch {
+                if !Task.isCancelled { reportError(error) }
+                return
+            }
             for url in urls {
-                do { try await open(url) } catch { reportError(error) }
+                guard !Task.isCancelled else { return }
+                let claim = hidesPreviewColors ? LaunchNeutralPreviewClaim() : nil
+                neutralPreviewClaims[url] = claim
+                do {
+                    let opened = try await open(url)
+                    claim?.finish(document: opened)
+                    if claim?.document == nil { neutralPreviewClaims[url] = nil }
+                    if let pasteData, let opened {
+                        if !Task.isCancelled {
+                            let startupPaste = LaunchStartupPasteClaim(document: opened, data: pasteData)
+                            startupPasteClaims[url] = startupPaste
+                            let deadline = startupPaste.deadline
+                            Task { [weak self] in
+                                try? await Task.sleep(until: deadline, clock: .continuous)
+                                self?.startupPasteClaims[url] = nil
+                            }
+                        }
+                        displayNew(opened)
+                    }
+                } catch {
+                    claim?.finish(document: nil)
+                    neutralPreviewClaims[url] = nil
+                    reportError(error)
+                }
             }
         case .failure(let error): reportError(error)
         }
+    }
+
+    func hasStartupPaste(for source: URL) -> Bool {
+        guard let claim = startupPasteClaims[source.standardizedFileURL] else { return false }
+        return ContinuousClock.now < claim.deadline
+    }
+
+    /// Retire the matching claim even when the exact document became edited.
+    func claimStartupPaste(for source: URL?, document: AnyObject?, isEdited: Bool) -> Data? {
+        guard !Task.isCancelled, let url = source?.standardizedFileURL, let document,
+            let claim = startupPasteClaims[url], claim.document === document
+        else { return nil }
+        startupPasteClaims[url] = nil
+        return isEdited || ContinuousClock.now >= claim.deadline ? nil : claim.data
+    }
+
+    /// Consume only for the exact live document created by this launch, after the open result is known.
+    func claimNeutralPreview(
+        for source: URL?, document: AnyObject?, waitLimit: Duration = .seconds(1)
+    ) async -> Bool {
+        guard !Task.isCancelled, let url = source?.standardizedFileURL,
+            let document, let claim = neutralPreviewClaims[url]
+        else { return false }
+        await claim.waitForOpen(upTo: waitLimit, document: document)
+        guard !Task.isCancelled, claim.document === document, neutralPreviewClaims[url] === claim else {
+            return false
+        }
+        neutralPreviewClaims[url] = nil
+        return true
+    }
+}
+
+private final class LaunchStartupPasteClaim {
+    weak var document: AnyObject?
+    let data: Data
+    let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+
+    init(document: AnyObject, data: Data) {
+        self.document = document
+        self.data = data
+    }
+}
+
+@MainActor
+private final class LaunchNeutralPreviewClaim {
+    private(set) weak var document: AnyObject?
+    private var didFinish = false
+    private let expiredDocuments = NSHashTable<AnyObject>(options: [.weakMemory, .objectPointerPersonality])
+    private var waiters: [UUID: AsyncStream<Void>.Continuation] = [:]
+
+    func finish(document: AnyObject?) {
+        self.document = document.flatMap { expiredDocuments.contains($0) ? nil : $0 }
+        didFinish = true
+        for waiter in waiters.values { waiter.finish() }
+        waiters.removeAll()
+    }
+
+    private func expire(document: AnyObject) {
+        expiredDocuments.add(document)
+    }
+
+    func waitForOpen(upTo limit: Duration, document: AnyObject) async {
+        guard !didFinish else { return }
+        guard limit > .zero else {
+            expire(document: document)
+            return
+        }
+        let id = UUID()
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        waiters[id] = continuation
+        let deadline = Task { [weak document] in
+            do { try await Task.sleep(for: limit) } catch { return }
+            guard !Task.isCancelled, !didFinish else { return }
+            if let document { expire(document: document) }
+            continuation.finish()
+        }
+        defer { waiters.removeValue(forKey: id)?.finish() }
+        await withTaskCancellationHandler {
+            var iterator = stream.makeAsyncIterator()
+            _ = await iterator.next()
+        } onCancel: {
+            deadline.cancel()
+        }
+        deadline.cancel()
     }
 }
