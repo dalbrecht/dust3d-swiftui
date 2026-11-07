@@ -5,6 +5,7 @@ import SwiftUI
 struct NodeCanvas: View {
     let store: EditorStore
     var profileLease: UUID? = nil
+    var profileFocusRequest: CanvasProfileFocusRequest? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
     @State private var nodeDrag = NodeDragLifecycle()
@@ -82,7 +83,9 @@ struct NodeCanvas: View {
                     },
                     precisionKey: precisionKey, isAddingNodes: store.isAddingNodes,
                     addPress: { if ownsProfile { store.placeAddNode(at: $0, modeID: addModeID) } },
-                    cancelInput: { if ownsProfile { cancelAddInput() } }
+                    cancelInput: { if ownsProfile { cancelAddInput() } },
+                    admitsPrimaryPress: admitPrimaryPress, profileFocusRequest: profileFocusRequest,
+                    ownsProfile: { ownsProfile }
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"
@@ -184,8 +187,11 @@ struct NodeCanvas: View {
                                 return
                             }
                             guard let snapshot = store.snapshot else { return }
-                            try? nodeDrag.begin(
-                                token: token, anchorID: node.id, snapshot: snapshot, projection: projection)
+                            if (try? nodeDrag.begin(
+                                token: token, anchorID: node.id, snapshot: snapshot, projection: projection)) != nil
+                            {
+                                store.beginCanvasProfileMotion(token: token, lease: profileLease)
+                            }
                         },
                         update: { token, translation in
                             guard ownsProfile, store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin
@@ -198,13 +204,22 @@ struct NodeCanvas: View {
                                     drag.plan.isCurrent(in: snapshot)
                                 else {
                                     shiftedDrag = nil
+                                    store.clearCanvasProfileMotion(token: token, lease: profileLease)
                                     return
                                 }
                                 let updates = (try? drag.plan.updates(by: translation)) ?? []
-                                shiftedDrag?.positions = Dictionary(
+                                let positions = Dictionary(
                                     uniqueKeysWithValues: updates.map { ($0.id, $0.value.position) })
+                                shiftedDrag?.positions = positions
+                                store.updateCanvasProfileMotion(.shifted(positions), token: token, lease: profileLease)
                             } else {
                                 nodeDrag.update(token: token, snapshot: snapshot, translation: translation)
+                                if let preview = nodeDrag.preview {
+                                    store.updateCanvasProfileMotion(
+                                        .ordinary(preview), token: token, lease: profileLease)
+                                } else {
+                                    store.clearCanvasProfileMotion(token: token, lease: profileLease)
+                                }
                             }
                         },
                         finish: { token, translation in
@@ -212,6 +227,7 @@ struct NodeCanvas: View {
                             else {
                                 return
                             }
+                            store.clearCanvasProfileMotion(token: token, lease: profileLease)
                             if let drag = shiftedDrag, drag.token == token {
                                 shiftedDrag = nil
                                 guard store.canvasRotationContext == shiftContext else { return }
@@ -222,6 +238,7 @@ struct NodeCanvas: View {
                             store.commitNodeDrag(baseline, translation: translation)
                         },
                         cancel: { token in
+                            store.clearCanvasProfileMotion(token: token, lease: profileLease)
                             if shiftedDrag?.token == token { shiftedDrag = nil }
                             nodeDrag.cancel(token: token)
                         },
@@ -234,7 +251,9 @@ struct NodeCanvas: View {
                                     anchorID: node.id, snapshot: snapshot, projection: projection)
                             else { return }
                             shiftedDrag = (token, plan, [:])
-                        }
+                            store.beginCanvasProfileMotion(token: token, lease: profileLease)
+                        },
+                        admitsPrimaryPress: admitPrimaryPress
                     )
                     .id(addModeID)
                     .allowsHitTesting(!store.isMovingOrigin && !store.isAddingNodes)
@@ -332,6 +351,10 @@ struct NodeCanvas: View {
         }
         .background(.background)
     }
+    private func admitPrimaryPress(_ clickCount: Int) -> Bool {
+        store.admitsCanvasPrimaryPress(clickCount: clickCount, lease: profileLease)
+    }
+
     private func adjustRadius(_ direction: Int) -> Bool {
         guard ownsProfile, store.canAdjustRadiusInput else { return false }
         store.adjustSelectionRadius(direction: Double(direction))
@@ -339,6 +362,7 @@ struct NodeCanvas: View {
     }
 
     private func invalidateNodeDrag() {
+        store.clearCanvasProfileMotion(lease: profileLease)
         nodeDrag.invalidate()
         shiftedDrag = nil
     }
@@ -386,6 +410,7 @@ private struct NodeHandle: View {
     let finish: (UUID, CanvasPoint) -> Void
     let cancel: (UUID) -> Void
     let beginShiftDrag: (UUID) -> Void
+    let admitsPrimaryPress: (Int) -> Bool
 
     var body: some View {
         let point = projection.point(for: position)
@@ -404,7 +429,7 @@ private struct NodeHandle: View {
                 select: select, toggle: toggle, add: add, subtract: subtract, wheel: wheel, radiusKey: radiusKey,
                 doubleClick: doubleClick,
                 precisionKey: precisionKey,
-                beginShiftDrag: beginShiftDrag
+                beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
@@ -19,6 +21,8 @@
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
 
 - Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
+
+- Click a companion profile to make it the editing pane without placing or selecting a graph element.
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
@@ -84,6 +88,8 @@
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
+
+- Mirror live node and origin movement in the companion profile during canvas edits (#388).
 
 - Add shared Weights From editing across selected wrapping groups with common target eligibility, exact retained references and one atomic Undo.
 
@@ -306,6 +312,8 @@
 
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
+- Reset a Model part’s saved width or thickness scale to 1 independently, with one undo step.
+
 - Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
 
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
@@ -347,6 +355,8 @@
 - Keep the current Add chain and radius when switching the editing profile in the Side by Side workspace.
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
+
+- Add File > Save All to save edited documents through the native document controller.
 
 - Reject native save payloads while edits are applying or their document snapshot has been superseded, preserving the native File menu and providing retry guidance.
 
