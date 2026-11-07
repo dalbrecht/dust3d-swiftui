@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
+
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
 - Add Command-Option-click and marquee subtraction for independent node/edge picks, preserving other selection and document history (#343).
@@ -15,6 +17,8 @@
 - Reveal selected generated joints by expanding their hierarchy ancestors, with window-owned disclosure and guarded scrolling (#367).
 
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
+
+- Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
@@ -298,13 +302,19 @@
 
 - Add native cut-face presets, searchable linked-profile selection and half-turn rotation drafts with preserved unsupported/unresolved source metadata.
 
+- Set a Model part’s cross-section rotation to −90°, 0°, or +90° with one click and one undo step.
+
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
 - Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
 
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
 
+- Show the built-in cross-section outlines next to their names in the native preset picker.
+
 - Add lossless part cut-face preset/profile and rotation commands, cycle-safe history and regenerated previews; native controls follow separately.
+
+- Show how many part defaults and node overrides reference a Cut Face profile in the Part and linked Component inspectors.
 
 - Add bounded, lossless part width/thickness and unified-deformation commands with exact undo/redo, preserved fine scales and regenerated previews; native controls follow separately.
 
