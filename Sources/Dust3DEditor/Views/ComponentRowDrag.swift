@@ -7,6 +7,7 @@ struct ComponentRowDrag: ViewModifier {
     let store: EditorStore
     let id: String
     let isGroup: Bool
+    var scopeEpoch: UUID? = nil
     fileprivate static let tokenType = UTType(exportedAs: "com.dalbrecht.dust3d.component-drag")
 
     func body(content: Content) -> some View {
@@ -14,7 +15,9 @@ struct ComponentRowDrag: ViewModifier {
             .contentShape(Rectangle())
             .onDrag {
                 let provider = NSItemProvider()
-                if let token = store.beginComponentDrag(grabbedID: id) {
+                if scopeEpoch.map({ $0 == store.componentBrowseEpoch }) != false,
+                    let token = store.beginComponentDrag(grabbedID: id)
+                {
                     let data = Data(token.uuidString.utf8)
                     provider.registerDataRepresentation(
                         forTypeIdentifier: Self.tokenType.identifier, visibility: .ownProcess
@@ -29,7 +32,9 @@ struct ComponentRowDrag: ViewModifier {
                 VStack(spacing: 0) {
                     dropZone(.before(id), alignment: .top)
                     if isGroup {
-                        ComponentParentDropZone(store: store, parent: .component(id)) { Color.clear }
+                        ComponentParentDropZone(store: store, parent: .component(id), scopeEpoch: scopeEpoch) {
+                            Color.clear
+                        }
                     }
                     dropZone(.after(id), alignment: .bottom)
                 }
@@ -41,6 +46,7 @@ struct ComponentRowDrag: ViewModifier {
         ComponentDropZone(
             alignment: alignment,
             receive: { token in
+                guard scopeEpoch.map({ $0 == store.componentBrowseEpoch }) != false else { return }
                 _ = store.dropComponents(token: token, at: placement)
             },
             content: { Color.clear }
@@ -51,12 +57,14 @@ struct ComponentRowDrag: ViewModifier {
 struct ComponentParentDropZone<Content: View>: View {
     let store: EditorStore
     let parent: ComponentParent
+    var scopeEpoch: UUID? = nil
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         ComponentDropZone(
             alignment: nil,
             receive: { token in
+                guard scopeEpoch.map({ $0 == store.componentBrowseEpoch }) != false else { return }
                 _ = store.dropComponents(token: token, in: parent)
             }, content: content)
     }

@@ -4,10 +4,15 @@ import SwiftUI
 
 struct NodeInspector: View {
     let store: EditorStore
+    private let isRigAssignmentPresented: @MainActor () -> Bool
     @State private var draft: InspectorNodeDraft
 
-    init(store: EditorStore, draft: InspectorNodeDraft = InspectorNodeDraft()) {
+    init(
+        store: EditorStore, draft: InspectorNodeDraft = InspectorNodeDraft(),
+        isRigAssignmentPresented: @escaping @MainActor () -> Bool = { true }
+    ) {
         self.store = store
+        self.isRigAssignmentPresented = isRigAssignmentPresented
         _draft = State(initialValue: draft)
     }
 
@@ -19,7 +24,7 @@ struct NodeInspector: View {
             Text("Selection inspector").font(.headline)
             AddModeControls(store: store)
             OriginControls(store: store)
-            RigSettingsControls(store: store)
+            RigSettingsControls(store: store, isAssignmentPresented: isRigAssignmentPresented)
             NodeClipboardMenu(store: store)
             if let snapshot = store.snapshot, !snapshot.selectedComponentIDs.isEmpty {
                 ComponentDeletionButton(store: store, target: ComponentDeletionTarget(snapshot: snapshot))

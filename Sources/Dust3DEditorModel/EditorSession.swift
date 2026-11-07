@@ -251,11 +251,18 @@ public actor EditorSession {
     /// - Returns: One undoable snapshot with a fresh UUID component selected.
     /// - Throws: Load/cancellation, hierarchy, identity or bounded-archive errors without partial state.
     public func groupComponents(_ ids: Set<String>) throws -> EditorSnapshot {
-        try update { state in
+        try groupComponents(ids, target: nil)
+    }
+
+    package func groupComponents(_ ids: Set<String>, target: CanvasAdjustmentTarget?) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: target != nil) { state in
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw ComponentGroupingError.staleTarget
+            }
             let groupID = Self.identifier()
             try state.apply([.groupComponents(ids: ids.sorted(), groupID: groupID)])
             try state.selectComponent(groupID)
-        }
+        }.snapshot
     }
 
     /// Atomically replace one mesh setting on the captured component selection.
@@ -432,6 +439,16 @@ public actor EditorSession {
             try state.editComponentWrapBinding(choice, target: target)
         }
         return result.snapshot
+    }
+
+    /// Apply the captured mirror edit as one undoable publication, including any initial origin.
+    public func setPartXMirrored(_ value: Bool, target: PartMirrorTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let id = target.partID else {
+                throw PartMirrorError.staleTarget
+            }
+            try state.apply([.setPartXMirrored(id: id, value: value)])
+        }.snapshot
     }
 
     package func setGraphPartShape(
@@ -835,10 +852,19 @@ public actor EditorSession {
 
     /// Atomically apply a graph transaction; cancellation is checked before it begins.
     public func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws -> EditorSnapshot {
-        try update { state in
+        try apply(commands, selecting: id, target: nil)
+    }
+
+    package func apply(
+        _ commands: [DocumentCommand], selecting id: String?, target: CanvasAdjustmentTarget?
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: target != nil) { state in
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw EditorError.staleCanvasAdjustment
+            }
             let prepared = try GraphCommandPreparation.normalizingDeletions(commands, document: state.snapshot.document)
             try state.apply(prepared, selecting: id)
-        }
+        }.snapshot
     }
 
     /// Commit a projected origin gesture only while its document, revision and locks still match.
@@ -985,6 +1011,7 @@ public actor EditorSession {
     public func placeAddNode(_ request: AddPlacementRequest) throws -> AddPlacementReceipt {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
+        guard hasAcceptedSource else { throw EditorError.staleAddPlacement }
         let result = try next.placeAddNode(
             request,
             identities: .init(
@@ -1048,6 +1075,12 @@ public actor EditorSession {
         state = next
         return (next.snapshot, result)
     }
+}
+
+private enum ComponentGroupingError: LocalizedError {
+    case staleTarget
+
+    var errorDescription: String? { "The document or component selection changed. Group the components again." }
 }
 
 package enum QtXMLFilePasteError: Error, Equatable, Sendable { case staleTarget }

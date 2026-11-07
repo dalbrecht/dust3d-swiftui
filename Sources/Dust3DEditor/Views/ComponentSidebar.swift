@@ -17,9 +17,12 @@ struct ComponentSidebar: View {
                 !sidebarSnapshot.componentTree.rows.isEmpty || sidebarSnapshot.componentTree.failureDescription != nil
             {
                 let tree = sidebarSnapshot.componentTree
+                let browse = store.componentGroupBrowse
+                let scopeEpoch = store.componentBrowseEpoch
+                let admitsScope: @MainActor () -> Bool = { store.componentBrowseEpoch == scopeEpoch }
                 Divider()
                 HStack {
-                    ComponentParentDropZone(store: store, parent: .root) {
+                    ComponentParentDropZone(store: store, parent: .root, scopeEpoch: scopeEpoch) {
                         Text("Components").font(.headline)
                     }
                     .help("Drop here to move components to the document root.")
@@ -35,31 +38,63 @@ struct ComponentSidebar: View {
                         .disabled(store.snapshot?.selectedComponentIDs.count ?? 0 < 2)
                         if let deletionSnapshot {
                             ComponentDeletionButton(
-                                store: store, target: ComponentDeletionTarget(snapshot: deletionSnapshot))
+                                store: store, target: ComponentDeletionTarget(snapshot: deletionSnapshot),
+                                admitsInput: admitsScope)
                         }
                         Button("Clear Component Selection") { store.clearComponentSelection() }
                             .disabled(store.snapshot?.selectedComponentIDs.isEmpty != false)
                         Divider()
                         if let snapshot = store.snapshot {
-                            selectInCanvasButton(snapshot: snapshot, ids: snapshot.selectedComponentIDs)
+                            selectInCanvasButton(
+                                snapshot: snapshot, ids: snapshot.selectedComponentIDs, admitsInput: admitsScope)
+                        }
+                        if let group = sidebarSnapshot.selectedComponent, group.isGroup {
+                            browseButton(group.id, snapshot: sidebarSnapshot)
                         }
                         ComponentPartRoleMenu(store: store)
                         if let snapshot = store.snapshot {
                             ComponentBatchPartStateMenu(
                                 store: store, target: ComponentMeshSelectionTarget(snapshot: snapshot))
                         }
-                        Button("Group Selected Components") { store.groupSelectedComponents() }
-                            .disabled(!store.canGroupComponents)
+                        Group {
+                            if let groupID = sidebarSnapshot.selectedComponentID,
+                                sidebarSnapshot.addPlacementGroup(groupID) != nil
+                            {
+                                Button(
+                                    "Set Working Group",
+                                    action: store.workingGroupAction(.group(groupID), snapshot: sidebarSnapshot)
+                                )
+                                .disabled(store.addPlacementDestination == .group(groupID))
+                            }
+                            Button(
+                                "Use Document Root",
+                                action: store.workingGroupAction(.documentRoot, snapshot: sidebarSnapshot)
+                            )
+                            .disabled(store.addPlacementDestination == .documentRoot)
+                            Button(
+                                "Use Selected Group for Pointer Add",
+                                action: store.workingGroupAction(.selection, snapshot: sidebarSnapshot)
+                            )
+                            .disabled(store.addPlacementDestination == .selection)
+                        }
+                        .disabled(!store.canChooseAddPlacementDestination)
+                        Divider()
+                        Button(
+                            "Group Selected Components",
+                            action: store.componentGroupingAction(snapshot: sidebarSnapshot, scopeEpoch: scopeEpoch)
+                        )
+                        .disabled(!store.canGroupComponents)
                         if let snapshot = store.snapshot {
                             ComponentUngroupButton(
-                                store: store, target: ComponentUngroupTarget(snapshot: snapshot))
+                                store: store, target: ComponentUngroupTarget(snapshot: snapshot),
+                                admitsInput: admitsScope)
                         }
                         Divider()
                         Button("Collapse Selected Group") {
                             if let id = store.snapshot?.selectedComponentID { disclosure.collapsedIDs.insert(id) }
                         }
                         .disabled(
-                            store.snapshot?.selectedComponent?.childIDs.isEmpty != false
+                            browse != nil || store.snapshot?.selectedComponent?.childIDs.isEmpty != false
                                 || store.snapshot?.selectedComponentID.map { disclosure.collapsedIDs.contains($0) }
                                     != false
                         )
@@ -67,7 +102,7 @@ struct ComponentSidebar: View {
                             if let id = store.snapshot?.selectedComponentID { disclosure.collapsedIDs.remove(id) }
                         }
                         .disabled(
-                            store.snapshot?.selectedComponent?.childIDs.isEmpty != false
+                            browse != nil || store.snapshot?.selectedComponent?.childIDs.isEmpty != false
                                 || store.snapshot?.selectedComponentID.map { disclosure.collapsedIDs.contains($0) }
                                     != true
                         )
@@ -77,9 +112,21 @@ struct ComponentSidebar: View {
                     .accessibilityLabel("Component tree actions")
                     .disabled(store.isWorking)
                 }.padding(12)
+                Label("Add destination: \(store.addPlacementDestinationTitle)", systemImage: "folder.badge.plus")
+                    .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
+                    .help(
+                        "An explicit working group applies to the canvas and Nodes menu. Automatic placement uses the selected group for pointer Add and the document root for the Nodes menu. Extending a chain keeps its part."
+                    )
                 if let count = store.snapshot?.selectedComponentIDs.count, count > 1 {
                     Text("\(count) components selected")
                         .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
+                }
+                if let browse {
+                    browsePath(browse, snapshot: sidebarSnapshot)
+                    if browse.children.isEmpty {
+                        Text("No components in this group.").font(.caption).foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                    }
                 }
                 if let failure = tree.failureDescription {
                     Label(
@@ -89,84 +136,70 @@ struct ComponentSidebar: View {
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12).padding(.bottom, 12)
                 } else {
                     ScrollViewReader { proxy in
-                        let revealKey = revealScrollKey(tree: tree)
-                        let documentIdentity = store.snapshot?.documentIdentity
-                        let visibleRows = tree.visibleRows(collapsing: disclosure.collapsedIDs)
+                        let visibleRows = browse?.children ?? tree.visibleRows(collapsing: disclosure.collapsedIDs)
+                        let revealKey = revealScrollKey(visibleRows: visibleRows)
+                        let documentIdentity = sidebarSnapshot.documentIdentity
+                        let context = PartGraphSelectionContext(snapshot: sidebarSnapshot)
+                        let admitsRows: @MainActor () -> Bool = {
+                            store.admitsComponentSidebarInput(context: context, scopeEpoch: scopeEpoch)
+                        }
                         List(
                             selection: Binding(
                                 get: { store.snapshot?.selectedComponentIDs ?? [] },
                                 set: {
-                                    if $0 != store.snapshot?.selectedComponentIDs { store.selectComponents($0) }
+                                    if $0 != store.snapshot?.selectedComponentIDs {
+                                        store.selectBrowsedComponents($0, scopeEpoch: scopeEpoch)
+                                    }
                                 }
                             )
                         ) {
                             ForEach(visibleRows) { row in
-                                HStack(spacing: 4) {
-                                    if row.hasChildren {
-                                        Button {
-                                            if disclosure.collapsedIDs.contains(row.id) {
-                                                disclosure.collapsedIDs.remove(row.id)
-                                            } else {
-                                                disclosure.collapsedIDs.insert(row.id)
-                                            }
-                                        } label: {
-                                            Image(
-                                                systemName: disclosure.collapsedIDs.contains(row.id)
-                                                    ? "chevron.right" : "chevron.down"
-                                            )
-                                        }
-                                        .frame(width: 12)
-                                        .buttonStyle(.plain)
-                                        .accessibilityLabel(
-                                            "\(disclosure.collapsedIDs.contains(row.id) ? "Expand" : "Collapse") \(row.title)"
-                                        )
-                                    } else {
-                                        Color.clear.frame(width: 12, height: 1).accessibilityHidden(true)
-                                    }
-                                    Label(row.title, systemImage: row.hasChildren ? "folder" : "square.stack.3d.up")
-                                        .lineLimit(1)
-                                }
-                                .padding(.leading, CGFloat(min(row.depth, 6) * 10))
-                                .modifier(ComponentRowDrag(store: store, id: row.id, isGroup: row.component.isGroup))
-                                .tag(row.id)
-                                .id(row.id)
-                                .accessibilityElement(children: .contain)
-                                .accessibilityLabel("Component \(row.title)")
-                                .help("\(row.title) · \(row.id)")
+                                componentRow(row, scoped: browse != nil, scopeEpoch: scopeEpoch)
                             }
                         }
                         .contextMenu(forSelectionType: String.self) { ids in
-                            if let snapshot = store.snapshot, snapshot.documentIdentity == documentIdentity,
-                                !ids.isEmpty
-                            {
-                                selectInCanvasButton(snapshot: snapshot, ids: ids)
+                            let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
+                            if admitsRows(), !ids.isEmpty, ids.allSatisfy({ visibleKeys.contains(Data($0.utf8)) }) {
+                                if ids.count == 1, let id = ids.first,
+                                    visibleRows.contains(where: {
+                                        $0.id.utf8.elementsEqual(id.utf8) && $0.component.isGroup
+                                    })
+                                {
+                                    browseButton(id, snapshot: sidebarSnapshot)
+                                }
+                                selectInCanvasButton(snapshot: sidebarSnapshot, ids: ids, admitsInput: admitsRows)
                                 ComponentDeletionButton(
                                     store: store,
-                                    target: ComponentDeletionTarget(snapshot: snapshot, componentIDs: Array(ids)))
+                                    target: ComponentDeletionTarget(
+                                        snapshot: sidebarSnapshot, componentIDs: Array(ids)),
+                                    admitsInput: admitsRows)
                                 ComponentUngroupButton(
                                     store: store,
-                                    target: ComponentUngroupTarget(snapshot: snapshot, componentIDs: Array(ids)))
+                                    target: ComponentUngroupTarget(snapshot: sidebarSnapshot, componentIDs: Array(ids)),
+                                    admitsInput: admitsRows)
                             }
                         } primaryAction: { ids in
-                            guard ids.count == 1, let id = ids.first, let snapshot = store.snapshot, !store.isWorking,
-                                snapshot.documentIdentity == documentIdentity,
-                                let row = snapshot.componentTree.rows.first(where: { $0.id == id })
+                            guard admitsRows(), ids.count == 1, let id = ids.first,
+                                let row = visibleRows.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
                             else { return }
-                            if row.hasChildren {
+                            if browse != nil, row.component.isGroup {
+                                store.componentBrowseAction(id, snapshot: sidebarSnapshot)()
+                            } else if row.hasChildren {
                                 disclosure.collapsedIDs.remove(id)
                             } else {
                                 store.selectComponentGraph(
-                                    ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids))
+                                    ComponentGraphSelectionTarget(snapshot: sidebarSnapshot, componentIDs: ids))
                             }
                         }
                         .focusedValue(\.editorComponentSidebarFocus, true)
                         .focusedValue(
                             \.editorComponentSidebarSelectAll,
                             ComponentSidebarSelectAllTarget(
-                                snapshot: sidebarSnapshot, visibleIDs: Set(visibleRows.map(\.id)))
+                                snapshot: sidebarSnapshot, visibleIDs: Set(visibleRows.map(\.id)),
+                                scopeEpoch: scopeEpoch)
                         )
                         .onDeleteCommand {
-                            guard let deletionSnapshot else { return }
+                            guard admitsScope(), let deletionSnapshot else { return }
                             store.componentDeletionAction(ComponentDeletionTarget(snapshot: deletionSnapshot))()
                         }
                         .listStyle(.sidebar)
@@ -179,7 +212,8 @@ struct ComponentSidebar: View {
                         .task(id: revealKey) { @MainActor in
                             guard revealKey != nil, let hint = store.snapshot?.componentRevealHint else { return }
                             await Task.yield()
-                            guard !Task.isCancelled, store.snapshot?.documentIdentity == documentIdentity,
+                            guard !Task.isCancelled, admitsScope(),
+                                store.snapshot?.documentIdentity == documentIdentity,
                                 store.snapshot?.componentRevealHint?.revision == hint.revision
                             else { return }
                             proxy.scrollTo(hint.componentID, anchor: .center)
@@ -190,16 +224,90 @@ struct ComponentSidebar: View {
         }
         .onChange(of: store.snapshot?.documentIdentity) { _, _ in disclosure.collapsedIDs = [] }
     }
-    private func selectInCanvasButton(snapshot: EditorSnapshot, ids: Set<String>) -> some View {
+    private func componentRow(_ row: ComponentTreeRow, scoped: Bool, scopeEpoch: UUID) -> some View {
+        HStack(spacing: 4) {
+            if !scoped && row.hasChildren {
+                Button {
+                    if disclosure.collapsedIDs.contains(row.id) {
+                        disclosure.collapsedIDs.remove(row.id)
+                    } else {
+                        disclosure.collapsedIDs.insert(row.id)
+                    }
+                } label: {
+                    Image(
+                        systemName: disclosure.collapsedIDs.contains(row.id)
+                            ? "chevron.right" : "chevron.down"
+                    )
+                }
+                .frame(width: 12)
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    "\(disclosure.collapsedIDs.contains(row.id) ? "Expand" : "Collapse") \(row.title)"
+                )
+            } else {
+                Color.clear.frame(width: 12, height: 1).accessibilityHidden(true)
+            }
+            Label(row.title, systemImage: row.hasChildren ? "folder" : "square.stack.3d.up")
+                .lineLimit(1)
+        }
+        .padding(.leading, !scoped ? CGFloat(min(row.depth, 6) * 10) : 0)
+        .modifier(
+            ComponentRowDrag(
+                store: store, id: row.id, isGroup: row.component.isGroup, scopeEpoch: scopeEpoch
+            )
+        )
+        .tag(row.id)
+        .id(row.id)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Component \(row.title)")
+        .help("\(row.title) · \(row.id)")
+    }
+
+    private func browseButton(_ id: String, snapshot: EditorSnapshot) -> some View {
+        Button("Browse Group", action: store.componentBrowseAction(id, snapshot: snapshot))
+            .disabled(!store.canBrowseComponents)
+    }
+
+    private func browsePath(_ browse: ComponentGroupBrowse, snapshot: EditorSnapshot) -> some View {
+        HStack {
+            Button(
+                "Up", systemImage: "chevron.up",
+                action: store.componentBrowseAction(
+                    browse.path.dropLast().last?.id, snapshot: snapshot)
+            )
+            .help("Browse the parent group or return to the full tree.")
+            Menu(browse.path.last?.title ?? "Group") {
+                Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
+                ForEach(browse.path.dropLast()) { row in
+                    Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+                }
+            }
+            .accessibilityLabel("Group breadcrumb")
+            .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
+        }
+        .focusedValue(\.editorComponentSidebarFocus, true)
+        .focusedValue(
+            \.editorComponentSidebarSelectAll,
+            ComponentSidebarSelectAllTarget(
+                snapshot: snapshot, visibleIDs: Set(browse.children.map(\.id)), scopeEpoch: store.componentBrowseEpoch)
+        )
+        .controlSize(.small)
+        .disabled(!store.canBrowseComponents)
+        .padding(.horizontal, 12)
+    }
+
+    private func selectInCanvasButton(
+        snapshot: EditorSnapshot, ids: Set<String>, admitsInput: @escaping @MainActor () -> Bool = { true }
+    ) -> some View {
         let target = ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids)
-        return Button("Select in Canvas") { store.selectComponentGraph(target) }
+        return Button("Select in Canvas") { if admitsInput() { store.selectComponentGraph(target) } }
             .disabled(!snapshot.canSelectComponentGraph(target))
             .help("Select editable nodes and edges in these components and their descendants.")
     }
 
-    private func revealScrollKey(tree: ComponentTree) -> String? {
+    private func revealScrollKey(visibleRows: [ComponentTreeRow]) -> String? {
         guard let snapshot = store.snapshot, let hint = snapshot.componentRevealHint,
-            tree.visibleRows(collapsing: disclosure.collapsedIDs).contains(where: { $0.id == hint.componentID })
+            visibleRows.contains(where: { $0.id == hint.componentID })
         else { return nil }
         return "\(snapshot.documentIdentity)-\(hint.revision)"
     }

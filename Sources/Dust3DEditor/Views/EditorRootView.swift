@@ -47,13 +47,13 @@ struct EditorRootView: View {
                     Text("Nodes").font(.headline)
                     Spacer()
                     Menu {
-                        Button("Add Node") { store.addNode() }.disabled(!store.canAddNode)
-                        Button("New Part") { store.addNode(newPart: true) }
+                        Button("Add Node", action: store.addNodeAction()).disabled(!store.canAddNode)
+                        Button("New Part", action: store.addNodeAction(newPart: true))
                     } label: {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("Create node or part")
-                    .disabled(store.isWorking || store.snapshot == nil)
+                    .disabled(!store.canAddNewPart)
                 }.padding(12)
                 Divider()
                 List(selection: Binding(get: { store.snapshot?.selectedIDs ?? [] }, set: { store.select($0) })) {
@@ -114,6 +114,8 @@ struct EditorRootView: View {
                         .help("Drag the origin marker; Escape cancels. Node picking resumes when this mode is off.")
                         .padding(.horizontal, 12).padding(.bottom, 8)
                         ReferenceImageControls(store: store)
+                            .padding(.horizontal, 12).padding(.bottom, 8)
+                        EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
                         CanvasProfilePanes(store: store)
@@ -238,7 +240,9 @@ struct EditorRootView: View {
     }
 
     private var inspectorContent: some View {
-        VStack(spacing: 0) {
+        let visibility = $isInspectorPresented
+        let section = $inspectorSection
+        return VStack(spacing: 0) {
             Picker("Inspector section", selection: $inspectorSection) {
                 ForEach(EditorInspectorSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
@@ -247,7 +251,9 @@ struct EditorRootView: View {
             if inspectorSection == .animations {
                 AnimationPanel(store: store)
             } else {
-                NodeInspector(store: store)
+                NodeInspector(store: store) {
+                    visibility.wrappedValue && section.wrappedValue == .selection
+                }
             }
         }
     }
