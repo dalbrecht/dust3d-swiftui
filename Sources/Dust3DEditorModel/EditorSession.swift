@@ -825,13 +825,39 @@ public actor EditorSession {
 
     package func paste(snapshotXML: Data, parentID: String?, target: CanvasAdjustmentTarget?) throws -> EditorSnapshot {
         try validatePasteSource(parentID: parentID, target: target)
+        return try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: false, parentID: parentID)
+    }
+
+    /// Apply a selected XML file only to the source captured before presenting its picker.
+    package func pasteQtXMLFile(_ snapshotXML: Data, target: CanvasAdjustmentTarget) throws -> EditorSnapshot {
+        try Task.checkCancellation()
+        guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
+            throw QtXMLFilePasteError.staleTarget
+        }
+        return try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: true, parentID: nil)
+    }
+
+    private func pasteQtSnapshot(_ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?) throws
+        -> EditorSnapshot
+    {
+        try Task.checkCancellation()
+        guard let state else { throw EditorError.notLoaded }
+        let document = try Dust3DDocument(snapshotXML: snapshotXML)
+        let contents = try document.editorContents()
+        if allowsEmptyGraph, contents.nodes.isEmpty, contents.edges.isEmpty, contents.parts.isEmpty,
+            try document.components().isEmpty
+        {
+            try Task.checkCancellation()
+            return state.snapshot
+        }
         let identifier: String
         if let previous = lastQtTransfer, previous.snapshot == snapshotXML {
             identifier = previous.identifier
         } else {
             identifier = Self.identifier()
         }
-        let payload = try NodeClipboardPayload(snapshotXML: snapshotXML, identifier: identifier)
+        let fragment = try NodeClipboard(document: document, selectedNodeIDs: Set(contents.nodes.map(\.id)))
+        let payload = try NodeClipboardPayload(fragment: fragment, identifier: identifier)
         let next = try paste(payload: payload, parentID: parentID)
         lastQtTransfer = (Data(snapshotXML), identifier)
         return next
@@ -972,3 +998,5 @@ package enum WorkingGroupPasteError: LocalizedError, Equatable, Sendable {
 
     package var errorDescription: String? { "The clipboard destination changed. Paste again." }
 }
+
+package enum QtXMLFilePasteError: Error, Equatable, Sendable { case staleTarget }
