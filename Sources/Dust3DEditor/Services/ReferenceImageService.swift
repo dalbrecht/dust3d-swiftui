@@ -1,4 +1,5 @@
 import CoreGraphics
+import Darwin
 import Dust3DDocument
 import Foundation
 import ImageIO
@@ -90,17 +91,27 @@ actor ReferenceImageService: ReferenceImageServing {
 
     func importImage(url: URL) throws -> Data {
         try Task.checkCancellation()
+        guard url.isFileURL else { throw ReferenceImageError.invalidImage }
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         let data: Data
         do {
-            let properties = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-            guard properties.isRegularFile == true else { throw ReferenceImageError.invalidImage }
-            guard let size = properties.fileSize, size <= ReferenceImageCodec.maximumEncodedBytes else {
+            let descriptor = try url.withUnsafeFileSystemRepresentation { path in
+                guard let path else { throw ReferenceImageError.invalidImage }
+                let descriptor = Darwin.open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)
+                guard descriptor >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
+                return descriptor
+            }
+            defer { _ = Darwin.close(descriptor) }
+            var info = stat()
+            guard fstat(descriptor, &info) == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+            guard info.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else { throw ReferenceImageError.invalidImage }
+            guard info.st_size >= 0, info.st_size <= ReferenceImageCodec.maximumEncodedBytes else {
                 throw ReferenceImageError.imageTooLarge
             }
-            let handle = try FileHandle(forReadingFrom: url)
-            defer { try? handle.close() }
+            let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: false)
             var buffer = Data()
             // Bound the read even if the file grows after its metadata was checked.
             while buffer.count <= ReferenceImageCodec.maximumEncodedBytes {

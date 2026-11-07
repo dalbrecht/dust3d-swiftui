@@ -398,6 +398,8 @@
 
 - Add native part selection, naming, visibility, locking and mesh-disable controls with lossless undo/redo and save support.
 
+- Drop one or two image files into the reference controls to compose Front and Side images before applying them to the document.
+
 - Import/render bounded native reference images with undoable removal, per-window opacity/visibility and lossless existing asset handling; align the canvas and clockwise transforms with Qt’s positive-Y-down image coordinates.
 
 - Add lossless, undoable Qt-compatible reference-image asset commands, bounded PNG bytes and asset-aware transaction change detection.
