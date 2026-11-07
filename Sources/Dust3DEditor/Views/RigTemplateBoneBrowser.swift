@@ -33,6 +33,8 @@ struct RigTemplateBoneBrowser: View {
                 Text(hierarchy.description).font(.caption).foregroundStyle(.secondary)
                 #if MOTE3D_EXPERIMENTAL_RIG_TEMPLATE
                     RigTemplatePreview(sourceType: hierarchy.type, selectedBoneName: selectedName ?? "")
+                #else
+                    RigTemplateDiagram(hierarchy: hierarchy, selectedName: selectedName)
                 #endif
                 #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
                     if restSession?.presentation != .generatedRest {

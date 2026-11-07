@@ -49,6 +49,46 @@ final class ComponentMeshSelectionTests: XCTestCase {
         XCTAssertFalse(undoCombine.canUndo)
     }
 
+    func testGraphOwnerColorBatchAndClearPreservePicksAndRejectAmbiguousTargets() async throws {
+        let source = try graphDocument()
+        let session = EditorSession()
+        _ = try await session.open(data: source.encoded())
+        let before = try await session.selectGraph(nodes: ["n1"], edges: ["e"])
+        let target = ComponentMeshSelectionTarget(graphSelection: before)
+        let color = DocumentColor(red: 32, green: 64, blue: 96, alpha: 128)
+        let colored = try await session.editSelectedComponentColors(color, target: target)
+        let rows = colored.componentTree.rows
+        XCTAssertEqual(rows.first { $0.id == "group" }?.component.color, .unset)
+        XCTAssertEqual(rows.first { $0.id == "ownerP" }?.component.color, .value(color))
+        XCTAssertEqual(rows.first { $0.id == "ownerQ" }?.component.color, .value(color))
+        XCTAssertEqual(colored.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(colored.selectedEdgeIDs, before.selectedEdgeIDs)
+        XCTAssertEqual(colored.selectionRevision, before.selectionRevision)
+        XCTAssertTrue(colored.selectedComponentIDs.isEmpty)
+        let cleared = try await session.editSelectedComponentColors(
+            nil, target: ComponentMeshSelectionTarget(graphSelection: colored))
+        XCTAssertTrue(cleared.componentTree.rows.allSatisfy { $0.component.color == .unset })
+        let restoredColor = try await session.undo()
+        XCTAssertEqual(restoredColor.document.encoded(), colored.document.encoded())
+        let restoredSource = try await session.undo()
+        XCTAssertEqual(restoredSource.document.encoded(), source.encoded())
+        XCTAssertFalse(restoredSource.canUndo)
+
+        let duplicate = "<component id='alias' linkDataType='partId' linkData='p'/>"
+        let ambiguous = try graphDocument(extraComponents: duplicate)
+        _ = try await session.open(data: ambiguous.encoded())
+        let selection = try await session.selectGraph(nodes: ["n1"], edges: ["e"])
+        for rejected in [target, ComponentMeshSelectionTarget(graphSelection: selection)] {
+            do {
+                _ = try await session.editSelectedComponentColors(color, target: rejected)
+                XCTFail("A stale or ambiguous owner was accepted")
+            } catch { XCTAssertEqual(error as? ComponentMeshSelectionError, .staleTarget) }
+        }
+        let unchanged = try await session.selectGraph(nodes: ["n1"], edges: ["e"])
+        XCTAssertEqual(unchanged.document.encoded(), ambiguous.encoded())
+        XCTAssertFalse(unchanged.canUndo)
+    }
+
     func testGraphOwnerSingletonUsesStoredEdgeOwnerAndRejectsSelectionABA() throws {
         var state = try EditorState(document: graphDocument())
         try state.selectGraph(nodes: [], edges: ["e"])

@@ -60,6 +60,8 @@
 
 - Browse the pinned rig template bone hierarchy and stored assignment counts, then assign the chosen exact name to selected edges in one Undo step (#359).
 
+- View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
+
 - Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
 
 - Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
@@ -128,6 +130,8 @@
 - Add batch component part roles with atomic stitching grouping, shared-group reveal and one-step Undo (#45).
 
 - Apply or clear color across selected components with the native color picker and one-step Undo.
+
+- Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
 
 - Drag component rows before or after siblings, into groups, or to the document root.
 
@@ -275,6 +279,8 @@
 - Make viewer and Quick Look material notices reflect current baked or fallback rendering, preserving legacy limitations and original source-interpretation errors without blocking valid geometry.
 
 - Add native component image import, retained-image selection and clearing with background pixel validation, cancellation, material refresh, shared-asset preservation and exact undo/save.
+
+- Import, assign or clear a shared texture image for the Model components owning graph picks in one undo step.
 
 - Add lossless component color-image assignment, removal and atomic PNG asset import commands with exact asset-aware history and shared bounded PNG envelope validation; native import controls remain pending.
 
