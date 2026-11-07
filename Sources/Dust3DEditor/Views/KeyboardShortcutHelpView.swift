@@ -14,6 +14,9 @@ enum KeyboardShortcutHelp {
         .init(action: "Cut / Copy / Paste", keys: "⌘X / ⌘C / ⌘V", scope: "Focused text or editable nodes"),
         .init(action: "Select All", keys: "⌘A", scope: "Focused text or graph; unavailable in animation controls"),
         .init(action: "Select All Nodes", keys: "⇧⌘A", scope: "Active document"),
+        .init(
+            action: "Remove Graph Picks", keys: "⌥⌘ click / drag",
+            scope: "Canvas nodes, edges or marquee; removes hits while preserving the other picks"),
         .init(action: "Export OBJ Geometry", keys: "⇧⌘E", scope: "Active document with available export geometry"),
         .init(
             action: "Decrease / Increase Radius", keys: "- / =",

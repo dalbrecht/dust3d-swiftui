@@ -218,6 +218,13 @@ public actor EditorSession {
     public func addToSelection(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
         try update { try $0.addToSelection(nodes: nodes, edges: edges) }
     }
+    /// Remove independent explicit graph picks in one transient selection epoch, retaining source and history.
+    /// - Parameters: `nodes` and `edges` must be existing exact UTF-8 source identities, even when unselected.
+    /// - Returns: Updated graph selection; no-hit removals preserve inspector and reveal intent.
+    /// - Throws: `missingNode` or `invalidNode` without partial selection changes.
+    public func removeFromSelection(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
+        try update { try $0.removeFromSelection(nodes: nodes, edges: edges) }
+    }
     /// Toggle each supplied graph pick once in one selection epoch.
     public func toggleGraphSelection(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
         try update { try $0.toggleGraphSelection(nodes: nodes, edges: edges) }

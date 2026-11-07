@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Command-Option-click and marquee subtraction for independent node/edge picks, preserving other selection and document history (#343).
+
 - Add global Hide All Parts in Canvas and group visibility commands under Canvas > Part Visibility, preserving one-step Undo and mesh inputs (#343).
 
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).

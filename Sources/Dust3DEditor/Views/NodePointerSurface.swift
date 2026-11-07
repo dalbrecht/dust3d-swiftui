@@ -13,6 +13,7 @@ struct NodePointerSurface: NSViewRepresentable {
     let select: () -> Void
     let toggle: () -> Void
     var add: () -> Void = {}
+    var subtract: (() -> Void)? = nil
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: (() -> Void)? = nil
@@ -39,6 +40,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.select = select
         view.toggle = toggle
         view.add = add
+        view.subtract = subtract
         view.wheel = wheel
         view.radiusKey = radiusKey
         view.doubleClick = doubleClick
@@ -59,13 +61,14 @@ final class NodePointerView: NSView {
     var select: () -> Void = {}
     var toggle: () -> Void = {}
     var add: () -> Void = {}
+    var subtract: (() -> Void)?
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: (() -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)?
-    private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, isCommand: Bool, isShift: Bool)?
+    private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, mode: GraphSelectionMode)?
     private weak var previousResponder: NSResponder?
     private weak var activationResponder: NSResponder?
     private var lostPrecisionFocus = false
@@ -106,7 +109,10 @@ final class NodePointerView: NSView {
         }
         guard enabled else { return }
         if activation != nil { cancelActivation() }
-        if event.clickCount == 2, let doubleClick {
+        var mode = GraphSelectionMode.pointerMode(modifiers: event.modifierFlags)
+        // Non-graph handles keep their existing modifier behavior.
+        if mode == .subtract && subtract == nil { mode = .toggle }
+        if mode != .subtract, event.clickCount == 2, let doubleClick {
             window?.makeFirstResponder(self)
             doubleClick()
             return
@@ -114,10 +120,7 @@ final class NodePointerView: NSView {
         let token = UUID()
         lostPrecisionFocus = false
         activationResponder = window?.firstResponder
-        activation = (
-            token, event.locationInWindow, false, event.modifierFlags.contains(.command),
-            event.modifierFlags.contains(.shift)
-        )
+        activation = (token, event.locationInWindow, false, mode)
         if precisionKey != nil, let window, window.firstResponder !== self {
             previousResponder = window.firstResponder
             guard window.makeFirstResponder(self) else {
@@ -125,7 +128,7 @@ final class NodePointerView: NSView {
                 return
             }
         }
-        if canDrag {
+        if canDrag && mode != .subtract {
             if event.modifierFlags.contains(.shift), !event.modifierFlags.contains(.command), let beginShiftDrag {
                 beginShiftDrag(token)
             } else {
@@ -136,6 +139,7 @@ final class NodePointerView: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         guard var current = activation else { return }
+        guard current.mode != .subtract else { return }
         guard enabled, canDrag, !lostPrecisionFocus else {
             cancelActivation()
             return
@@ -177,7 +181,12 @@ final class NodePointerView: NSView {
             finish(current.token, displacement(from: current.origin, to: event.locationInWindow))
         } else {
             if let clickCancel { clickCancel(current.token) } else { cancel(current.token) }
-            if current.isCommand { toggle() } else if current.isShift { add() } else { select() }
+            switch current.mode {
+            case .replace: select()
+            case .add: add()
+            case .toggle: toggle()
+            case .subtract: subtract?()
+            }
             window?.makeFirstResponder(self)
         }
     }

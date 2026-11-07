@@ -922,6 +922,7 @@ final class EditorStore {
             case .replace: try await session.selectGraph(nodes: nodes, edges: edges)
             case .add: try await session.addToSelection(nodes: nodes, edges: edges)
             case .toggle: try await session.toggleGraphSelection(nodes: nodes, edges: edges)
+            case .subtract: try await session.removeFromSelection(nodes: nodes, edges: edges)
             }
         }
     }
