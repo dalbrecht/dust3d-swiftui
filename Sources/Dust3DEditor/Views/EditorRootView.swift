@@ -240,7 +240,9 @@ struct EditorRootView: View {
     }
 
     private var inspectorContent: some View {
-        VStack(spacing: 0) {
+        let visibility = $isInspectorPresented
+        let section = $inspectorSection
+        return VStack(spacing: 0) {
             Picker("Inspector section", selection: $inspectorSection) {
                 ForEach(EditorInspectorSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
@@ -249,7 +251,9 @@ struct EditorRootView: View {
             if inspectorSection == .animations {
                 AnimationPanel(store: store)
             } else {
-                NodeInspector(store: store)
+                NodeInspector(store: store) {
+                    visibility.wrappedValue && section.wrappedValue == .selection
+                }
             }
         }
     }

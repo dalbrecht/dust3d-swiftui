@@ -1674,8 +1674,12 @@ final class EditorStore {
     }
 
     func canAssignBoneName(_ name: String, target: EdgeBoneAssignmentTarget) -> Bool {
-        guard !stopped, !isWorking, let snapshot else { return false }
-        return target.isCurrent(in: snapshot) && target.hasChanges(name: name)
+        guard !isWorking, let source = acceptedDocumentSource else { return false }
+        return target.isCurrent(in: source) && target.hasChanges(name: name)
+    }
+
+    func canAssignTemplateBoneName(_ name: String, target: EdgeBoneAssignmentTarget) -> Bool {
+        !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive && canAssignBoneName(name, target: target)
     }
     func assignBoneNameAction(_ name: String, target: EdgeBoneAssignmentTarget) -> @MainActor () -> Void {
         guard canAssignBoneName(name, target: target) else { return {} }

@@ -32,6 +32,12 @@ private actor ContextPreviewCounter: EditorPreviewServing {
 }
 
 @MainActor final class GraphSelectionActionStoreTests: XCTestCase {
+    private final class RigPresentation {
+        var inspectorVisible = true
+        var selectionSection = true
+        var disclosureExpanded = true
+    }
+
     private func source() throws -> Dust3DDocument {
         try Dust3DDocument(
             snapshotXML: Data(
@@ -142,6 +148,120 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(value.isAddingNodes)
         XCTAssertEqual(value.snapshot?.document.encoded(), original)
     }
+    func testRigAssignmentCommandUsesOnlyTheCurrentBrowserAndWindow() async throws {
+        let xml = String(decoding: try source().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "<canvas>", with: "<canvas rigType='Biped'>")
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8)).encoded()
+        let value = store()
+        let other = store()
+        defer {
+            value.stop()
+            other.stop()
+        }
+        await value.load(data: original)
+        await other.load(data: original)
+        value.selectEdges(["ab", "bc"])
+        try await settle(value)
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let browser = RigAssignmentBrowserSelection()
+        let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: try XCTUnwrap(value.snapshot))
+        XCTAssertNil(browser.command(store: value, context: context))
+        browser.setVisible(true)
+        browser.select("Spine")
+        let old = try XCTUnwrap(browser.command(store: value, context: context))
+        XCTAssertFalse(old.invoke(in: other))
+        XCTAssertFalse(old.invoke(in: value, focus: .init(hasKeyWindow: false)))
+        XCTAssertFalse(old.invoke(in: value, focus: .init(hasSheet: true)))
+        XCTAssertFalse(old.invoke(in: value, focus: .init(textEditing: true)))
+        XCTAssertFalse(old.invoke(in: value, focus: .init(animationFocused: true)))
+        browser.select("Head")
+        browser.select("Spine")
+        XCTAssertFalse(old.invoke(in: value))
+        let beforeHide = try XCTUnwrap(browser.command(store: value, context: context))
+        browser.setVisible(false)
+        XCTAssertNil(browser.command(store: value, context: context))
+        browser.setVisible(true)
+        XCTAssertFalse(beforeHide.invoke(in: value))
+
+        let current = try XCTUnwrap(browser.command(store: value, context: context))
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        XCTAssertTrue(current.invoke(in: value))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.edges.map(\.boneName), ["Spine", "Spine"])
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab", "bc"])
+        XCTAssertEqual(publications, 1)
+        XCTAssertFalse(current.invoke(in: value))
+        XCTAssertEqual(other.snapshot?.document.encoded(), original)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testRigAssignmentCommandRechecksLiveInspectorAndDisclosureBeforeUnmount() async throws {
+        let xml = String(decoding: try source().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "<canvas>", with: "<canvas rigType='Biped'>")
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8)).encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        value.selectEdge("ab")
+        try await settle(value)
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: try XCTUnwrap(value.snapshot))
+        let browser = RigAssignmentBrowserSelection()
+        browser.setVisible(true)
+        browser.select("Spine")
+        let presentation = RigPresentation()
+        let isPresented: @MainActor () -> Bool = {
+            presentation.inspectorVisible && presentation.selectionSection && presentation.disclosureExpanded
+        }
+        let retained = try XCTUnwrap(browser.command(store: value, context: context, isPresented: isPresented))
+
+        for field in [
+            \RigPresentation.inspectorVisible, \RigPresentation.selectionSection, \RigPresentation.disclosureExpanded,
+        ] {
+            presentation[keyPath: field] = false
+            XCTAssertNil(browser.command(store: value, context: context, isPresented: isPresented))
+            XCTAssertFalse(retained.invoke(in: value))
+            XCTAssertFalse(value.isWorking)
+            presentation[keyPath: field] = true
+        }
+
+        let current = try XCTUnwrap(browser.command(store: value, context: context, isPresented: isPresented))
+        XCTAssertTrue(current.invoke(in: value))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.edges.first?.boneName, "Spine")
+        XCTAssertTrue(value.canUndo)
+    }
+
+    func testRigAssignmentCommandRetiresOnSelectionAndFailedSource() async throws {
+        let xml = String(decoding: try source().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "<canvas>", with: "<canvas rigType='Biped'>")
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8)).encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        value.selectEdges(["ab", "bc"])
+        try await settle(value)
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let browser = RigAssignmentBrowserSelection()
+        browser.setVisible(true)
+        browser.select("Spine")
+        let first = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: try XCTUnwrap(value.snapshot))
+        let beforeSelection = try XCTUnwrap(browser.command(store: value, context: first))
+        value.selectEdge("ab")
+        try await settle(value)
+        XCTAssertFalse(beforeSelection.invoke(in: value))
+        let second = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: try XCTUnwrap(value.snapshot))
+        let beforeFailure = try XCTUnwrap(browser.command(store: value, context: second))
+        await value.load(data: Data("invalid".utf8))
+        XCTAssertFalse(beforeFailure.invoke(in: value))
+        XCTAssertNil(browser.command(store: value, context: second))
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testRigEdgeModeKeepsEdgesLocksAndExactAssignmentUndo() async throws {
         let original = try source().encoded()
         let value = store()
@@ -272,6 +392,44 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertEqual(value.canvasGraphHover, .node("a"))
         value.updateCanvasHover(at: lockedMiddle, projection: projection)
         XCTAssertEqual(value.canvasGraphHover, .edge("cd"))
+    }
+
+    func testKeyboardAssignmentUsesEdgeOnlyCanvasSelectionAndExactUndo() async throws {
+        let xml = String(decoding: try source().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "<canvas>", with: "<canvas rigType='Biped'>")
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8)).encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.setRigEdgeSelection(true)
+        let projection = CanvasProjection(bounds: value.bounds, plane: .front, width: 400, height: 300)
+        let endpoint = projection.point(for: .init(x: 0.2, y: 0.5, z: 0.5))
+        value.pickEdge(at: endpoint, projection: projection, mode: .replace)
+        try await settle(value)
+        let picked = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(picked.selectedEdgeIDs, ["ab"])
+        XCTAssertTrue(picked.selectedIDs.isEmpty)
+
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let browser = RigAssignmentBrowserSelection()
+        browser.setVisible(true)
+        browser.select("Spine")
+        let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: picked)
+        let command = try XCTUnwrap(browser.command(store: value, context: context))
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        XCTAssertTrue(command.invoke(in: value))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.edges.first { $0.id == "ab" }?.boneName, "Spine")
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertTrue(value.isSelectingRigEdges)
+        XCTAssertEqual(publications, 1)
+        XCTAssertTrue(value.canUndo)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
     }
 
     func testContextEntriesContainOnlyAvailableActionsAndPlaceDeleteLast() async throws {
