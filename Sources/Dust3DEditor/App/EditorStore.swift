@@ -69,6 +69,7 @@ final class EditorStore {
     }
 
     private func changeRigEdgeSelection(_ enabled: Bool) {
+        stopComponentColorDraftPreview()
         guard enabled != isSelectingRigEdges else { return }
         isSelectingRigEdges = enabled
         rigEdgeSelectionEpoch = UUID()
@@ -327,6 +328,7 @@ final class EditorStore {
     }
 
     func beginAddMode() {
+        stopComponentColorDraftPreview()
         guard canBeginAddMode, let snapshot = acceptedAddPlacementSource else { return }
         cancelReferenceColorCommit()
         let currentCanvasProjection = CanvasProjection(
@@ -782,7 +784,8 @@ final class EditorStore {
         animationCatalog: (any AnimationCatalogLoading)? = nil,
         addPlacements: any AddPlacementServing = AddPlacementService(),
         referenceColorRaster: any ReferenceColorRasterServing = ReferenceColorRasterService(),
-        referenceColorApplying: any ReferenceColorApplying = ReferenceColorApplicationService()
+        referenceColorApplying: any ReferenceColorApplying = ReferenceColorApplicationService(),
+        colorDraftPreview: (any ComponentColorDraftPreviewServing)? = nil
     ) {
         self.referenceColorRaster = referenceColorRaster
         self.referenceColorApplying = referenceColorApplying
@@ -792,6 +795,7 @@ final class EditorStore {
         self.colorImages = colorImages
         self.referenceImages = referenceImages
         self.preview = preview
+        self.colorDraftPreview = colorDraftPreview ?? OrdinaryColorDraftPreviewService(preview: preview)
         materialPreparation = ArchiveMaterialPreparationService(
             importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
     }
@@ -1046,6 +1050,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        stopComponentColorDraftPreview()
         graphComponentRevealLookup = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil, reset: true)
@@ -1197,6 +1202,7 @@ final class EditorStore {
     }
 
     func setMovingOrigin(_ enabled: Bool) {
+        stopComponentColorDraftPreview()
         guard !enabled || !isSelectingRigEdges else { return }
         if enabled { cancelAddMode() }
         cancelOriginDrag()
@@ -1975,6 +1981,108 @@ final class EditorStore {
         perform(acceptCommittedCancellation: true) {
             try await $0.setSelectedComponentPartState(property, value: value, target: target)
         }
+    }
+
+    private let colorDraftPreview: any ComponentColorDraftPreviewServing
+    private let colorDraftScopeID = UUID()
+    private var colorDraftTarget: ComponentColorDraftPreviewTarget?
+    private var colorDraftRequest = UUID()
+    private var colorDraftColor: DocumentColor?
+    private var colorDraftTask: Task<Void, Never>?
+    private(set) var componentColorDraftMesh: IndexedMesh?
+    private(set) var componentColorDraftRevision = 0
+    private(set) var componentColorDraftPreviewMessage: String?
+
+    private var solidColorDraftSource: EditorSnapshot? {
+        guard canSave, !isAddingNodes, !isMovingOrigin, !isSelectingRigEdges, let source = acceptedDocumentSource,
+            source.hasEnabledGeometry, !source.document.hasEmbeddedModelAssets,
+            source.componentTree.failureDescription == nil,
+            source.parts.allSatisfy({ $0.target == .model || $0.target == .cutFace }),
+            source.componentTree.rows.allSatisfy({
+                $0.component.colorImage == .unset && $0.component.wrapping.mode == ComponentWrapMode.none
+                    && !$0.component.hasLegacySurfaceDetails
+                    && ($0.component.isGroup || $0.component.partID != nil)
+            })
+        else { return nil }
+        return source
+    }
+
+    func componentColorDraftPreviewTarget(componentID: String) -> ComponentColorDraftPreviewTarget? {
+        guard let source = solidColorDraftSource, let selected = source.selectedComponentID,
+            selected.utf8.elementsEqual(componentID.utf8)
+        else { return nil }
+        return .init(context: .init(snapshot: source), componentIDs: [selected])
+    }
+
+    func componentColorDraftPreviewTarget(selection: ComponentMeshSelectionTarget) -> ComponentColorDraftPreviewTarget?
+    {
+        guard let source = solidColorDraftSource, canEditSelectedComponentColors(selection) else { return nil }
+        let components = ComponentMeshSelectionPresentation(snapshot: source, target: selection).components
+        guard !components.isEmpty else { return nil }
+        return .init(context: .init(snapshot: source), componentIDs: components.map(\.id))
+    }
+
+    func isComponentColorDraftPreviewActive(target: ComponentColorDraftPreviewTarget) -> Bool {
+        colorDraftTarget == target
+    }
+
+    func startComponentColorDraftPreview(_ color: DocumentColor, target: ComponentColorDraftPreviewTarget) {
+        guard solidColorDraftSource.map({ target.context.isCurrent(in: $0) }) == true else { return }
+        stopComponentColorDraftPreview()
+        colorDraftTarget = target
+        updateComponentColorDraftPreview(color, target: target)
+    }
+
+    func updateComponentColorDraftPreview(_ color: DocumentColor?, target: ComponentColorDraftPreviewTarget) {
+        guard colorDraftTarget == target, colorDraftColor != color else { return }
+        colorDraftTask?.cancel()
+        colorDraftTask = nil
+        colorDraftColor = color
+        colorDraftRequest = UUID()
+        componentColorDraftMesh = nil
+        componentColorDraftPreviewMessage = color == nil ? "Choose a valid color to preview." : "Updating color draft…"
+        guard let color else { return }
+        let request = colorDraftRequest
+        let service = colorDraftPreview
+        let scopeID = colorDraftScopeID
+        colorDraftTask = Task { [weak self, session] in
+            do {
+                try await Task.sleep(for: .milliseconds(150))
+                let archive = try await session.componentColorPreviewArchive(
+                    color, componentIDs: target.componentIDs, target: target.context)
+                try Task.checkCancellation()
+                let mesh = try await service.generate(archive, scopeID: scopeID)
+                guard let self, self.admitsColorDraftResult(request, target: target) else { return }
+                self.componentColorDraftRevision += 1
+                self.componentColorDraftMesh = mesh
+                self.componentColorDraftPreviewMessage = mesh == nil ? "The color draft generated no geometry." : nil
+            } catch {
+                guard let self, self.admitsColorDraftResult(request, target: target) else { return }
+                self.componentColorDraftPreviewMessage = Self.message(error)
+            }
+        }
+    }
+
+    func colorDraftRenderFailed(_ message: String, revision: Int) {
+        guard componentColorDraftMesh != nil, componentColorDraftRevision == revision else { return }
+        componentColorDraftMesh = nil
+        componentColorDraftPreviewMessage = message
+    }
+
+    private func admitsColorDraftResult(_ request: UUID, target: ComponentColorDraftPreviewTarget) -> Bool {
+        !Task.isCancelled && colorDraftRequest == request && colorDraftTarget == target
+            && solidColorDraftSource.map { target.context.isCurrent(in: $0) } == true
+    }
+
+    func stopComponentColorDraftPreview(target: ComponentColorDraftPreviewTarget? = nil) {
+        guard let active = colorDraftTarget, target == nil || active == target else { return }
+        colorDraftTask?.cancel()
+        colorDraftTask = nil
+        colorDraftRequest = UUID()
+        colorDraftTarget = nil
+        colorDraftColor = nil
+        componentColorDraftMesh = nil
+        componentColorDraftPreviewMessage = nil
     }
 
     func canEditSelectedComponentColors(_ target: ComponentMeshSelectionTarget) -> Bool {
@@ -2835,6 +2943,7 @@ final class EditorStore {
     }
 
     func stop() {
+        stopComponentColorDraftPreview()
         graphComponentRevealLookup = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil)
@@ -2883,6 +2992,7 @@ final class EditorStore {
         let requestID = UUID()
         operationRequestID = requestID
         isSelectingGraph = selectionOnly
+        stopComponentColorDraftPreview()
         isWorking = true
         operation = Task {
             var succeeded = false

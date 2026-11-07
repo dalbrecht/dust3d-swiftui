@@ -44,6 +44,8 @@ struct ComponentColorControls: View {
             }
             .accessibilityLabel("Remove explicit component color")
             .disabled(component.color == .unset)
+            ComponentColorDraftPreviewControls(
+                store: store, target: store.componentColorDraftPreviewTarget(componentID: component.id), draft: draft)
             Text("Apply is one undo step. Color and opacity update the material preview in the background.")
                 .font(.caption).foregroundStyle(.primary)
         }
@@ -118,6 +120,8 @@ struct ComponentBatchColorControls: View {
                 Button("Clear Colors") { store.setSelectedComponentColors(target, value: nil) }
                     .accessibilityLabel("Clear colors from \(scope)")
             }
+            ComponentColorDraftPreviewControls(
+                store: store, target: store.componentColorDraftPreviewTarget(selection: target), draft: draft)
             Text(
                 target.isGraphSelection
                     ? "Changes apply to the components that own the graph picks."
@@ -133,4 +137,31 @@ struct ComponentBatchColorControls: View {
         store.setSelectedComponentColors(target, value: draft.text)
     }
 
+}
+
+private struct ComponentColorDraftPreviewControls: View {
+    let store: EditorStore
+    let target: ComponentColorDraftPreviewTarget?
+    let draft: ComponentColorDraft
+
+    private var color: DocumentColor? { draft.conversionIssue == nil ? draft.parsedColor : nil }
+
+    var body: some View {
+        if let target {
+            let active = store.isComponentColorDraftPreviewActive(target: target)
+            if active {
+                Button("Stop Color Draft Preview") { store.stopComponentColorDraftPreview(target: target) }
+                    .onChange(of: color) { _, color in
+                        store.updateComponentColorDraftPreview(color, target: target)
+                    }
+                    .onDisappear { store.stopComponentColorDraftPreview(target: target) }
+            } else {
+                Button("Preview Color Draft") {
+                    if let color { store.startComponentColorDraftPreview(color, target: target) }
+                }
+                .disabled(color == nil)
+                .help("Preview the solid colors on the model before applying them to the document.")
+            }
+        }
+    }
 }

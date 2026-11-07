@@ -277,6 +277,20 @@ public actor EditorSession {
     }
 
     /// Apply color to the exact captured rows in one history step.
+    /// Apply a draft to copied source bytes without publishing an editor or history change.
+    package func componentColorPreviewArchive(
+        _ color: DocumentColor, componentIDs: [String], target: CanvasAdjustmentTarget
+    ) throws -> Data {
+        try Task.checkCancellation()
+        guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot),
+            !state.snapshot.document.hasEmbeddedModelAssets
+        else {
+            throw EditorError.staleCanvasAdjustment
+        }
+        let updates = componentIDs.map { DocumentComponentColorUpdate(componentID: $0, color: color) }
+        return try state.snapshot.document.applying(.setComponentColors(updates)).encoded()
+    }
+
     public func editSelectedComponentColors(_ color: DocumentColor?, target: ComponentMeshSelectionTarget) throws
         -> EditorSnapshot
     {
