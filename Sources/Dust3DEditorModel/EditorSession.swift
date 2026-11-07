@@ -204,6 +204,12 @@ public actor EditorSession {
     {
         try update { try $0.selectWholePart(target, context: context) }
     }
+    package func revealOwningComponent(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext
+    ) throws -> EditorSnapshot {
+        try update { try $0.revealOwningComponent(target, context: context) }
+    }
+
     /// Select only the captured existing part's nodes without edge inference, history or reveal side effects.
     /// - Throws: Missing-part or stale-document errors without changing the current selection.
     public func selectPartNodes(_ partID: String, context: PartGraphSelectionContext? = nil) throws -> EditorSnapshot {
@@ -299,6 +305,20 @@ public actor EditorSession {
     public func deleteComponentSubtrees(target: ComponentDeletionTarget) throws -> EditorSnapshot {
         try update { state in
             try state.deleteComponentSubtrees(target: target)
+            try Task.checkCancellation()
+        }
+    }
+
+    /// Restore just one saved deformation scale on the originally inspected Model part.
+    package func resetPartDeformationScale(
+        _ property: PartDeformationProperty, partID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), let part = snapshot.inspectedPart, part.target == .model,
+                part.id.utf8.elementsEqual(partID.utf8)
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([.setPartDeformationScale(id: partID, property: property, value: 1)])
             try Task.checkCancellation()
         }
     }
@@ -808,15 +828,35 @@ public actor EditorSession {
     /// - Returns: A snapshot with one undo step; identical successful text advances per-window placement.
     /// - Throws: Typed validation/load errors atomically; failed text does not advance placement bookkeeping.
     public func paste(snapshotXML: Data) throws -> EditorSnapshot {
+        try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: false)
+    }
+
+    /// Apply a selected XML file only to the source captured before presenting its picker.
+    package func pasteQtXMLFile(_ snapshotXML: Data, target: CanvasAdjustmentTarget) throws -> EditorSnapshot {
         try Task.checkCancellation()
-        guard state != nil else { throw EditorError.notLoaded }
+        guard let state, target.isCurrent(in: state.snapshot) else { throw QtXMLFilePasteError.staleTarget }
+        return try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: true)
+    }
+
+    private func pasteQtSnapshot(_ snapshotXML: Data, allowsEmptyGraph: Bool) throws -> EditorSnapshot {
+        try Task.checkCancellation()
+        guard let state else { throw EditorError.notLoaded }
+        let document = try Dust3DDocument(snapshotXML: snapshotXML)
+        let contents = try document.editorContents()
+        if allowsEmptyGraph, contents.nodes.isEmpty, contents.edges.isEmpty, contents.parts.isEmpty,
+            try document.components().isEmpty
+        {
+            try Task.checkCancellation()
+            return state.snapshot
+        }
         let identifier: String
         if let previous = lastQtTransfer, previous.snapshot == snapshotXML {
             identifier = previous.identifier
         } else {
             identifier = Self.identifier()
         }
-        let payload = try NodeClipboardPayload(snapshotXML: snapshotXML, identifier: identifier)
+        let fragment = try NodeClipboard(document: document, selectedNodeIDs: Set(contents.nodes.map(\.id)))
+        let payload = try NodeClipboardPayload(fragment: fragment, identifier: identifier)
         let next = try paste(payload: payload)
         lastQtTransfer = (Data(snapshotXML), identifier)
         return next
@@ -851,14 +891,14 @@ public actor EditorSession {
             }
         }
         let selected = Set(fragment.selectedNodeIDs.compactMap { identities[$0] })
-        let next = try update { state in
+        let next = try updateWithResult(checkCancellationBeforePublication: true) { state in
             try state.apply([
                 .pasteNodes(
                     clipboard: fragment, identities: identities,
                     offset: .init(x: 0, y: distance, z: distance), partitions: partitions)
             ])
             try state.select(selected)
-        }
+        }.snapshot
         lastPasteIdentifier = payload.identifier
         pasteOrdinal = ordinal + 1
         return next
@@ -935,3 +975,5 @@ public actor EditorSession {
         return (next.snapshot, result)
     }
 }
+
+package enum QtXMLFilePasteError: Error, Equatable, Sendable { case staleTarget }

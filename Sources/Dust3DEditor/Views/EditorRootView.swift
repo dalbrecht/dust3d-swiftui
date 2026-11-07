@@ -194,6 +194,12 @@ struct EditorRootView: View {
             }
         }
         .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
+        .background {
+            if let requestID = store.qtXMLFilePasteRequestID {
+                QtXMLFilePicker(store: store, requestID: requestID)
+                    .id(requestID)
+            }
+        }
         .focusedSceneValue(\.editorStore, store)
         .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
         .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
