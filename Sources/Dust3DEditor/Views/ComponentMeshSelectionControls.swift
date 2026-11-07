@@ -29,22 +29,30 @@ enum ComponentMeshFieldPresentation {
     }
 }
 
-/// Multi-row field authoring preserves the existing singleton inspector controls.
+/// Reuse the batch fields for sidebar rows and components owned by graph picks.
 struct ComponentMeshSelectionControls: View {
     let store: EditorStore
+
     var body: some View {
-        if let snapshot = store.snapshot, snapshot.selectedComponentIDs.count > 1 {
-            let presentation = ComponentMeshSelectionPresentation(snapshot: snapshot)
-            if presentation.isAvailable {
-                ComponentMeshSelectionEditor(
-                    store: store, presentation: presentation,
-                    target: ComponentMeshSelectionTarget(snapshot: snapshot)
-                )
-                .id([
-                    snapshot.documentIdentity.uuidString, String(snapshot.documentRevision),
-                    String(snapshot.selectionRevision), String(snapshot.constraintRevision),
-                ])
+        if let snapshot = store.snapshot {
+            if snapshot.selectedComponentIDs.count > 1 {
+                editor(snapshot: snapshot, target: ComponentMeshSelectionTarget(snapshot: snapshot))
+            } else if !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty {
+                let target = ComponentMeshSelectionTarget(graphSelection: snapshot)
+                if target.isCurrent(in: snapshot) {
+                    DisclosureGroup("Owning Component Mesh Settings") {
+                        editor(snapshot: snapshot, target: target)
+                    }
+                }
             }
+        }
+    }
+
+    @ViewBuilder private func editor(snapshot: EditorSnapshot, target: ComponentMeshSelectionTarget) -> some View {
+        let presentation = ComponentMeshSelectionPresentation(snapshot: snapshot, target: target)
+        if presentation.isAvailable {
+            ComponentMeshSelectionEditor(store: store, presentation: presentation, target: target)
+                .id(target)
         }
     }
 }
@@ -55,14 +63,18 @@ private struct ComponentMeshSelectionEditor: View {
     let target: ComponentMeshSelectionTarget
     @State private var degrees = ""
 
+    private var scope: String { target.isGraphSelection ? "owning components" : "selected components" }
+
     private var cutoffTitle: String {
         ComponentMeshFieldPresentation.title(presentation.smoothCutoffDegrees, render: { String($0) + "°" })
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Selected component mesh settings").font(.headline).accessibilityAddTraits(.isHeader)
+            if !target.isGraphSelection {
+                Text("Selected component mesh settings").font(.headline).accessibilityAddTraits(.isHeader)
+            }
             Text(
-                "Each explicit change applies to all \(target.count) selected components. Other settings stay as stored."
+                "Each explicit change applies to all \(target.count) \(scope). Other settings stay as stored."
             )
             .font(.caption).foregroundStyle(.secondary)
             Text(
@@ -77,9 +89,17 @@ private struct ComponentMeshSelectionEditor: View {
             } label: {
                 Text("Change Combine Mode…")
             }
-            .accessibilityLabel(ComponentMeshFieldPresentation.combineAccessibilityLabel(count: target.count))
+            .accessibilityLabel(
+                target.isGraphSelection
+                    ? "Change combine mode for \(target.count) \(scope)"
+                    : ComponentMeshFieldPresentation.combineAccessibilityLabel(count: target.count)
+            )
             .accessibilityValue(
-                ComponentMeshFieldPresentation.combineAccessibilityValue(presentation.combineMode, count: target.count)
+                target.isGraphSelection
+                    ? ComponentMeshFieldPresentation.title(presentation.combineMode, render: { $0.rawValue })
+                        + "; \(target.count) \(scope)"
+                    : ComponentMeshFieldPresentation.combineAccessibilityValue(
+                        presentation.combineMode, count: target.count)
             )
             .accessibilityIdentifier("multi-component-combine-mode")
             .help(
@@ -88,7 +108,7 @@ private struct ComponentMeshSelectionEditor: View {
             if presentation.showsSmoothing {
                 Text("Normal smoothing: \(cutoffTitle)").font(.caption)
                 TextField("Cutoff (°)", text: $degrees)
-                    .accessibilityLabel("Selected components smoothing cutoff in degrees")
+                    .accessibilityLabel("\(scope.capitalized) smoothing cutoff in degrees")
                     .accessibilityIdentifier("multi-component-smoothing-cutoff")
                     .focusedValue(\.editorTextEditing, true)
                     .onSubmit { store.componentMeshSmoothingAction(degrees, target: target)() }
@@ -100,17 +120,19 @@ private struct ComponentMeshSelectionEditor: View {
                     Spacer()
                     Button("Apply Cutoff", action: store.componentMeshSmoothingAction(degrees, target: target))
                         .disabled(ComponentMeshSmoothingInput.value(degrees) == nil)
-                        .accessibilityLabel("Apply smoothing cutoff to \(target.count) selected components")
+                        .accessibilityLabel("Apply smoothing cutoff to \(target.count) \(scope)")
                 }
                 Button("Set Sharp (0°)", action: store.componentMeshAction(.smoothCutoffDegrees(0), target: target))
-                    .accessibilityLabel("Set zero smoothing cutoff on \(target.count) selected components")
+                    .accessibilityLabel("Set zero smoothing cutoff on \(target.count) \(scope)")
                 Text(
                     "Zero keeps sharp edges. An explicit cutoff replaces unsupported values. Each change is one Undo step."
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
         }
-        .help("Selected components only; groups are not expanded. Cutoff affects normals, not authored node positions.")
+        .help(
+            "Cutoff affects normals without moving authored nodes. Each edit applies to the displayed component scope."
+        )
         .disabled(!store.canEditComponentMeshSettings(target))
         .onAppear { reset() }
     }

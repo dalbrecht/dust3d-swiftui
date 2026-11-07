@@ -15,6 +15,9 @@ final class EditorStore {
             if let hover = boneEdgeHover, snapshot.map({ !hover.target.isCurrent(in: $0) }) ?? true {
                 boneEdgeHover = nil
             }
+            if let motion = canvasProfileMotion, snapshot.map({ motion.isCurrent(in: $0) }) != true {
+                canvasProfileMotion = nil
+            }
             if oldValue?.documentIdentity != snapshot?.documentIdentity { clearCanvasHover() }
             if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
@@ -432,7 +435,29 @@ final class EditorStore {
         resetCanvasProfileContext(clearGeometry: true)
     }
 
+    private(set) var canvasProfileMotion: CanvasProfileMotion?
+
+    func beginCanvasProfileMotion(token: UUID, lease: UUID?) {
+        guard canvasProfiles.isDualProfile, let lease, ownsCanvasProfile(lease), let snapshot else { return }
+        canvasProfileMotion = CanvasProfileMotion(snapshot: snapshot, lease: lease, token: token)
+    }
+
+    func updateCanvasProfileMotion(_ payload: CanvasProfileMotion.Payload, token: UUID, lease: UUID?) {
+        guard let lease, ownsCanvasProfile(lease), let snapshot, var motion = canvasProfileMotion,
+            motion.update(payload, lease: lease, token: token, snapshot: snapshot)
+        else { return }
+        canvasProfileMotion = motion
+    }
+
+    func clearCanvasProfileMotion(token: UUID? = nil, lease: UUID?) {
+        guard let lease, ownsCanvasProfile(lease), let motion = canvasProfileMotion, motion.lease == lease,
+            token == nil || motion.token == token
+        else { return }
+        canvasProfileMotion = nil
+    }
+
     private func resetCanvasProfileContext(clearGeometry: Bool, transferAdd: Bool = false) {
+        canvasProfileMotion = nil
         rotationInputContextID = UUID()
         precisionLayoutEpoch = UUID()
         precisionCanvasIdentity = nil
@@ -1017,7 +1042,8 @@ final class EditorStore {
 
     func selectComponent(_ id: String?) { perform(commits: false) { try await $0.selectComponent(id) } }
     func canEditComponentMeshSettings(_ target: ComponentMeshSelectionTarget) -> Bool {
-        !stopped && !isWorking && target.count > 1 && snapshot.map { target.isCurrent(in: $0) } == true
+        !stopped && !isWorking && target.count > (target.isGraphSelection ? 0 : 1)
+            && snapshot.map { target.isCurrent(in: $0) } == true
     }
     func componentMeshAction(_ edit: ComponentMeshEdit, target: ComponentMeshSelectionTarget) -> @MainActor () -> Void {
         guard canEditComponentMeshSettings(target) else { return {} }
@@ -2083,6 +2109,7 @@ final class EditorStore {
     }
 
     func stop() {
+        canvasProfileMotion = nil
         boneEdgeHover = nil
         previewCameraCommand = nil
         pendingComponentDrag = nil

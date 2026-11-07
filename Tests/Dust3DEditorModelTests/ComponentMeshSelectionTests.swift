@@ -4,6 +4,84 @@ import Foundation
 import XCTest
 
 final class ComponentMeshSelectionTests: XCTestCase {
+    private func graphDocument(extraComponents: String = "") throws -> Dust3DDocument {
+        let xml = """
+            <canvas><nodes>
+            <node id='n1' partId='p' x='0' y='0' z='0' radius='.1'/>
+            <node id='n2' partId='p' x='1' y='0' z='0' radius='.1'/>
+            <node id='orphan' x='2' y='0' z='0' radius='.1'/>
+            </nodes><edges><edge id='e' partId='q' from='n1' to='n2'/></edges>
+            <parts><part id='p'/><part id='q'/></parts><components>
+            <component id='group'><component id='ownerP' linkDataType='partId' linkData='p'/></component>
+            <component id='ownerQ' linkDataType='partId' linkData='q' combineMode='Inversion'/>
+            \(extraComponents)</components></canvas>
+            """
+        return try Dust3DDocument(snapshotXML: Data(xml.utf8))
+    }
+
+    func testGraphOwnerBatchUsesExplicitEdgeOwnerAndKeepsPicksThroughUndo() async throws {
+        let source = try graphDocument()
+        let session = EditorSession()
+        _ = try await session.open(data: source.encoded())
+        let before = try await session.selectGraph(nodes: ["n1", "n2"], edges: ["e"])
+        let target = ComponentMeshSelectionTarget(graphSelection: before)
+        let presentation = ComponentMeshSelectionPresentation(snapshot: before, target: target)
+        XCTAssertTrue(presentation.isAvailable)
+        XCTAssertEqual(presentation.components.map(\.id), ["ownerP", "ownerQ"])
+        XCTAssertEqual(presentation.combineMode, .mixed)
+        let combined = try await session.editSelectedComponentMeshSettings(.combineMode(.uncombined), target: target)
+        let nextTarget = ComponentMeshSelectionTarget(graphSelection: combined)
+        let changed = try await session.editSelectedComponentMeshSettings(.smoothCutoffDegrees(42), target: nextTarget)
+        let after = ComponentMeshSelectionPresentation(
+            snapshot: changed, target: ComponentMeshSelectionTarget(graphSelection: changed))
+        XCTAssertEqual(after.combineMode, .uniform(.uncombined))
+        XCTAssertEqual(after.smoothCutoffDegrees, .uniform(42))
+        XCTAssertEqual(changed.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(changed.selectedEdgeIDs, before.selectedEdgeIDs)
+        XCTAssertEqual(changed.selectionRevision, before.selectionRevision)
+        XCTAssertTrue(changed.selectedComponentIDs.isEmpty)
+        let undoCutoff = try await session.undo()
+        let undoCombine = try await session.undo()
+        XCTAssertEqual(undoCutoff.document.encoded(), combined.document.encoded())
+        XCTAssertEqual(undoCombine.document.encoded(), source.encoded())
+        XCTAssertEqual(undoCombine.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(undoCombine.selectedEdgeIDs, before.selectedEdgeIDs)
+        XCTAssertFalse(undoCombine.canUndo)
+    }
+
+    func testGraphOwnerSingletonUsesStoredEdgeOwnerAndRejectsSelectionABA() throws {
+        var state = try EditorState(document: graphDocument())
+        try state.selectGraph(nodes: [], edges: ["e"])
+        let before = state.snapshot
+        let target = ComponentMeshSelectionTarget(graphSelection: before)
+        let presentation = ComponentMeshSelectionPresentation(snapshot: before, target: target)
+        XCTAssertTrue(presentation.isAvailable)
+        XCTAssertEqual(presentation.components.map(\.id), ["ownerQ"])
+        XCTAssertFalse(ComponentMeshSelectionTarget(snapshot: before).isCurrent(in: before))
+
+        try state.select("n1")
+        try state.selectGraph(nodes: [], edges: ["e"])
+        XCTAssertThrowsError(try state.editSelectedComponentMeshSettings(.combineMode(.normal), target: target)) {
+            XCTAssertEqual($0 as? ComponentMeshSelectionError, .staleTarget)
+        }
+        XCTAssertEqual(state.snapshot.document.encoded(), before.document.encoded())
+    }
+
+    func testGraphTargetDoesNotSilentlyEditASubsetWithAmbiguousOrMissingOwners() throws {
+        let duplicate = "<component id='alias' linkDataType='partId' linkData='p'/>"
+        for (source, nodes) in [
+            (try graphDocument(extraComponents: duplicate), Set(["n1"])),
+            (try graphDocument(), Set(["orphan"])),
+        ] {
+            var state = try EditorState(document: source)
+            try state.selectGraph(nodes: nodes, edges: ["e"])
+            let snapshot = state.snapshot
+            let target = ComponentMeshSelectionTarget(graphSelection: snapshot)
+            XCTAssertFalse(target.isCurrent(in: snapshot))
+            XCTAssertFalse(ComponentMeshSelectionPresentation(snapshot: snapshot, target: target).isAvailable)
+        }
+    }
+
     private func source() throws -> Dust3DDocument {
         try Dust3DDocument(
             snapshotXML: Data(

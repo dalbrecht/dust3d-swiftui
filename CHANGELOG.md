@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
@@ -84,6 +86,8 @@
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
+
+- Mirror live node and origin movement in the companion profile during canvas edits (#388).
 
 - Add shared Weights From editing across selected wrapping groups with common target eligibility, exact retained references and one atomic Undo.
 

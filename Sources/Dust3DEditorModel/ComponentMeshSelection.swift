@@ -14,16 +14,18 @@ public enum ComponentMeshSelectionValue<Value: Equatable & Sendable>: Equatable,
     }
 }
 
-/// Exact directly selected component rows, independent of role, link kind and graph locks.
+/// Exact component rows captured from the sidebar or explicit graph picks.
 public struct ComponentMeshSelectionTarget: Hashable, Sendable {
     private let context: CanvasAdjustmentTarget
     let ids: [String]
+    package let isGraphSelection: Bool
     public var count: Int { ids.count }
 
     /// Capture every raw selected identity before any deduplication or row projection.
     /// - Parameter snapshot: The immutable originating window/document selection.
     public init(snapshot: EditorSnapshot) {
         context = CanvasAdjustmentTarget(snapshot: snapshot)
+        isGraphSelection = false
         let requested = Array(snapshot.selectedComponentIDs)
         let available = Set(snapshot.componentTree.rows.map { Data($0.id.utf8) })
         guard !requested.isEmpty, requested.count <= ComponentMeshEdit.maximumBatchCount,
@@ -35,10 +37,39 @@ public struct ComponentMeshSelectionTarget: Hashable, Sendable {
         let keys = Set(requested.map { Data($0.utf8) })
         ids = snapshot.componentTree.rows.filter { keys.contains(Data($0.id.utf8)) }.map(\.id)
     }
+    /// Capture one unique linked component per authored part owner. Ambiguous or missing owners make the batch unavailable.
+    package init(graphSelection snapshot: EditorSnapshot) {
+        context = CanvasAdjustmentTarget(snapshot: snapshot)
+        isGraphSelection = true
+        let nodeIDs = Set(snapshot.selectedIDs.map { Data($0.utf8) })
+        let edgeIDs = Set(snapshot.selectedEdgeIDs.map { Data($0.utf8) })
+        let nodeOwners = snapshot.nodes.filter { nodeIDs.contains(Data($0.id.utf8)) }.map(\.partID)
+        let edgeOwners = snapshot.edges.filter { edgeIDs.contains(Data($0.id.utf8)) }.map(\.partID)
+        let owners = nodeOwners + edgeOwners
+        guard !owners.isEmpty, nodeOwners.count == nodeIDs.count, edgeOwners.count == edgeIDs.count,
+            owners.allSatisfy({ $0 != nil })
+        else {
+            ids = []
+            return
+        }
+        let partKeys = Set(owners.compactMap { $0.map { Data($0.utf8) } })
+        let available = Set(snapshot.parts.map { Data($0.id.utf8) })
+        guard partKeys.count <= ComponentMeshEdit.maximumBatchCount, partKeys.isSubset(of: available) else {
+            ids = []
+            return
+        }
+        let linkedRows = snapshot.componentTree.rows.filter { row in
+            row.component.partID.map { partKeys.contains(Data($0.utf8)) } == true
+        }
+        let linkedKeys = Set(linkedRows.compactMap { $0.component.partID.map { Data($0.utf8) } })
+        ids = linkedKeys == partKeys && linkedRows.count == partKeys.count ? linkedRows.map(\.id) : []
+    }
+
     /// Reject unavailable intent and document, selection or constraint changes, including ABA.
     public func isCurrent(in snapshot: EditorSnapshot) -> Bool {
-        !ids.isEmpty && context.isCurrent(in: snapshot)
-            && Set(ids.map { Data($0.utf8) }) == Set(snapshot.selectedComponentIDs.map { Data($0.utf8) })
+        guard !ids.isEmpty, context.isCurrent(in: snapshot) else { return false }
+        return isGraphSelection
+            || Set(ids.map { Data($0.utf8) }) == Set(snapshot.selectedComponentIDs.map { Data($0.utf8) })
     }
 }
 
@@ -48,15 +79,19 @@ public struct ComponentMeshSelectionPresentation: Sendable {
     public let combineMode: ComponentMeshSelectionValue<ComponentCombineMode>
     public let showsSmoothing: Bool
     public let smoothCutoffDegrees: ComponentMeshSelectionValue<Double>
-    public var isAvailable: Bool { components.count > 1 }
+    public let isAvailable: Bool
 
     /// Derive common display state without writing XML or guessing an unsupported value.
     public init(snapshot: EditorSnapshot) {
-        let target = ComponentMeshSelectionTarget(snapshot: snapshot)
+        self.init(snapshot: snapshot, target: ComponentMeshSelectionTarget(snapshot: snapshot))
+    }
+
+    package init(snapshot: EditorSnapshot, target: ComponentMeshSelectionTarget) {
         let keys = Set(target.ids.map { Data($0.utf8) })
         components =
             target.isCurrent(in: snapshot)
             ? snapshot.componentTree.rows.filter { keys.contains(Data($0.id.utf8)) }.map(\.component) : []
+        isAvailable = components.count > (target.isGraphSelection ? 0 : 1)
         combineMode = .read(components.map(\.combineMode))
         showsSmoothing = snapshot.showsComponentSmoothing(for: components)
         smoothCutoffDegrees = .read(components.map(\.smoothCutoffDegrees))
@@ -76,7 +111,7 @@ extension EditorSnapshot {
 public enum ComponentMeshSelectionError: Error, Equatable, Sendable { case staleTarget }
 
 extension EditorState {
-    /// Replace one field on all explicitly selected rows in one cancellable transaction.
+    /// Replace one field on the captured component rows in one cancellable transaction.
     /// - Throws: Stale target, invalid field/identity, or cancellation without partial publication.
     public mutating func editSelectedComponentMeshSettings(
         _ edit: ComponentMeshEdit, target: ComponentMeshSelectionTarget
