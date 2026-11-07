@@ -253,4 +253,87 @@ final class CanvasPartIsolationTests: XCTestCase {
         XCTAssertEqual(ids.last, "p129")
         XCTAssertFalse(value)
     }
+    func testHideAllFactoryCapturesEveryPartInSourceOrderWithoutInterpretingComponents() throws {
+        var state = try EditorState(document: document(components: "<component id='dup'/><component id='dup'/>"))
+        let before = state.snapshot
+        XCTAssertNotNil(before.componentTree.failureDescription)
+        let target = CanvasPartIsolationTarget.hidingAll(in: before)
+        XCTAssertTrue(target.isAvailable)
+        XCTAssertTrue(target.isCurrent(in: before))
+        XCTAssertEqual(target.title, "Hide All Parts in Canvas")
+        XCTAssertFalse(target.restoresAll)
+        XCTAssertNil(target.unavailableReason)
+        let (ids, value) = try batch(target, in: before)
+        XCTAssertEqual(ids, ["a", "b", "c", "orphan", "d"])
+        XCTAssertFalse(value)
+        XCTAssertEqual(state.snapshot.document.encoded(), before.document.encoded())
+        XCTAssertFalse(state.snapshot.canUndo)
+        try state.apply(target.commands(in: before))
+        XCTAssertTrue(state.snapshot.parts.allSatisfy { !$0.isVisible })
+        XCTAssertEqual(state.snapshot.parts.map(\.isLocked), before.parts.map(\.isLocked))
+        XCTAssertEqual(state.snapshot.parts.map(\.isDisabled), before.parts.map(\.isDisabled))
+        XCTAssertEqual(state.snapshot.previewIdentity, before.previewIdentity)
+    }
+
+    func testHideAllNoopReportsHiddenRatherThanVisibleWithoutHistory() throws {
+        var state = try EditorState(
+            document: document(
+                parts: "<part id='a' visible='false' locked='true'/><part id='orphan' visible='false' disabled='true'/>"
+            ))
+        let before = state.snapshot
+        let target = CanvasPartIsolationTarget.hidingAll(in: before)
+        XCTAssertFalse(target.isAvailable)
+        XCTAssertFalse(target.restoresAll)
+        XCTAssertTrue(target.unavailableReason?.contains("hidden") == true)
+        XCTAssertTrue(try target.commands(in: before).isEmpty)
+        try state.apply(target.commands(in: before))
+        XCTAssertEqual(state.snapshot.document.encoded(), before.document.encoded())
+        XCTAssertEqual(state.snapshot.documentRevision, before.documentRevision)
+        XCTAssertFalse(state.snapshot.canUndo)
+        let empty = try EditorState(document: Dust3DDocument(data: Dust3DDocument.emptyArchive())).snapshot
+        XCTAssertFalse(CanvasPartIsolationTarget.hidingAll(in: empty).isAvailable)
+    }
+
+    func testHideAllCapturesSelectionConstraintUndoAndWindowEpochsEvenWithoutOwnership() throws {
+        for mode in 0..<4 {
+            let original = try document()
+            var state = try EditorState(document: original)
+            try state.selectPart("a")
+            let target = CanvasPartIsolationTarget.hidingAll(in: state.snapshot)
+            switch mode {
+            case 0:
+                try state.selectPart("c")
+                try state.selectPart("a")
+            case 1:
+                state.setLock(.x, isLocked: true)
+                state.setLock(.x, isLocked: false)
+            case 2:
+                try state.apply([.setPartName(id: "a", name: "Changed")])
+                try state.undo()
+            default:
+                var other = try EditorState(document: original)
+                try other.selectPart("a")
+                XCTAssertFalse(target.isCurrent(in: other.snapshot))
+                XCTAssertThrowsError(try target.commands(in: other.snapshot)) {
+                    XCTAssertEqual($0 as? CanvasPartIsolationError, .staleTarget)
+                }
+                continue
+            }
+            XCTAssertFalse(target.isCurrent(in: state.snapshot))
+            XCTAssertThrowsError(try target.commands(in: state.snapshot)) {
+                XCTAssertEqual($0 as? CanvasPartIsolationError, .staleTarget)
+            }
+        }
+    }
+
+    func testHideAllKeepsFullBatchScopeAbove128Parts() throws {
+        let parts = (0..<130).map { "<part id='p\($0)'/>" }.joined()
+        let snapshot = try EditorState(document: document(parts: parts, components: "")).snapshot
+        let (ids, value) = try batch(CanvasPartIsolationTarget.hidingAll(in: snapshot), in: snapshot)
+        XCTAssertEqual(ids.count, 130)
+        XCTAssertEqual(ids.first, "p0")
+        XCTAssertEqual(ids.last, "p129")
+        XCTAssertFalse(value)
+    }
+
 }

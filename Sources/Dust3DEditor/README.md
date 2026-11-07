@@ -716,8 +716,8 @@ color and weight refreshes preserve manual collapse. The hierarchy scrolls withi
 its own bounded area. Physical scrolling, keyboard and VoiceOver acceptance remain
 outstanding; see [ADR 0172](../../docs/adr/0172-generated-joint-reveal.md).
 
-Use Canvas > Hide Other Parts in Canvas, or the part/component inspector, to hide
-parts outside one resolved component subtree. Existing visibility inside the
+Use Canvas > Part Visibility > Hide Other Parts in Canvas, or the part/component
+inspector, to hide parts outside one resolved component subtree. Existing visibility inside the
 subtree is preserved. When all outside parts are hidden, the command becomes
 Show All Parts in Canvas. Show All also works without a selection and restores
 parts when hierarchy metadata prevents isolation. Changes use one Undo step and
@@ -736,3 +736,11 @@ clears its visible rectangle and hover so graph context actions can resume. Capt
 replacement, selection/constraint changes and Add-mode ABA. Physical context-menu,
 keyboard and VoiceOver acceptance remain outstanding. See
 [ADR 0174](../../docs/adr/0174-canvas-context-actions.md).
+
+Canvas > Part Visibility > Hide All Parts in Canvas hides every part independently
+of selection or component metadata. Show All remains available for recovery,
+including with a broken hierarchy. These visibility-only changes preserve locked
+and disabled flags, mesh inputs and one-step Undo/Redo. The menu provides native
+keyboard access; no global plain H text binding is added. Physical menu/keyboard/
+VoiceOver acceptance remains outstanding. See
+[ADR 0175](../../docs/adr/0175-canvas-hide-all.md).
