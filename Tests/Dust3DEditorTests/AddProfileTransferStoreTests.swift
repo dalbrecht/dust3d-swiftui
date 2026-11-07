@@ -101,6 +101,98 @@ private struct AddProfileTransferNoNative: EditorPreviewServing, ArchiveTextureB
         XCTAssertFalse(store.canUndo)
     }
 
+    private func overlappingAddSource(
+        farFirst: Bool, tie: Bool = false, nearInterior: Bool = false
+    ) throws -> Dust3DDocument {
+        let near = "<node id='near' partId='q' x='.5' y='.5' z='.4' radius='.1'/>"
+        let far = "<node id='far' partId='r' x='\(tie ? ".5" : ".515")' y='.5' z='.6' radius='.1'/>"
+        let ends =
+            nearInterior
+            ? "<node id='left' partId='q' x='.3' y='.5' z='.4' radius='.1'/><node id='right' partId='q' x='.7' y='.5' z='.4' radius='.1'/>"
+            : ""
+        let chain =
+            nearInterior
+            ? "<edge id='leftEdge' from='left' to='near' partId='q'/><edge id='rightEdge' from='near' to='right' partId='q'/>"
+            : ""
+        return try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                <node id='anchor' partId='p' x='.1' y='.5' z='.4' radius='.1'/>
+                \(farFirst ? far + near : near + far)
+                \(ends)
+                </nodes><edges>\(chain)</edges>
+                <parts><part id='p'/><part id='q'/><part id='r'/></parts></canvas>
+                """.utf8))
+    }
+
+    private func clickOverlappingAddTargets(_ source: Dust3DDocument, in store: EditorStore) async throws {
+        await store.load(data: source.encoded())
+        store.select("anchor")
+        try await settle(store)
+        store.setCanvasContext(
+            projection: .init(bounds: store.bounds, plane: .front, width: 400, height: 300),
+            width: 400, height: 300)
+        store.beginAddMode()
+        let projection = try XCTUnwrap(store.frozenAddProjection)
+        let near = projection.point(for: try source.node(id: "near").position)
+        let far = projection.point(for: try source.node(id: "far").position)
+        XCTAssertLessThan(hypot(near.x - far.x, near.y - far.y), 18)
+        store.updateAddPointer(at: near, modeID: store.addModeID)
+        store.placeAddNode(at: near, modeID: store.addModeID)
+        try await settle(store)
+    }
+
+    func testAddNearestNodeConnectsIndependentOfArchiveOrderAndUndoIsExact() async throws {
+        for farFirst in [false, true] {
+            let original = try overlappingAddSource(farFirst: farFirst)
+            let stub = AddProfileTransferNoNative()
+            let store = EditorStore(
+                preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+                sourceMaterialBaker: stub, animationCatalog: stub)
+            defer { store.stop() }
+            try await clickOverlappingAddTargets(original, in: store)
+            let snapshot = try XCTUnwrap(store.snapshot)
+            let edge = try XCTUnwrap(snapshot.edges.first)
+            XCTAssertEqual(Set([edge.fromID, edge.toID]), ["anchor", "near"])
+            XCTAssertEqual(try snapshot.document.editorContents().nodes.first { $0.id == "far" }?.partID, "r")
+            XCTAssertEqual(snapshot.nodes.count, 3)
+            XCTAssertFalse(store.isAddingNodes)
+            store.undo()
+            try await settle(store)
+            XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+            XCTAssertFalse(store.canUndo)
+        }
+    }
+
+    func testAddNearestNodePreservesTopmostExactTieAndNearestIneligibleFallback() async throws {
+        for nearInterior in [false, true] {
+            let original = try overlappingAddSource(farFirst: false, tie: !nearInterior, nearInterior: nearInterior)
+            let stub = AddProfileTransferNoNative()
+            let store = EditorStore(
+                preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+                sourceMaterialBaker: stub, animationCatalog: stub)
+            defer { store.stop() }
+            try await clickOverlappingAddTargets(original, in: store)
+            let snapshot = try XCTUnwrap(store.snapshot)
+            let edge = try XCTUnwrap(snapshot.edges.first { $0.fromID == "anchor" || $0.toID == "anchor" })
+            let other = edge.fromID == "anchor" ? edge.toID : edge.fromID
+            if nearInterior {
+                XCTAssertFalse(["near", "far"].contains(other))
+                XCTAssertEqual(snapshot.nodes.count, 6)
+                XCTAssertTrue(store.isAddingNodes)
+            } else {
+                XCTAssertEqual(other, "far")
+                XCTAssertEqual(snapshot.nodes.count, 3)
+                XCTAssertFalse(store.isAddingNodes)
+            }
+            store.undo()
+            try await settle(store)
+            XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+            XCTAssertFalse(store.canUndo)
+        }
+    }
+
     private func settle(_ store: EditorStore) async throws {
         for _ in 0..<300 {
             if !store.isWorking { return }
