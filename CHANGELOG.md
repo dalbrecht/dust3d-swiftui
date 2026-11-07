@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
@@ -351,6 +353,8 @@
 - Keep the current Add chain and radius when switching the editing profile in the Side by Side workspace.
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
+
+- Add File > Save All to save edited documents through the native document controller.
 
 - Reject native save payloads while edits are applying or their document snapshot has been superseded, preserving the native File menu and providing retry guidance.
 
