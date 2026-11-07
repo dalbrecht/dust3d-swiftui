@@ -1,4 +1,5 @@
 import AppKit
+import Dust3DEditorModel
 import SwiftUI
 
 /// An accessible alternative to pointer picking, including edges whose projection collapses to a point.
@@ -8,6 +9,7 @@ struct EdgeSidebar: View {
     var body: some View {
         let edges = store.snapshot?.edges ?? []
         let titles = Dictionary(uniqueKeysWithValues: (store.snapshot?.nodes ?? []).map { ($0.id, $0.title) })
+        let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
         if !edges.isEmpty {
             Divider()
             Text("Edges").font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding(12)
@@ -53,6 +55,9 @@ struct EdgeSidebar: View {
                             }
                         }
                         .contextMenu {
+                            if let reveal = store.revealOwningComponentAction(.edge(edge.id), context: partContext) {
+                                Button("Reveal Owning Component", action: reveal)
+                            }
                             Button("Select Whole Part", action: selectWholePart)
                                 .disabled(!store.canSelectWholePart(.edge(edge.id)))
                         }

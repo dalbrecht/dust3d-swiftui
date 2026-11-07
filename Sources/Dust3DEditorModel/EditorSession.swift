@@ -204,6 +204,12 @@ public actor EditorSession {
     {
         try update { try $0.selectWholePart(target, context: context) }
     }
+    package func revealOwningComponent(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext
+    ) throws -> EditorSnapshot {
+        try update { try $0.revealOwningComponent(target, context: context) }
+    }
+
     /// Select only the captured existing part's nodes without edge inference, history or reveal side effects.
     /// - Throws: Missing-part or stale-document errors without changing the current selection.
     public func selectPartNodes(_ partID: String, context: PartGraphSelectionContext? = nil) throws -> EditorSnapshot {

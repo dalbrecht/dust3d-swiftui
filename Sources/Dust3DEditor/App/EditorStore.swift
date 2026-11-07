@@ -55,6 +55,30 @@ final class EditorStore {
             self?.selectWholePart(target, context: context)
         }
     }
+    func revealOwningComponentAction(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil
+    ) -> (@MainActor () -> Void)? {
+        guard let context, canRevealOwningComponent(target, context: context, profileLease: profileLease) else {
+            return nil
+        }
+        let modeID = addModeID
+        return { [weak self] in
+            guard let self, self.addModeID == modeID,
+                self.canRevealOwningComponent(target, context: context, profileLease: profileLease)
+            else { return }
+            self.perform(commits: false) { try await $0.revealOwningComponent(target, context: context) }
+        }
+    }
+
+    private func canRevealOwningComponent(
+        _ target: PartGraphTarget, context: PartGraphSelectionContext, profileLease: UUID?
+    ) -> Bool {
+        guard ownsCanvasProfile(profileLease), !isWorking, !isAddingNodes, !isMovingOrigin, let snapshot,
+            context.isCurrent(in: snapshot)
+        else { return false }
+        return snapshot.canRevealOwningComponent(target)
+    }
+
     func selectComponentGraph(_ target: ComponentGraphSelectionTarget) {
         guard !stopped, !isWorking, snapshot?.canSelectComponentGraph(target) == true else { return }
         cancelAddMode()
