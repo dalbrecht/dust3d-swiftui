@@ -131,6 +131,41 @@ private actor HeldColorDraftPreview: ComponentColorDraftPreviewServing {
         XCTAssertFalse(store.canUndo)
     }
 
+    func testAcceptedDraftRemainsVisibleWhileValidReplacementIsHeld() async throws {
+        let (store, preview, original) = try await setup()
+        defer {
+            store.stop()
+            Task { await preview.drain() }
+        }
+        let target = try XCTUnwrap(store.componentColorDraftPreviewTarget(componentID: "c"))
+        store.startComponentColorDraftPreview(red, target: target)
+        try await settle { await preview.isPending(self.red) }
+        await preview.complete(red)
+        try await settle { store.componentColorDraftMesh?.warning == self.red.archiveValue }
+        let redRevision = store.componentColorDraftRevision
+
+        store.updateComponentColorDraftPreview(blue, target: target)
+        try await settle { await preview.isPending(self.blue) }
+        XCTAssertEqual(store.componentColorDraftMesh?.warning, red.archiveValue)
+        XCTAssertEqual(store.componentColorDraftRevision, redRevision)
+
+        await preview.complete(blue)
+        try await settle { store.componentColorDraftMesh?.warning == self.blue.archiveValue }
+        XCTAssertGreaterThan(store.componentColorDraftRevision, redRevision)
+        store.colorDraftRenderFailed("obsolete", revision: redRevision)
+        XCTAssertEqual(store.componentColorDraftMesh?.warning, blue.archiveValue)
+
+        store.updateComponentColorDraftPreview(red, target: target)
+        try await settle { await preview.isPending(self.red) }
+        XCTAssertEqual(store.componentColorDraftMesh?.warning, blue.archiveValue)
+        await preview.complete(red, fails: true)
+        try await settle { store.componentColorDraftPreviewMessage != "Updating color draft…" }
+        XCTAssertNil(store.componentColorDraftMesh)
+        XCTAssertNotNil(store.componentColorDraftPreviewMessage)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testFailedReplacementCancelAndTexturedSourceCannotPublishDraft() async throws {
         let (store, preview, original) = try await setup()
         defer {

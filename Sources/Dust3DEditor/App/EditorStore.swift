@@ -2039,9 +2039,12 @@ final class EditorStore {
         colorDraftTask = nil
         colorDraftColor = color
         colorDraftRequest = UUID()
-        componentColorDraftMesh = nil
-        componentColorDraftPreviewMessage = color == nil ? "Choose a valid color to preview." : "Updating color draft…"
-        guard let color else { return }
+        guard let color else {
+            componentColorDraftMesh = nil
+            componentColorDraftPreviewMessage = "Choose a valid color to preview."
+            return
+        }
+        componentColorDraftPreviewMessage = "Updating color draft…"
         let request = colorDraftRequest
         let service = colorDraftPreview
         let scopeID = colorDraftScopeID
@@ -2058,6 +2061,7 @@ final class EditorStore {
                 self.componentColorDraftPreviewMessage = mesh == nil ? "The color draft generated no geometry." : nil
             } catch {
                 guard let self, self.admitsColorDraftResult(request, target: target) else { return }
+                self.componentColorDraftMesh = nil
                 self.componentColorDraftPreviewMessage = Self.message(error)
             }
         }
