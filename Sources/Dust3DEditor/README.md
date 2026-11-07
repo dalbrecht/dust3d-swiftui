@@ -3,6 +3,25 @@
 Separate macOS 14+ SwiftUI document app. Run from the repository root with
 `./script/build_and_run.sh --editor`, or package with `--editor --build-only`.
 
+For a headless source save, pass one `.ds3` archive and one or more `.ds3`
+outputs to the editor executable. `-o` and `-output` are interchangeable.
+
+```sh
+Dust3DEditor input.ds3 -o copy.ds3 -output second-copy.ds3
+Dust3DEditor input.ds3 -paste-xml fragment.xml -o edited.ds3
+Dust3DEditor -paste-xml fragment.xml -o new.ds3
+```
+
+The command validates and prepares one archive before opening any windows. It
+preserves exact bytes for a plain copy and applies a single Qt XML fragment to
+the source or a new document before saving. Up to 64 distinct `.ds3` destinations
+are allowed. Destinations must be separate from the inputs and cannot be symbolic
+links. Writes replace individual files atomically. A failed write is reported
+for that destination and the command continues with later destinations.
+Exit status `0` means all saves succeeded, `1` indicates an input or write
+failure, and `2` indicates a usage or path preflight error. This route saves
+editable archives. Geometry formats use their separate export routes.
+
 Open an existing `.ds3`, select a node in the list or canvas, drag it in Front
 (X/Y) or Side (Z/Y), or edit X/Y/Z/radius and press Apply. Undo/redo operates on
 committed edits. Native document scenes provide Open, Save, Save As and unsaved
