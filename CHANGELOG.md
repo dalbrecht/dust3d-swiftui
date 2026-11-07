@@ -109,6 +109,8 @@
 
 - Drag component rows before or after siblings, into groups, or to the document root.
 
+- Select all visible component rows with Command-A when the component sidebar has focus (#386).
+
 - Place selected components before or after a sibling from the inspector, with one-step Undo.
 
 - Move selected components to a new parent in one Undo step while preserving hierarchy order.
