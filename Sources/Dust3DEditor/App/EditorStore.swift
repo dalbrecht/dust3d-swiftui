@@ -32,7 +32,7 @@ final class EditorStore {
         }
     }
     private(set) var isSelectingGraph = false
-    var canPickGraph: Bool { !stopped && (!isWorking || isSelectingGraph) }
+    var canPickGraph: Bool { acceptedDocumentSource != nil && (!isWorking || isSelectingGraph) }
     private struct PendingWholePartPick {
         let target: PartGraphTarget
         let context: PartGraphSelectionContext
@@ -380,7 +380,7 @@ final class EditorStore {
         if hover != canvasGraphHover { canvasGraphHover = hover }
     }
     var canAdjustSelectionRadius: Bool {
-        !isWorking && !stopped && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
+        canSave && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
     }
     func adjustSelectionRadius(direction: Double) {
         if isAddingNodes {
@@ -401,7 +401,7 @@ final class EditorStore {
             adjustSelectionRadius(direction: input.verticalDelta)
             return true
         }
-        guard input.isSupported, !isWorking, !stopped, canvasHeight > 0, let snapshot else { return false }
+        guard input.isSupported, canSave, canvasHeight > 0, let snapshot else { return false }
         let step = (input.verticalDelta > 0 ? 1.0 : -1.0) / canvasHeight
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         let hasGraphSelection = !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
@@ -727,7 +727,7 @@ final class EditorStore {
     }
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
-    var canSave: Bool { snapshot != nil && !isWorking && !stopped }
+    var canSave: Bool { !isWorking && acceptedDocumentSource != nil }
     var canEditRigSettings: Bool { canSave }
 
     private var acceptedDocumentSource: EditorSnapshot? {
@@ -949,8 +949,8 @@ final class EditorStore {
         }
         return .init(documentID: documentID, revision: snapshot.documentRevision, document: snapshot.document)
     }
-    var canUndo: Bool { !isWorking && snapshot?.canUndo == true }
-    var canRedo: Bool { !isWorking && snapshot?.canRedo == true }
+    var canUndo: Bool { canSave && snapshot?.canUndo == true }
+    var canRedo: Bool { canSave && snapshot?.canRedo == true }
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
@@ -1004,30 +1004,64 @@ final class EditorStore {
         case retained(String)
     }
 
+    enum ComponentColorImageDestination: Sendable {
+        case component(ComponentColorImageTarget)
+        case graph(ComponentMeshSelectionTarget)
+
+        func isCurrent(in snapshot: EditorSnapshot) -> Bool {
+            switch self {
+            case .component(let target): target.isCurrent(in: snapshot)
+            case .graph(let target): !target.graphColorImageComponents(in: snapshot).isEmpty
+            }
+        }
+    }
+
+    func canEditComponentColorImage(_ destination: ComponentColorImageDestination) -> Bool {
+        !isWorking && acceptedDocumentSource.map { destination.isCurrent(in: $0) } == true
+    }
+
     func importComponentColorImage(url: URL, target: ComponentColorImageTarget) {
-        prepareComponentColorImage(target: target) { [colorImages] in
+        importComponentColorImage(url: url, destination: .component(target))
+    }
+
+    func importComponentColorImage(url: URL, destination: ComponentColorImageDestination) {
+        prepareComponentColorImage(destination: destination) { [colorImages] in
             .imported(try await colorImages.importImage(url: url))
         }
     }
 
     func assignComponentColorImage(_ asset: DocumentColorImageAsset, target: ComponentColorImageTarget) {
-        guard let snapshot, target.isCurrent(in: snapshot), let imageID = asset.imageID else { return }
+        assignComponentColorImage(asset, destination: .component(target))
+    }
+
+    func assignComponentColorImage(_ asset: DocumentColorImageAsset, destination: ComponentColorImageDestination) {
+        guard let snapshot, canEditComponentColorImage(destination), let imageID = asset.imageID else { return }
         let document = snapshot.document
-        prepareComponentColorImage(target: target) { [colorImages] in
+        prepareComponentColorImage(destination: destination) { [colorImages] in
             try await colorImages.validateRetainedImage(document: document, asset: asset)
             return .retained(imageID)
         }
     }
 
     func clearComponentColorImage(target: ComponentColorImageTarget) {
-        perform { try await $0.setComponentColorImage(imageID: nil, target: target) }
+        clearComponentColorImage(destination: .component(target))
+    }
+
+    func clearComponentColorImage(destination: ComponentColorImageDestination) {
+        guard canEditComponentColorImage(destination) else { return }
+        perform { session in
+            switch destination {
+            case .component(let target): try await session.setComponentColorImage(imageID: nil, target: target)
+            case .graph(let target): try await session.setComponentColorImages(imageID: nil, target: target)
+            }
+        }
     }
 
     private func prepareComponentColorImage(
-        target: ComponentColorImageTarget,
+        destination: ComponentColorImageDestination,
         prepare: @escaping @Sendable () async throws -> PreparedColorImage
     ) {
-        guard !isWorking, !stopped, let snapshot, target.isCurrent(in: snapshot) else { return }
+        guard canEditComponentColorImage(destination) else { return }
         cancelColorImagePreparation()
         let requestID = colorImageRequestID
         isPreparingColorImage = true
@@ -1042,20 +1076,25 @@ final class EditorStore {
             do {
                 let prepared = try await prepare()
                 guard !Task.isCancelled, !stopped, colorImageRequestID == requestID,
-                    let current = self.snapshot, target.isCurrent(in: current)
+                    self.canEditComponentColorImage(destination)
                 else { return }
                 // End preparation before perform invalidates pending image requests.
                 isPreparingColorImage = false
                 colorImagePreparation = nil
                 perform { session in
-                    switch prepared {
-                    case .imported(let png): try await session.importComponentColorImage(png: png, target: target)
-                    case .retained(let imageID):
+                    switch (prepared, destination) {
+                    case (.imported(let png), .component(let target)):
+                        try await session.importComponentColorImage(png: png, target: target)
+                    case (.retained(let imageID), .component(let target)):
                         try await session.setComponentColorImage(imageID: imageID, target: target)
+                    case (.imported(let png), .graph(let target)):
+                        try await session.importComponentColorImages(png: png, target: target)
+                    case (.retained(let imageID), .graph(let target)):
+                        try await session.setComponentColorImages(imageID: imageID, target: target)
                     }
                 }
             } catch {
-                if !Task.isCancelled, !stopped, colorImageRequestID == requestID {
+                if !Task.isCancelled, colorImageRequestID == requestID, canEditComponentColorImage(destination) {
                     errorMessage = Self.message(error)
                 }
             }
@@ -1065,7 +1104,7 @@ final class EditorStore {
     func setMovingOrigin(_ enabled: Bool) {
         if enabled { cancelAddMode() }
         cancelOriginDrag()
-        isMovingOrigin = enabled && !isWorking && !stopped && snapshot?.origin != nil
+        isMovingOrigin = enabled && canSave && snapshot?.origin != nil
     }
 
     func cancelOriginDrag(preservingMode: Bool = false) {
@@ -1195,7 +1234,7 @@ final class EditorStore {
         return componentMeshAction(.smoothCutoffDegrees(value), target: target)
     }
     func canSelectAllVisibleComponents(_ target: ComponentSidebarSelectAllTarget) -> Bool {
-        guard !stopped, !isWorking, let snapshot, !target.ids.isEmpty else { return false }
+        guard canSave, let snapshot, !target.ids.isEmpty else { return false }
         return target.context.isCurrent(in: snapshot)
     }
 
@@ -1276,7 +1315,7 @@ final class EditorStore {
 
     func beginComponentDrag(grabbedID: String) -> UUID? {
         pendingComponentDrag = nil
-        guard !stopped, !isWorking, let snapshot,
+        guard canSave, let snapshot,
             let target = ComponentPlacementTarget(snapshot: snapshot, grabbedID: grabbedID)
         else { return nil }
         let token = UUID()
@@ -1297,13 +1336,13 @@ final class EditorStore {
     private func consumeComponentDrag(_ token: UUID) -> ComponentPlacementTarget? {
         guard let drag = pendingComponentDrag, drag.token == token else { return nil }
         pendingComponentDrag = nil
-        guard !stopped, !isWorking, let snapshot, drag.target.isCurrent(in: snapshot) else { return nil }
+        guard canSave, let snapshot, drag.target.isCurrent(in: snapshot) else { return nil }
         return drag.target
     }
 
     @discardableResult
     func placeComponents(at placement: ComponentDropPlacement, target: ComponentPlacementTarget) -> Bool {
-        guard !stopped, !isWorking, let snapshot, target.canPlace(at: placement, in: snapshot) else { return false }
+        guard canSave, let snapshot, target.canPlace(at: placement, in: snapshot) else { return false }
         perform(acceptCommittedCancellation: true) {
             try await $0.placeComponents(at: placement, target: target)
         }
@@ -1532,6 +1571,17 @@ final class EditorStore {
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
     }
+    func canEditPartMirror(_ target: PartMirrorTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func partMirrorAction(_ value: Bool, target: PartMirrorTarget) -> @MainActor () -> Void {
+        { [weak self] in
+            guard let self, self.canEditPartMirror(target) else { return }
+            self.perform(acceptCommittedCancellation: true) { try await $0.setPartXMirrored(value, target: target) }
+        }
+    }
+
     func canEditGraphPartShape(_ target: GraphPartShapeTarget) -> Bool {
         !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
     }
@@ -1624,8 +1674,12 @@ final class EditorStore {
         }
     }
 
+    func canEditSelectedComponentColors(_ target: ComponentMeshSelectionTarget) -> Bool {
+        acceptedDocumentSource != nil && canEditComponentMeshSettings(target)
+    }
+
     func setSelectedComponentColors(_ target: ComponentMeshSelectionTarget, value: String?) {
-        guard canEditComponentMeshSettings(target) else { return }
+        guard canEditSelectedComponentColors(target) else { return }
         let color = value.flatMap { DocumentColor(archiveValue: $0) }
         if value != nil, color == nil {
             errorMessage = Self.message(DocumentError.invalidComponentColor)
@@ -1732,7 +1786,7 @@ final class EditorStore {
         !isWorking && !stopped && snapshot.map { transform.canApply(in: $0) } == true
     }
     func canPerformCanvasPrecision(_ action: CanvasPrecisionAction) -> Bool {
-        guard !isWorking, !stopped, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
+        guard canSave, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
             canvasHeight.isFinite, canvasHeight > 0, let snapshot
         else { return false }
         if action.isSpacing {
@@ -1804,7 +1858,7 @@ final class EditorStore {
     var canRotateCanvasSelection: Bool { canRotateCanvasSelection(in: plane) }
 
     private func canRotateCanvasSelection(in plane: EditingPlane) -> Bool {
-        guard !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot else { return false }
+        guard canSave, !isAddingNodes, !isMovingOrigin, let snapshot else { return false }
         return snapshot.canRotateSelection(in: plane)
     }
 
@@ -1862,7 +1916,7 @@ final class EditorStore {
 
     var canInsertEdgeMidpoint: Bool { !isWorking && snapshot?.canInsertSelectedEdgeMidpoints == true }
     var canReverseSelectedEdges: Bool { !isWorking && snapshot?.canEditSelectedEdges == true }
-    var canDeleteGraphSelection: Bool { !isWorking && snapshot?.canDeleteSelection == true }
+    var canDeleteGraphSelection: Bool { canSave && snapshot?.canDeleteSelection == true }
 
     func insertSelectedEdgeMidpoints() {
         guard canInsertEdgeMidpoint else { return }
@@ -1882,11 +1936,12 @@ final class EditorStore {
     func reverseEdge(_ id: String) { perform { try await $0.apply([.reverseEdges([id])]) } }
 
     var canCopyNodes: Bool { !isWorking && snapshot?.canCopyNodes == true }
-    var canCutNodes: Bool { !isWorking && snapshot?.canCutNodes == true }
+    var canCutNodes: Bool { canSave && snapshot?.canCutNodes == true }
 
     /// Clipboard promise registration succeeds before a Cut can mutate the document.
     func copyNodes(cut: Bool = false, to pasteboard: any EditorClipboardWriting) {
         guard cut ? canCutNodes : canCopyNodes, !stopped else { return }
+        let sourceIdentity = acceptedDocumentSource?.documentIdentity
         cancelColorImagePreparation()
         cancelOriginDrag()
         let requestID = UUID()
@@ -1899,6 +1954,9 @@ final class EditorStore {
                 guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
                 try pasteboard.write(data.native, snapshotXML: data.snapshotXML)
                 if cut {
+                    guard !Task.isCancelled, operationRequestID == requestID,
+                        let sourceIdentity, acceptedDocumentSource?.documentIdentity == sourceIdentity
+                    else { return }
                     let next = try await session.deleteSelection()
                     guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
                     snapshot = next
@@ -1906,9 +1964,11 @@ final class EditorStore {
                     onDocumentChanged?(next.document.encoded())
                     generate(next)
                 }
-                errorMessage = nil
+                if operationRequestID == requestID, acceptedDocumentSource != nil { errorMessage = nil }
             } catch {
-                if !Task.isCancelled, operationRequestID == requestID { errorMessage = Self.message(error) }
+                if !Task.isCancelled, operationRequestID == requestID, acceptedDocumentSource != nil {
+                    errorMessage = Self.message(error)
+                }
             }
         }
     }
@@ -2159,7 +2219,7 @@ final class EditorStore {
             / Double(preparedReferenceColors.result.referenceSize.height)
     }
     private var hasColorizeAdmission: Bool {
-        !stopped && !isWorking && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
+        canSave && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
             && snapshot.map(GraphReferenceColorPlan.canColorize) == true
     }
     var canClearSelectionColors: Bool {
@@ -2393,7 +2453,7 @@ final class EditorStore {
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
-        guard !isWorking, !stopped else {
+        guard canSave else {
             completion?(false)
             return
         }
@@ -2682,6 +2742,8 @@ final class EditorStore {
             case .invalidPartCutRotation:
                 return "Enter a cut rotation from -1 to 1 that the modeling engine can represent."
             case .invalidPartHollowThickness: return "Enter a hollow thickness from 0 to 1."
+            case .invalidPartMirrorRole: return "Mirrored copies can be authored only on Model parts."
+            case .invalidPartMirrorOrigin: return "Set all three canvas origin coordinates before enabling Mirrored."
             case .invalidPartMaterial: return "Enter a material value within its supported range."
             case .invalidPartDeformation: return "Enter a scale from 0 to 2 that the modeling engine can represent."
             case .invalidPartName: return "Use a single-line part name of at most 1024 UTF-8 bytes."

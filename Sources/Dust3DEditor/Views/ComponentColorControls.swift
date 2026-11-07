@@ -82,9 +82,11 @@ struct ComponentBatchColorControls: View {
     let target: ComponentMeshSelectionTarget
     @State private var draft = ComponentColorDraft(source: .unset)
 
+    private var scope: String { target.isGraphSelection ? "owning components" : "selected components" }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Selected Component Colors").font(.headline)
+            Text(target.isGraphSelection ? "Component color draft" : "Selected Component Colors").font(.headline)
             ColorPicker(
                 "Color draft",
                 selection: Binding(
@@ -98,7 +100,11 @@ struct ComponentBatchColorControls: View {
                     set: { draft = draft.editing($0) }
                 ), prompt: Text("#RRGGBB or #AARRGGBB")
             )
-            .accessibilityLabel("Selected components’ hex color, alpha first")
+            .accessibilityLabel(
+                target.isGraphSelection
+                    ? "Owning components’ hex color, alpha first"
+                    : "Selected components’ hex color, alpha first"
+            )
             .focusedValue(\.editorTextEditing, true)
             .onSubmit { apply() }
             .onExitCommand { draft = ComponentColorDraft(source: .unset) }
@@ -108,13 +114,18 @@ struct ComponentBatchColorControls: View {
             HStack {
                 Button("Apply Color", action: apply)
                     .disabled(!draft.canApply)
-                    .accessibilityLabel("Apply color to selected components")
+                    .accessibilityLabel("Apply color to \(scope)")
                 Button("Clear Colors") { store.setSelectedComponentColors(target, value: nil) }
-                    .accessibilityLabel("Clear colors from selected components")
+                    .accessibilityLabel("Clear colors from \(scope)")
             }
-            Text("Changes apply to selected component rows.").font(.caption)
+            Text(
+                target.isGraphSelection
+                    ? "Changes apply to the components that own the graph picks."
+                    : "Changes apply to selected component rows."
+            )
+            .font(.caption)
         }
-        .disabled(!store.canEditComponentMeshSettings(target))
+        .disabled(!store.canEditSelectedComponentColors(target))
         .accessibilityElement(children: .contain)
     }
     private func apply() {
