@@ -350,6 +350,8 @@
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
 
+- Add File > Save All to save edited documents through the native document controller.
+
 - Reject native save payloads while edits are applying or their document snapshot has been superseded, preserving the native File menu and providing retry guidance.
 
 - Add a bounded composition recovery command that cancels only the newest unapplied draft when accessibility control is unavailable, preserving documents and in-flight Apply operations.
