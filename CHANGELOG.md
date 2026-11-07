@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
+
 - Preview authored linked cross-section outlines before choosing a profile.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.

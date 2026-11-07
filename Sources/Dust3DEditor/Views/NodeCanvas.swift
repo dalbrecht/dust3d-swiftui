@@ -33,7 +33,10 @@ struct NodeCanvas: View {
             let graphActions = GraphSelectionMenuActions(store: store, admitsInput: admitsInput)
             let cancelAddInput = store.canvasAddCancellationAction()
             let handlePrecisionKey = store.canvasPrecisionKeyHandler()
-            let precisionKey: (CanvasPrecisionKeyInput) -> Bool = { admitsInput() && handlePrecisionKey($0) }
+            let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
+            let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
+                admitsInput() && (handlePartStateKey($0) || handlePrecisionKey($0))
+            }
             let precisionActions = CanvasPrecisionActions(store: store)
             let quarterTurns = OrthogonalQuarterTurnActions(store: store, profileLease: profileLease)
             let nodes = store.snapshot?.nodes ?? []
@@ -88,7 +91,8 @@ struct NodeCanvas: View {
                         else { return }
                         store.selectWholePart(at: point, projection: projection, context: partContext)
                     },
-                    precisionKey: precisionKey, isAddingNodes: store.isAddingNodes,
+                    precisionKey: precisionKey, tracksHoverWhileDisabled: store.tracksPartStateHoverWhileWorking,
+                    isAddingNodes: store.isAddingNodes,
                     addPress: { if admitsInput() { store.placeAddNode(at: $0, modeID: addModeID) } },
                     cancelInput: { if admitsInput() { cancelAddInput() } },
                     admitsPrimaryPress: { admitsInput() && admitPrimaryPress($0) },
@@ -205,7 +209,7 @@ struct NodeCanvas: View {
                             guard admitsNodeInput(), store.addModeID == addModeID, !store.isAddingNodes else {
                                 return false
                             }
-                            store.setHoveredNode(node.id)
+                            store.setHoveredNode(node.id, projection: projection)
                             return store.handleCanvasWheel(input)
                         },
                         radiusKey: { admitsNodeInput() && adjustRadius($0) },
