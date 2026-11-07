@@ -32,14 +32,26 @@ final class EditorAnimationAuthoringWorkflow {
     var catalog: AnimationAuthoringCatalog? { store.authoringCatalog.catalog }
     var isActive: Bool { if case .idle = mode { false } else { true } }
     private var canBegin: Bool { !stopped && !isActive && !isSubmitting && store.canManageAnimations && catalog != nil }
-    var canBeginCreation: Bool { canBegin && catalog?.clips.isEmpty == false }
-    var canBeginType: Bool { canBeginCreation && store.animationSnapshot?.list.selectedRow != nil }
+    var creationClips: [AnimationClipDefinition] {
+        guard let rig = store.animationSnapshot?.editor.rigSettings.sourceRigType, !rig.isEmpty, let catalog else {
+            return []
+        }
+        return catalog.clips.filter { !$0.isLegacyAlias && $0.rig.caseInsensitiveCompare(rig) == .orderedSame }
+    }
+    var typeChoices: [AnimationClipDefinition] {
+        if case .create = mode { return creationClips }
+        return catalog?.clips ?? []
+    }
+    var canBeginCreation: Bool { canBegin && !creationClips.isEmpty }
+    var canBeginType: Bool {
+        canBegin && catalog?.clips.isEmpty == false && store.animationSnapshot?.list.selectedRow != nil
+    }
     var canBeginParameters: Bool {
         guard canBegin, let type = store.animationSnapshot?.list.selectedRow?.source.type else { return false }
         return catalog?.clip(type: type) != nil
     }
     var selectedClip: AnimationClipDefinition? {
-        catalog?.clips.first { $0.type.utf8.elementsEqual(selectedType) }
+        typeChoices.first { $0.type.utf8.elementsEqual(selectedType) }
     }
     var isCurrent: Bool {
         guard let snapshot = store.snapshot else { return false }
@@ -85,15 +97,19 @@ final class EditorAnimationAuthoringWorkflow {
         }
     }
 
-    func beginCreation() {
-        guard canBeginCreation, let value = store.animationSnapshot, let clip = catalog?.clips.first else { return }
-        do {
-            let target = try AnimationCreationTarget(snapshot: value)
+    func creationAction() -> @MainActor () -> Void {
+        guard canBeginCreation, let value = store.animationSnapshot,
+            let target = try? AnimationCreationTarget(snapshot: value)
+        else { return {} }
+        return { [weak self] in
+            guard let self, canBeginCreation, let current = store.animationSnapshot?.editor,
+                target.isCurrent(in: current), let clip = creationClips.first
+            else { return }
             reset()
             name = AnimationNameText(clip.type)
             selectedType = Array(clip.type.utf8)
             mode = .create(target)
-        } catch { lastIssue = error }
+        }
     }
     func beginType() {
         guard canBeginType, let value = store.animationSnapshot, let row = value.list.selectedRow else { return }

@@ -23,8 +23,14 @@ private struct WorkflowAuthoringCatalog: AnimationCatalogLoading {
         let long = try AnimationClipDefinition(
             type: "KnownLongDirectionalAnimationTypeForLayout", rig: "Biped", generator: "Known",
             seconds: 4, samples: 90, loops: true, isLegacyAlias: false, defaults: [], controls: [])
+        let bird = try AnimationClipDefinition(
+            type: "BirdFly", rig: "Bird", generator: "BirdFly", seconds: 4, samples: 90,
+            loops: true, isLegacyAlias: false, defaults: [], controls: [])
+        let legacy = try AnimationClipDefinition(
+            type: "LegacyBiped", rig: "Biped", generator: "Known", seconds: 4, samples: 90,
+            loops: true, isLegacyAlias: true, defaults: [], controls: [])
         return try AnimationAuthoringCatalog(
-            clips: [known, long], surfaceMaterials: ["Stone", "Wood"],
+            clips: [bird, legacy, known, long], surfaceMaterials: ["Stone", "Wood"],
             timing: AnimationTimingDefinition(
                 minimumSeconds: 0.01, maximumSeconds: 59.99, decimalPlaces: 2,
                 secondsStep: 0.1, minimumFrames: 1, maximumFrames: 4999, framesStep: 5))
@@ -37,13 +43,17 @@ private struct WorkflowAuthoringNoPreview: EditorPreviewServing {
 
 @MainActor
 final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
-    private func store(type: String = "Known", catalog: any AnimationCatalogLoading = WorkflowAuthoringCatalog())
+    private func store(
+        type: String = "Known", rig: String? = "Biped",
+        catalog: any AnimationCatalogLoading = WorkflowAuthoringCatalog()
+    )
         async throws -> EditorStore
     {
         let store = EditorStore(preview: WorkflowAuthoringNoPreview(), animationCatalog: catalog)
+        let rigAttribute = rig.map { " rigType='\($0)'" } ?? ""
         let source = try Dust3DDocument(
             snapshotXML: Data(
-                ("<canvas><animations><animation id='a' name='Original' type='" + type
+                ("<canvas\(rigAttribute)><animations><animation id='a' name='Original' type='" + type
                     + "' speed='1.000' frameCount='legacy' opaque='keep'/></animations></canvas>").utf8))
         await store.load(data: source.encoded())
         await store.authoringCatalog.load()?.value
@@ -65,7 +75,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         let original = try XCTUnwrap(store.snapshot?.document.encoded())
         let workflow = EditorAnimationAuthoringWorkflow(store: store)
         let previewRevision = store.previewRevision
-        workflow.beginCreation()
+        workflow.creationAction()()
         XCTAssertTrue(workflow.isActive)
         XCTAssertTrue(workflow.canApply)
         workflow.name = AnimationNameText(" New ")
@@ -87,6 +97,69 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         store.undo()
         try await settle(store)
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
+    }
+
+    func testCreationUsesCanonicalClipsMatchingRawRigAndUndoesExactly() async throws {
+        let store = try await store(rig: "bIPED")
+        defer { store.stop() }
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        workflow.creationAction()()
+        XCTAssertEqual(workflow.selectedClip?.type, "Known")
+        for excluded in ["BirdFly", "LegacyBiped"] {
+            workflow.selectedType = Array(excluded.utf8)
+            XCTAssertFalse(workflow.canApply)
+            workflow.submit()
+            XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        }
+        workflow.selectedType = Array("Known".utf8)
+        XCTAssertTrue(workflow.canApply)
+        workflow.submit()
+        try await settle(store)
+        XCTAssertEqual(store.animationSnapshot?.list.selectedRow?.source.type, "Known")
+        XCTAssertEqual(store.snapshot?.rigSettings.sourceRigType, "bIPED")
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+    }
+
+    func testNoMatchingRigBlocksCreationButKeepsStoredTypeAndParametersEditable() async throws {
+        for rig in [nil, "None", "Unsupported", "Fish"] {
+            let store = try await store(type: "LegacyBiped", rig: rig)
+            defer { store.stop() }
+            let workflow = EditorAnimationAuthoringWorkflow(store: store)
+            XCTAssertFalse(workflow.canBeginCreation)
+            workflow.creationAction()()
+            XCTAssertFalse(workflow.isActive)
+            XCTAssertTrue(workflow.canBeginParameters)
+            XCTAssertTrue(workflow.canBeginType)
+            workflow.beginType()
+            workflow.selectedType = Array("BirdFly".utf8)
+            XCTAssertTrue(workflow.canApply)
+        }
+    }
+
+    func testRigChangeRetiresCreationDraftAndRefreshesEligibleDefault() async throws {
+        let store = try await store()
+        defer { store.stop() }
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        let retainedAction = workflow.creationAction()
+        workflow.creationAction()()
+        store.setRigType(.bird)
+        try await settle(store)
+        store.refreshAnimations()
+        await store.animationQuery?.value
+        let changed = try XCTUnwrap(store.snapshot?.document.encoded())
+        XCTAssertFalse(workflow.canApply)
+        workflow.submit()
+        XCTAssertEqual(store.snapshot?.document.encoded(), changed)
+        workflow.cancel()
+        retainedAction()
+        XCTAssertFalse(workflow.isActive)
+        workflow.creationAction()()
+        XCTAssertEqual(workflow.selectedClip?.type, "BirdFly")
+        workflow.selectedType = Array("Known".utf8)
+        XCTAssertFalse(workflow.canApply)
     }
 
     func testTypeAndParameterDraftsPreserveUnsupportedFieldsAndOneStepUndo() async throws {
@@ -127,7 +200,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         defer { store.stop() }
         let workflow = EditorAnimationAuthoringWorkflow(store: store)
         let original = try XCTUnwrap(store.snapshot?.document.encoded())
-        workflow.beginCreation()
+        workflow.creationAction()()
         await store.load(data: original, fileIdentity: UUID())
         store.selectAnimation("a")
         await store.animationQuery?.value
@@ -145,7 +218,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         XCTAssertTrue(workflow.canApply)
         workflow.stop()
         workflow.submit()
-        workflow.beginCreation()
+        workflow.creationAction()()
         XCTAssertFalse(workflow.isActive)
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
     }
@@ -162,7 +235,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
             }
             let workflow = EditorAnimationAuthoringWorkflow(store: store)
             switch state {
-            case "create", "create-long", "stale": workflow.beginCreation()
+            case "create", "create-long", "stale": workflow.creationAction()()
             case "unsupported-type": workflow.beginType()
             case "parameters", "parameters-unsupported": workflow.beginParameters()
             default: break
