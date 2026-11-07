@@ -4,6 +4,8 @@
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
+- Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
+
 - Browse a component group’s direct children and navigate back through its breadcrumb.
 
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
