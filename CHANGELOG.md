@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
+
+- Edit a Model part’s cross-section profile and rotation directly from its graph selection.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
@@ -30,7 +34,7 @@
 
 - Keep a working component group as the destination for new parts while graph selection changes.
 
-- Paste native or Qt clipboard nodes into an explicitly chosen working group.
+- Paste native or Qt clipboard nodes and Qt XML files into an explicitly chosen working group.
 
 - Start a blank document by drawing a first node, composing a reference image, or opening an existing document from the canvas.
 

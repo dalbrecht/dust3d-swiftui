@@ -51,6 +51,19 @@ struct NodeInspector: View {
                     }
                     .help("Change subdivision, chamfer or rounded ends on \(part.title). Each edit is one Undo step.")
                 }
+                let crossSectionTarget = GraphPartCrossSectionTarget(snapshot: snapshot)
+                if let part = crossSectionTarget.part {
+                    DisclosureGroup("Owning Part Cross-section") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartCutFaceControls(store: store, part: part, graphTarget: crossSectionTarget)
+                            .id(snapshot.documentIdentity)
+                            .disabled(!store.canEditGraphPartCrossSection(crossSectionTarget))
+                        PartDeformationControls(store: store, part: part, graphTarget: crossSectionTarget)
+                            .id(snapshot.selectionRevision)
+                            .id(snapshot.documentIdentity)
+                            .disabled(!store.canEditGraphPartCrossSection(crossSectionTarget))
+                    }
+                }
             }
             ComponentMeshSelectionControls(store: store)
             if store.snapshot?.selectedComponentIDs.isEmpty == false {
