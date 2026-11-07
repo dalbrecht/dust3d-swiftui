@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
+- Open a local .ds3 document by dropping it into the editor without replacing the current document.
 
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
@@ -19,6 +19,8 @@
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
 
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
+
+- Keep a working component group as the destination for new parts while graph selection changes.
 
 - Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
 
@@ -55,6 +57,8 @@
 - Clear exact stored assignments for a template bone or its descendant chain across the document in one Undo step, including hidden and locked parts (#361).
 
 - Browse the pinned rig template bone hierarchy and stored assignment counts, then assign the chosen exact name to selected edges in one Undo step (#359).
+
+- View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
 
 - Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
 
@@ -147,6 +151,8 @@
 - Preview a new node and adjust its radius before placing it on the canvas in Add mode. Keep cancellation bound to its placement request, refit on selection exit, discard held presses across tool changes, and allow inward placement at document coordinate limits.
 
 - Adjust selected node radii using canvas-focused keyboard input or the canvas wheel, with one-step Undo. Radius menu and inspector actions remain available independently of canvas focus.
+
+- Highlight the hovered node or edge in both canvas profiles, with node hits taking precedence over edges.
 - Preserve numeric move and scale controls for mixed and edge-only selections, expose additive node accessibility actions, and batch graph edge deletion into one validated XML mutation.
 
 - Select nodes and edges together, with explicit graph editing modes and one-step batch midpoint insertion.
@@ -397,6 +403,8 @@
 - Align selected editable nodes to their local Front/Side center on either or both axes, respecting locks with one-step lossless undo/redo.
 
 - Add native part selection, naming, visibility, locking and mesh-disable controls with lossless undo/redo and save support.
+
+- Drop one or two image files into the reference controls to compose Front and Side images before applying them to the document.
 
 - Import/render bounded native reference images with undoable removal, per-window opacity/visibility and lossless existing asset handling; align the canvas and clockwise transforms with Qt’s positive-Y-down image coordinates.
 

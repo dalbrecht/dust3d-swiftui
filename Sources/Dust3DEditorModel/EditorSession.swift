@@ -4,6 +4,7 @@ import Foundation
 /// Serializes XML parsing and commands away from the UI actor. A window owns one session.
 public actor EditorSession {
     private var state: EditorState?
+    private var hasAcceptedSource = false
     private var selectedAnimationID: String?
     private var lastPasteIdentifier: String?
     private var pasteOrdinal = 0
@@ -13,9 +14,11 @@ public actor EditorSession {
 
     public func open(data: Data) throws -> EditorSnapshot {
         try Task.checkCancellation()
+        hasAcceptedSource = false
         let next = try EditorState(document: Dust3DDocument(data: data))
         try Task.checkCancellation()
         state = next
+        hasAcceptedSource = true
         selectedAnimationID = nil
         lastPasteIdentifier = nil
         pasteOrdinal = 0
@@ -600,7 +603,10 @@ public actor EditorSession {
     public func applyReferenceComposition(
         png: Data, origin: NodePosition?, target: ReferenceCompositionTarget
     ) throws -> EditorSnapshot {
-        try update { try $0.applyReferenceComposition(png: png, origin: origin, target: target) }
+        try update {
+            guard hasAcceptedSource else { throw EditorError.staleReferenceComposition }
+            try $0.applyReferenceComposition(png: png, origin: origin, target: target)
+        }
     }
 
     /// Rotate connected descendants around the selected pivot without changing selection or radii.
@@ -789,10 +795,19 @@ public actor EditorSession {
 
     /// Atomically apply a graph transaction; cancellation is checked before it begins.
     public func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws -> EditorSnapshot {
-        try update { state in
+        try apply(commands, selecting: id, target: nil)
+    }
+
+    package func apply(
+        _ commands: [DocumentCommand], selecting id: String?, target: CanvasAdjustmentTarget?
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: target != nil) { state in
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw EditorError.staleCanvasAdjustment
+            }
             let prepared = try GraphCommandPreparation.normalizingDeletions(commands, document: state.snapshot.document)
             try state.apply(prepared, selecting: id)
-        }
+        }.snapshot
     }
 
     /// Commit a projected origin gesture only while its document, revision and locks still match.
@@ -939,6 +954,7 @@ public actor EditorSession {
     public func placeAddNode(_ request: AddPlacementRequest) throws -> AddPlacementReceipt {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
+        guard hasAcceptedSource else { throw EditorError.staleAddPlacement }
         let result = try next.placeAddNode(
             request,
             identities: .init(

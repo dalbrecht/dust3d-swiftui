@@ -36,6 +36,27 @@ struct AddPlacementTarget: Sendable {
     }
 }
 
+/// The window's destination for independent new parts. Anchored placement keeps its existing owner.
+package enum AddPlacementDestination: Equatable, Sendable {
+    case selection
+    case documentRoot
+    case group(String)
+
+    package static func == (lhs: Self, rhs: Self) -> Bool {
+        switch (lhs, rhs) {
+        case (.selection, .selection), (.documentRoot, .documentRoot): true
+        case (.group(let left), .group(let right)): left.utf8.elementsEqual(right.utf8)
+        default: false
+        }
+    }
+}
+
+extension EditorSnapshot {
+    package func addPlacementGroup(_ id: String) -> ComponentTreeRow? {
+        componentTree.rows.first { $0.id.utf8.elementsEqual(id.utf8) && $0.component.isGroup }
+    }
+}
+
 /// One immutable click captured from a visible ghost; no pointer-motion work reaches the document actor.
 public struct AddPlacementRequest: Sendable {
     let target: AddPlacementTarget
@@ -100,6 +121,15 @@ public struct AddPlacementState: Sendable {
     public mutating func begin(
         snapshot: EditorSnapshot, projection: CanvasProjection, canvasHeight: Double, parentID: String? = nil
     ) throws {
+        try begin(
+            snapshot: snapshot, projection: projection, canvasHeight: canvasHeight,
+            destination: parentID.map(AddPlacementDestination.group) ?? .selection)
+    }
+
+    package mutating func begin(
+        snapshot: EditorSnapshot, projection: CanvasProjection, canvasHeight: Double,
+        destination: AddPlacementDestination
+    ) throws {
         guard canvasHeight.isFinite, canvasHeight > 0 else { throw EditorError.invalidAddPlacement }
         // Validate the transform using a known bounded document point, not a possibly out-of-bounds canvas corner.
         let probe = NodePosition(x: 0.5, y: 0.5, z: 0.5)
@@ -110,12 +140,17 @@ public struct AddPlacementState: Sendable {
             snapshot.edges.reduce(0) { $0 + ($1.fromID == node.id ? 1 : 0) + ($1.toID == node.id ? 1 : 0) } < 2
                 ? node : nil
         }
-        let selectedParent = snapshot.selectedComponent.flatMap { $0.isGroup ? $0.id : $0.parentID }
-        let destination = anchor == nil ? parentID ?? selectedParent : nil
-        if let destination {
-            guard snapshot.componentTree.rows.contains(where: { $0.id == destination && $0.component.isGroup }) else {
-                throw DocumentError.invalidComponentStructure
-            }
+        let parentID: String?
+        switch destination {
+        case .selection:
+            parentID = snapshot.selectedComponent.flatMap { $0.isGroup ? $0.id : $0.parentID }
+        case .documentRoot:
+            parentID = nil
+        case .group(let id):
+            parentID = id
+        }
+        if anchor == nil, let parentID, snapshot.addPlacementGroup(parentID) == nil {
+            throw DocumentError.invalidComponentStructure
         }
         let inherited = anchor.map { max(1, min(1, max(0.001, $0.value.radius)) * canvasHeight) }
         if lastDocumentIdentity != snapshot.documentIdentity || lastDocumentRevision != snapshot.documentRevision {
@@ -125,7 +160,7 @@ public struct AddPlacementState: Sendable {
         lastDocumentRevision = snapshot.documentRevision
         self.projection = projection
         self.canvasHeight = canvasHeight
-        self.parentID = destination
+        self.parentID = anchor == nil ? parentID : nil
         anchorID = anchor?.id
         anchorPosition = anchor?.value.position
         anchorSceneRadius = inherited
