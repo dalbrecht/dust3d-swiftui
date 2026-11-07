@@ -1,7 +1,7 @@
 import Dust3DEditorModel
 import SwiftUI
 
-/// Displays the committed graph in the inactive profile.
+/// Displays the graph and the active pane’s motion preview in the inactive profile.
 struct CanvasProfileCompanion: View {
     let store: EditorStore
     let plane: EditingPlane
@@ -9,12 +9,16 @@ struct CanvasProfileCompanion: View {
     var body: some View {
         let snapshot = store.snapshot
         let bounds = store.bounds
+        let motion = store.canvasProfileMotion
+        let origin = store.originDragPosition ?? snapshot?.origin
+        let isMovingOrigin = store.isMovingOrigin
         let nodes = snapshot?.nodes.filter(\.isVisible) ?? []
         Canvas { context, size in
             let projection = CanvasProjection(bounds: bounds, plane: plane, width: size.width, height: size.height)
             let points = Dictionary(
                 uniqueKeysWithValues: nodes.map { node in
-                    let point = projection.point(for: node.value.position)
+                    let position = snapshot.flatMap { motion?.position(of: node, in: $0) } ?? node.value.position
+                    let point = projection.point(for: position)
                     return (node.id, CGPoint(x: point.x, y: point.y))
                 })
             for edge in snapshot?.edges ?? [] {
@@ -37,6 +41,13 @@ struct CanvasProfileCompanion: View {
                 context.fill(
                     circle(at: point, diameter: 12),
                     with: .color(selected ? .accentColor : (node.isEditable ? .primary : .secondary)))
+            }
+            if let origin {
+                let point = projection.point(for: origin)
+                context.draw(
+                    Text(Image(systemName: "scope")).font(.title3)
+                        .foregroundColor(isMovingOrigin ? .accentColor : .secondary),
+                    at: CGPoint(x: point.x, y: point.y))
             }
         }
         .background(.background)
