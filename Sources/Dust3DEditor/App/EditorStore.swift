@@ -1424,9 +1424,24 @@ final class EditorStore {
         perform { try await $0.bendEndpoint(target, toward: destination) }
     }
 
-    func moveSelection(by delta: NodePosition) { perform { try await $0.moveSelection(by: delta) } }
+    func moveSelection(by delta: NodePosition) {
+        guard canTransform, let snapshot,
+            let effective = SelectionTransformInput.move(delta: delta, locks: snapshot.locks)
+        else { return }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        perform { try await $0.moveSelection(by: effective, target: target) }
+    }
+
     func scaleSelection(positionFactor: Double, radiusFactor: Double) {
-        perform { try await $0.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor) }
+        guard canTransform, let snapshot,
+            let effective = SelectionTransformInput.scale(
+                positionFactor: positionFactor, radiusFactor: radiusFactor, locks: snapshot.locks)
+        else { return }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        perform {
+            try await $0.scaleSelection(
+                positionFactor: effective.positionFactor, radiusFactor: effective.radiusFactor, target: target)
+        }
     }
     var canTransform: Bool { !isWorking && snapshot?.transformNodes.contains(where: \.isEditable) == true }
     func canTransformSelection(_ transform: SelectionTransform) -> Bool {
