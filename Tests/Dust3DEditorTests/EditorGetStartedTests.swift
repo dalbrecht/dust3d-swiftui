@@ -62,6 +62,40 @@ private struct GetStartedNoNative: EditorPreviewServing, ArchiveTextureBaking, A
         XCTAssertFalse(store.canUndo)
     }
 
+    func testWorkingGroupChangeRejectsRetainedDrawWithoutWriting() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let file = UUID()
+        let original = try Dust3DDocument(
+            snapshotXML: Data("<canvas><components><component id='group'/></components></canvas>".utf8)
+        ).encoded()
+        await store.load(data: original, fileIdentity: file)
+        let snapshot = try XCTUnwrap(store.snapshot)
+        store.setCanvasContext(
+            projection: CanvasProjection(bounds: store.bounds, plane: store.plane, width: 400, height: 300),
+            width: 400, height: 300)
+        let retained = try XCTUnwrap(EditorGetStartedActions(store: store, fileIdentity: file))
+        XCTAssertTrue(retained.canDrawFirstNode)
+        var writes = 0
+        store.onDocumentChanged = { _ in writes += 1 }
+
+        store.workingGroupAction(.group("group"), snapshot: snapshot)()
+        XCTAssertEqual(store.addPlacementDestination, .group("group"))
+        XCTAssertEqual(store.snapshot?.selectionRevision, snapshot.selectionRevision)
+        XCTAssertEqual(store.snapshot?.documentRevision, snapshot.documentRevision)
+        retained.drawFirstNode()
+        XCTAssertFalse(store.isAddingNodes)
+
+        let current = try XCTUnwrap(EditorGetStartedActions(store: store, fileIdentity: file))
+        current.drawFirstNode()
+        XCTAssertTrue(store.isAddingNodes)
+        store.updateAddPointer(at: .init(x: 200, y: 150), modeID: store.addModeID)
+        XCTAssertNotNil(store.addGhostPoint)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertEqual(writes, 0)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testOnlyAcceptedEmptySourceAdmitsTheCardAndRetainedActions() async throws {
         let store = makeStore()
         defer { store.stop() }
