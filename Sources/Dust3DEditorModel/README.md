@@ -415,3 +415,8 @@ for midpoint insertion, explicit-edge reversal, node reduction and graph deletio
 EditorSession.performGraphSelectionAction(target:) rechecks them without suspension
 before delegating to the existing atomic operations. See
 [ADR 0174](../../docs/adr/0174-canvas-context-actions.md).
+
+CanvasPartIsolationTarget.hidingAll(in:) captures a source-ordered global visible
+flag batch independently of component ownership. It uses the existing atomic
+setCanvasPartIsolation operation and retains stale-target/no-op behavior; see
+[ADR 0175](../../docs/adr/0175-canvas-hide-all.md).

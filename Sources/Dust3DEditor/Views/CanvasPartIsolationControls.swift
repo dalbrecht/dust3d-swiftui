@@ -44,3 +44,16 @@ struct CanvasPartIsolationControls: View {
         }
     }
 }
+
+/// A global visibility plan remains available independently of hierarchy selection.
+struct CanvasHideAllPartsButton: View {
+    let store: EditorStore?
+    var body: some View {
+        let target = store?.snapshot.map { CanvasPartIsolationTarget.hidingAll(in: $0) }
+        Button("Hide All Parts in Canvas", action: store?.canvasPartIsolationAction(target) ?? {})
+            .disabled(store?.canPerformCanvasPartIsolation(target) != true)
+            .help(
+                target?.unavailableReason
+                    ?? "Hide node and edge overlays for every part. Show All Parts in Canvas restores visibility.")
+    }
+}

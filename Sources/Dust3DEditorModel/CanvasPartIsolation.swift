@@ -30,7 +30,10 @@ public struct CanvasPartIsolationTarget: Sendable {
     public var isAvailable: Bool { issue == nil && !plannedCommands.isEmpty }
     public var unavailableReason: String? {
         if let issue { return issue.localizedDescription }
-        return isAvailable ? nil : "All parts are already visible in the canvas."
+        guard !isAvailable else { return nil }
+        return restoresAll
+            ? "All parts are already visible in the canvas."
+            : "All parts are already hidden in the canvas."
     }
 
     /// Capture explicit rendered ownership or resolve the current single owner.
@@ -56,6 +59,22 @@ public struct CanvasPartIsolationTarget: Sendable {
             plannedCommands = []
             issue = cause
         }
+    }
+
+    /// Capture every part's canvas visibility independently of selection or hierarchy.
+    /// This plans one atomic visibility-only edit; it does not change the document
+    /// until the existing actor operation applies the captured commands.
+    /// - Parameter snapshot: The source document, selection and constraint epoch.
+    /// - Returns: A Hide All target, unavailable without history changes when already hidden.
+    public static func hidingAll(in snapshot: EditorSnapshot) -> Self { Self(hidingAllIn: snapshot) }
+
+    private init(hidingAllIn snapshot: EditorSnapshot) {
+        context = CanvasAdjustmentTarget(snapshot: snapshot)
+        let ids = snapshot.parts.contains(where: \.isVisible) ? snapshot.parts.map(\.id) : []
+        plannedCommands = ids.isEmpty ? [] : [.setPartsState(ids: ids, property: .visible, value: false)]
+        issue = nil
+        title = "Hide All Parts in Canvas"
+        restoresAll = false
     }
 
     /// Captured actions never acquire a later selection, even after Undo or ABA changes.

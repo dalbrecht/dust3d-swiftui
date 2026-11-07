@@ -152,4 +152,46 @@ private actor IsolationPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(after.canUndo)
     }
 
+    func testHideAllAndRestoreAreSingleVisibilityEditsWithoutPreviewGeneration() async throws {
+        let original = try source()
+        let counter = IsolationPreviewCounter()
+        let value = store(counter)
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.select(nil)
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        let calls = await counter.calls
+        XCTAssertTrue(before.selectedIDs.isEmpty && before.selectedEdgeIDs.isEmpty)
+        XCTAssertNil(before.selectedPartID)
+        XCTAssertTrue(before.selectedComponentIDs.isEmpty)
+        let target = CanvasPartIsolationTarget.hidingAll(in: before)
+        XCTAssertTrue(value.canPerformCanvasPartIsolation(target))
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        value.canvasPartIsolationAction(target)()
+        try await settle(value)
+        let hidden = try XCTUnwrap(value.snapshot)
+        XCTAssertTrue(hidden.parts.allSatisfy { !$0.isVisible })
+        XCTAssertEqual(hidden.previewIdentity, before.previewIdentity)
+        XCTAssertEqual(publications, 1)
+        XCTAssertTrue(try XCTUnwrap(hidden.parts.first { $0.id == "q" }).isLocked)
+        XCTAssertTrue(try XCTUnwrap(hidden.parts.first { $0.id == "r" }).isDisabled)
+        XCTAssertFalse(CanvasPartIsolationTarget.hidingAll(in: hidden).isAvailable)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        value.redo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), hidden.document.encoded())
+        let show = CanvasPartIsolationTarget(snapshot: try XCTUnwrap(value.snapshot), showAll: true)
+        value.canvasPartIsolationAction(show)()
+        try await settle(value)
+        XCTAssertTrue(try XCTUnwrap(value.snapshot).parts.allSatisfy(\.isVisible))
+        XCTAssertEqual(value.snapshot?.previewIdentity, before.previewIdentity)
+        let finalCalls = await counter.calls
+        XCTAssertEqual(finalCalls, calls)
+    }
+
 }

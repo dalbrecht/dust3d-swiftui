@@ -180,7 +180,10 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.wholePartActionTarget.map { store?.canSelectWholePart($0) == true } != true)
                 Button("Clear Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
-                CanvasPartIsolationButtons(store: store)
+                Menu("Part Visibility") {
+                    CanvasHideAllPartsButton(store: store)
+                    CanvasPartIsolationButtons(store: store)
+                }
                 Menu("Transform Selection") {
                     ForEach(SelectionTransform.allCases, id: \.self) { transform in
                         Button(transform.rawValue) { store?.transformSelection(transform) }
