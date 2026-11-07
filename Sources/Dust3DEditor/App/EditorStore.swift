@@ -12,6 +12,9 @@ import os
 final class EditorStore {
     private(set) var snapshot: EditorSnapshot? {
         didSet {
+            if isSelectingRigEdges, snapshot?.selectedIDs.isEmpty == false {
+                changeRigEdgeSelection(false)
+            }
             if let hover = boneEdgeHover, snapshot.map({ !hover.target.isCurrent(in: $0) }) ?? true {
                 boneEdgeHover = nil
             }
@@ -33,6 +36,51 @@ final class EditorStore {
     }
     private(set) var isSelectingGraph = false
     var canPickGraph: Bool { acceptedDocumentSource != nil && (!isWorking || isSelectingGraph) }
+    private(set) var isSelectingRigEdges = false
+    private(set) var rigEdgeSelectionEpoch = UUID()
+    var canChangeRigEdgeSelection: Bool {
+        !isWorking && !isAddingNodes && !isMovingOrigin && acceptedDocumentSource != nil
+    }
+
+    func rigEdgeSelectionToggleAction() -> @MainActor (Bool) -> Void {
+        let target = snapshot.map(CanvasAdjustmentTarget.init)
+        let epoch = rigEdgeSelectionEpoch
+        return { [weak self] enabled in
+            guard let self, let current = self.acceptedDocumentSource, target?.isCurrent(in: current) == true,
+                self.rigEdgeSelectionEpoch == epoch
+            else { return }
+            self.setRigEdgeSelection(enabled)
+        }
+    }
+
+    func setRigEdgeSelection(_ enabled: Bool) {
+        guard canChangeRigEdgeSelection, enabled != isSelectingRigEdges, let snapshot else { return }
+        changeRigEdgeSelection(enabled)
+        let nodes = snapshot.selectedIDs
+        guard enabled, !nodes.isEmpty else { return }
+        let epoch = rigEdgeSelectionEpoch
+        perform(
+            commits: false, selectionOnly: true,
+            completion: { [weak self] succeeded in
+                if !succeeded, let self, self.rigEdgeSelectionEpoch == epoch { self.changeRigEdgeSelection(false) }
+            },
+            { try await $0.removeFromSelection(nodes: nodes, edges: []) })
+    }
+
+    private func changeRigEdgeSelection(_ enabled: Bool) {
+        guard enabled != isSelectingRigEdges else { return }
+        isSelectingRigEdges = enabled
+        rigEdgeSelectionEpoch = UUID()
+        rotationInputContextID = UUID()
+        pendingWholePartPick = nil
+        canvasProfileMotion = nil
+        clearCanvasHover()
+    }
+
+    func admitsCanvasSelectionInput(epoch: UUID, lease: UUID?) -> Bool {
+        rigEdgeSelectionEpoch == epoch && ownsCanvasProfile(lease)
+    }
+
     private struct PendingWholePartPick {
         let target: PartGraphTarget
         let context: PartGraphSelectionContext
@@ -41,7 +89,7 @@ final class EditorStore {
     }
     private var pendingWholePartPick: PendingWholePartPick?
     func canSelectWholePart(_ target: PartGraphTarget) -> Bool {
-        canPickGraph && snapshot?.canSelectWholePart(target) == true
+        !isSelectingRigEdges && canPickGraph && snapshot?.canSelectWholePart(target) == true
     }
     var wholePartActionTarget: PartGraphTarget? {
         if !isAddingNodes, let hoveredNodeID { return .node(hoveredNodeID) }
@@ -56,9 +104,10 @@ final class EditorStore {
     /// Build a targeted view action from the rendered document, never from a later replacement.
     func wholePartSelectionAction(_ target: PartGraphTarget) -> @MainActor () -> Void {
         let context = snapshot.map { PartGraphSelectionContext(snapshot: $0) }
+        let epoch = rigEdgeSelectionEpoch
         return { [weak self] in
-            guard let context else { return }
-            self?.selectWholePart(target, context: context)
+            guard let self, let context, self.rigEdgeSelectionEpoch == epoch else { return }
+            self.selectWholePart(target, context: context)
         }
     }
     func revealOwningComponentAction(
@@ -86,12 +135,14 @@ final class EditorStore {
     }
 
     func selectComponentGraph(_ target: ComponentGraphSelectionTarget) {
-        guard !stopped, !isWorking, snapshot?.canSelectComponentGraph(target) == true else { return }
+        guard !isSelectingRigEdges, !stopped, !isWorking, snapshot?.canSelectComponentGraph(target) == true else {
+            return
+        }
         cancelAddMode()
         perform(commits: false, selectionOnly: true) { try await $0.selectComponentGraph(target) }
     }
     func selectWholePart(_ target: PartGraphTarget, context: PartGraphSelectionContext? = nil) {
-        guard canPickGraph, let snapshot, context?.isCurrent(in: snapshot) != false,
+        guard !isSelectingRigEdges, canPickGraph, let snapshot, context?.isCurrent(in: snapshot) != false,
             snapshot.canSelectWholePart(target)
         else { return }
         let pick = PendingWholePartPick(
@@ -119,7 +170,9 @@ final class EditorStore {
     }
     func selectWholePart(at point: CanvasPoint, projection: CanvasProjection, context: PartGraphSelectionContext? = nil)
     {
-        guard canPickGraph, !isAddingNodes, let snapshot, context?.isCurrent(in: snapshot) != false else { return }
+        guard !isSelectingRigEdges, canPickGraph, !isAddingNodes, let snapshot,
+            context?.isCurrent(in: snapshot) != false
+        else { return }
         if let node = snapshot.nodes.last(where: {
             let center = projection.point(for: $0.value.position)
             return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
@@ -131,13 +184,16 @@ final class EditorStore {
     }
     func partNodesSelectionAction(_ id: String) -> @MainActor () -> Void {
         let context = snapshot.map { PartGraphSelectionContext(snapshot: $0) }
+        let epoch = rigEdgeSelectionEpoch
         return { [weak self] in
-            guard let context else { return }
-            self?.selectPartNodes(id, context: context)
+            guard let self, let context, self.rigEdgeSelectionEpoch == epoch else { return }
+            self.selectPartNodes(id, context: context)
         }
     }
     func selectPartNodes(_ id: String, context: PartGraphSelectionContext? = nil) {
-        guard !isWorking, !stopped, let snapshot, context?.isCurrent(in: snapshot) != false else { return }
+        guard !isSelectingRigEdges, !isWorking, !stopped, let snapshot,
+            context?.isCurrent(in: snapshot) != false
+        else { return }
         let capturedContext = context ?? PartGraphSelectionContext(snapshot: snapshot)
         perform(commits: false, selectionOnly: true) { try await $0.selectPartNodes(id, context: capturedContext) }
     }
@@ -169,7 +225,7 @@ final class EditorStore {
     var frozenAddProjection: CanvasProjection? { addPlacement.isActive ? addPlacement.projection : nil }
     var addAnchorPosition: NodePosition? { snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.value.position }
     var canBeginAddMode: Bool {
-        acceptedAddPlacementSource != nil && canvasWidth > 0 && canvasHeight > 0
+        !isSelectingRigEdges && acceptedAddPlacementSource != nil && canvasWidth > 0 && canvasHeight > 0
     }
     var canPlaceAddGhost: Bool {
         guard isAddingNodes, acceptedAddPlacementSource != nil, addGhostPoint != nil else { return false }
@@ -376,11 +432,12 @@ final class EditorStore {
             clearCanvasHover()
             return
         }
-        let hover = canvasGraphHoverCache.hit(at: point, projection: projection, snapshot: snapshot)
+        let hover = canvasGraphHoverCache.hit(
+            at: point, projection: projection, snapshot: snapshot, rigEdgesOnly: isSelectingRigEdges)
         if hover != canvasGraphHover { canvasGraphHover = hover }
     }
     var canAdjustSelectionRadius: Bool {
-        canSave && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
+        !isSelectingRigEdges && canSave && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
     }
     func adjustSelectionRadius(direction: Double) {
         if isAddingNodes {
@@ -396,6 +453,7 @@ final class EditorStore {
         perform { try await $0.adjustSelectionRadius(by: delta, target: target) }
     }
     func handleCanvasWheel(_ input: CanvasWheelInput) -> Bool {
+        guard !isSelectingRigEdges else { return false }
         if isAddingNodes {
             guard input.isSupported, !isWorking, addGhostPoint != nil else { return false }
             adjustSelectionRadius(direction: input.verticalDelta)
@@ -586,6 +644,7 @@ final class EditorStore {
     }
 
     private func resetCanvasProfileContext(clearGeometry: Bool, transferAdd: Bool = false) {
+        rigEdgeSelectionEpoch = UUID()
         canvasProfileMotion = nil
         rotationInputContextID = UUID()
         precisionLayoutEpoch = UUID()
@@ -954,6 +1013,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        changeRigEdgeSelection(false)
         pendingComponentDrag = nil
         invalidateReferenceColors()
         referenceColorApplyToken = UUID()
@@ -1102,6 +1162,7 @@ final class EditorStore {
     }
 
     func setMovingOrigin(_ enabled: Bool) {
+        guard !enabled || !isSelectingRigEdges else { return }
         if enabled { cancelAddMode() }
         cancelOriginDrag()
         isMovingOrigin = enabled && canSave && snapshot?.origin != nil
@@ -1167,11 +1228,18 @@ final class EditorStore {
         perform(commits: false) { try await $0.setLock(constraint, isLocked: isLocked) }
     }
 
-    func select(_ id: String?) { perform(commits: false, selectionOnly: true) { try await $0.select(id) } }
+    func select(_ id: String?) {
+        guard !isSelectingRigEdges || id == nil else { return }
+        perform(commits: false, selectionOnly: true) { try await $0.select(id) }
+    }
 
-    func select(_ ids: Set<String>) { perform(commits: false, selectionOnly: true) { try await $0.select(ids) } }
+    func select(_ ids: Set<String>) {
+        guard !isSelectingRigEdges || ids.isEmpty else { return }
+        perform(commits: false, selectionOnly: true) { try await $0.select(ids) }
+    }
     func selectEdge(_ id: String?) { perform(commits: false, selectionOnly: true) { try await $0.selectEdge(id) } }
     func selectGraph(nodes: Set<String>, edges: Set<String>, mode: GraphSelectionMode = .replace) {
+        guard !isSelectingRigEdges || nodes.isEmpty else { return }
         perform(commits: false, selectionOnly: true) { session in
             switch mode {
             case .replace: try await session.selectGraph(nodes: nodes, edges: edges)
@@ -1189,7 +1257,8 @@ final class EditorStore {
     }
     func pickEdge(at point: CanvasPoint, projection: CanvasProjection, mode: GraphSelectionMode) {
         guard !isWorking, let snapshot else { return }
-        if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: snapshot.edges) {
+        let edges = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: mode) : snapshot.edges
+        if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: edges) {
             selectGraph(nodes: [], edges: [edge], mode: mode)
         } else if mode == .replace {
             selectGraph(nodes: [], edges: [])
@@ -1197,12 +1266,23 @@ final class EditorStore {
     }
     func selectMarquee(_ rectangle: CanvasSelectionRectangle, projection: CanvasProjection, mode: GraphSelectionMode) {
         guard !isWorking, let snapshot else { return }
+        let edges = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: mode) : snapshot.edges
         selectGraph(
-            nodes: projection.nodeIDs(in: rectangle, nodes: snapshot.nodes),
+            nodes: isSelectingRigEdges ? [] : projection.nodeIDs(in: rectangle, nodes: snapshot.nodes),
             edges: projection.edgeIDs(
-                in: rectangle, nodes: snapshot.nodes, edges: snapshot.edges, selectedEdgeIDs: snapshot.selectedEdgeIDs),
+                in: rectangle, nodes: snapshot.nodes, edges: edges, selectedEdgeIDs: snapshot.selectedEdgeIDs),
             mode: mode)
     }
+
+    private func rigEdgePickCandidates(in snapshot: EditorSnapshot, mode: GraphSelectionMode) -> [DocumentEdge] {
+        let editable = EdgeBoneAssignmentEligibility.edgeIDs(
+            nodes: snapshot.nodes, edges: snapshot.edges, parts: snapshot.parts)
+        return snapshot.edges.filter {
+            editable.contains(Data($0.id.utf8))
+                || ((mode == .subtract || mode == .toggle) && snapshot.selectedEdgeIDs.contains($0.id))
+        }
+    }
+
     func canDeleteComponentSubtrees(_ target: ComponentDeletionTarget) -> Bool {
         guard !isWorking, !stopped, let snapshot else { return false }
         return target.isCurrent(in: snapshot)
@@ -1739,24 +1819,36 @@ final class EditorStore {
         }
     }
     func toggleSelection(_ id: String) {
+        guard !isSelectingRigEdges else { return }
         perform(commits: false, selectionOnly: true) { try await $0.toggleSelection(id) }
     }
-    func selectAllNodes() { perform(commits: false, selectionOnly: true) { try await $0.selectAllNodes() } }
-    func selectAll() { perform(commits: false, selectionOnly: true) { try await $0.selectAll() } }
+    func selectAllNodes() {
+        guard !isSelectingRigEdges else { return }
+        perform(commits: false, selectionOnly: true) { try await $0.selectAllNodes() }
+    }
+
+    func selectAll() {
+        if isSelectingRigEdges, let snapshot {
+            selectEdges(Set(rigEdgePickCandidates(in: snapshot, mode: .replace).map(\.id)))
+        } else {
+            perform(commits: false, selectionOnly: true) { try await $0.selectAll() }
+        }
+    }
     func move(id: String, to position: NodePosition) { perform { try await $0.move(id: id, to: position) } }
 
     func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) {
+        guard !isSelectingRigEdges else { return }
         perform { try await $0.commitNodeDrag(drag, translation: translation) }
     }
     func commitCanvasShiftDrag(_ drag: CanvasShiftDrag, translation: CanvasPoint) {
-        guard !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot,
+        guard !isSelectingRigEdges, !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot,
             drag.projection.plane == plane, drag.isCurrent(in: snapshot)
         else { return }
         perform { try await $0.commitCanvasShiftDrag(drag, translation: translation) }
     }
 
     func bendEndpoint(_ target: EndpointIKTarget, toward destination: NodePosition, context: CanvasRotationContext) {
-        guard !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot,
+        guard !isSelectingRigEdges, !isWorking, !stopped, !isAddingNodes, !isMovingOrigin, let snapshot,
             canvasRotationContext == context, target.isCurrent(in: snapshot), target.canBend
         else { return }
         perform { try await $0.bendEndpoint(target, toward: destination) }
@@ -1781,12 +1873,14 @@ final class EditorStore {
                 positionFactor: effective.positionFactor, radiusFactor: effective.radiusFactor, target: target)
         }
     }
-    var canTransform: Bool { !isWorking && snapshot?.transformNodes.contains(where: \.isEditable) == true }
+    var canTransform: Bool {
+        !isSelectingRigEdges && !isWorking && snapshot?.transformNodes.contains(where: \.isEditable) == true
+    }
     func canTransformSelection(_ transform: SelectionTransform) -> Bool {
-        !isWorking && !stopped && snapshot.map { transform.canApply(in: $0) } == true
+        !isSelectingRigEdges && !isWorking && !stopped && snapshot.map { transform.canApply(in: $0) } == true
     }
     func canPerformCanvasPrecision(_ action: CanvasPrecisionAction) -> Bool {
-        guard canSave, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
+        guard !isSelectingRigEdges, canSave, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
             canvasHeight.isFinite, canvasHeight > 0, let snapshot
         else { return false }
         if action.isSpacing {
@@ -1858,7 +1952,7 @@ final class EditorStore {
     var canRotateCanvasSelection: Bool { canRotateCanvasSelection(in: plane) }
 
     private func canRotateCanvasSelection(in plane: EditingPlane) -> Bool {
-        guard canSave, !isAddingNodes, !isMovingOrigin, let snapshot else { return false }
+        guard !isSelectingRigEdges, canSave, !isAddingNodes, !isMovingOrigin, let snapshot else { return false }
         return snapshot.canRotateSelection(in: plane)
     }
 
@@ -1901,8 +1995,13 @@ final class EditorStore {
         rotateCanvasSelection(degrees: degrees)
         return true
     }
-    var canRotateDescendants: Bool { !isWorking && snapshot?.canRotateDescendants == true }
-    func rotateDescendants(_ rotation: DescendantRotation) { perform { try await $0.rotateDescendants(rotation) } }
+    var canRotateDescendants: Bool {
+        !isSelectingRigEdges && !isWorking && snapshot?.canRotateDescendants == true
+    }
+    func rotateDescendants(_ rotation: DescendantRotation) {
+        guard !isSelectingRigEdges else { return }
+        perform { try await $0.rotateDescendants(rotation) }
+    }
     func transformSelection(_ transform: SelectionTransform) {
         guard canTransformSelection(transform) else { return }
         perform { try await $0.transformSelection(transform) }
@@ -2405,6 +2504,7 @@ final class EditorStore {
     }
 
     func stop() {
+        changeRigEdgeSelection(false)
         canvasGraphHoverCache = CanvasGraphHover.Cache()
         qtXMLFilePasteRequest = nil
         canvasProfileMotion = nil

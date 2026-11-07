@@ -24,6 +24,13 @@ struct CanvasProfileHeader: View {
             }
             .pickerStyle(.menu)
             .help("With a graph selection in Side by Side, press E while the canvas has focus to switch profiles.")
+            let setRigEdgeSelection = store.rigEdgeSelectionToggleAction()
+            Toggle(
+                "Select Edges for Bone Assignment",
+                isOn: Binding(get: { store.isSelectingRigEdges }, set: setRigEdgeSelection)
+            )
+            .disabled(!store.canChangeRigEdgeSelection)
+            .help("Pick edges in the canvas, then choose a template bone and assign the selected edges.")
         }
     }
 }

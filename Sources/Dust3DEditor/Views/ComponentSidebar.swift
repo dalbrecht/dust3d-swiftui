@@ -221,7 +221,7 @@ struct ComponentSidebar: View {
     private func selectInCanvasButton(snapshot: EditorSnapshot, ids: Set<String>) -> some View {
         let target = ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids)
         return Button("Select in Canvas") { store.selectComponentGraph(target) }
-            .disabled(!snapshot.canSelectComponentGraph(target))
+            .disabled(store.isSelectingRigEdges || !snapshot.canSelectComponentGraph(target))
             .help("Select editable nodes and edges in these components and their descendants.")
     }
 

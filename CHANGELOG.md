@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select edges without moving or selecting nodes while preparing a bone assignment.
+
 - Open a local .ds3 document by dropping it into the editor without replacing the current document.
 
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
