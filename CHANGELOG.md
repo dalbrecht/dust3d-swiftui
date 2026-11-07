@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
+
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.

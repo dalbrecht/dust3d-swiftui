@@ -471,7 +471,7 @@ public actor EditorSession {
             guard GraphPartShapeTarget.properties.contains(property) else {
                 throw GraphPartShapeError.unsupportedModifier
             }
-            guard target.isCurrent(in: state.snapshot), let part = target.part else {
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let part = target.part else {
                 throw GraphPartShapeError.staleTarget
             }
             try state.apply([.setPartModifier(id: part.id, property: property, value: value)])
