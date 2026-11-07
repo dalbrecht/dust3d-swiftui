@@ -46,6 +46,19 @@ struct PartCutFaceControls: View {
             DisclosureGroup("Link profile…") {
                 PartProfileChooser(store: store, part: part)
             }
+            if store.snapshot?.allowsCutRotationPreset(for: part.id) == true {
+                LabeledContent("Quick rotation") {
+                    HStack {
+                        ForEach(PartCutRotationPreset.allCases, id: \.self) { preset in
+                            Button(action: store.partCutRotationPresetAction(preset, partID: part.id)) {
+                                Text("\(preset.rawValue)°").monospacedDigit()
+                            }
+                            .accessibilityLabel("Set cross-section rotation to \(preset.rawValue) degrees")
+                            .disabled(part.cutRotation == preset.halfTurns)
+                        }
+                    }
+                }
+            }
             Text("Rotation (half-turns)").font(.callout)
             TextField("Rotation (half-turns)", text: $rotation)
                 .accessibilityIdentifier("part-cut-rotation")
