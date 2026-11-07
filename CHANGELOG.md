@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Connect selected endpoints on separate islands of a legacy part, preserving any remaining islands as separate parts in the same Undo step.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.

@@ -289,12 +289,14 @@ public actor EditorSession {
         }.snapshot
     }
 
-    /// Connect exactly two captured eligible endpoints, allocating one fresh edge off the UI actor.
+    /// Connect exactly two captured endpoints, allocating edge and legacy partition identities off the UI actor.
     /// - Throws: Stale intent, cancellation or the original joining error before atomic publication.
     public func connectSelectedNodes(target: NodeConnectionTarget, ownerID: String) throws -> EditorSnapshot {
         try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource else { throw NodeConnectionSelectionError.staleTarget }
             try state.connectSelectedNodes(
-                target: target, ownerID: ownerID, edgeID: "{\(UUID().uuidString.lowercased())}")
+                target: target, ownerID: ownerID, edgeID: "{\(UUID().uuidString.lowercased())}",
+                splitIdentities: GraphCommandPreparation.splitIdentities)
         }.snapshot
     }
 

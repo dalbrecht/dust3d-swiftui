@@ -627,6 +627,30 @@ public struct Dust3DDocument: Sendable {
             model: Self.xml(modelXML, root: "canvas"), contents: editorContents(), partIDs: partIDs)
     }
 
+    /// Plan a join followed by normalization only when the endpoints bridge distinct legacy islands.
+    package func legacyIslandConnectionRepair(id: String, from: String, to: String) throws -> (
+        edge: DocumentCommand, split: PartSplitRequirement
+    )? {
+        let model = try Self.xml(modelXML, root: "canvas")
+        let contents = try editorContents(in: model)
+        guard let owner = contents.nodes.first(where: { $0.id.utf8.elementsEqual(from.utf8) })?.partID,
+            let otherOwner = contents.nodes.first(where: { $0.id.utf8.elementsEqual(to.utf8) })?.partID,
+            owner.utf8.elementsEqual(otherOwner.utf8),
+            let groups = try PartSplitting.connectedGroups(contents: contents, partIDs: [owner])[owner],
+            groups.count > 2,
+            let fromGroup = groups.firstIndex(where: { $0.contains(from) }),
+            let toGroup = groups.firstIndex(where: { $0.contains(to) }),
+            fromGroup != toGroup
+        else { return nil }
+        try PartJoining.apply(
+            id: id, from: from, to: to, model: model, contents: contents, repairingLegacyIslands: true)
+        let joined = try editorContents(in: model)
+        guard let edge = joined.edges.first(where: { $0.id == id }),
+            let split = try PartSplitting.requirements(model: model, contents: joined, partIDs: [owner]).first
+        else { throw DocumentError.invalidNode }
+        return (.addEdge(id: id, from: edge.fromID, to: edge.toID), split)
+    }
+
     package func applying(_ command: DocumentCommand, pasteParentID: String?) throws -> Dust3DDocument {
         if case .setComponentColors(let updates) = command {
             guard updates.count <= DocumentComponentColorUpdate.maximumBatchCount else {
