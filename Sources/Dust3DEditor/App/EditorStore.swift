@@ -977,6 +977,16 @@ final class EditorStore {
         guard let value = ComponentMeshSmoothingInput.value(text) else { return {} }
         return componentMeshAction(.smoothCutoffDegrees(value), target: target)
     }
+    func canSelectAllVisibleComponents(_ target: ComponentSidebarSelectAllTarget) -> Bool {
+        guard !stopped, !isWorking, let snapshot, !target.ids.isEmpty else { return false }
+        return target.context.isCurrent(in: snapshot)
+    }
+
+    func selectAllVisibleComponents(_ target: ComponentSidebarSelectAllTarget) {
+        guard canSelectAllVisibleComponents(target) else { return }
+        perform(commits: false) { try await $0.selectComponents(target.ids, target: target.context) }
+    }
+
     func selectComponents(_ ids: Set<String>) { perform(commits: false) { try await $0.selectComponents(ids) } }
     func selectOnlyComponent(_ id: String) {
         guard snapshot?.selectedComponentIDs.contains(id) == true else { return }
