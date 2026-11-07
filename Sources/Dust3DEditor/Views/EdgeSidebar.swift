@@ -10,6 +10,7 @@ struct EdgeSidebar: View {
         let edges = store.snapshot?.edges ?? []
         let titles = Dictionary(uniqueKeysWithValues: (store.snapshot?.nodes ?? []).map { ($0.id, $0.title) })
         let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
+        let rigEligible = store.rigEdgeSidebarEligibleIDs
         if !edges.isEmpty {
             Divider()
             Text("Edges").font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding(12)
@@ -20,10 +21,15 @@ struct EdgeSidebar: View {
                         let selectWholePart = store.wholePartSelectionAction(.edge(edge.id))
                         let revealOwningComponent = store.revealOwningComponentAction(
                             .edge(edge.id), context: partContext)
-                        let title = "\(titles[edge.fromID] ?? edge.fromID) → \(titles[edge.toID] ?? edge.toID)"
+                        let from = titles[edge.fromID] ?? edge.fromID
+                        let to = titles[edge.toID] ?? edge.toID
+                        let isSelected = store.snapshot?.selectedEdgeIDs.contains(edge.id) == true
+                        let canPick = rigEligible?.contains(Data(edge.id.utf8)) ?? true
                         Button {
                             let flags = NSApp.currentEvent?.modifierFlags ?? []
-                            if flags.contains(.command) {
+                            if !canPick {
+                                selectEdge(.subtract)
+                            } else if flags.contains(.command) {
                                 selectEdge(.toggle)
                             } else if flags.contains(.shift) {
                                 selectEdge(.add)
@@ -32,30 +38,32 @@ struct EdgeSidebar: View {
                             }
                         } label: {
                             Label(
-                                title,
-                                systemImage: store.snapshot?.selectedEdgeIDs.contains(edge.id) == true
-                                    ? "checkmark.circle.fill" : "line.diagonal"
+                                "\(from) → \(to)",
+                                systemImage: isSelected ? "checkmark.circle.fill" : "line.diagonal"
                             )
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.bordered)
-                        .tint(store.snapshot?.selectedEdgeIDs.contains(edge.id) == true ? .accentColor : .secondary)
+                        .tint(isSelected ? .accentColor : .secondary)
+                        .disabled(!canPick && !isSelected)
                         .accessibilityLabel(
-                            "Select edge from \(titles[edge.fromID] ?? edge.fromID) to \(titles[edge.toID] ?? edge.toID)"
+                            canPick || !isSelected
+                                ? "Select edge from \(from) to \(to)" : "Remove edge from \(from) to \(to)"
                         )
-                        .accessibilityAddTraits(
-                            store.snapshot?.selectedEdgeIDs.contains(edge.id) == true ? .isSelected : []
-                        )
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .accessibilityValue(
-                            store.snapshot?.selectedEdgeIDs.contains(edge.id) == true ? "Selected" : "Not selected"
+                            canPick
+                                ? (isSelected ? "Selected" : "Not selected")
+                                : (isSelected
+                                    ? "Selected, unavailable for bone assignment" : "Unavailable for bone assignment")
                         )
-                        .accessibilityAction(named: Text("Add edge to selection")) {
-                            selectEdge(.add)
-                        }
-                        .accessibilityAction(named: Text("Remove edge from selection")) {
-                            selectEdge(.subtract)
-                        }
                         .accessibilityActions {
+                            if canPick && !isSelected {
+                                Button("Add edge to selection") { selectEdge(.add) }
+                            }
+                            if isSelected {
+                                Button("Remove edge from selection") { selectEdge(.subtract) }
+                            }
                             if let reveal = revealOwningComponent {
                                 Button("Reveal Owning Component", action: reveal)
                             }
@@ -67,12 +75,18 @@ struct EdgeSidebar: View {
                             Button("Select Whole Part", action: selectWholePart)
                                 .disabled(!store.canSelectWholePart(.edge(edge.id)))
                         }
-                        .help("\(edge.id) · Shift-click adds; Command-click toggles selection")
+                        .help(
+                            canPick
+                                ? "\(edge.id) · Shift-click adds; Command-click toggles selection"
+                                : (isSelected
+                                    ? "Remove this unavailable edge from the selection."
+                                    : "Unavailable for bone assignment.")
+                        )
                     }
                 }.padding(.horizontal, 12).padding(.bottom, 12)
             }
             .frame(maxHeight: 120)
-            .disabled(store.isWorking)
+            .disabled(store.isWorking || !store.canPickGraph)
         }
     }
 }
