@@ -227,6 +227,7 @@ struct Dust3DEditorApp: App {
                     store: store,
                     animationFocus: isAnimationFocused == true,
                     nativeTextFocus: hasTextEditingFocus)
+                OrthogonalQuarterTurnMenu(actions: OrthogonalQuarterTurnActions(store: store))
                 CanvasPrecisionMenu(store: store)
                 GraphColorizeMenu(store: store)
                 DescendantRotationMenu(store: store)

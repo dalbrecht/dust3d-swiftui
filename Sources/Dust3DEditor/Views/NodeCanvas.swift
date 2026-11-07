@@ -35,6 +35,7 @@ struct NodeCanvas: View {
             let handlePrecisionKey = store.canvasPrecisionKeyHandler()
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = { admitsInput() && handlePrecisionKey($0) }
             let precisionActions = CanvasPrecisionActions(store: store)
+            let quarterTurns = OrthogonalQuarterTurnActions(store: store, profileLease: profileLease)
             let nodes = store.snapshot?.nodes ?? []
             let boneHighlights = store.highlightedBoneEdgeIDs
             let graphHover = store.canvasGraphHover
@@ -163,7 +164,7 @@ struct NodeCanvas: View {
                         canDrag: !store.isWorking && node.isEditable,
                         canSelectWholePart: store.canPickGraph && node.partID != nil,
                         colorizeActions: colorizeActions, graphActions: graphActions, precisionKey: precisionKey,
-                        precisionActions: precisionActions,
+                        precisionActions: precisionActions, quarterTurns: quarterTurns,
                         revealOwningComponent: {
                             guard admitsNodeInput() else { return nil }
                             return store.revealOwningComponentAction(
@@ -336,6 +337,7 @@ struct NodeCanvas: View {
             .contextMenu {
                 GraphSelectionMenu(actions: graphActions)
                 GraphColorizeMenu(actions: colorizeActions, contextual: true)
+                OrthogonalQuarterTurnMenu(actions: quarterTurns, contextual: true)
                 CanvasPrecisionMenu(actions: precisionActions, contextual: true)
             }
             .coordinateSpace(name: "node-canvas")
@@ -425,6 +427,7 @@ private struct NodeHandle: View {
     let graphActions: GraphSelectionMenuActions
     let precisionKey: (CanvasPrecisionKeyInput) -> Bool
     let precisionActions: CanvasPrecisionActions
+    let quarterTurns: OrthogonalQuarterTurnActions
     let revealOwningComponent: () -> (@MainActor () -> Void)?
     let doubleClick: () -> Void
     let select: () -> Void
@@ -478,6 +481,7 @@ private struct NodeHandle: View {
             if canSelectWholePart { Button("Select Whole Part", action: doubleClick) }
             GraphSelectionMenu(actions: graphActions)
             GraphColorizeMenu(actions: colorizeActions, contextual: true)
+            OrthogonalQuarterTurnMenu(actions: quarterTurns, contextual: true)
             CanvasPrecisionMenu(actions: precisionActions, contextual: true)
         }
         .accessibilityAction(named: Text("Add node to selection")) { add() }
