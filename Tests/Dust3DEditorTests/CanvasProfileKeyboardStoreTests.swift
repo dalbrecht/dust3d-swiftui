@@ -189,6 +189,36 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
     }
 
+    func testEditableGeometryActionRejectsRetainedToolAndSource() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let document = try makeDocument()
+        await store.load(data: document.encoded())
+        try await settle(store)
+        let oldTool = try XCTUnwrap(store.selectEditableGeometryAction())
+        store.setMovingOrigin(true)
+        XCTAssertNil(store.selectEditableGeometryAction())
+        store.setMovingOrigin(false)
+        oldTool()
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [])
+
+        let oldSource = try XCTUnwrap(store.selectEditableGeometryAction())
+        await store.load(data: document.encoded())
+        try await settle(store)
+        oldSource()
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [])
+
+        let current = try XCTUnwrap(store.selectEditableGeometryAction())
+        current()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a", "b"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     private func makeStore() -> EditorStore {
         let stub = ProfileKeyboardNoNative()
         return EditorStore(

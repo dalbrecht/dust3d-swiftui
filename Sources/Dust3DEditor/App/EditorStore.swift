@@ -2131,6 +2131,25 @@ final class EditorStore {
         guard !isSelectingRigEdges else { return }
         perform(commits: false, selectionOnly: true) { try await $0.toggleSelection(id) }
     }
+    private var admitsEditableGeometrySelection: Bool {
+        canSave && !isSelectingRigEdges && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
+    }
+
+    func selectEditableGeometryAction() -> (@MainActor () -> Void)? {
+        guard admitsEditableGeometrySelection, let snapshot, snapshot.canSelectEditableGeometry else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let tool = rotationInputContextID
+        let add = addModeID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] in
+            guard let self, self.admitsEditableGeometrySelection, let current = self.acceptedDocumentSource,
+                target.isCurrent(in: current), self.rotationInputContextID == tool, self.addModeID == add,
+                self.referenceColorInteractionEpoch == interaction
+            else { return }
+            self.perform(commits: false, selectionOnly: true) { try await $0.selectEditableGeometry(target: target) }
+        }
+    }
+
     func selectAllNodes() {
         guard !isSelectingRigEdges else { return }
         perform(commits: false, selectionOnly: true) { try await $0.selectAllNodes() }

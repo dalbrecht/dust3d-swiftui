@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select editable geometry from the Canvas menu without including hidden or locked parts.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
