@@ -33,6 +33,20 @@ struct NodeInspector: View {
                         .id(colorTarget)
                 }
             }
+            if let snapshot = store.snapshot {
+                let target = GraphPartShapeTarget(snapshot: snapshot)
+                if let part = target.part {
+                    DisclosureGroup("Owning Part Shape") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartModifierControls(part: part, properties: GraphPartShapeTarget.properties) {
+                            property, value in
+                            store.setGraphPartShape(property, value: value, target: target)
+                        }
+                        .disabled(!store.canEditGraphPartShape(target))
+                    }
+                    .help("Change subdivision, chamfer or rounded ends on \(part.title). Each edit is one Undo step.")
+                }
+            }
             ComponentMeshSelectionControls(store: store)
             if store.snapshot?.selectedComponentIDs.isEmpty == false {
                 ComponentPartRoleControls(store: store)
@@ -40,7 +54,7 @@ struct NodeInspector: View {
             }
             if let component = store.snapshot?.selectedComponent {
                 ComponentInspector(store: store, component: component)
-            } else if let part = store.snapshot?.selectedPart ?? store.snapshot?.selectedLinkedComponentPart {
+            } else if let part = store.snapshot?.inspectedPart {
                 PartInspector(store: store, part: part)
             } else if store.snapshot?.selectedEdgeIDs.isEmpty == false
                 && (store.snapshot?.selectedIDs.isEmpty == false || (store.snapshot?.selectedEdgeIDs.count ?? 0) > 1)

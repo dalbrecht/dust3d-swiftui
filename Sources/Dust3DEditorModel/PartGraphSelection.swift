@@ -52,6 +52,20 @@ public struct ComponentRevealHint: Equatable, Sendable {
 }
 
 extension EditorSnapshot {
+    /// Gather exact stored owners of all explicit graph picks. Missing ownership rejects the entire selection.
+    func explicitGraphPartKeys() -> Set<Data>? {
+        let nodeIDs = Set(selectedIDs.map { Data($0.utf8) })
+        let edgeIDs = Set(selectedEdgeIDs.map { Data($0.utf8) })
+        guard !nodeIDs.isEmpty || !edgeIDs.isEmpty else { return nil }
+        let nodeOwners = nodes.filter { nodeIDs.contains(Data($0.id.utf8)) }.map(\.partID)
+        let edgeOwners = edges.filter { edgeIDs.contains(Data($0.id.utf8)) }.map(\.partID)
+        let owners = nodeOwners + edgeOwners
+        guard nodeOwners.count == nodeIDs.count, edgeOwners.count == edgeIDs.count,
+            owners.allSatisfy({ $0 != nil })
+        else { return nil }
+        return Set(owners.compactMap { $0.map { Data($0.utf8) } })
+    }
+
     /// Resolve an existing part using actual stored node/edge ownership, without inferring edge ownership from endpoints.
     /// - Parameter target: A part identity or explicitly targeted node/edge.
     /// - Returns: Nil for missing objects, absent owners or references to missing parts.
@@ -60,6 +74,18 @@ extension EditorSnapshot {
 
     /// Whether a targeted whole-part action has a real owner, including hidden/read-only inspection targets.
     public func canSelectWholePart(_ target: PartGraphTarget) -> Bool { partID(for: target) != nil }
+
+    package func canRevealOwningComponent(_ target: PartGraphTarget) -> Bool {
+        owningComponentID(for: target) != nil
+    }
+
+    func owningComponentID(for target: PartGraphTarget) -> String? {
+        guard let partID = partID(for: target) else { return nil }
+        let owners = componentTree.rows.filter { row in
+            row.component.partID?.utf8.elementsEqual(partID.utf8) == true
+        }
+        return owners.count == 1 ? owners.first?.id : nil
+    }
 
     func resolvedPartGraphID(for target: PartGraphTarget) throws -> String {
         let partID: String
