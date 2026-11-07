@@ -38,9 +38,11 @@ enum PartModifiers {
     static func set(
         _ model: XMLDocument, parts: [DocumentPart], id: String, property: PartModifierProperty, value: Bool
     ) throws -> Bool {
-        guard let current = parts.first(where: { $0.id == id }),
+        guard let current = parts.first(where: { $0.id.utf8.elementsEqual(id.utf8) }),
             let part = DocumentXML.childElements(model.rootElement(), named: "parts").first?
-                .elements(forName: "part").first(where: { $0.attribute(forName: "id")?.stringValue == id })
+                .elements(forName: "part").first(where: {
+                    $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(id.utf8) == true
+                })
         else { throw DocumentError.missingPart(id) }
         guard current.modifierValue(property) != value else { return false }
         part.removeAttribute(forName: property.rawValue)
