@@ -77,6 +77,22 @@ final class EditorRigListCommandTests: XCTestCase {
         XCTAssertEqual(try xml.nodes(forXPath: "/rigs/rig/bone").count, expected.count)
     }
 
+    func testDefaultLoaderListsAllBundledAuthoredRigsInQtOrder() throws {
+        var writes: [Data] = []
+        let result = EditorRigListCommand.run(
+            arguments: ["editor", "-list-rigs"],
+            stdout: { writes.append($0) },
+            stderr: { XCTFail($0) })
+        XCTAssertEqual(result, 0)
+        XCTAssertEqual(writes.count, 1)
+        let xml = try XMLDocument(data: XCTUnwrap(writes.first))
+        XCTAssertEqual(xml.rootElement()?.name, "rigs")
+        XCTAssertEqual(
+            try xml.nodes(forXPath: "/rigs/rig/@type").compactMap(\.stringValue),
+            ["Biped", "Quadruped", "Bird", "Fish", "Insect", "Snake", "Spider"])
+        XCTAssertEqual(try xml.nodes(forXPath: "/rigs/rig[bone]").count, 7)
+    }
+
     func testLateResourceFailureAndInvalidUTF8CannotPublishPartialXML() {
         for invalidUTF8 in [false, true] {
             var reads: [String] = []
