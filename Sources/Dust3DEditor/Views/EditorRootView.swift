@@ -208,8 +208,10 @@ struct EditorRootView: View {
         .focusedSceneValue(
             \.editorGeometryExportAction,
             EditorGeometryExportAction(
+                owner: store,
                 canPerform: exportWorkflow.canBegin,
-                perform: { format in exportWorkflow.begin(format: format, sourceURL: sourceURL) })
+                perform: { format in exportWorkflow.begin(format: format, sourceURL: sourceURL) },
+                cancel: exportWorkflow.cancellationAction())
         )
         .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
         .onChange(of: store.snapshot?.documentIdentity) { exportWorkflow.sourceDidChange() }
@@ -226,11 +228,6 @@ struct EditorRootView: View {
             store.onDocumentChanged = { file.data = $0 }
             store.onEditingChanged = { file.setEditing($0) }
             await store.load(data: file.data, fileIdentity: identifier)
-        }
-        .onExitCommand {
-            EditorCommandScope.routeEscape(
-                isMovingOrigin: store.isMovingOrigin, canCancelExport: exportWorkflow.canCancel,
-                cancelOrigin: { store.cancelOriginDrag() }, cancelExport: { exportWorkflow.cancel() })
         }
         .onDisappear {
             if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
