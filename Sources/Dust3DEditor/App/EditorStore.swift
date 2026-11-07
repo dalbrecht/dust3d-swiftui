@@ -148,7 +148,20 @@ final class EditorStore {
     ) {
         guard ownsCanvasProfile(lease), lease == nil || projection.plane == plane else { return }
         canvasGeometryUsesProfileLease = lease != nil
-        if isAddingNodes && (canvasWidth != width || canvasHeight != height) { cancelAddMode() }
+        if isAddingNodes, frozenAddProjection == nil {
+            guard projection.plane == plane, width.isFinite, width > 0, height.isFinite, height > 0,
+                let snapshot
+            else { return }
+            do {
+                try addPlacement.reproject(snapshot: snapshot, projection: projection, canvasHeight: height)
+            } catch {
+                cancelAddMode()
+                errorMessage = Self.message(error)
+                return
+            }
+        } else if isAddingNodes && (canvasWidth != width || canvasHeight != height) {
+            cancelAddMode()
+        }
         updatePrecisionCanvasIdentity(projection: projection, width: width, height: height)
         canvasWidth = width
         setCanvasHeight(height)
@@ -397,7 +410,9 @@ final class EditorStore {
         set {
             guard newValue != plane else { return }
             canvasProfiles.activate(newValue)
-            resetCanvasProfileContext(clearGeometry: canvasGeometryUsesProfileLease)
+            resetCanvasProfileContext(
+                clearGeometry: canvasGeometryUsesProfileLease,
+                transferAdd: canvasProfiles.isDualProfile && !isWorking && addPlacementRequestID == nil)
         }
     }
 
@@ -417,13 +432,18 @@ final class EditorStore {
         resetCanvasProfileContext(clearGeometry: true)
     }
 
-    private func resetCanvasProfileContext(clearGeometry: Bool) {
+    private func resetCanvasProfileContext(clearGeometry: Bool, transferAdd: Bool = false) {
         rotationInputContextID = UUID()
         precisionLayoutEpoch = UUID()
         precisionCanvasIdentity = nil
         clearReferenceColorCanvasContext()
         setReferenceColorInteractionActive(false)
-        cancelAddMode()
+        if transferAdd && isAddingNodes {
+            addPlacement.suspendProjectionForProfileChange()
+            addModeID = UUID()
+        } else {
+            cancelAddMode()
+        }
         cancelOriginDrag()
         if clearGeometry {
             canvasWidth = 0
