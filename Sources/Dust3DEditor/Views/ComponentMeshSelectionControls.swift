@@ -43,6 +43,10 @@ struct ComponentMeshSelectionControls: View {
                     DisclosureGroup("Owning Component Mesh Settings") {
                         editor(snapshot: snapshot, target: target)
                     }
+                    DisclosureGroup("Owning Component Colors") {
+                        ComponentBatchColorControls(store: store, target: target)
+                            .id(target)
+                    }
                 }
             }
         }

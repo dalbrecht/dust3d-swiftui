@@ -264,14 +264,13 @@ public actor EditorSession {
     public func editSelectedComponentColors(_ color: DocumentColor?, target: ComponentMeshSelectionTarget) throws
         -> EditorSnapshot
     {
-        try update { state in
-            guard target.count > 1, target.isCurrent(in: state.snapshot) else {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard target.count > (target.isGraphSelection ? 0 : 1), target.isCurrent(in: state.snapshot) else {
                 throw ComponentMeshSelectionError.staleTarget
             }
             let updates = target.ids.map { DocumentComponentColorUpdate(componentID: $0, color: color) }
             try state.apply([.setComponentColors(updates)])
-            try Task.checkCancellation()
-        }
+        }.snapshot
     }
 
     /// Connect exactly two captured eligible endpoints, allocating one fresh edge off the UI actor.
