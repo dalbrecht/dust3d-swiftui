@@ -731,7 +731,8 @@ midpoint, reversal, reduction and deletion commands. These act on the current
 explicit selection; Select Whole Part remains targeted to the clicked node.
 Unavailable context actions are omitted and Delete is marked destructive.
 Secondary click or Control-click cancels Add mode without placing a node; normal
-context-menu routing remains available in Select mode. Captured actions reject
+context-menu routing remains available in Select mode. Interrupting a marquee
+clears its visible rectangle and hover so graph context actions can resume. Captured actions reject
 replacement, selection/constraint changes and Add-mode ABA. Physical context-menu,
 keyboard and VoiceOver acceptance remain outstanding. See
 [ADR 0174](../../docs/adr/0174-canvas-context-actions.md).

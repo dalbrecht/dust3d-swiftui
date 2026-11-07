@@ -24,6 +24,17 @@ captured mode lease and return; ordinary requests retain responder-chain routing
 The canvas menu(for:) boundary also checks Add mode for contextual menu requests.
 Node activation is cleared before forwarding a normal secondary request.
 
+Event-driven invalidation also clears visible marquee/hover presentation. Native
+start and activity flags reset before copied callbacks run; cancellation values
+notify only previously active fields. Primary release clears marquee while
+preserving hover, and reentrant callbacks cannot erase a newer activation.
+Secondary/menu and double-click interruption use this notifying path. SwiftUI
+update/dismantle resets remain silent because the owning lifecycle hooks clear
+presentation; invoking state callbacks during representable updates is avoided.
+Pure callback tests cover visible rectangle/interaction release, idempotence,
+selective notification, silent reset and reentrant activation preservation.
+
+
 Apple's [context-menu guidance](https://developer.apple.com/design/human-interface-guidelines/context-menus)
 favors relevant commands, main-interface alternatives, shallow submenus and
 omitting unavailable context items. The graph submenu contains only initially
