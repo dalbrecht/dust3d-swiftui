@@ -303,6 +303,20 @@ public actor EditorSession {
         }
     }
 
+    /// Restore just one saved deformation scale on the originally inspected Model part.
+    package func resetPartDeformationScale(
+        _ property: PartDeformationProperty, partID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), let part = snapshot.inspectedPart, part.target == .model,
+                part.id.utf8.elementsEqual(partID.utf8)
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([.setPartDeformationScale(id: partID, property: property, value: 1)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Assign supported roles and perform any necessary stitching grouping in one undo/publication.
     /// Fresh group identities belong to this session, never the pure document planner.
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws
