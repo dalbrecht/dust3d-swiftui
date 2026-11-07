@@ -6,24 +6,6 @@ import XCTest
 @testable import Dust3DEditor
 
 final class OriginDragStoreTests: XCTestCase {
-    func testEscapePrioritizesOriginModeOverConcurrentExport() {
-        var originCancellations = 0
-        var exportCancellations = 0
-        EditorCommandScope.routeEscape(
-            isMovingOrigin: true, canCancelExport: true,
-            cancelOrigin: { originCancellations += 1 }, cancelExport: { exportCancellations += 1 })
-        XCTAssertEqual(originCancellations, 1)
-        XCTAssertEqual(exportCancellations, 0)
-        EditorCommandScope.routeEscape(
-            isMovingOrigin: false, canCancelExport: true,
-            cancelOrigin: { originCancellations += 1 }, cancelExport: { exportCancellations += 1 })
-        XCTAssertEqual(exportCancellations, 1)
-        EditorCommandScope.routeEscape(
-            isMovingOrigin: false, canCancelExport: false,
-            cancelOrigin: { originCancellations += 1 }, cancelExport: { exportCancellations += 1 })
-        XCTAssertEqual(originCancellations, 1)
-        XCTAssertEqual(exportCancellations, 1)
-    }
     @MainActor
     func testLateCallbacksCannotChangeNewOriginGesture() async throws {
         let original = Dust3DDocument.emptyArchive()

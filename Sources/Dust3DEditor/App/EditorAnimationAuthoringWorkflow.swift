@@ -25,21 +25,44 @@ final class EditorAnimationAuthoringWorkflow {
     private(set) var sourceType: String?
     private(set) var parameterDraft: AnimationParameterDraft?
     private(set) var isSubmitting = false
-    var name = AnimationNameText("")
-    var selectedType: [UInt8] = []
+    private var creationNameKeys: Set<String> = []
+    private var suggestedName = AnimationNameText("")
+    private var manualName: AnimationNameText?
+    var name: AnimationNameText {
+        get { manualName ?? suggestedName }
+        set { manualName = newValue }
+    }
+    var selectedType: [UInt8] = [] {
+        didSet {
+            guard case .create = mode, manualName == nil, isCurrent, let clip = selectedClip else { return }
+            suggestedName = AnimationNameText(suggestedCreationName(for: clip))
+        }
+    }
 
     init(store: EditorStore) { self.store = store }
     var catalog: AnimationAuthoringCatalog? { store.authoringCatalog.catalog }
     var isActive: Bool { if case .idle = mode { false } else { true } }
     private var canBegin: Bool { !stopped && !isActive && !isSubmitting && store.canManageAnimations && catalog != nil }
-    var canBeginCreation: Bool { canBegin && catalog?.clips.isEmpty == false }
-    var canBeginType: Bool { canBeginCreation && store.animationSnapshot?.list.selectedRow != nil }
+    var creationClips: [AnimationClipDefinition] {
+        guard let rig = store.animationSnapshot?.editor.rigSettings.sourceRigType, !rig.isEmpty, let catalog else {
+            return []
+        }
+        return catalog.clips.filter { !$0.isLegacyAlias && $0.rig.caseInsensitiveCompare(rig) == .orderedSame }
+    }
+    var typeChoices: [AnimationClipDefinition] {
+        if case .create = mode { return creationClips }
+        return catalog?.clips ?? []
+    }
+    var canBeginCreation: Bool { canBegin && !creationClips.isEmpty }
+    var canBeginType: Bool {
+        canBegin && catalog?.clips.isEmpty == false && store.animationSnapshot?.list.selectedRow != nil
+    }
     var canBeginParameters: Bool {
         guard canBegin, let type = store.animationSnapshot?.list.selectedRow?.source.type else { return false }
         return catalog?.clip(type: type) != nil
     }
     var selectedClip: AnimationClipDefinition? {
-        catalog?.clips.first { $0.type.utf8.elementsEqual(selectedType) }
+        typeChoices.first { $0.type.utf8.elementsEqual(selectedType) }
     }
     var isCurrent: Bool {
         guard let snapshot = store.snapshot else { return false }
@@ -85,16 +108,38 @@ final class EditorAnimationAuthoringWorkflow {
         }
     }
 
-    func beginCreation() {
-        guard canBeginCreation, let value = store.animationSnapshot, let clip = catalog?.clips.first else { return }
-        do {
-            let target = try AnimationCreationTarget(snapshot: value)
+    func creationAction() -> @MainActor () -> Void {
+        guard canBeginCreation, let value = store.animationSnapshot,
+            let target = try? AnimationCreationTarget(snapshot: value)
+        else { return {} }
+        return { [weak self] in
+            guard let self, canBeginCreation, let current = store.animationSnapshot,
+                target.isCurrent(in: current.editor), let clip = creationClips.first
+            else { return }
             reset()
-            name = AnimationNameText(clip.type)
-            selectedType = Array(clip.type.utf8)
+            creationNameKeys = Set(current.list.rows.compactMap { $0.source.name }.map(Self.creationNameKey))
             mode = .create(target)
-        } catch { lastIssue = error }
+            selectedType = Array(clip.type.utf8)
+        }
     }
+    private static func creationNameKey(_ name: String) -> String {
+        name.folding(options: .caseInsensitive, locale: nil)
+    }
+
+    private func suggestedCreationName(for clip: AnimationClipDefinition) -> String {
+        let prefix = clip.type.range(of: clip.rig, options: [.anchored, .caseInsensitive])
+        let stripped = prefix.map { clip.type[$0.upperBound...] } ?? clip.type[...]
+        let stem = stripped.isEmpty ? clip.type[...] : stripped
+        let base = stem.prefix(1).lowercased() + stem.dropFirst()
+        var candidate = base
+        var suffix = 2
+        while creationNameKeys.contains(Self.creationNameKey(candidate)) {
+            candidate = base + String(suffix)
+            suffix += 1
+        }
+        return candidate
+    }
+
     func beginType() {
         guard canBeginType, let value = store.animationSnapshot, let row = value.list.selectedRow else { return }
         do {
@@ -181,7 +226,9 @@ final class EditorAnimationAuthoringWorkflow {
         sourceType = nil
         parameterDraft = nil
         selectedType = []
-        name = AnimationNameText("")
+        creationNameKeys = []
+        suggestedName = AnimationNameText("")
+        manualName = nil
         lastIssue = nil
     }
 }

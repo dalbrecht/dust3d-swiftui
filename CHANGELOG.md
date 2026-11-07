@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
+
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
@@ -23,6 +25,8 @@
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
+
+- Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
