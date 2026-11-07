@@ -41,6 +41,9 @@ enum KeyboardShortcutHelp {
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
         .init(action: "Next Replay Step", keys: "⌥→", scope: "Replay Steps window, when a next step is available"),
         .init(
+            action: "Assign Selected Edges to Bone", keys: "⌘Return",
+            scope: "Active editor window with a chosen template bone and editable edge selection"),
+        .init(
             action: "Commit Animation Draft", keys: "⌘Return",
             scope: "Animation authoring controls, when the draft is valid"),
     ]
