@@ -51,6 +51,11 @@ struct ComponentSidebar: View {
                         if let group = sidebarSnapshot.selectedComponent, group.isGroup {
                             browseButton(group.id, snapshot: sidebarSnapshot)
                         }
+                        if let id = sidebarSnapshot.selectedComponentID,
+                            let target = ComponentPlacementTarget(snapshot: sidebarSnapshot, singleComponentID: id)
+                        {
+                            ComponentSidebarOrderMenu(store: store, target: target, scopeEpoch: scopeEpoch)
+                        }
                         ComponentPartRoleMenu(store: store)
                         if let snapshot = store.snapshot {
                             ComponentBatchPartStateMenu(
@@ -166,6 +171,12 @@ struct ComponentSidebar: View {
                                     })
                                 {
                                     browseButton(id, snapshot: sidebarSnapshot)
+                                }
+                                if ids.count == 1, let id = ids.first,
+                                    let target = ComponentPlacementTarget(
+                                        snapshot: sidebarSnapshot, singleComponentID: id)
+                                {
+                                    ComponentSidebarOrderMenu(store: store, target: target, scopeEpoch: scopeEpoch)
                                 }
                                 selectInCanvasButton(snapshot: sidebarSnapshot, ids: ids, admitsInput: admitsRows)
                                 ComponentDeletionButton(
