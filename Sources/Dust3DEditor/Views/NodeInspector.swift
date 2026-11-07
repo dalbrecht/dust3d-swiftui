@@ -104,8 +104,8 @@ struct NodeInspector: View {
             Spacer()
         }
         .padding(16)
-        .onChange(of: store.snapshot?.selectedNode, initial: true) { _, node in
-            if let node { draft.reset(node.value) }
+        .onChange(of: InspectorNodeDraftSource(store.snapshot), initial: true) { _, source in
+            if let source { draft.reset(source.geometry) }
         }
         .onChange(of: store.locks) { previous, current in
             guard let node = store.snapshot?.selectedNode else { return }
