@@ -82,3 +82,63 @@ enum CanvasRotation {
         }
     }
 }
+
+/// Signed world-axis rotation in the plane orthogonal to the active canvas profile.
+package enum OrthogonalQuarterTurn: Int, Sendable {
+    case positive = 1
+    case negative = -1
+
+    fileprivate static func participants(in snapshot: EditorSnapshot, from profile: EditingPlane) -> [DocumentNode] {
+        let horizontal: EditingConstraint = profile == .front ? .z : .x
+        guard !snapshot.selectedIDs.isEmpty,
+            !snapshot.locks.contains(.y) || !snapshot.locks.contains(horizontal)
+        else { return [] }
+        let nodes = snapshot.transformNodes
+        return nodes.count > 1 ? nodes : []
+    }
+}
+
+extension EditorSnapshot {
+    package func canRotateOrthogonalQuarterTurn(from profile: EditingPlane) -> Bool {
+        OrthogonalQuarterTurn.participants(in: self, from: profile).contains(where: \.isEditable)
+    }
+}
+
+extension EditorState {
+    package mutating func rotateOrthogonalQuarterTurn(
+        _ turn: OrthogonalQuarterTurn, from profile: EditingPlane, target: CanvasAdjustmentTarget? = nil
+    ) throws {
+        let current = snapshot
+        if let target, !target.isCurrent(in: current) { throw EditorError.staleCanvasAdjustment }
+        let nodes = OrthogonalQuarterTurn.participants(in: current, from: profile)
+        guard !nodes.isEmpty else { return }
+
+        // Read-only participants still contribute to the Qt centroid.
+        let center = NodePosition(
+            x: nodes.reduce(0) { $0 + $1.value.position.x } / Double(nodes.count),
+            y: nodes.reduce(0) { $0 + $1.value.position.y } / Double(nodes.count),
+            z: nodes.reduce(0) { $0 + $1.value.position.z } / Double(nodes.count))
+        let sign = Double(turn.rawValue)
+        let updates = nodes.compactMap { node -> NodeUpdate? in
+            guard node.isEditable else { return nil }
+            let original = node.value.position
+            let vertical = original.y - center.y
+            let position: NodePosition
+            switch profile {
+            case .front:
+                position = NodePosition(
+                    x: original.x,
+                    y: current.locks.contains(.y) ? original.y : center.y - sign * (original.z - center.z),
+                    z: current.locks.contains(.z) ? original.z : center.z + sign * vertical)
+            case .side:
+                position = NodePosition(
+                    x: current.locks.contains(.x) ? original.x : center.x + sign * vertical,
+                    y: current.locks.contains(.y) ? original.y : center.y - sign * (original.x - center.x),
+                    z: original.z)
+            }
+            guard position != original else { return nil }
+            return NodeUpdate(id: node.id, value: .init(position: position, radius: node.value.radius))
+        }
+        if !updates.isEmpty { try apply([.setNodes(updates)]) }
+    }
+}
