@@ -20,6 +20,8 @@
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
+- Preview applied and retained component color images in the inspector without changing image assignments.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
