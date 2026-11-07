@@ -33,6 +33,23 @@ public enum SelectionTransform: String, CaseIterable, Sendable {
         }
     }
 
+    package func canApply(in snapshot: EditorSnapshot) -> Bool {
+        if self == .exchangeXZ {
+            return snapshot.selectedNodes.contains(where: \.isEditable)
+        }
+        guard !usesOrigin || snapshot.origin != nil else { return false }
+        let axes: Set<EditingConstraint> =
+            switch self {
+            case .flipX, .frontAlignX, .originFrontX: [.x]
+            case .flipY, .frontAlignY, .sideAlignY, .originFrontY, .originSideY: [.y]
+            case .flipZ, .sideAlignZ, .originSideZ: [.z]
+            case .frontClockwise, .frontCounterclockwise, .frontAlignCenter, .originFrontCenter: [.x, .y]
+            case .sideClockwise, .sideCounterclockwise, .sideAlignCenter, .originSideCenter: [.z, .y]
+            case .exchangeXZ: []
+            }
+        return !snapshot.locks.isSuperset(of: axes) && snapshot.transformNodes.contains(where: \.isEditable)
+    }
+
     func position(_ position: NodePosition, around center: NodePosition) -> NodePosition {
         switch self {
         case .frontCounterclockwise:

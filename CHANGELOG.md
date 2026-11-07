@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
+
 - Add Command-Option-click and marquee subtraction for independent node/edge picks, preserving other selection and document history (#343).
 
 - Add global Hide All Parts in Canvas and group visibility commands under Canvas > Part Visibility, preserving one-step Undo and mesh inputs (#343).
