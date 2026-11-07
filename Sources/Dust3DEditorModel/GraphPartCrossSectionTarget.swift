@@ -1,7 +1,7 @@
 import Dust3DDocument
 
 /// Captures the sole exact linked Model part behind explicit node and edge picks.
-package struct GraphPartCrossSectionTarget: Sendable {
+package struct GraphModelPartTarget: Sendable {
     private let owner: ComponentMeshSelectionTarget
     package let part: DocumentPart?
 
@@ -21,6 +21,8 @@ package struct GraphPartCrossSectionTarget: Sendable {
         part != nil && owner.isCurrent(in: snapshot)
     }
 }
+
+package typealias GraphPartCrossSectionTarget = GraphModelPartTarget
 
 package enum GraphPartCrossSectionEdit: Sendable {
     case profile(CutFaceSelection)

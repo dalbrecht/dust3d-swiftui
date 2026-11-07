@@ -86,6 +86,28 @@ final class EditorGeometryExportWorkflowTests: XCTestCase {
         return url
     }
 
+    func testEscapeCannotCancelAReplacementExport() async throws {
+        let store = await store(DialogEncoder())
+        defer { store.stop() }
+        let chooser = DialogChooser()
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
+        let first = try XCTUnwrap(workflow.begin(sourceURL: nil))
+        let staleCancel = try XCTUnwrap(workflow.cancellationAction())
+        staleCancel()
+        _ = await first.value
+        XCTAssertEqual(chooser.cancellationCount, 1)
+
+        let second = try XCTUnwrap(workflow.begin(sourceURL: nil))
+        let currentCancel = try XCTUnwrap(workflow.cancellationAction())
+        staleCancel()
+        XCTAssertTrue(workflow.canCancel)
+        XCTAssertEqual(chooser.cancellationCount, 1)
+        currentCancel()
+        _ = await second.value
+        XCTAssertEqual(chooser.cancellationCount, 2)
+        XCTAssertTrue(chooser.names.isEmpty)
+    }
+
     func testFBXAdmissionCausesReachErrorBannerWithoutPublishingOrChangingSource() async throws {
         let directory = try directory()
         defer { try? FileManager.default.removeItem(at: directory) }

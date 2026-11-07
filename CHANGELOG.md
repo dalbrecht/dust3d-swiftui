@@ -8,6 +8,8 @@
 
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
+- Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
+
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
@@ -25,6 +27,8 @@
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
+
+- Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
