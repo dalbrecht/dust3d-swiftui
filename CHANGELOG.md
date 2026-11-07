@@ -28,6 +28,8 @@
 
 - Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
 
+- Rotate the canvas selection by a quarter turn around the other profile’s world axis while staying in the current profile.
+
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
 - Add Command-Option-click and marquee subtraction for independent node/edge picks, preserving other selection and document history (#343).
