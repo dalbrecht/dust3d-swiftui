@@ -30,6 +30,7 @@ struct NodeCanvas: View {
             let precisionActions = CanvasPrecisionActions(store: store)
             let nodes = store.snapshot?.nodes ?? []
             let boneHighlights = store.highlightedBoneEdgeIDs
+            let graphHover = store.canvasGraphHover
             let addModeID = store.addModeID
             let shiftContext = store.canvasRotationContext
             let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
@@ -65,9 +66,8 @@ struct NodeCanvas: View {
                         guard ownsProfile, store.addModeID == addModeID else { return }
                         if store.isAddingNodes {
                             store.updateAddPointer(at: point, modeID: addModeID)
-                        } else {
-                            store.updateCanvasHover(at: point, projection: projection)
                         }
+                        store.updateCanvasHover(at: point, projection: projection)
                     },
                     wheel: { input in
                         guard ownsProfile, store.addModeID == addModeID else { return false }
@@ -110,13 +110,17 @@ struct NodeCanvas: View {
                             path.addLine(to: CGPoint(x: to.x, y: to.y))
                             let selected = store.snapshot?.selectedEdgeIDs.contains(edge.id) == true
                             let highlighted = boneHighlights.contains(edge.id)
+                            let hovered = graphHover == .edge(edge.id)
                             if highlighted {
                                 context.stroke(path, with: .color(.accentColor.opacity(0.25)), lineWidth: 8)
                             }
                             context.stroke(
-                                path, with: .color(selected || highlighted ? .accentColor : .secondary.opacity(0.5)),
+                                path,
+                                with: .color(
+                                    selected || highlighted || hovered ? .accentColor : .secondary.opacity(0.5)),
                                 style: StrokeStyle(
-                                    lineWidth: selected ? 4 : 2, dash: highlighted && !selected ? [5, 3] : []))
+                                    lineWidth: hovered ? 5 : (selected ? 4 : 2),
+                                    dash: highlighted && !selected && !hovered ? [5, 3] : []))
                         }
                     }
                 }
@@ -140,6 +144,7 @@ struct NodeCanvas: View {
                         node: node, projection: projection,
                         position: previewPosition(node, projection: projection),
                         selected: store.snapshot?.selectedIDs.contains(node.id) == true,
+                        hovered: graphHover == .node(node.id),
                         enabled: store.canPickGraph && !store.isMovingOrigin && !store.isAddingNodes,
                         canDrag: !store.isWorking && node.isEditable,
                         canSelectWholePart: store.canPickGraph && node.partID != nil,
@@ -294,6 +299,7 @@ struct NodeCanvas: View {
                 }
             }
             .onChange(of: store.isAddingNodes) { _, active in
+                if ownsProfile { store.clearCanvasHover() }
                 invalidateNodeDrag()
                 marquee = nil
                 if !active {
@@ -383,6 +389,7 @@ private struct NodeHandle: View {
     let projection: CanvasProjection
     let position: NodePosition
     let selected: Bool
+    let hovered: Bool
     let enabled: Bool
     let canDrag: Bool
     let canSelectWholePart: Bool
@@ -406,12 +413,15 @@ private struct NodeHandle: View {
     var body: some View {
         let point = projection.point(for: position)
         ZStack {
-            Circle().stroke(selected ? Color.accentColor : .secondary.opacity(0.4), lineWidth: selected ? 2 : 1)
-                .frame(
-                    width: max(8, min(node.value.radius * projection.scale * 2, 600)),
-                    height: max(8, min(node.value.radius * projection.scale * 2, 600))
-                )
-                .allowsHitTesting(false)
+            Circle().stroke(
+                selected || hovered ? Color.accentColor : .secondary.opacity(0.4),
+                lineWidth: hovered ? 3 : (selected ? 2 : 1)
+            )
+            .frame(
+                width: max(8, min(node.value.radius * projection.scale * 2, 600)),
+                height: max(8, min(node.value.radius * projection.scale * 2, 600))
+            )
+            .allowsHitTesting(false)
             Circle().fill(selected ? Color.accentColor : (node.isEditable ? .primary : .secondary))
                 .frame(width: 12, height: 12)
             NodePointerSurface(

@@ -10,6 +10,7 @@ struct CanvasProfileCompanion: View {
         let snapshot = store.snapshot
         let bounds = store.bounds
         let motion = store.canvasProfileMotion
+        let graphHover = store.canvasGraphHover
         let origin = store.originDragPosition ?? snapshot?.origin
         let isMovingOrigin = store.isMovingOrigin
         let nodes = snapshot?.nodes.filter(\.isVisible) ?? []
@@ -27,17 +28,20 @@ struct CanvasProfileCompanion: View {
                 path.move(to: from)
                 path.addLine(to: to)
                 let selected = snapshot?.selectedEdgeIDs.contains(edge.id) == true
+                let hovered = graphHover == .edge(edge.id)
                 context.stroke(
-                    path, with: .color(selected ? .accentColor : .secondary.opacity(0.5)),
-                    lineWidth: selected ? 4 : 2)
+                    path, with: .color(selected || hovered ? .accentColor : .secondary.opacity(0.5)),
+                    lineWidth: hovered ? 5 : (selected ? 4 : 2))
             }
             for node in nodes {
                 guard let point = points[node.id] else { continue }
                 let selected = snapshot?.selectedIDs.contains(node.id) == true
+                let hovered = graphHover == .node(node.id)
                 let diameter = max(8, min(node.value.radius * projection.scale * 2, 600))
                 context.stroke(
                     circle(at: point, diameter: diameter),
-                    with: .color(selected ? .accentColor : .secondary.opacity(0.4)), lineWidth: selected ? 2 : 1)
+                    with: .color(selected || hovered ? .accentColor : .secondary.opacity(0.4)),
+                    lineWidth: hovered ? 3 : (selected ? 2 : 1))
                 context.fill(
                     circle(at: point, diameter: 12),
                     with: .color(selected ? .accentColor : (node.isEditable ? .primary : .secondary)))

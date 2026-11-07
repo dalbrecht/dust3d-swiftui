@@ -20,6 +20,9 @@ final class EditorStore {
             }
             if oldValue?.documentIdentity != snapshot?.documentIdentity { clearCanvasHover() }
             if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
+            if case .edge = canvasGraphHover, oldValue?.documentRevision != snapshot?.documentRevision {
+                clearCanvasHover()
+            }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
                 clearCanvasHover()
             }
@@ -38,7 +41,7 @@ final class EditorStore {
         canPickGraph && snapshot?.canSelectWholePart(target) == true
     }
     var wholePartActionTarget: PartGraphTarget? {
-        if let hoveredNodeID { return .node(hoveredNodeID) }
+        if !isAddingNodes, let hoveredNodeID { return .node(hoveredNodeID) }
         guard let snapshot else { return nil }
         if let id = snapshot.selectedPartID { return .part(id) }
         if snapshot.selectedIDs.count == 1, snapshot.selectedEdgeIDs.isEmpty, let id = snapshot.selectedID {
@@ -235,7 +238,11 @@ final class EditorStore {
         }
     }
     private(set) var canvasHeight: Double = 0
-    private(set) var hoveredNodeID: String?
+    private(set) var canvasGraphHover: CanvasGraphHover?
+    var hoveredNodeID: String? {
+        if case .node(let id) = canvasGraphHover { return id }
+        return nil
+    }
     func setCanvasHeight(_ height: Double) {
         let next = height.isFinite && height > 0 ? height : 0
         if next != canvasHeight { precisionLayoutEpoch = UUID() }
@@ -249,19 +256,19 @@ final class EditorStore {
         }
     }
     func setHoveredNode(_ id: String?) {
-        hoveredNodeID = snapshot?.nodes.first(where: { $0.id == id && $0.isVisible })?.id
+        let visibleID = snapshot?.nodes.first(where: { $0.id == id && $0.isVisible })?.id
+        canvasGraphHover = visibleID.map(CanvasGraphHover.node)
     }
-    func clearCanvasHover() { hoveredNodeID = nil }
+
+    func clearCanvasHover() { canvasGraphHover = nil }
+
     func updateCanvasHover(at point: CanvasPoint?, projection: CanvasProjection) {
-        guard let point else {
+        guard let point, let snapshot else {
             clearCanvasHover()
             return
         }
-        let node = snapshot?.nodes.last(where: {
-            let center = projection.point(for: $0.value.position)
-            return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
-        })
-        setHoveredNode(node?.id)
+        let hover = CanvasGraphHover.hit(at: point, projection: projection, snapshot: snapshot)
+        if hover != canvasGraphHover { canvasGraphHover = hover }
     }
     var canAdjustSelectionRadius: Bool {
         !isWorking && !stopped && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
