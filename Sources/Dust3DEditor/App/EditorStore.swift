@@ -1057,6 +1057,22 @@ final class EditorStore {
             }
         }
     }
+    func edgeSidebarSelectionAction(
+        _ id: String, context: PartGraphSelectionContext?
+    ) -> @MainActor (GraphSelectionMode) -> Void {
+        { [weak self] mode in
+            guard let self, self.canPickGraph, let context, let snapshot = self.snapshot,
+                context.isCurrent(in: snapshot), snapshot.edges.contains(where: { $0.id.utf8.elementsEqual(id.utf8) })
+            else { return }
+            if case .subtract = mode,
+                !snapshot.selectedEdgeIDs.contains(where: { $0.utf8.elementsEqual(id.utf8) })
+            {
+                return
+            }
+            self.selectGraph(nodes: [], edges: [id], mode: mode)
+        }
+    }
+
     func selectEdges(_ ids: Set<String>) {
         perform(commits: false, selectionOnly: true) { try await $0.selectEdges(ids) }
     }

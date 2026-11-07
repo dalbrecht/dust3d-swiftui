@@ -122,6 +122,48 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.canUndo, before.canUndo)
     }
 
+    func testEdgeSidebarActionsRejectReplacedSourceAndSubtractOnlyTheirEdge() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let document = try makeDocument()
+        await store.load(data: document.encoded(), fileIdentity: UUID())
+        try await settle(store)
+        let first = try XCTUnwrap(store.snapshot)
+        let stale = store.edgeSidebarSelectionAction("ab", context: PartGraphSelectionContext(snapshot: first))
+
+        await store.load(data: document.encoded(), fileIdentity: UUID())
+        try await settle(store)
+        store.select("a")
+        try await settle(store)
+        let second = try XCTUnwrap(store.snapshot)
+        XCTAssertNotEqual(second.documentIdentity, first.documentIdentity)
+        let current = store.edgeSidebarSelectionAction("ab", context: PartGraphSelectionContext(snapshot: second))
+        let preview = store.previewRevision
+
+        stale(.add)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        current(.add)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a"])
+
+        stale(.subtract)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        current(.subtract)
+        try await settle(store)
+        let removed = store.snapshot?.selectionRevision
+        current(.subtract)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a"])
+        XCTAssertEqual(store.snapshot?.selectionRevision, removed)
+        XCTAssertEqual(store.snapshot?.document.encoded(), second.document.encoded())
+        XCTAssertEqual(store.previewRevision, preview)
+        XCTAssertFalse(store.canUndo)
+    }
+
     private func makeStore() -> EditorStore {
         let stub = ProfileKeyboardNoNative()
         return EditorStore(
