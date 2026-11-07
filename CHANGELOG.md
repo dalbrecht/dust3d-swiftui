@@ -4,6 +4,10 @@
 
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
+- Browse a component group’s direct children and navigate back through its breadcrumb.
+
+- Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
+
 - Open a local .ds3 document by dropping it into the editor without replacing the current document.
 
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.

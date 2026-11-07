@@ -22,15 +22,19 @@ struct ComponentOrderMenu: View {
 struct ComponentSidebarOrderMenu: View {
     let store: EditorStore
     let target: ComponentPlacementTarget
+    let scopeEpoch: UUID
 
     var body: some View {
         Menu("Reorder Among Siblings") {
             ForEach(ComponentOrderMove.allCases, id: \.self) { move in
-                Button(move.menuTitle) { store.reorderSidebarComponent(move, target: target) }
-                    .disabled(!store.canReorderSidebarComponent(move, target: target))
+                Button(move.menuTitle) { store.reorderSidebarComponent(move, target: target, scopeEpoch: scopeEpoch) }
+                    .disabled(!store.canReorderSidebarComponent(move, target: target, scopeEpoch: scopeEpoch))
             }
         }
-        .disabled(!ComponentOrderMove.allCases.contains { store.canReorderSidebarComponent($0, target: target) })
+        .disabled(
+            !ComponentOrderMove.allCases.contains {
+                store.canReorderSidebarComponent($0, target: target, scopeEpoch: scopeEpoch)
+            })
     }
 }
 

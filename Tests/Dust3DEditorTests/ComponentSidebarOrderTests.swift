@@ -63,19 +63,22 @@ private struct SidebarOrderNoNative: EditorPreviewServing, ArchiveTextureBaking,
         let target = try XCTUnwrap(
             ComponentPlacementTarget(snapshot: try XCTUnwrap(store.snapshot), singleComponentID: "middle"))
         for move in ComponentOrderMove.allCases {
-            XCTAssertTrue(store.canReorderSidebarComponent(move, target: target))
+            XCTAssertTrue(
+                store.canReorderSidebarComponent(move, target: target, scopeEpoch: store.componentBrowseEpoch))
         }
-        XCTAssertTrue(store.reorderSidebarComponent(.last, target: target))
+        XCTAssertTrue(store.reorderSidebarComponent(.last, target: target, scopeEpoch: store.componentBrowseEpoch))
         try await settle(store)
         let edited = try XCTUnwrap(store.snapshot)
         XCTAssertEqual(edited.componentTree.rows.map(\.id), ["a", "group", "first", "last", "middle", "c"])
         XCTAssertEqual(edited.selectedIDs, ["z"])
         XCTAssertTrue(edited.selectedComponentIDs.isEmpty)
         XCTAssertTrue(String(decoding: edited.document.modelXML, as: UTF8.self).contains("retained"))
-        XCTAssertFalse(store.reorderSidebarComponent(.up, target: target))
+        XCTAssertFalse(store.reorderSidebarComponent(.up, target: target, scopeEpoch: store.componentBrowseEpoch))
         let boundary = try XCTUnwrap(ComponentPlacementTarget(snapshot: edited, singleComponentID: "middle"))
-        XCTAssertFalse(store.canReorderSidebarComponent(.down, target: boundary))
-        XCTAssertFalse(store.canReorderSidebarComponent(.last, target: boundary))
+        XCTAssertFalse(
+            store.canReorderSidebarComponent(.down, target: boundary, scopeEpoch: store.componentBrowseEpoch))
+        XCTAssertFalse(
+            store.canReorderSidebarComponent(.last, target: boundary, scopeEpoch: store.componentBrowseEpoch))
         store.undo()
         try await settle(store)
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
@@ -91,20 +94,45 @@ private struct SidebarOrderNoNative: EditorPreviewServing, ArchiveTextureBaking,
         let originalSnapshot = try XCTUnwrap(store.snapshot)
         let originalTarget = try XCTUnwrap(
             ComponentPlacementTarget(snapshot: originalSnapshot, singleComponentID: "a"))
-        XCTAssertFalse(store.canReorderSidebarComponent(.first, target: originalTarget))
-        XCTAssertFalse(store.canReorderSidebarComponent(.up, target: originalTarget))
-        XCTAssertTrue(store.canReorderSidebarComponent(.down, target: originalTarget))
+        XCTAssertFalse(
+            store.canReorderSidebarComponent(.first, target: originalTarget, scopeEpoch: store.componentBrowseEpoch))
+        XCTAssertFalse(
+            store.canReorderSidebarComponent(.up, target: originalTarget, scopeEpoch: store.componentBrowseEpoch))
+        XCTAssertTrue(
+            store.canReorderSidebarComponent(.down, target: originalTarget, scopeEpoch: store.componentBrowseEpoch))
         store.selectComponent("c")
         try await settle(store)
         store.clearComponentSelection()
         try await settle(store)
-        XCTAssertFalse(store.reorderSidebarComponent(.down, target: originalTarget))
+        XCTAssertFalse(
+            store.reorderSidebarComponent(.down, target: originalTarget, scopeEpoch: store.componentBrowseEpoch))
 
         let current = try XCTUnwrap(
             ComponentPlacementTarget(snapshot: try XCTUnwrap(store.snapshot), singleComponentID: "a"))
-        XCTAssertTrue(store.canReorderSidebarComponent(.down, target: current))
+        XCTAssertTrue(store.canReorderSidebarComponent(.down, target: current, scopeEpoch: store.componentBrowseEpoch))
         await store.load(data: Data("broken".utf8))
-        XCTAssertFalse(store.reorderSidebarComponent(.down, target: current))
+        XCTAssertFalse(store.reorderSidebarComponent(.down, target: current, scopeEpoch: store.componentBrowseEpoch))
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testRetainedReorderRejectsRetiredBrowseScopeWithoutASelectionChange() async throws {
+        let original = try source().encoded()
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: original)
+        try await settle(store)
+        let snapshot = try XCTUnwrap(store.snapshot)
+        let target = try XCTUnwrap(ComponentPlacementTarget(snapshot: snapshot, singleComponentID: "middle"))
+        let fullTreeEpoch = store.componentBrowseEpoch
+        XCTAssertTrue(store.canReorderSidebarComponent(.up, target: target, scopeEpoch: fullTreeEpoch))
+
+        store.componentBrowseAction("group", snapshot: snapshot)()
+        XCTAssertEqual(store.componentGroupBrowse?.path.map(\.id), ["group"])
+        XCTAssertTrue(target.isCurrent(in: try XCTUnwrap(store.snapshot)))
+        XCTAssertFalse(store.canReorderSidebarComponent(.up, target: target, scopeEpoch: fullTreeEpoch))
+        XCTAssertFalse(store.reorderSidebarComponent(.up, target: target, scopeEpoch: fullTreeEpoch))
+        XCTAssertTrue(store.canReorderSidebarComponent(.up, target: target, scopeEpoch: store.componentBrowseEpoch))
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
         XCTAssertFalse(store.canUndo)
     }
