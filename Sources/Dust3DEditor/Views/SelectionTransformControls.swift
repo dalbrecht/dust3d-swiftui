@@ -1,3 +1,5 @@
+import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 /// Numeric transforms use the editable union of selected nodes and edge endpoints.
@@ -10,6 +12,10 @@ struct SelectionTransformControls: View {
     @State private var radiusFactor = 1.0
 
     var body: some View {
+        let delta = NodePosition(x: x, y: y, z: z)
+        let move = SelectionTransformInput.move(delta: delta, locks: store.locks)
+        let scale = SelectionTransformInput.scale(
+            positionFactor: positionFactor, radiusFactor: radiusFactor, locks: store.locks)
         VStack(alignment: .leading, spacing: 12) {
             Text("Move by document units").font(.headline)
             Form {
@@ -18,9 +24,12 @@ struct SelectionTransformControls: View {
                 TextField("Δ Z", value: $z, format: .number).disabled(store.locks.contains(.z))
             }
             .focusedValue(\.editorTextEditing, true)
-            Button("Move Selection") { store.moveSelection(by: .init(x: x, y: y, z: z)) }
-                .buttonStyle(.borderedProminent)
-                .accessibilityLabel("Move Selection")
+            Button("Move Selection") {
+                store.moveSelection(by: delta)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Move Selection")
+            .disabled(move == nil)
             Divider()
             Text("Scale around selection center").font(.headline)
             Form {
@@ -34,6 +43,7 @@ struct SelectionTransformControls: View {
                 store.scaleSelection(positionFactor: positionFactor, radiusFactor: radiusFactor)
             }
             .accessibilityLabel("Scale Selection")
+            .disabled(scale == nil)
             Text("Positive factors. 1 keeps the current size. The center uses editable nodes only.")
                 .font(.caption).foregroundStyle(.secondary)
         }
