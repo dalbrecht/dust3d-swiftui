@@ -23,12 +23,14 @@ struct CanvasProfileHeader: View {
                 ForEach(EditingPlane.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.menu)
+            .help("With a graph selection in Side by Side, press E while the canvas has focus to switch profiles.")
         }
     }
 }
 
 struct CanvasProfilePanes: View {
     let store: EditorStore
+    @State private var requestedFocus: (lease: UUID, request: CanvasProfileFocusRequest)?
 
     var body: some View {
         if store.canvasProfiles.isDualProfile {
@@ -37,6 +39,7 @@ struct CanvasProfilePanes: View {
                 let paneWidth = CanvasProfileWorkspace.paneWidth(
                     totalWidth: geometry.size.width, dividerWidth: dividerWidth)
                 let planes = store.canvasProfiles.visiblePlanes
+                let lease = store.canvasProfiles.lease
                 VStack(spacing: 0) {
                     HStack(spacing: dividerWidth) {
                         ForEach(planes, id: \.self) { plane in
@@ -61,7 +64,18 @@ struct CanvasProfilePanes: View {
                                 if plane == store.plane {
                                     editingCanvas
                                 } else {
-                                    CanvasProfileCompanion(store: store, plane: plane)
+                                    ZStack {
+                                        CanvasProfileCompanion(store: store, plane: plane)
+                                        CanvasProfileActivationSurface { request in
+                                            if let activeLease = store.activateCanvasCompanion(
+                                                plane: plane, expectedLease: lease)
+                                            {
+                                                requestedFocus = (activeLease, request)
+                                            }
+                                        }
+                                        .accessibilityHidden(true)
+                                        .help("Click to edit \(plane.rawValue)")
+                                    }
                                 }
                             }
                             .frame(width: paneWidth)
@@ -80,7 +94,19 @@ struct CanvasProfilePanes: View {
     }
 
     private var editingCanvas: some View {
-        NodeCanvas(store: store, profileLease: store.canvasProfiles.lease)
-            .id(store.canvasProfiles.lease)
+        let lease = store.canvasProfiles.lease
+        let switchProfile: ((CanvasProfileFocusRequest) -> Bool)? =
+            store.canSwitchSelectedCanvasProfile
+            ? { request in
+                guard let activeLease = store.switchSelectedCanvasProfile(expectedLease: lease) else { return false }
+                requestedFocus = (activeLease, request)
+                return true
+            } : nil
+        return NodeCanvas(
+            store: store, profileLease: lease,
+            profileFocusRequest: requestedFocus?.lease == lease ? requestedFocus?.request : nil,
+            switchProfile: switchProfile
+        )
+        .id(lease)
     }
 }

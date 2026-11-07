@@ -21,12 +21,15 @@ struct NodePointerSurface: NSViewRepresentable {
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)? = nil
     var beginShiftDrag: ((UUID) -> Void)? = nil
+    var admitsPrimaryPress: ((Int) -> Bool)? = nil
+    var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
 
     func makeNSView(context: Context) -> NodePointerView { NodePointerView() }
     static func dismantleNSView(_ view: NodePointerView, coordinator: ()) {
         view.cancelActivation(deferred: true, restoringFocus: false)
         view.enabled = false
         view.precisionKey = nil
+        view.switchProfile = nil
     }
     func updateNSView(_ view: NodePointerView, context: Context) {
         if !enabled { view.cancelActivation(deferred: true, restoringFocus: false) }
@@ -47,6 +50,8 @@ struct NodePointerSurface: NSViewRepresentable {
         view.precisionKey = precisionKey
         view.isRectangular = isRectangular
         view.clickCancel = clickCancel
+        view.admitsPrimaryPress = admitsPrimaryPress
+        view.switchProfile = switchProfile
     }
 }
 
@@ -68,6 +73,8 @@ final class NodePointerView: NSView {
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isRectangular = false
     var clickCancel: ((UUID) -> Void)?
+    var admitsPrimaryPress: ((Int) -> Bool)?
+    var switchProfile: ((CanvasProfileFocusRequest) -> Bool)?
     private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, mode: GraphSelectionMode)?
     private weak var previousResponder: NSResponder?
     private weak var activationResponder: NSResponder?
@@ -109,6 +116,7 @@ final class NodePointerView: NSView {
         }
         guard enabled else { return }
         if activation != nil { cancelActivation() }
+        guard admitsPrimaryPress?(event.clickCount) != false else { return }
         var mode = GraphSelectionMode.pointerMode(modifiers: event.modifierFlags)
         // Non-graph handles keep their existing modifier behavior.
         if mode == .subtract && subtract == nil { mode = .toggle }
@@ -229,10 +237,12 @@ final class NodePointerView: NSView {
 
     override func keyDown(with event: NSEvent) {
         // The captured precision handler admits keyboard edits independently of pointer picking.
-        if activation == nil, superview != nil, let window, window.firstResponder === self,
-            precisionKey?(CanvasPrecisionKeyInput(event)) == true
-        {
-            return
+        if activation == nil, superview != nil, let window, window.firstResponder === self {
+            if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
+                || precisionKey?(CanvasPrecisionKeyInput(event)) == true
+            {
+                return
+            }
         }
         if routeRadiusKey(event) { return }
         guard event.keyCode == 53, activation != nil else {

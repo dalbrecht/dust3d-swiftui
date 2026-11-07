@@ -41,18 +41,10 @@ public struct ComponentMeshSelectionTarget: Hashable, Sendable {
     package init(graphSelection snapshot: EditorSnapshot) {
         context = CanvasAdjustmentTarget(snapshot: snapshot)
         isGraphSelection = true
-        let nodeIDs = Set(snapshot.selectedIDs.map { Data($0.utf8) })
-        let edgeIDs = Set(snapshot.selectedEdgeIDs.map { Data($0.utf8) })
-        let nodeOwners = snapshot.nodes.filter { nodeIDs.contains(Data($0.id.utf8)) }.map(\.partID)
-        let edgeOwners = snapshot.edges.filter { edgeIDs.contains(Data($0.id.utf8)) }.map(\.partID)
-        let owners = nodeOwners + edgeOwners
-        guard !owners.isEmpty, nodeOwners.count == nodeIDs.count, edgeOwners.count == edgeIDs.count,
-            owners.allSatisfy({ $0 != nil })
-        else {
+        guard let partKeys = snapshot.explicitGraphPartKeys() else {
             ids = []
             return
         }
-        let partKeys = Set(owners.compactMap { $0.map { Data($0.utf8) } })
         let available = Set(snapshot.parts.map { Data($0.id.utf8) })
         guard partKeys.count <= ComponentMeshEdit.maximumBatchCount, partKeys.isSubset(of: available) else {
             ids = []

@@ -5,6 +5,29 @@ import XCTest
 
 @MainActor
 final class CanvasProfileStoreTests: XCTestCase {
+    func testCompanionActivationRequiresCurrentDualLeaseAndArmsOnlyPointerFollowThrough() throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let singleLease = store.canvasProfiles.lease
+        XCTAssertNil(store.activateCanvasCompanion(plane: .side, expectedLease: singleLease))
+
+        store.setDualCanvasProfile(true)
+        let frontLease = store.canvasProfiles.lease
+        XCTAssertNil(store.activateCanvasCompanion(plane: .side, expectedLease: singleLease))
+        XCTAssertNil(store.activateCanvasCompanion(plane: .front, expectedLease: frontLease))
+
+        let sideLease = try XCTUnwrap(store.activateCanvasCompanion(plane: .side, expectedLease: frontLease))
+        XCTAssertEqual(store.plane, .side)
+        XCTAssertFalse(store.admitsCanvasPrimaryPress(clickCount: 1, lease: frontLease))
+        XCTAssertFalse(store.admitsCanvasPrimaryPress(clickCount: 2, lease: sideLease))
+        XCTAssertTrue(store.admitsCanvasPrimaryPress(clickCount: 1, lease: sideLease))
+        XCTAssertTrue(store.admitsCanvasPrimaryPress(clickCount: 2, lease: sideLease))
+
+        store.plane = .front
+        XCTAssertTrue(store.admitsCanvasPrimaryPress(clickCount: 2, lease: store.canvasProfiles.lease))
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testOldProfileCannotRegisterOrReleaseNewActiveCanvasContext() {
         let store = EditorStore()
         defer { store.stop() }

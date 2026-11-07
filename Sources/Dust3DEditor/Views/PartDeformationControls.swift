@@ -69,6 +69,11 @@ private struct PartDeformationScaleControl: View {
             HStack {
                 Button("Reset Draft") { reset() }
                     .accessibilityLabel("Reset \(title.lowercased()) draft")
+                if let resetScale = store.partDeformationResetAction(property, partID: part.id) {
+                    Button("Reset to 1", action: resetScale)
+                        .accessibilityLabel("Reset \(title.lowercased()) to 1")
+                        .disabled(part.deformationScale(property) == 1)
+                }
                 Spacer()
                 Button("Apply") { apply() }
                     .accessibilityLabel("Apply \(title.lowercased())")

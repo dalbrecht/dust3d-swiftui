@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- Paste native or Qt clipboard nodes into an explicitly chosen working group.
-
-- Keep a working component group as the destination for new parts while graph selection changes.
+- Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
@@ -16,7 +14,13 @@
 
 - Add global Hide All Parts in Canvas and group visibility commands under Canvas > Part Visibility, preserving one-step Undo and mesh inputs (#343).
 
+- Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
+
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
+
+- Keep a working component group as the destination for new parts while graph selection changes.
+
+- Paste native or Qt clipboard nodes into an explicitly chosen working group.
 
 - Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
 
@@ -25,6 +29,10 @@
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
 
 - Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
+
+- Click a companion profile to make it the editing pane without placing or selecting a graph element.
+
+- Press E with a graph selection and canvas focus, or choose Switch Editing Profile in the Canvas menu, to edit the selection in the opposite profile.
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
@@ -193,6 +201,8 @@
 
 - Add an injectable document-snapshot export file service with source protection, atomic publication and retained diagnostics; native encoder/UI adoption remains pending (#146).
 
+- Open multiple .ds3 documents at launch using positional paths or repeated --open-document flags.
+
 - Add an explicit-fixture QA launcher using process-local AppKit restoration isolation while preserving normal launches and saved state (#257).
 
 - Recheck actual recovery storage before each write so failed shrinking replacements cannot fund growth beyond the retained-byte budget (#248).
@@ -314,6 +324,8 @@
 
 - Add native width/thickness scale drafts and unified deformation controls with explicit unsupported-value replacement and offscreen inspector verification.
 
+- Reset a Model part’s saved width or thickness scale to 1 independently, with one undo step.
+
 - Add native part shape-modifier toggles and explicit unsupported-value replacement menus, with repeatable offscreen inspector QA in light/dark appearances.
 
 - Restore legacy comma-decimal rotation and deformation metadata compatibility with byte-preserving semantic no-ops and strict numeric validation.
@@ -354,11 +366,15 @@
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
 
+- Add File > Save All to save edited documents through the native document controller.
+
 - Reject native save payloads while edits are applying or their document snapshot has been superseded, preserving the native File menu and providing retry guidance.
 
 - Add a bounded composition recovery command that cancels only the newest unapplied draft when accessibility control is unavailable, preserving documents and in-flight Apply operations.
 
 - Add a native Front/Side reference-image composer with crop previews, numeric and pointer crop selection, mirror/swap, cancellable drafts and one-step undoable image/origin Apply guarded against stale documents.
+
+- Paste nodes from a Qt XML file into the focused document in one Undo step.
 
 - Accept bounded Qt snapshot XML on node Paste and publish a Qt text fallback alongside richer native clipboard data; native transfers retain embedded assets and selection metadata.
 

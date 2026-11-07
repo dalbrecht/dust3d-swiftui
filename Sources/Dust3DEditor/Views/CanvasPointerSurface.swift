@@ -43,12 +43,18 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
+    var admitsPrimaryPress: ((Int) -> Bool)? = nil
+    var profileFocusRequest: CanvasProfileFocusRequest? = nil
+    var ownsProfile: () -> Bool = { true }
+    var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
         view.cancelActivation()
         view.enabled = false
         view.precisionKey = nil
+        view.profileFocusRequest = nil
+        view.switchProfile = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         if !enabled { view.cancelActivation() }
@@ -65,6 +71,11 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.isAddingNodes = isAddingNodes
         view.addPress = addPress
         view.cancelInput = cancelInput
+        view.admitsPrimaryPress = admitsPrimaryPress
+        view.profileFocusRequest = profileFocusRequest
+        view.ownsProfile = ownsProfile
+        view.switchProfile = switchProfile
+        view.scheduleProfileFocus()
     }
 }
 
@@ -81,6 +92,10 @@ final class CanvasPointerView: NSView {
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
+    var admitsPrimaryPress: ((Int) -> Bool)? = nil
+    var profileFocusRequest: CanvasProfileFocusRequest? = nil
+    var ownsProfile: () -> Bool = { true }
+    var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var tracking: NSTrackingArea?
     private var activity = CanvasPointerActivity()
@@ -130,6 +145,10 @@ final class CanvasPointerView: NSView {
         }
         guard enabled else {
             super.mouseDown(with: event)
+            return
+        }
+        guard admitsPrimaryPress?(event.clickCount) != false else {
+            cancelActivation()
             return
         }
         window?.makeFirstResponder(self)
@@ -211,10 +230,12 @@ final class CanvasPointerView: NSView {
     }
     override func keyDown(with event: NSEvent) {
         // The captured precision handler admits keyboard edits independently of pointer picking.
-        if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self,
-            precisionKey?(CanvasPrecisionKeyInput(event)) == true
-        {
-            return
+        if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self {
+            if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
+                || precisionKey?(CanvasPrecisionKeyInput(event)) == true
+            {
+                return
+            }
         }
         if routeRadiusKey(event) { return }
         if event.keyCode == 53, start != nil || isAddingNodes {
@@ -235,6 +256,19 @@ final class CanvasPointerView: NSView {
                 self, selector: #selector(windowResigned), name: NSWindow.didResignKeyNotification, object: newWindow)
         }
     }
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        scheduleProfileFocus()
+    }
+
+    func scheduleProfileFocus() {
+        guard window != nil, profileFocusRequest?.isPending == true else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.profileFocusRequest?.claim(for: self, ownsProfile: self.ownsProfile())
+        }
+    }
+
     func routeWheel(_ input: CanvasWheelInput) -> Bool { enabled && input.isSupported && wheel(input) }
     override func scrollWheel(with event: NSEvent) {
         if !routeWheel(CanvasWheelInput(event)) { super.scrollWheel(with: event) }
