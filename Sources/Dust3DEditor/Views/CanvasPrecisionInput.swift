@@ -18,6 +18,11 @@ enum CanvasPrecisionAction: CaseIterable, Hashable, Sendable {
     }
 }
 
+enum CanvasVisibilityShortcut: Equatable {
+    case toggle
+    case isolate
+}
+
 /// Only actual bare arrow/bracket events belong to this responder boundary.
 struct CanvasPrecisionKeyInput {
     let keyCode: UInt16
@@ -43,6 +48,13 @@ struct CanvasPrecisionKeyInput {
         default: return nil
         }
     }
+    var visibilityShortcut: CanvasVisibilityShortcut? {
+        guard modifiers.intersection([.command, .control, .option, .function]).isEmpty,
+            characters == "h" || characters == "H"
+        else { return nil }
+        return modifiers.contains(.shift) ? .isolate : .toggle
+    }
+    var isPartStateShortcut: Bool { partStateProperty != nil || visibilityShortcut != nil }
     var action: CanvasPrecisionAction? {
         guard modifiers.intersection([.command, .control, .option, .shift]).isEmpty else { return nil }
         switch keyCode {

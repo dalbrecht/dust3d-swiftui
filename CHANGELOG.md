@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use H to toggle canvas visibility and Shift–H to isolate a part while the canvas has keyboard focus.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.

@@ -23,6 +23,7 @@ struct NodePointerSurface: NSViewRepresentable {
     var beginShiftDrag: ((UUID) -> Void)? = nil
     var admitsPrimaryPress: ((Int) -> Bool)? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var retainVisibilityFocus: ((CanvasProfileFocusRequest) -> Void)? = nil
 
     func makeNSView(context: Context) -> NodePointerView { NodePointerView() }
     static func dismantleNSView(_ view: NodePointerView, coordinator: ()) {
@@ -30,6 +31,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.enabled = false
         view.precisionKey = nil
         view.switchProfile = nil
+        view.retainVisibilityFocus = nil
     }
     func updateNSView(_ view: NodePointerView, context: Context) {
         if !enabled { view.cancelActivation(deferred: true, restoringFocus: false) }
@@ -52,6 +54,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.clickCancel = clickCancel
         view.admitsPrimaryPress = admitsPrimaryPress
         view.switchProfile = switchProfile
+        view.retainVisibilityFocus = retainVisibilityFocus
     }
 }
 
@@ -75,6 +78,7 @@ final class NodePointerView: NSView {
     var clickCancel: ((UUID) -> Void)?
     var admitsPrimaryPress: ((Int) -> Bool)?
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)?
+    var retainVisibilityFocus: ((CanvasProfileFocusRequest) -> Void)?
     private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, mode: GraphSelectionMode)?
     private weak var previousResponder: NSResponder?
     private weak var activationResponder: NSResponder?
@@ -242,9 +246,11 @@ final class NodePointerView: NSView {
             let ownsPartStateInput =
                 window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
                 && NSApp.modalWindow == nil
-            if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
-                || ((input.partStateProperty == nil || ownsPartStateInput) && precisionKey?(input) == true)
-            {
+            if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile) { return }
+            if !input.isPartStateShortcut || ownsPartStateInput, precisionKey?(input) == true {
+                if input.visibilityShortcut != nil, !input.isRepeat {
+                    retainVisibilityFocus?(CanvasProfileFocusRequest(window: window))
+                }
                 return
             }
         }

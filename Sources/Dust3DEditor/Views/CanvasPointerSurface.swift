@@ -243,7 +243,7 @@ final class CanvasPointerView: NSView {
                 window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
                 && NSApp.modalWindow == nil
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
-                || ((input.partStateProperty == nil || ownsPartStateInput) && precisionKey?(input) == true)
+                || ((!input.isPartStateShortcut || ownsPartStateInput) && precisionKey?(input) == true)
             {
                 return
             }
