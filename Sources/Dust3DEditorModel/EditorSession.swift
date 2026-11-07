@@ -379,6 +379,17 @@ public actor EditorSession {
         }.snapshot
     }
 
+    package func setGraphPartMaterial(
+        _ property: PartMaterialProperty, value: Double, target: GraphModelPartTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.apply([.setPartMaterial(id: part.id, property: property, value: value)])
+        }.snapshot
+    }
+
     /// Assign supported roles and perform any necessary stitching grouping in one undo/publication.
     /// Fresh group identities belong to this session, never the pure document planner.
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws

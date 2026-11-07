@@ -1,15 +1,17 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct PartMaterialControls: View {
     let store: EditorStore
     let part: DocumentPart
+    var graphTarget: GraphModelPartTarget? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Material").font(.headline)
             ForEach(PartMaterialProperty.allCases, id: \.self) { property in
-                PartMaterialScalarControl(store: store, part: part, property: property)
+                PartMaterialScalarControl(store: store, part: part, property: property, graphTarget: graphTarget)
             }
             Text(
                 "Apply saves one undo step and updates the material preview. Materials update in the background."
@@ -23,6 +25,7 @@ private struct PartMaterialScalarControl: View {
     let store: EditorStore
     let part: DocumentPart
     let property: PartMaterialProperty
+    let graphTarget: GraphModelPartTarget?
     @State private var draft = ""
 
     private var title: String {
@@ -56,11 +59,22 @@ private struct PartMaterialScalarControl: View {
                 Button(action: apply) { Text("Apply").frame(minHeight: 32) }
                     .accessibilityLabel("Apply \(title.lowercased())")
             }
+            if let graphTarget {
+                Button("Restore Default") { store.resetGraphPartMaterial(property, target: graphTarget) }
+                    .accessibilityLabel("Restore \(title.lowercased()) default")
+                    .disabled(part.materialValue(property) == property.defaultValue)
+            }
         }
         .onChange(of: part.id, initial: true) { _, _ in reset() }
         .onChange(of: part.materialValue(property)) { _, _ in reset() }
     }
 
     private func reset() { draft = part.materialValue(property).map { String($0) } ?? "" }
-    private func apply() { store.setPartMaterial(part.id, property: property, value: draft) }
+    private func apply() {
+        if let graphTarget {
+            store.setGraphPartMaterial(property, value: draft, target: graphTarget)
+        } else {
+            store.setPartMaterial(part.id, property: property, value: draft)
+        }
+    }
 }
