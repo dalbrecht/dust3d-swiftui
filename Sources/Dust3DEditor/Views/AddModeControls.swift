@@ -4,12 +4,13 @@ struct AddModeControls: View {
     let store: EditorStore
     var body: some View {
         let modeID = store.addModeID
+        let toggleAction = store.addPlacementToggleAction()
         VStack(alignment: .leading, spacing: 8) {
             Toggle(
                 "Add Nodes with Pointer",
                 isOn: Binding(
                     get: { store.isAddingNodes },
-                    set: store.addPlacementToggleAction())
+                    set: { active in toggleAction(active) })
             )
             .disabled(!store.isAddingNodes && !store.canBeginAddMode)
             if store.isAddingNodes {
