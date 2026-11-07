@@ -5,28 +5,58 @@ import UniformTypeIdentifiers
 
 struct ComponentColorImageControls: View {
     let store: EditorStore
-    let component: DocumentComponent
+    let component: DocumentComponent?
+    let graphTarget: ComponentMeshSelectionTarget?
     @State private var isImporting = false
-    @State private var importTarget: ComponentColorImageTarget?
+    @State private var importTarget: EditorStore.ComponentColorImageDestination?
 
-    private var target: ComponentColorImageTarget? {
-        store.snapshot.flatMap(ComponentColorImageTarget.init(snapshot:))
+    init(store: EditorStore, component: DocumentComponent) {
+        self.store = store
+        self.component = component
+        graphTarget = nil
+    }
+
+    init(store: EditorStore, graphTarget: ComponentMeshSelectionTarget) {
+        self.store = store
+        component = nil
+        self.graphTarget = graphTarget
+    }
+
+    private var target: EditorStore.ComponentColorImageDestination? {
+        let destination: EditorStore.ComponentColorImageDestination?
+        if let graphTarget {
+            destination = .graph(graphTarget)
+        } else {
+            destination = store.snapshot.flatMap(ComponentColorImageTarget.init(snapshot:)).map { .component($0) }
+        }
+        guard let destination, store.canEditComponentColorImage(destination) else { return nil }
+        return destination
+    }
+
+    private var hasOverride: Bool {
+        if let component { return component.colorImage != .unset }
+        guard let graphTarget, let snapshot = store.snapshot else { return false }
+        return graphTarget.graphColorImageComponents(in: snapshot).contains { $0.colorImage != .unset }
     }
     private var assets: [DocumentColorImageAsset] { store.snapshot?.colorImageAssets ?? [] }
-    private var presentation: ComponentColorImagePresentation {
-        .init(value: component.colorImage, assets: assets)
+    private var presentation: ComponentColorImagePresentation? {
+        component.map { .init(value: $0.colorImage, assets: assets) }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Color image").font(.headline)
-            Text(presentation.source).font(.caption).textSelection(.enabled)
-                // Recreate selectable AppKit text so its accessibility value follows the new source.
-                .id(Array(presentation.source.utf8))
-                .focusedValue(\.editorTextEditing, true)
-            if let resource = presentation.resource {
-                Text(resource).font(.caption).foregroundStyle(.secondary)
-                    .id(Array(resource.utf8))
+            if let presentation {
+                Text(presentation.source).font(.caption).textSelection(.enabled)
+                    // Recreate selectable AppKit text so its accessibility value follows the new source.
+                    .id(Array(presentation.source.utf8))
+                    .focusedValue(\.editorTextEditing, true)
+                if let resource = presentation.resource {
+                    Text(resource).font(.caption).foregroundStyle(.secondary)
+                        .id(Array(resource.utf8))
+                }
+            } else {
+                Text("One image applies to every owning Model component.").font(.caption)
             }
             Button {
                 importTarget = target
@@ -56,7 +86,7 @@ struct ComponentColorImageControls: View {
                         ForEach(assets) { asset in
                             Button {
                                 guard let target else { return }
-                                store.assignComponentColorImage(asset, target: target)
+                                store.assignComponentColorImage(asset, destination: target)
                             } label: {
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(ComponentColorImagePresentation.summary(asset.assetName))
@@ -84,27 +114,27 @@ struct ComponentColorImageControls: View {
             }
             Button {
                 guard let target else { return }
-                store.clearComponentColorImage(target: target)
+                store.clearComponentColorImage(destination: target)
             } label: {
                 Text("Clear Image Override").frame(maxWidth: .infinity, minHeight: 32)
             }
             .accessibilityLabel("Clear component color image override, keeping its asset")
             .accessibilityIdentifier("component-color-image-clear")
-            .disabled(component.colorImage == .unset || target == nil)
+            .disabled(!hasOverride || target == nil)
             Text("Import, choose or clear is one undo step. Unused images stay in the file.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .disabled(store.isWorking)
         .onExitCommand { store.cancelColorImagePreparation() }
-        .onChange(of: component.id) { _, _ in
+        .onChange(of: component?.id) { _, _ in
             isImporting = false
             importTarget = nil
         }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.png, .jpeg, .bmp, .gif, .tiff]) { result in
             defer { importTarget = nil }
-            guard let importTarget else { return }
+            guard let importTarget, store.canEditComponentColorImage(importTarget) else { return }
             switch result {
-            case .success(let url): store.importComponentColorImage(url: url, target: importTarget)
+            case .success(let url): store.importComponentColorImage(url: url, destination: importTarget)
             case .failure(let error):
                 if (error as? CocoaError)?.code != .userCancelled { store.errorMessage = EditorStore.message(error) }
             }
