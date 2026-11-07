@@ -50,6 +50,22 @@ final class QtXMLFilePasteSessionTests: XCTestCase {
         XCTAssertNotEqual(original.documentIdentity, other.documentIdentity)
     }
 
+    func testFilePasteWithExplicitMissingGroupRejectsBeforeGraphMutation() async throws {
+        let original = try source()
+        let session = EditorSession()
+        let before = try await session.open(data: original.encoded())
+        do {
+            _ = try await session.pasteQtXMLFile(
+                original.modelXML, target: .init(snapshot: before), parentID: "missing")
+            XCTFail("Missing destination fell back to root")
+        } catch {
+            XCTAssertEqual(error as? DocumentError, .invalidComponentStructure)
+        }
+        let after = try await session.select(nil)
+        XCTAssertEqual(after.document.encoded(), original.encoded())
+        XCTAssertFalse(after.canUndo)
+    }
+
     func testEmptyFragmentAndMalformedInputPreserveHistoryAndPasteOrdinal() async throws {
         let source = try source()
         let session = EditorSession()

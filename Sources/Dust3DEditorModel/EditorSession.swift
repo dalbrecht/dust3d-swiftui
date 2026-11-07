@@ -949,10 +949,17 @@ public actor EditorSession {
     }
 
     /// Apply a selected XML file only to the source captured before presenting its picker.
-    package func pasteQtXMLFile(_ snapshotXML: Data, target: CanvasAdjustmentTarget) throws -> EditorSnapshot {
+    package func pasteQtXMLFile(
+        _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil
+    ) throws -> EditorSnapshot {
         try Task.checkCancellation()
-        guard let state, target.isCurrent(in: state.snapshot) else { throw QtXMLFilePasteError.staleTarget }
-        return try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: true, parentID: nil)
+        guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
+            throw QtXMLFilePasteError.staleTarget
+        }
+        if let parentID, state.snapshot.addPlacementGroup(parentID) == nil {
+            throw DocumentError.invalidComponentStructure
+        }
+        return try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: true, parentID: parentID)
     }
 
     private func pasteQtSnapshot(_ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?) throws
@@ -1123,4 +1130,8 @@ package enum WorkingGroupPasteError: LocalizedError, Equatable, Sendable {
     package var errorDescription: String? { "The clipboard destination changed. Paste again." }
 }
 
-package enum QtXMLFilePasteError: Error, Equatable, Sendable { case staleTarget }
+package enum QtXMLFilePasteError: LocalizedError, Equatable, Sendable {
+    case staleTarget
+
+    package var errorDescription: String? { "The XML paste destination changed. Choose the file again." }
+}
