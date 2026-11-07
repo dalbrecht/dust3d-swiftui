@@ -12,6 +12,7 @@ struct Dust3DEditorApp: App {
         @FocusedValue(\.editorRestPreviewActions) private var restPreviewActions
     #endif
     @FocusedValue(\.editorStore) private var store
+    @FocusedValue(\.editorGeometryExportAction) private var geometryExportAction
     @FocusedValue(\.rigAssignmentCommand) private var rigAssignmentCommand
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
     @FocusedValue(\.editorPreviewDisplayActions) private var previewDisplayActions
@@ -55,6 +56,15 @@ struct Dust3DEditorApp: App {
             animationFocused: isAnimationFocused == true)
     }
 
+    private var escapeDestination: EditorCommandScope.EscapeDestination {
+        let focus = rigAssignmentFocus
+        return EditorCommandScope.escapeDestination(
+            hasKeyWindow: focus.hasKeyWindow, hasSheet: focus.hasSheet,
+            nativeTextFocus: focus.textEditing, animationFocus: focus.animationFocused,
+            hasCanvasInput: store?.canvasInputCancellationAction() != nil,
+            canCancelExport: geometryExportAction?.owner === store && geometryExportAction?.cancel != nil)
+    }
+
     var body: some Scene {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
             EditorRootView(file: file.$document, sourceURL: file.fileURL)
@@ -95,6 +105,17 @@ struct Dust3DEditorApp: App {
             EditorClipboardCommands(pasteboard: pasteboard)
             CommandGroup(after: .saveItem) {
                 Button("Save All") { EditorSaveAllCommand.perform(in: NSDocumentController.shared) }
+                if let action = geometryExportAction, action.owner === store, let cancel = action.cancel {
+                    let window = NSApp.keyWindow
+                    if escapeDestination == .export {
+                        Button("Cancel Geometry Export") {
+                            guard NSApp.keyWindow === window, store === action.owner, escapeDestination == .export
+                            else { return }
+                            cancel()
+                        }
+                        .keyboardShortcut(.escape, modifiers: [])
+                    }
+                }
             }
             EditorGeometryExportCommands()
             InspectorCommands()
@@ -193,11 +214,23 @@ struct Dust3DEditorApp: App {
                     store?.canSave != true || store?.snapshot?.origin == nil || store?.isSelectingRigEdges == true)
                 Button("Center Origin on Model") { store?.centerOriginOnModel() }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
-                Button("Cancel Canvas Input") {
-                    if store?.isAddingNodes == true { store?.cancelAddMode() } else { store?.cancelOriginDrag() }
+                let canvasOwner = store
+                let canvasWindow = NSApp.keyWindow
+                let cancelCanvasInput = canvasOwner?.canvasInputCancellationAction()
+                if escapeDestination == .canvas {
+                    Button("Cancel Canvas Input") {
+                        guard NSApp.keyWindow === canvasWindow, store === canvasOwner, escapeDestination == .canvas
+                        else { return }
+                        cancelCanvasInput?()
+                    }
+                    .keyboardShortcut(.escape, modifiers: [])
+                } else {
+                    Button("Cancel Canvas Input") {
+                        guard NSApp.keyWindow === canvasWindow, store === canvasOwner else { return }
+                        cancelCanvasInput?()
+                    }
+                    .disabled(canvasWindow == nil || cancelCanvasInput == nil)
                 }
-                .keyboardShortcut(.escape, modifiers: [])
-                .disabled(store?.isMovingOrigin != true && store?.isAddingNodes != true)
                 Divider()
                 Button("Select All Nodes") { store?.selectAllNodes() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])

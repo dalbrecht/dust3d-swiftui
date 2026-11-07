@@ -34,10 +34,21 @@ enum EditorCommandScope {
         if hasNativeEditor { nativeAction() } else { documentAction() }
     }
 
-    static func routeEscape(
-        isMovingOrigin: Bool, canCancelExport: Bool, cancelOrigin: () -> Void, cancelExport: () -> Void
-    ) {
-        if isMovingOrigin { cancelOrigin() } else if canCancelExport { cancelExport() }
+    enum EscapeDestination: Equatable {
+        case system
+        case canvas
+        case export
+        case unavailable
+    }
+
+    static func escapeDestination(
+        hasKeyWindow: Bool, hasSheet: Bool, nativeTextFocus: Bool, animationFocus: Bool,
+        hasCanvasInput: Bool, canCancelExport: Bool
+    ) -> EscapeDestination {
+        guard hasKeyWindow else { return .unavailable }
+        if hasSheet || nativeTextFocus || animationFocus { return .system }
+        if hasCanvasInput { return .canvas }
+        return canCancelExport ? .export : .unavailable
     }
 }
 
