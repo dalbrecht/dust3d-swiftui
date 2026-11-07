@@ -229,8 +229,33 @@ final class EditorStore {
     }
     var frozenAddProjection: CanvasProjection? { addPlacement.isActive ? addPlacement.projection : nil }
     var addAnchorPosition: NodePosition? { snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.value.position }
+    private(set) var usesQtOppositeProfileDepth = false
+    var qtAddDepthGuidePosition: NodePosition? { addPlacement.qtDepthGuidePosition }
+
+    func setQtOppositeProfileDepth(_ enabled: Bool) {
+        guard canvasProfiles.isDualProfile, !isAddingNodes, acceptedAddPlacementSource != nil else { return }
+        usesQtOppositeProfileDepth = enabled
+    }
+
+    var qtOppositeProfileDepthNeedsReference: Bool {
+        guard let snapshot = acceptedAddPlacementSource else { return false }
+        return addDepthSeed(in: snapshot) == nil
+    }
+
+    private func addDepthSeed(in snapshot: EditorSnapshot) -> AddPlacementDepthSeed? {
+        guard canvasProfiles.isDualProfile, usesQtOppositeProfileDepth else { return .origin }
+        guard snapshot.document.hasReferenceImage else { return .qtOppositeProfile(aspect: 2) }
+        if let image = referenceImageForComposition {
+            return .qtOppositeProfile(aspect: Double(image.width) / Double(image.height))
+        }
+        return AddPlacementState.anchor(in: snapshot) == nil ? nil : .origin
+    }
+
     var canBeginAddMode: Bool {
-        !isSelectingRigEdges && acceptedAddPlacementSource != nil && canvasWidth > 0 && canvasHeight > 0
+        guard !isSelectingRigEdges, let snapshot = acceptedAddPlacementSource, canvasWidth > 0, canvasHeight > 0 else {
+            return false
+        }
+        return addDepthSeed(in: snapshot) != nil
     }
     var canPlaceAddGhost: Bool {
         guard isAddingNodes, acceptedAddPlacementSource != nil, addGhostPoint != nil else { return false }
@@ -328,7 +353,10 @@ final class EditorStore {
     }
 
     func beginAddMode() {
-        guard canBeginAddMode, let snapshot = acceptedAddPlacementSource else { return }
+        guard canBeginAddMode, let snapshot = acceptedAddPlacementSource, let depthSeed = addDepthSeed(in: snapshot)
+        else {
+            return
+        }
         cancelReferenceColorCommit()
         let currentCanvasProjection = CanvasProjection(
             bounds: bounds, plane: plane, width: canvasWidth, height: canvasHeight)
@@ -338,7 +366,7 @@ final class EditorStore {
             addPlacementNotice = nil
             try addPlacement.begin(
                 snapshot: snapshot, projection: currentCanvasProjection, canvasHeight: canvasHeight,
-                destination: addPlacementDestination)
+                destination: addPlacementDestination, depthSeed: depthSeed)
             addModeID = UUID()
         } catch { errorMessage = Self.message(error) }
     }

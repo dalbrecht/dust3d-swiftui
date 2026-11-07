@@ -4,6 +4,8 @@
 
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
+- Opt into Qt opposite-profile depth when starting a part in the dual-profile canvas and see the placement preview in both profiles.
+
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.

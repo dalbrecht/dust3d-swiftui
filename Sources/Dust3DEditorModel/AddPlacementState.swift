@@ -51,6 +51,12 @@ package enum AddPlacementDestination: Equatable, Sendable {
     }
 }
 
+/// The hidden-axis rule for the first node of a new part.
+package enum AddPlacementDepthSeed: Sendable {
+    case origin
+    case qtOppositeProfile(aspect: Double)
+}
+
 extension EditorSnapshot {
     package func addPlacementGroup(_ id: String) -> ComponentTreeRow? {
         componentTree.rows.first { $0.id.utf8.elementsEqual(id.utf8) && $0.component.isGroup }
@@ -108,6 +114,11 @@ public struct AddPlacementState: Sendable {
     private var target: AddPlacementTarget?
     private var parentID: String?
     private var hiddenCoordinate = 0.5
+    private var depthSeed: AddPlacementDepthSeed = .origin
+    package var qtDepthGuidePosition: NodePosition? {
+        if case .qtOppositeProfile = depthSeed { return ghostPosition }
+        return nil
+    }
     private var anchorSceneRadius: Double?
     private var lastAddedPosition: NodePosition?
     private var lastDocumentIdentity: UUID?
@@ -128,18 +139,16 @@ public struct AddPlacementState: Sendable {
 
     package mutating func begin(
         snapshot: EditorSnapshot, projection: CanvasProjection, canvasHeight: Double,
-        destination: AddPlacementDestination
+        destination: AddPlacementDestination, depthSeed: AddPlacementDepthSeed = .origin
     ) throws {
         guard canvasHeight.isFinite, canvasHeight > 0 else { throw EditorError.invalidAddPlacement }
+        if case .qtOppositeProfile(let aspect) = depthSeed, !aspect.isFinite || aspect <= 0 {
+            throw EditorError.invalidAddPlacement
+        }
         // Validate the transform using a known bounded document point, not a possibly out-of-bounds canvas corner.
         let probe = NodePosition(x: 0.5, y: 0.5, z: 0.5)
         _ = try projection.position(at: projection.point(for: probe), hiddenCoordinate: 0.5)
-        let merged = snapshot.transformNodes
-        let candidate = merged.count == 1 ? merged.first : nil
-        let anchor = candidate.flatMap { node in
-            snapshot.edges.reduce(0) { $0 + ($1.fromID == node.id ? 1 : 0) + ($1.toID == node.id ? 1 : 0) } < 2
-                ? node : nil
-        }
+        let anchor = Self.anchor(in: snapshot)
         let parentID: String?
         switch destination {
         case .selection:
@@ -160,6 +169,7 @@ public struct AddPlacementState: Sendable {
         lastDocumentRevision = snapshot.documentRevision
         self.projection = projection
         self.canvasHeight = canvasHeight
+        self.depthSeed = depthSeed
         self.parentID = anchor == nil ? parentID : nil
         anchorID = anchor?.id
         anchorPosition = anchor?.value.position
@@ -200,6 +210,15 @@ public struct AddPlacementState: Sendable {
         target = AddPlacementTarget(snapshot: snapshot, contextID: UUID())
     }
 
+    package static func anchor(in snapshot: EditorSnapshot) -> DocumentNode? {
+        let merged = snapshot.transformNodes
+        let candidate = merged.count == 1 ? merged.first : nil
+        return candidate.flatMap { node in
+            snapshot.edges.reduce(0) { $0 + ($1.fromID == node.id ? 1 : 0) + ($1.toID == node.id ? 1 : 0) } < 2
+                ? node : nil
+        }
+    }
+
     private static func hiddenCoordinate(in plane: EditingPlane, anchor: NodePosition?, origin: NodePosition?)
         -> Double
     {
@@ -213,7 +232,12 @@ public struct AddPlacementState: Sendable {
     /// - Parameter point: Absolute canvas coordinates. Invalid input leaves the prior ghost unchanged.
     public mutating func updatePointer(_ point: CanvasPoint) throws {
         guard isActive, let projection else { return }
-        let position = try projection.position(at: point, hiddenCoordinate: hiddenCoordinate)
+        var position = try projection.position(at: point, hiddenCoordinate: hiddenCoordinate)
+        if anchorID == nil, case .qtOppositeProfile(let aspect) = depthSeed {
+            let horizontal = projection.plane == .front ? position.x : position.z
+            let opposite = horizontal >= aspect / 2 ? horizontal - aspect / 4 : horizontal + aspect / 4
+            position = try projection.position(at: point, hiddenCoordinate: opposite)
+        }
         if ghostPosition == nil, let anchorSceneRadius { sceneRadius = anchorSceneRadius }
         ghostPosition = position
         ghostPoint = point
@@ -246,6 +270,7 @@ public struct AddPlacementState: Sendable {
         target = nil
         parentID = nil
         anchorSceneRadius = nil
+        depthSeed = .origin
     }
 
     /// Check document/selection epochs before using the cursor; geometry/plane changes cancel at the UI boundary.
@@ -277,6 +302,9 @@ public struct AddPlacementState: Sendable {
             }
             anchorID = id
             anchorPosition = node.value.position
+            if let projection, case .qtOppositeProfile = depthSeed {
+                hiddenCoordinate = Self.hiddenCoordinate(in: projection.plane, anchor: anchorPosition, origin: nil)
+            }
             anchorSceneRadius = max(1, node.value.radius * canvasHeight)
             lastAddedPosition = node.value.position
             parentID = nil

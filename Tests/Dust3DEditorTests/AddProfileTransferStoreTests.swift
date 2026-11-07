@@ -1,3 +1,4 @@
+import CoreGraphics
 import Dust3DDocument
 import Dust3DEditorModel
 import Dust3DKit
@@ -22,7 +23,116 @@ private struct AddProfileTransferNoNative: EditorPreviewServing, ArchiveTextureB
     }
 }
 
+private actor HeldAddReferenceImage: ReferenceImageServing {
+    let image: CGImage
+    private var pending: CheckedContinuation<Void, Never>?
+    private var released = false
+
+    init(image: CGImage) { self.image = image }
+
+    func importImage(url: URL) async throws -> Data { throw CancellationError() }
+
+    func preview(document: Dust3DDocument) async throws -> ReferenceImagePreview {
+        if !released {
+            await withCheckedContinuation { pending = $0 }
+        }
+        return .init(image: image, changed: true)
+    }
+
+    func release() {
+        released = true
+        pending?.resume()
+        pending = nil
+    }
+}
+
 @MainActor final class AddProfileTransferStoreTests: XCTestCase {
+    func testQtDepthOptInCommitsPreviewThenKeepsTheNewAnchorDepthAndUndoesExactly() async throws {
+        let original = Dust3DDocument.emptyArchive()
+        let stub = AddProfileTransferNoNative()
+        let store = EditorStore(
+            preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        defer { store.stop() }
+        await store.load(data: original)
+        store.setDualCanvasProfile(true)
+        store.setQtOppositeProfileDepth(true)
+        let front = CanvasProjection(bounds: store.bounds, plane: .front, width: 420, height: 240)
+        store.setCanvasContext(projection: front, width: 420, height: 240, lease: store.canvasProfiles.lease)
+        store.beginAddMode()
+        let firstPoint = front.point(for: .init(x: 0.25, y: 0.5, z: 0))
+        let mode = store.addModeID
+        store.updateAddPointer(at: firstPoint, modeID: mode)
+        let preview = try XCTUnwrap(store.qtAddDepthGuidePosition)
+        XCTAssertEqual(preview.z, 0.75, accuracy: 1e-12)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        store.placeAddNode(at: firstPoint, modeID: mode)
+        try await settle(store)
+        let committed = try XCTUnwrap(store.snapshot?.nodes.first?.value.position)
+        XCTAssertEqual(committed.x, preview.x, accuracy: 1e-12)
+        XCTAssertEqual(committed.y, preview.y, accuracy: 1e-12)
+        XCTAssertEqual(committed.z, preview.z, accuracy: 1e-12)
+
+        let secondPoint = front.point(for: .init(x: 0.65, y: 0.5, z: 0))
+        store.updateAddPointer(at: secondPoint, modeID: mode)
+        XCTAssertEqual(try XCTUnwrap(store.addPlacement.ghostPosition).z, preview.z, accuracy: 1e-12)
+        store.placeAddNode(at: secondPoint, modeID: mode)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.nodes.count, 2)
+        store.undo()
+        try await settle(store)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testQtDepthWaitsForAcceptedEmbeddedAspect() async throws {
+        let context = try XCTUnwrap(
+            CGContext(
+                data: nil, width: 3, height: 1, bitsPerComponent: 8, bytesPerRow: 12,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        let image = try XCTUnwrap(context.makeImage())
+        let png = try ReferenceImageCodec.encodePNG(image)
+        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+            .applying(.setReferenceImagePNG(png)).encoded()
+        let stub = AddProfileTransferNoNative()
+        let reference = HeldAddReferenceImage(image: image)
+        let store = EditorStore(
+            referenceImages: reference, preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        defer {
+            store.stop()
+            Task { await reference.release() }
+        }
+        await store.load(data: original)
+        store.setDualCanvasProfile(true)
+        func installGeometry() -> CanvasProjection {
+            let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 420, height: 240)
+            store.setCanvasContext(projection: projection, width: 420, height: 240, lease: store.canvasProfiles.lease)
+            return projection
+        }
+        _ = installGeometry()
+        XCTAssertTrue(store.canBeginAddMode)
+        store.setQtOppositeProfileDepth(true)
+        XCTAssertTrue(store.isLoadingReferenceImage)
+        XCTAssertTrue(store.qtOppositeProfileDepthNeedsReference)
+        XCTAssertFalse(store.canBeginAddMode)
+        store.beginAddMode()
+        XCTAssertFalse(store.isAddingNodes)
+        await reference.release()
+        for _ in 0..<300 where store.isLoadingReferenceImage {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let front = installGeometry()
+        XCTAssertTrue(store.canBeginAddMode)
+        store.beginAddMode()
+        store.updateAddPointer(at: front.point(for: .init(x: 0.25, y: 0.5, z: 0)), modeID: store.addModeID)
+        XCTAssertEqual(try XCTUnwrap(store.qtAddDepthGuidePosition).z, 1, accuracy: 1e-12)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testDualProfileSwitchRejectsOldCallbacksAndWaitsForFreshPointer() async throws {
         let source = Dust3DDocument.emptyArchive()
         let stub = AddProfileTransferNoNative()
