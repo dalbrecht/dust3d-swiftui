@@ -25,4 +25,6 @@ package struct GraphPartCrossSectionTarget: Sendable {
 package enum GraphPartCrossSectionEdit: Sendable {
     case profile(CutFaceSelection)
     case rotation(Double)
+    case deformationScale(PartDeformationProperty, Double)
+    case deformationUnified(Bool)
 }

@@ -1386,6 +1386,17 @@ final class EditorStore {
         }
     #endif
 
+    func setGraphPartDeformationScale(
+        _ property: PartDeformationProperty, value: String, target: GraphPartCrossSectionTarget
+    ) {
+        guard canEditGraphPartCrossSection(target) else { return }
+        guard let scale = EngineScalar.parse(value, in: 0...2) else {
+            errorMessage = Self.message(DocumentError.invalidPartDeformation)
+            return
+        }
+        editGraphPartCrossSection(.deformationScale(property, scale), target: target)
+    }
+
     func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
         guard !isWorking, !stopped else { return }
         guard let scale = EngineScalar.parse(value, in: 0...2) else {

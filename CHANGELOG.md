@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
+
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.

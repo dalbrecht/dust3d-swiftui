@@ -341,6 +341,9 @@ public actor EditorSession {
             switch edit {
             case .profile(let selection): command = .setPartCutFace(id: part.id, selection: selection)
             case .rotation(let value): command = .setPartCutRotation(id: part.id, rotation: value)
+            case .deformationScale(let property, let value):
+                command = .setPartDeformationScale(id: part.id, property: property, value: value)
+            case .deformationUnified(let value): command = .setPartDeformationUnified(id: part.id, value: value)
             }
             try state.apply([command])
         }.snapshot

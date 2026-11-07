@@ -41,6 +41,10 @@ struct NodeInspector: View {
                         PartCutFaceControls(store: store, part: part, graphTarget: target)
                             .id(snapshot.documentIdentity)
                             .disabled(!store.canEditGraphPartCrossSection(target))
+                        PartDeformationControls(store: store, part: part, graphTarget: target)
+                            .id(snapshot.selectionRevision)
+                            .id(snapshot.documentIdentity)
+                            .disabled(!store.canEditGraphPartCrossSection(target))
                     }
                 }
             }
