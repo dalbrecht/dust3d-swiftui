@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
+
 - Reveal selected generated joints by expanding their hierarchy ancestors, with window-owned disclosure and guarded scrolling (#367).
 
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).

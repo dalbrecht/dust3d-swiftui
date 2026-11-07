@@ -415,6 +415,18 @@ public actor EditorSession {
     ) throws -> EditorSnapshot {
         try placeComponents(at: .into(parentID: parent.componentID), target: target)
     }
+    /// Apply the captured canvas isolation or restoration plan as one undo transaction.
+    /// - Parameter target: Exact source, selection, constraint and component/part membership intent.
+    /// - Returns: Current snapshot with unchanged geometry/material preview identities.
+    /// - Throws: Cancellation, not-loaded, stale-target or original membership/document errors before publication.
+    /// - Example: `try await session.setCanvasPartIsolation(target: target)`.
+    public func setCanvasPartIsolation(target: CanvasPartIsolationTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            let commands = try target.commands(in: state.snapshot)
+            try state.apply(commands)
+        }.snapshot
+    }
+
     /// Change one flag on directly linked parts from the captured component selection.
     public func setSelectedComponentPartState(
         _ property: PartStateProperty, value: Bool, target: ComponentMeshSelectionTarget

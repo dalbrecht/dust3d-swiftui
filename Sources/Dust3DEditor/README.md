@@ -715,3 +715,13 @@ selection again after collapsing rows. Expansion belongs to the window session;
 color and weight refreshes preserve manual collapse. The hierarchy scrolls within
 its own bounded area. Physical scrolling, keyboard and VoiceOver acceptance remain
 outstanding; see [ADR 0172](../../docs/adr/0172-generated-joint-reveal.md).
+
+Use Canvas > Hide Other Parts in Canvas, or the part/component inspector, to hide
+parts outside one resolved component subtree. Existing visibility inside the
+subtree is preserved. When all outside parts are hidden, the command becomes
+Show All Parts in Canvas. Show All also works without a selection and restores
+parts when hierarchy metadata prevents isolation. Changes use one Undo step and
+preserve locked/disabled settings and mesh inputs. Native keyboard access uses
+the Canvas menu; the Qt Shift-H shortcut is not added as a global text binding.
+Physical keyboard/VoiceOver acceptance remains outstanding. See
+[ADR 0173](../../docs/adr/0173-canvas-part-isolation.md).
