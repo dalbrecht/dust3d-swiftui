@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open a paused replay step as a new editable document.
+
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
