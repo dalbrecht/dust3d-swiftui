@@ -22,8 +22,7 @@ public enum PartMirrorError: Error, Equatable, Sendable { case staleTarget }
 extension EditorSnapshot {
     /// Inspect one Model owner directly, including shared component links.
     public var mirrorInspectorPart: DocumentPart? {
-        let explicitPart = selectedPartID.flatMap { id in parts.first { $0.id.utf8.elementsEqual(id.utf8) } }
-        guard let part = explicitPart ?? selectedLinkedComponentPart,
+        guard let part = selectedPart ?? selectedLinkedComponentPart,
             part.target == .model
         else { return nil }
         return part
