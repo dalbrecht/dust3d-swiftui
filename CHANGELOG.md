@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Print the authored rig templates as XML with the headless `-list-rigs` command.
+
 - Browse a component group’s direct children and navigate back through its breadcrumb.
 
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.

@@ -48,10 +48,17 @@ enum EditorCompositionRecoveryChannel {
     }
 }
 
-/// Posts bounded recovery requests requiring an exact process identity.
-/// No document data or destination paths are accepted through these channels.
+/// Handles headless requests before handing ordinary launches to SwiftUI.
 @main enum Dust3DEditorEntryPoint {
     @MainActor static func main() {
+        if let status = EditorRigListCommand.run(
+            arguments: CommandLine.arguments,
+            stdout: { try FileHandle.standardOutput.write(contentsOf: $0) },
+            stderr: { FileHandle.standardError.write(Data($0.utf8)) })
+        {
+            exit(status)
+        }
+
         let plan = EditorRecoveryDispatchPlan(
             mode: EditorLaunchMode(arguments: CommandLine.arguments),
             bundleIdentifier: Bundle.main.bundleIdentifier, requestID: UUID())
