@@ -12,6 +12,7 @@ import os
 final class EditorStore {
     private(set) var snapshot: EditorSnapshot? {
         didSet {
+            if componentBrowseGroupID != nil { reconcileComponentBrowse(previous: oldValue) }
             if let hover = boneEdgeHover, snapshot.map({ !hover.target.isCurrent(in: $0) }) ?? true {
                 boneEdgeHover = nil
             }
@@ -954,6 +955,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        changeComponentBrowseGroup(nil, reset: true)
         pendingComponentDrag = nil
         invalidateReferenceColors()
         referenceColorApplyToken = UUID()
@@ -1194,8 +1196,80 @@ final class EditorStore {
         guard let value = ComponentMeshSmoothingInput.value(text) else { return {} }
         return componentMeshAction(.smoothCutoffDegrees(value), target: target)
     }
+    private var componentBrowseGroupID: String?
+    private(set) var componentBrowseEpoch = UUID()
+
+    var componentGroupBrowse: ComponentGroupBrowse? {
+        guard let id = componentBrowseGroupID, let snapshot else { return nil }
+        return ComponentGroupBrowse(tree: snapshot.componentTree, groupID: id)
+    }
+
+    var canBrowseComponents: Bool { !isWorking && acceptedDocumentSource != nil }
+
+    func componentBrowseAction(_ groupID: String?, snapshot: EditorSnapshot) -> @MainActor () -> Void {
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let source = PartGraphSelectionContext(snapshot: snapshot)
+        let epoch = componentBrowseEpoch
+        return { [weak self] in
+            guard let self, self.canBrowseComponents, self.componentBrowseEpoch == epoch,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current)
+            else { return }
+            guard let groupID else {
+                self.changeComponentBrowseGroup(nil)
+                return
+            }
+            guard let group = ComponentGroupBrowse(tree: current.componentTree, groupID: groupID) else { return }
+            let retained = current.selectedComponentIDs.filter(group.contains)
+            if retained == current.selectedComponentIDs {
+                self.changeComponentBrowseGroup(groupID)
+                return
+            }
+            self.perform(
+                commits: false,
+                completion: { [weak self] succeeded in
+                    guard succeeded, let self, self.componentBrowseEpoch == epoch,
+                        let next = self.acceptedDocumentSource, source.isCurrent(in: next)
+                    else { return }
+                    self.changeComponentBrowseGroup(groupID)
+                },
+                { try await $0.selectComponents(retained, target: target) })
+        }
+    }
+
+    private func changeComponentBrowseGroup(_ groupID: String?, reset: Bool = false) {
+        guard reset || componentBrowseGroupID.map({ Data($0.utf8) }) != groupID.map({ Data($0.utf8) })
+        else { return }
+        componentBrowseGroupID = groupID
+        componentBrowseEpoch = UUID()
+        pendingComponentDrag = nil
+    }
+
+    private func reconcileComponentBrowse(previous: EditorSnapshot?) {
+        guard let current = snapshot, previous?.documentIdentity == current.documentIdentity,
+            let group = componentGroupBrowse, current.selectedComponentIDs.allSatisfy(group.contains)
+        else {
+            changeComponentBrowseGroup(nil)
+            return
+        }
+        if let hint = current.componentRevealHint, previous?.componentRevealHint != hint,
+            !group.contains(hint.componentID)
+        {
+            changeComponentBrowseGroup(nil)
+        }
+    }
+
+    func selectBrowsedComponents(_ ids: Set<String>, scopeEpoch: UUID) {
+        guard canBrowseComponents, componentBrowseEpoch == scopeEpoch,
+            componentGroupBrowse.map({ ids.allSatisfy($0.contains) }) != false
+        else { return }
+        selectComponents(ids)
+    }
+
     func canSelectAllVisibleComponents(_ target: ComponentSidebarSelectAllTarget) -> Bool {
-        guard !stopped, !isWorking, let snapshot, !target.ids.isEmpty else { return false }
+        guard !stopped, !isWorking, let snapshot, !target.ids.isEmpty,
+            target.scopeEpoch.map({ $0 == componentBrowseEpoch }) ?? (componentBrowseGroupID == nil),
+            componentGroupBrowse.map({ target.ids.allSatisfy($0.contains) }) != false
+        else { return false }
         return target.context.isCurrent(in: snapshot)
     }
 
@@ -2356,6 +2430,7 @@ final class EditorStore {
     }
 
     func stop() {
+        changeComponentBrowseGroup(nil)
         canvasGraphHoverCache = CanvasGraphHover.Cache()
         qtXMLFilePasteRequest = nil
         canvasProfileMotion = nil
