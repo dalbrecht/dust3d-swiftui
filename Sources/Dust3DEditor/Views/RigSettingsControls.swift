@@ -4,15 +4,20 @@ import SwiftUI
 /// Document-owned rig intent; this control never starts a skeleton or pose evaluator.
 struct RigSettingsControls: View {
     let store: EditorStore
+    private let isAssignmentPresented: @MainActor () -> Bool
     @State private var isExpanded: Bool
 
-    init(store: EditorStore, isExpanded: Bool = false) {
+    init(
+        store: EditorStore, isExpanded: Bool = false, isAssignmentPresented: @escaping @MainActor () -> Bool = { true }
+    ) {
         self.store = store
+        self.isAssignmentPresented = isAssignmentPresented
         _isExpanded = State(initialValue: isExpanded)
     }
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
+        let disclosure = $isExpanded
+        return DisclosureGroup(isExpanded: disclosure) {
             VStack(alignment: .leading, spacing: 8) {
                 if let settings = store.snapshot?.rigSettings {
                     Text("Template").font(.caption).foregroundStyle(.secondary)
@@ -39,7 +44,9 @@ struct RigSettingsControls: View {
                         Text("Unsupported template retained. Choose a template to replace it.")
                             .font(.caption).foregroundStyle(.primary)
                     }
-                    RigTemplateBoneBrowser(store: store, sourceType: settings.sourceRigType)
+                    RigTemplateBoneBrowser(store: store, sourceType: settings.sourceRigType) {
+                        disclosure.wrappedValue && isAssignmentPresented()
+                    }
                     Toggle(
                         "Head bone has eyelids",
                         isOn: Binding(

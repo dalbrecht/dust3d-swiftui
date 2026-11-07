@@ -34,13 +34,15 @@ final class RigAssignmentBrowserSelection {
         revision = UUID()
     }
 
-    func command(store: EditorStore, context: RigTemplateBrowserContext) -> RigAssignmentCommand? {
-        guard isVisible, let selectedName, context.contains(selectedName), let snapshot = store.snapshot,
+    func command(
+        store: EditorStore, context: RigTemplateBrowserContext, isPresented: @escaping @MainActor () -> Bool = { true }
+    ) -> RigAssignmentCommand? {
+        guard isVisible, isPresented(), let selectedName, context.contains(selectedName), let snapshot = store.snapshot,
             context.isCurrent(in: snapshot), store.canAssignTemplateBoneName(selectedName, target: context.assignment)
         else { return nil }
         let expectedRevision = revision
         return RigAssignmentCommand(store: store, name: selectedName, target: context.assignment) { [weak self] in
-            self?.isVisible == true && self?.revision == expectedRevision
+            self?.isVisible == true && self?.revision == expectedRevision && isPresented()
         }
     }
 }

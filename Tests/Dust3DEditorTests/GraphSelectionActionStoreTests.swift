@@ -32,6 +32,12 @@ private actor ContextPreviewCounter: EditorPreviewServing {
 }
 
 @MainActor final class GraphSelectionActionStoreTests: XCTestCase {
+    private final class RigPresentation {
+        var inspectorVisible = true
+        var selectionSection = true
+        var disclosureExpanded = true
+    }
+
     private func source() throws -> Dust3DDocument {
         try Dust3DDocument(
             snapshotXML: Data(
@@ -190,6 +196,43 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         value.undo()
         try await settle(value)
         XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testRigAssignmentCommandRechecksLiveInspectorAndDisclosureBeforeUnmount() async throws {
+        let xml = String(decoding: try source().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "<canvas>", with: "<canvas rigType='Biped'>")
+        let original = try Dust3DDocument(snapshotXML: Data(xml.utf8)).encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        value.selectEdge("ab")
+        try await settle(value)
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: try XCTUnwrap(value.snapshot))
+        let browser = RigAssignmentBrowserSelection()
+        browser.setVisible(true)
+        browser.select("Spine")
+        let presentation = RigPresentation()
+        let isPresented: @MainActor () -> Bool = {
+            presentation.inspectorVisible && presentation.selectionSection && presentation.disclosureExpanded
+        }
+        let retained = try XCTUnwrap(browser.command(store: value, context: context, isPresented: isPresented))
+
+        for field in [
+            \RigPresentation.inspectorVisible, \RigPresentation.selectionSection, \RigPresentation.disclosureExpanded,
+        ] {
+            presentation[keyPath: field] = false
+            XCTAssertNil(browser.command(store: value, context: context, isPresented: isPresented))
+            XCTAssertFalse(retained.invoke(in: value))
+            XCTAssertFalse(value.isWorking)
+            presentation[keyPath: field] = true
+        }
+
+        let current = try XCTUnwrap(browser.command(store: value, context: context, isPresented: isPresented))
+        XCTAssertTrue(current.invoke(in: value))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.edges.first?.boneName, "Spine")
+        XCTAssertTrue(value.canUndo)
     }
 
     func testRigAssignmentCommandRetiresOnSelectionAndFailedSource() async throws {

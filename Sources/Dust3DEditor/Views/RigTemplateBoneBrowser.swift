@@ -7,6 +7,7 @@ import SwiftUI
 struct RigTemplateBoneBrowser: View {
     let store: EditorStore
     let sourceType: String?
+    let isAssignmentPresented: @MainActor () -> Bool
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
         @Environment(GeneratedRigPreviewSession.self) private var restSession: GeneratedRigPreviewSession?
     #endif
@@ -22,7 +23,9 @@ struct RigTemplateBoneBrowser: View {
             return RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: snapshot)
         }
         let selectedName = browserSelection.selectedName
-        let assignment = context.flatMap { browserSelection.command(store: store, context: $0) }
+        let assignment = context.flatMap {
+            browserSelection.command(store: store, context: $0, isPresented: isAssignmentPresented)
+        }
         VStack(alignment: .leading, spacing: 8) {
             if let context, let snapshot {
                 let hierarchy = context.hierarchy
