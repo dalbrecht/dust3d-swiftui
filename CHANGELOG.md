@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
+
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
 
 - Apply one Qt XML fragment at launch with `-paste-xml` and explicit `.ds3` inputs, with one Undo step per newly opened eligible document.
