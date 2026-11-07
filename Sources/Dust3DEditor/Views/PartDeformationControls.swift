@@ -16,7 +16,7 @@ struct PartDeformationControls: View {
             if let value = part.isDeformationUnified {
                 Toggle(
                     "Unified deformation",
-                    isOn: Binding(get: { value }, set: setUnified)
+                    isOn: Binding(get: { value }, set: { setUnified($0) })
                 )
                 .accessibilityIdentifier("part-deformation-unified")
             } else {
@@ -80,7 +80,7 @@ private struct PartDeformationScaleControl: View {
                 Button("Reset Draft") { reset() }
                     .accessibilityLabel("Reset \(title.lowercased()) draft")
                 if let resetScale = resetScaleAction {
-                    Button("Reset to 1", action: resetScale)
+                    Button("Reset to 1") { resetScale() }
                         .accessibilityLabel("Reset \(title.lowercased()) to 1")
                         .disabled(part.deformationScale(property) == 1)
                 }

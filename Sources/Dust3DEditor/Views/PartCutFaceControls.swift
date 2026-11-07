@@ -45,13 +45,14 @@ struct PartCutFaceControls: View {
                     .focusedValue(\.editorTextEditing, true)
             }
             DisclosureGroup("Link profile…") {
-                PartProfileChooser(store: store, part: part, choose: applyProfile)
+                PartProfileChooser(store: store, part: part, choose: { applyProfile($0) })
             }
             if graphTarget != nil || store.snapshot?.allowsCutRotationPreset(for: part.id) == true {
                 LabeledContent("Quick rotation") {
                     HStack {
                         ForEach(PartCutRotationPreset.allCases, id: \.self) { preset in
-                            Button(action: presetAction(preset)) {
+                            let applyPreset = presetAction(preset)
+                            Button(action: { applyPreset() }) {
                                 Text("\(preset.rawValue)°").monospacedDigit()
                             }
                             .accessibilityLabel("Set cross-section rotation to \(preset.rawValue) degrees")
