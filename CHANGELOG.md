@@ -28,6 +28,8 @@
 
 - Paste native or Qt clipboard nodes into an explicitly chosen working group.
 
+- Start a blank document by drawing a first node, composing a reference image, or opening an existing document from the canvas.
+
 - Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
 
 - Reveal selected generated joints by expanding their hierarchy ancestors, with window-owned disclosure and guarded scrolling (#367).

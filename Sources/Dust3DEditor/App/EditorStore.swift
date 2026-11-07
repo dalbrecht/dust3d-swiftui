@@ -743,6 +743,28 @@ final class EditorStore {
         return ReferenceCompositionTarget(snapshot: source)
     }
 
+    func getStartedAdmission(fileIdentity: UUID) -> (@MainActor () -> Bool)? {
+        guard let source = getStartedSource(fileIdentity: fileIdentity) else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: source)
+        let tool = rotationInputContextID
+        let add = addModeID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] in
+            guard let self, let current = self.getStartedSource(fileIdentity: fileIdentity) else { return false }
+            return target.isCurrent(in: current) && self.rotationInputContextID == tool
+                && self.addModeID == add && self.referenceColorInteractionEpoch == interaction
+        }
+    }
+
+    private func getStartedSource(fileIdentity: UUID) -> EditorSnapshot? {
+        guard !isWorking, !isAddingNodes, !isMovingOrigin, !referenceColorInteractionActive,
+            let source = acceptedDocumentSource, case .success(let accepted) = recoveryLoadResult,
+            accepted.fileIdentity == fileIdentity, source.nodes.isEmpty, source.parts.isEmpty,
+            !source.document.hasReferenceImage
+        else { return nil }
+        return source
+    }
+
     var animationSnapshot: EditorAnimationSnapshot? {
         guard let source = acceptedDocumentSource, let value = animationValue,
             value.editor.documentIdentity == source.documentIdentity,
