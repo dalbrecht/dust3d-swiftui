@@ -111,28 +111,31 @@ final class EditorStore {
             self.selectWholePart(target, context: context)
         }
     }
+    @ObservationIgnored private var graphComponentRevealLookup: GraphComponentRevealLookup?
+
     func revealOwningComponentAction(
         _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil
     ) -> (@MainActor () -> Void)? {
-        guard let context, canRevealOwningComponent(target, context: context, profileLease: profileLease) else {
-            return nil
+        guard let context, let source = revealSource(context: context, profileLease: profileLease) else { return nil }
+        if graphComponentRevealLookup?.isCurrent(in: source) != true {
+            graphComponentRevealLookup = GraphComponentRevealLookup(snapshot: source)
         }
+        guard graphComponentRevealLookup?.contains(target, in: source) == true else { return nil }
         let modeID = addModeID
         return { [weak self] in
             guard let self, self.addModeID == modeID,
-                self.canRevealOwningComponent(target, context: context, profileLease: profileLease)
+                let current = self.revealSource(context: context, profileLease: profileLease),
+                current.canRevealOwningComponent(target)
             else { return }
             self.perform(commits: false) { try await $0.revealOwningComponent(target, context: context) }
         }
     }
 
-    private func canRevealOwningComponent(
-        _ target: PartGraphTarget, context: PartGraphSelectionContext, profileLease: UUID?
-    ) -> Bool {
-        guard ownsCanvasProfile(profileLease), !isWorking, !isAddingNodes, !isMovingOrigin, let snapshot,
-            context.isCurrent(in: snapshot)
-        else { return false }
-        return snapshot.canRevealOwningComponent(target)
+    private func revealSource(context: PartGraphSelectionContext, profileLease: UUID?) -> EditorSnapshot? {
+        guard ownsCanvasProfile(profileLease), !isWorking, !isAddingNodes, !isMovingOrigin,
+            let source = acceptedDocumentSource, context.isCurrent(in: source)
+        else { return nil }
+        return source
     }
 
     func selectComponentGraph(_ target: ComponentGraphSelectionTarget) {
@@ -1043,6 +1046,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        graphComponentRevealLookup = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil, reset: true)
         pendingComponentDrag = nil
@@ -1280,6 +1284,22 @@ final class EditorStore {
             }
         }
     }
+    func edgeSidebarSelectionAction(
+        _ id: String, context: PartGraphSelectionContext?
+    ) -> @MainActor (GraphSelectionMode) -> Void {
+        { [weak self] mode in
+            guard let self, self.canPickGraph, let context, let snapshot = self.snapshot,
+                context.isCurrent(in: snapshot), snapshot.edges.contains(where: { $0.id.utf8.elementsEqual(id.utf8) })
+            else { return }
+            if case .subtract = mode,
+                !snapshot.selectedEdgeIDs.contains(where: { $0.utf8.elementsEqual(id.utf8) })
+            {
+                return
+            }
+            self.selectGraph(nodes: [], edges: [id], mode: mode)
+        }
+    }
+
     func selectEdges(_ ids: Set<String>) {
         perform(commits: false, selectionOnly: true) { try await $0.selectEdges(ids) }
     }
@@ -2815,6 +2835,7 @@ final class EditorStore {
     }
 
     func stop() {
+        graphComponentRevealLookup = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil)
         canvasGraphHoverCache = CanvasGraphHover.Cache()
