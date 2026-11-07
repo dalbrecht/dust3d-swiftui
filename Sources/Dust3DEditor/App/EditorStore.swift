@@ -238,6 +238,7 @@ final class EditorStore {
         }
     }
     private(set) var canvasHeight: Double = 0
+    @ObservationIgnored private var canvasGraphHoverCache = CanvasGraphHover.Cache()
     private(set) var canvasGraphHover: CanvasGraphHover?
     var hoveredNodeID: String? {
         if case .node(let id) = canvasGraphHover { return id }
@@ -267,7 +268,7 @@ final class EditorStore {
             clearCanvasHover()
             return
         }
-        let hover = CanvasGraphHover.hit(at: point, projection: projection, snapshot: snapshot)
+        let hover = canvasGraphHoverCache.hit(at: point, projection: projection, snapshot: snapshot)
         if hover != canvasGraphHover { canvasGraphHover = hover }
     }
     var canAdjustSelectionRadius: Bool {
@@ -2037,6 +2038,7 @@ final class EditorStore {
     }
 
     func stop() {
+        canvasGraphHoverCache = CanvasGraphHover.Cache()
         canvasProfileMotion = nil
         boneEdgeHover = nil
         previewCameraCommand = nil
