@@ -23,6 +23,9 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     /// Known cross-section selection (Quad when absent/empty), or nil for unsupported source metadata.
     /// Linked selections retain the exact source identity, including an unresolved imported target.
     public let cutFace: CutFaceSelection?
+    /// Resolved archived part defaults and owned node overrides pointing to this Cut Face part.
+    /// Other part roles report zero.
+    public let cutFaceReferenceCount: Int
     /// Known finite rotation retained by the engine Float in half-turns (-1...1), zero by default, or nil when unsupported.
     public let cutRotation: Double?
     /// Known unified-deformation flag, false by default, or nil for unsupported source metadata.
@@ -72,12 +75,13 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
         id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool,
         modifiers: [PartModifierProperty: Bool], deformationScales: [PartDeformationProperty: Double],
         isDeformationUnified: Bool?, cutFace: CutFaceSelection?, cutRotation: Double?, target: PartTarget?,
-        isLoopInteriorFilled: Bool?, materials: [PartMaterialProperty: Double]
+        isLoopInteriorFilled: Bool?, materials: [PartMaterialProperty: Double], cutFaceReferenceCount: Int
     ) {
         self.materials = materials
         self.isLoopInteriorFilled = isLoopInteriorFilled
         self.target = target
         self.cutFace = cutFace
+        self.cutFaceReferenceCount = cutFaceReferenceCount
         self.cutRotation = cutRotation
         self.id = id
         self.name = name

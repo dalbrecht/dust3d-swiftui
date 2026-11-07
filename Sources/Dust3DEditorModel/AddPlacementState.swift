@@ -130,14 +130,48 @@ public struct AddPlacementState: Sendable {
         anchorPosition = anchor?.value.position
         anchorSceneRadius = inherited
         if let inherited { sceneRadius = inherited }
-        hiddenCoordinate =
-            projection.plane == .front
-            ? anchor?.value.position.z ?? snapshot.origin?.z ?? 0.5
-            : anchor?.value.position.x ?? snapshot.origin?.x ?? 0.5
+        hiddenCoordinate = Self.hiddenCoordinate(in: projection.plane, anchor: anchorPosition, origin: snapshot.origin)
         target = AddPlacementTarget(snapshot: snapshot, contextID: UUID())
         ghostPosition = nil
         ghostPoint = nil
         isActive = true
+    }
+
+    /// Wait for the new editing pane's geometry while retaining the current Add chain.
+    public mutating func suspendProjectionForProfileChange() {
+        guard isActive else { return }
+        hideGhost()
+        projection = nil
+    }
+
+    /// Attach a suspended Add chain to the new pane without carrying a click or pointer sample across.
+    public mutating func reproject(
+        snapshot: EditorSnapshot, projection: CanvasProjection, canvasHeight: Double
+    ) throws {
+        guard isActive, self.projection == nil, target?.isCurrent(in: snapshot) == true else {
+            throw EditorError.staleAddPlacement
+        }
+        let radius = sceneRadius / self.canvasHeight * canvasHeight
+        guard canvasHeight.isFinite, canvasHeight > 0, radius.isFinite, radius > 0 else {
+            throw EditorError.invalidAddPlacement
+        }
+        let probe = NodePosition(x: 0.5, y: 0.5, z: 0.5)
+        _ = try projection.position(at: projection.point(for: probe), hiddenCoordinate: 0.5)
+        self.projection = projection
+        self.canvasHeight = canvasHeight
+        sceneRadius = radius
+        anchorSceneRadius = anchorID == nil ? nil : radius
+        hiddenCoordinate = Self.hiddenCoordinate(in: projection.plane, anchor: anchorPosition, origin: snapshot.origin)
+        target = AddPlacementTarget(snapshot: snapshot, contextID: UUID())
+    }
+
+    private static func hiddenCoordinate(in plane: EditingPlane, anchor: NodePosition?, origin: NodePosition?)
+        -> Double
+    {
+        switch plane {
+        case .front: anchor?.z ?? origin?.z ?? 0.5
+        case .side: anchor?.x ?? origin?.x ?? 0.5
+        }
     }
 
     /// Update the visible ghost in constant time using the frozen projection and explicit hidden coordinate.
@@ -150,14 +184,15 @@ public struct AddPlacementState: Sendable {
         ghostPoint = point
     }
 
-    /// Add scene points to a visible cursor radius, with a 1-point preview minimum and no preview maximum.
+    /// Add scene points to a visible cursor radius, with no preview maximum.
+    /// A transferred preview already below one point never grows when shrinking.
     /// - Throws: `invalidAddPlacement` for nonfinite input/arithmetic. Hidden/inactive cursors are unchanged.
     public mutating func adjustRadius(by delta: Double) throws {
         guard delta.isFinite else { throw EditorError.invalidAddPlacement }
         guard isVisible else { return }
         let proposed = sceneRadius + delta
         guard proposed.isFinite else { throw EditorError.invalidAddPlacement }
-        sceneRadius = max(1, proposed)
+        sceneRadius = max(min(1, sceneRadius), proposed)
     }
 
     /// Hide preview geometry while retaining Add mode and the radius for its next visible cursor.

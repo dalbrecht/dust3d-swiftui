@@ -1,6 +1,16 @@
 import Dust3DDocument
 import Foundation
 
+extension EditorSnapshot {
+    package func canRotateSelection(in plane: EditingPlane) -> Bool {
+        let horizontal: EditingConstraint = plane == .front ? .x : .z
+        guard !locks.contains(.y) || !locks.contains(horizontal) else { return false }
+        let effective = transformNodes
+        // A single selected pivot needs the stored origin to choose descendants.
+        return (effective.count != 1 || origin != nil) && effective.contains(where: \.isEditable)
+    }
+}
+
 extension EditorState {
     /// Rotate the explicit graph's merged node/edge-endpoint set in one undo transaction.
     /// A single effective node with a supported stored origin pivots its connected descendants;

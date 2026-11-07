@@ -113,6 +113,8 @@
 
 - Drag component rows before or after siblings, into groups, or to the document root.
 
+- Select all visible component rows with Command-A when the component sidebar has focus (#386).
+
 - Place selected components before or after a sibling from the inspector, with one-step Undo.
 
 - Move selected components to a new parent in one Undo step while preserving hierarchy order.
@@ -308,6 +310,8 @@
 
 - Add lossless part cut-face preset/profile and rotation commands, cycle-safe history and regenerated previews; native controls follow separately.
 
+- Show how many part defaults and node overrides reference a Cut Face profile in the Part and linked Component inspectors.
+
 - Add bounded, lossless part width/thickness and unified-deformation commands with exact undo/redo, preserved fine scales and regenerated previews; native controls follow separately.
 
 - Add typed, undoable part subdivision, chamfer, rounded ends, extra rings and hard-join commands with lossless saving and regenerated previews; native inspector controls follow separately.
@@ -333,6 +337,8 @@
 - Add undoable component sibling ordering (Up, Down, Top and Bottom), with boundary availability, lossless archive preservation and mesh regeneration.
 
 - Add an ordered, collapsible component sidebar and name inspector with independent selection, linked-part inspection, undo/redo and lossless saving.
+
+- Keep the current Add chain and radius when switching the editing profile in the Side by Side workspace.
 
 - Add ordered component hierarchy inspection and lossless component-name commands to the document API, with atomic session history.
 

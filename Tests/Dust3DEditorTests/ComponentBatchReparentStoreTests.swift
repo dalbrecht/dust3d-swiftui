@@ -7,7 +7,7 @@ import XCTest
 
 @testable import Dust3DEditor
 
-private struct ReparentNoNative: EditorPreviewServing, ArchiveTextureBaking, ArchiveSourceTextureBaking,
+private struct ComponentSelectionNoNative: EditorPreviewServing, ArchiveTextureBaking, ArchiveSourceTextureBaking,
     ArchiveImportedMaterialLoading, AnimationCatalogLoading
 {
     func generate(_ data: Data, scopeID: UUID) async throws -> EditorPreviewResult { throw CancellationError() }
@@ -29,7 +29,7 @@ private struct ReparentNoNative: EditorPreviewServing, ArchiveTextureBaking, Arc
                 "<canvas><nodes/><components><component id='a'/><component id='b'/><component id='destination' name='Destination'><component id='stay'/></component></components></canvas>"
                     .utf8
             ))
-        let stub = ReparentNoNative()
+        let stub = ComponentSelectionNoNative()
         let store = EditorStore(
             preview: stub, materialBaker: stub, importedMaterialLoader: stub, sourceMaterialBaker: stub,
             animationCatalog: stub)
@@ -74,7 +74,7 @@ private struct ReparentNoNative: EditorPreviewServing, ArchiveTextureBaking, Arc
             snapshotXML: Data(
                 "<canvas><components><component id='single'/><component id='group'><component id='stay'/></component></components></canvas>"
                     .utf8))
-        let stub = ReparentNoNative()
+        let stub = ComponentSelectionNoNative()
         let store = EditorStore(
             preview: stub, materialBaker: stub, importedMaterialLoader: stub, sourceMaterialBaker: stub,
             animationCatalog: stub)
@@ -100,11 +100,48 @@ private struct ReparentNoNative: EditorPreviewServing, ArchiveTextureBaking, Arc
         XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
     }
 
-    private func settle(_ value: EditorStore) async throws {
-        for _ in 0..<300 {
-            if !value.isWorking && !value.isGenerating && !value.isBakingMaterials { return }
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        XCTFail("Batch reparent Store did not settle")
+}
+
+@MainActor
+private func settle(_ value: EditorStore) async throws {
+    for _ in 0..<300 {
+        if !value.isWorking && !value.isGenerating && !value.isBakingMaterials { return }
+        try await Task.sleep(for: .milliseconds(10))
+    }
+    XCTFail("Component Store did not settle")
+}
+
+@MainActor final class ComponentSidebarSelectAllStoreTests: XCTestCase {
+    func testSelectAllUsesVisibleRowsAndRejectsStaleTarget() async throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><components><component id='group'><component id='hidden'/></component><component id='leaf'/></components></canvas>"
+                    .utf8))
+        let stub = ComponentSelectionNoNative()
+        let store = EditorStore(
+            preview: stub, materialBaker: stub, importedMaterialLoader: stub, sourceMaterialBaker: stub,
+            animationCatalog: stub)
+        defer { store.stop() }
+        await store.load(data: document.encoded())
+        try await settle(store)
+        store.selectComponent("hidden")
+        try await settle(store)
+
+        let snapshot = try XCTUnwrap(store.snapshot)
+        let visibleRows = snapshot.componentTree.visibleRows(collapsing: ["group"])
+        let target = ComponentSidebarSelectAllTarget(snapshot: snapshot, visibleIDs: Set(visibleRows.map(\.id)))
+        XCTAssertTrue(store.canSelectAllVisibleComponents(target))
+        store.selectAllVisibleComponents(target)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedComponentIDs, ["group", "leaf"])
+        XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
+        XCTAssertFalse(store.canUndo)
+
+        store.selectComponent("leaf")
+        try await settle(store)
+        XCTAssertFalse(store.canSelectAllVisibleComponents(target))
+        store.selectAllVisibleComponents(target)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedComponentIDs, ["leaf"])
     }
 }

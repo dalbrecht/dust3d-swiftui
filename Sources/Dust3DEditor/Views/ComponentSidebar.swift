@@ -13,7 +13,10 @@ struct ComponentSidebar: View {
     var body: some View {
         let deletionSnapshot = store.snapshot
         return Group {
-            if let tree = store.snapshot?.componentTree, !tree.rows.isEmpty || tree.failureDescription != nil {
+            if let sidebarSnapshot = deletionSnapshot,
+                !sidebarSnapshot.componentTree.rows.isEmpty || sidebarSnapshot.componentTree.failureDescription != nil
+            {
+                let tree = sidebarSnapshot.componentTree
                 Divider()
                 HStack {
                     ComponentParentDropZone(store: store, parent: .root) {
@@ -88,6 +91,7 @@ struct ComponentSidebar: View {
                     ScrollViewReader { proxy in
                         let revealKey = revealScrollKey(tree: tree)
                         let documentIdentity = store.snapshot?.documentIdentity
+                        let visibleRows = tree.visibleRows(collapsing: disclosure.collapsedIDs)
                         List(
                             selection: Binding(
                                 get: { store.snapshot?.selectedComponentIDs ?? [] },
@@ -96,7 +100,7 @@ struct ComponentSidebar: View {
                                 }
                             )
                         ) {
-                            ForEach(tree.visibleRows(collapsing: disclosure.collapsedIDs)) { row in
+                            ForEach(visibleRows) { row in
                                 HStack(spacing: 4) {
                                     if row.hasChildren {
                                         Button {
@@ -156,6 +160,11 @@ struct ComponentSidebar: View {
                             }
                         }
                         .focusedValue(\.editorComponentSidebarFocus, true)
+                        .focusedValue(
+                            \.editorComponentSidebarSelectAll,
+                            ComponentSidebarSelectAllTarget(
+                                snapshot: sidebarSnapshot, visibleIDs: Set(visibleRows.map(\.id)))
+                        )
                         .onDeleteCommand {
                             guard let deletionSnapshot else { return }
                             store.componentDeletionAction(ComponentDeletionTarget(snapshot: deletionSnapshot))()
