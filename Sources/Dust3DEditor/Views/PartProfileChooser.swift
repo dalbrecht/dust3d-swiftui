@@ -5,6 +5,7 @@ import SwiftUI
 struct PartProfileChooser: View {
     let store: EditorStore
     let part: DocumentPart
+    var choose: (@MainActor (CutFaceSelection) -> Void)? = nil
     @State private var query = ""
 
     private var candidates: [DocumentPart] {
@@ -23,7 +24,11 @@ struct PartProfileChooser: View {
                     LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(candidates) { candidate in
                             Button {
-                                store.setPartCutFace(part.id, selection: .linkedPart(candidate.id))
+                                if let choose {
+                                    choose(.linkedPart(candidate.id))
+                                } else {
+                                    store.setPartCutFace(part.id, selection: .linkedPart(candidate.id))
+                                }
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(candidate.title).lineLimit(1)

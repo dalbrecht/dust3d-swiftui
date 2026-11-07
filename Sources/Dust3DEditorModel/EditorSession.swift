@@ -359,6 +359,25 @@ public actor EditorSession {
         }
     }
 
+    package func editGraphPartCrossSection(
+        _ edit: GraphPartCrossSectionEdit, target: GraphPartCrossSectionTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            let command: DocumentCommand
+            switch edit {
+            case .profile(let selection): command = .setPartCutFace(id: part.id, selection: selection)
+            case .rotation(let value): command = .setPartCutRotation(id: part.id, rotation: value)
+            case .deformationScale(let property, let value):
+                command = .setPartDeformationScale(id: part.id, property: property, value: value)
+            case .deformationUnified(let value): command = .setPartDeformationUnified(id: part.id, value: value)
+            }
+            try state.apply([command])
+        }.snapshot
+    }
+
     /// Assign supported roles and perform any necessary stitching grouping in one undo/publication.
     /// Fresh group identities belong to this session, never the pure document planner.
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws
@@ -909,17 +928,31 @@ public actor EditorSession {
     /// - Returns: A snapshot with one undo step; identical successful text advances per-window placement.
     /// - Throws: Typed validation/load errors atomically; failed text does not advance placement bookkeeping.
     public func paste(snapshotXML: Data) throws -> EditorSnapshot {
-        try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: false)
+        try paste(snapshotXML: snapshotXML, parentID: nil, target: nil)
+    }
+
+    package func paste(snapshotXML: Data, parentID: String?, target: CanvasAdjustmentTarget?) throws -> EditorSnapshot {
+        try validatePasteSource(parentID: parentID, target: target)
+        return try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: false, parentID: parentID)
     }
 
     /// Apply a selected XML file only to the source captured before presenting its picker.
-    package func pasteQtXMLFile(_ snapshotXML: Data, target: CanvasAdjustmentTarget) throws -> EditorSnapshot {
+    package func pasteQtXMLFile(
+        _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil
+    ) throws -> EditorSnapshot {
         try Task.checkCancellation()
-        guard let state, target.isCurrent(in: state.snapshot) else { throw QtXMLFilePasteError.staleTarget }
-        return try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: true)
+        guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
+            throw QtXMLFilePasteError.staleTarget
+        }
+        if let parentID, state.snapshot.addPlacementGroup(parentID) == nil {
+            throw DocumentError.invalidComponentStructure
+        }
+        return try pasteQtSnapshot(snapshotXML, allowsEmptyGraph: true, parentID: parentID)
     }
 
-    private func pasteQtSnapshot(_ snapshotXML: Data, allowsEmptyGraph: Bool) throws -> EditorSnapshot {
+    private func pasteQtSnapshot(_ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?) throws
+        -> EditorSnapshot
+    {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
         let document = try Dust3DDocument(snapshotXML: snapshotXML)
@@ -938,7 +971,7 @@ public actor EditorSession {
         }
         let fragment = try NodeClipboard(document: document, selectedNodeIDs: Set(contents.nodes.map(\.id)))
         let payload = try NodeClipboardPayload(fragment: fragment, identifier: identifier)
-        let next = try paste(payload: payload)
+        let next = try paste(payload: payload, parentID: parentID)
         lastQtTransfer = (Data(snapshotXML), identifier)
         return next
     }
@@ -949,12 +982,26 @@ public actor EditorSession {
     /// - Returns: The committed snapshot with only explicitly copied nodes selected.
     /// - Throws: Load, transport, archive or graph validation errors atomically; failed pastes do not advance placement.
     public func paste(data: Data) throws -> EditorSnapshot {
-        try Task.checkCancellation()
-        guard state != nil else { throw EditorError.notLoaded }
-        return try paste(payload: NodeClipboardPayload(data: data))
+        try paste(data: data, parentID: nil, target: nil)
     }
 
-    private func paste(payload: NodeClipboardPayload) throws -> EditorSnapshot {
+    package func paste(data: Data, parentID: String?, target: CanvasAdjustmentTarget?) throws -> EditorSnapshot {
+        try validatePasteSource(parentID: parentID, target: target)
+        return try paste(payload: NodeClipboardPayload(data: data), parentID: parentID)
+    }
+
+    private func validatePasteSource(parentID: String?, target: CanvasAdjustmentTarget?) throws {
+        try Task.checkCancellation()
+        guard let state else { throw EditorError.notLoaded }
+        if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+            throw WorkingGroupPasteError.staleTarget
+        }
+        if let parentID, state.snapshot.addPlacementGroup(parentID) == nil {
+            throw DocumentError.invalidComponentStructure
+        }
+    }
+
+    private func paste(payload: NodeClipboardPayload, parentID: String?) throws -> EditorSnapshot {
         guard let state else { throw EditorError.notLoaded }
         let fragment = payload.fragment
         let sourceNodes = Set(try fragment.document.editorContents().nodes.map(\.id))
@@ -973,11 +1020,12 @@ public actor EditorSession {
         }
         let selected = Set(fragment.selectedNodeIDs.compactMap { identities[$0] })
         let next = try updateWithResult(checkCancellationBeforePublication: true) { state in
-            try state.apply([
-                .pasteNodes(
-                    clipboard: fragment, identities: identities,
-                    offset: .init(x: 0, y: distance, z: distance), partitions: partitions)
-            ])
+            try state.apply(
+                [
+                    .pasteNodes(
+                        clipboard: fragment, identities: identities,
+                        offset: .init(x: 0, y: distance, z: distance), partitions: partitions)
+                ], pasteParentID: parentID)
             try state.select(selected)
         }.snapshot
         lastPasteIdentifier = payload.identifier
@@ -1064,4 +1112,14 @@ private enum ComponentGroupingError: LocalizedError {
     var errorDescription: String? { "The document or component selection changed. Group the components again." }
 }
 
-package enum QtXMLFilePasteError: Error, Equatable, Sendable { case staleTarget }
+package enum WorkingGroupPasteError: LocalizedError, Equatable, Sendable {
+    case staleTarget
+
+    package var errorDescription: String? { "The clipboard destination changed. Paste again." }
+}
+
+package enum QtXMLFilePasteError: LocalizedError, Equatable, Sendable {
+    case staleTarget
+
+    package var errorDescription: String? { "The XML paste destination changed. Choose the file again." }
+}

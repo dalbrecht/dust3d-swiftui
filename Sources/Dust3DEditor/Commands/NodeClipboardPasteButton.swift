@@ -19,18 +19,20 @@ struct NodeClipboardPasteButton: View {
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     let store: EditorStore?
     var body: some View {
+        let request = store?.clipboardPasteRequest()
         PasteButton(payloadType: NodeClipboardTransfer.self) { values in
             guard
                 EditorCommandScope.allowsGraphShortcuts(
                     animationFocus: isAnimationFocused == true, nativeTextFocus: false),
-                let value = values.first
+                let request, let value = values.first
             else { return }
             if value.isQtText {
-                store?.pasteQtNodes(snapshotXML: value.data)
+                store?.pasteQtNodes(snapshotXML: value.data, request: request)
             } else {
-                store?.pasteNodes(data: value.data)
+                store?.pasteNodes(data: value.data, request: request)
             }
         }
-        .disabled(isAnimationFocused == true || store?.canSave != true)
+        .id(request)
+        .disabled(isAnimationFocused == true || store?.canSave != true || request == nil)
     }
 }
