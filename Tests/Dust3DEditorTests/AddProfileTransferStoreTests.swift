@@ -193,6 +193,68 @@ private struct AddProfileTransferNoNative: EditorPreviewServing, ArchiveTextureB
         }
     }
 
+    func testAddEdgeArbitrationSuppressesOnlyCloserVisibleTaperedHitsAndUndoIsExact() async throws {
+        enum Click: CaseIterable {
+            case edgeMidpoint, exactNode, nearMiss, hiddenEdge, equalCenters
+        }
+        for click in Click.allCases {
+            let edgeY = click == .equalCenters ? ".5" : ".51"
+            let hidden = click == .hiddenEdge ? "visible='false'" : ""
+            let source = try Dust3DDocument(
+                snapshotXML: Data(
+                    """
+                    <canvas><nodes>
+                    <node id='anchor' partId='p' x='.1' y='.5' z='.4' radius='.1'/>
+                    <node id='target' partId='q' x='.5' y='.5' z='.4' radius='.1'/>
+                    <node id='from' partId='r' x='.32' y='\(edgeY)' z='.4' radius='.1'/>
+                    <node id='to' partId='r' x='.68' y='\(edgeY)' z='.4' radius='.1'/>
+                    </nodes><edges><edge id='crossing' from='from' to='to' partId='r'/></edges>
+                    <parts><part id='p'/><part id='q'/><part id='r' \(hidden)/></parts></canvas>
+                    """.utf8))
+            let stub = AddProfileTransferNoNative()
+            let store = EditorStore(
+                preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+                sourceMaterialBaker: stub, animationCatalog: stub)
+            defer { store.stop() }
+            await store.load(data: source.encoded())
+            store.select("anchor")
+            try await settle(store)
+            store.setCanvasContext(
+                projection: .init(bounds: store.bounds, plane: .front, width: 400, height: 300),
+                width: 400, height: 300)
+            store.beginAddMode()
+            let projection = try XCTUnwrap(store.frozenAddProjection)
+            let target = projection.point(for: try source.node(id: "target").position)
+            let edge = projection.point(for: .init(x: 0.5, y: try XCTUnwrap(Double(edgeY)), z: 0.4))
+            let point: CanvasPoint
+            switch click {
+            case .exactNode, .equalCenters: point = target
+            case .nearMiss: point = .init(x: edge.x, y: edge.y + (edge.y > target.y ? 6 : -6))
+            case .edgeMidpoint, .hiddenEdge: point = edge
+            }
+            XCTAssertLessThan(hypot(point.x - target.x, point.y - target.y), 18, "\(click)")
+            store.updateAddPointer(at: point, modeID: store.addModeID)
+            store.placeAddNode(at: point, modeID: store.addModeID)
+            try await settle(store)
+            let snapshot = try XCTUnwrap(store.snapshot)
+            let created = try XCTUnwrap(snapshot.edges.first { $0.id != "crossing" })
+            let endpoint = created.fromID == "anchor" ? created.toID : created.fromID
+            if click == .edgeMidpoint {
+                XCTAssertNotEqual(endpoint, "target")
+                XCTAssertEqual(snapshot.nodes.count, 5)
+                XCTAssertTrue(store.isAddingNodes)
+            } else {
+                XCTAssertEqual(endpoint, "target", "\(click)")
+                XCTAssertEqual(snapshot.nodes.count, 4, "\(click)")
+                XCTAssertFalse(store.isAddingNodes, "\(click)")
+            }
+            store.undo()
+            try await settle(store)
+            XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded(), "\(click)")
+            XCTAssertFalse(store.canUndo, "\(click)")
+        }
+    }
+
     private func settle(_ store: EditorStore) async throws {
         for _ in 0..<300 {
             if !store.isWorking { return }
