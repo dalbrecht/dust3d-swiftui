@@ -2,8 +2,10 @@ import Dust3DKit
 import SwiftUI
 
 struct EditorGeometryExportAction {
+    let owner: EditorStore
     let canPerform: Bool
     let perform: @MainActor (DocumentExportFormat) -> Void
+    let cancel: (@MainActor () -> Void)?
 }
 
 private struct EditorGeometryExportActionKey: FocusedValueKey { typealias Value = EditorGeometryExportAction }
