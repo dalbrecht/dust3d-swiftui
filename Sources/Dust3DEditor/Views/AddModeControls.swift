@@ -31,7 +31,8 @@ struct AddModeControls: View {
                     Text("Connection unavailable: \(notice)").font(.caption).foregroundStyle(.secondary)
                         .accessibilityLabel("Connection fallback: \(notice)")
                 }
-                Button("Preview at Canvas Center") { store.previewAddAtCanvasCenter() }.disabled(store.isWorking)
+                Button("Preview at Canvas Center") { store.previewAddAtCanvasCenter() }
+                    .disabled(store.isWorking || store.frozenAddProjection == nil)
                 HStack {
                     Button("Left") { store.nudgeAddPreview(x: -16, y: 0) }
                     Button("Right") { store.nudgeAddPreview(x: 16, y: 0) }
