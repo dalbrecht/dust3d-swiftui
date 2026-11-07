@@ -5,10 +5,10 @@ import XCTest
 @testable import Dust3DEditorModel
 
 final class AddPlacementTests: XCTestCase {
-    private func document(state: String = "") throws -> Dust3DDocument {
+    private func document(state: String = "", extraComponents: String = "") throws -> Dust3DDocument {
         try Dust3DDocument(
             snapshotXML: Data(
-                "<canvas originX='0.2' originY='0.3' originZ='0.4'><nodes><node id='a' partId='p' x='0' y='0' z='0.7' radius='0.1'/><node id='b' partId='p' x='1' y='1' z='0.8' radius='0.2'/><node id='c' partId='p' x='2' y='2' z='0.9' radius='0.3'/></nodes><edges><edge id='ab' partId='p' from='a' to='b'/><edge id='bc' partId='p' from='b' to='c'/></edges><parts><part id='p' \(state)/></parts><components><component id='group'><component id='component' linkData='p' linkDataType='partId'/></component></components></canvas>"
+                "<canvas originX='0.2' originY='0.3' originZ='0.4'><nodes><node id='a' partId='p' x='0' y='0' z='0.7' radius='0.1'/><node id='b' partId='p' x='1' y='1' z='0.8' radius='0.2'/><node id='c' partId='p' x='2' y='2' z='0.9' radius='0.3'/></nodes><edges><edge id='ab' partId='p' from='a' to='b'/><edge id='bc' partId='p' from='b' to='c'/></edges><parts><part id='p' \(state)/></parts><components><component id='group'><component id='component' linkData='p' linkDataType='partId'/></component>\(extraComponents)</components></canvas>"
                     .utf8))
     }
     private func projection(_ snapshot: EditorSnapshot, plane: EditingPlane = .front) -> CanvasProjection {
@@ -101,6 +101,49 @@ final class AddPlacementTests: XCTestCase {
             XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
             XCTAssertFalse(state.snapshot.canUndo)
         }
+    }
+
+    func testExplicitRootAndWorkingGroupOverrideTransientComponentSelection() throws {
+        let original = try document()
+        for (destination, parentID) in [
+            (AddPlacementDestination.documentRoot, nil),
+            (.group("group"), "group"),
+        ] {
+            var state = try EditorState(document: original)
+            try state.selectComponent(destination == .documentRoot ? "group" : nil)
+            let projected = projection(state.snapshot)
+            var ghost = AddPlacementState()
+            try ghost.begin(
+                snapshot: state.snapshot, projection: projected, canvasHeight: 400, destination: destination)
+            try ghost.updatePointer(projected.point(for: .init(x: 3, y: 4, z: 0)))
+            let request = try XCTUnwrap(ghost.request())
+            _ = try state.placeAddNode(request, identities: ids("x"))
+            let component = try XCTUnwrap(state.snapshot.componentTree.rows.first { $0.id == "componentx" })
+            XCTAssertEqual(component.component.parentID, parentID)
+            try state.undo()
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            XCTAssertFalse(state.snapshot.canUndo)
+        }
+    }
+
+    func testWorkingGroupIsExactAndDoesNotReparentAnAnchoredChain() throws {
+        let document = try document(extraComponents: "<component id='e\u{301}'/>")
+        var state = try EditorState(document: document)
+        let projected = projection(state.snapshot)
+        var ghost = AddPlacementState()
+        XCTAssertThrowsError(
+            try ghost.begin(
+                snapshot: state.snapshot, projection: projected, canvasHeight: 400, destination: .group("\u{e9}")))
+        try state.select("a")
+        try ghost.begin(
+            snapshot: state.snapshot, projection: projected, canvasHeight: 400, destination: .group("e\u{301}"))
+        try ghost.updatePointer(projected.point(for: .init(x: 3, y: 4, z: 0)))
+        let request = try XCTUnwrap(ghost.request())
+        XCTAssertNil(request.parentID)
+        _ = try state.placeAddNode(request, identities: ids("x"))
+        XCTAssertEqual(state.snapshot.nodes.last?.partID, "p")
+        XCTAssertEqual(state.snapshot.componentTree.rows.first { $0.id == "component" }?.component.parentID, "group")
+        XCTAssertFalse(state.snapshot.componentTree.rows.contains { $0.id == "componentx" })
     }
 
     func testDegreeTwoFallsBackToNewPartInsideCapturedGroup() throws {

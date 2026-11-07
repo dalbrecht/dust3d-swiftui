@@ -48,6 +48,26 @@ struct ComponentSidebar: View {
                             ComponentBatchPartStateMenu(
                                 store: store, target: ComponentMeshSelectionTarget(snapshot: snapshot))
                         }
+                        if let groupID = sidebarSnapshot.selectedComponentID,
+                            sidebarSnapshot.addPlacementGroup(groupID) != nil
+                        {
+                            Button(
+                                "Set Working Group",
+                                action: store.workingGroupAction(.group(groupID), snapshot: sidebarSnapshot)
+                            )
+                            .disabled(store.addPlacementDestination == .group(groupID))
+                        }
+                        Button(
+                            "Use Document Root",
+                            action: store.workingGroupAction(.documentRoot, snapshot: sidebarSnapshot)
+                        )
+                        .disabled(store.addPlacementDestination == .documentRoot)
+                        Button(
+                            "Use Selected Group Automatically",
+                            action: store.workingGroupAction(.selection, snapshot: sidebarSnapshot)
+                        )
+                        .disabled(store.addPlacementDestination == .selection)
+                        Divider()
                         Button("Group Selected Components") { store.groupSelectedComponents() }
                             .disabled(!store.canGroupComponents)
                         if let snapshot = store.snapshot {
@@ -77,6 +97,9 @@ struct ComponentSidebar: View {
                     .accessibilityLabel("Component tree actions")
                     .disabled(store.isWorking)
                 }.padding(12)
+                Label("Add destination: \(store.addPlacementDestinationTitle)", systemImage: "folder.badge.plus")
+                    .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
+                    .help("Sets the destination for new parts. Extending an existing chain keeps its part.")
                 if let count = store.snapshot?.selectedComponentIDs.count, count > 1 {
                     Text("\(count) components selected")
                         .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
