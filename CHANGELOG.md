@@ -4,6 +4,8 @@
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
+- Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
+
 - Browse a component group’s direct children and navigate back through its breadcrumb.
 
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
@@ -29,6 +31,8 @@
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
 
 - Keep a working component group as the destination for new parts while graph selection changes.
+
+- Paste native or Qt clipboard nodes into an explicitly chosen working group.
 
 - Start a blank document by drawing a first node, composing a reference image, or opening an existing document from the canvas.
 

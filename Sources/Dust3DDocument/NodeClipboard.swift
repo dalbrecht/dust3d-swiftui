@@ -146,7 +146,8 @@ enum NodeClipboardMutation {
 
     static func paste(
         _ clipboard: NodeClipboard, identities: [String: String], offset: NodePosition,
-        into model: XMLDocument, contents: DocumentContents, namespaceBudget: inout DocumentXML.NamespaceBudget
+        into model: XMLDocument, contents: DocumentContents, namespaceBudget: inout DocumentXML.NamespaceBudget,
+        parentID: String?
     ) throws {
         let fragment = try XMLDocument(data: clipboard.document.modelXML, options: [.nodePreserveAll])
         guard let root = model.rootElement(), let sourceRoot = fragment.rootElement(),
@@ -156,6 +157,20 @@ enum NodeClipboardMutation {
             [offset.x, offset.y, offset.z].allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 })
         else { throw DocumentError.invalidNode }
         guard root.elements(forName: "components").count <= 1 else { throw DocumentError.invalidNode }
+        let parent: XMLElement?
+        if let parentID {
+            guard
+                try ComponentHierarchy.read(model).contains(where: {
+                    $0.id.utf8.elementsEqual(parentID.utf8) && $0.isGroup
+                }),
+                let group = PartSplitting.componentElements(model).first(where: {
+                    $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(parentID.utf8) == true
+                })
+            else { throw DocumentError.invalidComponentStructure }
+            parent = group
+        } else {
+            parent = nil
+        }
         let existingElements = semanticElements(model)
         let existingIDs = existingElements.compactMap { $0.attribute(forName: "id")?.stringValue }
         let existing = Set(existingIDs.map { CutFaceLinks.canonicalID($0) ?? $0 })
@@ -245,7 +260,9 @@ enum NodeClipboardMutation {
         }
         for (containerName, children) in transfers {
             let container: XMLElement
-            if let existing = root.elements(forName: containerName).first {
+            if containerName == "components", let parent {
+                container = parent
+            } else if let existing = root.elements(forName: containerName).first {
                 container = existing
             } else {
                 container = XMLElement(name: containerName)
