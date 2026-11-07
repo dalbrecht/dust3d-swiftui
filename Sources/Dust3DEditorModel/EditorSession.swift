@@ -4,6 +4,7 @@ import Foundation
 /// Serializes XML parsing and commands away from the UI actor. A window owns one session.
 public actor EditorSession {
     private var state: EditorState?
+    private var hasAcceptedSource = false
     private var selectedAnimationID: String?
     private var lastPasteIdentifier: String?
     private var pasteOrdinal = 0
@@ -13,9 +14,11 @@ public actor EditorSession {
 
     public func open(data: Data) throws -> EditorSnapshot {
         try Task.checkCancellation()
+        hasAcceptedSource = false
         let next = try EditorState(document: Dust3DDocument(data: data))
         try Task.checkCancellation()
         state = next
+        hasAcceptedSource = true
         selectedAnimationID = nil
         lastPasteIdentifier = nil
         pasteOrdinal = 0
@@ -309,6 +312,20 @@ public actor EditorSession {
         }
     }
 
+    /// Apply one taper field to the original editable Model node without changing its position or radius.
+    package func setNodeDeformationScale(
+        _ property: PartDeformationProperty, value: Double, nodeID: String, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try update { state in
+            let snapshot = state.snapshot
+            guard target.isCurrent(in: snapshot), snapshot.allowsNodeDeformation(for: nodeID) else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.apply([.setNodeDeformationScale(id: nodeID, property: property, value: value)])
+            try Task.checkCancellation()
+        }
+    }
+
     /// Restore just one saved deformation scale on the originally inspected Model part.
     package func resetPartDeformationScale(
         _ property: PartDeformationProperty, partID: String, target: CanvasAdjustmentTarget
@@ -397,6 +414,20 @@ public actor EditorSession {
             try state.editComponentWrapBinding(choice, target: target)
         }
         return result.snapshot
+    }
+
+    package func setGraphPartShape(
+        _ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard GraphPartShapeTarget.properties.contains(property) else {
+                throw GraphPartShapeError.unsupportedModifier
+            }
+            guard target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw GraphPartShapeError.staleTarget
+            }
+            try state.apply([.setPartModifier(id: part.id, property: property, value: value)])
+        }.snapshot
     }
 
     /// Inspect a component independently of nodes, edges and parts; selection is window-local.
@@ -572,7 +603,10 @@ public actor EditorSession {
     public func applyReferenceComposition(
         png: Data, origin: NodePosition?, target: ReferenceCompositionTarget
     ) throws -> EditorSnapshot {
-        try update { try $0.applyReferenceComposition(png: png, origin: origin, target: target) }
+        try update {
+            guard hasAcceptedSource else { throw EditorError.staleReferenceComposition }
+            try $0.applyReferenceComposition(png: png, origin: origin, target: target)
+        }
     }
 
     /// Rotate connected descendants around the selected pivot without changing selection or radii.
@@ -761,10 +795,19 @@ public actor EditorSession {
 
     /// Atomically apply a graph transaction; cancellation is checked before it begins.
     public func apply(_ commands: [DocumentCommand], selecting id: String? = nil) throws -> EditorSnapshot {
-        try update { state in
+        try apply(commands, selecting: id, target: nil)
+    }
+
+    package func apply(
+        _ commands: [DocumentCommand], selecting id: String?, target: CanvasAdjustmentTarget?
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: target != nil) { state in
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw EditorError.staleCanvasAdjustment
+            }
             let prepared = try GraphCommandPreparation.normalizingDeletions(commands, document: state.snapshot.document)
             try state.apply(prepared, selecting: id)
-        }
+        }.snapshot
     }
 
     /// Commit a projected origin gesture only while its document, revision and locks still match.
@@ -924,6 +967,7 @@ public actor EditorSession {
     public func placeAddNode(_ request: AddPlacementRequest) throws -> AddPlacementReceipt {
         try Task.checkCancellation()
         guard var next = state else { throw EditorError.notLoaded }
+        guard hasAcceptedSource else { throw EditorError.staleAddPlacement }
         let result = try next.placeAddNode(
             request,
             identities: .init(

@@ -57,13 +57,13 @@ struct EditorRootView: View {
                     Text("Nodes").font(.headline)
                     Spacer()
                     Menu {
-                        Button("Add Node") { store.addNode() }.disabled(!store.canAddNode)
-                        Button("New Part") { store.addNode(newPart: true) }
+                        Button("Add Node", action: store.addNodeAction()).disabled(!store.canAddNode)
+                        Button("New Part", action: store.addNodeAction(newPart: true))
                     } label: {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("Create node or part")
-                    .disabled(store.isWorking || store.snapshot == nil)
+                    .disabled(!store.canAddNewPart)
                 }.padding(12)
                 Divider()
                 List(selection: Binding(get: { store.snapshot?.selectedIDs ?? [] }, set: { store.select($0) })) {
@@ -124,6 +124,8 @@ struct EditorRootView: View {
                         .help("Drag the origin marker; Escape cancels. Node picking resumes when this mode is off.")
                         .padding(.horizontal, 12).padding(.bottom, 8)
                         ReferenceImageControls(store: store)
+                            .padding(.horizontal, 12).padding(.bottom, 8)
+                        EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
                         CanvasProfilePanes(store: store)
