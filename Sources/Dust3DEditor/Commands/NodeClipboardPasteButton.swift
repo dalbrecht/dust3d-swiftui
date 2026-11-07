@@ -33,6 +33,6 @@ struct NodeClipboardPasteButton: View {
             }
         }
         .id(request)
-        .disabled(isAnimationFocused == true || request == nil)
+        .disabled(isAnimationFocused == true || store?.canSave != true || request == nil)
     }
 }
