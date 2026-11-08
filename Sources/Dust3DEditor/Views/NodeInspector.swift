@@ -39,6 +39,14 @@ struct NodeInspector: View {
                 }
             }
             if let snapshot = store.snapshot {
+                let roleTarget = GraphPartRoleTarget(snapshot: snapshot)
+                if let part = roleTarget.part {
+                    DisclosureGroup("Owning Part Role") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartTargetControls(store: store, part: part, graphTarget: roleTarget)
+                            .disabled(!store.canEditGraphPartRole(roleTarget))
+                    }
+                }
                 let target = GraphPartShapeTarget(snapshot: snapshot)
                 if let part = target.part {
                     DisclosureGroup("Owning Part Shape") {
@@ -49,9 +57,9 @@ struct NodeInspector: View {
                         }
                         .disabled(!store.canEditGraphPartShape(target))
                     }
-                    .help("Change subdivision, chamfer or rounded ends on \(part.title). Each edit is one Undo step.")
+                    .help("Edit shape settings for \(part.title). Each edit is one Undo step.")
                 }
-                let crossSectionTarget = GraphPartCrossSectionTarget(snapshot: snapshot)
+                let crossSectionTarget = GraphPartCrossSectionTarget(owner: roleTarget)
                 if let component = crossSectionTarget.component,
                     let equipmentTarget = crossSectionTarget.equipmentSlotTarget
                 {
