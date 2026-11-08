@@ -64,7 +64,7 @@
 
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
 
-- Connect to the nearest existing node in Add mode when node hit areas overlap.
+- Connect to the nearest existing node in Add mode when node hit areas overlap. A closer edge midpoint takes precedence when the pointer hits its tapered edge.
 
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
 
