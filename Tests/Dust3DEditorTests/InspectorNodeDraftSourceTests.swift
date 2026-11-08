@@ -17,15 +17,26 @@ final class InspectorNodeDraftSourceTests: XCTestCase {
                 """.utf8))
     }
 
+    @MainActor
     func testTaperMetadataDoesNotChangeNumericDraftSourceButGeometryDoes() throws {
         var state = try EditorState(document: document())
         try state.select("a")
         let original = try XCTUnwrap(InspectorNodeDraftSource(state.snapshot))
+        let draft = InspectorNodeDraft()
+        draft.synchronize(to: original)
+        draft.x = 0.8125
+        let resetID = draft.resetID
         try state.apply([.setNodeDeformationScale(id: "a", property: .width, value: 1.5)])
         XCTAssertEqual(state.snapshot.selectedNode?.deformationScale(.width), 1.5)
         XCTAssertEqual(InspectorNodeDraftSource(state.snapshot), original)
+        draft.synchronize(to: InspectorNodeDraftSource(state.snapshot))
+        XCTAssertEqual(draft.x, 0.8125)
+        XCTAssertEqual(draft.resetID, resetID)
         try state.apply([.setNode(id: "a", position: .init(x: 0.5, y: 0.5, z: 0.75), radius: 0.125)])
         XCTAssertNotEqual(InspectorNodeDraftSource(state.snapshot), original)
+        draft.synchronize(to: InspectorNodeDraftSource(state.snapshot))
+        XCTAssertEqual(draft.x, 0.5)
+        XCTAssertNotEqual(draft.resetID, resetID)
         try state.undo()
         XCTAssertEqual(InspectorNodeDraftSource(state.snapshot), original)
         try state.apply([.setNode(id: "a", position: .init(x: 0.25, y: 0.5, z: 0.75), radius: 0.25)])

@@ -2567,6 +2567,35 @@ final class EditorStore {
 
     func deleteSelection() { perform { try await $0.deleteSelection() } }
 
+    var inspectorNodeDraftSource: InspectorNodeDraftSource? { InspectorNodeDraftSource(acceptedDocumentSource) }
+
+    func nodeInspectorActions(source: InspectorNodeDraftSource, draft: InspectorNodeDraft)
+        -> (reset: @MainActor () -> Void, apply: @MainActor () -> Void)?
+    {
+        guard !isWorking, let snapshot = acceptedDocumentSource, InspectorNodeDraftSource(snapshot) == source,
+            let node = snapshot.selectedNode, node.isEditable
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let admitsDraft: @MainActor () -> Bool = { [weak self, weak draft] in
+            guard let self, !self.isWorking, let current = self.acceptedDocumentSource else { return false }
+            return target.isCurrent(in: current) && draft?.source == source
+        }
+        return (
+            reset: { [weak draft] in
+                guard admitsDraft() else { return }
+                draft?.reset(source.geometry)
+            },
+            apply: { [weak self, weak draft] in
+                guard let self, let draft, admitsDraft() else { return }
+                let position = NodePosition(x: draft.x, y: draft.y, z: draft.z)
+                let radius = draft.radius
+                self.perform {
+                    try await $0.editInspectorNode(id: node.id, position: position, radius: radius, target: target)
+                }
+            }
+        )
+    }
+
     func edit(id: String, position: NodePosition, radius: Double) {
         perform { try await $0.edit(id: id, position: position, radius: radius) }
     }

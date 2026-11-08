@@ -20,6 +20,7 @@ struct NodeInspector: View {
 
     private var content: some View {
         let actionContext = store.snapshot.map { GraphInspectorActionContext(snapshot: $0) }
+        let draftSource = store.inspectorNodeDraftSource
         return VStack(alignment: .leading, spacing: 16) {
             Text("Selection inspector").font(.headline)
             AddModeControls(store: store)
@@ -112,7 +113,7 @@ struct NodeInspector: View {
                     .disabled(!store.canSelectWholePart(.node(node.id)))
                 SelectableNodeIdentifier(value: node.id)
                     .focusedValue(\.editorTextEditing, true)
-                NodePropertyEditor(store: store, node: node, draft: draft)
+                NodePropertyEditor(store: store, node: node, source: draftSource, draft: draft)
                 NodeRadiusAdjustmentControls(store: store)
                 CanvasRotationControls(store: store)
                 EndpointBendControls(store: store, endpointID: node.id)
@@ -157,15 +158,19 @@ struct NodeInspector: View {
             Spacer()
         }
         .padding(16)
-        .onChange(of: InspectorNodeDraftSource(store.snapshot), initial: true) { _, source in
-            if let source { draft.reset(source.geometry) }
+        .onChange(of: draftSource, initial: true) { _, current in
+            guard store.inspectorNodeDraftSource == current else { return }
+            draft.synchronize(to: current)
         }
         .onChange(of: store.locks) { previous, current in
-            guard let node = store.snapshot?.selectedNode else { return }
-            if current.contains(.x) && !previous.contains(.x) { draft.x = node.value.position.x }
-            if current.contains(.y) && !previous.contains(.y) { draft.y = node.value.position.y }
-            if current.contains(.z) && !previous.contains(.z) { draft.z = node.value.position.z }
-            if current.contains(.radius) && !previous.contains(.radius) { draft.radius = node.value.radius }
+            guard let draftSource, draft.source == draftSource, store.inspectorNodeDraftSource == draftSource else {
+                return
+            }
+            let geometry = draftSource.geometry
+            if current.contains(.x) && !previous.contains(.x) { draft.x = geometry.position.x }
+            if current.contains(.y) && !previous.contains(.y) { draft.y = geometry.position.y }
+            if current.contains(.z) && !previous.contains(.z) { draft.z = geometry.position.z }
+            if current.contains(.radius) && !previous.contains(.radius) { draft.radius = geometry.radius }
         }
     }
 

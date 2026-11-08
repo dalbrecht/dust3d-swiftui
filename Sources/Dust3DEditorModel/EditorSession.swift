@@ -813,6 +813,18 @@ public actor EditorSession {
         try update { try $0.edit(id: id, position: position, radius: radius) }
     }
 
+    package func editInspectorNode(
+        id: String, position: NodePosition, radius: Double, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            let current = state.snapshot
+            guard target.isCurrent(in: current), current.selectedIDs.count == 1, current.selectedEdgeIDs.isEmpty,
+                current.selectedNode?.id.utf8.elementsEqual(id.utf8) == true
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.edit(id: id, position: position, radius: radius)
+        }.snapshot
+    }
+
     /// Assign or clear an exact stored bone name on one frozen explicit-edge set.
     /// - Parameters: `name` is unnormalized; `target` captures source, selection and constraint epochs.
     /// - Returns: The atomically committed snapshot; semantic no-ops retain history and preview inputs.

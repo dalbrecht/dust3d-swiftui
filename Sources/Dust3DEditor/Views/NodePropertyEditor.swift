@@ -6,9 +6,12 @@ import SwiftUI
 struct NodePropertyEditor: View {
     let store: EditorStore
     let node: DocumentNode
+    let source: InspectorNodeDraftSource?
     @Bindable var draft: InspectorNodeDraft
 
     var body: some View {
+        let actions = source.flatMap { store.nodeInspectorActions(source: $0, draft: draft) }
+        let canEditDraft = actions != nil && draft.source == source
         VStack(alignment: .leading, spacing: 16) {
             Form {
                 TextField("X", value: $draft.x, format: .number).accessibilityIdentifier("node-x")
@@ -22,18 +25,15 @@ struct NodePropertyEditor: View {
             }
             .id(draft.resetID)
             .focusedValue(\.editorTextEditing, true)
-            .disabled(store.isWorking || !node.isEditable)
+            .disabled(!canEditDraft)
             if !node.isEditable { Label("Locked, hidden or disabled part", systemImage: "lock").font(.caption) }
             HStack {
-                Button("Reset") { draft.reset(node.value) }
+                Button("Reset") { actions?.reset() }
                 Spacer()
-                Button("Apply") {
-                    store.edit(
-                        id: node.id, position: .init(x: draft.x, y: draft.y, z: draft.z), radius: draft.radius)
-                }
-                .buttonStyle(.borderedProminent)
+                Button("Apply") { actions?.apply() }
+                    .buttonStyle(.borderedProminent)
             }
-            .disabled(store.isWorking || !node.isEditable)
+            .disabled(!canEditDraft)
             if let snapshot = store.snapshot, snapshot.allowsNodeDeformation(for: node.id) {
                 NodeDeformationControls(store: store, node: node, target: CanvasAdjustmentTarget(snapshot: snapshot))
                     .id(snapshot.documentIdentity)

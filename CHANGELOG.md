@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep numeric node inspector drafts and actions tied to their original node and document.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
