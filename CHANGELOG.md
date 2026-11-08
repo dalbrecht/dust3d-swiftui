@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
+
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
 
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
