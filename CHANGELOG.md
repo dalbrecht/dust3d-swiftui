@@ -4,6 +4,8 @@
 
 - Keep component selection visible when collapsing groups, and prevent sidebar Delete from targeting hidden rows.
 
+- Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
@@ -18,11 +20,15 @@
 
 - Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
 
+- Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
+
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
 - Preview applied and retained component color images in the inspector without changing image assignments.
+
+- Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
 
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
@@ -142,6 +148,8 @@
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
+
+- Open a paused replay step as a new editable document.
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
 

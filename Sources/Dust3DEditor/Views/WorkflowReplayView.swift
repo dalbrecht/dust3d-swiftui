@@ -73,6 +73,11 @@ struct WorkflowReplayView: View {
     }
 
     let document: Dust3DDocument
+    let sourceID: UUID
+    let isCurrentSource: @MainActor () -> Bool
+    @Environment(\.newDocument) private var newDocument
+    @State private var checkpoint = WorkflowReplayCheckpoint()
+    @State private var checkpointRevision = 0
     @State private var plan: WorkflowReplayPlan?
     @State private var failure: String?
     @State private var completedSteps = 0
@@ -101,6 +106,10 @@ struct WorkflowReplayView: View {
 
     private var playbackPhase: WorkflowReplayPlaybackPhase? {
         plan.map { WorkflowReplayPlaybackPhase(completedSteps: completedSteps, totalSteps: $0.steps.count) }
+    }
+
+    private var checkpointContext: WorkflowReplayCheckpoint.Context {
+        .init(sourceID: sourceID, step: completedSteps, isPlaying: isPlaying, interactionRevision: checkpointRevision)
     }
 
     var body: some View {
@@ -171,15 +180,36 @@ struct WorkflowReplayView: View {
                     }
                     HStack {
                         Button("Reset") {
+                            retireCheckpoint()
                             isPlaying = false
                             completedSteps = 0
                         }
                         .disabled(phase == .ready)
-                        Button(isPlaying ? "Pause" : "Play") { isPlaying.toggle() }
-                            .disabled(phase == .complete)
+                        Button(isPlaying ? "Pause" : "Play") {
+                            retireCheckpoint()
+                            isPlaying.toggle()
+                        }
+                        .disabled(phase == .complete)
                         Button("Next Step") { advance(plan) }
                             .disabled(phase == .complete || isPlaying || waitsForReference)
                             .keyboardShortcut(.rightArrow, modifiers: .option)
+                    }
+                    let context = checkpointContext
+                    HStack {
+                        Button("Open Step as New Document") {
+                            checkpoint.open(
+                                plan: plan, source: document, context: context,
+                                current: { isCurrentSource() ? checkpointContext : nil },
+                                deliver: { file in newDocument(file) })
+                        }
+                        .disabled(!checkpoint.canOpen(context, totalSteps: plan.steps.count))
+                        if checkpoint.isOpening {
+                            ProgressView("Preparing editable copy…").controlSize(.small)
+                            Button("Cancel Opening") { retireCheckpoint() }
+                        }
+                    }
+                    if let error = checkpoint.errorMessage {
+                        Text("Could not open replay step. \(error)").foregroundStyle(.secondary)
                     }
                     let seconds = Double(WorkflowReplaySpeed.intervalMilliseconds(for: Int(speed))) / 1000
                     Slider(
@@ -258,6 +288,7 @@ struct WorkflowReplayView: View {
                 meshFailure = EditorStore.message(error)
             }
         }
+        .onDisappear { retireCheckpoint() }
         .task(id: playbackInterval) {
             guard let interval = playbackInterval, let plan else { return }
             while !Task.isCancelled, completedSteps < plan.steps.count {
@@ -269,8 +300,14 @@ struct WorkflowReplayView: View {
         }
     }
 
+    private func retireCheckpoint() {
+        checkpointRevision += 1
+        checkpoint.cancel()
+    }
+
     private func advance(_ plan: WorkflowReplayPlan) {
         guard !waitsForReference else { return }
+        retireCheckpoint()
         completedSteps = min(completedSteps + 1, plan.steps.count)
         if completedSteps == plan.steps.count { isPlaying = false }
     }

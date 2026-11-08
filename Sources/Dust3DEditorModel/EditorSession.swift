@@ -190,6 +190,18 @@ public actor EditorSession {
         try update { $0.setLock(constraint, isLocked: isLocked) }
     }
 
+    package func toggleCanvasAxisLock(_ axis: EditingConstraint, target: CanvasAdjustmentTarget) throws
+        -> EditorSnapshot
+    {
+        try update { state in
+            let snapshot = state.snapshot
+            guard hasAcceptedSource, target.isCurrent(in: snapshot), axis != .radius else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            state.setLock(axis, isLocked: !snapshot.locks.contains(axis))
+        }
+    }
+
     public func select(_ id: String?) throws -> EditorSnapshot { try update { try $0.select(id) } }
 
     public func select(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.select(ids) } }
