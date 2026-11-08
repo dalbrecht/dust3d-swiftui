@@ -40,6 +40,25 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         XCTAssertEqual(try pixel(decoded, x: 896, y: 256), [0, 255, 0, 255])
         XCTAssertEqual(try pixel(decoded, x: 1536, y: 256), [255, 255, 255, 255])
     }
+    func testDisplayPreviewUsesSameCroppedAndMirroredPixelsAsCommittedPNG() async throws {
+        let image = try stripes()
+        let size = try ReferencePixelSize(width: 2, height: 2)
+        let topRow = try ReferenceImageCrop(size: size, x: 0, y: 0, width: 2, height: 1)
+        let front = try ReferenceCompositionSource(image: image, crop: topRow)
+        let side = try ReferenceCompositionSource(image: image, crop: topRow, isMirrored: true)
+        let service = ReferenceCompositionService()
+        let preview = try await service.preview(front: front, side: side)
+        let committed = try await service.compose(front: front, side: side)
+        let decoded = try ReferenceImageCodec.decodePNG(committed.png)
+        XCTAssertEqual(preview.width, committed.layout.width)
+        XCTAssertEqual(preview.height, committed.layout.height)
+        XCTAssertEqual(try pixel(preview, x: 128, y: 256), [255, 0, 0, 255])
+        XCTAssertEqual(try pixel(preview, x: 1152, y: 256), [0, 255, 0, 255])
+        for x in [128, 896, 1152, 1920] {
+            XCTAssertEqual(try pixel(preview, x: x, y: 256), try pixel(decoded, x: x, y: 256))
+        }
+    }
+
     func testServiceImportsNormalizedPixelsAndComposesOnItsActor() async throws {
         let image = try stripes()
         let png = try ReferenceImageCodec.encodePNG(image)
