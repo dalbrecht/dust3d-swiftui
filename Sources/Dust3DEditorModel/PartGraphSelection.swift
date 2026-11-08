@@ -80,7 +80,8 @@ public struct ComponentRevealHint: Equatable, Sendable {
     public let revision: Int
 
     static func make(partID: String, tree: ComponentTree, revision: Int) -> Self? {
-        guard let owner = tree.rows.first(where: { $0.component.partID == partID }) else { return nil }
+        guard let owner = tree.rows.first(where: { $0.component.partID?.utf8.elementsEqual(partID.utf8) == true })
+        else { return nil }
         return make(componentID: owner.id, tree: tree, revision: revision)
     }
 
@@ -146,16 +147,22 @@ extension EditorSnapshot {
         switch target {
         case .part(let id): partID = id
         case .node(let id):
-            guard let node = nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
+            guard let node = nodes.first(where: { $0.id.utf8.elementsEqual(id.utf8) }) else {
+                throw DocumentError.missingNode(id)
+            }
             guard let owner = node.partID, !owner.isEmpty else { throw DocumentError.invalidNode }
             partID = owner
         case .edge(let id):
-            guard let edge = edges.first(where: { $0.id == id }), let owner = edge.partID, !owner.isEmpty else {
+            guard let edge = edges.first(where: { $0.id.utf8.elementsEqual(id.utf8) }), let owner = edge.partID,
+                !owner.isEmpty
+            else {
                 throw DocumentError.invalidNode
             }
             partID = owner
         }
-        guard parts.contains(where: { $0.id == partID }) else { throw DocumentError.missingPart(partID) }
+        guard parts.contains(where: { $0.id.utf8.elementsEqual(partID.utf8) }) else {
+            throw DocumentError.missingPart(partID)
+        }
         return partID
     }
 }

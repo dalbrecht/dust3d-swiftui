@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select Whole Part uses exact stored ownership for graph picks and the revealed component.
+
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
