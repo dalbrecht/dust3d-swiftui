@@ -11,6 +11,8 @@ enum KeyboardShortcutHelp {
 
     static let entries: [Entry] = [
         .init(action: "Undo / Redo", keys: "⌘Z / ⇧⌘Z", scope: "Focused text editor or document history"),
+        .init(
+            action: "Redo in Canvas", keys: "⌘Y", scope: "Focused canvas or graph handle with available document redo"),
         .init(action: "Cut / Copy / Paste", keys: "⌘X / ⌘C / ⌘V", scope: "Focused text or editable nodes"),
         .init(action: "Select All", keys: "⌘A", scope: "Focused text or graph; unavailable in animation controls"),
         .init(action: "Select All Nodes", keys: "⇧⌘A", scope: "Active document"),

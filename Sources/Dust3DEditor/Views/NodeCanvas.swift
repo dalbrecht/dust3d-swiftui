@@ -34,7 +34,7 @@ struct NodeCanvas: View {
             let colorizeActions = GraphColorizeActions(store: store, admitsInput: admitsInput)
             let graphActions = GraphSelectionMenuActions(store: store, admitsInput: admitsInput)
             let cancelAddInput = store.canvasAddCancellationAction()
-            let handlePrecisionKey = store.canvasPrecisionKeyHandler()
+            let handlePrecisionKey = store.canvasPrecisionKeyHandler(profileLease: profileLease)
             let zoomPreview = store.canvasPreviewWheelAction(lease: profileLease, camera: previewCamera)
             let handleAxisLockKey = store.canvasAxisLockKeyHandler(profileLease: profileLease)
             let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
