@@ -4,13 +4,15 @@
 
 - Edit an isolated Stitching Loop’s interior fill from its graph selection.
 
+- Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
+
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
 
-- Apply one Qt XML fragment at launch with `-paste-xml` and explicit `.ds3` inputs, with one Undo step per newly opened eligible document.
+- Apply one Qt XML fragment at launch with `-paste-xml` in one Undo step per newly opened eligible document. With no `.ds3` input or output option, open one untitled document with default model colors. A read or validation error leaves that document blank and displays a diagnostic.
 
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
@@ -20,9 +22,13 @@
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
+- Preview applied and retained component color images in the inspector without changing image assignments.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
+
+- Add new parts and paste components into the browsed group when placement is automatic.
 
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
 
