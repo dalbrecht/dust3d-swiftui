@@ -190,7 +190,9 @@ enum EditorHeadlessDS3SaveCommand {
             let fragment = try await QtXMLFileReader().read(xml)
             let session = EditorSession()
             let before = try await session.open(data: original.encoded())
-            return try await session.pasteQtXMLFile(fragment, target: .init(snapshot: before)).document
+            return try await session.pasteQtXMLFile(
+                fragment, target: .init(snapshot: before), clearsMissingCutFaces: true
+            ).document
         } catch { throw Failure.input(xml, cause: error.localizedDescription) }
     }
 
