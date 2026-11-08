@@ -1100,6 +1100,7 @@ final class EditorStore {
         stopped = false
         isWorking = true
         recoveryLoadResult = nil
+        componentColorImageChoiceRequest = nil
         qtXMLFilePasteRequest = nil
         defer { if operationRequestID == requestID { isWorking = false } }
         do {
@@ -1138,9 +1139,47 @@ final class EditorStore {
 
         func isCurrent(in snapshot: EditorSnapshot) -> Bool {
             switch self {
-            case .component(let target): target.isCurrent(in: snapshot)
+            case .component(let target): target.isCurrentColorImage(in: snapshot)
             case .graph(let target): !target.graphColorImageComponents(in: snapshot).isEmpty
             }
+        }
+    }
+
+    func componentColorImageDestination(componentID: String) -> ComponentColorImageDestination? {
+        guard let source = acceptedDocumentSource, let target = ComponentColorImageTarget(snapshot: source),
+            target.componentID.utf8.elementsEqual(componentID.utf8)
+        else { return nil }
+        return .component(target)
+    }
+
+    private struct ComponentColorImageChoiceRequest {
+        let id = UUID()
+        let destination: ComponentColorImageDestination
+    }
+
+    private var componentColorImageChoiceRequest: ComponentColorImageChoiceRequest?
+    var componentColorImageChoiceRequestID: UUID? { componentColorImageChoiceRequest?.id }
+
+    func chooseComponentColorImage(destination: ComponentColorImageDestination) {
+        guard componentColorImageChoiceRequest == nil, canEditComponentColorImage(destination) else { return }
+        componentColorImageChoiceRequest = .init(destination: destination)
+    }
+
+    func cancelComponentColorImageChoice(requestID: UUID) {
+        guard componentColorImageChoiceRequestID == requestID else { return }
+        componentColorImageChoiceRequest = nil
+    }
+
+    func finishComponentColorImageChoice(requestID: UUID, result: Result<[URL], any Error>) {
+        guard let request = componentColorImageChoiceRequest, request.id == requestID else { return }
+        componentColorImageChoiceRequest = nil
+        guard canEditComponentColorImage(request.destination) else { return }
+        do {
+            let urls = try result.get()
+            guard urls.count == 1, let url = urls.first else { throw ColorImageError.invalidFile }
+            importComponentColorImage(url: url, destination: request.destination)
+        } catch {
+            if (error as? CocoaError)?.code != .userCancelled { errorMessage = Self.message(error) }
         }
     }
 
@@ -1155,7 +1194,7 @@ final class EditorStore {
         let components: [DocumentComponent]
         switch destination {
         case .component(let target):
-            guard target.isCurrent(in: source), let component = source.selectedComponent else { return nil }
+            guard target.isCurrentColorImage(in: source), let component = source.selectedComponent else { return nil }
             components = [component]
         case .graph(let target):
             components = target.graphColorImageComponents(in: source)
@@ -2956,6 +2995,7 @@ final class EditorStore {
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil)
         canvasGraphHoverCache = CanvasGraphHover.Cache()
+        componentColorImageChoiceRequest = nil
         qtXMLFilePasteRequest = nil
         canvasProfileMotion = nil
         boneEdgeHover = nil

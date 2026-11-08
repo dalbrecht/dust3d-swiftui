@@ -6,6 +6,14 @@ struct ComponentInspector: View {
     let component: DocumentComponent
     @State private var name = ""
 
+    private let colorImageDestination: EditorStore.ComponentColorImageDestination?
+
+    init(store: EditorStore, component: DocumentComponent) {
+        self.store = store
+        self.component = component
+        colorImageDestination = store.componentColorImageDestination(componentID: component.id)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Component inspector").font(.title3)
@@ -45,7 +53,7 @@ struct ComponentInspector: View {
                 "Normal unions, Inversion subtracts, and Uncombined retains separate geometry. Order matters. One undo step."
             )
             ComponentColorControls(store: store, component: component)
-            ComponentColorImageControls(store: store, component: component)
+            ComponentColorImageControls(store: store, component: component, destination: colorImageDestination)
             if store.snapshot?.showsComponentSmoothing(for: [component]) == true {
                 ComponentSmoothingControls(store: store, component: component)
             }

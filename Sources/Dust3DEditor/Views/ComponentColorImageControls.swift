@@ -1,19 +1,18 @@
 import Dust3DDocument
 import Dust3DEditorModel
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct ComponentColorImageControls: View {
     let store: EditorStore
     let component: DocumentComponent?
     let graphTarget: ComponentMeshSelectionTarget?
-    @State private var isImporting = false
-    @State private var importTarget: EditorStore.ComponentColorImageDestination?
+    let destination: EditorStore.ComponentColorImageDestination?
     @State private var inspection = ComponentColorImageInspection()
 
-    init(store: EditorStore, component: DocumentComponent) {
+    init(store: EditorStore, component: DocumentComponent, destination: EditorStore.ComponentColorImageDestination?) {
         self.store = store
         self.component = component
+        self.destination = destination
         graphTarget = nil
     }
 
@@ -21,17 +20,7 @@ struct ComponentColorImageControls: View {
         self.store = store
         component = nil
         self.graphTarget = graphTarget
-    }
-
-    private var target: EditorStore.ComponentColorImageDestination? {
-        let destination: EditorStore.ComponentColorImageDestination?
-        if let graphTarget {
-            destination = .graph(graphTarget)
-        } else {
-            destination = store.snapshot.flatMap(ComponentColorImageTarget.init(snapshot:)).map { .component($0) }
-        }
-        guard let destination, store.canEditComponentColorImage(destination) else { return nil }
-        return destination
+        destination = .graph(graphTarget)
     }
 
     private var hasOverride: Bool {
@@ -53,7 +42,7 @@ struct ComponentColorImageControls: View {
     }
 
     var body: some View {
-        let renderedTarget = target
+        let renderedTarget = destination.flatMap { store.canEditComponentColorImage($0) ? $0 : nil }
         let renderedContext = store.snapshot.map(CanvasAdjustmentTarget.init(snapshot:))
         VStack(alignment: .leading, spacing: 8) {
             Text("Color image").font(.headline)
@@ -95,15 +84,15 @@ struct ComponentColorImageControls: View {
                 }
             }
             Button {
-                importTarget = target
-                isImporting = importTarget != nil
+                guard let renderedTarget else { return }
+                store.chooseComponentColorImage(destination: renderedTarget)
             } label: {
                 Label("Import Image…", systemImage: "photo.badge.plus")
                     .frame(maxWidth: .infinity, minHeight: 32)
             }
             .accessibilityLabel("Import component color image")
             .accessibilityIdentifier("component-color-image-import")
-            .disabled(target == nil)
+            .disabled(renderedTarget == nil || store.componentColorImageChoiceRequestID != nil)
             if store.isPreparingColorImage {
                 HStack {
                     ProgressView().controlSize(.small)
@@ -122,8 +111,8 @@ struct ComponentColorImageControls: View {
                         ForEach(assets) { asset in
                             HStack(alignment: .center) {
                                 Button {
-                                    guard let target else { return }
-                                    store.assignComponentColorImage(asset, destination: target)
+                                    guard let renderedTarget else { return }
+                                    store.assignComponentColorImage(asset, destination: renderedTarget)
                                 } label: {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(ComponentColorImagePresentation.summary(asset.assetName))
@@ -139,7 +128,7 @@ struct ComponentColorImageControls: View {
                                     }
                                     .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
                                 }
-                                .disabled(!asset.canAssign || target == nil)
+                                .disabled(!asset.canAssign || renderedTarget == nil)
                                 .accessibilityLabel(
                                     "Use retained image \(ComponentColorImagePresentation.summary(asset.assetName))")
                                 Button("Preview") {
@@ -163,14 +152,14 @@ struct ComponentColorImageControls: View {
                 .accessibilityLabel("Retained component images")
             }
             Button {
-                guard let target else { return }
-                store.clearComponentColorImage(destination: target)
+                guard let renderedTarget else { return }
+                store.clearComponentColorImage(destination: renderedTarget)
             } label: {
                 Text("Clear Image Override").frame(maxWidth: .infinity, minHeight: 32)
             }
             .accessibilityLabel("Clear component color image override, keeping its asset")
             .accessibilityIdentifier("component-color-image-clear")
-            .disabled(!hasOverride || target == nil)
+            .disabled(!hasOverride || renderedTarget == nil)
             Text("Import, choose or clear is one undo step. Unused images stay in the file.")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -180,19 +169,6 @@ struct ComponentColorImageControls: View {
             if !current { inspection.cancel() }
         }
         .onExitCommand { store.cancelColorImagePreparation() }
-        .onChange(of: component?.id) { _, _ in
-            isImporting = false
-            importTarget = nil
-        }
-        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.png, .jpeg, .bmp, .gif, .tiff]) { result in
-            defer { importTarget = nil }
-            guard let importTarget, store.canEditComponentColorImage(importTarget) else { return }
-            switch result {
-            case .success(let url): store.importComponentColorImage(url: url, destination: importTarget)
-            case .failure(let error):
-                if (error as? CocoaError)?.code != .userCancelled { store.errorMessage = EditorStore.message(error) }
-            }
-        }
         .help(
             "PNG, JPEG, BMP, GIF or TIFF; first encoded frame. Maximum 32 MiB and 8192 pixels per side. Original PNG bytes are preserved."
         )
