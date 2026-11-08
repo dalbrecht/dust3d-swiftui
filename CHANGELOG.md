@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Stop cancelled preview requests before they start fallback mesh generation.
+
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
 
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
