@@ -6,6 +6,8 @@ public enum GraphInspectorAction: Sendable {
     case connect(from: String, to: String)
     case deleteNode(id: String)
     case reverseEdge(id: String)
+    /// Reorient the selected edge's simple open part chain from its unique outgoing endpoint.
+    case repairEdgeDirections(edgeID: String)
     case disconnectEdge(id: String)
     case selectEndpoints(edgeID: String)
     /// Replace transient graph selection using this selected edge’s exact stored bone assignment.
@@ -18,11 +20,16 @@ public struct GraphInspectorActionTarget: Sendable {
     private let context: CanvasAdjustmentTarget
     let action: GraphInspectorAction?
     let boneEdgeIDs: Set<String>
+    let edgeDirectionRepairs: [String]
 
-    fileprivate init(context: CanvasAdjustmentTarget, action: GraphInspectorAction?, boneEdgeIDs: Set<String> = []) {
+    fileprivate init(
+        context: CanvasAdjustmentTarget, action: GraphInspectorAction?, boneEdgeIDs: Set<String>,
+        edgeDirectionRepairs: [String]
+    ) {
         self.context = context
         self.action = action
         self.boneEdgeIDs = boneEdgeIDs
+        self.edgeDirectionRepairs = edgeDirectionRepairs
     }
     /// Endpoint and bone-group selection are transient; all other available actions edit history.
     public var changesDocument: Bool {
@@ -49,6 +56,7 @@ public struct GraphInspectorActionContext: Sendable {
         var mutableEdges = Set<Data>()
         var selectableEdge: Data?
         var midpointEdge: Data?
+        var directionRepair: (anchor: Data, edgeIDs: [String])?
         var boneAnchor: Data?
         var boneEdgeIDs = Set<String>()
     }
@@ -63,18 +71,24 @@ public struct GraphInspectorActionContext: Sendable {
     public func target(for action: GraphInspectorAction) -> GraphInspectorActionTarget {
         let valid: Bool
         var boneEdgeIDs = Set<String>()
+        var edgeDirectionRepairs: [String] = []
         switch action {
         case .connect(let from, let to):
             valid = availability.node == Data(from.utf8) && availability.peers.contains(Data(to.utf8))
         case .deleteNode(let id): valid = availability.deletableNode == Data(id.utf8)
         case .reverseEdge(let id), .disconnectEdge(let id): valid = availability.mutableEdges.contains(Data(id.utf8))
+        case .repairEdgeDirections(let id):
+            valid = availability.directionRepair?.anchor == Data(id.utf8)
+            if valid, let repair = availability.directionRepair { edgeDirectionRepairs = repair.edgeIDs }
         case .selectEndpoints(let id): valid = availability.selectableEdge == Data(id.utf8)
         case .selectBoneEdges(let id):
             valid = availability.boneAnchor == Data(id.utf8)
             if valid { boneEdgeIDs = availability.boneEdgeIDs }
         case .insertMidpoint(let id): valid = availability.midpointEdge == Data(id.utf8)
         }
-        return .init(context: context, action: valid ? action : nil, boneEdgeIDs: boneEdgeIDs)
+        return .init(
+            context: context, action: valid ? action : nil, boneEdgeIDs: boneEdgeIDs,
+            edgeDirectionRepairs: edgeDirectionRepairs)
     }
 
     private static func index(_ snapshot: EditorSnapshot) -> Availability {
@@ -116,7 +130,11 @@ public struct GraphInspectorActionContext: Sendable {
             let to = Data(edge.toID.utf8)
             if allNodes.contains(from) && allNodes.contains(to) { result.selectableEdge = key }
             if editableNodes.contains(from) && editableNodes.contains(to) { result.mutableEdges.insert(key) }
-            if result.mutableEdges.contains(key) && snapshot.canInsertSelectedEdgeMidpoint { result.midpointEdge = key }
+            if result.mutableEdges.contains(key) {
+                if snapshot.canInsertSelectedEdgeMidpoint { result.midpointEdge = key }
+                let repair = edgeDirectionRepairs(for: edge, in: snapshot)
+                if !repair.isEmpty { result.directionRepair = (key, repair) }
+            }
             if !edge.boneName.isEmpty {
                 let editableParts = Set(snapshot.parts.filter(\.isEditable).map { Data($0.id.utf8) })
                 for candidate in snapshot.edges where candidate.hasExactBoneName(edge.boneName) {
@@ -131,6 +149,50 @@ public struct GraphInspectorActionContext: Sendable {
         }
         return result
     }
+
+    private static func edgeDirectionRepairs(for anchor: DocumentEdge, in snapshot: EditorSnapshot) -> [String] {
+        guard let owner = anchor.partID,
+            snapshot.parts.contains(where: { $0.id.utf8.elementsEqual(owner.utf8) && $0.isEditable })
+        else { return [] }
+        let nodes = snapshot.nodes.filter { $0.partID?.utf8.elementsEqual(owner.utf8) == true }
+        let nodeIDs = Set(nodes.map { Data($0.id.utf8) })
+        guard nodes.count >= 3, nodeIDs.count == nodes.count, nodes.allSatisfy(\.isEditable) else { return [] }
+
+        var neighbors: [Data: [(node: Data, edge: DocumentEdge)]] = [:]
+        var outgoing = Set<Data>()
+        var edgeCount = 0
+        for edge in snapshot.edges {
+            let from = Data(edge.fromID.utf8)
+            let to = Data(edge.toID.utf8)
+            let hasOwner = edge.partID?.utf8.elementsEqual(owner.utf8) == true
+            guard hasOwner || nodeIDs.contains(from) || nodeIDs.contains(to) else { continue }
+            guard hasOwner, from != to, nodeIDs.contains(from), nodeIDs.contains(to) else { return [] }
+            neighbors[from, default: []].append((to, edge))
+            neighbors[to, default: []].append((from, edge))
+            outgoing.insert(from)
+            edgeCount += 1
+        }
+
+        // Qt repairs duplicate outgoing links. Require one path and a unique starting endpoint.
+        guard edgeCount == nodes.count - 1, outgoing.count < edgeCount, neighbors.count == nodes.count,
+            neighbors.values.allSatisfy({ $0.count <= 2 })
+        else { return [] }
+        let endpoints = neighbors.filter { $0.value.count == 1 }.map(\.key)
+        let starts = endpoints.filter { outgoing.contains($0) }
+        guard endpoints.count == 2, starts.count == 1, var current = starts.first else { return [] }
+
+        var previous: Data?
+        var visited = Set<Data>()
+        var reversedIDs: [String] = []
+        while visited.insert(current).inserted {
+            guard let next = neighbors[current]?.first(where: { $0.node != previous }) else { break }
+            if next.edge.toID.utf8.elementsEqual(current) { reversedIDs.append(next.edge.id) }
+            previous = current
+            current = next.node
+        }
+        return visited.count == nodes.count ? reversedIDs : []
+    }
+
 }
 
 /// A contextual inspector action cannot be applied to different source or interaction intent.
