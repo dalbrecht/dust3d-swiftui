@@ -1,3 +1,4 @@
+import Dust3DEngine
 import Foundation
 import XCTest
 
@@ -17,7 +18,9 @@ private final class RecordedFBXEncoding: FBXExportOperation, @unchecked Sendable
     ) throws
         -> DocumentExportArtifact
     {
-        throw NativeFBXExportError.unsupportedFormat(.fbxTextured)
+        try encode(
+            archive: archive, maximumGeometryPayloadBytes: maximumGeometryPayloadBytes,
+            maximumOutputPayloadBytes: maximumOutputPayloadBytes)
     }
 
     func encode(archive: Data, maximumGeometryPayloadBytes: Int, maximumOutputPayloadBytes: Int) throws
@@ -111,6 +114,29 @@ final class NativeFBXExportEncoderTests: XCTestCase {
                 _ = try await encoder.encode(archive: Data([1]), format: .fbx)
                 XCTFail("Invalid copied output must not publish")
             } catch let error as NativeFBXExportError { XCTAssertEqual(error, .invalidNativeOutput) }
+        }
+    }
+
+    func testTexturedFBXConvertsRequestedNativeCancellationAndPreservesOtherFailures() async throws {
+        let cancelledStatus = DUST3D_STATUS_CANCELLED.rawValue
+        for (status, cancels) in [(cancelledStatus, true), (cancelledStatus, false), (UInt32(3), true)] {
+            let original = MeshLoadingError(status: status, message: "original native diagnosis")
+            let operation = RecordedFBXEncoding(.failure(original), cancels: cancels)
+            let encoder = try NativeFBXExportEncoder(
+                maximumGeometryPayloadBytes: 1024, maximumOutputPayloadBytes: 1024, operation: operation)
+            let task = Task { try await encoder.encode(archive: Data([1]), format: .fbxTextured) }
+            do {
+                _ = try await task.value
+                XCTFail("Expected the native operation to stop")
+            } catch is CancellationError {
+                XCTAssertEqual(status, cancelledStatus)
+                XCTAssertTrue(cancels)
+            } catch let error as MeshLoadingError {
+                XCTAssertFalse(status == cancelledStatus && cancels)
+                XCTAssertEqual(error.status, original.status)
+                XCTAssertEqual(error.message, original.message)
+            }
+            XCTAssertEqual(operation.recorded.count, 1)
         }
     }
 

@@ -105,12 +105,17 @@ public actor NativeFBXExportEncoder: DocumentExportEncoding {
         guard let pointer = dust3d_cancellation_token_create(&error) else { throw MeshLoader.loadingError(error) }
         let token = NativeBakeCancellation(pointer)
         defer { token.close() }
-        return try await withTaskCancellationHandler {
-            try operation.encodeTextured(
-                archive: archive, maximumGeometryPayloadBytes: maximumGeometryPayloadBytes,
-                maximumOutputPayloadBytes: maximumOutputPayloadBytes, cancellation: pointer)
-        } onCancel: {
-            token.cancel()
+        do {
+            return try await withTaskCancellationHandler {
+                try operation.encodeTextured(
+                    archive: archive, maximumGeometryPayloadBytes: maximumGeometryPayloadBytes,
+                    maximumOutputPayloadBytes: maximumOutputPayloadBytes, cancellation: pointer)
+            } onCancel: {
+                token.cancel()
+            }
+        } catch let error as MeshLoadingError where error.status == DUST3D_STATUS_CANCELLED.rawValue && Task.isCancelled
+        {
+            throw CancellationError()
         }
     }
 }

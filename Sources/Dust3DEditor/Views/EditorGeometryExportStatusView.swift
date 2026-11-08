@@ -22,6 +22,11 @@ struct EditorGeometryExportStatusView: View {
     }
 
     var statusAnnouncement: String? { phase.accessibilityAnnouncement?.message }
+    var cancelAccessibilityLabel: String { "Cancel \(format.exportName) export" }
+
+    static func dismissAccessibilityLabel(for format: DocumentExportFormat) -> String {
+        "Dismiss \(format.exportName) export result"
+    }
 
     @ViewBuilder private var content: some View {
         switch phase {
@@ -45,7 +50,7 @@ struct EditorGeometryExportStatusView: View {
                         .accessibilityHint("Selects the exported file in Finder")
                         Button(action: onDismiss) { Text("Dismiss").frame(minHeight: 40) }
                             .buttonStyle(.borderless).accessibilityLabel(
-                                "Dismiss \(receipt.format.fileExtension.uppercased()) export result")
+                                Self.dismissAccessibilityLabel(for: receipt.format))
                     }
                     if !receipt.warning.isEmpty {
                         Text("Export warning: \(receipt.warning)").textSelection(.enabled)
@@ -64,7 +69,7 @@ struct EditorGeometryExportStatusView: View {
             Spacer(minLength: 8)
             Button(action: onCancel) { Text("Cancel").frame(minHeight: 40) }
                 .buttonStyle(.borderless).disabled(!phase.canCancel).accessibilityLabel(
-                    "Cancel \(format.fileExtension.uppercased()) export")
+                    cancelAccessibilityLabel)
         }
     }
 
