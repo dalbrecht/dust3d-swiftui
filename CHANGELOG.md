@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Highlight affected edges and announce their count when Replay Steps shows a bone assignment.
+
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
