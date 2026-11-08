@@ -49,6 +49,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var edgeStrokeGesture: ((CanvasPoint) -> CanvasEdgeStrokeGesture?)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
+    var tracksHoverWhileDisabled = false
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
     var cancelInput: () -> Void = {}
@@ -56,6 +57,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var focusControl: CanvasProfileFocusControl? = nil
+    var focusTarget: CanvasProfileFocusTarget? = nil
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
@@ -64,9 +67,12 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.precisionKey = nil
         view.profileFocusRequest = nil
         view.switchProfile = nil
+        view.focusControl?.detach(view)
+        view.focusControl = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
-        if !enabled { view.cancelActivation() }
+        view.tracksHoverWhileDisabled = tracksHoverWhileDisabled
+        if !enabled { view.cancelActivation(preservingHover: tracksHoverWhileDisabled) }
         view.enabled = enabled
         view.select = select
         view.tap = tap
@@ -85,12 +91,17 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.profileFocusRequest = profileFocusRequest
         view.ownsProfile = ownsProfile
         view.switchProfile = switchProfile
+        view.focusControl = focusControl
+        if let focusTarget, ownsProfile() { focusControl?.attach(view, target: focusTarget) }
         view.scheduleProfileFocus()
     }
 }
 
 final class CanvasPointerView: NSView {
-    var enabled = false { didSet { if oldValue && !enabled { cancelActivation() } } }
+    var tracksHoverWhileDisabled = false
+    var enabled = false {
+        didSet { if oldValue && !enabled { cancelActivation(preservingHover: tracksHoverWhileDisabled) } }
+    }
     var select: (CanvasSelectionRectangle, GraphSelectionMode) -> Void = { _, _ in }
     var tap: (CanvasPoint, GraphSelectionMode) -> Void = { _, _ in }
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
@@ -107,6 +118,7 @@ final class CanvasPointerView: NSView {
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    weak var focusControl: CanvasProfileFocusControl?
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var edgeStroke: CanvasEdgeStrokeGesture?
     private var isDraggingEdge = false
@@ -114,6 +126,17 @@ final class CanvasPointerView: NSView {
     private var activity = CanvasPointerActivity()
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
+    override class var defaultFocusRingType: NSFocusRingType { .exterior }
+
+    override var focusRingMaskBounds: NSRect {
+        // Leave room for the native ring inside the drawing pane.
+        guard bounds.width > 8, bounds.height > 8 else { return .zero }
+        return bounds.insetBy(dx: 4, dy: 4)
+    }
+
+    override func drawFocusRingMask() {
+        NSBezierPath(rect: focusRingMaskBounds).fill()
+    }
 
     override func updateTrackingAreas() {
         if let tracking { removeTrackingArea(tracking) }
@@ -259,13 +282,13 @@ final class CanvasPointerView: NSView {
     }
 
     override func mouseEntered(with event: NSEvent) {
-        if enabled {
+        if enabled || tracksHoverWhileDisabled {
             activity.hasHover = true
             hover(point(event))
         }
     }
     override func mouseMoved(with event: NSEvent) {
-        if enabled {
+        if enabled || tracksHoverWhileDisabled {
             activity.hasHover = true
             hover(point(event))
         }
@@ -277,10 +300,12 @@ final class CanvasPointerView: NSView {
         }
     }
     /// Lifecycle updates cancel native input only; SwiftUI lifecycle hooks clear presentation and hover.
-    func cancelActivation() {
+    func cancelActivation(preservingHover: Bool = false) {
         start = nil
+        let hadHover = activity.hasHover
         cancelEdgeStroke(deferred: true)
         activity = CanvasPointerActivity()
+        activity.hasHover = preservingHover && hadHover
     }
     func invalidate() {
         start = nil
@@ -301,8 +326,9 @@ final class CanvasPointerView: NSView {
     override func keyDown(with event: NSEvent) {
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self {
+            let input = CanvasPrecisionKeyInput(event)
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
-                || precisionKey?(CanvasPrecisionKeyInput(event)) == true
+                || (input.permitsDispatch(in: window) && precisionKey?(input) == true)
             {
                 return
             }

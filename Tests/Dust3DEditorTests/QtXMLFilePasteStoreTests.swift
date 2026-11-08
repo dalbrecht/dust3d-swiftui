@@ -203,6 +203,36 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         XCTAssertTrue(writes.isEmpty)
     }
 
+    func testUntitledStartupPasteUndoesToBlankAndRedoesExactArchive() async throws {
+        let blank = Dust3DDocument.emptyArchive()
+        let source = try Dust3DDocument(data: blank).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let store = makeStore()
+        defer { store.stop() }
+        let identity = UUID()
+        await store.load(data: blank, fileIdentity: identity)
+        XCTAssertFalse(store.canUndo)
+        var writes: [Data] = []
+        store.onDocumentChanged = { writes.append($0) }
+        let operation = try XCTUnwrap(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
+        await operation.value
+        let pasted = try XCTUnwrap(store.snapshot?.document.encoded())
+        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        XCTAssertEqual(writes, [pasted])
+        XCTAssertTrue(store.showsPreviewColor)
+        XCTAssertTrue(store.canUndo)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), blank)
+        XCTAssertFalse(store.canUndo)
+        XCTAssertTrue(store.canRedo)
+        store.redo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), pasted)
+        XCTAssertFalse(store.canRedo)
+        XCTAssertEqual(writes, [pasted, blank, pasted])
+    }
+
     func testStartupPasteRequiresPristineAcceptedFileAndCommitsOneUndoStep() async throws {
         let original = try Dust3DDocument(
             snapshotXML: Data("<canvas><components><component id='working'/></components></canvas>".utf8)
