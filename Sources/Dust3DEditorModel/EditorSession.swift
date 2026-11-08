@@ -424,6 +424,15 @@ public actor EditorSession {
         }
     }
 
+    package func setGraphPartRole(_ role: PartTarget, target: GraphPartRoleTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.apply([.setPartTarget(id: part.id, target: role)])
+        }.snapshot
+    }
+
     /// Apply one equipment assignment to the captured Model component.
     package func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) throws
         -> EditorSnapshot
