@@ -9,6 +9,7 @@ struct ComponentColorImageControls: View {
     let graphTarget: ComponentMeshSelectionTarget?
     @State private var isImporting = false
     @State private var importTarget: EditorStore.ComponentColorImageDestination?
+    @State private var inspection = ComponentColorImageInspection()
 
     init(store: EditorStore, component: DocumentComponent) {
         self.store = store
@@ -43,7 +44,17 @@ struct ComponentColorImageControls: View {
         component.map { .init(value: $0.colorImage, assets: assets) }
     }
 
+    private func inspect(_ request: ComponentColorImageInspectionRequest) {
+        inspection.inspect(request, isCurrent: { store.canInspectComponentColorImage(request) })
+    }
+
+    private var hasCurrentInspection: Bool {
+        inspection.request.map { store.canInspectComponentColorImage($0) } == true
+    }
+
     var body: some View {
+        let renderedTarget = target
+        let renderedContext = store.snapshot.map(CanvasAdjustmentTarget.init(snapshot:))
         VStack(alignment: .leading, spacing: 8) {
             Text("Color image").font(.headline)
             if let presentation {
@@ -57,6 +68,31 @@ struct ComponentColorImageControls: View {
                 }
             } else {
                 Text("One image applies to every owning Model component.").font(.caption)
+            }
+            if let renderedTarget,
+                let request = store.componentColorImageInspectionRequest(asset: nil, destination: renderedTarget)
+            {
+                Button("Preview Applied Image") { inspect(request) }
+            }
+            if hasCurrentInspection, let request = inspection.request {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(ComponentColorImagePresentation.summary(request.asset.assetName))
+                            .font(.caption).lineLimit(2)
+                        Spacer(minLength: 4)
+                        Button("Close Preview") { inspection.cancel() }
+                    }
+                    if inspection.isLoading {
+                        ProgressView("Loading image preview…").controlSize(.small)
+                    } else if let image = inspection.image {
+                        Image(image, scale: 1, label: Text("Component color image preview"))
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 128, maxHeight: 128)
+                    } else if let error = inspection.errorMessage {
+                        Text(error).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
             Button {
                 importTarget = target
@@ -84,27 +120,41 @@ struct ComponentColorImageControls: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(assets) { asset in
-                            Button {
-                                guard let target else { return }
-                                store.assignComponentColorImage(asset, destination: target)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(ComponentColorImagePresentation.summary(asset.assetName))
+                            HStack(alignment: .center) {
+                                Button {
+                                    guard let target else { return }
+                                    store.assignComponentColorImage(asset, destination: target)
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(ComponentColorImagePresentation.summary(asset.assetName))
+                                            .lineLimit(2).multilineTextAlignment(.leading)
+                                        Text(
+                                            asset.issue.map {
+                                                ComponentColorImagePresentation.summary($0.localizedDescription)
+                                            }
+                                                ?? "\(asset.encodedByteCount) bytes · Choose to use"
+                                        )
+                                        .font(.caption2).foregroundStyle(.secondary).monospacedDigit()
                                         .lineLimit(2).multilineTextAlignment(.leading)
-                                    Text(
-                                        asset.issue.map {
-                                            ComponentColorImagePresentation.summary($0.localizedDescription)
-                                        }
-                                            ?? "\(asset.encodedByteCount) bytes · Choose to use"
-                                    )
-                                    .font(.caption2).foregroundStyle(.secondary).monospacedDigit()
-                                    .lineLimit(2).multilineTextAlignment(.leading)
+                                    }
+                                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
                                 }
-                                .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+                                .disabled(!asset.canAssign || target == nil)
+                                .accessibilityLabel(
+                                    "Use retained image \(ComponentColorImagePresentation.summary(asset.assetName))")
+                                Button("Preview") {
+                                    guard let renderedTarget, let renderedContext, let snapshot = store.snapshot,
+                                        renderedContext.isCurrent(in: snapshot),
+                                        let request = store.componentColorImageInspectionRequest(
+                                            asset: asset, destination: renderedTarget)
+                                    else { return }
+                                    inspect(request)
+                                }
+                                .disabled(!asset.canAssign || renderedTarget == nil)
+                                .accessibilityLabel(
+                                    "Preview retained image \(ComponentColorImagePresentation.summary(asset.assetName))"
+                                )
                             }
-                            .disabled(!asset.canAssign || target == nil)
-                            .accessibilityLabel(
-                                "Use retained image \(ComponentColorImagePresentation.summary(asset.assetName))")
                         }
                     }
                     .padding(2)
@@ -125,6 +175,10 @@ struct ComponentColorImageControls: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         .disabled(store.isWorking)
+        .onDisappear { inspection.cancel() }
+        .onChange(of: hasCurrentInspection) { _, current in
+            if !current { inspection.cancel() }
+        }
         .onExitCommand { store.cancelColorImagePreparation() }
         .onChange(of: component?.id) { _, _ in
             isImporting = false
