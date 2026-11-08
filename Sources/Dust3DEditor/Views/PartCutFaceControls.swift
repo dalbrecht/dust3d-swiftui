@@ -39,8 +39,14 @@ struct PartCutFaceControls: View {
             .accessibilityLabel("Cut-face preset")
             .accessibilityIdentifier("part-cut-face")
             if case .linkedPart(let id) = part.cutFace {
-                Text(store.snapshot?.parts.first(where: { $0.id == id })?.title ?? "Unresolved profile")
-                    .font(.callout)
+                if let snapshot = store.snapshot,
+                    let profile = snapshot.parts.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
+                {
+                    Text(profile.title).font(.callout)
+                    LinkedCutFacePreviewView(snapshot: snapshot, partID: profile.id, title: profile.title)
+                } else {
+                    Text("Unresolved profile").font(.callout)
+                }
                 Text(id).font(.caption).textSelection(.enabled)
                     .focusedValue(\.editorTextEditing, true)
             }
