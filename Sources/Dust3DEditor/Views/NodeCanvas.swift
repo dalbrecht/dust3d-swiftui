@@ -47,6 +47,7 @@ struct NodeCanvas: View {
             let boneHighlights = store.highlightedBoneEdgeIDs
             let graphHover = store.canvasGraphHover
             let addModeID = store.addModeID
+            let wheelDocument = store.snapshot?.documentIdentity
             let shiftContext = store.canvasRotationContext
             let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
             let focusTarget = profileLease.flatMap { lease in
@@ -90,9 +91,12 @@ struct NodeCanvas: View {
                         store.updateCanvasHover(at: point, projection: projection)
                     },
                     wheel: { input in
-                        guard admitsInput(), store.addModeID == addModeID else { return false }
-                        return store.handleCanvasWheel(input)
+                        guard admitsInput(), store.addModeID == addModeID,
+                            wheelDocument == store.snapshot?.documentIdentity
+                        else { return false }
+                        return store.handleCanvasWheel(input, profileLease: profileLease)
                     },
+                    wheelWhileDisabled: { store.canRouteGraphWheelWhileWorking },
                     unhandledWheel: store.canvasWheelZoomEnabled
                         ? { input in
                             guard admitsInput(), nodeDrag.preview == nil, shiftedDrag == nil, marquee == nil
@@ -202,11 +206,13 @@ struct NodeCanvas: View {
                         add: { activate(.selection(.add)) },
                         subtract: { activate(.selection(.subtract)) },
                         wheel: { input in
-                            guard admitsNodeInput(), store.addModeID == addModeID, !store.isAddingNodes else {
+                            guard admitsNodeInput(), store.addModeID == addModeID, !store.isAddingNodes,
+                                wheelDocument == store.snapshot?.documentIdentity
+                            else {
                                 return false
                             }
                             store.setHoveredNode(node.id, projection: projection)
-                            return store.handleCanvasWheel(input)
+                            return store.handleCanvasWheel(input, profileLease: profileLease)
                         },
                         radiusKey: { admitsNodeInput() && adjustRadius($0) },
                         begin: { token in
