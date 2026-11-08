@@ -70,15 +70,7 @@ struct EditorRootView: View {
                     .disabled(!store.canAddNewPart)
                 }.padding(12)
                 Divider()
-                List(selection: Binding(get: { store.snapshot?.selectedIDs ?? [] }, set: { store.select($0) })) {
-                    ForEach(store.snapshot?.nodes ?? []) { node in
-                        Label(node.title, systemImage: node.isEditable ? "circle.dotted" : "lock")
-                            .tag(node.id)
-                            .help(node.id)
-                    }
-                }
-                .listStyle(.sidebar)
-                .disabled(store.isWorking || store.isSelectingRigEdges)
+                CanvasNodeSidebar(store: store)
                 ComponentSidebar(store: store)
                 PartSidebar(store: store)
                 EdgeSidebar(store: store)
@@ -136,7 +128,7 @@ struct EditorRootView: View {
                         EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
-                        CanvasProfilePanes(store: store, focusControl: canvasFocus)
+                        CanvasProfilePanes(store: store, focusControl: canvasFocus, previewCamera: previewCameraActions)
                             .overlay(alignment: .bottom) { getStartedCard }
                     }
                     .frame(minWidth: 300)
@@ -362,13 +354,15 @@ struct EditorRootView: View {
                     restPreview?.presentationRevision == presentation && store?.canMovePreviewCamera == true
                 },
                 move: { [weak store] in store?.movePreviewCamera($0) },
-                fit: { [weak store] in store?.fitPreviewCamera() })
+                fit: { [weak store] in store?.fitPreviewCamera() },
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
         #else
             return EditorPreviewCameraActions(
                 canMove: store.canMovePreviewCamera,
                 isCurrent: { [weak store] in store?.canMovePreviewCamera == true },
                 move: { [weak store] in store?.movePreviewCamera($0) },
-                fit: { [weak store] in store?.fitPreviewCamera() })
+                fit: { [weak store] in store?.fitPreviewCamera() },
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
         #endif
     }
 
@@ -473,6 +467,7 @@ struct EditorRootView: View {
                     onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                     onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                 ) { store.renderError = $0 }
+                .withCanvasWheelZoom(store.canvasWheelZoom)
                 .accessibilityLabel("3D mesh preview")
                 if store.isUpdatingMaterials {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)
