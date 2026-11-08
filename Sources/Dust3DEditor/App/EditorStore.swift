@@ -584,29 +584,126 @@ final class EditorStore {
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         perform { try await $0.adjustSelectionRadius(by: delta, target: target) }
     }
-    func handleCanvasWheel(_ input: CanvasWheelInput) -> Bool {
-        guard !isSelectingRigEdges else { return false }
+    private enum GraphWheelEdit: Sendable {
+        case selectionRadius(Double)
+        case nodeRadius(String, Double)
+        case spacing(Double)
+
+        var usesHover: Bool {
+            if case .nodeRadius = self { return true }
+            return false
+        }
+    }
+
+    private struct GraphWheelScope: Equatable {
+        let document: UUID
+        let selection: Int
+        let constraints: Int
+        let lease: UUID?
+        let layout: UUID
+        let tool: UUID
+        let interaction: UUID
+        let hover: UUID?
+    }
+
+    private struct GraphWheelQueue {
+        let id = UUID()
+        let scope: GraphWheelScope
+        var revision: Int
+        var operation: UUID?
+        var pending: [GraphWheelEdit] = []
+    }
+
+    @ObservationIgnored private var graphWheelQueue: GraphWheelQueue?
+
+    var canRouteGraphWheelWhileWorking: Bool {
+        isWorking && graphWheelQueue?.operation == operationRequestID
+    }
+
+    func handleCanvasWheel(_ input: CanvasWheelInput, profileLease: UUID? = nil) -> Bool {
+        guard input.isSupported, ownsCanvasProfile(profileLease), !isSelectingRigEdges else { return false }
         if isAddingNodes {
-            guard input.isSupported, !isWorking, addGhostPoint != nil else { return false }
+            guard !isWorking, addGhostPoint != nil else { return false }
             adjustSelectionRadius(direction: input.verticalDelta)
             return true
         }
-        guard input.isSupported, canSave, canvasHeight > 0, let snapshot else { return false }
+        guard let snapshot = acceptedDocumentSource, admitsGraphWheel else { return false }
         let step = (input.verticalDelta > 0 ? 1.0 : -1.0) / canvasHeight
-        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let edit: GraphWheelEdit
         let hasGraphSelection = !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
         if hasGraphSelection && input.modifiers.contains(.command) {
-            guard canTransform else { return false }
-            perform { try await $0.scaleSelection(positionFactor: 1 + step, radiusFactor: 1, target: target) }
-        } else if hasGraphSelection && canAdjustSelectionRadius {
-            perform { try await $0.adjustSelectionRadius(by: step, target: target) }
-        } else if let hoveredNodeID, snapshot.canAdjustNodeRadius(id: hoveredNodeID) {
-            perform { try await $0.adjustNodeRadius(id: hoveredNodeID, by: step, target: target) }
+            guard snapshot.transformNodes.contains(where: \.isEditable) else { return false }
+            edit = .spacing(1 + step)
+        } else if hasGraphSelection && snapshot.canAdjustSelectionRadius {
+            edit = .selectionRadius(step)
         } else {
-            return false
+            let hover = isWorking ? canvasPartStateHover : canvasGraphHover
+            guard case .node(let id) = hover, snapshot.canAdjustNodeRadius(id: id) else { return false }
+            edit = .nodeRadius(id, step)
         }
+
+        let scope = graphWheelScope(snapshot, lease: profileLease, usesHover: edit.usesHover)
+        if let queue = graphWheelQueue {
+            guard canRouteGraphWheelWhileWorking, queue.scope == scope,
+                queue.revision == snapshot.documentRevision
+            else { return false }
+            // A recognized excess sample must not fall through to a different scroll command.
+            if queue.pending.count < 32 { graphWheelQueue?.pending.append(edit) }
+            return true
+        }
+        guard !isWorking else { return false }
+        graphWheelQueue = GraphWheelQueue(scope: scope, revision: snapshot.documentRevision)
+        dispatchGraphWheel(edit, snapshot: snapshot)
         return true
     }
+
+    private var admitsGraphWheel: Bool {
+        !isSelectingRigEdges && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
+            && originDrag == nil && canvasProfileMotion == nil && canvasHeight > 0
+    }
+
+    private func graphWheelScope(_ snapshot: EditorSnapshot, lease: UUID?, usesHover: Bool) -> GraphWheelScope {
+        GraphWheelScope(
+            document: snapshot.documentIdentity, selection: snapshot.selectionRevision,
+            constraints: snapshot.constraintRevision, lease: lease, layout: precisionLayoutEpoch,
+            tool: rotationInputContextID, interaction: referenceColorInteractionEpoch,
+            hover: usesHover ? canvasPartStateHoverEpoch : nil)
+    }
+
+    private func dispatchGraphWheel(_ edit: GraphWheelEdit, snapshot: EditorSnapshot) {
+        guard let queue = graphWheelQueue else { return }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        perform(
+            acceptCommittedCancellation: true, preservePartStateHover: edit.usesHover,
+            completion: { [weak self] succeeded in
+                guard let self, var active = self.graphWheelQueue, active.id == queue.id else { return }
+                guard succeeded, active.operation == self.operationRequestID, !self.isWorking,
+                    let current = self.acceptedDocumentSource, self.admitsGraphWheel,
+                    self.ownsCanvasProfile(queue.scope.lease),
+                    self.graphWheelScope(current, lease: queue.scope.lease, usesHover: edit.usesHover) == queue.scope,
+                    current.documentRevision == queue.revision || current.documentRevision == queue.revision + 1,
+                    !active.pending.isEmpty
+                else {
+                    self.graphWheelQueue = nil
+                    return
+                }
+                let next = active.pending.removeFirst()
+                active.revision = current.documentRevision
+                self.graphWheelQueue = active
+                self.dispatchGraphWheel(next, snapshot: current)
+            },
+            { session in
+                switch edit {
+                case .selectionRadius(let delta): try await session.adjustSelectionRadius(by: delta, target: target)
+                case .nodeRadius(let id, let delta):
+                    try await session.adjustNodeRadius(id: id, by: delta, target: target)
+                case .spacing(let factor):
+                    try await session.scaleSelection(positionFactor: factor, radiusFactor: 1, target: target)
+                }
+            })
+        if graphWheelQueue?.id == queue.id { graphWheelQueue?.operation = operationRequestID }
+    }
+
     private(set) var canvasWheelZoomEnabled = false
     private var canvasWheelZoomEpoch = UUID()
     private(set) var canvasWheelZoom = MeshCameraWheelZoom()
@@ -1258,6 +1355,7 @@ final class EditorStore {
         cancelAnimationQuery()
         cancelExport()
         cancelColorImagePreparation()
+        graphWheelQueue = nil
         operation?.cancel()
         let requestID = UUID()
         operationRequestID = requestID
@@ -3276,6 +3374,7 @@ final class EditorStore {
         isWorking = false
         cancelOriginDrag()
         stopped = true
+        graphWheelQueue = nil
         operation?.cancel()
         generation?.cancel()
         referenceGeneration?.cancel()
