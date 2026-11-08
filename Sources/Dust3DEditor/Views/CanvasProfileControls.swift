@@ -37,6 +37,7 @@ struct CanvasProfileHeader: View {
 
 struct CanvasProfilePanes: View {
     let store: EditorStore
+    let showSelectionProperties: (@MainActor () -> Bool)?
     @State private var requestedFocus: (lease: UUID, request: CanvasProfileFocusRequest)?
 
     var body: some View {
@@ -112,7 +113,7 @@ struct CanvasProfilePanes: View {
         return NodeCanvas(
             store: store, profileLease: lease,
             profileFocusRequest: requestedFocus?.lease == lease ? requestedFocus?.request : nil,
-            switchProfile: switchProfile
+            switchProfile: switchProfile, showSelectionProperties: showSelectionProperties
         )
         .id(lease)
     }
