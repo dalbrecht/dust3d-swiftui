@@ -611,6 +611,7 @@ public actor EditorSession {
     /// - Example: `try await session.setCanvasPartIsolation(target: target)`.
     public func setCanvasPartIsolation(target: CanvasPartIsolationTarget) throws -> EditorSnapshot {
         try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource else { throw CanvasPartIsolationError.staleTarget }
             let commands = try target.commands(in: state.snapshot)
             try state.apply(commands)
         }.snapshot
@@ -621,8 +622,9 @@ public actor EditorSession {
         _ property: PartStateProperty, target: CanvasPartStateTarget
     ) throws -> EditorSnapshot {
         try updateWithResult(checkCancellationBeforePublication: true) { state in
-            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), property == .locked || property == .disabled
-            else { throw EditorError.staleCanvasAdjustment }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw EditorError.staleCanvasAdjustment
+            }
             try state.apply([
                 .setPartsState(ids: [target.part.id], property: property, value: !target.part.state(property))
             ])

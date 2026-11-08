@@ -7,6 +7,13 @@ enum CanvasGraphHover: Equatable {
     case node(String)
     case edge(String)
 
+    var partTarget: PartGraphTarget {
+        switch self {
+        case .node(let id): .node(id)
+        case .edge(let id): .edge(id)
+        }
+    }
+
     struct Cache {
         final class Entry {
             private let documentID: UUID

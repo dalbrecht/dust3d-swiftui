@@ -1,7 +1,7 @@
 import Dust3DDocument
 import Foundation
 
-/// Captures the exact hovered graph owner or a sole explicit graph owner.
+/// Captures the exact hovered owner or a sole explicit graph owner.
 package struct CanvasPartStateTarget: Sendable {
     private let context: CanvasAdjustmentTarget
     package let part: DocumentPart
@@ -15,8 +15,8 @@ package struct CanvasPartStateTarget: Sendable {
             }
         case .edge(let id):
             owner = snapshot.edges.first { $0.id.utf8.elementsEqual(id.utf8) }?.partID.map { Data($0.utf8) }
-        case .part:
-            return nil
+        case .part(let id):
+            owner = Data(id.utf8)
         case nil:
             guard let owners = snapshot.explicitGraphPartKeys(), owners.count == 1 else { return nil }
             owner = owners.first
