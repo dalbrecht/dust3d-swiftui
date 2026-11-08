@@ -16,16 +16,19 @@ struct EdgeSidebar: View {
             ScrollView {
                 LazyVStack(alignment: .leading) {
                     ForEach(edges) { edge in
+                        let selectEdge = store.edgeSidebarSelectionAction(edge.id, context: partContext)
                         let selectWholePart = store.wholePartSelectionAction(.edge(edge.id))
+                        let revealOwningComponent = store.revealOwningComponentAction(
+                            .edge(edge.id), context: partContext)
                         let title = "\(titles[edge.fromID] ?? edge.fromID) → \(titles[edge.toID] ?? edge.toID)"
                         Button {
                             let flags = NSApp.currentEvent?.modifierFlags ?? []
                             if flags.contains(.command) {
-                                store.toggleEdgeSelection(edge.id)
+                                selectEdge(.toggle)
                             } else if flags.contains(.shift) {
-                                store.selectGraph(nodes: [], edges: [edge.id], mode: .add)
+                                selectEdge(.add)
                             } else {
-                                store.selectEdge(edge.id)
+                                selectEdge(.replace)
                             }
                         } label: {
                             Label(
@@ -47,15 +50,18 @@ struct EdgeSidebar: View {
                             store.snapshot?.selectedEdgeIDs.contains(edge.id) == true ? "Selected" : "Not selected"
                         )
                         .accessibilityAction(named: Text("Add edge to selection")) {
-                            store.selectGraph(nodes: [], edges: [edge.id], mode: .add)
+                            selectEdge(.add)
                         }
                         .accessibilityAction(named: Text("Remove edge from selection")) {
-                            if store.snapshot?.selectedEdgeIDs.contains(edge.id) == true {
-                                store.toggleEdgeSelection(edge.id)
+                            selectEdge(.subtract)
+                        }
+                        .accessibilityActions {
+                            if let reveal = revealOwningComponent {
+                                Button("Reveal Owning Component", action: reveal)
                             }
                         }
                         .contextMenu {
-                            if let reveal = store.revealOwningComponentAction(.edge(edge.id), context: partContext) {
+                            if let reveal = revealOwningComponent {
                                 Button("Reveal Owning Component", action: reveal)
                             }
                             Button("Select Whole Part", action: selectWholePart)

@@ -18,6 +18,28 @@ final class PartGraphSelectionTests: XCTestCase {
                     .utf8))
     }
 
+    func testRevealLookupUsesUniqueExactOwnersAndRejectsStaleSnapshots() throws {
+        let source = try document(malformed: true)
+        let xml = String(decoding: source.modelXML, as: UTF8.self)
+            .replacingOccurrences(
+                of: "</components>", with: "<component id='duplicate' linkData='q' linkDataType='partId'/></components>"
+            )
+        var state = try EditorState(document: Dust3DDocument(snapshotXML: Data(xml.utf8)))
+        let lookup = GraphComponentRevealLookup(snapshot: state.snapshot)
+        XCTAssertTrue(lookup.contains(.node("a"), in: state.snapshot))
+        XCTAssertTrue(lookup.contains(.edge("ab"), in: state.snapshot))
+        XCTAssertFalse(lookup.contains(.node("u"), in: state.snapshot))
+        XCTAssertFalse(lookup.contains(.edge("foreign"), in: state.snapshot))
+        XCTAssertFalse(lookup.contains(.edge("unowned"), in: state.snapshot))
+        XCTAssertFalse(lookup.contains(.node("orphan"), in: state.snapshot))
+
+        try state.select("a")
+        XCTAssertTrue(lookup.contains(.node("a"), in: state.snapshot))
+        try state.edit(id: "a", position: .init(x: 2, y: 0, z: 0), radius: 0.1)
+        XCTAssertFalse(lookup.contains(.node("a"), in: state.snapshot))
+        XCTAssertTrue(GraphComponentRevealLookup(snapshot: state.snapshot).contains(.node("a"), in: state.snapshot))
+    }
+
     func testRevealOwningComponentPreservesGraphPicksAndHistory() async throws {
         let source = try document(malformed: true)
         let session = EditorSession()
