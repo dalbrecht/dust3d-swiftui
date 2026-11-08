@@ -83,6 +83,69 @@ final class EditorStore {
         rigEdgeSelectionEpoch == epoch && ownsCanvasProfile(lease)
     }
 
+    struct CanvasNodeSelectionTarget {
+        fileprivate let context: PartGraphSelectionContext
+        fileprivate let profileLease: UUID?
+        fileprivate let selectionEpoch: UUID
+        fileprivate let addModeID: UUID
+        fileprivate let toolEpoch: UUID
+    }
+
+    func canvasNodeSelectionTarget(profileLease: UUID?) -> CanvasNodeSelectionTarget? {
+        guard canPickGraph, !isSelectingRigEdges, !isAddingNodes, !isMovingOrigin,
+            ownsCanvasProfile(profileLease), let snapshot
+        else { return nil }
+        return CanvasNodeSelectionTarget(
+            context: PartGraphSelectionContext(snapshot: snapshot), profileLease: profileLease,
+            selectionEpoch: rigEdgeSelectionEpoch, addModeID: addModeID, toolEpoch: rotationInputContextID)
+    }
+
+    private func admitsCanvasNodeSelection(_ target: CanvasNodeSelectionTarget) -> Bool {
+        canPickGraph && !isSelectingRigEdges && !isAddingNodes && !isMovingOrigin
+            && admitsCanvasSelectionInput(epoch: target.selectionEpoch, lease: target.profileLease)
+            && addModeID == target.addModeID && rotationInputContextID == target.toolEpoch
+            && snapshot.map { target.context.isCurrent(in: $0) } == true
+    }
+
+    func canvasNodeSidebarPresentation(profileLease: UUID?) -> CanvasNodeSidebarPresentation? {
+        guard !isWorking, let snapshot, let target = canvasNodeSelectionTarget(profileLease: profileLease) else {
+            return nil
+        }
+        return CanvasNodeSidebarPresentation(snapshot: snapshot, profileLease: profileLease, target: target)
+    }
+
+    @discardableResult
+    func selectCanvasSidebarNodes(
+        _ ids: Set<String>, matching query: String, in presentation: CanvasNodeSidebarPresentation
+    ) -> Bool {
+        guard !isWorking, admitsCanvasNodeSelection(presentation.target),
+            snapshot?.selectionRevision == presentation.selectionRevision
+        else { return false }
+        let rows = presentation.rows(matching: query)
+        let displayed = Set(rows.map(\.id))
+        let displayedSelection = presentation.selectedIDs.intersection(displayed)
+        let displayedKeys = Set(displayed.map { Data($0.utf8) })
+        guard ids.allSatisfy({ displayedKeys.contains(Data($0.utf8)) }), ids != displayedSelection else { return false }
+        if ids.isEmpty {
+            perform(commits: false, selectionOnly: true) {
+                try await $0.removeFromSelection(nodes: displayedSelection, edges: [])
+            }
+        } else {
+            select(ids)
+        }
+        return true
+    }
+
+    func activateCanvasNode(_ id: String, action: CanvasNodeSelectionAction, target: CanvasNodeSelectionTarget?) {
+        guard let target, admitsCanvasNodeSelection(target) else { return }
+        switch action {
+        case .wholePart: selectWholePart(.node(id), context: target.context)
+        case .selection(.replace): select(id)
+        case .selection(.toggle): toggleSelection(id)
+        case .selection(let mode): selectGraph(nodes: [id], edges: [], mode: mode)
+        }
+    }
+
     private struct PendingWholePartPick {
         let target: PartGraphTarget
         let context: PartGraphSelectionContext
@@ -544,6 +607,46 @@ final class EditorStore {
         }
         return true
     }
+    private(set) var canvasWheelZoomEnabled = false
+    private var canvasWheelZoomEpoch = UUID()
+    private(set) var canvasWheelZoom = MeshCameraWheelZoom()
+
+    func setCanvasWheelZoomEnabled(_ enabled: Bool) {
+        guard canvasWheelZoomEnabled != enabled, acceptedDocumentSource != nil else { return }
+        canvasWheelZoomEnabled = enabled
+        canvasWheelZoomEpoch = UUID()
+    }
+
+    func canvasPreviewWheelAction(
+        lease: UUID?, camera: EditorPreviewCameraActions?
+    ) -> @MainActor (CanvasWheelInput) -> Bool {
+        guard canvasWheelZoomEnabled, let source = acceptedDocumentSource, let camera else {
+            return { _ in false }
+        }
+        let target = CanvasAdjustmentTarget(snapshot: source)
+        let profile = rigEdgeSelectionEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        let setting = canvasWheelZoomEpoch
+        return { [weak self] input in
+            guard let self, input.isSupported,
+                input.modifiers.intersection([.shift, .command, .option, .control, .function]).isEmpty,
+                self.admitsCanvasSelectionInput(epoch: profile, lease: lease),
+                self.rotationInputContextID == tool, self.addModeID == add, self.canvasWheelZoomEpoch == setting,
+                !self.isWorking, !self.isAddingNodes, !self.isMovingOrigin, !self.isSelectingRigEdges,
+                self.originDrag == nil, !self.referenceColorInteractionActive, self.canvasGraphHover == nil,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current),
+                current.selectedIDs.isEmpty, current.selectedEdgeIDs.isEmpty
+            else { return false }
+            return camera.zoomFromCanvas(step: input.verticalDelta > 0 ? 1 : -1)
+        }
+    }
+
+    func zoomPreviewFromCanvas(step: Int) {
+        guard canMovePreviewCamera, canvasWheelZoomEnabled, step == 1 || step == -1 else { return }
+        canvasWheelZoom.append(step: step)
+    }
+
     private(set) var isWorking = false {
         didSet {
             if isWorking {
@@ -554,7 +657,12 @@ final class EditorStore {
         }
     }
     private(set) var previewState = MeshPreviewState<EditorPreviewOutput>() {
-        didSet { if previewState.value == nil { previewCameraCommand = nil } }
+        didSet {
+            if previewState.value == nil {
+                previewCameraCommand = nil
+                canvasWheelZoom = .init()
+            }
+        }
     }
     var mesh: IndexedMesh? { previewState.value?.mesh }
     var previewSourceHints: MeshSourceHints? {
@@ -1509,6 +1617,25 @@ final class EditorStore {
             }
             self.selectGraph(nodes: [], edges: [id], mode: mode)
         }
+    }
+
+    var edgeSidebarSelectAllTarget: EdgeSidebarSelectAllTarget? {
+        guard let snapshot, !snapshot.edges.isEmpty else { return nil }
+        let eligible = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: .replace) : snapshot.edges
+        return .init(
+            ids: Set(eligible.map(\.id)), context: CanvasAdjustmentTarget(snapshot: snapshot),
+            rigModeEpoch: rigEdgeSelectionEpoch)
+    }
+
+    func canSelectAllSidebarEdges(_ target: EdgeSidebarSelectAllTarget) -> Bool {
+        guard canSave, let snapshot, !target.ids.isEmpty else { return false }
+        return rigEdgeSelectionEpoch == target.rigModeEpoch && target.context.isCurrent(in: snapshot)
+    }
+
+    func selectAllSidebarEdges(_ target: EdgeSidebarSelectAllTarget) {
+        guard canSelectAllSidebarEdges(target) else { return }
+        let (ids, context) = (target.ids, target.context)
+        perform(commits: false, selectionOnly: true) { try await $0.selectEdges(ids, target: context) }
     }
 
     func selectEdges(_ ids: Set<String>) {
@@ -2700,7 +2827,8 @@ final class EditorStore {
                     throw QtXMLFilePasteError.staleTarget
                 }
                 return try await session.pasteQtXMLFile(
-                    data, target: request.clipboard.context, parentID: request.clipboard.parentID)
+                    data, target: request.clipboard.context, parentID: request.clipboard.parentID,
+                    clearsMissingCutFaces: true)
             }
             return operation
         } catch {
@@ -2717,7 +2845,7 @@ final class EditorStore {
         else { return nil }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         perform(acceptCommittedCancellation: true) { session in
-            try await session.pasteQtXMLFile(data, target: target, parentID: nil)
+            try await session.pasteQtXMLFile(data, target: target, parentID: nil, selectsEditableGraph: false)
         }
         return operation
     }
@@ -3103,11 +3231,13 @@ final class EditorStore {
     func fitPreviewCamera() {
         guard canMovePreviewCamera else { return }
         previewCameraCommand = nil
+        canvasWheelZoom = .init()
         cameraReset += 1
     }
 
     func fit() {
         previewCameraCommand = nil
+        canvasWheelZoom = .init()
         cancelOriginDrag()
         fitCanvas()
         cameraReset += 1

@@ -3,7 +3,9 @@ import Foundation
 
 /// A shape edit belongs to the sole exact authored Model owner of the explicit graph selection.
 package struct GraphPartShapeTarget: Sendable {
-    package static let properties: [PartModifierProperty] = [.subdivision, .chamfer, .roundedEnds]
+    package static let properties: [PartModifierProperty] = [
+        .subdivision, .chamfer, .roundedEnds, .hardJoin, .interpolation,
+    ]
     private let context: CanvasAdjustmentTarget
     package let part: DocumentPart?
 
@@ -27,7 +29,7 @@ package enum GraphPartShapeError: LocalizedError, Equatable, Sendable {
     package var errorDescription: String? {
         switch self {
         case .staleTarget: "The selected part changed. Choose its shape again."
-        case .unsupportedModifier: "Choose subdivision, chamfer or rounded ends."
+        case .unsupportedModifier: "Choose a supported shape modifier."
         }
     }
 }

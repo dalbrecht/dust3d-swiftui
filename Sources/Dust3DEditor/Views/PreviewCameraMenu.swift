@@ -6,6 +6,8 @@ struct PreviewCameraMenu: View {
     let isEnabled: Bool
     let move: (MeshCameraCommand.Action) -> Void
     let fit: () -> Void
+    var canvasWheelZoom: Binding<Bool>? = nil
+    var canZoomFromCanvas = false
 
     var body: some View {
         Menu(title) {
@@ -24,6 +26,12 @@ struct PreviewCameraMenu: View {
                 Button("Zoom Out") { move(.zoomOut) }
                 Button("Fit Mesh", action: fit)
             }.disabled(!isEnabled)
+            if let canvasWheelZoom {
+                Divider()
+                Toggle("Scroll Blank Canvas to Zoom", isOn: canvasWheelZoom)
+                    .disabled(!canZoomFromCanvas)
+                    .help("Zoom the visible mesh by scrolling over blank space in the active editing profile.")
+            }
         }
     }
 }

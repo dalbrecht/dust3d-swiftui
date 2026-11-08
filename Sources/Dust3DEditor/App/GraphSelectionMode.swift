@@ -11,3 +11,9 @@ enum GraphSelectionMode {
         return modifiers.contains(.shift) ? .add : .replace
     }
 }
+
+/// A rendered node can select itself or expand selection to its owning part.
+enum CanvasNodeSelectionAction {
+    case selection(GraphSelectionMode)
+    case wholePart
+}
