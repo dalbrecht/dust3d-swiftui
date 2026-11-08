@@ -29,6 +29,14 @@ struct CanvasWheelInput {
     }
 }
 
+/// Captured on the original press. A click never starts this gesture.
+struct CanvasEdgeStrokeGesture {
+    let begin: @MainActor () -> Void
+    let update: @MainActor (CanvasPoint) -> Void
+    let finish: @MainActor (CanvasPoint) -> Void
+    let cancel: @MainActor () -> Void
+}
+
 /// The local canvas responder owns background pointer input; node responders forward only their own wheel events.
 struct CanvasPointerSurface: NSViewRepresentable {
     let enabled: Bool
@@ -39,6 +47,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let wheel: (CanvasWheelInput) -> Bool
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var edgeStrokeGesture: ((CanvasPoint) -> CanvasEdgeStrokeGesture?)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var tracksHoverWhileDisabled = false
     var isAddingNodes = false
@@ -72,6 +81,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.wheel = wheel
         view.radiusKey = radiusKey
         view.doubleClick = doubleClick
+        view.edgeStrokeGesture = edgeStrokeGesture
         view.precisionKey = precisionKey
         if view.isAddingNodes != isAddingNodes { view.cancelActivation() }
         view.isAddingNodes = isAddingNodes
@@ -99,6 +109,7 @@ final class CanvasPointerView: NSView {
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var edgeStrokeGesture: ((CanvasPoint) -> CanvasEdgeStrokeGesture?)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
@@ -109,6 +120,8 @@ final class CanvasPointerView: NSView {
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
     weak var focusControl: CanvasProfileFocusControl?
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
+    private var edgeStroke: CanvasEdgeStrokeGesture?
+    private var isDraggingEdge = false
     private var tracking: NSTrackingArea?
     private var activity = CanvasPointerActivity()
     override var isFlipped: Bool { true }
@@ -185,7 +198,15 @@ final class CanvasPointerView: NSView {
             doubleClick(point(event))
             return
         }
-        start = (point(event), mode)
+        let origin = point(event)
+        cancelEdgeStroke(deferred: false)
+        start = (origin, mode)
+        let selectionModifiers: NSEvent.ModifierFlags = [.shift, .command, .option, .control]
+        if event.modifierFlags.intersection(selectionModifiers).isEmpty,
+            window?.firstResponder === self, window?.isKeyWindow == true
+        {
+            edgeStroke = edgeStrokeGesture?(origin)
+        }
     }
     override func mouseDragged(with event: NSEvent) {
         if enabled && isAddingNodes {
@@ -195,7 +216,13 @@ final class CanvasPointerView: NSView {
         }
         guard enabled, let start else { return }
         let end = point(event)
-        if hypot(end.x - start.point.x, end.y - start.point.y) >= 3 {
+        let translation = CanvasPoint(x: end.x - start.point.x, y: end.y - start.point.y)
+        let beyondThreshold = hypot(translation.x, translation.y) >= 3
+        if let edgeStroke {
+            guard isDraggingEdge || beyondThreshold else { return }
+            beginEdgeStrokeIfNeeded(edgeStroke)
+            edgeStroke.update(translation)
+        } else if beyondThreshold {
             activity.hasMarquee = true
             rectangle(.init(from: start.point, to: end))
         }
@@ -205,14 +232,55 @@ final class CanvasPointerView: NSView {
         self.start = nil
         let release = activity.finishMarquee()
         release.notify(rectangle: rectangle, hover: hover)
-        guard enabled else { return }
+        guard enabled else {
+            cancelEdgeStroke(deferred: false)
+            return
+        }
         let end = point(event)
-        if hypot(end.x - start.point.x, end.y - start.point.y) >= 3 {
-            select(.init(from: start.point, to: end), start.mode)
+        let translation = CanvasPoint(x: end.x - start.point.x, y: end.y - start.point.y)
+        let beyondThreshold = hypot(translation.x, translation.y) >= 3
+        if let edgeStroke, isDraggingEdge || beyondThreshold {
+            beginEdgeStrokeIfNeeded(edgeStroke)
+            self.edgeStroke = nil
+            isDraggingEdge = false
+            edgeStroke.finish(translation)
         } else {
-            tap(end, start.mode)
+            cancelEdgeStroke(deferred: false)
+            if beyondThreshold {
+                select(.init(from: start.point, to: end), start.mode)
+            } else {
+                tap(end, start.mode)
+            }
         }
     }
+
+    private func beginEdgeStrokeIfNeeded(_ gesture: CanvasEdgeStrokeGesture) {
+        guard !isDraggingEdge else { return }
+        isDraggingEdge = true
+        gesture.begin()
+    }
+
+    private func cancelEdgeStroke(deferred: Bool) {
+        let cancel = isDraggingEdge ? edgeStroke?.cancel : nil
+        edgeStroke = nil
+        isDraggingEdge = false
+        guard let cancel else { return }
+        if deferred {
+            Task { @MainActor in cancel() }
+        } else {
+            cancel()
+        }
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let accepted = super.resignFirstResponder()
+        if accepted, edgeStroke != nil {
+            start = nil
+            cancelEdgeStroke(deferred: true)
+        }
+        return accepted
+    }
+
     override func mouseEntered(with event: NSEvent) {
         if enabled || tracksHoverWhileDisabled {
             activity.hasHover = true
@@ -235,11 +303,13 @@ final class CanvasPointerView: NSView {
     func cancelActivation(preservingHover: Bool = false) {
         start = nil
         let hadHover = activity.hasHover
+        cancelEdgeStroke(deferred: true)
         activity = CanvasPointerActivity()
         activity.hasHover = preservingHover && hadHover
     }
     func invalidate() {
         start = nil
+        cancelEdgeStroke(deferred: false)
         let cancellation = activity.clear()
         cancellation.notify(rectangle: rectangle, hover: hover)
     }
