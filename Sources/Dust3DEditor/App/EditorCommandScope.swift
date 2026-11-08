@@ -6,16 +6,18 @@ enum EditorCommandScope {
     enum SelectAllDestination: Equatable {
         case text
         case components
+        case edges
         case graph
         case unavailable
     }
 
     static func selectAllDestination(
-        nativeTextFocus: Bool, componentSidebarFocus: Bool, animationFocus: Bool
+        nativeTextFocus: Bool, componentSidebarFocus: Bool, animationFocus: Bool, edgeSidebarFocus: Bool = false
     ) -> SelectAllDestination {
         if nativeTextFocus { return .text }
         if animationFocus { return .unavailable }
-        return componentSidebarFocus ? .components : .graph
+        if componentSidebarFocus { return .components }
+        return edgeSidebarFocus ? .edges : .graph
     }
 
     static func hasTextEditingFocus(swiftUIFocus: Bool, hasNativeEditor: Bool) -> Bool {
@@ -50,6 +52,13 @@ enum EditorCommandScope {
         if hasCanvasInput { return .canvas }
         return canCancelExport ? .export : .unavailable
     }
+}
+
+/// Rendered edge sidebar scope, including its originating rig-mode generation.
+struct EdgeSidebarSelectAllTarget {
+    let ids: Set<String>
+    let context: CanvasAdjustmentTarget
+    let rigModeEpoch: UUID
 }
 
 /// Selection intent from the rendered component sidebar, excluding collapsed rows.

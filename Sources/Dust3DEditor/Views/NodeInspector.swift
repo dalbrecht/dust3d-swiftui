@@ -57,7 +57,7 @@ struct NodeInspector: View {
                         }
                         .disabled(!store.canEditGraphPartShape(target))
                     }
-                    .help("Change subdivision, chamfer or rounded ends on \(part.title). Each edit is one Undo step.")
+                    .help("Edit shape settings for \(part.title). Each edit is one Undo step.")
                 }
                 let crossSectionTarget = GraphPartCrossSectionTarget(owner: roleTarget)
                 if let component = crossSectionTarget.component,
