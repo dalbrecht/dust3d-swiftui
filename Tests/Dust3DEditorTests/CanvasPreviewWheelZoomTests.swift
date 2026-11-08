@@ -53,6 +53,41 @@ private struct CanvasWheelZoomNoNative: EditorPreviewServing, ArchiveTextureBaki
         XCTFail("Canvas input did not settle")
     }
 
+    func testPointerRefreshesHitBeforeGraphOrCameraAndBusyRoutesOnlyGraph() {
+        let canvas = CanvasPointerView(frame: .init(x: 0, y: 0, width: 400, height: 300))
+        let node = CanvasPoint(x: 10, y: 10)
+        let blank = CanvasPoint(x: 200, y: 100)
+        let input = CanvasWheelInput(verticalDelta: 1)
+        var overNode = true
+        var graphEdits = 0
+        var zooms = 0
+        canvas.hover = { overNode = $0 == node }
+        canvas.wheel = { _ in
+            guard overNode else { return false }
+            graphEdits += 1
+            return true
+        }
+        canvas.unhandledWheel = { _ in
+            zooms += 1
+            return true
+        }
+        canvas.enabled = true
+        XCTAssertTrue(canvas.routeWheel(input, at: blank))
+        XCTAssertEqual(graphEdits, 0)
+        XCTAssertEqual(zooms, 1)
+        XCTAssertTrue(canvas.routeWheel(input, at: node))
+        XCTAssertEqual(graphEdits, 1)
+        XCTAssertEqual(zooms, 1)
+
+        canvas.enabled = false
+        canvas.wheelWhileDisabled = { true }
+        canvas.tracksHoverWhileDisabled = true
+        XCTAssertFalse(canvas.routeWheel(input, at: blank))
+        XCTAssertTrue(canvas.routeWheel(input, at: node))
+        XCTAssertEqual(graphEdits, 2)
+        XCTAssertEqual(zooms, 1)
+    }
+
     func testOptInBlankWheelUsesOnlyVisibleCameraAndPreservesEditPrecedence() async throws {
         let (store, original) = try await setup()
         defer { store.stop() }
