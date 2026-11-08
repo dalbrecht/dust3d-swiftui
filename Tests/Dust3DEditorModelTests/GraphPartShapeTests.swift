@@ -16,7 +16,7 @@ final class GraphPartShapeTests: XCTestCase {
                 <node id='orphan' x='3' y='0' z='0' radius='.1'/>
                 <node id='alias' partId='caf&#233;' x='4' y='0' z='0' radius='.1'/>
                 </nodes><edges><edge id='edge' partId='q' from='a' to='b'/></edges><parts>
-                <part id='p' future='keep'/><part id='q' locked='true' chamfered='future'/><part id='cafe&#769;'/>
+                <part id='p' future='keep'/><part id='q' locked='true' chamfered='future' hard='future'/><part id='cafe&#769;'/>
                 </parts></canvas>
                 """.utf8))
     }
@@ -91,16 +91,12 @@ final class GraphPartShapeTests: XCTestCase {
         }
     }
 
-    func testRetainedTargetRejectsSelectionABAAndOtherModifierFamilies() async throws {
+    func testRetainedTargetRejectsSelectionABA() async throws {
         let original = try source()
         let session = EditorSession()
         _ = try await session.open(data: original.encoded())
         let before = try await session.selectGraph(nodes: ["a", "b"], edges: [])
         let target = GraphPartShapeTarget(snapshot: before)
-        do {
-            _ = try await session.setGraphPartShape(.hardJoin, value: true, target: target)
-            XCTFail("An unrelated modifier acquired the canvas command")
-        } catch { XCTAssertEqual(error as? GraphPartShapeError, .unsupportedModifier) }
         _ = try await session.select("c")
         _ = try await session.selectGraph(nodes: ["a", "b"], edges: [])
         do {
@@ -111,4 +107,61 @@ final class GraphPartShapeTests: XCTestCase {
         XCTAssertEqual(after.document.encoded(), original.encoded())
         XCTAssertFalse(after.canUndo)
     }
+    func testSurfaceModifiersUseOneCapturedOwnerAndExactUndo() async throws {
+        let original = try source().encoded()
+        XCTAssertTrue(GraphPartShapeTarget.properties.contains(.hardJoin))
+        XCTAssertTrue(GraphPartShapeTarget.properties.contains(.interpolation))
+        for (property, value) in [(PartModifierProperty.hardJoin, false), (.interpolation, false)] {
+            let session = EditorSession()
+            _ = try await session.open(data: original)
+            let before = try await session.selectGraph(nodes: ["c"], edges: ["edge"])
+            let target = GraphPartShapeTarget(snapshot: before)
+            XCTAssertNil(target.part?.modifierValue(.hardJoin))
+            XCTAssertEqual(target.part?.modifierValue(.interpolation), true)
+            let changed = try await session.setGraphPartShape(property, value: value, target: target)
+            let part = try XCTUnwrap(changed.parts.first { $0.id == "q" })
+            XCTAssertEqual(part.modifierValue(property), value)
+            if property == .hardJoin {
+                XCTAssertEqual(part.modifierValue(.interpolation), true)
+            } else {
+                XCTAssertNil(part.modifierValue(.hardJoin))
+            }
+            XCTAssertNil(part.modifierValue(.chamfer))
+            XCTAssertTrue(part.isLocked)
+            XCTAssertEqual(changed.parts.first { $0.id == "p" }?.modifierValue(.interpolation), true)
+            XCTAssertEqual(changed.parts.first { $0.id == "p" }?.modifierValue(.hardJoin), false)
+            XCTAssertEqual(changed.selectedIDs, before.selectedIDs)
+            XCTAssertEqual(changed.selectedEdgeIDs, before.selectedEdgeIDs)
+            XCTAssertNotEqual(changed.previewIdentity, before.previewIdentity)
+            let same = try await session.setGraphPartShape(property, value: value, target: .init(snapshot: changed))
+            XCTAssertEqual(same.document.encoded(), changed.document.encoded())
+            XCTAssertEqual(same.documentRevision, changed.documentRevision)
+            let undone = try await session.undo()
+            XCTAssertEqual(undone.document.encoded(), original)
+            XCTAssertFalse(undone.canUndo)
+        }
+    }
+
+    func testFailedReplacementRejectsRetainedShapeTarget() async throws {
+        let original = try source().encoded()
+        let session = EditorSession()
+        _ = try await session.open(data: original)
+        let before = try await session.select("a")
+        let target = GraphPartShapeTarget(snapshot: before)
+        do {
+            _ = try await session.open(data: Data("invalid archive".utf8))
+            XCTFail("Invalid replacement opened")
+        } catch {}
+        let retained = try await session.animationSnapshot().editor
+        XCTAssertTrue(target.isCurrent(in: retained))
+        do {
+            _ = try await session.setGraphPartShape(.roundedEnds, value: true, target: target)
+            XCTFail("The failed replacement retained a writable target")
+        } catch { XCTAssertEqual(error as? GraphPartShapeError, .staleTarget) }
+        let unchanged = try await session.animationSnapshot().editor
+        XCTAssertEqual(unchanged.document.encoded(), original)
+        XCTAssertEqual(unchanged.documentRevision, before.documentRevision)
+        XCTAssertFalse(unchanged.canUndo)
+    }
+
 }
