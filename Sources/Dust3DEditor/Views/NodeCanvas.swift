@@ -8,6 +8,7 @@ struct NodeCanvas: View {
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
     var focusControl: CanvasProfileFocusControl? = nil
+    var previewCamera: EditorPreviewCameraActions? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
     @State private var nodeDrag = NodeDragLifecycle()
@@ -34,6 +35,7 @@ struct NodeCanvas: View {
             let graphActions = GraphSelectionMenuActions(store: store, admitsInput: admitsInput)
             let cancelAddInput = store.canvasAddCancellationAction()
             let handlePrecisionKey = store.canvasPrecisionKeyHandler()
+            let zoomPreview = store.canvasPreviewWheelAction(lease: profileLease, camera: previewCamera)
             let handleAxisLockKey = store.canvasAxisLockKeyHandler(profileLease: profileLease)
             let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
@@ -50,6 +52,8 @@ struct NodeCanvas: View {
             let focusTarget = profileLease.flatMap { lease in
                 store.snapshot.map { CanvasProfileFocusTarget(documentIdentity: $0.documentIdentity, lease: lease) }
             }
+            let nodeSelectionTarget = store.canvasNodeSelectionTarget(profileLease: profileLease)
+            let partIDs = Set(store.snapshot?.parts.map(\.id) ?? [])
             ZStack {
                 if store.showsReferenceImage,
                     let image = store.fittedReferenceColorImage(in: referenceCanvas) ?? store.referenceImage
@@ -89,6 +93,12 @@ struct NodeCanvas: View {
                         guard admitsInput(), store.addModeID == addModeID else { return false }
                         return store.handleCanvasWheel(input)
                     },
+                    unhandledWheel: store.canvasWheelZoomEnabled
+                        ? { input in
+                            guard admitsInput(), nodeDrag.preview == nil, shiftedDrag == nil, marquee == nil
+                            else { return false }
+                            return zoomPreview(input)
+                        } : nil,
                     radiusKey: { admitsInput() && adjustRadius($0) },
                     doubleClick: { point in
                         guard admitsInput(), store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin,
@@ -171,46 +181,26 @@ struct NodeCanvas: View {
                         else { return nil }
                         return { if admitsNodeInput() { reveal() } }
                     }()
+                    let activate: (CanvasNodeSelectionAction) -> Void = {
+                        store.activateCanvasNode(node.id, action: $0, target: nodeSelectionTarget)
+                    }
                     NodeHandle(
                         node: node, projection: projection,
                         position: previewPosition(node, projection: projection),
                         selected: store.snapshot?.selectedIDs.contains(node.id) == true,
                         hovered: !store.isSelectingRigEdges && graphHover == .node(node.id),
-                        enabled: store.canPickGraph && !store.isMovingOrigin && !store.isAddingNodes
-                            && !store.isSelectingRigEdges,
+                        enabled: nodeSelectionTarget != nil,
                         canDrag: !store.isWorking && node.isEditable,
-                        canSelectWholePart: store.canPickGraph && node.partID != nil,
+                        canSelectWholePart: nodeSelectionTarget != nil
+                            && node.partID.map { !$0.isEmpty && partIDs.contains($0) } == true,
                         colorizeActions: colorizeActions, graphActions: graphActions, precisionKey: precisionKey,
                         precisionActions: precisionActions, quarterTurns: quarterTurns,
                         revealOwningComponent: revealOwningComponent,
-                        doubleClick: {
-                            guard admitsNodeInput(), store.addModeID == addModeID, !store.isAddingNodes,
-                                !store.isMovingOrigin
-                            else {
-                                return
-                            }
-                            store.selectWholePart(.node(node.id), context: partContext)
-                        },
-                        select: {
-                            if admitsNodeInput(), store.addModeID == addModeID && !store.isAddingNodes {
-                                store.select(node.id)
-                            }
-                        },
-                        toggle: {
-                            if admitsNodeInput(), store.addModeID == addModeID && !store.isAddingNodes {
-                                store.toggleSelection(node.id)
-                            }
-                        },
-                        add: {
-                            if admitsNodeInput(), store.addModeID == addModeID && !store.isAddingNodes {
-                                store.selectGraph(nodes: [node.id], edges: [], mode: .add)
-                            }
-                        },
-                        subtract: {
-                            if admitsNodeInput(), store.addModeID == addModeID && !store.isAddingNodes {
-                                store.selectGraph(nodes: [node.id], edges: [], mode: .subtract)
-                            }
-                        },
+                        doubleClick: { activate(.wholePart) },
+                        select: { activate(.selection(.replace)) },
+                        toggle: { activate(.selection(.toggle)) },
+                        add: { activate(.selection(.add)) },
+                        subtract: { activate(.selection(.subtract)) },
                         wheel: { input in
                             guard admitsNodeInput(), store.addModeID == addModeID, !store.isAddingNodes else {
                                 return false
@@ -481,15 +471,20 @@ private struct NodeHandle: View {
         }
         .frame(width: 36, height: 36)
         .position(x: point.x, y: point.y)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(node.title)
-        .accessibilityValue(selected ? "Selected" : "Not selected")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { select() }
-        .accessibilityAction(named: Text("Select Whole Part")) { if canSelectWholePart { doubleClick() } }
-        .accessibilityActions {
-            if let reveal = revealOwningComponent {
-                Button("Reveal Owning Component", action: reveal)
+        .accessibilityRepresentation {
+            if enabled {
+                Button(node.title, action: select)
+                    .accessibilityValue(selected ? "Selected" : "Not selected")
+                    .accessibilityActions {
+                        if canSelectWholePart { Button("Select Whole Part", action: doubleClick) }
+                        if let reveal = revealOwningComponent {
+                            Button("Reveal Owning Component", action: reveal)
+                        }
+                        Button("Add node to selection", action: add)
+                        Button("Remove node from selection", action: subtract)
+                    }
+            } else {
+                Text(node.title).accessibilityValue(selected ? "Selected" : "Not selected")
             }
         }
         .contextMenu {
@@ -501,10 +496,6 @@ private struct NodeHandle: View {
             GraphColorizeMenu(actions: colorizeActions, contextual: true)
             OrthogonalQuarterTurnMenu(actions: quarterTurns, contextual: true)
             CanvasPrecisionMenu(actions: precisionActions, contextual: true)
-        }
-        .accessibilityAction(named: Text("Add node to selection")) { add() }
-        .accessibilityAction(named: Text("Remove node from selection")) {
-            subtract()
         }
         .help(
             "\(node.title) · \(node.isEditable ? "Drag to move, Shift-drag to rotate or bend" : "Locked, hidden or disabled part")"

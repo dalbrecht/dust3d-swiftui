@@ -49,7 +49,10 @@ private actor HeldQtXMLReader {
 final class QtXMLFilePasteStoreTests: XCTestCase {
     func testPickerLeaseRejectsStaleDeliveryAndPublishesOnlyToTheCapturedStore() async throws {
         let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
-            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1)
+        )
+        .applying(.addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 1, y: 0, z: 0), radius: 0.1))
+        .applying(.addEdge(id: "ab", from: "a", to: "b"))
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("fragment.xml")
@@ -88,7 +91,9 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         other.finishQtXMLFileChoice(requestID: current, result: .success([url]))
         store.finishQtXMLFileChoice(requestID: current, result: .success([url]))
         try await settle(store)
-        XCTAssertEqual(store.snapshot?.nodes.count, 2)
+        XCTAssertEqual(store.snapshot?.nodes.count, 4)
+        let pastedEdge = try XCTUnwrap(store.snapshot?.edges.first { $0.id != "ab" })
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [pastedEdge.id])
         XCTAssertTrue(store.snapshot?.componentTree.rows.allSatisfy { $0.component.parentID == nil } == true)
         XCTAssertEqual(other.snapshot?.document.encoded(), source.encoded())
         XCTAssertEqual(writes.count, 1)
@@ -206,7 +211,10 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
     func testUntitledStartupPasteUndoesToBlankAndRedoesExactArchive() async throws {
         let blank = Dust3DDocument.emptyArchive()
         let source = try Dust3DDocument(data: blank).applying(
-            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1)
+        )
+        .applying(.addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 1, y: 0, z: 0), radius: 0.1))
+        .applying(.addEdge(id: "ab", from: "a", to: "b"))
         let store = makeStore()
         defer { store.stop() }
         let identity = UUID()
@@ -217,7 +225,10 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         let operation = try XCTUnwrap(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
         await operation.value
         let pasted = try XCTUnwrap(store.snapshot?.document.encoded())
-        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        XCTAssertEqual(store.snapshot?.nodes.count, 2)
+        XCTAssertEqual(store.snapshot?.edges.count, 1)
+        XCTAssertEqual(store.snapshot?.selectedIDs.count, 2)
+        XCTAssertTrue(store.snapshot?.selectedEdgeIDs.isEmpty == true)
         XCTAssertEqual(writes, [pasted])
         XCTAssertTrue(store.showsPreviewColor)
         XCTAssertTrue(store.canUndo)
