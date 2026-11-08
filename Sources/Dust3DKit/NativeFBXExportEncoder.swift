@@ -14,13 +14,13 @@ public enum NativeFBXExportError: LocalizedError, Equatable {
         case .invalidGeometryBudget: "The FBX geometry limit must be positive and at most 256 MiB."
         case .invalidOutputBudget: "The FBX output limit must be positive and at most 256 MiB."
         case .invalidArchiveByteCount: "Choose a nonempty Dust3D archive no larger than 256 MiB."
-        case .unsupportedFormat: "This encoder supports original procedural geometry in FBX format only."
+        case .unsupportedFormat: "This encoder supports FBX format only."
         case .invalidNativeOutput: "The engine returned an invalid or out-of-bounds FBX output."
         }
     }
 }
 
-/// Serial off-main static GEOMETRY binding. No imported decoding, baking, rig or animation evaluation.
+/// Serial off-main procedural FBX export with optional baked materials.
 public actor NativeFBXExportEncoder: DocumentExportEncoding {
     private let maximumGeometryPayloadBytes: Int
     private let maximumOutputPayloadBytes: Int
@@ -75,27 +75,52 @@ public actor NativeFBXExportEncoder: DocumentExportEncoding {
     }
 
     /// Encode the captured archive and copy bytes/warning before releasing the C owner.
-    /// - Parameters: archive is the exact complete source; format must be `.fbx`.
-    /// - Returns: Owned static FBX bytes and original warning. Materials/textures/rig/animation are excluded.
+    /// - Parameters: archive is the exact complete source; format must be `.fbx` or `.fbxTextured`.
+    /// - Returns: Owned static FBX bytes and original warning. Textured FBX includes procedural materials and UVs.
     /// - Throws: Typed admission/native errors or Swift cancellation before/after synchronous work.
-    /// No native cancellation is sent; imported archives reject before GLB decoding in the pinned bridge.
+    /// Textured exports request cooperative native cancellation. Imported archives reject before GLB decoding.
     /// - Example: `try await encoder.encode(archive: document.encoded(), format: .fbx)`.
     public func encode(archive: Data, format: DocumentExportFormat) async throws -> DocumentExportArtifact {
         try Task.checkCancellation()
-        guard format == .fbx else { throw NativeFBXExportError.unsupportedFormat(format) }
+        guard format == .fbx || format == .fbxTextured else {
+            throw NativeFBXExportError.unsupportedFormat(format)
+        }
         try Self.validateArchiveByteCount(archive.count)
-        let output = try operation.encode(
-            archive: archive, maximumGeometryPayloadBytes: maximumGeometryPayloadBytes,
-            maximumOutputPayloadBytes: maximumOutputPayloadBytes)
+        let output: DocumentExportArtifact
+        if format == .fbxTextured {
+            output = try await encodeTextured(archive: archive)
+        } else {
+            output = try operation.encode(
+                archive: archive, maximumGeometryPayloadBytes: maximumGeometryPayloadBytes,
+                maximumOutputPayloadBytes: maximumOutputPayloadBytes)
+        }
         try Task.checkCancellation()
         try Self.validateCopiedOutput(
             bytes: output.bytes.count, warningBytes: output.warning.utf8.count, maximum: maximumOutputPayloadBytes)
         return output
     }
+
+    private func encodeTextured(archive: Data) async throws -> DocumentExportArtifact {
+        var error = Dust3DError()
+        guard let pointer = dust3d_cancellation_token_create(&error) else { throw MeshLoader.loadingError(error) }
+        let token = NativeBakeCancellation(pointer)
+        defer { token.close() }
+        return try await withTaskCancellationHandler {
+            try operation.encodeTextured(
+                archive: archive, maximumGeometryPayloadBytes: maximumGeometryPayloadBytes,
+                maximumOutputPayloadBytes: maximumOutputPayloadBytes, cancellation: pointer)
+        } onCancel: {
+            token.cancel()
+        }
+    }
 }
 
 protocol FBXExportOperation: Sendable {
     func encode(archive: Data, maximumGeometryPayloadBytes: Int, maximumOutputPayloadBytes: Int) throws
+        -> DocumentExportArtifact
+    func encodeTextured(
+        archive: Data, maximumGeometryPayloadBytes: Int, maximumOutputPayloadBytes: Int, cancellation: OpaquePointer
+    ) throws
         -> DocumentExportArtifact
 }
 
@@ -104,9 +129,36 @@ struct NativeFBXExportOperation: FBXExportOperation {
     func encode(archive: Data, maximumGeometryPayloadBytes: Int, maximumOutputPayloadBytes: Int) throws
         -> DocumentExportArtifact
     {
+        try encode(
+            archive: archive, maximumGeometryPayloadBytes: maximumGeometryPayloadBytes,
+            maximumOutputPayloadBytes: maximumOutputPayloadBytes, bake: nil)
+    }
+
+    func encodeTextured(
+        archive: Data, maximumGeometryPayloadBytes: Int, maximumOutputPayloadBytes: Int, cancellation: OpaquePointer
+    ) throws
+        -> DocumentExportArtifact
+    {
+        let images = try ArchiveTextureImagePreparation.load(data: archive, limits: ArchiveTextureLimits())
+        try Task.checkCancellation()
+        return try MeshBakedInput.withOptions(images: images, options: MeshBakeOptions(), cancellation: cancellation) {
+            bake in
+            try encode(
+                archive: archive, maximumGeometryPayloadBytes: maximumGeometryPayloadBytes,
+                maximumOutputPayloadBytes: maximumOutputPayloadBytes, bake: bake)
+        }
+    }
+
+    private func encode(
+        archive: Data, maximumGeometryPayloadBytes: Int, maximumOutputPayloadBytes: Int, bake: Dust3DBakeOptions?
+    ) throws -> DocumentExportArtifact {
         var options = Dust3DFbxExportOptions()
         options.struct_size = MemoryLayout<Dust3DFbxExportOptions>.size
-        options.mode = UInt32(DUST3D_FBX_EXPORT_GEOMETRY)
+        options.mode = UInt32(bake == nil ? DUST3D_FBX_EXPORT_GEOMETRY : DUST3D_FBX_EXPORT_BAKED)
+        if let bake {
+            options.bake = bake
+            options.cancellation = bake.cancellation
+        }
         options.maximum_geometry_payload_bytes = maximumGeometryPayloadBytes
         options.maximum_output_payload_bytes = maximumOutputPayloadBytes
         var error = Dust3DError()

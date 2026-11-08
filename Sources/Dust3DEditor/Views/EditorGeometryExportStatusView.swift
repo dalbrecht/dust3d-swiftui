@@ -27,7 +27,7 @@ struct EditorGeometryExportStatusView: View {
         switch phase {
         case .idle, .failed: EmptyView()
         case .choosing: status { activity("Choose an export destination…") }
-        case .encoding: status { activity("Exporting \(format.rawValue.uppercased()) geometry…") }
+        case .encoding: status { activity("Exporting \(format.exportName)…") }
         case .cancelling: status { activity("Finishing current export…") }
         case .completed(let receipt):
             status {
@@ -45,7 +45,7 @@ struct EditorGeometryExportStatusView: View {
                         .accessibilityHint("Selects the exported file in Finder")
                         Button(action: onDismiss) { Text("Dismiss").frame(minHeight: 40) }
                             .buttonStyle(.borderless).accessibilityLabel(
-                                "Dismiss \(receipt.format.rawValue.uppercased()) export result")
+                                "Dismiss \(receipt.format.fileExtension.uppercased()) export result")
                     }
                     if !receipt.warning.isEmpty {
                         Text("Export warning: \(receipt.warning)").textSelection(.enabled)
@@ -64,7 +64,7 @@ struct EditorGeometryExportStatusView: View {
             Spacer(minLength: 8)
             Button(action: onCancel) { Text("Cancel").frame(minHeight: 40) }
                 .buttonStyle(.borderless).disabled(!phase.canCancel).accessibilityLabel(
-                    "Cancel \(format.rawValue.uppercased()) export")
+                    "Cancel \(format.fileExtension.uppercased()) export")
         }
     }
 

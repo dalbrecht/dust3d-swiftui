@@ -12,6 +12,14 @@ private final class RecordedFBXEncoding: FBXExportOperation, @unchecked Sendable
         self.result = result
         self.cancels = cancels
     }
+    func encodeTextured(
+        archive: Data, maximumGeometryPayloadBytes: Int, maximumOutputPayloadBytes: Int, cancellation: OpaquePointer
+    ) throws
+        -> DocumentExportArtifact
+    {
+        throw NativeFBXExportError.unsupportedFormat(.fbxTextured)
+    }
+
     func encode(archive: Data, maximumGeometryPayloadBytes: Int, maximumOutputPayloadBytes: Int) throws
         -> DocumentExportArtifact
     {
