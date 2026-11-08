@@ -38,6 +38,8 @@
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
+- Clear missing cut-face links when pasting Qt XML interactively, keeping profiles found in the fragment or document.
+
 - Preview applied and retained component color images in the inspector without changing image assignments.
 
 - Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
