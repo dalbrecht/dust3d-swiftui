@@ -38,6 +38,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
     var wheelWhileDisabled: () -> Bool = { false }
+    var unhandledWheel: ((CanvasWheelInput) -> Bool)? = nil
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
@@ -73,6 +74,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.hover = hover
         view.wheel = wheel
         view.wheelWhileDisabled = wheelWhileDisabled
+        view.unhandledWheel = unhandledWheel
         view.radiusKey = radiusKey
         view.doubleClick = doubleClick
         view.precisionKey = precisionKey
@@ -101,6 +103,7 @@ final class CanvasPointerView: NSView {
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
     var wheelWhileDisabled: () -> Bool = { false }
+    var unhandledWheel: ((CanvasWheelInput) -> Bool)?
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
@@ -299,10 +302,18 @@ final class CanvasPointerView: NSView {
         }
     }
 
-    func routeWheel(_ input: CanvasWheelInput) -> Bool {
-        (enabled || wheelWhileDisabled()) && input.isSupported && wheel(input)
+    func routeWheel(_ input: CanvasWheelInput, at point: CanvasPoint? = nil) -> Bool {
+        guard input.isSupported, enabled || wheelWhileDisabled() else { return false }
+        if enabled || tracksHoverWhileDisabled, !isAddingNodes, start == nil, let point {
+            hover(point)
+        }
+        if wheel(input) { return true }
+        return enabled && start == nil && unhandledWheel?(input) == true
     }
+
     override func scrollWheel(with event: NSEvent) {
-        if !routeWheel(CanvasWheelInput(event)) { super.scrollWheel(with: event) }
+        if !routeWheel(CanvasWheelInput(event), at: point(event)) {
+            super.scrollWheel(with: event)
+        }
     }
 }
