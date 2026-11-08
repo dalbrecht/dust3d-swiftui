@@ -130,6 +130,8 @@ public enum DocumentCommand: Sendable {
     case setPartName(id: String, name: String)
     /// Rename one component independently of its linked part; empty input removes its name.
     case setComponentName(id: String, name: String)
+    /// Edit the base of an exact Model component name without rewriting its recognized equipment suffix.
+    case setComponentBaseNamePreservingEquipmentSlot(id: String, name: String)
     /// Replace the final equipment suffix on a linked Model component. Blank input removes it.
     /// The exact component ID selects the owner; the trimmed slot is stored as entered, for example `armor/2`.
     case setComponentEquipmentSlot(id: String, slot: String)
@@ -834,6 +836,10 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentBaseNamePreservingEquipmentSlot(let id, let name):
+            guard try ComponentHierarchy.renameEquipmentBase(model, parts: contents.parts, id: id, name: name)
+            else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartHollowThickness(let id, let thickness):
             guard thickness.isFinite, (0...1).contains(thickness) else {

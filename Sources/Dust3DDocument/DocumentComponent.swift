@@ -34,6 +34,14 @@ public struct DocumentComponent: Identifiable, Equatable, Sendable {
         equipmentMarker.map { String(name[..<$0.lowerBound]) } ?? name
     }
 
+    /// Keep legacy whitespace and any earlier marker in the base; the final nonblank suffix owns the slot.
+    package var equipmentRenameBaseName: String? {
+        guard let slot = equipmentSlot, !slot.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return equipmentBaseName
+    }
+
     private var equipmentMarker: Range<String.Index>? {
         name.range(of: " @", options: .backwards)
     }
@@ -108,6 +116,34 @@ enum ComponentHierarchy {
     }
 
     static func setEquipmentSlot(_ model: XMLDocument, parts: [DocumentPart], id: String, slot: String) throws -> Bool {
+        let (component, element) = try equipmentComponent(model, parts: parts, id: id)
+        let value = slot.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = value.isEmpty ? component.equipmentBaseName : component.equipmentBaseName + " @" + value
+        guard !component.name.utf8.elementsEqual(name.utf8) else { return false }
+        try validateName(name)
+        writeName(name, on: element)
+        return true
+    }
+
+    static func renameEquipmentBase(
+        _ model: XMLDocument, parts: [DocumentPart], id: String, name: String
+    ) throws -> Bool {
+        let (component, element) = try equipmentComponent(model, parts: parts, id: id)
+        guard let originalBase = component.equipmentRenameBaseName, let slot = component.equipmentSlot else {
+            throw DocumentError.invalidComponentName
+        }
+        guard !originalBase.utf8.elementsEqual(name.utf8) else { return false }
+        try validateName(name)
+        let value = name.trimmingCharacters(in: .whitespacesAndNewlines) + " @" + slot
+        guard !component.name.utf8.elementsEqual(value.utf8) else { return false }
+        try validateName(value)
+        writeName(value, on: element)
+        return true
+    }
+
+    private static func equipmentComponent(_ model: XMLDocument, parts: [DocumentPart], id: String) throws
+        -> (DocumentComponent, XMLElement)
+    {
         let components = try read(model)
         guard let component = components.first(where: { $0.id.utf8.elementsEqual(id.utf8) }),
             let element = PartSplitting.componentElements(model).first(where: {
@@ -117,12 +153,7 @@ enum ComponentHierarchy {
         guard let partID = component.partID,
             parts.first(where: { $0.id.utf8.elementsEqual(partID.utf8) })?.target == .model
         else { throw DocumentError.invalidComponent }
-        let value = slot.trimmingCharacters(in: .whitespacesAndNewlines)
-        let name = value.isEmpty ? component.equipmentBaseName : component.equipmentBaseName + " @" + value
-        guard !component.name.utf8.elementsEqual(name.utf8) else { return false }
-        try validateName(name)
-        writeName(name, on: element)
-        return true
+        return (component, element)
     }
 
     private static func validateName(_ name: String) throws {
