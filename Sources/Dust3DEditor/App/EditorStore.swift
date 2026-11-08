@@ -443,17 +443,7 @@ final class EditorStore {
         else { return }
         do {
             try addPlacement.updatePointer(point)
-            var candidate: String?
-            var nearestDistance = 18.0
-            for node in snapshot.nodes where node.isVisible {
-                let center = projection.point(for: node.value.position)
-                let distance = hypot(center.x - point.x, center.y - point.y)
-                // On an exact tie the later, topmost node keeps precedence.
-                if distance <= nearestDistance {
-                    nearestDistance = distance
-                    candidate = node.id
-                }
-            }
+            let candidate = addConnectionCandidate(at: point, projection: projection, snapshot: snapshot)
             guard let request = addPlacement.request(connectingTo: candidate) else { return }
             let placementID = UUID()
             addPlacementRequestID = placementID
@@ -472,6 +462,43 @@ final class EditorStore {
                 })
         } catch { errorMessage = Self.message(error) }
     }
+    private func addConnectionCandidate(
+        at point: CanvasPoint, projection: CanvasProjection, snapshot: EditorSnapshot
+    ) -> String? {
+        var candidate: String?
+        var nearestDistance = 18.0
+        var centers: [Data: CanvasPoint] = [:]
+        for node in snapshot.nodes where node.isVisible {
+            let center = projection.point(for: node.value.position)
+            centers[Data(node.id.utf8)] = center
+            let distance = hypot(center.x - point.x, center.y - point.y)
+            // On an exact tie the later, topmost node keeps precedence.
+            if distance <= nearestDistance {
+                nearestDistance = distance
+                candidate = node.id
+            }
+        }
+        guard let candidate else { return nil }
+        for edge in snapshot.edges {
+            guard let from = centers[Data(edge.fromID.utf8)], let to = centers[Data(edge.toID.utf8)] else { continue }
+            let dx = to.x - from.x
+            let dy = to.y - from.y
+            let length = hypot(dx, dy)
+            guard length > 0, length.isFinite else { continue }
+            let x = point.x - from.x
+            let y = point.y - from.y
+            let ux = dx / length
+            let uy = dy / length
+            let along = x * ux + y * uy
+            // Qt's directed edge triangle tapers from four points wide to zero.
+            guard along >= 0, along <= length,
+                abs(x * uy - y * ux) <= 2 * (1 - along / length)
+            else { continue }
+            if hypot(x - dx / 2, y - dy / 2) < nearestDistance { return nil }
+        }
+        return candidate
+    }
+
     private func acceptAddPlacement(_ receipt: AddPlacementReceipt, modeID: UUID) {
         guard isAddingNodes, modeID == addModeID else { return }
         do {
