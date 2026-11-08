@@ -78,6 +78,34 @@ final class QtPasteCutFaceTests: XCTestCase {
         XCTAssertFalse(String(decoding: clipboard.document.modelXML, as: UTF8.self).contains("cutRotation=\".5\""))
     }
 
+    func testInteractiveQtPasteClearsAliasesThatDoNotResolveExactly() async throws {
+        let existingBare = existing.dropFirst().dropLast()
+        let includedBare = included.dropFirst().dropLast()
+        let source = String(decoding: try fragment().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "cutFace=\"\(existing)\"", with: "cutFace=\"\(existingBare)\"")
+            .replacingOccurrences(of: "cutFace=\"Triangle\"", with: "cutFace=\"\(existingBare)\"")
+            .replacingOccurrences(of: "id=\"\(included)\"", with: "id=\"\(includedBare)\"")
+            .replacingOccurrences(of: "partId=\"\(included)\"", with: "partId=\"\(includedBare)\"")
+        let session = EditorSession()
+        let original = try destination()
+        _ = try await session.open(data: original.encoded())
+        let pasted = try await session.paste(snapshotXML: Data(source.utf8))
+        let xml = try XCTUnwrap(XMLDocument(data: pasted.document.modelXML).rootElement())
+        let parts = xml.elements(forName: "parts").flatMap { $0.elements(forName: "part") }
+        let existingPart = try XCTUnwrap(parts.first { $0.attribute(forName: "name")?.stringValue == "Existing" })
+        let includedPart = try XCTUnwrap(parts.first { $0.attribute(forName: "name")?.stringValue == "Included" })
+        XCTAssertNil(existingPart.attribute(forName: "cutFace"))
+        XCTAssertNil(includedPart.attribute(forName: "cutFace"))
+        let node = try XCTUnwrap(
+            xml.elements(forName: "nodes").flatMap { $0.elements(forName: "node") }.first {
+                $0.attribute(forName: "partId")?.stringValue == existingPart.attribute(forName: "id")?.stringValue
+            })
+        XCTAssertNil(node.attribute(forName: "cutFace"))
+        XCTAssertNil(node.attribute(forName: "cutRotation"))
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), original.encoded())
+    }
+
     func testNativeAndNoninteractivePasteKeepAuthoredUnresolvedProfileMetadata() async throws {
         let source = try fragment()
         let selection = Set(try source.editorContents().nodes.map(\.id))

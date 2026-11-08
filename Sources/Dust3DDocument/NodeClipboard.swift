@@ -64,12 +64,13 @@ public struct NodeClipboard: Sendable {
         let fragmentPartIDs = elements.compactMap { element in
             element.name == "part" ? element.attribute(forName: "id")?.stringValue : nil
         }
-        let known = Set(
-            (destinationPartIDs + fragmentPartIDs).compactMap(CutFaceLinks.canonicalID).map { Data($0.utf8) })
+        // UUID shape distinguishes links from presets. Remapping and the pinned
+        // mesh generator both look up the authored link bytes.
+        let known = Set((destinationPartIDs + fragmentPartIDs).map { Data($0.utf8) })
         var changed = false
         for element in elements where element.name == "node" || element.name == "part" {
             guard let value = element.attribute(forName: "cutFace")?.stringValue,
-                let link = CutFaceLinks.canonicalID(value), !known.contains(Data(link.utf8))
+                CutFaceLinks.canonicalID(value) != nil, !known.contains(Data(value.utf8))
             else { continue }
             element.removeAttribute(forName: "cutFace")
             if element.name == "node" { element.removeAttribute(forName: "cutRotation") }
