@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Switch Viewer windows between Model Colors and neutral shading from the toolbar or View menu. The Viewer retains the current mesh and its materials while a replacement loads or if that open fails.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.

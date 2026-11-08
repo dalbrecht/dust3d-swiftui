@@ -13,6 +13,14 @@ See [viewer](docs/imported-material-viewer-verification.md),
 [editor](docs/imported-material-editor-verification.md) and
 [file-preview verification](docs/imported-file-preview-verification.md).
 
+Use **Model Colors** in the Viewer toolbar or View menu to switch between the
+authored appearance and neutral shading for that window. Neutral shading uses
+geometry normals and the native renderer’s existing alpha and sidedness rules,
+including supported texture alpha. Qt removes the material maps and retains
+vertex alpha when toggling color, so textured cutouts can look different. A
+pending or failed open retains the last accepted mesh and its materials. The
+toolbar, menu, and rendered appearance still need physical macOS acceptance.
+
 The Swift `Dust3DKit` module provides `MeshLoader.loadIfPresent(data:)`: it returns
 nil only for the reviewed core's successful no-geometry result. Other failures
 retain their original status/diagnostic; `load(data:)` keeps its strict nonempty

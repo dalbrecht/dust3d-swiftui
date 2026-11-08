@@ -157,6 +157,129 @@ final class ViewerMaterialTests: XCTestCase {
         }
     }
 
+    func testRetainsAcceptedMaterialsAcrossPendingAndFailedReplacementThenSwapsOnSuccess() async throws {
+        let first = try copiedFrame(1)
+        let second = try copiedFrame(2)
+        let loader = SuspendedSnapshotLoader()
+        let baker = SuspendedViewerBaker()
+        let store = ViewerStore(
+            service: loader, materialBaker: baker, importedMaterialLoader: NoImportedViewerMaterials())
+        defer { store.stop() }
+
+        store.open(URL(fileURLWithPath: "/test/first.ds3"))
+        try await waitForFileRequests(1, loader)
+        await loader.finish(0, first.snapshot)
+        await store.loadTask?.value
+        try await waitForRequests(1, baker)
+        await baker.finish(0, first.baked)
+        await store.materialTask?.value
+        let meshRevision = store.meshRevision
+        let materialRevision = store.materialRevision
+        let renderRevision = meshRevision + materialRevision
+        store.materialsRendered(revision: renderRevision)
+
+        store.open(URL(fileURLWithPath: "/test/broken.ds3"))
+        try await waitForFileRequests(2, loader)
+        XCTAssertTrue(store.isLoading)
+        XCTAssertEqual(store.documentName, "first.ds3")
+        XCTAssertEqual(store.bakedMesh?.textures.color, first.baked.textures.color)
+        XCTAssertEqual(store.meshRevision, meshRevision)
+        XCTAssertEqual(store.materialRevision, materialRevision)
+        XCTAssertFalse(store.isUpdatingMaterials)
+        await loader.fail(1)
+        await store.loadTask?.value
+        XCTAssertEqual(store.errorMessage, "Original file access cause")
+        XCTAssertEqual(store.documentName, "first.ds3")
+        XCTAssertEqual(store.bakedMesh?.textures.color, first.baked.textures.color)
+        XCTAssertFalse(store.isUpdatingMaterials)
+
+        store.open(URL(fileURLWithPath: "/test/second.ds3"))
+        try await waitForFileRequests(3, loader)
+        XCTAssertEqual(store.bakedMesh?.textures.color, first.baked.textures.color)
+        await loader.finish(2, second.snapshot)
+        await store.loadTask?.value
+        try await waitForRequests(2, baker)
+        XCTAssertNil(store.errorMessage)
+        XCTAssertEqual(store.documentName, "second.ds3")
+        XCTAssertEqual(store.meshRevision, meshRevision + 1)
+        XCTAssertNil(store.bakedMesh)
+        let inputs = await baker.inputs
+        XCTAssertEqual(inputs, [first.snapshot.data, second.snapshot.data])
+        await baker.finish(1, second.baked)
+        await store.materialTask?.value
+        store.materialsFailed("Old viewport failure", revision: renderRevision)
+        XCTAssertNil(store.materialIssue)
+        XCTAssertEqual(store.bakedMesh?.textures.color, second.baked.textures.color)
+        XCTAssertTrue(store.isUpdatingMaterials)
+        store.materialsRendered(revision: store.meshRevision + store.materialRevision)
+        XCTAssertFalse(store.isUpdatingMaterials)
+    }
+
+    func testModelColorPresentationIsWindowLocalAndDoesNotRebake() async throws {
+        let frame = try copiedFrame(1)
+        let loader = SuspendedSnapshotLoader()
+        let baker = SuspendedViewerBaker()
+        let store = ViewerStore(
+            service: loader, materialBaker: baker, importedMaterialLoader: NoImportedViewerMaterials())
+        let otherWindow = ViewerStore(
+            service: loader, materialBaker: baker, importedMaterialLoader: NoImportedViewerMaterials())
+        defer {
+            store.stop()
+            otherWindow.stop()
+        }
+
+        store.open(URL(fileURLWithPath: "/test/first.ds3"))
+        try await waitForFileRequests(1, loader)
+        await loader.finish(0, frame.snapshot)
+        await store.loadTask?.value
+        try await waitForRequests(1, baker)
+
+        store.open(URL(fileURLWithPath: "/test/broken.ds3"))
+        try await waitForFileRequests(2, loader)
+        await baker.finish(0, frame.baked)
+        await store.materialTask?.value
+        XCTAssertTrue(store.isLoading)
+        XCTAssertEqual(store.bakedMesh?.textures.color, frame.baked.textures.color)
+        let meshRevision = store.meshRevision
+        let materialRevision = store.materialRevision
+        store.materialsRendered(revision: meshRevision + materialRevision)
+
+        XCTAssertTrue(store.showsModelColors)
+        store.setModelColors(false)
+        XCTAssertFalse(store.showsModelColors)
+        XCTAssertTrue(otherWindow.showsModelColors)
+        XCTAssertEqual(store.meshRevision, meshRevision)
+        XCTAssertEqual(store.materialRevision, materialRevision)
+        XCTAssertEqual(store.bakedMesh?.textures.color, frame.baked.textures.color)
+        XCTAssertFalse(store.isUpdatingMaterials)
+        let inputs = await baker.inputs
+        XCTAssertEqual(inputs, [frame.snapshot.data])
+        await loader.fail(1)
+        await store.loadTask?.value
+        XCTAssertFalse(store.showsModelColors)
+        XCTAssertEqual(store.errorMessage, "Original file access cause")
+    }
+
+    private func copiedFrame(_ byte: UInt8) throws -> (snapshot: MeshFileSnapshot, baked: MeshWithBakedTextures) {
+        let vertices = [SIMD3<Float>(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)].map {
+            MeshVertex(position: $0, normal: SIMD3(0, 0, 1), color: SIMD4(1, 0, 0, 1))
+        }
+        let geometry = IndexedMesh(vertices: vertices, indices: [0, 1, 2], nodeCount: 3, partCount: 1, warning: "")
+        let snapshot = MeshFileSnapshot(data: Data([byte]), mesh: geometry)
+        let triangle = RawMeshUvTriangle(
+            corners: MeshUvCorners(first: .zero, second: .zero, third: .zero), known: 0,
+            componentKind: 0, componentIndex: -1)
+        let metadata = try MeshUvMetadata(
+            componentIDs: [], triangles: [triangle], charts: [], gradients: [],
+            expandedVertexCount: vertices.count, packedTextureSize: 0)
+        let image = MeshTextureImage(width: 1, height: 1, rowStride: 4, pixels: Data([byte, 0, 0, 255]))
+        let baked = MeshWithBakedTextures(
+            geometry: Mesh(vertices: vertices, nodeCount: 3, partCount: 1, warning: ""),
+            metadata: metadata, tangents: [],
+            textures: MeshTextureMaps(color: image, normal: nil, metallic: nil, roughness: nil, emissive: nil))
+        return (snapshot, baked)
+    }
+
     private func waitForFileRequests(_ expected: Int, _ loader: SuspendedSnapshotLoader) async throws {
         for _ in 0..<300 {
             if await loader.count >= expected { return }
@@ -236,4 +359,10 @@ private actor SuspendedSnapshotLoader: MeshFileSnapshotLoading {
 private enum ViewerSourceFailure: LocalizedError {
     case original
     var errorDescription: String? { "Original source interpretation cause" }
+}
+
+private struct NoImportedViewerMaterials: ArchiveImportedMaterialLoading {
+    func loadIfPresent(data: Data, limits: ImportedMaterialRenderLimits) async throws -> ImportedMaterialRenderData? {
+        nil
+    }
 }
