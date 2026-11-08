@@ -7,15 +7,20 @@ enum EditorCommandScope {
         case text
         case components
         case edges
+        case nodes
         case graph
         case unavailable
     }
 
     static func selectAllDestination(
-        nativeTextFocus: Bool, componentSidebarFocus: Bool, animationFocus: Bool, edgeSidebarFocus: Bool = false
+        nativeTextFocus: Bool, componentSidebarFocus: Bool, animationFocus: Bool, edgeSidebarFocus: Bool = false,
+        nodesSidebarFocus: Bool = false
     ) -> SelectAllDestination {
         if nativeTextFocus { return .text }
         if animationFocus { return .unavailable }
+        if nodesSidebarFocus {
+            return componentSidebarFocus || edgeSidebarFocus ? .unavailable : .nodes
+        }
         if componentSidebarFocus { return .components }
         return edgeSidebarFocus ? .edges : .graph
     }
