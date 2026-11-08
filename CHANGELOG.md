@@ -26,6 +26,8 @@
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
 
+- Add new parts and paste components into the browsed group when placement is automatic.
+
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
 
 - Select edges without moving or selecting nodes while preparing a bone assignment.

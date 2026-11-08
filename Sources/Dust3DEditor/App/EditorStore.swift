@@ -274,8 +274,15 @@ final class EditorStore {
 
     var canChooseAddPlacementDestination: Bool { acceptedAddPlacementSource != nil }
 
+    private var effectiveAddPlacementDestination: AddPlacementDestination {
+        if addPlacementDestination == .selection, let componentBrowseGroupID {
+            return .group(componentBrowseGroupID)
+        }
+        return addPlacementDestination
+    }
+
     var addPlacementDestinationTitle: String {
-        switch addPlacementDestination {
+        switch effectiveAddPlacementDestination {
         case .selection: "Selected group or root for pointer Add"
         case .documentRoot: "Document root"
         case .group(let id): snapshot?.addPlacementGroup(id)?.title ?? "Unavailable group"
@@ -338,7 +345,7 @@ final class EditorStore {
             addPlacementNotice = nil
             try addPlacement.begin(
                 snapshot: snapshot, projection: currentCanvasProjection, canvasHeight: canvasHeight,
-                destination: addPlacementDestination)
+                destination: effectiveAddPlacementDestination)
             addModeID = UUID()
         } catch { errorMessage = Self.message(error) }
     }
@@ -1473,11 +1480,15 @@ final class EditorStore {
     }
 
     private func changeComponentBrowseGroup(_ groupID: String?, reset: Bool = false) {
-        guard reset || componentBrowseGroupID.map({ Data($0.utf8) }) != groupID.map({ Data($0.utf8) })
-        else { return }
+        let changed = componentBrowseGroupID.map { Data($0.utf8) } != groupID.map { Data($0.utf8) }
+        guard reset || changed else { return }
         componentBrowseGroupID = groupID
         componentBrowseEpoch = UUID()
         pendingComponentDrag = nil
+        if changed, addPlacementDestination == .selection {
+            workingGroupRevision = UUID()
+            if addPlacement.anchorID == nil { cancelAddMode() }
+        }
     }
 
     private func reconcileComponentBrowse(previous: EditorSnapshot?) {
@@ -2450,7 +2461,7 @@ final class EditorStore {
             accepted.documentIdentity == snapshot.documentIdentity
         else { return nil }
         let parentID: String?
-        if case .group(let id) = addPlacementDestination {
+        if case .group(let id) = effectiveAddPlacementDestination {
             guard snapshot.addPlacementGroup(id) != nil else { return nil }
             parentID = id
         } else {
@@ -2592,10 +2603,10 @@ final class EditorStore {
                 id: nodeID, partID: partID, componentID: componentID,
                 position: position, radius: selected?.value.radius ?? 0.1)
         ]
-        // Automatic group placement belongs to pointer Add. The Nodes menu defaults to the root.
+        // An anchored extension stays in its original part, regardless of the authoring destination.
         if let selected, selected.partID != nil {
             commands.append(.joinNodes(id: Self.identifier(), from: selected.id, to: nodeID))
-        } else if let componentID, case .group(let parentID) = addPlacementDestination {
+        } else if let componentID, case .group(let parentID) = effectiveAddPlacementDestination {
             guard snapshot.addPlacementGroup(parentID) != nil else { return }
             commands.append(.reparentComponent(id: componentID, parentID: parentID))
         }
