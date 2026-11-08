@@ -24,7 +24,7 @@ enum EditorHeadlessDS3SaveCommand {
             case .usage:
                 "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment.xml] -o output.ds3 [-output another ...]. "
                     + "Supply one input archive or XML fragment and up to 64 distinct destinations. "
-                    + "Headless geometry export is currently unavailable."
+                    + "Use .ds3 for a source copy, or .obj and .fbx for static geometry."
             case .unsafeOutput(let url):
                 "Destination must be a regular file distinct from all inputs and other outputs: \(url.path)"
             case .geometryUnavailable(let kind):
@@ -93,7 +93,7 @@ enum EditorHeadlessDS3SaveCommand {
 
     /// A nil status leaves the ordinary application and other startup commands in charge.
     @MainActor static func run(
-        arguments: [String], geometryEncoder: (any DocumentExportEncoding)? = nil,
+        arguments: [String], geometryEncoder: (any DocumentExportEncoding)? = NativeGeometryExportEncoder(),
         stdout: (String) -> Void, stderr: (String) -> Void
     ) async -> Int32? {
         let options = arguments.dropFirst()

@@ -3,11 +3,11 @@
 Separate macOS 14+ SwiftUI document app. Run from the repository root with
 `./script/build_and_run.sh --editor`, or package with `--editor --build-only`.
 
-For a headless source save, pass one `.ds3` archive and one or more `.ds3`
-outputs to the editor executable. `-o` and `-output` are interchangeable.
+For headless output, pass one `.ds3` archive and one or more `.ds3`, `.obj` or
+`.fbx` destinations to the editor executable. `-o` and `-output` are interchangeable.
 
 ```sh
-Dust3DEditor input.ds3 -o copy.ds3 -output second-copy.ds3
+Dust3DEditor input.ds3 -o copy.ds3 -output model.obj -o model.fbx
 Dust3DEditor input.ds3 -paste-xml fragment.xml -o edited.ds3
 Dust3DEditor -paste-xml fragment.xml -o new.ds3
 ```
@@ -20,11 +20,10 @@ links. The command processes destinations in argument order and replaces individ
 archive files atomically. A failed destination is reported and the command continues
 with later destinations.
 
-The editor CLI recognizes `.obj`, `.fbx`, and `.glb` destinations and reports
-headless geometry export as unavailable for each one. Any `.ds3` destinations
-in the same command are still processed. Exit status `0` means all outputs
-succeeded, `1` means an input or output failed, and `2` means a usage or path
-preflight error.
+OBJ and FBX write static procedural geometry. A `.glb` destination reports an
+unavailable export and later destinations are still processed. Exit status `0`
+means all outputs succeeded, `1` means an input or output failed, and `2` means
+a usage or path preflight error.
 
 Open an existing `.ds3`, select a node in the list or canvas, drag it in Front
 (X/Y) or Side (Z/Y), or edit X/Y/Z/radius and press Apply. Undo/redo operates on

@@ -174,6 +174,38 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         }
     }
 
+    func testDefaultEncoderExportsGeometryAndContinuesAfterUnavailableGLB() async throws {
+        let directory = try temporaryDirectory()
+        let source = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Dust3DKitTests/Fixtures/Capsule.ds3")
+        let original = try Data(contentsOf: source)
+        let obj = directory.appendingPathComponent("model.obj")
+        let glb = directory.appendingPathComponent("existing.glb")
+        let fbx = directory.appendingPathComponent("model.fbx")
+        let copy = directory.appendingPathComponent("copy.ds3")
+        let previousGLB = Data("previous GLB".utf8)
+        try previousGLB.write(to: glb)
+        var messages: [String] = []
+        var errors: [String] = []
+
+        let status = await EditorHeadlessDS3SaveCommand.run(
+            arguments: ["Editor", source.path, "-o", obj.path, "-o", glb.path, "-o", fbx.path, "-o", copy.path],
+            stdout: { messages.append($0) }, stderr: { errors.append($0) })
+
+        XCTAssertEqual(status, 1)
+        XCTAssertEqual(messages.count, 3)
+        XCTAssertEqual(errors.count, 1)
+        XCTAssertTrue(errors.first?.contains(glb.path) == true)
+        XCTAssertTrue(
+            try String(contentsOf: obj, encoding: .utf8).split(separator: "\n").contains {
+                $0.hasPrefix("f ")
+            })
+        XCTAssertTrue(try Data(contentsOf: fbx).starts(with: "Kaydara FBX Binary".utf8))
+        XCTAssertEqual(try Data(contentsOf: glb), previousGLB)
+        XCTAssertEqual(try Data(contentsOf: source), original)
+        XCTAssertEqual(try Data(contentsOf: copy), original)
+    }
+
     func testUnavailableGeometryLeavesExistingFilesAndContinuesInOrder() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
@@ -190,7 +222,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         var messages: [String] = []
         let status = await EditorHeadlessDS3SaveCommand.run(
             arguments: ["Editor", source.path, "-o", first.path, "-o", obj.path, "-o", glb.path, "-o", last.path],
-            stdout: { messages.append($0) }, stderr: { messages.append($0) })
+            geometryEncoder: nil, stdout: { messages.append($0) }, stderr: { messages.append($0) })
 
         XCTAssertEqual(status, 1)
         XCTAssertEqual(try Data(contentsOf: first), original)
