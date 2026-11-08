@@ -1619,6 +1619,25 @@ final class EditorStore {
         }
     }
 
+    var edgeSidebarSelectAllTarget: EdgeSidebarSelectAllTarget? {
+        guard let snapshot, !snapshot.edges.isEmpty else { return nil }
+        let eligible = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: .replace) : snapshot.edges
+        return .init(
+            ids: Set(eligible.map(\.id)), context: CanvasAdjustmentTarget(snapshot: snapshot),
+            rigModeEpoch: rigEdgeSelectionEpoch)
+    }
+
+    func canSelectAllSidebarEdges(_ target: EdgeSidebarSelectAllTarget) -> Bool {
+        guard canSave, let snapshot, !target.ids.isEmpty else { return false }
+        return rigEdgeSelectionEpoch == target.rigModeEpoch && target.context.isCurrent(in: snapshot)
+    }
+
+    func selectAllSidebarEdges(_ target: EdgeSidebarSelectAllTarget) {
+        guard canSelectAllSidebarEdges(target) else { return }
+        let (ids, context) = (target.ids, target.context)
+        perform(commits: false, selectionOnly: true) { try await $0.selectEdges(ids, target: context) }
+    }
+
     func selectEdges(_ ids: Set<String>) {
         perform(commits: false, selectionOnly: true) { try await $0.selectEdges(ids) }
     }
