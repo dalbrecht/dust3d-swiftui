@@ -35,4 +35,19 @@ final class SelectAllCommandScopeTests: XCTestCase {
                 nativeTextFocus: false, componentSidebarFocus: false, animationFocus: false),
             .graph)
     }
+
+    func testEdgeSidebarFocusRoutesOnlyToEdgesWithTextAndAnimationPrecedence() {
+        XCTAssertEqual(
+            EditorCommandScope.selectAllDestination(
+                nativeTextFocus: false, componentSidebarFocus: false, animationFocus: false, edgeSidebarFocus: true),
+            .edges)
+        XCTAssertEqual(
+            EditorCommandScope.selectAllDestination(
+                nativeTextFocus: true, componentSidebarFocus: false, animationFocus: false, edgeSidebarFocus: true),
+            .text)
+        XCTAssertEqual(
+            EditorCommandScope.selectAllDestination(
+                nativeTextFocus: false, componentSidebarFocus: false, animationFocus: true, edgeSidebarFocus: true),
+            .unavailable)
+    }
 }

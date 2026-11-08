@@ -11,7 +11,7 @@ struct EdgeSidebar: View {
         let titles = Dictionary(uniqueKeysWithValues: (store.snapshot?.nodes ?? []).map { ($0.id, $0.title) })
         let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
         let rigEligible = store.rigEdgeSidebarEligibleIDs
-        if !edges.isEmpty {
+        if let selectAll = store.edgeSidebarSelectAllTarget {
             Divider()
             Text("Edges").font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding(12)
             ScrollView {
@@ -86,6 +86,7 @@ struct EdgeSidebar: View {
                 }.padding(.horizontal, 12).padding(.bottom, 12)
             }
             .frame(maxHeight: 120)
+            .focusedValue(\.editorEdgeSidebarSelectAll, selectAll)
             .disabled(store.isWorking || !store.canPickGraph)
         }
     }
