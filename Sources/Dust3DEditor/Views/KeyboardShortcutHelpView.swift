@@ -35,6 +35,9 @@ enum KeyboardShortcutHelp {
         .init(
             action: "Decrease / Increase Selection Spacing", keys: "[ / ]",
             scope: "Focused canvas, node or origin marker, with editable selection and no active drag"),
+        .init(
+            action: "Toggle X Mirror", keys: "M",
+            scope: "Focused canvas with a hovered Model part or one selected Model owner"),
         .init(action: "Lock X / Y / Z / Radius", keys: "⌥⌘X / ⌥⌘Y / ⌥⌘Z / ⌥⌘R", scope: "Active document"),
         .init(action: "Show / Hide Inspector", keys: "⌃⌘I", scope: "Focused editor window"),
         .init(action: "Show Animations Inspector", keys: "⌥⌘A", scope: "Editor window"),

@@ -2404,17 +2404,30 @@ final class EditorStore {
     func renamePart(_ id: String, name: String) {
         perform { try await $0.apply([.setPartName(id: id, name: name)]) }
     }
+    private enum CanvasPartOperation {
+        case state(PartStateProperty)
+        case mirror
+    }
+
     func canvasPartStateAction(_ property: PartStateProperty) -> (@MainActor () -> Void)? {
         let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
-        guard let handle = canvasPartStateHandler(profileLease: lease) else { return nil }
-        return { _ = handle(property, false) }
+        guard let handler = canvasPartStateHandler(profileLease: lease) else { return nil }
+        return { _ = handler.perform(.state(property), false) }
+    }
+
+    func canvasPartMirrorAction() -> (@MainActor () -> Void)? {
+        let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
+        guard let handler = canvasPartStateHandler(profileLease: lease), handler.canMirror else { return nil }
+        return { _ = handler.perform(.mirror, false) }
     }
 
     func canvasPartStateKeyHandler(profileLease: UUID?) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
-        let handle = canvasPartStateHandler(profileLease: profileLease)
+        let handler = canvasPartStateHandler(profileLease: profileLease)
         return { input in
-            guard let property = input.partStateProperty, let handle else { return false }
-            return handle(property, input.isRepeat)
+            guard let handler else { return false }
+            if input.togglesPartMirror { return handler.perform(.mirror, input.isRepeat) }
+            guard let property = input.partStateProperty else { return false }
+            return handler.perform(.state(property), input.isRepeat)
         }
     }
 
@@ -2423,7 +2436,9 @@ final class EditorStore {
             && !referenceColorInteractionActive && canvasProfileMotion == nil
     }
 
-    private func canvasPartStateHandler(profileLease: UUID?) -> (@MainActor (PartStateProperty, Bool) -> Bool)? {
+    private func canvasPartStateHandler(profileLease: UUID?) -> (
+        canMirror: Bool, perform: @MainActor (CanvasPartOperation, Bool) -> Bool
+    )? {
         guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
             let context = canvasRotationContext
         else { return nil }
@@ -2437,20 +2452,31 @@ final class EditorStore {
         let hoverEpoch = canvasPartStateHoverEpoch
         let layout = precisionLayoutEpoch
         let interaction = referenceColorInteractionEpoch
-        return { [weak self] property, isRepeat in
-            guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
-                canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
-                precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction,
-                property == .locked || property == .disabled
-            else { return false }
-            if !isRepeat {
-                // A lock changes editability while the same visible graph item remains under the pointer.
-                perform(acceptCommittedCancellation: true, preservePartStateHover: property == .locked) {
-                    try await $0.toggleCanvasPartState(property, target: target)
+        let mirrorTarget = PartMirrorTarget(canvasTarget: target)
+        let mirrorValue = target.part.xMirrored
+        return (
+            mirrorTarget != nil && mirrorValue != nil,
+            { [weak self] operation, isRepeat in
+                guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
+                    canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
+                    precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction
+                else { return false }
+                switch operation {
+                case .state(let property):
+                    guard property == .locked || property == .disabled else { return false }
+                    if !isRepeat {
+                        // A lock changes editability while the same visible graph item remains under the pointer.
+                        perform(acceptCommittedCancellation: true, preservePartStateHover: property == .locked) {
+                            try await $0.toggleCanvasPartState(property, target: target)
+                        }
+                    }
+                case .mirror:
+                    guard let mirrorTarget, let mirrorValue, canEditPartMirror(mirrorTarget) else { return false }
+                    if !isRepeat { partMirrorAction(!mirrorValue, target: mirrorTarget)() }
                 }
+                return true
             }
-            return true
-        }
+        )
     }
 
     func setPartState(_ id: String, property: PartStateProperty, value: Bool) {
