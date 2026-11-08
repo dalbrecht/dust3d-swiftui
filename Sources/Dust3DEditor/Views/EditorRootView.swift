@@ -13,9 +13,10 @@ private enum EditorInspectorSection: String, CaseIterable, Hashable {
 struct EditorRootView: View {
     @Binding var file: EditorFileDocument
     let sourceURL: URL?
-    private let claimStartupPaste: @MainActor (URL, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery?
+    private let claimStartupPaste: @MainActor (URL?, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery?
     private let claimLaunchNeutralPreview: @MainActor (URL) async -> Bool
     @State private var store: EditorStore
+    @State private var canvasFocus = CanvasProfileFocusControl()
     @State private var exportDestinations: EditorGeometryExportDestinationService
     @State private var exportWorkflow: EditorGeometryExportWorkflow
     @State private var isInspectorPresented = true
@@ -29,7 +30,7 @@ struct EditorRootView: View {
     init(
         file: Binding<EditorFileDocument>, sourceURL: URL? = nil,
         claimLaunchNeutralPreview: @escaping @MainActor (URL) async -> Bool = { _ in false },
-        claimStartupPaste: @escaping @MainActor (URL, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery? = {
+        claimStartupPaste: @escaping @MainActor (URL?, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery? = {
             _, _ in nil
         }
     ) {
@@ -52,6 +53,8 @@ struct EditorRootView: View {
 
     var body: some View {
         let fitAction = toolbarFitAction
+        let fileIdentity = file.identity
+        let source = $file
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
@@ -90,7 +93,11 @@ struct EditorRootView: View {
                     onReveal: { NSWorkspace.shared.activateFileViewerSelecting([$0]) })
                 HSplitView {
                     VStack(spacing: 0) {
-                        CanvasProfileHeader(store: store).padding(12)
+                        CanvasProfileHeader(
+                            store: store, focusControl: canvasFocus, fileIdentity: fileIdentity,
+                            ownsWindow: { source.wrappedValue.identity == fileIdentity }
+                        )
+                        .padding(12)
                         HStack {
                             Text("Locks").font(.caption).foregroundStyle(.secondary)
                             ForEach(EditingConstraint.allCases, id: \.self) { constraint in
@@ -121,7 +128,7 @@ struct EditorRootView: View {
                         EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
-                        CanvasProfilePanes(store: store)
+                        CanvasProfilePanes(store: store, focusControl: canvasFocus)
                             .overlay(alignment: .bottom) { getStartedCard }
                     }
                     .frame(minWidth: 300)
@@ -221,12 +228,7 @@ struct EditorRootView: View {
         .task(id: file.identity) {
             let identifier = file.identity
             let version = file.saveVersion
-            let launchPaste =
-                if let sourceURL {
-                    await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
-                } else {
-                    nil as StartupQtXMLDelivery?
-                }
+            let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
             let shouldHidePreviewColors =
                 if let sourceURL {
                     await claimLaunchNeutralPreview(sourceURL)
