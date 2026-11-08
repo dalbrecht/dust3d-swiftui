@@ -118,9 +118,7 @@ final class EditorStore {
     func selectCanvasSidebarNodes(
         _ ids: Set<String>, matching query: String, in presentation: CanvasNodeSidebarPresentation
     ) -> Bool {
-        guard !isWorking, admitsCanvasNodeSelection(presentation.target),
-            snapshot?.selectionRevision == presentation.selectionRevision
-        else { return false }
+        guard admitsCanvasNodeSidebarSelection(presentation) else { return false }
         let rows = presentation.rows(matching: query)
         let displayed = Set(rows.map(\.id))
         let displayedSelection = presentation.selectedIDs.intersection(displayed)
@@ -134,6 +132,20 @@ final class EditorStore {
             select(ids)
         }
         return true
+    }
+
+    @discardableResult
+    func selectAllCanvasSidebarNodes(matching query: String, in presentation: CanvasNodeSidebarPresentation) -> Bool {
+        guard admitsCanvasNodeSidebarSelection(presentation) else { return false }
+        let ids = Set(presentation.rows(matching: query).map(\.id))
+        guard !ids.isEmpty else { return false }
+        select(ids)
+        return true
+    }
+
+    private func admitsCanvasNodeSidebarSelection(_ presentation: CanvasNodeSidebarPresentation) -> Bool {
+        !isWorking && admitsCanvasNodeSelection(presentation.target)
+            && snapshot?.selectionRevision == presentation.selectionRevision
     }
 
     func activateCanvasNode(_ id: String, action: CanvasNodeSelectionAction, target: CanvasNodeSelectionTarget?) {
