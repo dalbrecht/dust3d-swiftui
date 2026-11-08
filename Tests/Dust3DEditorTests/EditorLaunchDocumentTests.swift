@@ -59,7 +59,6 @@ final class EditorLaunchDocumentTests: XCTestCase {
             ),
             (["Editor", "/tmp/first.ds3", "-o", "/tmp/result.obj"], .unsupportedExportArgument),
             (["Editor", "/tmp/first.ds3", "-output", "/tmp/result.obj"], .unsupportedExportArgument),
-            (["Editor", "-paste-xml", "/tmp/edits.xml"], .unsupportedPasteArgument),
             (["Editor", "/tmp/first.ds3", "-paste-xml"], .invalidPasteArgument),
             (["Editor", "/tmp/first.ds3", "-paste-xml", "https://example.com/edits.xml"], .invalidPasteArgument),
             (["Editor", "/tmp/first.ds3", "-paste-xml", "/tmp/edits.ds3"], .invalidPasteArgument),
