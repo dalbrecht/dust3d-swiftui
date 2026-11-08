@@ -2094,13 +2094,26 @@ final class EditorStore {
     }
 
     func selectPart(_ id: String?) { perform(commits: false) { try await $0.selectPart(id) } }
-    func setOrigin(x: String, y: String, z: String) {
+    var originInspectorSource: OriginInspectorSource? {
+        acceptedDocumentSource.map { .init(documentIdentity: $0.documentIdentity, origin: $0.origin) }
+    }
+
+    func originInspectorApplyAction(source: OriginInspectorSource) -> (@MainActor (String, String, String) -> Void)? {
+        guard !isWorking, let snapshot = acceptedDocumentSource, originInspectorSource == source else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        return { [weak self] x, y, z in
+            guard let self, let current = self.acceptedDocumentSource, target.isCurrent(in: current) else { return }
+            self.setOrigin(x: x, y: y, z: z, target: target)
+        }
+    }
+
+    func setOrigin(x: String, y: String, z: String, target: CanvasAdjustmentTarget? = nil) {
         guard !isWorking, !stopped else { return }
         guard let x = Double(x), let y = Double(y), let z = Double(z) else {
             errorMessage = Self.message(DocumentError.invalidOrigin)
             return
         }
-        perform { try await $0.apply([.setOrigin(.init(x: x, y: y, z: z))]) }
+        perform { try await $0.apply([.setOrigin(.init(x: x, y: y, z: z))], selecting: nil, target: target) }
     }
     func centerOriginOnModel() {
         perform { try await $0.centerOriginOnModel() }
