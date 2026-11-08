@@ -252,6 +252,15 @@ public actor EditorSession {
     }
     /// Replace selection with an explicit edge set, clearing node/component/part selection.
     public func selectEdges(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.selectEdges(ids) } }
+
+    package func selectEdges(_ ids: Set<String>, target: CanvasAdjustmentTarget) throws -> EditorSnapshot {
+        try update { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.selectEdges(ids)
+        }
+    }
     /// Toggle one explicit edge while preserving the other graph selections.
     public func toggleEdgeSelection(_ id: String) throws -> EditorSnapshot {
         try update { try $0.toggleEdgeSelection(id) }
@@ -492,7 +501,7 @@ public actor EditorSession {
             guard GraphPartShapeTarget.properties.contains(property) else {
                 throw GraphPartShapeError.unsupportedModifier
             }
-            guard target.isCurrent(in: state.snapshot), let part = target.part else {
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let part = target.part else {
                 throw GraphPartShapeError.staleTarget
             }
             try state.apply([.setPartModifier(id: part.id, property: property, value: value)])
@@ -884,6 +893,7 @@ public actor EditorSession {
             case .connect(let from, let to): commands = [.joinNodes(id: identifier(), from: from, to: to)]
             case .deleteNode(let id): commands = [.removeNode(id: id)]
             case .reverseEdge(let id): commands = [.reverseEdges([id])]
+            case .repairEdgeDirections: commands = [.reverseEdges(target.edgeDirectionRepairs)]
             case .disconnectEdge(let id): commands = [.removeEdge(id: id)]
             case .selectEndpoints(let id):
                 guard let edge = state.snapshot.edges.first(where: { $0.id.utf8.elementsEqual(id.utf8) }) else {
@@ -988,12 +998,14 @@ public actor EditorSession {
     package func paste(snapshotXML: Data, parentID: String?, target: CanvasAdjustmentTarget?) throws -> EditorSnapshot {
         try validatePasteSource(parentID: parentID, target: target)
         return try pasteQtSnapshot(
-            snapshotXML, allowsEmptyGraph: false, parentID: parentID, selectsEditableGraph: true)
+            snapshotXML, allowsEmptyGraph: false, parentID: parentID, selectsEditableGraph: true,
+            clearsMissingCutFaces: true)
     }
 
     /// Apply a selected XML file only to the source captured before presenting its picker.
     package func pasteQtXMLFile(
-        _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil, selectsEditableGraph: Bool = true
+        _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil, selectsEditableGraph: Bool = true,
+        clearsMissingCutFaces: Bool = false
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
         guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
@@ -1003,11 +1015,13 @@ public actor EditorSession {
             throw DocumentError.invalidComponentStructure
         }
         return try pasteQtSnapshot(
-            snapshotXML, allowsEmptyGraph: true, parentID: parentID, selectsEditableGraph: selectsEditableGraph)
+            snapshotXML, allowsEmptyGraph: true, parentID: parentID, selectsEditableGraph: selectsEditableGraph,
+            clearsMissingCutFaces: clearsMissingCutFaces)
     }
 
     private func pasteQtSnapshot(
-        _ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?, selectsEditableGraph: Bool
+        _ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?, selectsEditableGraph: Bool,
+        clearsMissingCutFaces: Bool
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
@@ -1021,7 +1035,13 @@ public actor EditorSession {
         } else {
             identifier = Self.identifier()
         }
-        let payload = try NodeClipboardPayload(fragment: fragment, identifier: identifier)
+        let prepared =
+            if clearsMissingCutFaces {
+                try fragment.clearingMissingQtCutFaces(destinationPartIDs: state.snapshot.parts.map(\.id))
+            } else {
+                fragment
+            }
+        let payload = try NodeClipboardPayload(fragment: prepared, identifier: identifier)
         let next = try paste(payload: payload, parentID: parentID, selectsEditableGraph: selectsEditableGraph)
         lastQtTransfer = (Data(snapshotXML), identifier)
         return next

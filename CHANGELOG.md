@@ -4,13 +4,19 @@
 
 - Select Whole Part uses exact stored ownership for graph picks and the revealed component.
 
+- Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
+
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
 
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
+- Scope Edit → Select All to edges when the Edges sidebar has keyboard focus.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Preview authored linked cross-section outlines before choosing a profile.
+
+- Repair edge directions in an unambiguous open chain from the Edge Inspector, with one-step Undo.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
@@ -33,6 +39,8 @@
 - Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
+
+- Clear missing cut-face links when pasting Qt XML interactively, keeping profiles found in the fragment or document.
 
 - Preview applied and retained component color images in the inspector without changing image assignments.
 
