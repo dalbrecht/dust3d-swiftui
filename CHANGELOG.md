@@ -4,6 +4,8 @@
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
+- Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
+
 - Stop cancelled preview requests before they start fallback mesh generation.
 
 - Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
@@ -11,6 +13,8 @@
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
 
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
+
+- Connect selected endpoints on separate islands of a legacy part, preserving any remaining islands as separate parts in the same Undo step.
 
 - Scope Edit → Select All to edges when the Edges sidebar has keyboard focus.
 
