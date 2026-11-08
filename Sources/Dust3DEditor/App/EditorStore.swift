@@ -1558,6 +1558,72 @@ final class EditorStore {
 
     var canBrowseComponents: Bool { !isWorking && acceptedDocumentSource != nil }
 
+    func componentDisclosureAction(
+        _ id: String, collapsed: Bool, snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor () -> Void {
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let source = PartGraphSelectionContext(snapshot: snapshot)
+        let scope = componentBrowseEpoch
+        let disclosureEpoch = disclosure.epoch
+        return { [weak self] in
+            guard let self, self.componentBrowseGroupID == nil, self.componentBrowseEpoch == scope,
+                disclosure.epoch == disclosureEpoch, self.canBrowseComponents,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current),
+                disclosure.collapsedIDs.contains(id) != collapsed,
+                current.componentTree.visibleRows(collapsing: disclosure.collapsedIDs).contains(where: {
+                    $0.hasChildren && $0.id.utf8.elementsEqual(id.utf8)
+                })
+            else { return }
+
+            var nextIDs = disclosure.collapsedIDs
+            if collapsed { nextIDs.insert(id) } else { nextIDs.remove(id) }
+            let publish: @MainActor (Bool) -> Void = { [weak self] succeeded in
+                guard succeeded, let self, self.componentBrowseEpoch == scope, disclosure.epoch == disclosureEpoch,
+                    let latest = self.acceptedDocumentSource, source.isCurrent(in: latest)
+                else { return }
+                disclosure.collapsedIDs = nextIDs
+                self.changeComponentBrowseGroup(nil, reset: true)
+            }
+            guard collapsed, !current.selectedComponentIDs.isEmpty else {
+                publish(true)
+                return
+            }
+            let visible = Set(current.componentTree.visibleRows(collapsing: nextIDs).map { Data($0.id.utf8) })
+            let retained = current.selectedComponentIDs.filter { visible.contains(Data($0.utf8)) }
+            if retained == current.selectedComponentIDs {
+                publish(true)
+            } else {
+                self.perform(commits: false, completion: publish) {
+                    try await $0.selectComponents(retained, target: target)
+                }
+            }
+        }
+    }
+
+    func componentSidebarSelectionIsVisible(_ snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure) -> Bool
+    {
+        guard !snapshot.selectedComponentIDs.isEmpty else { return false }
+        let rows =
+            componentGroupBrowse?.children ?? snapshot.componentTree.visibleRows(collapsing: disclosure.collapsedIDs)
+        let visible = Set(rows.map { Data($0.id.utf8) })
+        return snapshot.selectedComponentIDs.allSatisfy { visible.contains(Data($0.utf8)) }
+    }
+
+    func componentSidebarDeleteAction(
+        snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor () -> Void {
+        let context = CanvasAdjustmentTarget(snapshot: snapshot)
+        let scope = componentBrowseEpoch
+        let epoch = disclosure.epoch
+        return { [weak self] in
+            guard let self, self.canSave, self.componentBrowseEpoch == scope, disclosure.epoch == epoch,
+                let current = self.acceptedDocumentSource, context.isCurrent(in: current),
+                self.componentSidebarSelectionIsVisible(current, disclosure: disclosure)
+            else { return }
+            self.componentDeletionAction(ComponentDeletionTarget(snapshot: current))()
+        }
+    }
+
     func componentBrowseAction(_ groupID: String?, snapshot: EditorSnapshot) -> @MainActor () -> Void {
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         let source = PartGraphSelectionContext(snapshot: snapshot)
