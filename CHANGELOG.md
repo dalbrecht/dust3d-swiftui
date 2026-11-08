@@ -64,6 +64,10 @@
 
 - Add global Hide All Parts in Canvas and group visibility commands under Canvas > Part Visibility, preserving one-step Undo and mesh inputs (#343).
 
+- Search the Nodes sidebar by node, part or status and use native list selection without changing the document.
+
+- Make canvas node selection actions available to VoiceOver only when the current canvas tool accepts node selection.
+
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
 
 - Connect to the nearest existing node in Add mode when node hit areas overlap. A closer edge midpoint takes precedence when the pointer hits its tapered edge.

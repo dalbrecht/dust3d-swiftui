@@ -70,15 +70,7 @@ struct EditorRootView: View {
                     .disabled(!store.canAddNewPart)
                 }.padding(12)
                 Divider()
-                List(selection: Binding(get: { store.snapshot?.selectedIDs ?? [] }, set: { store.select($0) })) {
-                    ForEach(store.snapshot?.nodes ?? []) { node in
-                        Label(node.title, systemImage: node.isEditable ? "circle.dotted" : "lock")
-                            .tag(node.id)
-                            .help(node.id)
-                    }
-                }
-                .listStyle(.sidebar)
-                .disabled(store.isWorking || store.isSelectingRigEdges)
+                CanvasNodeSidebar(store: store)
                 ComponentSidebar(store: store)
                 PartSidebar(store: store)
                 EdgeSidebar(store: store)

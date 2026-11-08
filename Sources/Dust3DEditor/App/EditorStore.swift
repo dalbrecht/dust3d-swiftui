@@ -83,6 +83,69 @@ final class EditorStore {
         rigEdgeSelectionEpoch == epoch && ownsCanvasProfile(lease)
     }
 
+    struct CanvasNodeSelectionTarget {
+        fileprivate let context: PartGraphSelectionContext
+        fileprivate let profileLease: UUID?
+        fileprivate let selectionEpoch: UUID
+        fileprivate let addModeID: UUID
+        fileprivate let toolEpoch: UUID
+    }
+
+    func canvasNodeSelectionTarget(profileLease: UUID?) -> CanvasNodeSelectionTarget? {
+        guard canPickGraph, !isSelectingRigEdges, !isAddingNodes, !isMovingOrigin,
+            ownsCanvasProfile(profileLease), let snapshot
+        else { return nil }
+        return CanvasNodeSelectionTarget(
+            context: PartGraphSelectionContext(snapshot: snapshot), profileLease: profileLease,
+            selectionEpoch: rigEdgeSelectionEpoch, addModeID: addModeID, toolEpoch: rotationInputContextID)
+    }
+
+    private func admitsCanvasNodeSelection(_ target: CanvasNodeSelectionTarget) -> Bool {
+        canPickGraph && !isSelectingRigEdges && !isAddingNodes && !isMovingOrigin
+            && admitsCanvasSelectionInput(epoch: target.selectionEpoch, lease: target.profileLease)
+            && addModeID == target.addModeID && rotationInputContextID == target.toolEpoch
+            && snapshot.map { target.context.isCurrent(in: $0) } == true
+    }
+
+    func canvasNodeSidebarPresentation(profileLease: UUID?) -> CanvasNodeSidebarPresentation? {
+        guard !isWorking, let snapshot, let target = canvasNodeSelectionTarget(profileLease: profileLease) else {
+            return nil
+        }
+        return CanvasNodeSidebarPresentation(snapshot: snapshot, profileLease: profileLease, target: target)
+    }
+
+    @discardableResult
+    func selectCanvasSidebarNodes(
+        _ ids: Set<String>, matching query: String, in presentation: CanvasNodeSidebarPresentation
+    ) -> Bool {
+        guard !isWorking, admitsCanvasNodeSelection(presentation.target),
+            snapshot?.selectionRevision == presentation.selectionRevision
+        else { return false }
+        let rows = presentation.rows(matching: query)
+        let displayed = Set(rows.map(\.id))
+        let displayedSelection = presentation.selectedIDs.intersection(displayed)
+        let displayedKeys = Set(displayed.map { Data($0.utf8) })
+        guard ids.allSatisfy({ displayedKeys.contains(Data($0.utf8)) }), ids != displayedSelection else { return false }
+        if ids.isEmpty {
+            perform(commits: false, selectionOnly: true) {
+                try await $0.removeFromSelection(nodes: displayedSelection, edges: [])
+            }
+        } else {
+            select(ids)
+        }
+        return true
+    }
+
+    func activateCanvasNode(_ id: String, action: CanvasNodeSelectionAction, target: CanvasNodeSelectionTarget?) {
+        guard let target, admitsCanvasNodeSelection(target) else { return }
+        switch action {
+        case .wholePart: selectWholePart(.node(id), context: target.context)
+        case .selection(.replace): select(id)
+        case .selection(.toggle): toggleSelection(id)
+        case .selection(let mode): selectGraph(nodes: [id], edges: [], mode: mode)
+        }
+    }
+
     private struct PendingWholePartPick {
         let target: PartGraphTarget
         let context: PartGraphSelectionContext
