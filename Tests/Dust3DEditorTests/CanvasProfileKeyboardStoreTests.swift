@@ -91,6 +91,104 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertEqual(store.plane, .front)
     }
 
+    func testCapturedNodeRevealDoesNotCrossEditingProfileSwitch() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: try makeDocument().encoded())
+        try await settle(store)
+        store.setDualCanvasProfile(true)
+        store.select("a")
+        try await settle(store)
+        let before = try XCTUnwrap(store.snapshot)
+        let context = PartGraphSelectionContext(snapshot: before)
+        let frontLease = store.canvasProfiles.lease
+        let reveal = try XCTUnwrap(
+            store.revealOwningComponentAction(.node("a"), context: context, profileLease: frontLease))
+
+        let sideLease = try XCTUnwrap(store.switchSelectedCanvasProfile(expectedLease: frontLease))
+        let previousHint = store.snapshot?.componentRevealHint?.revision
+        reveal()
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.componentRevealHint?.revision, previousHint)
+        XCTAssertNil(store.revealOwningComponentAction(.node("a"), context: context, profileLease: frontLease))
+
+        let currentReveal = try XCTUnwrap(
+            store.revealOwningComponentAction(.node("a"), context: context, profileLease: sideLease))
+        currentReveal()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentRevealHint?.componentID, "c")
+        XCTAssertEqual(store.snapshot?.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(store.snapshot?.document.encoded(), before.document.encoded())
+        XCTAssertEqual(store.snapshot?.canUndo, before.canUndo)
+    }
+
+    func testRevealAvailabilityDoesNotCarryUniqueOwnerAcrossReplacement() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let document = try makeDocument()
+        await store.load(data: document.encoded())
+        try await settle(store)
+        let first = try XCTUnwrap(store.snapshot)
+        let reveal = try XCTUnwrap(
+            store.revealOwningComponentAction(.node("a"), context: PartGraphSelectionContext(snapshot: first)))
+        let xml = String(decoding: document.modelXML, as: UTF8.self)
+            .replacingOccurrences(
+                of: "</components>", with: "<component id='duplicate' linkData='p' linkDataType='partId'/></components>"
+            )
+        let replacement = try Dust3DDocument(snapshotXML: Data(xml.utf8))
+        await store.load(data: replacement.encoded())
+        try await settle(store)
+        let context = PartGraphSelectionContext(snapshot: try XCTUnwrap(store.snapshot))
+        XCTAssertNil(store.revealOwningComponentAction(.node("a"), context: context))
+        XCTAssertNil(store.revealOwningComponentAction(.edge("ab"), context: context))
+        reveal()
+        XCTAssertFalse(store.isWorking)
+        XCTAssertNil(store.snapshot?.componentRevealHint)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testEdgeSidebarActionsRejectReplacedSourceAndSubtractOnlyTheirEdge() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let document = try makeDocument()
+        await store.load(data: document.encoded(), fileIdentity: UUID())
+        try await settle(store)
+        let first = try XCTUnwrap(store.snapshot)
+        let stale = store.edgeSidebarSelectionAction("ab", context: PartGraphSelectionContext(snapshot: first))
+
+        await store.load(data: document.encoded(), fileIdentity: UUID())
+        try await settle(store)
+        store.select("a")
+        try await settle(store)
+        let second = try XCTUnwrap(store.snapshot)
+        XCTAssertNotEqual(second.documentIdentity, first.documentIdentity)
+        let current = store.edgeSidebarSelectionAction("ab", context: PartGraphSelectionContext(snapshot: second))
+        let preview = store.previewRevision
+
+        stale(.add)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        current(.add)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a"])
+
+        stale(.subtract)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        current(.subtract)
+        try await settle(store)
+        let removed = store.snapshot?.selectionRevision
+        current(.subtract)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a"])
+        XCTAssertEqual(store.snapshot?.selectionRevision, removed)
+        XCTAssertEqual(store.snapshot?.document.encoded(), second.document.encoded())
+        XCTAssertEqual(store.previewRevision, preview)
+        XCTAssertFalse(store.canUndo)
+    }
+
     private func makeStore() -> EditorStore {
         let stub = ProfileKeyboardNoNative()
         return EditorStore(

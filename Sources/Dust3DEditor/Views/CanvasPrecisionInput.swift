@@ -1,4 +1,5 @@
 import AppKit
+import Dust3DDocument
 
 /// Logical scene-point commands. Conversion uses the originating canvas height, never its fit scale.
 enum CanvasPrecisionAction: CaseIterable, Hashable, Sendable {
@@ -22,13 +23,25 @@ struct CanvasPrecisionKeyInput {
     let keyCode: UInt16
     let characters: String
     let modifiers: NSEvent.ModifierFlags
-    init(keyCode: UInt16, characters: String, modifiers: NSEvent.ModifierFlags) {
+    let isRepeat: Bool
+    init(keyCode: UInt16, characters: String, modifiers: NSEvent.ModifierFlags, isRepeat: Bool = false) {
         self.keyCode = keyCode
         self.characters = characters
         self.modifiers = modifiers
+        self.isRepeat = isRepeat
     }
     init(_ event: NSEvent) {
-        self.init(keyCode: event.keyCode, characters: event.characters ?? "", modifiers: event.modifierFlags)
+        self.init(
+            keyCode: event.keyCode, characters: event.characters ?? "", modifiers: event.modifierFlags,
+            isRepeat: event.isARepeat)
+    }
+    var partStateProperty: PartStateProperty? {
+        guard modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty else { return nil }
+        switch characters {
+        case "j", "J": return .disabled
+        case "l", "L": return .locked
+        default: return nil
+        }
     }
     var action: CanvasPrecisionAction? {
         guard modifiers.intersection([.command, .control, .option, .shift]).isEmpty else { return nil }

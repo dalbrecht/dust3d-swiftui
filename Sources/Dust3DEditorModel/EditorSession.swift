@@ -403,12 +403,14 @@ public actor EditorSession {
         }
     }
 
-    /// Apply one equipment assignment to the originally selected Model component.
+    /// Apply one equipment assignment to the captured Model component.
     package func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) throws
         -> EditorSnapshot
     {
         try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw ComponentEquipmentSlotError.staleTarget }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw ComponentEquipmentSlotError.staleTarget
+            }
             try state.apply([.setComponentEquipmentSlot(id: target.componentID, slot: slot)])
             try Task.checkCancellation()
         }
@@ -585,6 +587,18 @@ public actor EditorSession {
     }
 
     /// Change one flag on directly linked parts from the captured component selection.
+    package func toggleCanvasPartState(
+        _ property: PartStateProperty, target: CanvasPartStateTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), property == .locked || property == .disabled
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([
+                .setPartsState(ids: [target.part.id], property: property, value: !target.part.state(property))
+            ])
+        }.snapshot
+    }
+
     public func setSelectedComponentPartState(
         _ property: PartStateProperty, value: Bool, target: ComponentMeshSelectionTarget
     ) throws -> EditorSnapshot {
