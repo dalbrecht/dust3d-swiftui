@@ -4,6 +4,8 @@
 
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
+- Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
+
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
@@ -17,6 +19,8 @@
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
 
 - Apply one Qt XML fragment at launch with `-paste-xml` in one Undo step per newly opened eligible document. With no `.ds3` input or output option, open one untitled document with default model colors. A read or validation error leaves that document blank and displays a diagnostic.
+
+- Select newly pasted editable nodes and edges from Qt XML so edge commands are available immediately.
 
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
@@ -63,6 +67,10 @@
 - Add Command-Option-click and marquee subtraction for independent node/edge picks, preserving other selection and document history (#343).
 
 - Add global Hide All Parts in Canvas and group visibility commands under Canvas > Part Visibility, preserving one-step Undo and mesh inputs (#343).
+
+- Search the Nodes sidebar by node, part or status and use native list selection without changing the document.
+
+- Make canvas node selection actions available to VoiceOver only when the current canvas tool accepts node selection.
 
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
 
