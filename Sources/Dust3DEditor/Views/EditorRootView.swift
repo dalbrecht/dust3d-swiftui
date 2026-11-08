@@ -13,7 +13,7 @@ private enum EditorInspectorSection: String, CaseIterable, Hashable {
 struct EditorRootView: View {
     @Binding var file: EditorFileDocument
     let sourceURL: URL?
-    private let claimStartupPaste: @MainActor (URL, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery?
+    private let claimStartupPaste: @MainActor (URL?, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery?
     private let claimLaunchNeutralPreview: @MainActor (URL) async -> Bool
     @State private var store: EditorStore
     @State private var exportDestinations: EditorGeometryExportDestinationService
@@ -29,7 +29,7 @@ struct EditorRootView: View {
     init(
         file: Binding<EditorFileDocument>, sourceURL: URL? = nil,
         claimLaunchNeutralPreview: @escaping @MainActor (URL) async -> Bool = { _ in false },
-        claimStartupPaste: @escaping @MainActor (URL, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery? = {
+        claimStartupPaste: @escaping @MainActor (URL?, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery? = {
             _, _ in nil
         }
     ) {
@@ -230,12 +230,7 @@ struct EditorRootView: View {
         .task(id: file.identity) {
             let identifier = file.identity
             let version = file.saveVersion
-            let launchPaste =
-                if let sourceURL {
-                    await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
-                } else {
-                    nil as StartupQtXMLDelivery?
-                }
+            let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
             let shouldHidePreviewColors =
                 if let sourceURL {
                     await claimLaunchNeutralPreview(sourceURL)
