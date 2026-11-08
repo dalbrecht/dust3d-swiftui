@@ -63,6 +63,133 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         }
         XCTFail("Context actions did not settle")
     }
+    func testCanvasAxisKeysToggleOnlyWindowLocksWithoutEditingSelectionOrSource() async throws {
+        let original = try source().encoded()
+        let value = store()
+        let other = store()
+        defer {
+            value.stop()
+            other.stop()
+        }
+        await value.load(data: original)
+        await other.load(data: original)
+        value.selectGraph(nodes: ["a"], edges: ["bc"])
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        var writes = 0
+        value.onDocumentChanged = { _ in writes += 1 }
+
+        let sequence: [(String, Set<EditingConstraint>)] = [
+            ("x", [.x]), ("Y", [.x, .y]), ("z", [.x, .y, .z]), ("x", [.y, .z]),
+        ]
+        for (key, expected) in sequence {
+            let input = CanvasPrecisionKeyInput(keyCode: 0, characters: key, modifiers: key == "Y" ? [.capsLock] : [])
+            XCTAssertTrue(value.canvasAxisLockKeyHandler(profileLease: nil)(input))
+            try await settle(value)
+            XCTAssertEqual(value.locks, expected)
+        }
+        let after = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(after.document.encoded(), original)
+        XCTAssertEqual(after.documentRevision, before.documentRevision)
+        XCTAssertEqual(after.previewIdentity, before.previewIdentity)
+        XCTAssertEqual(after.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(after.selectedEdgeIDs, before.selectedEdgeIDs)
+        XCTAssertTrue(other.locks.isEmpty)
+        XCTAssertFalse(value.canUndo)
+        XCTAssertEqual(writes, 0)
+    }
+
+    func testCanvasAxisKeysRejectModifiedRepeatedRetiredPaneAndConstraintABA() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        value.setDualCanvasProfile(true)
+        prepareCanvas(value)
+        value.select("a")
+        try await settle(value)
+        let lease = value.canvasProfiles.lease
+        let retained = value.canvasAxisLockKeyHandler(profileLease: lease)
+        let bare = CanvasPrecisionKeyInput(keyCode: 0, characters: "x", modifiers: [])
+        XCTAssertFalse(retained(.init(keyCode: 0, characters: "x", modifiers: [.command])))
+        XCTAssertFalse(retained(.init(keyCode: 0, characters: "X", modifiers: [.shift])))
+        XCTAssertTrue(retained(.init(keyCode: 0, characters: "x", modifiers: [], isRepeat: true)))
+        XCTAssertTrue(value.locks.isEmpty)
+
+        value.setLock(.y, isLocked: true)
+        try await settle(value)
+        value.setLock(.y, isLocked: false)
+        try await settle(value)
+        XCTAssertFalse(retained(bare))
+
+        let front = value.canvasAxisLockKeyHandler(profileLease: lease)
+        let side = try XCTUnwrap(value.switchSelectedCanvasProfile(expectedLease: lease))
+        XCTAssertFalse(front(bare))
+        prepareCanvas(value)
+        let beforeAdd = value.canvasAxisLockKeyHandler(profileLease: side)
+        value.beginAddMode()
+        XCTAssertTrue(value.isAddingNodes)
+        XCTAssertFalse(beforeAdd(bare))
+        XCTAssertFalse(value.canvasAxisLockKeyHandler(profileLease: side)(bare))
+        value.cancelAddMode()
+        XCTAssertFalse(beforeAdd(bare))
+
+        let failedSource = value.canvasAxisLockKeyHandler(profileLease: side)
+        await value.load(data: Data("broken".utf8))
+        XCTAssertFalse(failedSource(bare))
+        XCTAssertTrue(value.locks.isEmpty)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testCanvasAxisKeysQueueDistinctAndRepeatedAxesBeforePublication() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        let before = try XCTUnwrap(value.snapshot)
+        var writes = 0
+        value.onDocumentChanged = { _ in writes += 1 }
+        let keys = value.canvasAxisLockKeyHandler(profileLease: nil)
+        var admittedDuringDrain = false
+        value.onEditingChanged = { [weak value] isWorking in
+            if !isWorking, value?.snapshot?.constraintRevision == before.constraintRevision + 1 {
+                admittedDuringDrain = keys(.init(keyCode: 0, characters: "z", modifiers: []))
+            }
+        }
+
+        XCTAssertTrue(keys(.init(keyCode: 0, characters: "x", modifiers: [])))
+        XCTAssertTrue(value.isWorking)
+        XCTAssertTrue(keys(.init(keyCode: 0, characters: "y", modifiers: [])))
+        XCTAssertTrue(keys(.init(keyCode: 0, characters: "x", modifiers: [])))
+        try await settle(value)
+
+        let after = try XCTUnwrap(value.snapshot)
+        XCTAssertTrue(admittedDuringDrain)
+        XCTAssertEqual(after.locks, [.y, .z])
+        XCTAssertEqual(after.constraintRevision, before.constraintRevision + 4)
+        XCTAssertEqual(after.document.encoded(), original)
+        XCTAssertEqual(after.previewIdentity, before.previewIdentity)
+        XCTAssertFalse(value.canUndo)
+        XCTAssertEqual(writes, 0)
+    }
+
+    func testCanvasAxisKeysDiscardQueuedInputAfterPaneRetires() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        value.setDualCanvasProfile(true)
+        let keys = value.canvasAxisLockKeyHandler(profileLease: value.canvasProfiles.lease)
+        XCTAssertTrue(keys(.init(keyCode: 0, characters: "x", modifiers: [])))
+        XCTAssertTrue(keys(.init(keyCode: 0, characters: "y", modifiers: [])))
+        value.plane = .side
+        try await settle(value)
+
+        XCTAssertEqual(value.locks, [.x])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+        XCTAssertFalse(keys(.init(keyCode: 0, characters: "z", modifiers: [])))
+    }
 
     func testStationaryVisibilityKeyRestoresHoveredOwnerBeforeSelectedOwner() async throws {
         let original = try source().encoded()

@@ -243,11 +243,8 @@ final class NodePointerView: NSView {
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if activation == nil, superview != nil, let window, window.firstResponder === self {
             let input = CanvasPrecisionKeyInput(event)
-            let ownsPartStateInput =
-                window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
-                && NSApp.modalWindow == nil
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile) { return }
-            if !input.isPartStateShortcut || ownsPartStateInput, precisionKey?(input) == true {
+            if input.permitsDispatch(in: window), precisionKey?(input) == true {
                 if input.visibilityShortcut != nil, !input.isRepeat {
                     retainVisibilityFocus?(CanvasProfileFocusRequest(window: window))
                 }

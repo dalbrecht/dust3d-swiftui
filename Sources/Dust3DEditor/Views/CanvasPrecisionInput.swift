@@ -1,5 +1,6 @@
 import AppKit
 import Dust3DDocument
+import Dust3DEditorModel
 
 /// Logical scene-point commands. Conversion uses the originating canvas height, never its fit scale.
 enum CanvasPrecisionAction: CaseIterable, Hashable, Sendable {
@@ -40,8 +41,21 @@ struct CanvasPrecisionKeyInput {
             keyCode: event.keyCode, characters: event.characters ?? "", modifiers: event.modifierFlags,
             isRepeat: event.isARepeat)
     }
+    private var isBareEditingKey: Bool {
+        modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty
+    }
+
+    var axisLockConstraint: EditingConstraint? {
+        guard isBareEditingKey else { return nil }
+        switch characters {
+        case "x", "X": return .x
+        case "y", "Y": return .y
+        case "z", "Z": return .z
+        default: return nil
+        }
+    }
     var partStateProperty: PartStateProperty? {
-        guard modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty else { return nil }
+        guard isBareEditingKey else { return nil }
         switch characters {
         case "j", "J": return .disabled
         case "l", "L": return .locked
@@ -54,7 +68,13 @@ struct CanvasPrecisionKeyInput {
         else { return nil }
         return modifiers.contains(.shift) ? .isolate : .toggle
     }
-    var isPartStateShortcut: Bool { partStateProperty != nil || visibilityShortcut != nil }
+
+    @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
+        guard axisLockConstraint != nil || partStateProperty != nil || visibilityShortcut != nil else { return true }
+        return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
+            && NSApp.modalWindow == nil
+    }
+
     var action: CanvasPrecisionAction? {
         guard modifiers.intersection([.command, .control, .option, .shift]).isEmpty else { return nil }
         switch keyCode {

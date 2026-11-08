@@ -239,11 +239,8 @@ final class CanvasPointerView: NSView {
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self {
             let input = CanvasPrecisionKeyInput(event)
-            let ownsPartStateInput =
-                window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
-                && NSApp.modalWindow == nil
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
-                || ((!input.isPartStateShortcut || ownsPartStateInput) && precisionKey?(input) == true)
+                || (input.permitsDispatch(in: window) && precisionKey?(input) == true)
             {
                 return
             }
