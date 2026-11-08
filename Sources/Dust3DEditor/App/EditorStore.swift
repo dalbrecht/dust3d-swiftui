@@ -544,6 +544,46 @@ final class EditorStore {
         }
         return true
     }
+    private(set) var canvasWheelZoomEnabled = false
+    private var canvasWheelZoomEpoch = UUID()
+    private(set) var canvasWheelZoom = MeshCameraWheelZoom()
+
+    func setCanvasWheelZoomEnabled(_ enabled: Bool) {
+        guard canvasWheelZoomEnabled != enabled, acceptedDocumentSource != nil else { return }
+        canvasWheelZoomEnabled = enabled
+        canvasWheelZoomEpoch = UUID()
+    }
+
+    func canvasPreviewWheelAction(
+        lease: UUID?, camera: EditorPreviewCameraActions?
+    ) -> @MainActor (CanvasWheelInput) -> Bool {
+        guard canvasWheelZoomEnabled, let source = acceptedDocumentSource, let camera else {
+            return { _ in false }
+        }
+        let target = CanvasAdjustmentTarget(snapshot: source)
+        let profile = rigEdgeSelectionEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        let setting = canvasWheelZoomEpoch
+        return { [weak self] input in
+            guard let self, input.isSupported,
+                input.modifiers.intersection([.shift, .command, .option, .control, .function]).isEmpty,
+                self.admitsCanvasSelectionInput(epoch: profile, lease: lease),
+                self.rotationInputContextID == tool, self.addModeID == add, self.canvasWheelZoomEpoch == setting,
+                !self.isWorking, !self.isAddingNodes, !self.isMovingOrigin, !self.isSelectingRigEdges,
+                self.originDrag == nil, !self.referenceColorInteractionActive, self.canvasGraphHover == nil,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current),
+                current.selectedIDs.isEmpty, current.selectedEdgeIDs.isEmpty
+            else { return false }
+            return camera.zoomFromCanvas(step: input.verticalDelta > 0 ? 1 : -1)
+        }
+    }
+
+    func zoomPreviewFromCanvas(step: Int) {
+        guard canMovePreviewCamera, canvasWheelZoomEnabled, step == 1 || step == -1 else { return }
+        canvasWheelZoom.append(step: step)
+    }
+
     private(set) var isWorking = false {
         didSet {
             if isWorking {
@@ -554,7 +594,12 @@ final class EditorStore {
         }
     }
     private(set) var previewState = MeshPreviewState<EditorPreviewOutput>() {
-        didSet { if previewState.value == nil { previewCameraCommand = nil } }
+        didSet {
+            if previewState.value == nil {
+                previewCameraCommand = nil
+                canvasWheelZoom = .init()
+            }
+        }
     }
     var mesh: IndexedMesh? { previewState.value?.mesh }
     var previewSourceHints: MeshSourceHints? {
@@ -3103,11 +3148,13 @@ final class EditorStore {
     func fitPreviewCamera() {
         guard canMovePreviewCamera else { return }
         previewCameraCommand = nil
+        canvasWheelZoom = .init()
         cameraReset += 1
     }
 
     func fit() {
         previewCameraCommand = nil
+        canvasWheelZoom = .init()
         cancelOriginDrag()
         fitCanvas()
         cameraReset += 1

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
+
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
