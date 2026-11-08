@@ -4,6 +4,8 @@
 
 - Keep rig template and eyelid edits tied to the document displayed when the control was drawn.
 
+- Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
+
 - Stop cancelled preview requests before they start fallback mesh generation.
 
 - Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
