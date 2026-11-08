@@ -77,7 +77,7 @@ struct ComponentSidebar: View {
                             )
                             .disabled(store.addPlacementDestination == .documentRoot)
                             Button(
-                                "Use Selected Group for Pointer Add",
+                                "Use Automatic Placement",
                                 action: store.workingGroupAction(.selection, snapshot: sidebarSnapshot)
                             )
                             .disabled(store.addPlacementDestination == .selection)
@@ -120,7 +120,7 @@ struct ComponentSidebar: View {
                 Label("Add destination: \(store.addPlacementDestinationTitle)", systemImage: "folder.badge.plus")
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
                     .help(
-                        "An explicit working group receives new parts and pasted components. Automatic placement uses the selected group for canvas Add and the document root for menu Add and Paste. Extending a chain keeps its part."
+                        "Automatic placement puts new parts and pasted components in the browsed group. Outside Browse, pointer Add can use the selected group and other actions use the root. Explicit destinations override Browse. Extending a chain keeps its part."
                     )
                 if let count = store.snapshot?.selectedComponentIDs.count, count > 1 {
                     Text("\(count) components selected")

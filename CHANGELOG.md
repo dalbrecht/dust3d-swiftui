@@ -4,6 +4,8 @@
 
 - Preserve a Model component’s equipment slot when editing its name in the inspector.
 
+- Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
@@ -24,9 +26,13 @@
 
 - Preview applied and retained component color images in the inspector without changing image assignments.
 
+- Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
+
+- Add new parts and paste components into the browsed group when placement is automatic.
 
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
 
