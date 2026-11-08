@@ -139,6 +139,45 @@ final class EditorStore {
         return source
     }
 
+    func selectionPropertiesAction(present: @escaping @MainActor () -> Void) -> (@MainActor () -> Bool)? {
+        let lease = canvasProfiles.lease
+        guard let source = selectionPropertiesSource(lease: lease) else { return nil }
+        let target = ComponentMeshSelectionTarget(graphSelection: source)
+        guard target.count == 1,
+            let partID = ComponentMeshSelectionPresentation(snapshot: source, target: target).components.first?.partID,
+            selectionPropertiesHoverMatches(partID: partID, source: source)
+        else { return nil }
+        let interaction = rotationInputContextID
+        let mode = addModeID
+        let selectionMode = rigEdgeSelectionEpoch
+        return { [weak self] in
+            guard let self, self.rotationInputContextID == interaction, self.addModeID == mode,
+                self.rigEdgeSelectionEpoch == selectionMode,
+                let current = self.selectionPropertiesSource(lease: lease), target.isCurrent(in: current),
+                self.selectionPropertiesHoverMatches(partID: partID, source: current)
+            else { return false }
+            present()
+            return true
+        }
+    }
+
+    private func selectionPropertiesSource(lease: UUID) -> EditorSnapshot? {
+        guard ownsCanvasProfile(lease), !isWorking, !isAddingNodes, !isMovingOrigin, !isSelectingRigEdges else {
+            return nil
+        }
+        return acceptedDocumentSource
+    }
+
+    private func selectionPropertiesHoverMatches(partID: String, source: EditorSnapshot) -> Bool {
+        let hover: PartGraphTarget
+        switch canvasGraphHover {
+        case .none: return true
+        case .node(let id): hover = .node(id)
+        case .edge(let id): hover = .edge(id)
+        }
+        return source.partID(for: hover)?.utf8.elementsEqual(partID.utf8) == true
+    }
+
     func selectComponentGraph(_ target: ComponentGraphSelectionTarget) {
         guard !isSelectingRigEdges, !stopped, !isWorking, snapshot?.canSelectComponentGraph(target) == true else {
             return

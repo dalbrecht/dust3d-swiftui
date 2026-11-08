@@ -5,9 +5,19 @@ import Dust3DKit
 import Dust3DRendering
 import SwiftUI
 
-private enum EditorInspectorSection: String, CaseIterable, Hashable {
+enum EditorInspectorSection: String, CaseIterable, Hashable {
     case selection = "Selection"
     case animations = "Animations"
+}
+
+struct EditorInspectorPresentation {
+    var isPresented = true
+    var section = EditorInspectorSection.selection
+
+    mutating func showSelectionProperties() {
+        section = .selection
+        isPresented = true
+    }
 }
 
 struct EditorRootView: View {
@@ -18,8 +28,7 @@ struct EditorRootView: View {
     @State private var store: EditorStore
     @State private var exportDestinations: EditorGeometryExportDestinationService
     @State private var exportWorkflow: EditorGeometryExportWorkflow
-    @State private var isInspectorPresented = true
-    @State private var inspectorSection = EditorInspectorSection.selection
+    @State private var inspectorPresentation = EditorInspectorPresentation()
     @State private var recoveryRegistrationID: UUID?
     @State private var referenceComposition: ReferenceCompositionPresentation?
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
@@ -52,6 +61,9 @@ struct EditorRootView: View {
 
     var body: some View {
         let fitAction = toolbarFitAction
+        let selectionProperties = store.selectionPropertiesAction {
+            inspectorPresentation.showSelectionProperties()
+        }
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
@@ -129,7 +141,7 @@ struct EditorRootView: View {
                         EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
-                        CanvasProfilePanes(store: store)
+                        CanvasProfilePanes(store: store, showSelectionProperties: selectionProperties)
                             .overlay(alignment: .bottom) { getStartedCard }
                     }
                     .frame(minWidth: 300)
@@ -153,7 +165,7 @@ struct EditorRootView: View {
             }
         }
         .frame(minWidth: 800, minHeight: 600)
-        .inspector(isPresented: $isInspectorPresented) {
+        .inspector(isPresented: $inspectorPresentation.isPresented) {
             inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
         }
         #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
@@ -192,10 +204,10 @@ struct EditorRootView: View {
                 } label: {
                     Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
-                EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
+                EditorInspectorVisibilityControl(isPresented: $inspectorPresentation.isPresented)
                 Button {
-                    isInspectorPresented = true
-                    inspectorSection = .animations
+                    inspectorPresentation.isPresented = true
+                    inspectorPresentation.section = .animations
                 } label: {
                     Label("Animations", systemImage: "film")
                 }
@@ -212,6 +224,7 @@ struct EditorRootView: View {
             }
         }
         .focusedSceneValue(\.editorStore, store)
+        .focusedSceneValue(\.editorSelectionPropertiesAction, selectionProperties)
         .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
         .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
         .focusedSceneValue(\.editorRestPreviewActions, restPreviewActions)
@@ -284,15 +297,15 @@ struct EditorRootView: View {
     private func openDocument() { NSDocumentController.shared.openDocument(nil) }
 
     private var inspectorContent: some View {
-        let visibility = $isInspectorPresented
-        let section = $inspectorSection
+        let visibility = $inspectorPresentation.isPresented
+        let section = $inspectorPresentation.section
         return VStack(spacing: 0) {
-            Picker("Inspector section", selection: $inspectorSection) {
+            Picker("Inspector section", selection: $inspectorPresentation.section) {
                 ForEach(EditorInspectorSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented).labelsHidden().padding(10)
             Divider()
-            if inspectorSection == .animations {
+            if inspectorPresentation.section == .animations {
                 AnimationPanel(store: store)
             } else {
                 NodeInspector(store: store) {

@@ -7,6 +7,7 @@ struct NodeCanvas: View {
     var profileLease: UUID? = nil
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var showSelectionProperties: (@MainActor () -> Bool)? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
     @State private var nodeDrag = NodeDragLifecycle()
@@ -35,7 +36,9 @@ struct NodeCanvas: View {
             let handlePrecisionKey = store.canvasPrecisionKeyHandler()
             let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
-                admitsInput() && (handlePartStateKey($0) || handlePrecisionKey($0))
+                admitsInput()
+                    && ($0.routeSelectionProperties(action: showSelectionProperties) || handlePartStateKey($0)
+                        || handlePrecisionKey($0))
             }
             let precisionActions = CanvasPrecisionActions(store: store)
             let quarterTurns = OrthogonalQuarterTurnActions(store: store, profileLease: profileLease)
