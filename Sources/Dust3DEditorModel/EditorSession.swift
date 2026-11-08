@@ -190,6 +190,18 @@ public actor EditorSession {
         try update { $0.setLock(constraint, isLocked: isLocked) }
     }
 
+    package func toggleCanvasAxisLock(_ axis: EditingConstraint, target: CanvasAdjustmentTarget) throws
+        -> EditorSnapshot
+    {
+        try update { state in
+            let snapshot = state.snapshot
+            guard hasAcceptedSource, target.isCurrent(in: snapshot), axis != .radius else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            state.setLock(axis, isLocked: !snapshot.locks.contains(axis))
+        }
+    }
+
     public func select(_ id: String?) throws -> EditorSnapshot { try update { try $0.select(id) } }
 
     public func select(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.select(ids) } }
@@ -403,6 +415,15 @@ public actor EditorSession {
         }
     }
 
+    package func setGraphPartRole(_ role: PartTarget, target: GraphPartRoleTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.apply([.setPartTarget(id: part.id, target: role)])
+        }.snapshot
+    }
+
     /// Apply one equipment assignment to the captured Model component.
     package func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) throws
         -> EditorSnapshot
@@ -587,6 +608,18 @@ public actor EditorSession {
     }
 
     /// Change one flag on directly linked parts from the captured component selection.
+    package func toggleCanvasPartState(
+        _ property: PartStateProperty, target: CanvasPartStateTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), property == .locked || property == .disabled
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.apply([
+                .setPartsState(ids: [target.part.id], property: property, value: !target.part.state(property))
+            ])
+        }.snapshot
+    }
+
     public func setSelectedComponentPartState(
         _ property: PartStateProperty, value: Bool, target: ComponentMeshSelectionTarget
     ) throws -> EditorSnapshot {
