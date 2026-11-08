@@ -7,6 +7,7 @@ struct NodeCanvas: View {
     var profileLease: UUID? = nil
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var focusControl: CanvasProfileFocusControl? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
     @State private var nodeDrag = NodeDragLifecycle()
@@ -33,9 +34,10 @@ struct NodeCanvas: View {
             let graphActions = GraphSelectionMenuActions(store: store, admitsInput: admitsInput)
             let cancelAddInput = store.canvasAddCancellationAction()
             let handlePrecisionKey = store.canvasPrecisionKeyHandler()
+            let handleAxisLockKey = store.canvasAxisLockKeyHandler(profileLease: profileLease)
             let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
-                admitsInput() && (handlePartStateKey($0) || handlePrecisionKey($0))
+                admitsInput() && (handleAxisLockKey($0) || handlePartStateKey($0) || handlePrecisionKey($0))
             }
             let precisionActions = CanvasPrecisionActions(store: store)
             let quarterTurns = OrthogonalQuarterTurnActions(store: store, profileLease: profileLease)
@@ -45,6 +47,9 @@ struct NodeCanvas: View {
             let addModeID = store.addModeID
             let shiftContext = store.canvasRotationContext
             let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
+            let focusTarget = profileLease.flatMap { lease in
+                store.snapshot.map { CanvasProfileFocusTarget(documentIdentity: $0.documentIdentity, lease: lease) }
+            }
             ZStack {
                 if store.showsReferenceImage,
                     let image = store.fittedReferenceColorImage(in: referenceCanvas) ?? store.referenceImage
@@ -97,7 +102,8 @@ struct NodeCanvas: View {
                     cancelInput: { if admitsInput() { cancelAddInput() } },
                     admitsPrimaryPress: { admitsInput() && admitPrimaryPress($0) },
                     profileFocusRequest: profileFocusRequest,
-                    ownsProfile: { ownsProfile }, switchProfile: switchProfile
+                    ownsProfile: { ownsProfile }, switchProfile: switchProfile,
+                    focusControl: focusControl, focusTarget: focusTarget
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"

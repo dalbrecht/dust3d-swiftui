@@ -48,6 +48,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var focusControl: CanvasProfileFocusControl? = nil
+    var focusTarget: CanvasProfileFocusTarget? = nil
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
@@ -56,6 +58,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.precisionKey = nil
         view.profileFocusRequest = nil
         view.switchProfile = nil
+        view.focusControl?.detach(view)
+        view.focusControl = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         view.tracksHoverWhileDisabled = tracksHoverWhileDisabled
@@ -77,6 +81,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.profileFocusRequest = profileFocusRequest
         view.ownsProfile = ownsProfile
         view.switchProfile = switchProfile
+        view.focusControl = focusControl
+        if let focusTarget, ownsProfile() { focusControl?.attach(view, target: focusTarget) }
         view.scheduleProfileFocus()
     }
 }
@@ -101,11 +107,23 @@ final class CanvasPointerView: NSView {
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    weak var focusControl: CanvasProfileFocusControl?
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var tracking: NSTrackingArea?
     private var activity = CanvasPointerActivity()
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
+    override class var defaultFocusRingType: NSFocusRingType { .exterior }
+
+    override var focusRingMaskBounds: NSRect {
+        // Leave room for the native ring inside the drawing pane.
+        guard bounds.width > 8, bounds.height > 8 else { return .zero }
+        return bounds.insetBy(dx: 4, dy: 4)
+    }
+
+    override func drawFocusRingMask() {
+        NSBezierPath(rect: focusRingMaskBounds).fill()
+    }
 
     override func updateTrackingAreas() {
         if let tracking { removeTrackingArea(tracking) }
@@ -239,11 +257,8 @@ final class CanvasPointerView: NSView {
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self {
             let input = CanvasPrecisionKeyInput(event)
-            let ownsPartStateInput =
-                window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
-                && NSApp.modalWindow == nil
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
-                || ((input.partStateProperty == nil || ownsPartStateInput) && precisionKey?(input) == true)
+                || (input.permitsDispatch(in: window) && precisionKey?(input) == true)
             {
                 return
             }

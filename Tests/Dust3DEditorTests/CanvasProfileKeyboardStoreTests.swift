@@ -24,6 +24,89 @@ private struct ProfileKeyboardNoNative: EditorPreviewServing, ArchiveTextureBaki
 
 @MainActor
 final class CanvasProfileKeyboardStoreTests: XCTestCase {
+    func testFocusCanvasUsesActiveLeaseWithoutChangingProfileSelectionOrSource() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: try makeDocument().encoded())
+        try await settle(store)
+        store.setDualCanvasProfile(true)
+        store.plane = .side
+        store.selectGraph(nodes: ["a"], edges: ["ab"])
+        try await settle(store)
+        let before = try XCTUnwrap(store.snapshot)
+        let lease = store.canvasProfiles.lease
+        var routedTargets: [CanvasProfileFocusTarget] = []
+        let action = try XCTUnwrap(
+            store.focusCanvasAction { target in
+                routedTargets.append(target)
+                return true
+            })
+
+        XCTAssertTrue(action())
+        XCTAssertEqual(routedTargets, [.init(documentIdentity: before.documentIdentity, lease: lease)])
+        XCTAssertEqual(store.plane, .side)
+        XCTAssertEqual(store.canvasProfiles.lease, lease)
+        XCTAssertEqual(store.snapshot?.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, before.selectedEdgeIDs)
+        XCTAssertEqual(store.snapshot?.selectionRevision, before.selectionRevision)
+        XCTAssertEqual(store.snapshot?.document.encoded(), before.document.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testFocusCanvasRejectsStalePaneToolAndAcceptedSource() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let data = try makeDocument().encoded()
+        await store.load(data: data)
+        try await settle(store)
+        let rejected: @MainActor (CanvasProfileFocusTarget) -> Bool = { _ in
+            XCTFail("A stale action reached the native focus boundary")
+            return true
+        }
+        let oldPane = try XCTUnwrap(store.focusCanvasAction(rejected))
+        store.plane = .side
+        store.plane = .front
+        XCTAssertFalse(oldPane())
+
+        let oldTool = try XCTUnwrap(store.focusCanvasAction(rejected))
+        store.setMovingOrigin(true)
+        XCTAssertFalse(oldTool())
+        let focusOrigin = try XCTUnwrap(store.focusCanvasAction { _ in true })
+        XCTAssertTrue(focusOrigin())
+        XCTAssertTrue(store.isMovingOrigin)
+        store.setMovingOrigin(false)
+        XCTAssertFalse(oldTool())
+
+        let oldSource = try XCTUnwrap(store.focusCanvasAction(rejected))
+        await store.load(data: Data("invalid source".utf8))
+        XCTAssertNotNil(store.snapshot)
+        XCTAssertFalse(oldSource())
+        XCTAssertNil(store.focusCanvasAction(rejected))
+
+        await store.load(data: data)
+        try await settle(store)
+        XCTAssertFalse(oldSource())
+        let current = try XCTUnwrap(store.focusCanvasAction { _ in false })
+        XCTAssertFalse(current(), "Propagate the native boundary's declined focus claim")
+    }
+
+    func testFocusCanvasRejectsReboundDocumentWindowBeforeReplacementLoad() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let id = UUID()
+        await store.load(data: try makeDocument().encoded(), fileIdentity: id)
+        try await settle(store)
+        XCTAssertNil(store.focusCanvasAction(fileIdentity: UUID()) { _ in true })
+        var bindingIdentity = id
+        let action = try XCTUnwrap(
+            store.focusCanvasAction(fileIdentity: id, ownsWindow: { bindingIdentity == id }) { _ in
+                XCTFail("The old window action reached native focus after its document binding changed")
+                return true
+            })
+        bindingIdentity = UUID()
+        XCTAssertFalse(action())
+    }
+
     func testSwitchRequiresDualLayoutAndExplicitGraphSelectionAndPreservesDocumentState() async throws {
         let store = makeStore()
         defer { store.stop() }

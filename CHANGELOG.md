@@ -4,7 +4,11 @@
 
 - Select editable geometry from the Canvas menu without including hidden or locked parts.
 
+- Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
+
+- Preview authored linked cross-section outlines before choosing a profile.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
@@ -18,15 +22,23 @@
 
 - Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
 
+- Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
+
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
+
+- Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
 - Preview applied and retained component color images in the inspector without changing image assignments.
 
+- Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
+
+- Add new parts and paste components into the browsed group when placement is automatic.
 
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
 
@@ -54,7 +66,7 @@
 
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
 
-- Connect to the nearest existing node in Add mode when node hit areas overlap.
+- Connect to the nearest existing node in Add mode when node hit areas overlap. A closer edge midpoint takes precedence when the pointer hits its tapered edge.
 
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
 
@@ -139,7 +151,11 @@
 
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
+- Show the exact authored values applied at the current replay property step.
+
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
+
+- Open a paused replay step as a new editable document.
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
 

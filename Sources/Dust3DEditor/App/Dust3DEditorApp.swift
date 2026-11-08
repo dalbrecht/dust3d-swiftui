@@ -333,7 +333,10 @@ struct Dust3DEditorApp: App {
         Window("Replay Steps", id: "workflow-replay") {
             Group {
                 if let replayRequest {
-                    WorkflowReplayView(document: replayRequest.document).id(replayRequest.id)
+                    WorkflowReplayView(document: replayRequest.document, sourceID: replayRequest.id) {
+                        self.replayRequest?.id == replayRequest.id
+                    }
+                    .id(replayRequest.id)
                 } else {
                     ContentUnavailableView("No Replay", systemImage: "play.rectangle")
                 }
