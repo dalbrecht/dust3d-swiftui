@@ -20,6 +20,8 @@
 
 - Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
 
+- Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
+
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
@@ -145,7 +147,11 @@
 
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
+- Show the exact authored values applied at the current replay property step.
+
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
+
+- Open a paused replay step as a new editable document.
 
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
 
