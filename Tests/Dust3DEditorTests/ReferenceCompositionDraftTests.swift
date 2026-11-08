@@ -23,6 +23,59 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         }
     }
 
+    @MainActor func testPanelDropUsesFirstSupportedURLAndPreservesOtherProfile() async throws {
+        let input = try source()
+        let draft = ReferenceCompositionDraft(service: ImmediateCompositionService(source: input))
+        defer { draft.stop() }
+        draft.useExisting(input.image)
+        try await settle(draft)
+        draft.setCrop(profile: .front, values: ["1", "0", "2", "2"])
+        try await settle(draft)
+        draft.importSource(url: URL(fileURLWithPath: "/previous"), profile: .side)
+        try await settle(draft)
+        draft.setCrop(profile: .side, values: ["0", "0", "1", "2"])
+        try await settle(draft)
+        draft.toggleSideMirror()
+        try await settle(draft)
+        let originalFront = try XCTUnwrap(draft.front)
+
+        let unsupported = URL(fileURLWithPath: "/tmp/geometry.ds3")
+        let remote = try XCTUnwrap(URL(string: "file://remote.example/tmp/reference.png"))
+        let selected = URL(fileURLWithPath: "/tmp/replacement.PNG")
+        let later = URL(fileURLWithPath: "/tmp/invalid.png")
+        XCTAssertFalse(draft.importDroppedSource(urls: [unsupported, remote], profile: .side))
+        XCTAssertTrue(draft.canApply)
+        XCTAssertTrue(draft.importDroppedSource(urls: [unsupported, remote, selected, later], profile: .side))
+        XCTAssertFalse(draft.canApply)
+        try await settle(draft)
+        XCTAssertTrue(draft.canApply)
+        XCTAssertNil(draft.errorMessage)
+        XCTAssertTrue(draft.front?.image === originalFront.image)
+        XCTAssertEqual(draft.front?.crop, originalFront.crop)
+        XCTAssertEqual(draft.side?.crop, input.crop)
+        XCTAssertEqual(draft.side?.isMirrored, false)
+    }
+
+    @MainActor func testPanelDropIgnoresLateReadAfterClosingComposer() async throws {
+        let service = HeldCompositionService(source: try source())
+        let draft = ReferenceCompositionDraft(service: service)
+        let image = URL(fileURLWithPath: "/tmp/front.png")
+        XCTAssertTrue(draft.importDroppedSource(urls: [image], profile: .front))
+        for _ in 0..<300 {
+            if await service.isWaiting { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let isWaiting = await service.isWaiting
+        XCTAssertTrue(isWaiting)
+        draft.stop()
+        await service.release()
+        try await Task.sleep(for: .milliseconds(20))
+        XCTAssertFalse(draft.importDroppedSource(urls: [image], profile: .front))
+        XCTAssertNil(draft.front)
+        XCTAssertNil(draft.result)
+        XCTAssertFalse(draft.canApply)
+    }
+
     @MainActor func testDropPublishesBothSourcesAndPreviewTogether() async throws {
         let input = try source()
         let service = HeldDropCompositionService(source: input)
@@ -343,7 +396,9 @@ private actor ImmediateCompositionService: ReferenceCompositionServing {
     let source: ReferenceCompositionSource
     init(source: ReferenceCompositionSource) { self.source = source }
     func importSource(url: URL) throws -> ReferenceCompositionSource {
-        if url.lastPathComponent == "invalid" { throw ReferenceImageError.fileReadFailed("fixture read failure") }
+        if ["invalid", "invalid.png"].contains(url.lastPathComponent) {
+            throw ReferenceImageError.fileReadFailed("fixture read failure")
+        }
         return source
     }
     func compose(front: ReferenceCompositionSource?, side: ReferenceCompositionSource?) throws

@@ -16,15 +16,15 @@ struct ReferenceCompositionDrop {
     private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff"]
 
     init?(urls: [URL]) {
-        guard (1...2).contains(urls.count), let first = urls.first,
-            urls.allSatisfy({ url in
-                url.isFileURL
-                    && (url.host(percentEncoded: false).map { $0.isEmpty || $0.lowercased() == "localhost" } ?? true)
-                    && Self.imageExtensions.contains(url.pathExtension.lowercased())
-            })
-        else { return nil }
+        guard (1...2).contains(urls.count), let first = urls.first, urls.allSatisfy(Self.supports) else { return nil }
         front = first
         side = urls.dropFirst().first
+    }
+
+    static func supports(_ url: URL) -> Bool {
+        url.isFileURL
+            && (url.host(percentEncoded: false).map { $0.isEmpty || $0.lowercased() == "localhost" } ?? true)
+            && imageExtensions.contains(url.pathExtension.lowercased())
     }
 }
 
@@ -73,6 +73,12 @@ struct ReferenceCompositionDrop {
                 errorMessage = EditorStore.message(error)
             }
         }
+    }
+
+    func importDroppedSource(urls: [URL], profile: ReferenceProfile) -> Bool {
+        guard !stopped, let url = urls.first(where: ReferenceCompositionDrop.supports) else { return false }
+        importSource(url: url, profile: profile)
+        return true
     }
 
     /// Stage both dropped profiles and their composition before publishing any of them.

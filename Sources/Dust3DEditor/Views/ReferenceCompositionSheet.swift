@@ -130,6 +130,7 @@ import UniformTypeIdentifiers
     let importImage: () -> Void
     @State private var values = ["", "", "", ""]
     @State private var isAdjustingCrop = false
+    @State private var isDropTargeted = false
     private var source: ReferenceCompositionSource? { draft.source(profile) }
 
     var body: some View {
@@ -137,6 +138,7 @@ import UniformTypeIdentifiers
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Button("Import \(profile.rawValue)…", action: importImage)
+                        .help("Choose an image or drop it onto this profile panel")
                     Button("Remove") { draft.remove(profile) }.disabled(source == nil)
                     if profile == .side {
                         Button(source?.isMirrored == true ? "Unmirror Side" : "Mirror Side") {
@@ -189,10 +191,23 @@ import UniformTypeIdentifiers
                     }
                     Button("Use Full Image") { draft.useFullImage(profile) }
                 } else {
-                    ContentUnavailableView("No \(profile.rawValue) source", systemImage: "photo").frame(height: 180)
+                    ContentUnavailableView(
+                        "No \(profile.rawValue) source", systemImage: "photo",
+                        description: Text("Drop an image here or use Import \(profile.rawValue).")
+                    )
+                    .frame(height: 180)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(
+            isDropTargeted ? Color.accentColor.opacity(0.15) : Color.clear, in: RoundedRectangle(cornerRadius: 6)
+        )
+        .contentShape(Rectangle())
+        .dropDestination(for: URL.self) { urls, _ in
+            draft.importDroppedSource(urls: urls, profile: profile)
+        } isTargeted: {
+            isDropTargeted = $0
         }
         .onChange(of: source?.displayedCrop, initial: true) { _, crop in
             values = crop.map { [$0.x, $0.y, $0.width, $0.height].map(String.init) } ?? ["", "", "", ""]

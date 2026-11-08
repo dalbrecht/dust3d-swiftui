@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Drop an image directly onto the Front or Side panel of the reference composer to replace that profile before applying the draft.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
