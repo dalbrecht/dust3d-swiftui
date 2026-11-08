@@ -77,6 +77,7 @@ struct EditorRootView: View {
                 .listStyle(.sidebar)
                 .disabled(store.isWorking || store.isSelectingRigEdges)
                 ComponentSidebar(store: store)
+                ComponentGroupDropConfirmation(store: store)
                 PartSidebar(store: store)
                 EdgeSidebar(store: store)
             }

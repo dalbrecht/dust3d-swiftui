@@ -1083,6 +1083,7 @@ final class EditorStore {
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil, reset: true)
         pendingComponentDrag = nil
+        componentGroupDropProposal = nil
         invalidateReferenceColors()
         referenceColorApplyToken = UUID()
         referenceColorOperationID = nil
@@ -1478,6 +1479,7 @@ final class EditorStore {
         componentBrowseGroupID = groupID
         componentBrowseEpoch = UUID()
         pendingComponentDrag = nil
+        componentGroupDropProposal = nil
     }
 
     private func reconcileComponentBrowse(previous: EditorSnapshot?) {
@@ -1599,10 +1601,29 @@ final class EditorStore {
             try await $0.reparentComponents(to: parent, target: target)
         }
     }
+    struct ComponentGroupDropProposal: Identifiable {
+        let id = UUID()
+        let destinationTitle: String
+        let sourceTitle: String?
+        let componentCount: Int
+        fileprivate let placement: ComponentDropPlacement
+        fileprivate let target: ComponentPlacementTarget
+        fileprivate let scopeEpoch: UUID
+    }
+
+    private var componentGroupDropProposal: ComponentGroupDropProposal?
+    var pendingComponentGroupDrop: ComponentGroupDropProposal? {
+        guard let proposal = componentGroupDropProposal, canSave, proposal.scopeEpoch == componentBrowseEpoch,
+            let snapshot, proposal.target.isCurrent(in: snapshot)
+        else { return nil }
+        return proposal
+    }
+
     @ObservationIgnored private var pendingComponentDrag: (token: UUID, target: ComponentPlacementTarget)?
 
     func beginComponentDrag(grabbedID: String) -> UUID? {
         pendingComponentDrag = nil
+        componentGroupDropProposal = nil
         guard canSave, let snapshot,
             let target = ComponentPlacementTarget(snapshot: snapshot, grabbedID: grabbedID)
         else { return nil }
@@ -1613,12 +1634,36 @@ final class EditorStore {
 
     func dropComponents(token: UUID, at placement: ComponentDropPlacement) -> Bool {
         guard let target = consumeComponentDrag(token) else { return false }
+        if case .into(let parentID?) = placement {
+            guard let snapshot, target.canPlace(at: placement, in: snapshot),
+                let destination = snapshot.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(parentID.utf8) })
+            else { return false }
+            let sourceTitle =
+                target.ids.count == 1
+                ? snapshot.componentTree.rows.first { row in
+                    target.ids[0].utf8.elementsEqual(row.id.utf8)
+                }?.title : nil
+            componentGroupDropProposal = ComponentGroupDropProposal(
+                destinationTitle: destination.title, sourceTitle: sourceTitle, componentCount: target.ids.count,
+                placement: placement, target: target, scopeEpoch: componentBrowseEpoch)
+            return true
+        }
         return placeComponents(at: placement, target: target)
     }
 
     func dropComponents(token: UUID, in parent: ComponentParent) -> Bool {
-        guard let target = consumeComponentDrag(token) else { return false }
-        return placeComponents(at: .into(parentID: parent.componentID), target: target)
+        dropComponents(token: token, at: .into(parentID: parent.componentID))
+    }
+
+    @discardableResult
+    func confirmComponentGroupDrop(_ id: UUID) -> Bool {
+        guard let proposal = pendingComponentGroupDrop, proposal.id == id else { return false }
+        componentGroupDropProposal = nil
+        return placeComponents(at: proposal.placement, target: proposal.target)
+    }
+
+    func cancelComponentGroupDrop(_ id: UUID) {
+        if componentGroupDropProposal?.id == id { componentGroupDropProposal = nil }
     }
 
     private func consumeComponentDrag(_ token: UUID) -> ComponentPlacementTarget? {
@@ -2961,6 +3006,7 @@ final class EditorStore {
         boneEdgeHover = nil
         previewCameraCommand = nil
         pendingComponentDrag = nil
+        componentGroupDropProposal = nil
         invalidateReferenceColors()
         referenceColorApplyToken = UUID()
         referenceColorOperationID = nil
