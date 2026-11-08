@@ -380,17 +380,7 @@ final class EditorStore {
         else { return }
         do {
             try addPlacement.updatePointer(point)
-            var candidate: String?
-            var nearestDistance = 18.0
-            for node in snapshot.nodes where node.isVisible {
-                let center = projection.point(for: node.value.position)
-                let distance = hypot(center.x - point.x, center.y - point.y)
-                // On an exact tie the later, topmost node keeps precedence.
-                if distance <= nearestDistance {
-                    nearestDistance = distance
-                    candidate = node.id
-                }
-            }
+            let candidate = addConnectionCandidate(at: point, projection: projection, snapshot: snapshot)
             guard let request = addPlacement.request(connectingTo: candidate) else { return }
             let placementID = UUID()
             addPlacementRequestID = placementID
@@ -409,6 +399,43 @@ final class EditorStore {
                 })
         } catch { errorMessage = Self.message(error) }
     }
+    private func addConnectionCandidate(
+        at point: CanvasPoint, projection: CanvasProjection, snapshot: EditorSnapshot
+    ) -> String? {
+        var candidate: String?
+        var nearestDistance = 18.0
+        var centers: [Data: CanvasPoint] = [:]
+        for node in snapshot.nodes where node.isVisible {
+            let center = projection.point(for: node.value.position)
+            centers[Data(node.id.utf8)] = center
+            let distance = hypot(center.x - point.x, center.y - point.y)
+            // On an exact tie the later, topmost node keeps precedence.
+            if distance <= nearestDistance {
+                nearestDistance = distance
+                candidate = node.id
+            }
+        }
+        guard let candidate else { return nil }
+        for edge in snapshot.edges {
+            guard let from = centers[Data(edge.fromID.utf8)], let to = centers[Data(edge.toID.utf8)] else { continue }
+            let dx = to.x - from.x
+            let dy = to.y - from.y
+            let length = hypot(dx, dy)
+            guard length > 0, length.isFinite else { continue }
+            let x = point.x - from.x
+            let y = point.y - from.y
+            let ux = dx / length
+            let uy = dy / length
+            let along = x * ux + y * uy
+            // Qt's directed edge triangle tapers from four points wide to zero.
+            guard along >= 0, along <= length,
+                abs(x * uy - y * ux) <= 2 * (1 - along / length)
+            else { continue }
+            if hypot(x - dx / 2, y - dy / 2) < nearestDistance { return nil }
+        }
+        return candidate
+    }
+
     private func acceptAddPlacement(_ receipt: AddPlacementReceipt, modeID: UUID) {
         guard isAddingNodes, modeID == addModeID else { return }
         do {
@@ -642,6 +669,28 @@ final class EditorStore {
             return false
         }
         return !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
+    }
+
+    func focusCanvasAction(
+        fileIdentity: UUID? = nil, ownsWindow: @escaping @MainActor () -> Bool = { true },
+        _ focus: @escaping @MainActor (CanvasProfileFocusTarget) -> Bool
+    ) -> (@MainActor () -> Bool)? {
+        guard canSave, !referenceColorInteractionActive, originDrag == nil, let source = acceptedDocumentSource,
+            case .success(let accepted) = recoveryLoadResult, accepted.fileIdentity == fileIdentity, ownsWindow()
+        else { return nil }
+        let target = CanvasProfileFocusTarget(documentIdentity: source.documentIdentity, lease: canvasProfiles.lease)
+        let tool = rotationInputContextID
+        let add = addModeID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] in
+            guard let self, ownsWindow(), self.canSave,
+                self.acceptedDocumentSource?.documentIdentity == target.documentIdentity,
+                self.ownsCanvasProfile(target.lease), self.rotationInputContextID == tool, self.addModeID == add,
+                self.referenceColorInteractionEpoch == interaction, !self.referenceColorInteractionActive,
+                self.originDrag == nil
+            else { return false }
+            return focus(target)
+        }
     }
 
     func switchSelectedCanvasProfile(expectedLease: UUID? = nil) -> UUID? {
@@ -1087,6 +1136,7 @@ final class EditorStore {
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
         graphComponentRevealLookup = nil
+        canvasAxisLockQueue = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil, reset: true)
         pendingComponentDrag = nil
@@ -1332,6 +1382,92 @@ final class EditorStore {
         originDrag = nil
         originDragToken = nil
         originDragPosition = nil
+    }
+
+    private struct CanvasAxisLockScope: Equatable {
+        let documentIdentity: UUID
+        let documentRevision: Int
+        let selectionRevision: Int
+        let profileLease: UUID?
+        let toolEpoch: UUID
+        let addEpoch: UUID
+        let interactionEpoch: UUID
+    }
+
+    private struct CanvasAxisLockQueue {
+        let id = UUID()
+        let scope: CanvasAxisLockScope
+        let firstConstraintRevision: Int
+        var operationID: UUID?
+        var pending: [EditingConstraint] = []
+    }
+
+    @ObservationIgnored private var canvasAxisLockQueue: CanvasAxisLockQueue?
+
+    func canvasAxisLockKeyHandler(profileLease: UUID?) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
+        guard let snapshot = acceptedDocumentSource else { return { _ in false } }
+        let scope = canvasAxisLockScope(snapshot: snapshot, profileLease: profileLease)
+        let capturedRevision = snapshot.constraintRevision
+        return { [weak self] input in
+            guard let self, let constraint = input.axisLockConstraint,
+                let current = admittedCanvasAxisLockSource(scope)
+            else { return false }
+            if let queue = canvasAxisLockQueue {
+                guard queue.scope == scope, queue.operationID == operationRequestID,
+                    (queue.firstConstraintRevision...current.constraintRevision).contains(capturedRevision)
+                else { return false }
+                if !input.isRepeat, queue.pending.count < 32 {
+                    canvasAxisLockQueue?.pending.append(constraint)
+                }
+                return true
+            }
+            guard !isWorking, capturedRevision == current.constraintRevision else { return false }
+            if !input.isRepeat {
+                canvasAxisLockQueue = CanvasAxisLockQueue(scope: scope, firstConstraintRevision: capturedRevision)
+                dispatchCanvasAxisLock(constraint, snapshot: current)
+            }
+            return true
+        }
+    }
+
+    private func canvasAxisLockScope(snapshot: EditorSnapshot, profileLease: UUID?) -> CanvasAxisLockScope {
+        CanvasAxisLockScope(
+            documentIdentity: snapshot.documentIdentity, documentRevision: snapshot.documentRevision,
+            selectionRevision: snapshot.selectionRevision, profileLease: profileLease,
+            toolEpoch: rotationInputContextID,
+            addEpoch: addModeID, interactionEpoch: referenceColorInteractionEpoch)
+    }
+
+    private func admittedCanvasAxisLockSource(_ scope: CanvasAxisLockScope) -> EditorSnapshot? {
+        guard ownsCanvasProfile(scope.profileLease), !referenceColorInteractionActive,
+            !isSelectingRigEdges, !isAddingNodes, !isMovingOrigin, canvasProfileMotion == nil,
+            let current = acceptedDocumentSource,
+            canvasAxisLockScope(snapshot: current, profileLease: scope.profileLease) == scope
+        else { return nil }
+        return current
+    }
+
+    private func dispatchCanvasAxisLock(_ constraint: EditingConstraint, snapshot: EditorSnapshot) {
+        guard let queue = canvasAxisLockQueue else { return }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let revision = snapshot.constraintRevision
+        perform(
+            commits: false,
+            completion: { [weak self] succeeded in
+                guard let self, var currentQueue = canvasAxisLockQueue, currentQueue.id == queue.id else { return }
+                guard succeeded, currentQueue.operationID == operationRequestID, !isWorking,
+                    let current = admittedCanvasAxisLockSource(queue.scope),
+                    current.constraintRevision == revision + 1, !currentQueue.pending.isEmpty
+                else {
+                    canvasAxisLockQueue = nil
+                    return
+                }
+                let next = currentQueue.pending.removeFirst()
+                canvasAxisLockQueue = currentQueue
+                dispatchCanvasAxisLock(next, snapshot: current)
+            },
+            { try await $0.toggleCanvasAxisLock(constraint, target: target) })
+        if canvasAxisLockQueue?.id == queue.id { canvasAxisLockQueue?.operationID = operationRequestID }
     }
 
     func setLock(_ constraint: EditingConstraint, isLocked: Bool) {
@@ -1800,6 +1936,15 @@ final class EditorStore {
     func setPartTarget(_ id: String, target: PartTarget) {
         perform { try await $0.apply([.setPartTarget(id: id, target: target)]) }
     }
+    func canEditGraphPartRole(_ target: GraphPartRoleTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func setGraphPartRole(_ role: PartTarget, target: GraphPartRoleTarget) {
+        guard canEditGraphPartRole(target) else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.setGraphPartRole(role, target: target) }
+    }
+
     func setPartCutFace(_ id: String, selection: CutFaceSelection) {
         perform { try await $0.apply([.setPartCutFace(id: id, selection: selection)]) }
     }
@@ -2105,13 +2250,26 @@ final class EditorStore {
     }
 
     func selectPart(_ id: String?) { perform(commits: false) { try await $0.selectPart(id) } }
-    func setOrigin(x: String, y: String, z: String) {
+    var originInspectorSource: OriginInspectorSource? {
+        acceptedDocumentSource.map { .init(documentIdentity: $0.documentIdentity, origin: $0.origin) }
+    }
+
+    func originInspectorApplyAction(source: OriginInspectorSource) -> (@MainActor (String, String, String) -> Void)? {
+        guard !isWorking, let snapshot = acceptedDocumentSource, originInspectorSource == source else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        return { [weak self] x, y, z in
+            guard let self, let current = self.acceptedDocumentSource, target.isCurrent(in: current) else { return }
+            self.setOrigin(x: x, y: y, z: z, target: target)
+        }
+    }
+
+    func setOrigin(x: String, y: String, z: String, target: CanvasAdjustmentTarget? = nil) {
         guard !isWorking, !stopped else { return }
         guard let x = Double(x), let y = Double(y), let z = Double(z) else {
             errorMessage = Self.message(DocumentError.invalidOrigin)
             return
         }
-        perform { try await $0.apply([.setOrigin(.init(x: x, y: y, z: z))]) }
+        perform { try await $0.apply([.setOrigin(.init(x: x, y: y, z: z))], selecting: nil, target: target) }
     }
     func centerOriginOnModel() {
         perform { try await $0.centerOriginOnModel() }
@@ -2965,6 +3123,7 @@ final class EditorStore {
 
     func stop() {
         graphComponentRevealLookup = nil
+        canvasAxisLockQueue = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil)
         canvasGraphHoverCache = CanvasGraphHover.Cache()
