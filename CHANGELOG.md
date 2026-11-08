@@ -4,6 +4,8 @@
 
 - Update the combined reference image preview while drawing, moving or resizing a crop. The document changes only on Apply.
 
+- Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
