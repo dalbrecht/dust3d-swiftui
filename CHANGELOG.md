@@ -20,6 +20,8 @@
 
 - Apply one Qt XML fragment at launch with `-paste-xml` in one Undo step per newly opened eligible document. With no `.ds3` input or output option, open one untitled document with default model colors. A read or validation error leaves that document blank and displays a diagnostic.
 
+- Select newly pasted editable nodes and edges from Qt XML so edge commands are available immediately.
+
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
 - Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
