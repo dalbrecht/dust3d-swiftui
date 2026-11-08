@@ -4,7 +4,6 @@ import Foundation
 enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
     case invalidDocumentArgument
     case unsupportedExportArgument
-    case unsupportedPasteArgument
     case invalidPasteArgument
     case invalidColorArgument
 
@@ -14,8 +13,6 @@ enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
             "Supply up to 64 distinct local .ds3 paths, each at most 4096 UTF-8 bytes. Paths after --open-document must be absolute."
         case .unsupportedExportArgument:
             "Export at launch is unavailable. Open the document and use File > Export Geometry."
-        case .unsupportedPasteArgument:
-            "Pasting XML at launch requires at least one .ds3 document. For a new document, use Edit > Paste Qt XML File."
         case .invalidPasteArgument:
             "Supply one local .xml path after -paste-xml, at most 4096 UTF-8 bytes."
         case .invalidColorArgument:
@@ -26,6 +23,7 @@ enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
 
 enum EditorLaunchRequest: Sendable, Equatable {
     case none
+    case untitledPaste(URL)
     case open([URL], hidesPreviewColors: Bool = false, pasteXML: URL? = nil)
 
     init(arguments: [String]) throws(EditorLaunchError) {
@@ -87,8 +85,12 @@ enum EditorLaunchRequest: Sendable, Equatable {
             }
             urls.append(url)
         }
-        guard pasteXML == nil || !urls.isEmpty else { throw .unsupportedPasteArgument }
-        self = urls.isEmpty ? .none : .open(urls, hidesPreviewColors: hidesPreviewColors, pasteXML: pasteXML)
+        if urls.isEmpty {
+            // Qt applies the launch color toggle only to file-backed documents.
+            self = pasteXML.map(Self.untitledPaste) ?? .none
+        } else {
+            self = .open(urls, hidesPreviewColors: hidesPreviewColors, pasteXML: pasteXML)
+        }
     }
 }
 
@@ -98,11 +100,14 @@ final class EditorLaunchDocumentOpener {
     private let request: Result<EditorLaunchRequest, EditorLaunchError>
     private var hasHandledRequest = false
     private var neutralPreviewClaims: [URL: LaunchNeutralPreviewClaim] = [:]
-    private var startupPasteClaims: [URL: LaunchStartupPasteClaim] = [:]
+    private var startupPasteClaims: [URL?: LaunchStartupPasteClaim] = [:]
 
     var hasPasteRequest: Bool {
-        if case .success(.open(_, _, let url)) = request { return url != nil }
-        return false
+        switch request {
+        case .success(.untitledPaste): true
+        case .success(.open(_, _, let url)): url != nil
+        default: false
+        }
     }
 
     var shouldSuppressUntitledDocument: Bool {
@@ -120,6 +125,7 @@ final class EditorLaunchDocumentOpener {
     func openRequestedDocument(
         readPaste: @MainActor (URL) async throws -> Data = { try await QtXMLFileReader().read($0) },
         open: @MainActor (URL) async throws -> AnyObject?,
+        createUntitled: @MainActor () throws -> AnyObject = { throw CocoaError(.featureUnsupported) },
         displayNew: @MainActor (AnyObject) -> Void = { _ in },
         reportError: @MainActor (Error) -> Void
     ) async {
@@ -128,13 +134,27 @@ final class EditorLaunchDocumentOpener {
         hasHandledRequest = true
         switch request {
         case .success(.none): break
+        case .success(.untitledPaste(let xml)):
+            let paste: Result<Data, Error>
+            do {
+                paste = .success(try await validatedPaste(at: xml, read: readPaste))
+            } catch {
+                paste = .failure(error)
+            }
+            guard !Task.isCancelled else { return }
+            do {
+                let document = try createUntitled()
+                if case .success(let data) = paste { registerStartupPaste(data, document: document, source: nil) }
+                displayNew(document)
+                if case .failure(let error) = paste { reportError(error) }
+            } catch {
+                reportError(error)
+            }
         case .success(.open(let urls, let hidesPreviewColors, let pasteXML)):
             let pasteData: Data?
             do {
                 if let pasteXML {
-                    let data = try await readPaste(pasteXML)
-                    try await EditorSession().validateQtXMLFile(data)
-                    pasteData = data
+                    pasteData = try await validatedPaste(at: pasteXML, read: readPaste)
                 } else {
                     pasteData = nil
                 }
@@ -153,13 +173,7 @@ final class EditorLaunchDocumentOpener {
                     if claim?.document == nil { neutralPreviewClaims[url] = nil }
                     if let pasteData, let opened {
                         if !Task.isCancelled {
-                            let startupPaste = LaunchStartupPasteClaim(document: opened, data: pasteData)
-                            startupPasteClaims[url] = startupPaste
-                            let deadline = startupPaste.deadline
-                            Task { [weak self] in
-                                try? await Task.sleep(until: deadline, clock: .continuous)
-                                self?.startupPasteClaims[url] = nil
-                            }
+                            registerStartupPaste(pasteData, document: opened, source: url)
                         }
                         displayNew(opened)
                     }
@@ -173,15 +187,31 @@ final class EditorLaunchDocumentOpener {
         }
     }
 
-    func hasStartupPaste(for source: URL) -> Bool {
-        guard let claim = startupPasteClaims[source.standardizedFileURL] else { return false }
+    private func validatedPaste(at url: URL, read: @MainActor (URL) async throws -> Data) async throws -> Data {
+        let data = try await read(url)
+        try await EditorSession().validateQtXMLFile(data)
+        return data
+    }
+
+    private func registerStartupPaste(_ data: Data, document: AnyObject, source: URL?) {
+        let claim = LaunchStartupPasteClaim(document: document, data: data)
+        startupPasteClaims[source] = claim
+        let deadline = claim.deadline
+        Task { [weak self] in
+            try? await Task.sleep(until: deadline, clock: .continuous)
+            self?.startupPasteClaims[source] = nil
+        }
+    }
+
+    func hasStartupPaste(for source: URL?) -> Bool {
+        guard let claim = startupPasteClaims[source?.standardizedFileURL] else { return false }
         return ContinuousClock.now < claim.deadline
     }
 
     /// Retire the matching claim even when the exact document became edited.
     func claimStartupPaste(for source: URL?, document: AnyObject?, isEdited: Bool) -> Data? {
-        guard !Task.isCancelled, let url = source?.standardizedFileURL, let document,
-            let claim = startupPasteClaims[url], claim.document === document
+        let url = source?.standardizedFileURL
+        guard !Task.isCancelled, let document, let claim = startupPasteClaims[url], claim.document === document
         else { return nil }
         startupPasteClaims[url] = nil
         return isEdited || ContinuousClock.now >= claim.deadline ? nil : claim.data
