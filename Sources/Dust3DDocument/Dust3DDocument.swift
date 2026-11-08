@@ -382,16 +382,27 @@ public struct DocumentContents: Sendable {
 
 package struct ReplayProperty: Equatable, Sendable {
     package enum Owner: Hashable, Sendable { case node, part, component, animation }
+
+    package struct Field: Equatable, Sendable {
+        package let name: String
+        package let value: String
+
+        package init(name: String, value: String) {
+            self.name = name
+            self.value = value
+        }
+    }
+
     package let owner: Owner
     package let id: String
-    package let attributes: [String]
+    package let fields: [Field]
     package let title: String
     package let profilePartID: String?
 
-    package init(owner: Owner, id: String, attributes: [String], title: String, profilePartID: String?) {
+    package init(owner: Owner, id: String, fields: [Field], title: String, profilePartID: String?) {
         self.owner = owner
         self.id = id
-        self.attributes = attributes
+        self.fields = fields
         self.title = title
         self.profilePartID = profilePartID
     }
@@ -1335,7 +1346,7 @@ public struct Dust3DDocument: Sendable {
                         attribute == "cutFace" && CutFaceLinks.canonicalID(value) != nil
                         ? value : nil
                     return ReplayProperty(
-                        owner: owner, id: id, attributes: [attribute],
+                        owner: owner, id: id, fields: [.init(name: attribute, value: value)],
                         title: name.isEmpty ? label : "\(name) — \(label)", profilePartID: profilePartID)
                 }
                 if owner == .component,
@@ -1343,10 +1354,14 @@ public struct Dust3DDocument: Sendable {
                     (element.attribute(forName: "linkData")?.stringValue ?? "").isEmpty,
                     let value = element.attribute(forName: "wrap")?.stringValue, !value.isEmpty
                 {
-                    let attributes = (element.attributes ?? []).compactMap(\.name).filter { $0.hasPrefix("wrap") }
+                    let fields = (element.attributes ?? []).compactMap { attribute -> ReplayProperty.Field? in
+                        guard let name = attribute.name, name.hasPrefix("wrap"), let value = attribute.stringValue
+                        else { return nil }
+                        return .init(name: name, value: value)
+                    }
                     result.append(
                         ReplayProperty(
-                            owner: owner, id: id, attributes: attributes,
+                            owner: owner, id: id, fields: fields,
                             title: name.isEmpty ? "Wrap Modifier" : "\(name) — Wrap Modifier", profilePartID: nil))
                 }
                 return result
@@ -1442,7 +1457,7 @@ public struct Dust3DDocument: Sendable {
             for element in elements {
                 guard let id = element.attribute(forName: "id")?.stringValue else { continue }
                 for property in attributes[Array(id.utf8)] ?? [] {
-                    for attribute in property.attributes { element.removeAttribute(forName: attribute) }
+                    for field in property.fields { element.removeAttribute(forName: field.name) }
                 }
             }
         }
