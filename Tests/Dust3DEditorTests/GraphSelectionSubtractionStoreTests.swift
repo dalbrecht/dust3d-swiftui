@@ -103,4 +103,212 @@ private actor SubtractionPreviewCounter: EditorPreviewServing {
         XCTAssertEqual(store.snapshot?.selectedIDs, ["b"])
         XCTAssertEqual(publications, 0)
     }
+    private func sidebarStore() async throws -> (EditorStore, Data) {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                <node id='a' name='Arm' partId='p' x='0' y='0' z='0' radius='.1'/>
+                <node id='b' name='Arm' partId='q' x='1' y='0' z='0' radius='.1'/>
+                <node id='c' name='Hidden Arm' partId='r' x='2' y='0' z='0' radius='.1'/>
+                <node id='d' name='Disabled Arm' partId='s' x='3' y='0' z='0' radius='.1'/>
+                </nodes><parts>
+                <part id='p' name='Frame' locked='true'/><part id='q' name='Support'/>
+                <part id='r' visible='false'/><part id='s' disabled='true'/>
+                </parts></canvas>
+                """.utf8))
+        let stub = SubtractionNoNative()
+        let store = EditorStore(
+            preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        await store.load(data: source.encoded())
+        try await settle(store)
+        return (store, source.encoded())
+    }
+
+    func testCanvasNodeSidebarSearchPreservesSourceOrderAndDistinguishesDuplicateTitles() async throws {
+        let (store, _) = try await sidebarStore()
+        defer { store.stop() }
+        let request = try XCTUnwrap(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        let rows = request.rows(matching: "  ")
+        XCTAssertEqual(rows.map(\.id), ["a", "b", "c", "d"])
+        XCTAssertNotEqual(rows[0].accessibilityLabel, rows[1].accessibilityLabel)
+        XCTAssertTrue(rows[0].accessibilityLabel.contains("Frame"))
+        XCTAssertEqual(request.rows(matching: " fRaMe ARM ").map(\.id), ["a"])
+        XCTAssertEqual(request.rows(matching: "support").map(\.id), ["b"])
+        XCTAssertEqual(request.rows(matching: "Hidden").map(\.id), ["c"])
+        XCTAssertTrue(rows[2].accessibilityLabel.contains("Hidden"))
+        XCTAssertTrue(rows[3].accessibilityLabel.contains("Disabled"))
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+    }
+
+    func testCanvasNodeSidebarDisplaysOnlyByteExactOwnerLabels() throws {
+        let composed = "caf\u{e9}"
+        let decomposed = "cafe\u{301}"
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                <node id='exact' partId='\(composed)' x='0' y='0' z='0' radius='.1'/>
+                <node id='alias' partId='\(decomposed)' x='1' y='0' z='0' radius='.1'/>
+                </nodes><parts><part id='\(composed)' name='Exact owner'/></parts></canvas>
+                """.utf8))
+        let snapshot = try EditorState(document: source).snapshot
+        let rows = CanvasNodeSidebarRow.rows(in: snapshot)
+        XCTAssertEqual(rows.map(\.id), ["exact", "alias"])
+        XCTAssertEqual(rows.first?.partTitle, "Exact owner")
+        XCTAssertNil(rows.last?.partTitle)
+    }
+
+    func testCanvasNodeSidebarSelectsOnlyDisplayedRowsAndKeepsArchiveAndHistory() async throws {
+        let (store, source) = try await sidebarStore()
+        defer { store.stop() }
+        let request = try XCTUnwrap(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        XCTAssertFalse(store.selectCanvasSidebarNodes(["c"], matching: "frame", in: request))
+        XCTAssertFalse(store.selectCanvasSidebarNodes(["missing"], matching: "", in: request))
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+        XCTAssertTrue(store.selectCanvasSidebarNodes(["a", "b"], matching: "arm", in: request))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a", "b"])
+        XCTAssertFalse(store.selectCanvasSidebarNodes([], matching: "frame", in: request))
+        let selected = try XCTUnwrap(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        XCTAssertFalse(store.selectCanvasSidebarNodes([], matching: "hidden", in: selected))
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a", "b"])
+        XCTAssertTrue(store.selectCanvasSidebarNodes([], matching: "frame", in: selected))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["b"])
+        let deselected = try XCTUnwrap(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        XCTAssertTrue(store.selectCanvasSidebarNodes(["c"], matching: "hidden", in: deselected))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["c"])
+        XCTAssertEqual(store.snapshot?.document.encoded(), source)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testCanvasNodeSidebarRejectsRetainedProfileToolAndFailedSource() async throws {
+        let (store, source) = try await sidebarStore()
+        defer { store.stop() }
+        store.setDualCanvasProfile(true)
+        let front = try XCTUnwrap(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        store.plane = .side
+        XCTAssertFalse(store.selectCanvasSidebarNodes(["a"], matching: "", in: front))
+        XCTAssertNil(store.canvasNodeSidebarPresentation(profileLease: front.profileLease))
+
+        let beforeTool = try XCTUnwrap(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        store.setRigEdgeSelection(true)
+        XCTAssertNil(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        store.setRigEdgeSelection(false)
+        XCTAssertFalse(store.selectCanvasSidebarNodes(["a"], matching: "", in: beforeTool))
+
+        let beforeFailure = try XCTUnwrap(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        await store.load(data: Data("not a DS3".utf8))
+        XCTAssertNil(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        XCTAssertFalse(store.selectCanvasSidebarNodes(["a"], matching: "", in: beforeFailure))
+        XCTAssertEqual(store.snapshot?.document.encoded(), source)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    private func nodeSelectionStore() async throws -> (EditorStore, Data) {
+        let document = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0.4, y: 0.5, z: 0.5), radius: 0.1))
+        let stub = SubtractionNoNative()
+        let store = EditorStore(
+            preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        await store.load(data: document.encoded())
+        return (store, document.encoded())
+    }
+
+    func testCanvasNodeSelectionCannotInterruptOriginDragOrResumeWithRetiredTarget() async throws {
+        let (store, original) = try await nodeSelectionStore()
+        defer { store.stop() }
+        let old = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: nil))
+
+        store.setMovingOrigin(true)
+        let token = UUID()
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 500, height: 500)
+        store.beginOriginDrag(token: token, projection: projection)
+        store.updateOriginDrag(token: token, translation: .init(x: 30, y: 40))
+        let originPreview = try XCTUnwrap(store.originDragPosition)
+        XCTAssertNil(store.canvasNodeSelectionTarget(profileLease: nil))
+        for action: CanvasNodeSelectionAction in [
+            .selection(.replace), .selection(.add), .selection(.subtract), .wholePart,
+        ] {
+            store.activateCanvasNode("a", action: action, target: old)
+        }
+        try await settle(store)
+        XCTAssertEqual(store.originDragPosition, originPreview)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+        store.cancelOriginDrag()
+        store.activateCanvasNode("a", action: .selection(.replace), target: old)
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+        let current = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: nil))
+        store.activateCanvasNode("a", action: .selection(.replace), target: current)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a"])
+    }
+
+    func testCanvasNodeSelectionRejectsRetiredRigEdgeEpochAndFailedReplacement() async throws {
+        let (store, original) = try await nodeSelectionStore()
+        defer { store.stop() }
+        let old = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: nil))
+        store.setRigEdgeSelection(true)
+        try await settle(store)
+        XCTAssertTrue(store.isSelectingRigEdges)
+        XCTAssertNil(store.canvasNodeSelectionTarget(profileLease: nil))
+        store.setRigEdgeSelection(false)
+        try await settle(store)
+        XCTAssertFalse(store.isSelectingRigEdges)
+        store.activateCanvasNode("a", action: .selection(.replace), target: old)
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+
+        let beforeFailure = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: nil))
+        await store.load(data: Data("not a DS3".utf8))
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertNil(store.canvasNodeSelectionTarget(profileLease: nil))
+        store.activateCanvasNode("a", action: .wholePart, target: beforeFailure)
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+    }
+
+    func testCanvasNodeSelectionRejectsRetiredAddProfileAndDocumentCaptures() async throws {
+        let (store, original) = try await nodeSelectionStore()
+        defer { store.stop() }
+        store.setDualCanvasProfile(true)
+        let frontLease = store.canvasProfiles.lease
+        let front = CanvasProjection(bounds: store.bounds, plane: .front, width: 500, height: 500)
+        store.setCanvasContext(projection: front, width: 500, height: 500, lease: frontLease)
+        let beforeAdd = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: frontLease))
+        store.beginAddMode()
+        XCTAssertTrue(store.isAddingNodes)
+        XCTAssertNil(store.canvasNodeSelectionTarget(profileLease: frontLease))
+        store.activateCanvasNode("a", action: .wholePart, target: beforeAdd)
+        XCTAssertTrue(store.isAddingNodes)
+        store.cancelAddMode()
+        store.activateCanvasNode("a", action: .wholePart, target: beforeAdd)
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+
+        let frontTarget = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: frontLease))
+        store.plane = .side
+        let sideLease = store.canvasProfiles.lease
+        store.activateCanvasNode("a", action: .wholePart, target: frontTarget)
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+        let sideTarget = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: sideLease))
+        store.activateCanvasNode("a", action: .wholePart, target: sideTarget)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a"])
+
+        await store.load(data: original)
+        store.activateCanvasNode("a", action: .selection(.add), target: sideTarget)
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+    }
+
 }
