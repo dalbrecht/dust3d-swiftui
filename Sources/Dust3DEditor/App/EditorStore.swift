@@ -860,7 +860,11 @@ final class EditorStore {
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
     var canSave: Bool { !isWorking && acceptedDocumentSource != nil }
-    var canEditRigSettings: Bool { canSave }
+    var canEditRigSettings: Bool { rigSettingsTarget != nil }
+    var rigSettingsTarget: RigSettingsTarget? {
+        guard !isWorking, let source = acceptedDocumentSource else { return nil }
+        return RigSettingsTarget(snapshot: source)
+    }
 
     private var acceptedDocumentSource: EditorSnapshot? {
         guard !stopped, case .success(let accepted) = recoveryLoadResult,
@@ -1081,13 +1085,18 @@ final class EditorStore {
     }
 
     func setRigType(_ type: DocumentRigType) {
-        guard canEditRigSettings else { return }
-        perform { try await $0.apply([.setRigType(type)]) }
+        guard let target = rigSettingsTarget else { return }
+        editRigSettings(.template(type), target: target)
     }
 
     func setHeadHasEyelids(_ enabled: Bool) {
-        guard canEditRigSettings else { return }
-        perform { try await $0.apply([.setHeadHasEyelids(enabled)]) }
+        guard let target = rigSettingsTarget else { return }
+        editRigSettings(.eyelids(enabled), target: target)
+    }
+
+    func editRigSettings(_ edit: RigSettingsEdit, target: RigSettingsTarget) {
+        guard rigSettingsTarget == target else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.editRigSettings(edit, target: target) }
     }
 
     func recoverySnapshot(documentID: UUID) throws -> EditorRecoverySnapshot {

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep rig template and eyelid edits tied to the document displayed when the control was drawn.
+
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
