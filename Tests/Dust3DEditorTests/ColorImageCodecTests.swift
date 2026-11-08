@@ -7,13 +7,15 @@ import XCTest
 @testable import Dust3DEditor
 
 final class ColorImageCodecTests: XCTestCase {
-    private func imageData(type: UTType = .png, orientation: Int? = nil) throws -> Data {
+    private func imageData(
+        type: UTType = .png, orientation: Int? = nil, width: Int = 2, height: Int = 3
+    ) throws -> Data {
         let context = try XCTUnwrap(
             CGContext(
-                data: nil, width: 2, height: 3, bitsPerComponent: 8, bytesPerRow: 8,
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
                 space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: 2, height: 3))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         let output = NSMutableData()
         let destination = try XCTUnwrap(CGImageDestinationCreateWithData(output, type.identifier as CFString, 1, nil))
         CGImageDestinationAddImage(
@@ -21,6 +23,20 @@ final class ColorImageCodecTests: XCTestCase {
             orientation.map { [kCGImagePropertyOrientation: $0] as CFDictionary })
         XCTAssertTrue(CGImageDestinationFinalize(destination))
         return output as Data
+    }
+
+    func testRetainedPNGInspectionDownsamplesWithoutChangingOrientation() throws {
+        let image = try ColorImageCodec.previewPNG(imageData(orientation: 6, width: 384, height: 192))
+        XCTAssertEqual(image.width, 128)
+        XCTAssertEqual(image.height, 64)
+    }
+
+    func testRetainedPNGInspectionRejectsTruncationWrongTypeAndOversizedDimensions() throws {
+        XCTAssertThrowsError(try ColorImageCodec.previewPNG(imageData().dropLast(20)))
+        XCTAssertThrowsError(try ColorImageCodec.previewPNG(imageData(type: .jpeg)))
+        XCTAssertThrowsError(try ColorImageCodec.previewPNG(imageData(width: 8193, height: 1))) {
+            XCTAssertEqual($0 as? ColorImageError, .imageTooLarge)
+        }
     }
 
     func testPNGImportPreservesOriginalBytesAndValidatesPixels() throws {

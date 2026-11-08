@@ -252,6 +252,9 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.wholePartActionTarget.map { store?.canSelectWholePart($0) == true } != true)
                 Button("Clear Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
+                CanvasPartStateMenu(store: store) { [capturedStore = store, capturedWindow = NSApp.keyWindow] in
+                    store === capturedStore && NSApp.keyWindow === capturedWindow && rigAssignmentFocus.allowsAssignment
+                }
                 Menu("Part Visibility") {
                     CanvasHideAllPartsButton(store: store)
                     CanvasPartIsolationButtons(store: store)
@@ -325,7 +328,10 @@ struct Dust3DEditorApp: App {
         Window("Replay Steps", id: "workflow-replay") {
             Group {
                 if let replayRequest {
-                    WorkflowReplayView(document: replayRequest.document).id(replayRequest.id)
+                    WorkflowReplayView(document: replayRequest.document, sourceID: replayRequest.id) {
+                        self.replayRequest?.id == replayRequest.id
+                    }
+                    .id(replayRequest.id)
                 } else {
                     ContentUnavailableView("No Replay", systemImage: "play.rectangle")
                 }
@@ -384,12 +390,12 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func claimStartupPaste(
-        for url: URL, attachedDocument: @MainActor () -> NSDocument?
+        for url: URL?, attachedDocument: @MainActor () -> NSDocument?
     ) async -> StartupQtXMLDelivery? {
         // The existing window anchor can attach after SwiftUI starts the file task.
         while launchDocument.hasStartupPaste(for: url), !Task.isCancelled {
             if let document = attachedDocument() {
-                guard document.fileURL?.standardizedFileURL == url.standardizedFileURL,
+                guard document.fileURL?.standardizedFileURL == url?.standardizedFileURL,
                     let data = launchDocument.claimStartupPaste(
                         for: url, document: document, isEdited: document.isDocumentEdited)
                 else { return nil }
@@ -422,6 +428,7 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
                     if alreadyOpen && self.launchDocument.hasPasteRequest { document.showWindows() }
                     return alreadyOpen ? nil : document
                 },
+                createUntitled: { try NSDocumentController.shared.openUntitledDocumentAndDisplay(false) },
                 displayNew: { object in
                     guard let document = object as? NSDocument else { return }
                     document.makeWindowControllers()

@@ -4,12 +4,21 @@ import SwiftUI
 
 struct CanvasProfileHeader: View {
     @Bindable var store: EditorStore
+    let focusControl: CanvasProfileFocusControl
+    let fileIdentity: UUID
+    let ownsWindow: @MainActor () -> Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Node canvas").font(.headline)
                 Spacer()
+                let focusCanvas = store.focusCanvasAction(
+                    fileIdentity: fileIdentity, ownsWindow: { ownsWindow() }
+                ) { target in focusControl.focus(target) }
+                Button("Focus Canvas") { _ = focusCanvas?() }
+                    .disabled(focusCanvas == nil)
+                    .help("Move keyboard focus to the active drawing profile.")
                 Toggle(
                     "Side by Side",
                     isOn: Binding(
@@ -37,6 +46,7 @@ struct CanvasProfileHeader: View {
 
 struct CanvasProfilePanes: View {
     let store: EditorStore
+    let focusControl: CanvasProfileFocusControl
     var previewCamera: EditorPreviewCameraActions? = nil
     @State private var requestedFocus: (lease: UUID, request: CanvasProfileFocusRequest)?
 
@@ -113,7 +123,7 @@ struct CanvasProfilePanes: View {
         return NodeCanvas(
             store: store, profileLease: lease,
             profileFocusRequest: requestedFocus?.lease == lease ? requestedFocus?.request : nil,
-            switchProfile: switchProfile, previewCamera: previewCamera
+            switchProfile: switchProfile, focusControl: focusControl, previewCamera: previewCamera
         )
         .id(lease)
     }
