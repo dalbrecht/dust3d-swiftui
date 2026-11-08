@@ -1704,14 +1704,16 @@ final class EditorStore {
     func edgeSidebarSelectionAction(
         _ id: String, context: PartGraphSelectionContext?
     ) -> @MainActor (GraphSelectionMode) -> Void {
-        { [weak self] mode in
-            guard let self, self.canPickGraph, let context, let snapshot = self.snapshot,
-                context.isCurrent(in: snapshot), snapshot.edges.contains(where: { $0.id.utf8.elementsEqual(id.utf8) })
+        let rigEpoch = rigEdgeSelectionEpoch
+        return { [weak self] mode in
+            guard let self, self.rigEdgeSelectionEpoch == rigEpoch, self.canPickGraph,
+                let context, let snapshot = self.snapshot, context.isCurrent(in: snapshot),
+                snapshot.edges.contains(where: { $0.id.utf8.elementsEqual(id.utf8) })
             else { return }
-            if case .subtract = mode,
-                !snapshot.selectedEdgeIDs.contains(where: { $0.utf8.elementsEqual(id.utf8) })
-            {
-                return
+            let selected = snapshot.selectedEdgeIDs.contains { $0.utf8.elementsEqual(id.utf8) }
+            if mode == .subtract && !selected { return }
+            if self.isSelectingRigEdges, !self.rigEdgeEligibility(in: snapshot).contains(Data(id.utf8)) {
+                guard selected, mode == .subtract || mode == .toggle else { return }
             }
             self.selectGraph(nodes: [], edges: [id], mode: mode)
         }
@@ -1761,9 +1763,27 @@ final class EditorStore {
             mode: mode)
     }
 
-    private func rigEdgePickCandidates(in snapshot: EditorSnapshot, mode: GraphSelectionMode) -> [DocumentEdge] {
-        let editable = EdgeBoneAssignmentEligibility.edgeIDs(
+    @ObservationIgnored private var rigEdgeEligibilityCache: (identity: UUID, revision: Int, ids: Set<Data>)?
+
+    var rigEdgeSidebarEligibleIDs: Set<Data>? {
+        guard isSelectingRigEdges else { return nil }
+        return acceptedDocumentSource.map { rigEdgeEligibility(in: $0) } ?? []
+    }
+
+    private func rigEdgeEligibility(in snapshot: EditorSnapshot) -> Set<Data> {
+        if let cache = rigEdgeEligibilityCache, cache.identity == snapshot.documentIdentity,
+            cache.revision == snapshot.documentRevision
+        {
+            return cache.ids
+        }
+        let ids = EdgeBoneAssignmentEligibility.edgeIDs(
             nodes: snapshot.nodes, edges: snapshot.edges, parts: snapshot.parts)
+        rigEdgeEligibilityCache = (snapshot.documentIdentity, snapshot.documentRevision, ids)
+        return ids
+    }
+
+    private func rigEdgePickCandidates(in snapshot: EditorSnapshot, mode: GraphSelectionMode) -> [DocumentEdge] {
+        let editable = rigEdgeEligibility(in: snapshot)
         return snapshot.edges.filter {
             editable.contains(Data($0.id.utf8))
                 || ((mode == .subtract || mode == .toggle) && snapshot.selectedEdgeIDs.contains($0.id))

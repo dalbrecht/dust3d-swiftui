@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep keyboard and VoiceOver edge picks eligible for bone assignment, with removal available for existing picks.
+
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
 
 - Stop cancelled preview requests before they start fallback mesh generation.
