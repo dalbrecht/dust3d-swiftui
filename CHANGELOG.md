@@ -4,6 +4,8 @@
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
+- Stop cancelled preview requests before they start fallback mesh generation.
+
 - Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
 
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
@@ -39,6 +41,8 @@
 - Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
+
+- Clear missing cut-face links when pasting Qt XML interactively, keeping profiles found in the fragment or document.
 
 - Preview applied and retained component color images in the inspector without changing image assignments.
 

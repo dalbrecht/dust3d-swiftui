@@ -2839,7 +2839,8 @@ final class EditorStore {
                     throw QtXMLFilePasteError.staleTarget
                 }
                 return try await session.pasteQtXMLFile(
-                    data, target: request.clipboard.context, parentID: request.clipboard.parentID)
+                    data, target: request.clipboard.context, parentID: request.clipboard.parentID,
+                    clearsMissingCutFaces: true)
             }
             return operation
         } catch {

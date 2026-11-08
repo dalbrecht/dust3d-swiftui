@@ -998,12 +998,14 @@ public actor EditorSession {
     package func paste(snapshotXML: Data, parentID: String?, target: CanvasAdjustmentTarget?) throws -> EditorSnapshot {
         try validatePasteSource(parentID: parentID, target: target)
         return try pasteQtSnapshot(
-            snapshotXML, allowsEmptyGraph: false, parentID: parentID, selectsEditableGraph: true)
+            snapshotXML, allowsEmptyGraph: false, parentID: parentID, selectsEditableGraph: true,
+            clearsMissingCutFaces: true)
     }
 
     /// Apply a selected XML file only to the source captured before presenting its picker.
     package func pasteQtXMLFile(
-        _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil, selectsEditableGraph: Bool = true
+        _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil, selectsEditableGraph: Bool = true,
+        clearsMissingCutFaces: Bool = false
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
         guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
@@ -1013,11 +1015,13 @@ public actor EditorSession {
             throw DocumentError.invalidComponentStructure
         }
         return try pasteQtSnapshot(
-            snapshotXML, allowsEmptyGraph: true, parentID: parentID, selectsEditableGraph: selectsEditableGraph)
+            snapshotXML, allowsEmptyGraph: true, parentID: parentID, selectsEditableGraph: selectsEditableGraph,
+            clearsMissingCutFaces: clearsMissingCutFaces)
     }
 
     private func pasteQtSnapshot(
-        _ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?, selectsEditableGraph: Bool
+        _ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?, selectsEditableGraph: Bool,
+        clearsMissingCutFaces: Bool
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
@@ -1031,7 +1035,13 @@ public actor EditorSession {
         } else {
             identifier = Self.identifier()
         }
-        let payload = try NodeClipboardPayload(fragment: fragment, identifier: identifier)
+        let prepared =
+            if clearsMissingCutFaces {
+                try fragment.clearingMissingQtCutFaces(destinationPartIDs: state.snapshot.parts.map(\.id))
+            } else {
+                fragment
+            }
+        let payload = try NodeClipboardPayload(fragment: prepared, identifier: identifier)
         let next = try paste(payload: payload, parentID: parentID, selectsEditableGraph: selectsEditableGraph)
         lastQtTransfer = (Data(snapshotXML), identifier)
         return next
