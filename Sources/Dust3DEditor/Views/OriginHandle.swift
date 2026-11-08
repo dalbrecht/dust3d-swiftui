@@ -13,19 +13,30 @@ struct OriginHandle: View {
     var body: some View {
         let point = projection.point(for: origin)
         let precisionKey = store.canvasPrecisionKeyHandler()
+        let direct = store.directOriginDragAction(projection: projection, lease: profileLease)
+        let explicit = store.isMovingOrigin && !store.isWorking
+        let enabled = explicit || direct != nil
+        let hitSize: CGFloat = explicit ? 44 : 20
         Image(systemName: "scope")
             .font(.title3)
-            .foregroundStyle(store.isMovingOrigin ? Color.accentColor : .secondary)
-            .frame(width: 44, height: 44)
+            .foregroundStyle(store.isMovingOrigin || store.originDragPosition != nil ? Color.accentColor : .secondary)
+            .frame(width: hitSize, height: hitSize)
             .contentShape(Rectangle())
             .overlay(alignment: .bottom) {
                 Text(store.isMovingOrigin ? "Move Origin · Esc cancels" : "Origin")
-                    .font(.caption2).fixedSize().offset(y: 8).accessibilityHidden(true)
+                    .font(.caption2).fixedSize().offset(y: 8).allowsHitTesting(false).accessibilityHidden(true)
             }
             .overlay {
                 NodePointerSurface(
-                    enabled: store.isMovingOrigin && !store.isWorking, canDrag: true,
-                    begin: { if ownsProfile { store.beginOriginDrag(token: $0, projection: projection) } },
+                    enabled: enabled, canDrag: true,
+                    begin: { token in
+                        guard ownsProfile else { return }
+                        if explicit {
+                            store.beginOriginDrag(token: token, projection: projection)
+                        } else {
+                            direct?(token)
+                        }
+                    },
                     update: { if ownsProfile { store.updateOriginDrag(token: $0, translation: $1) } },
                     finish: { if ownsProfile { store.finishOriginDrag(token: $0, translation: $1) } },
                     cancel: { store.cancelOriginDrag(token: $0) }, select: {}, toggle: {},
@@ -35,9 +46,11 @@ struct OriginHandle: View {
                 )
             }
             .position(x: point.x, y: point.y)
-            .allowsHitTesting(store.isMovingOrigin && !store.isWorking)
+            .allowsHitTesting(enabled)
             .accessibilityLabel("Document origin")
             .accessibilityValue("X \(String(origin.x)), Y \(String(origin.y)), Z \(String(origin.z))")
-            .help("Enable Move Origin to drag. Use Document Origin fields for keyboard coordinate editing.")
+            .help(
+                "Drag the marker to move the origin. Move Origin offers a larger target. Use Document Origin fields for keyboard coordinate editing."
+            )
     }
 }
