@@ -10,6 +10,8 @@
 
 - Preview authored linked cross-section outlines before choosing a profile.
 
+- Repair edge directions in an unambiguous open chain from the Edge Inspector, with one-step Undo.
+
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
