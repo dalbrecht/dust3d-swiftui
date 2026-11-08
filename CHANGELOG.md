@@ -147,6 +147,8 @@
 
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
 
+- Open a paused replay step as a new editable document.
+
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
 
 - Mirror live node and origin movement in the companion profile during canvas edits (#388).
