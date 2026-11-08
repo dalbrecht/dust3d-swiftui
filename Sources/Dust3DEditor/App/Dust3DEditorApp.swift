@@ -516,6 +516,8 @@ private struct EditorComponentSidebarSelectAllKey: FocusedValueKey {
     typealias Value = ComponentSidebarSelectAllTarget
 }
 
+private struct EditorNodesSidebarSelectAllKey: FocusedValueKey { typealias Value = NodesSidebarSelectAll }
+
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 
 extension FocusedValues {
@@ -537,6 +539,11 @@ extension FocusedValues {
     var editorComponentSidebarSelectAll: ComponentSidebarSelectAllTarget? {
         get { self[EditorComponentSidebarSelectAllKey.self] }
         set { self[EditorComponentSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorNodesSidebarSelectAll: NodesSidebarSelectAll? {
+        get { self[EditorNodesSidebarSelectAllKey.self] }
+        set { self[EditorNodesSidebarSelectAllKey.self] = newValue }
     }
 
     var editorStore: EditorStore? {

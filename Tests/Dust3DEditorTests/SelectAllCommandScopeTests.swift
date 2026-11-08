@@ -14,6 +14,20 @@ final class SelectAllCommandScopeTests: XCTestCase {
         }
     }
 
+    func testNodesSidebarFocusSelectsNodesAndDefersToTextAndAnimation() {
+        for (text, animation, expected) in [
+            (false, false, EditorCommandScope.SelectAllDestination.nodes),
+            (true, false, .text),
+            (false, true, .unavailable),
+        ] {
+            XCTAssertEqual(
+                EditorCommandScope.selectAllDestination(
+                    nativeTextFocus: text, componentSidebarFocus: false, animationFocus: animation,
+                    nodesSidebarFocus: true),
+                expected)
+        }
+    }
+
     func testAnimationFocusDisablesSelectAll() {
         XCTAssertEqual(
             EditorCommandScope.selectAllDestination(

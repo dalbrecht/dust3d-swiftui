@@ -103,7 +103,9 @@ private actor SubtractionPreviewCounter: EditorPreviewServing {
         XCTAssertEqual(store.snapshot?.selectedIDs, ["b"])
         XCTAssertEqual(publications, 0)
     }
-    private func sidebarStore() async throws -> (EditorStore, Data) {
+    private func sidebarStore(includeEdge: Bool = false) async throws -> (EditorStore, Data) {
+        let extraNode = includeEdge ? "<node id='e' partId='q' x='1' y='1' z='0' radius='.1'/>" : ""
+        let edges = includeEdge ? "<edges><edge id='be' partId='q' from='b' to='e'/></edges>" : ""
         let source = try Dust3DDocument(
             snapshotXML: Data(
                 """
@@ -112,7 +114,8 @@ private actor SubtractionPreviewCounter: EditorPreviewServing {
                 <node id='b' name='Arm' partId='q' x='1' y='0' z='0' radius='.1'/>
                 <node id='c' name='Hidden Arm' partId='r' x='2' y='0' z='0' radius='.1'/>
                 <node id='d' name='Disabled Arm' partId='s' x='3' y='0' z='0' radius='.1'/>
-                </nodes><parts>
+                \(extraNode)
+                </nodes>\(edges)<parts>
                 <part id='p' name='Frame' locked='true'/><part id='q' name='Support'/>
                 <part id='r' visible='false'/><part id='s' disabled='true'/>
                 </parts></canvas>
@@ -181,6 +184,24 @@ private actor SubtractionPreviewCounter: EditorPreviewServing {
         XCTAssertTrue(store.selectCanvasSidebarNodes(["c"], matching: "hidden", in: deselected))
         try await settle(store)
         XCTAssertEqual(store.snapshot?.selectedIDs, ["c"])
+        XCTAssertEqual(store.snapshot?.document.encoded(), source)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testCanvasNodeSidebarSelectAllReplacesOutsidePicksAndRejectsEmptyOrStaleResults() async throws {
+        let (store, source) = try await sidebarStore(includeEdge: true)
+        defer { store.stop() }
+        store.selectGraph(nodes: ["a", "b"], edges: ["be"])
+        try await settle(store)
+        let presentation = try XCTUnwrap(store.canvasNodeSidebarPresentation(profileLease: store.canvasProfiles.lease))
+        XCTAssertFalse(store.selectAllCanvasSidebarNodes(matching: "no matching node", in: presentation))
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a", "b"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["be"])
+        XCTAssertTrue(store.selectAllCanvasSidebarNodes(matching: "frame", in: presentation))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        XCTAssertFalse(store.selectAllCanvasSidebarNodes(matching: "support", in: presentation))
         XCTAssertEqual(store.snapshot?.document.encoded(), source)
         XCTAssertFalse(store.canUndo)
     }

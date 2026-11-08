@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select All in the focused Nodes sidebar selects the filtered node rows.
+
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
 
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.

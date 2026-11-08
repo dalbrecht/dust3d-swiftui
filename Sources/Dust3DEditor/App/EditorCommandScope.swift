@@ -6,16 +6,18 @@ enum EditorCommandScope {
     enum SelectAllDestination: Equatable {
         case text
         case components
+        case nodes
         case graph
         case unavailable
     }
 
     static func selectAllDestination(
-        nativeTextFocus: Bool, componentSidebarFocus: Bool, animationFocus: Bool
+        nativeTextFocus: Bool, componentSidebarFocus: Bool, animationFocus: Bool, nodesSidebarFocus: Bool = false
     ) -> SelectAllDestination {
         if nativeTextFocus { return .text }
         if animationFocus { return .unavailable }
-        return componentSidebarFocus ? .components : .graph
+        if componentSidebarFocus { return .components }
+        return nodesSidebarFocus ? .nodes : .graph
     }
 
     static func hasTextEditingFocus(swiftUIFocus: Bool, hasNativeEditor: Bool) -> Bool {
