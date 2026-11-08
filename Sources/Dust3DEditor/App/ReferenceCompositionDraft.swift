@@ -44,13 +44,13 @@ struct ReferenceCompositionDrop {
     private(set) var cropPreviewImage: CGImage?
     private var cropPreviewTask: Task<Void, Never>?
     private var pendingCropPreview: CropPreviewRequest?
-    private var cropPreviewRevision = UUID()
+    private var cropPreviewEpoch = UUID()
     private var previewGesture: UUID?
     private var lastPreviewCrop: ReferenceImageCrop?
     var cropPreviewContext: UUID { requestID }
 
     private struct CropPreviewRequest {
-        let revision: UUID
+        let epoch: UUID
         let front: ReferenceCompositionSource?
         let side: ReferenceCompositionSource?
     }
@@ -184,19 +184,20 @@ struct ReferenceCompositionDrop {
         if previewGesture == gesture, lastPreviewCrop == crop { return }
         previewGesture = gesture
         lastPreviewCrop = crop
-        cropPreviewRevision = UUID()
         let adjusted = crop.flatMap {
             try? ReferenceCompositionSource(
                 image: current.image, crop: current.isMirrored ? $0.mirroredHorizontally : $0,
                 isMirrored: current.isMirrored)
         }
         guard let adjusted else {
+            cropPreviewEpoch = UUID()
             pendingCropPreview = nil
             cropPreviewImage = nil
             return
         }
+        // A finished frame can publish while newer samples wait in the same gesture.
         pendingCropPreview = CropPreviewRequest(
-            revision: cropPreviewRevision, front: profile == .front ? adjusted : front,
+            epoch: cropPreviewEpoch, front: profile == .front ? adjusted : front,
             side: profile == .side ? adjusted : side)
         renderPendingCropPreview()
     }
@@ -210,13 +211,13 @@ struct ReferenceCompositionDrop {
                 renderPendingCropPreview()
             }
             let image = try? await service.preview(front: request.front, side: request.side)
-            guard !Task.isCancelled, request.revision == cropPreviewRevision else { return }
+            guard !Task.isCancelled, request.epoch == cropPreviewEpoch else { return }
             cropPreviewImage = image
         }
     }
 
     private func invalidateCropPreview() {
-        cropPreviewRevision = UUID()
+        cropPreviewEpoch = UUID()
         pendingCropPreview = nil
         previewGesture = nil
         lastPreviewCrop = nil

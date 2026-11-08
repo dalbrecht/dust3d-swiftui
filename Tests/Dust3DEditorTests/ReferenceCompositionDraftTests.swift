@@ -291,7 +291,7 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         XCTAssertNotNil(draft.errorMessage)
     }
 
-    @MainActor func testLiveCropPreviewCoalescesAndCommitsOnlyFinalCrop() async throws {
+    @MainActor func testLiveCropPreviewPublishesDuringSustainedInputAndCommitsOnlyFinalCrop() async throws {
         let input = try source()
         let service = HeldPreviewCompositionService()
         let draft = ReferenceCompositionDraft(service: service)
@@ -321,15 +321,19 @@ final class ReferenceCompositionDraftTests: XCTestCase {
 
         try await service.releaseFirst()
         try await waitForComposition(service)
-        XCTAssertNil(draft.cropPreviewImage)
+        let firstLayout = try ReferenceCompositionLayout(front: first, side: nil)
+        XCTAssertEqual(
+            draft.cropPreviewImage?.width, firstLayout.width,
+            "A completed frame must publish while the latest sample is still in flight")
+        XCTAssertEqual(draft.result?.png, original)
         let renderedCrop = await service.firstFrontCrop
         XCTAssertEqual(renderedCrop, latest)
+        let layout = try ReferenceCompositionLayout(front: latest, side: nil)
         try await service.releaseFirst()
         for _ in 0..<300 {
-            if draft.cropPreviewImage != nil { break }
+            if draft.cropPreviewImage?.width == layout.width { break }
             try await Task.sleep(for: .milliseconds(10))
         }
-        let layout = try ReferenceCompositionLayout(front: latest, side: nil)
         XCTAssertEqual(draft.cropPreviewImage?.width, layout.width)
         XCTAssertEqual(draft.result?.png, original)
         XCTAssertFalse(draft.canApply)
