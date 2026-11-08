@@ -26,6 +26,8 @@
 
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
+- Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
+
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
 - Preview applied and retained component color images in the inspector without changing image assignments.
@@ -64,7 +66,7 @@
 
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
 
-- Connect to the nearest existing node in Add mode when node hit areas overlap.
+- Connect to the nearest existing node in Add mode when node hit areas overlap. A closer edge midpoint takes precedence when the pointer hits its tapered edge.
 
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
 
