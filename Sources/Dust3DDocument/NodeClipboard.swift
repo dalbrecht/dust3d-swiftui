@@ -57,6 +57,29 @@ public struct NodeClipboard: Sendable {
         self.selectedNodeIDs = selectedNodeIDs
         self.identifiers = ids
     }
+    /// Qt XML fragments can omit the profile definitions available in their source document.
+    package func clearingMissingQtCutFaces(destinationPartIDs: [String]) throws -> NodeClipboard {
+        let model = try XMLDocument(data: document.modelXML, options: [.nodePreserveAll])
+        let elements = NodeClipboardMutation.semanticElements(model)
+        let fragmentPartIDs = elements.compactMap { element in
+            element.name == "part" ? element.attribute(forName: "id")?.stringValue : nil
+        }
+        let known = Set(
+            (destinationPartIDs + fragmentPartIDs).compactMap(CutFaceLinks.canonicalID).map { Data($0.utf8) })
+        var changed = false
+        for element in elements where element.name == "node" || element.name == "part" {
+            guard let value = element.attribute(forName: "cutFace")?.stringValue,
+                let link = CutFaceLinks.canonicalID(value), !known.contains(Data(link.utf8))
+            else { continue }
+            element.removeAttribute(forName: "cutFace")
+            if element.name == "node" { element.removeAttribute(forName: "cutRotation") }
+            changed = true
+        }
+        guard changed else { return self }
+        let cleaned = try Dust3DDocument(snapshotXML: model.xmlData(options: [.nodePreserveAll]))
+        return try NodeClipboard(document: cleaned, selectedNodeIDs: selectedNodeIDs)
+    }
+
     /// Discover construction-time partitions, including copied read-only parts, before allocating IDs.
     /// - Returns: Split requirements keyed by original fragment part IDs; map them through paste identities.
     /// - Throws: `DocumentError` for invalid topology or projected metadata/count limits.
