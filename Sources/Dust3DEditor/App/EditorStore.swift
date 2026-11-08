@@ -2548,7 +2548,7 @@ final class EditorStore {
         else { return nil }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         perform(acceptCommittedCancellation: true) { session in
-            try await session.pasteQtXMLFile(data, target: target, parentID: nil)
+            try await session.pasteQtXMLFile(data, target: target, parentID: nil, selectsEditableGraph: false)
         }
         return operation
     }
