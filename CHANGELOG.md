@@ -145,6 +145,8 @@
 
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
+- Show the exact authored values applied at the current replay property step.
+
 - Replay document construction in a separate window with adjustable speed and a textured 3D preview.
 
 - Open a paused replay step as a new editable document.
