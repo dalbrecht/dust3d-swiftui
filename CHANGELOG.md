@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select All in the focused Nodes sidebar selects the filtered node rows.
+
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
 
 - Stop cancelled preview requests before they start fallback mesh generation.
