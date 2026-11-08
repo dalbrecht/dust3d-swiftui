@@ -1909,6 +1909,15 @@ final class EditorStore {
     func setPartTarget(_ id: String, target: PartTarget) {
         perform { try await $0.apply([.setPartTarget(id: id, target: target)]) }
     }
+    func canEditGraphPartRole(_ target: GraphPartRoleTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func setGraphPartRole(_ role: PartTarget, target: GraphPartRoleTarget) {
+        guard canEditGraphPartRole(target) else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.setGraphPartRole(role, target: target) }
+    }
+
     func setPartCutFace(_ id: String, selection: CutFaceSelection) {
         perform { try await $0.apply([.setPartCutFace(id: id, selection: selection)]) }
     }

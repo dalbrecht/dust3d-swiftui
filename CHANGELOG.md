@@ -24,6 +24,8 @@
 
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
+- Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
+
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
 - Preview applied and retained component color images in the inspector without changing image assignments.
