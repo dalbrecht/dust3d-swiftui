@@ -17,8 +17,7 @@ public struct ComponentColorImagePresentation: Equatable, Sendable {
             resource = "Import or choose an image to replace it, or clear the override."
         case .reference(let raw):
             source = "Image: \(Self.summary(raw))"
-            let canonical = raw.utf8.count == 36 ? Array(("{" + raw + "}").utf8) : Array(raw.utf8)
-            if let asset = assets.first(where: { $0.id == canonical }) {
+            if let asset = assets.first(where: { $0.id == Self.assetIdentity(value) }) {
                 resource =
                     asset.issue.map { Self.summary($0.localizedDescription) }
                     ?? "Retained resource: \(Self.summary(asset.assetName))"
@@ -26,6 +25,11 @@ public struct ComponentColorImagePresentation: Equatable, Sendable {
                 resource = "The referenced image is missing from this document."
             }
         }
+    }
+
+    package static func assetIdentity(_ value: ComponentColorImageValue) -> [UInt8]? {
+        guard case .reference(let raw) = value else { return nil }
+        return raw.utf8.count == 36 ? Array(("{" + raw + "}").utf8) : Array(raw.utf8)
     }
 
     /// Bound both UTF-8 work and visible characters, including unusually long combining sequences.
