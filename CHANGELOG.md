@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open Replay Steps in independent windows so starting another replay keeps the current step and source of each existing replay.
+
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
