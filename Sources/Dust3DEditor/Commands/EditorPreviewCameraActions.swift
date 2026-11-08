@@ -11,22 +11,32 @@ struct EditorPreviewCameraActions {
     private let isCurrent: @MainActor () -> Bool
     private let moveAction: @MainActor (MeshCameraCommand.Action) -> Void
     private let fitAction: @MainActor () -> Void
+    private let wheelZoomAction: (@MainActor (Int) -> Void)?
 
     init(
         canMove: Bool, supportsAutomaticOrbit: Bool = true,
         isCurrent: @escaping @MainActor () -> Bool = { true },
         move: @escaping @MainActor (MeshCameraCommand.Action) -> Void,
-        fit: @escaping @MainActor () -> Void
+        fit: @escaping @MainActor () -> Void, wheelZoom: (@MainActor (Int) -> Void)? = nil
     ) {
         available = canMove
         self.supportsAutomaticOrbit = supportsAutomaticOrbit
         self.isCurrent = isCurrent
         moveAction = move
         fitAction = fit
+        wheelZoomAction = wheelZoom
     }
 
     var canMove: Bool { available && isCurrent() }
     var canAutomaticallyOrbit: Bool { supportsAutomaticOrbit && canMove }
+
+    var canZoomFromCanvas: Bool { canMove && wheelZoomAction != nil }
+
+    func zoomFromCanvas(step: Int) -> Bool {
+        guard canZoomFromCanvas, let wheelZoomAction else { return false }
+        wheelZoomAction(step)
+        return true
+    }
 
     func move(_ action: MeshCameraCommand.Action) {
         guard canMove else { return }

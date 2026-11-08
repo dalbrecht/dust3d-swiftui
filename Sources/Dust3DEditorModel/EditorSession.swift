@@ -988,12 +988,13 @@ public actor EditorSession {
     package func paste(snapshotXML: Data, parentID: String?, target: CanvasAdjustmentTarget?) throws -> EditorSnapshot {
         try validatePasteSource(parentID: parentID, target: target)
         return try pasteQtSnapshot(
-            snapshotXML, allowsEmptyGraph: false, parentID: parentID, clearsMissingCutFaces: true)
+            snapshotXML, allowsEmptyGraph: false, parentID: parentID, selectsEditableGraph: true,
+            clearsMissingCutFaces: true)
     }
 
     /// Apply a selected XML file only to the source captured before presenting its picker.
     package func pasteQtXMLFile(
-        _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil,
+        _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil, selectsEditableGraph: Bool = true,
         clearsMissingCutFaces: Bool = false
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
@@ -1004,11 +1005,13 @@ public actor EditorSession {
             throw DocumentError.invalidComponentStructure
         }
         return try pasteQtSnapshot(
-            snapshotXML, allowsEmptyGraph: true, parentID: parentID, clearsMissingCutFaces: clearsMissingCutFaces)
+            snapshotXML, allowsEmptyGraph: true, parentID: parentID, selectsEditableGraph: selectsEditableGraph,
+            clearsMissingCutFaces: clearsMissingCutFaces)
     }
 
     private func pasteQtSnapshot(
-        _ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?, clearsMissingCutFaces: Bool
+        _ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?, selectsEditableGraph: Bool,
+        clearsMissingCutFaces: Bool
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
@@ -1029,7 +1032,7 @@ public actor EditorSession {
                 fragment
             }
         let payload = try NodeClipboardPayload(fragment: prepared, identifier: identifier)
-        let next = try paste(payload: payload, parentID: parentID)
+        let next = try paste(payload: payload, parentID: parentID, selectsEditableGraph: selectsEditableGraph)
         lastQtTransfer = (Data(snapshotXML), identifier)
         return next
     }
@@ -1077,10 +1080,13 @@ public actor EditorSession {
         }
     }
 
-    private func paste(payload: NodeClipboardPayload, parentID: String?) throws -> EditorSnapshot {
+    private func paste(
+        payload: NodeClipboardPayload, parentID: String?, selectsEditableGraph: Bool = false
+    ) throws -> EditorSnapshot {
         guard let state else { throw EditorError.notLoaded }
         let fragment = payload.fragment
-        let sourceNodes = Set(try fragment.document.editorContents().nodes.map(\.id))
+        let contents = try fragment.document.editorContents()
+        let sourceNodes = Set(contents.nodes.map(\.id))
         let overlaps = !sourceNodes.isDisjoint(with: state.snapshot.nodes.map(\.id))
         let ordinal = lastPasteIdentifier == payload.identifier ? pasteOrdinal : (overlaps ? 1 : 0)
         let distance = Double(ordinal) * 0.04
@@ -1102,7 +1108,16 @@ public actor EditorSession {
                         clipboard: fragment, identities: identities,
                         offset: .init(x: 0, y: distance, z: distance), partitions: partitions)
                 ], pasteParentID: parentID)
-            try state.select(selected)
+            if selectsEditableGraph {
+                let snapshot = state.snapshot
+                let pastedEdges = Set(contents.edges.compactMap { identities[$0.id] })
+                let editableNodes = Set(snapshot.nodes.filter(\.isEditable).map(\.id))
+                let editableEdges = Set(snapshot.editableEdges.map(\.id))
+                try state.selectGraph(
+                    nodes: selected.intersection(editableNodes), edges: pastedEdges.intersection(editableEdges))
+            } else {
+                try state.select(selected)
+            }
         }.snapshot
         lastPasteIdentifier = payload.identifier
         pasteOrdinal = ordinal + 1
