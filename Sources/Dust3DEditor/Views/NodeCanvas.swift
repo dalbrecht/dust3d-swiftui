@@ -7,6 +7,7 @@ struct NodeCanvas: View {
     var profileLease: UUID? = nil
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var focusControl: CanvasProfileFocusControl? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
     @State private var nodeDrag = NodeDragLifecycle()
@@ -51,6 +52,9 @@ struct NodeCanvas: View {
                 ? visibilityFocus?.request : nil
             let shiftContext = store.canvasRotationContext
             let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
+            let focusTarget = profileLease.flatMap { lease in
+                store.snapshot.map { CanvasProfileFocusTarget(documentIdentity: $0.documentIdentity, lease: lease) }
+            }
             ZStack {
                 if store.showsReferenceImage,
                     let image = store.fittedReferenceColorImage(in: referenceCanvas) ?? store.referenceImage
@@ -104,7 +108,8 @@ struct NodeCanvas: View {
                     admitsPrimaryPress: { admitsInput() && admitPrimaryPress($0) },
                     profileFocusRequest: visibilityFocusRequest ?? profileFocusRequest,
                     ownsProfile: { ownsProfile && store.snapshot?.documentIdentity == documentID },
-                    switchProfile: switchProfile
+                    switchProfile: switchProfile,
+                    focusControl: focusControl, focusTarget: focusTarget
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"

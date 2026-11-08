@@ -20,6 +20,8 @@
 
 - Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
 
+- Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
+
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
