@@ -28,6 +28,22 @@ final class SelectAllCommandScopeTests: XCTestCase {
         }
     }
 
+    func testSelectAllTransfersBetweenNodeAndEdgeFocusAndRejectsCompetingFocus() {
+        for (nodes, edges, text, expected) in [
+            (true, false, false, EditorCommandScope.SelectAllDestination.nodes),
+            (false, true, false, .edges),
+            (true, true, false, .unavailable),
+            (true, true, true, .text),
+            (false, false, false, .graph),
+        ] {
+            XCTAssertEqual(
+                EditorCommandScope.selectAllDestination(
+                    nativeTextFocus: text, componentSidebarFocus: false, animationFocus: false,
+                    edgeSidebarFocus: edges, nodesSidebarFocus: nodes),
+                expected)
+        }
+    }
+
     func testAnimationFocusDisablesSelectAll() {
         XCTAssertEqual(
             EditorCommandScope.selectAllDestination(
@@ -48,5 +64,20 @@ final class SelectAllCommandScopeTests: XCTestCase {
             EditorCommandScope.selectAllDestination(
                 nativeTextFocus: false, componentSidebarFocus: false, animationFocus: false),
             .graph)
+    }
+
+    func testEdgeSidebarFocusRoutesOnlyToEdgesWithTextAndAnimationPrecedence() {
+        XCTAssertEqual(
+            EditorCommandScope.selectAllDestination(
+                nativeTextFocus: false, componentSidebarFocus: false, animationFocus: false, edgeSidebarFocus: true),
+            .edges)
+        XCTAssertEqual(
+            EditorCommandScope.selectAllDestination(
+                nativeTextFocus: true, componentSidebarFocus: false, animationFocus: false, edgeSidebarFocus: true),
+            .text)
+        XCTAssertEqual(
+            EditorCommandScope.selectAllDestination(
+                nativeTextFocus: false, componentSidebarFocus: false, animationFocus: true, edgeSidebarFocus: true),
+            .unavailable)
     }
 }
