@@ -41,11 +41,30 @@ struct ReferenceCompositionDrop {
     private var requestID = UUID()
     private var stopped = false
     private var activeCrops: Set<UUID> = []
+    private(set) var cropPreviewImage: CGImage?
+    private var cropPreviewTask: Task<Void, Never>?
+    private var pendingCropPreview: CropPreviewRequest?
+    private var cropPreviewEpoch = UUID()
+    private var previewGesture: UUID?
+    private var lastPreviewCrop: ReferenceImageCrop?
+    var cropPreviewContext: UUID { requestID }
+
+    private struct CropPreviewRequest {
+        let epoch: UUID
+        let front: ReferenceCompositionSource?
+        let side: ReferenceCompositionSource?
+    }
+
     var canApply: Bool { result != nil && !isWorking && activeCrops.isEmpty && !stopped }
 
     func setCropping(_ identifier: UUID, isActive: Bool) {
         guard !stopped else { return }
-        if isActive { activeCrops.insert(identifier) } else { activeCrops.remove(identifier) }
+        if isActive {
+            activeCrops.insert(identifier)
+        } else {
+            activeCrops.remove(identifier)
+            if previewGesture == identifier { invalidateCropPreview() }
+        }
     }
 
     init(service: any ReferenceCompositionServing = ReferenceCompositionService()) { self.service = service }
@@ -144,6 +163,67 @@ struct ReferenceCompositionDrop {
         sourceEpoch += 1
     }
 
+    func commitPointerCrop(
+        _ crop: ReferenceImageCrop, profile: ReferenceProfile, expectedSource: ReferenceCompositionSource, context: UUID
+    ) {
+        guard !stopped, context == cropPreviewContext else { return }
+        invalidateCropPreview()
+        setPointerCrop(crop, profile: profile, expectedSource: expectedSource)
+    }
+
+    func previewCrop(
+        _ crop: ReferenceImageCrop?, profile: ReferenceProfile, expectedSource: ReferenceCompositionSource,
+        gesture: UUID, context: UUID
+    ) {
+        guard !stopped, context == cropPreviewContext, let current = source(profile),
+            current.image === expectedSource.image, current.crop == expectedSource.crop,
+            current.isMirrored == expectedSource.isMirrored
+        else { return }
+        setCropping(gesture, isActive: true)
+        if previewGesture != gesture { invalidateCropPreview() }
+        if previewGesture == gesture, lastPreviewCrop == crop { return }
+        previewGesture = gesture
+        lastPreviewCrop = crop
+        let adjusted = crop.flatMap {
+            try? ReferenceCompositionSource(
+                image: current.image, crop: current.isMirrored ? $0.mirroredHorizontally : $0,
+                isMirrored: current.isMirrored)
+        }
+        guard let adjusted else {
+            cropPreviewEpoch = UUID()
+            pendingCropPreview = nil
+            cropPreviewImage = nil
+            return
+        }
+        // A finished frame can publish while newer samples wait in the same gesture.
+        pendingCropPreview = CropPreviewRequest(
+            epoch: cropPreviewEpoch, front: profile == .front ? adjusted : front,
+            side: profile == .side ? adjusted : side)
+        renderPendingCropPreview()
+    }
+
+    private func renderPendingCropPreview() {
+        guard cropPreviewTask == nil, let request = pendingCropPreview else { return }
+        pendingCropPreview = nil
+        cropPreviewTask = Task {
+            defer {
+                cropPreviewTask = nil
+                renderPendingCropPreview()
+            }
+            let image = try? await service.preview(front: request.front, side: request.side)
+            guard !Task.isCancelled, request.epoch == cropPreviewEpoch else { return }
+            cropPreviewImage = image
+        }
+    }
+
+    private func invalidateCropPreview() {
+        cropPreviewEpoch = UUID()
+        pendingCropPreview = nil
+        previewGesture = nil
+        lastPreviewCrop = nil
+        cropPreviewImage = nil
+    }
+
     func useFullImage(_ profile: ReferenceProfile) {
         guard !stopped, let source = source(profile) else { return }
         let full = ReferenceImageCrop(size: source.crop.size)
@@ -181,6 +261,7 @@ struct ReferenceCompositionDrop {
 
     func stop() {
         stopped = true
+        cropPreviewTask?.cancel()
         activeCrops.removeAll()
         invalidate()
         front = nil
@@ -193,6 +274,7 @@ struct ReferenceCompositionDrop {
     }
 
     private func invalidate() {
+        invalidateCropPreview()
         operation?.cancel()
         operation = nil
         requestID = UUID()
