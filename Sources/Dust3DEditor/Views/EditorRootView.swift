@@ -29,6 +29,7 @@ struct EditorRootView: View {
 
     init(
         file: Binding<EditorFileDocument>, sourceURL: URL? = nil,
+        diagnostics: EditorSessionDiagnostics? = nil,
         claimLaunchNeutralPreview: @escaping @MainActor (URL) async -> Bool = { _ in false },
         claimStartupPaste: @escaping @MainActor (URL?, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery? = {
             _, _ in nil
@@ -36,7 +37,7 @@ struct EditorRootView: View {
     ) {
         let store = EditorStore(
             exportService: DocumentExportFileService(encoder: NativeGeometryExportEncoder()),
-            animationCatalog: NativeAnimationCatalogLoader())
+            animationCatalog: NativeAnimationCatalogLoader(), diagnostics: diagnostics)
         let destinations = EditorGeometryExportDestinationService()
         _file = file
         self.sourceURL = sourceURL
@@ -44,7 +45,9 @@ struct EditorRootView: View {
         self.claimStartupPaste = claimStartupPaste
         _store = State(initialValue: store)
         _exportDestinations = State(initialValue: destinations)
-        _exportWorkflow = State(initialValue: EditorGeometryExportWorkflow(store: store, destinations: destinations))
+        _exportWorkflow = State(
+            initialValue: EditorGeometryExportWorkflow(
+                store: store, destinations: destinations, diagnostics: diagnostics))
         #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
             _restPreview = State(
                 initialValue: GeneratedRigPreviewSession(readSnapshot: { [weak store] in store?.snapshot }))

@@ -20,6 +20,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorTextEditing) private var isEditingText
     @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
     @State private var pasteboard = EditorPasteboard()
+    @State private var sessionDiagnostics = EditorSessionDiagnostics()
     @State private var replayRequest: WorkflowReplayRequest?
     @State private var nativeUndoCommands = NativeUndoCommandState()
 
@@ -68,7 +69,7 @@ struct Dust3DEditorApp: App {
     var body: some Scene {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
             EditorRootView(
-                file: file.$document, sourceURL: file.fileURL,
+                file: file.$document, sourceURL: file.fileURL, diagnostics: sessionDiagnostics,
                 claimLaunchNeutralPreview: appDelegate.claimLaunchNeutralPreview,
                 claimStartupPaste: appDelegate.claimStartupPaste
             )
@@ -124,6 +125,7 @@ struct Dust3DEditorApp: App {
             EditorGeometryExportCommands()
             InspectorCommands()
             CommandGroup(after: .windowArrangement) {
+                Button("Session Log") { openWindow(id: "session-log") }
                 Button("Replay Steps…") {
                     guard let document = store?.snapshot?.document else { return }
                     replayRequest = WorkflowReplayRequest(document: document)
@@ -339,6 +341,11 @@ struct Dust3DEditorApp: App {
             .onDisappear { replayRequest = nil }
         }
         .defaultSize(width: 700, height: 540)
+        Window("Session Log", id: "session-log") {
+            EditorSessionDiagnosticsView(diagnostics: sessionDiagnostics)
+        }
+        .defaultSize(width: 620, height: 400)
+        .commandsRemoved()
         Window("Build Diagnostics – \(applicationName)", id: "build-diagnostics") {
             BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
         }
