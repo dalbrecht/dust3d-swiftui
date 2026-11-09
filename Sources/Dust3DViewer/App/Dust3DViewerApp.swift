@@ -8,6 +8,7 @@ struct Dust3DViewerApp: App {
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
     @FocusedValue(\.openDocument) private var openDocument
+    @FocusedValue(\.viewerStore) private var store
 
     private var applicationName: String {
         BuildIdentityPresentation.applicationName(
@@ -20,6 +21,11 @@ struct Dust3DViewerApp: App {
         }
         .defaultSize(width: 1000, height: 720)
         .commands {
+            CommandMenu("View") {
+                Toggle("Automatic Rotation", isOn: store?.automaticRotationBinding ?? .constant(false))
+                    .keyboardShortcut("r", modifiers: [])
+                    .disabled(store?.mesh == nil)
+            }
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)") {
                     ApplicationAboutPanel.show(applicationName: applicationName)
@@ -59,11 +65,26 @@ final class ViewerAppDelegate: NSObject, NSApplicationDelegate {
 
 }
 
+extension ViewerStore {
+    var automaticRotationBinding: Binding<Bool> {
+        Binding(get: { self.automaticallyRotates }, set: { self.setAutomaticallyRotates($0) })
+    }
+}
+
+private struct ViewerStoreKey: FocusedValueKey {
+    typealias Value = ViewerStore
+}
+
 private struct OpenDocumentKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
 extension FocusedValues {
+    var viewerStore: ViewerStore? {
+        get { self[ViewerStoreKey.self] }
+        set { self[ViewerStoreKey.self] = newValue }
+    }
+
     var openDocument: (() -> Void)? {
         get { self[OpenDocumentKey.self] }
         set { self[OpenDocumentKey.self] = newValue }

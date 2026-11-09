@@ -7,6 +7,7 @@ import Observation
 @Observable
 final class ViewerStore {
     private(set) var mesh: IndexedMesh?
+    private(set) var automaticallyRotates = false
     private(set) var materials: MeshMaterialContent?
     var bakedMesh: MeshWithBakedTextures? {
         guard case .baked(let value) = materials else { return nil }
@@ -75,6 +76,11 @@ final class ViewerStore {
             importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
     }
 
+    func setAutomaticallyRotates(_ enabled: Bool) {
+        guard mesh != nil else { return }
+        automaticallyRotates = enabled
+    }
+
     func open(_ url: URL) {
         loadTask?.cancel()
         clearMaterials()
@@ -139,6 +145,7 @@ final class ViewerStore {
     }
 
     func stop() {
+        automaticallyRotates = false
         revision += 1
         loadTask?.cancel()
         clearMaterials()
