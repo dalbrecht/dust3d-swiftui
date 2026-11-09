@@ -689,16 +689,28 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func keyDown(with event: NSEvent) {
+        guard cameraInteractionAllowed(),
+            event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty
+        else {
+            super.keyDown(with: event)
+            return
+        }
+        var camera = orbitCamera
+        switch event.specialKey {
+        case .leftArrow: camera.orbit(horizontal: -10, vertical: 0)
+        case .rightArrow: camera.orbit(horizontal: 10, vertical: 0)
+        case .downArrow: camera.orbit(horizontal: 0, vertical: 10)
+        case .upArrow: camera.orbit(horizontal: 0, vertical: -10)
+        default:
+            guard event.charactersIgnoringModifiers?.lowercased() == "f" else {
+                super.keyDown(with: event)
+                return
+            }
+            camera = OrbitCamera()
+        }
         cancelPicking()
         automaticOrbitBinding.cameraInputChanged()
-        switch event.keyCode {
-        case 123: orbitCamera.orbit(horizontal: -10, vertical: 0)
-        case 124: orbitCamera.orbit(horizontal: 10, vertical: 0)
-        case 125: orbitCamera.orbit(horizontal: 0, vertical: 10)
-        case 126: orbitCamera.orbit(horizontal: 0, vertical: -10)
-        case 3: orbitCamera = OrbitCamera()  // F: fit model.
-        default: super.keyDown(with: event)
-        }
+        orbitCamera = camera
         needsDisplay = true
     }
 }
