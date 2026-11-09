@@ -39,6 +39,11 @@ enum KeyboardShortcutHelp {
         .init(action: "Show / Hide Inspector", keys: "⌃⌘I", scope: "Focused editor window"),
         .init(action: "Show Animations Inspector", keys: "⌥⌘A", scope: "Editor window"),
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
+        .init(
+            action: "Cancel Geometry Export", keys: "Escape",
+            scope:
+                "Cancellable export in the active document, outside text and animation controls, with no modal dialog and no active canvas input"
+        ),
         .init(action: "Next Replay Step", keys: "⌥→", scope: "Replay Steps window, when a next step is available"),
         .init(
             action: "Assign Selected Edges to Bone", keys: "⌘Return",
