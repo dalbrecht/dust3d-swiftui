@@ -167,7 +167,7 @@ final class TexturedRenderGeometryTests: XCTestCase {
             XCTAssertEqual(vertex.textureCoordinate.y, Float(uv.y))
             XCTAssertEqual(vertex.color, source.geometry.vertices[corner].color)
             XCTAssertEqual(vertex.position, ordinary.vertices[corner].position)
-            XCTAssertEqual(vertex.normal, SIMD4(source.geometry.vertices[corner].normal, 0))
+            XCTAssertEqual(vertex.normal, SIMD4(source.geometry.vertices[corner].normal, 1))
             let tangent = source.tangents[corner / 3]
             XCTAssertEqual(vertex.tangent, SIMD4(tangent.direction, tangent.handedness))
             XCTAssertEqual(vertex.textureCoordinate.z, triangle.hasMapping ? 1 : 0)

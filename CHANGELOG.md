@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use procedural vertex opacity alongside imported alpha when Model Colors is off for mixed previews.
+
 - Use vertex opacity when Model Colors is off for textured procedural previews.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
