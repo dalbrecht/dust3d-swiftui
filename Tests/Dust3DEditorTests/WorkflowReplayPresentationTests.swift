@@ -18,6 +18,13 @@ final class WorkflowReplayPresentationTests: XCTestCase {
         XCTAssertFalse(WorkflowReplayPlaybackPhase.empty.canAdvance(waitsForReference: false))
     }
 
+    func testOnlyReplayWithCompletedStepsCanMoveBack() {
+        XCTAssertFalse(WorkflowReplayPlaybackPhase.empty.canGoBack)
+        XCTAssertFalse(WorkflowReplayPlaybackPhase.ready.canGoBack)
+        XCTAssertTrue(WorkflowReplayPlaybackPhase.inProgress.canGoBack)
+        XCTAssertTrue(WorkflowReplayPlaybackPhase.complete.canGoBack)
+    }
+
     func testOnlyPendingReferenceStepBlocksAdvance() {
         XCTAssertTrue(WorkflowReplayReferenceState.loading.blocksAdvance(hasReferenceStep: true, completedSteps: 0))
         XCTAssertFalse(WorkflowReplayReferenceState.loading.blocksAdvance(hasReferenceStep: false, completedSteps: 0))

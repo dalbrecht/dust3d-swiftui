@@ -39,6 +39,9 @@ enum KeyboardShortcutHelp {
         .init(action: "Show / Hide Inspector", keys: "⌃⌘I", scope: "Focused editor window"),
         .init(action: "Show Animations Inspector", keys: "⌥⌘A", scope: "Editor window"),
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
+        .init(
+            action: "Previous Replay Step", keys: "⌥←",
+            scope: "Replay Steps window, after at least one step has completed"),
         .init(action: "Next Replay Step", keys: "⌥→", scope: "Replay Steps window, when a next step is available"),
         .init(
             action: "Assign Selected Edges to Bone", keys: "⌘Return",
