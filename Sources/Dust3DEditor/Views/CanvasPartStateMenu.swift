@@ -8,11 +8,15 @@ struct CanvasPartStateMenu: View {
     var body: some View {
         let lock = store?.canvasPartStateAction(.locked)
         let disable = store?.canvasPartStateAction(.disabled)
+        let mirror = store?.canvasPartMirrorAction()
         Menu("Owning Part State") {
             Button("Lock or Unlock Owning Part") { if admitsInput() { lock?() } }
                 .help("Press L while the canvas has keyboard focus.")
             Button("Enable or Disable Owning Part") { if admitsInput() { disable?() } }
                 .help("Press J while the canvas has keyboard focus.")
+            Button("Toggle X Mirror on Owning Part") { if admitsInput() { mirror?() } }
+                .help("Press M while the canvas has keyboard focus.")
+                .disabled(mirror == nil)
         }
         .disabled(!admitsInput() || lock == nil || disable == nil)
     }
