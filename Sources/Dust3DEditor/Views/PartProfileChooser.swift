@@ -15,6 +15,8 @@ struct PartProfileChooser: View {
 
     var body: some View {
         let snapshot = store.snapshot
+        let candidates = self.candidates
+        let spokenTitles = PartProfileOptions.spokenTitles(for: candidates)
         let ownerID = Array(part.id.utf8)
         VStack(alignment: .leading, spacing: 8) {
             TextField("Search profile parts", text: $query)
@@ -26,6 +28,7 @@ struct PartProfileChooser: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(candidates) { candidate in
+                            let spokenTitle = spokenTitles[candidate.id] ?? candidate.title
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(candidate.title).lineLimit(1)
@@ -37,7 +40,7 @@ struct PartProfileChooser: View {
                                     else { return }
                                     preview = (snapshot.documentIdentity, ownerID, Array(candidate.id.utf8))
                                 }
-                                .accessibilityLabel("Preview profile \(candidate.title), \(candidate.id)")
+                                .accessibilityLabel("Preview profile \(spokenTitle)")
                                 Button("Choose") {
                                     guard let snapshot, let current = store.snapshot,
                                         current.documentIdentity == snapshot.documentIdentity,
@@ -49,7 +52,7 @@ struct PartProfileChooser: View {
                                         store.setPartCutFace(part.id, selection: .linkedPart(candidate.id))
                                     }
                                 }
-                                .accessibilityLabel("Link profile \(candidate.title), \(candidate.id)")
+                                .accessibilityLabel("Link profile \(spokenTitle)")
                             }
                             .help(candidate.title + "\n" + candidate.id)
                         }
