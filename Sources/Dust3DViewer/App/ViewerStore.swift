@@ -58,6 +58,9 @@ final class ViewerStore {
     private(set) var meshRevision = 0
     private(set) var materialRevision = 0
     var errorMessage: String?
+    private(set) var rendererError: String?
+    private(set) var rendererAttemptID = UUID()
+    private(set) var cameraState = MeshCameraState()
     private let service: any MeshFileSnapshotLoading
     private let materialPreparation: any ArchiveMaterialPreparing
     private(set) var loadTask: Task<Void, Never>?
@@ -92,6 +95,8 @@ final class ViewerStore {
                 materialSourceCapabilities = loaded.materialSourceCapabilities
                 archiveData = loaded.data
                 meshRevision += 1
+                cameraState = MeshCameraState()
+                resetRendererAttempt()
                 documentName = url.lastPathComponent
                 isLoading = false
                 retryMaterials()
@@ -109,6 +114,27 @@ final class ViewerStore {
         loadTask?.cancel()
         loadTask = nil
         isLoading = false
+    }
+
+    func reportRendererError(_ cause: String, attemptID: UUID) {
+        guard mesh != nil, rendererAttemptID == attemptID else { return }
+        rendererError = cause
+    }
+
+    func dismissRendererError(attemptID: UUID) {
+        guard rendererAttemptID == attemptID else { return }
+        rendererError = nil
+    }
+
+    func retryRenderer(attemptID: UUID) {
+        guard rendererAttemptID == attemptID, rendererError != nil else { return }
+        resetRendererAttempt()
+        renderedMaterialRevision = nil
+    }
+
+    private func resetRendererAttempt() {
+        rendererAttemptID = UUID()
+        rendererError = nil
     }
 
     func retryMaterials() {
@@ -162,6 +188,8 @@ final class ViewerStore {
         clearMaterials()
         archiveData = nil
         mesh = nil
+        cameraState = MeshCameraState()
+        resetRendererAttempt()
         materialSourceCapabilities = .unknown
         isLoading = false
     }
