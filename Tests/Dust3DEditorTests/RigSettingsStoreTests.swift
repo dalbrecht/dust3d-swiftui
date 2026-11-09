@@ -49,19 +49,20 @@ final class RigSettingsStoreTests: XCTestCase {
             })
         navigate(.rig)
         navigate(.animations)
-        XCTAssertEqual(destinations, [.rig, .animations])
+        navigate(.sidebar)
+        XCTAssertEqual(destinations, [.rig, .animations, .sidebar])
         XCTAssertEqual(store.snapshot?.selectedIDs, [nodeID])
         XCTAssertEqual(store.snapshot?.document.encoded(), source)
         XCTAssertFalse(store.canUndo)
 
         bindingIdentity = UUID()
-        navigate(.rig)
-        XCTAssertEqual(destinations.count, 2)
+        navigate(.sidebar)
+        XCTAssertEqual(destinations.count, 3)
         bindingIdentity = identity
         await store.load(data: source, fileIdentity: identity)
         try await settle(store)
-        navigate(.rig)
-        XCTAssertEqual(destinations.count, 2)
+        navigate(.sidebar)
+        XCTAssertEqual(destinations.count, 3)
     }
 
     @MainActor func testStoredRigEditsRetainExactHistorySelectionAssetsAndPreviewWithoutEvaluatingRig() async throws {

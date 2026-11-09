@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum EditorInspectorDestination: Equatable {
+    case sidebar
     case rig
     case animations
 }

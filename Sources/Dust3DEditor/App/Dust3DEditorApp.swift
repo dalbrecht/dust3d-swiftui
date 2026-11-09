@@ -127,6 +127,11 @@ struct Dust3DEditorApp: App {
             CommandGroup(after: .windowArrangement) {
                 let window = NSApp.keyWindow
                 let navigate = navigateInspector
+                Button("Show Sidebar") {
+                    guard NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
+                    navigate?(.sidebar)
+                }
+                .disabled(window == nil || navigate == nil || rigAssignmentFocus.hasSheet)
                 Button("Show Rig Settings") {
                     guard NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
                     navigate?(.rig)

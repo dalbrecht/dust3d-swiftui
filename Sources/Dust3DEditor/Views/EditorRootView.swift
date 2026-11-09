@@ -19,6 +19,9 @@ struct EditorRootView: View {
     @State private var canvasFocus = CanvasProfileFocusControl()
     @State private var exportDestinations: EditorGeometryExportDestinationService
     @State private var exportWorkflow: EditorGeometryExportWorkflow
+    @State private var isSidebarPresented = true
+    @State private var sidebarNodeQuery = ""
+    @State private var sidebarDisclosure = ComponentSidebarDisclosure()
     @State private var isInspectorPresented = true
     @State private var inspectorSection = EditorInspectorSection.selection
     @State private var rigInspectorDocumentID: UUID?
@@ -59,16 +62,19 @@ struct EditorRootView: View {
         let ownsWindow: @MainActor () -> Bool = { source.wrappedValue.identity == fileIdentity }
         let navigateInspector = store.inspectorNavigationAction(fileIdentity: fileIdentity, ownsWindow: ownsWindow) {
             destination in
-            isInspectorPresented = true
             switch destination {
+            case .sidebar:
+                isSidebarPresented = true
             case .rig:
+                isInspectorPresented = true
                 inspectorSection = .selection
                 rigInspectorDocumentID = store.snapshot?.documentIdentity
             case .animations:
+                isInspectorPresented = true
                 inspectorSection = .animations
             }
         }
-        editorLayout(fileIdentity: fileIdentity, ownsWindow: ownsWindow)
+        let documentLayout = editorLayout(fileIdentity: fileIdentity, ownsWindow: ownsWindow)
             .frame(minWidth: 800, minHeight: 600)
             .inspector(isPresented: $isInspectorPresented) {
                 inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
@@ -80,54 +86,65 @@ struct EditorRootView: View {
                 ReferenceCompositionSheet(
                     store: store, target: presentation.target, droppedSources: presentation.droppedSources)
             }
-            .toolbar {
-                ToolbarItemGroup {
-                    Button(action: openDocument) {
-                        Label("Open", systemImage: "folder")
-                    }
-                    Button {
-                        NSApp.sendAction(#selector(NSDocument.save(_:)), to: nil, from: nil)
-                    } label: {
-                        Label("Save", systemImage: "square.and.arrow.down")
-                    }.disabled(!store.canSave)
-                    EditorGeometryExportMenu(canExport: exportWorkflow.canBegin) { format in
-                        exportWorkflow.begin(format: format, sourceURL: sourceURL)
-                    }
-                    Divider()
-                    Button {
-                        store.undo()
-                    } label: {
-                        Label("Undo", systemImage: "arrow.uturn.backward")
-                    }.disabled(!store.canUndo)
-                    Button {
-                        store.redo()
-                    } label: {
-                        Label("Redo", systemImage: "arrow.uturn.forward")
-                    }.disabled(!store.canRedo)
-                    Button {
-                        fitAction()
-                    } label: {
-                        Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
-                    }
-                    EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
-                    Button {
-                        isInspectorPresented = true
-                        inspectorSection = .animations
-                    } label: {
-                        Label("Animations", systemImage: "film")
-                    }
-                    .keyboardShortcut("a", modifiers: [.command, .option])
-                    .accessibilityLabel("Show animations inspector")
-                    Toggle(isOn: previewWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+            .onChange(of: store.snapshot?.documentIdentity) { _, _ in sidebarDisclosure.collapsedIDs = [] }
+        let documentChrome = documentLayout.toolbar {
+            ToolbarItem(placement: .navigation) {
+                Toggle(isOn: $isSidebarPresented) {
+                    Label("Sidebar", systemImage: "sidebar.left")
                 }
+                .toggleStyle(.button)
+                .accessibilityIdentifier("editor.sidebar.visibility")
+                .help("Show or hide the sidebar")
             }
-            .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
-            .background {
-                if let requestID = store.qtXMLFilePasteRequestID {
-                    QtXMLFilePicker(store: store, requestID: requestID)
-                        .id(requestID)
+            ToolbarItemGroup {
+                Button(action: openDocument) {
+                    Label("Open", systemImage: "folder")
                 }
+                Button {
+                    NSApp.sendAction(#selector(NSDocument.save(_:)), to: nil, from: nil)
+                } label: {
+                    Label("Save", systemImage: "square.and.arrow.down")
+                }.disabled(!store.canSave)
+                EditorGeometryExportMenu(canExport: exportWorkflow.canBegin) { format in
+                    exportWorkflow.begin(format: format, sourceURL: sourceURL)
+                }
+                Divider()
+                Button {
+                    store.undo()
+                } label: {
+                    Label("Undo", systemImage: "arrow.uturn.backward")
+                }.disabled(!store.canUndo)
+                Button {
+                    store.redo()
+                } label: {
+                    Label("Redo", systemImage: "arrow.uturn.forward")
+                }.disabled(!store.canRedo)
+                Button {
+                    fitAction()
+                } label: {
+                    Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
+                }
+                EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
+                Button {
+                    isInspectorPresented = true
+                    inspectorSection = .animations
+                } label: {
+                    Label("Animations", systemImage: "film")
+                }
+                .keyboardShortcut("a", modifiers: [.command, .option])
+                .accessibilityLabel("Show animations inspector")
+                Toggle(isOn: previewWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
             }
+        }
+        .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
+        .background {
+            if let requestID = store.qtXMLFilePasteRequestID {
+                QtXMLFilePicker(store: store, requestID: requestID)
+                    .id(requestID)
+            }
+        }
+        return
+            documentChrome
             .focusedSceneValue(\.editorStore, store)
             .focusedSceneValue(\.editorInspectorNavigation, navigateInspector)
             .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
@@ -150,27 +167,10 @@ struct EditorRootView: View {
 
     private func editorLayout(fileIdentity: UUID, ownsWindow: @escaping @MainActor () -> Bool) -> some View {
         HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("Nodes").font(.headline)
-                    Spacer()
-                    Menu {
-                        Button("Add Node", action: store.addNodeAction()).disabled(!store.canAddNode)
-                        Button("New Part", action: store.addNodeAction(newPart: true))
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Create node or part")
-                    .disabled(!store.canAddNewPart)
-                }.padding(12)
+            if isSidebarPresented {
+                sidebar
                 Divider()
-                CanvasNodeSidebar(store: store)
-                ComponentSidebar(store: store)
-                PartSidebar(store: store)
-                EdgeSidebar(store: store)
             }
-            .frame(width: 180)
-            Divider()
             VStack(spacing: 0) {
                 if let error = store.errorMessage {
                     HStack {
@@ -418,6 +418,29 @@ struct EditorRootView: View {
     private var previewWireframe: Binding<Bool> {
         let actions = previewDisplayActions
         return Binding(get: { actions.isWireframe }, set: { actions.setWireframe($0) })
+    }
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Nodes").font(.headline)
+                Spacer()
+                Menu {
+                    Button("Add Node", action: store.addNodeAction()).disabled(!store.canAddNode)
+                    Button("New Part", action: store.addNodeAction(newPart: true))
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Create node or part")
+                .disabled(!store.canAddNewPart)
+            }.padding(12)
+            Divider()
+            CanvasNodeSidebar(store: store, query: $sidebarNodeQuery)
+            ComponentSidebar(store: store, disclosure: sidebarDisclosure)
+            PartSidebar(store: store)
+            EdgeSidebar(store: store)
+        }
+        .frame(width: 180)
     }
 
     private var toolbarFitAction: @MainActor () -> Void {
