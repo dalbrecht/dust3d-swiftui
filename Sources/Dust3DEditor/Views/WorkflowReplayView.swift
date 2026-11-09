@@ -26,6 +26,10 @@ enum WorkflowReplayPlaybackPhase: Equatable {
     case inProgress
     case complete
 
+    func canAdvance(waitsForReference: Bool) -> Bool {
+        self != .empty && self != .complete && !waitsForReference
+    }
+
     init(completedSteps: Int, totalSteps: Int) {
         if totalSteps == 0 {
             self = .empty
@@ -194,7 +198,7 @@ struct WorkflowReplayView: View {
                         }
                         .disabled(phase == .complete)
                         Button("Next Step") { advance(plan) }
-                            .disabled(phase == .complete || isPlaying || waitsForReference)
+                            .disabled(!phase.canAdvance(waitsForReference: waitsForReference))
                             .keyboardShortcut(.rightArrow, modifiers: .option)
                     }
                     let context = checkpointContext
@@ -309,7 +313,7 @@ struct WorkflowReplayView: View {
     }
 
     private func advance(_ plan: WorkflowReplayPlan) {
-        guard !waitsForReference else { return }
+        guard playbackPhase?.canAdvance(waitsForReference: waitsForReference) == true else { return }
         retireCheckpoint()
         completedSteps = min(completedSteps + 1, plan.steps.count)
         if completedSteps == plan.steps.count { isPlaying = false }
