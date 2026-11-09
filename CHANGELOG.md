@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- End preview camera gestures and pending picks when keyboard focus leaves the viewport.
+
 - Let Escape cancel active preview trackpad gestures and ignore their late events.
 
 - Press Escape to cancel an active preview drag or pending pick.
