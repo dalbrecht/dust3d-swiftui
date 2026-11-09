@@ -116,6 +116,16 @@ final class ViewerStore {
         isLoading = false
     }
 
+    var hasPendingCancellation: Bool { pendingOpenRevision != nil || pendingMaterialUpdateID != nil }
+
+    func cancelPendingOperation() {
+        if let revision = pendingOpenRevision {
+            cancelOpen(revision: revision)
+        } else if let requestID = pendingMaterialUpdateID {
+            cancelMaterialUpdate(requestID: requestID)
+        }
+    }
+
     func reportRendererError(_ cause: String, attemptID: UUID) {
         guard mesh != nil, rendererAttemptID == attemptID else { return }
         rendererError = cause

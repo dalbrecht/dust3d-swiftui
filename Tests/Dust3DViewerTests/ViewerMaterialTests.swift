@@ -244,6 +244,47 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertFalse(store.isUpdatingMaterials)
     }
 
+    func testExitCommandCancelsOpeningBeforeTheAcceptedModelMaterialUpdate() async throws {
+        let frame = try snapshot()
+        let baked = try await MeshBakingService().load(
+            data: frame.data,
+            options: MeshBakeOptions(colorSize: 32, normalSize: 16, materialSize: 8, atlasTextureSize: 32))
+        let loader = SuspendedSnapshotLoader()
+        let baker = SuspendedViewerBaker()
+        let store = ViewerStore(service: loader, materialBaker: baker)
+        defer { store.stop() }
+
+        XCTAssertFalse(store.hasPendingCancellation)
+        store.open(URL(fileURLWithPath: "/test/model.ds3"))
+        try await waitForFileRequests(1, loader)
+        await loader.finish(0, frame)
+        await store.loadTask?.value
+        try await waitForRequests(1, baker)
+        let materialTask = try XCTUnwrap(store.materialTask)
+        let materialID = try XCTUnwrap(store.pendingMaterialUpdateID)
+
+        store.open(URL(fileURLWithPath: "/test/replacement.ds3"))
+        try await waitForFileRequests(2, loader)
+        let openTask = try XCTUnwrap(store.loadTask)
+        XCTAssertTrue(store.hasPendingCancellation)
+        store.cancelPendingOperation()
+        XCTAssertTrue(openTask.isCancelled)
+        XCTAssertNil(store.pendingOpenRevision)
+        XCTAssertEqual(store.pendingMaterialUpdateID, materialID)
+        XCTAssertFalse(materialTask.isCancelled)
+
+        store.cancelPendingOperation()
+        XCTAssertTrue(materialTask.isCancelled)
+        XCTAssertFalse(store.hasPendingCancellation)
+        XCTAssertEqual(store.documentName, "model.ds3")
+        await loader.finish(1, frame)
+        await baker.finish(0, baked)
+        await openTask.value
+        await materialTask.value
+        XCTAssertNil(store.materials)
+        XCTAssertEqual(store.documentName, "model.ds3")
+    }
+
     func testCancelMaterialUpdateKeepsGeometryAndPermitsRetry() async throws {
         let frame = try snapshot()
         let baked = try await MeshBakingService().load(
