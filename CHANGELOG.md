@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Enable Replay Steps when the document has model parts or a loaded reference image.
+
 - Open Replay Steps in independent windows so starting another replay keeps the current step and source of each existing replay.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
