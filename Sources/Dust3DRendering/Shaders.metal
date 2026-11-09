@@ -62,6 +62,7 @@ struct BakedVertexOutput {
     float4 textureCoordinate;
     float4 tangent;
     float maskAlpha;
+    float isProcedural;
 };
 
 float3 bakedNormalize(float3 value, float3 fallback)
@@ -122,6 +123,7 @@ vertex BakedVertexOutput bakedMeshVertex(uint index [[vertex_id]],
     output.viewPosition = (uniforms.rotation * vertices[index].position).xyz;
     output.normal = (uniforms.rotation * vertices[index].normal).xyz;
     output.tangent = float4((uniforms.rotation * float4(vertices[index].tangent.xyz, 0)).xyz, vertices[index].tangent.w);
+    output.isProcedural = vertices[index].normal.w;
     output.color = uniforms.options.y > 0.5 ? float4(0.96, 0.94, 0.91, vertices[index].color.a) : vertices[index].color;
     output.maskAlpha = maskScaleClampedVertexAlpha(vertices[index].color.a);
     output.textureCoordinate = vertices[index].textureCoordinate;
@@ -170,12 +172,13 @@ fragment float4 bakedMeshFragment(BakedVertexOutput input [[stage_in]],
     texture2d<float> metallicMap [[texture(2)]], texture2d<float> roughnessMap [[texture(3)]],
     texture2d<float> emissiveMap [[texture(4)]], sampler materialSampler [[sampler(0)]])
 {
-    bool mapped = input.textureCoordinate.z > 0.5 && uniforms.options.z < 0.5;
+    bool usesVertexAlpha = uniforms.options.y > 0.5 && input.isProcedural > 0.5;
+    bool mapped = input.textureCoordinate.z > 0.5 && !usesVertexAlpha;
     float2 uv = input.textureCoordinate.xy;
     float4 base = mapped ? colorMap.sample(materialSampler, uv) : float4(bakedLinearColor(input.color.rgb), clamp(input.color.a, 0.0, 1.0));
-    if (policy.x < 0.5) {
+    if (!usesVertexAlpha && policy.x < 0.5) {
         base.a = 1.0;
-    } else if (policy.x < 1.5) {
+    } else if (!usesVertexAlpha && policy.x < 1.5) {
         float maskAlpha = mapped ? maskScaleAlpha(base.a) : maskRoundScaled(input.maskAlpha);
         if (maskAlpha < maskScaleAlpha(policy.y) || (policy.z > 0.5 && maskAlpha <= 0.0))
             discard_fragment();

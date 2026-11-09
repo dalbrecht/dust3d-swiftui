@@ -9,22 +9,33 @@ enum BakedMetalFixture {
         source(mesh, policyAt: { _ in policy })
     }
 
-    static func source(_ mesh: MeshWithBakedTextures, policyAt: (Int) -> SourceBakedPolicy?) -> SourceBakedMesh {
+    static func source(
+        _ mesh: MeshWithBakedTextures, policyAt: (Int) -> SourceBakedPolicy?,
+        importedAt: (Int) -> Bool = { _ in false }
+    ) -> SourceBakedMesh {
         let records = mesh.metadata.triangles.enumerated().map { index, triangle in
             SourceBakedTriangle(
                 packedUVs: triangle.hasMapping ? triangle.corners : nil,
-                tangent: mesh.tangents[index], policy: policyAt(index), modelIndex: nil, componentIndex: nil)
+                tangent: mesh.tangents[index], policy: policyAt(index), modelIndex: importedAt(index) ? 0 : nil,
+                componentIndex: nil)
         }
         return SourceBakedMesh(
-            geometry: mesh.geometry, triangles: records, modelIDs: [], components: [],
+            geometry: mesh.geometry, triangles: records,
+            modelIDs: records.contains { $0.modelIndex != nil }
+                ? [try! ImportedSurfaceIdentity(rawValue: "test-model")] : [],
+            components: [],
             textures: mesh.textures, maximumSamplingLod: 0, nativePayloadBytes: 0, copiedPayloadBytes: 0)
     }
 
     struct Layer {
+        let offsetX: Float
         let depth: Float
         let sample: SIMD2<Double>?
         let color: SIMD4<Float>
-        init(depth: Float = 0, sample: SIMD2<Double>? = nil, color: SIMD4<Float> = SIMD4(1, 1, 1, 1)) {
+        init(
+            depth: Float = 0, offsetX: Float = 0, sample: SIMD2<Double>? = nil, color: SIMD4<Float> = SIMD4(1, 1, 1, 1)
+        ) {
+            self.offsetX = offsetX
             self.depth = depth
             self.sample = sample
             self.color = color
@@ -54,7 +65,9 @@ enum BakedMetalFixture {
                 SIMD3(-1, -1, layer.depth), SIMD3(1, -1, layer.depth), SIMD3(1, 1, layer.depth),
                 SIMD3(-1, -1, layer.depth), SIMD3(1, 1, layer.depth), SIMD3(-1, 1, layer.depth),
             ]
-            vertices += positions.map { MeshVertex(position: $0, normal: SIMD3(0, 0, 1), color: layer.color) }
+            vertices += positions.map {
+                MeshVertex(position: $0 + SIMD3(layer.offsetX, 0, 0), normal: SIMD3(0, 0, 1), color: layer.color)
+            }
             for start in [0, 3] {
                 func uv(_ corner: Int) -> SIMD2<Double> {
                     mapped ? (layer.sample ?? coordinates[start + corner]) : .zero
