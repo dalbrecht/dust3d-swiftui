@@ -279,22 +279,34 @@ struct Dust3DEditorApp: App {
                 GraphColorizeMenu(store: store)
                 DescendantRotationMenu(store: store)
                 NodeConnectionControls(store: store)
-                Button("Reduce Selected Nodes") { store?.reduceSelectedNodes() }
-                    .disabled(store?.canReduceSelectedNodes != true)
-                    .accessibilityLabel("Reduce Selected Nodes")
-                Button("Reverse Edges Between Selected Nodes") { store?.reverseSelectedEdges() }
-                    .disabled(store?.isWorking != false || store?.snapshot?.reversibleEdges.isEmpty != false)
-                Button("Insert Midpoints on Selected Edges") { store?.insertSelectedEdgeMidpoints() }
-                    .disabled(store?.canInsertEdgeMidpoint != true)
-                    .accessibilityLabel("Insert Midpoints on Selected Edges")
-                Button("Reverse Selected Edges") { store?.reverseExplicitlySelectedEdges() }
-                    .disabled(store?.canReverseSelectedEdges != true)
+                let graphOwner = store
+                let graphWindow = NSApp.keyWindow
+                let admitsGraphCommand: @MainActor () -> Bool = {
+                    guard let graphWindow, NSApp.keyWindow === graphWindow else { return false }
+                    return store === graphOwner && !rigAssignmentFocus.hasSheet
+                }
+                ForEach([GraphSelectionAction.reduceNodes, .insertMidpoints, .reverseEdges], id: \.self) { action in
+                    let invoke = graphOwner?.canvasGraphEditAction(action)
+                    Button(action.title) {
+                        guard admitsGraphCommand() else { return }
+                        invoke?()
+                    }
+                    .disabled(invoke == nil || !admitsGraphCommand())
+                }
+                Button("Reverse Edges Between Selected Nodes") {
+                    guard admitsGraphCommand(), graphOwner?.isSelectingRigEdges == false else { return }
+                    graphOwner?.reverseSelectedEdges()
+                }
+                .disabled(
+                    !admitsGraphCommand() || graphOwner?.isSelectingRigEdges != false
+                        || graphOwner?.isWorking != false || graphOwner?.snapshot?.reversibleEdges.isEmpty != false)
+                let deleteGraph = graphOwner?.canvasGraphEditAction(.deleteSelection)
                 Button("Delete Graph Selection") {
-                    guard canDeleteGraphSelection else { return }
-                    store?.deleteSelection()
+                    guard admitsGraphCommand(), canDeleteGraphSelection else { return }
+                    deleteGraph?()
                 }
                 .keyboardShortcut(.delete, modifiers: [])
-                .disabled(!canDeleteGraphSelection)
+                .disabled(deleteGraph == nil || !admitsGraphCommand() || !canDeleteGraphSelection)
                 Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
                     Toggle(
