@@ -75,6 +75,20 @@ final class ViewerStore {
             importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
     }
 
+    func openDroppedDocuments(_ urls: [URL]) -> Bool {
+        guard
+            let url = urls.last(where: { url in
+                let host = url.host?.lowercased()
+                let path = url.path(percentEncoded: false)
+                return url.isFileURL && !url.hasDirectoryPath && (host == nil || host == "" || host == "localhost")
+                    && url.query == nil && url.fragment == nil && path.hasPrefix("/")
+                    && path.utf8.count <= 4096 && !path.utf8.contains(0) && url.pathExtension.lowercased() == "ds3"
+            })
+        else { return false }
+        open(url)
+        return true
+    }
+
     func open(_ url: URL) {
         loadTask?.cancel()
         clearMaterials()
