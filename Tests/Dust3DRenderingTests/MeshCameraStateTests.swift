@@ -359,6 +359,55 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertEqual(picks, 0)
     }
 
+    func testActivePointerPressKeepsOwnershipAgainstTrackpadGesture() throws {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        var picks = 0
+        view.updatePicking(revision: UUID()) { _ in picks += 1 }
+
+        view.mouseDown(with: try overlappingMouseEvent(.leftMouseDown, x: 100))
+        let pressedTransform = view.orbitCamera.transform(aspect: 1)
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), pressedTransform)
+        view.mouseUp(with: try overlappingMouseEvent(.leftMouseUp, x: 100))
+        XCTAssertEqual(picks, 1, "A competing trackpad event must not cancel the active pointer press")
+
+        view.applyCameraGesture(phase: .changed) { $0.rotateGesture(by: 15) }
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), pressedTransform)
+        XCTAssertFalse(view.isDraggingCamera)
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        XCTAssertNotEqual(view.orbitCamera.transform(aspect: 1), pressedTransform)
+    }
+
+    func testActiveTrackpadGestureDoesNotAdmitOverlappingPointerPress() throws {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        var picks = 0
+        view.updatePicking(revision: UUID()) { _ in picks += 1 }
+
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        let gestureTransform = view.orbitCamera.transform(aspect: 1)
+        let wheel = try XCTUnwrap(
+            CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: 10, wheel2: 0, wheel3: 0))
+        view.scrollWheel(with: try XCTUnwrap(NSEvent(cgEvent: wheel)))
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), gestureTransform)
+        view.mouseDown(with: try overlappingMouseEvent(.leftMouseDown, x: 100))
+        view.mouseDragged(with: try overlappingMouseEvent(.leftMouseDragged, x: 130))
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), gestureTransform)
+        view.mouseUp(with: try overlappingMouseEvent(.leftMouseUp, x: 100))
+        XCTAssertEqual(picks, 0)
+        XCTAssertTrue(view.isDraggingCamera)
+        view.applyCameraGesture(phase: .changed) { $0.rotateGesture(by: 15) }
+        XCTAssertNotEqual(view.orbitCamera.transform(aspect: 1), gestureTransform)
+        view.applyCameraGesture(phase: .ended) { _ in false }
+        XCTAssertFalse(view.isDraggingCamera)
+    }
+
+    private func overlappingMouseEvent(_ type: NSEvent.EventType, x: CGFloat) throws -> NSEvent {
+        try XCTUnwrap(
+            NSEvent.mouseEvent(
+                with: type, location: CGPoint(x: x, y: 100), modifierFlags: [], timestamp: 0, windowNumber: 0,
+                context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+    }
+
     func testDefaultExpandedAndIndexedViewportValuesHaveNoOwner() {
         let mesh = Mesh(vertices: [], nodeCount: 0, partCount: 0, warning: "")
         let ordinary = MeshViewport(mesh: mesh, isWireframe: false, cameraReset: 0, onError: { _ in })
