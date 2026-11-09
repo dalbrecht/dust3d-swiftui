@@ -68,6 +68,87 @@ struct EditorRootView: View {
                 inspectorSection = .animations
             }
         }
+        editorLayout(fileIdentity: fileIdentity, ownsWindow: ownsWindow)
+            .frame(minWidth: 800, minHeight: 600)
+            .inspector(isPresented: $isInspectorPresented) {
+                inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
+            }
+            #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                .environment(restPreview)
+            #endif
+            .sheet(item: $referenceComposition) { presentation in
+                ReferenceCompositionSheet(
+                    store: store, target: presentation.target, droppedSources: presentation.droppedSources)
+            }
+            .toolbar {
+                ToolbarItemGroup {
+                    Button(action: openDocument) {
+                        Label("Open", systemImage: "folder")
+                    }
+                    Button {
+                        NSApp.sendAction(#selector(NSDocument.save(_:)), to: nil, from: nil)
+                    } label: {
+                        Label("Save", systemImage: "square.and.arrow.down")
+                    }.disabled(!store.canSave)
+                    EditorGeometryExportMenu(canExport: exportWorkflow.canBegin) { format in
+                        exportWorkflow.begin(format: format, sourceURL: sourceURL)
+                    }
+                    Divider()
+                    Button {
+                        store.undo()
+                    } label: {
+                        Label("Undo", systemImage: "arrow.uturn.backward")
+                    }.disabled(!store.canUndo)
+                    Button {
+                        store.redo()
+                    } label: {
+                        Label("Redo", systemImage: "arrow.uturn.forward")
+                    }.disabled(!store.canRedo)
+                    Button {
+                        fitAction()
+                    } label: {
+                        Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
+                    }
+                    EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
+                    Button {
+                        isInspectorPresented = true
+                        inspectorSection = .animations
+                    } label: {
+                        Label("Animations", systemImage: "film")
+                    }
+                    .keyboardShortcut("a", modifiers: [.command, .option])
+                    .accessibilityLabel("Show animations inspector")
+                    Toggle(isOn: previewWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+                }
+            }
+            .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
+            .background {
+                if let requestID = store.qtXMLFilePasteRequestID {
+                    QtXMLFilePicker(store: store, requestID: requestID)
+                        .id(requestID)
+                }
+            }
+            .focusedSceneValue(\.editorStore, store)
+            .focusedSceneValue(\.editorInspectorNavigation, navigateInspector)
+            .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
+            .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
+            .focusedSceneValue(\.editorRestPreviewActions, restPreviewActions)
+            .focusedSceneValue(
+                \.editorGeometryExportAction,
+                EditorGeometryExportAction(
+                    owner: store,
+                    canPerform: exportWorkflow.canBegin,
+                    perform: { format in exportWorkflow.begin(format: format, sourceURL: sourceURL) },
+                    cancel: exportWorkflow.cancellationAction())
+            )
+            .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
+            .onChange(of: store.snapshot?.documentIdentity) { exportWorkflow.sourceDidChange() }
+            .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
+            .task(id: file.identity) { await loadFile() }
+            .onDisappear { closeFile() }
+    }
+
+    private func editorLayout(fileIdentity: UUID, ownsWindow: @escaping @MainActor () -> Bool) -> some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
@@ -164,120 +245,47 @@ struct EditorRootView: View {
                 .font(.caption).foregroundStyle(.secondary).padding(10)
             }
         }
-        .frame(minWidth: 800, minHeight: 600)
-        .inspector(isPresented: $isInspectorPresented) {
-            inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
+    }
+
+    private func loadFile() async {
+        let identifier = file.identity
+        let version = file.saveVersion
+        let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
+        let shouldHidePreviewColors =
+            if let sourceURL {
+                await claimLaunchNeutralPreview(sourceURL)
+            } else {
+                false
+            }
+        guard !Task.isCancelled, file.identity == identifier else { return }
+        if shouldHidePreviewColors { store.showsPreviewColor = false }
+        if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+        let recoveryStore = store
+        recoveryRegistrationID = identifier
+        EditorRecoveryCopyRegistry.shared.register(identifier) { [weak recoveryStore] in
+            guard let recoveryStore else { throw EditorRecoveryCopyError.stopped }
+            return try recoveryStore.recoverySnapshot(documentID: identifier)
         }
+        store.onDocumentChanged = { file.data = $0 }
+        store.onEditingChanged = { file.setEditing($0) }
+        await store.load(data: file.data, fileIdentity: identifier)
+        if let launchPaste, !Task.isCancelled, file.identity == identifier, file.saveVersion == version,
+            launchPaste.document === exportDestinations.attachedDocument,
+            launchPaste.document.fileURL?.standardizedFileURL == sourceURL?.standardizedFileURL,
+            !launchPaste.document.isDocumentEdited
+        {
+            store.applyStartupQtXML(launchPaste.data, fileIdentity: identifier)
+        }
+    }
+
+    private func closeFile() {
+        if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+        recoveryRegistrationID = nil
+        exportWorkflow.stop()
         #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
-            .environment(restPreview)
+            restPreview.stop()
         #endif
-        .sheet(item: $referenceComposition) { presentation in
-            ReferenceCompositionSheet(
-                store: store, target: presentation.target, droppedSources: presentation.droppedSources)
-        }
-        .toolbar {
-            ToolbarItemGroup {
-                Button(action: openDocument) {
-                    Label("Open", systemImage: "folder")
-                }
-                Button {
-                    NSApp.sendAction(#selector(NSDocument.save(_:)), to: nil, from: nil)
-                } label: {
-                    Label("Save", systemImage: "square.and.arrow.down")
-                }.disabled(!store.canSave)
-                EditorGeometryExportMenu(canExport: exportWorkflow.canBegin) { format in
-                    exportWorkflow.begin(format: format, sourceURL: sourceURL)
-                }
-                Divider()
-                Button {
-                    store.undo()
-                } label: {
-                    Label("Undo", systemImage: "arrow.uturn.backward")
-                }.disabled(!store.canUndo)
-                Button {
-                    store.redo()
-                } label: {
-                    Label("Redo", systemImage: "arrow.uturn.forward")
-                }.disabled(!store.canRedo)
-                Button {
-                    fitAction()
-                } label: {
-                    Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
-                }
-                EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
-                Button {
-                    isInspectorPresented = true
-                    inspectorSection = .animations
-                } label: {
-                    Label("Animations", systemImage: "film")
-                }
-                .keyboardShortcut("a", modifiers: [.command, .option])
-                .accessibilityLabel("Show animations inspector")
-                Toggle(isOn: previewWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
-            }
-        }
-        .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
-        .background {
-            if let requestID = store.qtXMLFilePasteRequestID {
-                QtXMLFilePicker(store: store, requestID: requestID)
-                    .id(requestID)
-            }
-        }
-        .focusedSceneValue(\.editorStore, store)
-        .focusedSceneValue(\.editorInspectorNavigation, navigateInspector)
-        .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
-        .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
-        .focusedSceneValue(\.editorRestPreviewActions, restPreviewActions)
-        .focusedSceneValue(
-            \.editorGeometryExportAction,
-            EditorGeometryExportAction(
-                owner: store,
-                canPerform: exportWorkflow.canBegin,
-                perform: { format in exportWorkflow.begin(format: format, sourceURL: sourceURL) },
-                cancel: exportWorkflow.cancellationAction())
-        )
-        .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
-        .onChange(of: store.snapshot?.documentIdentity) { exportWorkflow.sourceDidChange() }
-        .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
-        .task(id: file.identity) {
-            let identifier = file.identity
-            let version = file.saveVersion
-            let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
-            let shouldHidePreviewColors =
-                if let sourceURL {
-                    await claimLaunchNeutralPreview(sourceURL)
-                } else {
-                    false
-                }
-            guard !Task.isCancelled, file.identity == identifier else { return }
-            if shouldHidePreviewColors { store.showsPreviewColor = false }
-            if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
-            let recoveryStore = store
-            recoveryRegistrationID = identifier
-            EditorRecoveryCopyRegistry.shared.register(identifier) { [weak recoveryStore] in
-                guard let recoveryStore else { throw EditorRecoveryCopyError.stopped }
-                return try recoveryStore.recoverySnapshot(documentID: identifier)
-            }
-            store.onDocumentChanged = { file.data = $0 }
-            store.onEditingChanged = { file.setEditing($0) }
-            await store.load(data: file.data, fileIdentity: identifier)
-            if let launchPaste, !Task.isCancelled, file.identity == identifier, file.saveVersion == version,
-                launchPaste.document === exportDestinations.attachedDocument,
-                launchPaste.document.fileURL?.standardizedFileURL == sourceURL?.standardizedFileURL,
-                !launchPaste.document.isDocumentEdited
-            {
-                store.applyStartupQtXML(launchPaste.data, fileIdentity: identifier)
-            }
-        }
-        .onDisappear {
-            if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
-            recoveryRegistrationID = nil
-            exportWorkflow.stop()
-            #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
-                restPreview.stop()
-            #endif
-            store.stop()
-        }
+        store.stop()
     }
 
     @ViewBuilder private var getStartedCard: some View {
