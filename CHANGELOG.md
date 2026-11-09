@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Orbit the preview with a middle-button drag, or hold Shift to pan.
+
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
