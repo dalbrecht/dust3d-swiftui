@@ -224,6 +224,41 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertFalse(view.isDraggingCamera)
     }
 
+    func testPreviewWheelPreservesPointerDragAndRespectsCameraAdmission() throws {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        func wheel(vertical: Int32, horizontal: Int32 = 0) throws -> NSEvent {
+            let event = try XCTUnwrap(
+                CGEvent(
+                    scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2, wheel1: vertical,
+                    wheel2: horizontal, wheel3: 0))
+            return try XCTUnwrap(NSEvent(cgEvent: event))
+        }
+        func middle(_ type: CGEventType) throws -> NSEvent {
+            let event = try XCTUnwrap(
+                CGEvent(
+                    mouseEventSource: nil, mouseType: type, mouseCursorPosition: CGPoint(x: 100, y: 100),
+                    mouseButton: .center))
+            return try XCTUnwrap(NSEvent(cgEvent: event))
+        }
+
+        let initial = view.orbitCamera.distance
+        view.otherMouseDown(with: try middle(.otherMouseDown))
+        view.scrollWheel(with: try wheel(vertical: 10))
+        XCTAssertTrue(view.isDraggingCamera)
+        XCTAssertEqual(view.orbitCamera.distance, initial)
+        view.scrollWheel(with: try wheel(vertical: 0, horizontal: 10))
+        XCTAssertTrue(view.isDraggingCamera)
+        view.otherMouseUp(with: try middle(.otherMouseUp))
+
+        view.cameraInteractionAllowed = { false }
+        view.scrollWheel(with: try wheel(vertical: 10))
+        XCTAssertEqual(view.orbitCamera.distance, initial)
+
+        view.cameraInteractionAllowed = { true }
+        view.scrollWheel(with: try wheel(vertical: 10))
+        XCTAssertLessThan(view.orbitCamera.distance, initial)
+    }
+
     func testDefaultExpandedAndIndexedViewportValuesHaveNoOwner() {
         let mesh = Mesh(vertices: [], nodeCount: 0, partCount: 0, warning: "")
         let ordinary = MeshViewport(mesh: mesh, isWireframe: false, cameraReset: 0, onError: { _ in })
