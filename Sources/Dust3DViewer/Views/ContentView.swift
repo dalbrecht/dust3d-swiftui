@@ -39,6 +39,7 @@ struct ContentView: View {
                     }
                     .id(store.meshRevision)
                     .accessibilityLabel("3D mesh preview")
+                    .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 } else {
                     ContentUnavailableView {
                         Label("Open a Dust3D model", systemImage: "cube.transparent")
