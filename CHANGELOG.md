@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Let Escape cancel active preview trackpad gestures and ignore their late events.
+
 - Press Escape to cancel an active preview drag or pending pick.
 
 - Orbit the preview through the top and underside of the model.
