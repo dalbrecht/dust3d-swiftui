@@ -53,6 +53,7 @@ final class ViewerStore {
             || ((materials != nil)
                 && renderedMaterialRevision != meshRevision + materialRevision)
     }
+    var pendingMaterialUpdateID: UUID? { isUpdatingMaterials ? materialRequestID : nil }
     private(set) var materialIssue: String?
     private(set) var meshRevision = 0
     private(set) var materialRevision = 0
@@ -135,6 +136,13 @@ final class ViewerStore {
                 self.isBakingMaterials = false
             }
         }
+    }
+
+    func cancelMaterialUpdate(requestID: UUID) {
+        guard pendingMaterialUpdateID == requestID else { return }
+        clearMaterials()
+        materialTask = nil
+        materialIssue = String(localized: "The material update was cancelled.")
     }
 
     func materialsFailed(_ cause: String, revision: Int) {

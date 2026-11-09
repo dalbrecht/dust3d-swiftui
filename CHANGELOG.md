@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Let Viewer users cancel a material update and retry it while keeping the model visible.
+
 - Let Viewer users cancel an open in progress while keeping the current model.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.

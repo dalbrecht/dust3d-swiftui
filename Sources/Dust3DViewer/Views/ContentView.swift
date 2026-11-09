@@ -58,8 +58,13 @@ struct ContentView: View {
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            if store.isUpdatingMaterials {
-                ProgressView("Updating materials…").controlSize(.small).padding(8)
+            if let requestID = store.pendingMaterialUpdateID {
+                HStack {
+                    ProgressView("Updating materials…")
+                    Button("Cancel Material Update") { store.cancelMaterialUpdate(requestID: requestID) }
+                }
+                .controlSize(.small)
+                .padding(8)
             }
             if let issue = store.materialIssue {
                 HStack(alignment: .top, spacing: 8) {
