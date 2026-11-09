@@ -165,6 +165,49 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertFalse(store.isUpdatingMaterials)
     }
 
+    func testRetryRendererKeepsAcceptedModelAndRejectsRetiredDiagnostics() async throws {
+        let frame = try snapshot()
+        let store = ViewerStore(service: SnapshotLoader(snapshot: frame))
+        defer { store.stop() }
+
+        store.open(URL(fileURLWithPath: "/test/model.ds3"))
+        await store.loadTask?.value
+        store.cameraState.move(.zoomIn)
+        let camera = store.cameraState
+        let meshRevision = store.meshRevision
+        let originalAttempt = store.rendererAttemptID
+        store.reportRendererError("Original Metal failure", attemptID: originalAttempt)
+        XCTAssertEqual(store.rendererError, "Original Metal failure")
+
+        store.retryRenderer(attemptID: originalAttempt)
+        let retryAttempt = store.rendererAttemptID
+        XCTAssertNotEqual(retryAttempt, originalAttempt)
+        XCTAssertNil(store.rendererError)
+        XCTAssertTrue(store.cameraState === camera)
+        XCTAssertEqual(camera.revision, 1)
+        XCTAssertEqual(store.meshRevision, meshRevision)
+        XCTAssertEqual(store.mesh?.indices, frame.mesh.indices)
+        XCTAssertEqual(store.documentName, "model.ds3")
+
+        store.reportRendererError("Late diagnostic", attemptID: originalAttempt)
+        XCTAssertNil(store.rendererError)
+        store.reportRendererError("Retry failed", attemptID: retryAttempt)
+        store.retryRenderer(attemptID: originalAttempt)
+        XCTAssertEqual(store.rendererAttemptID, retryAttempt)
+        XCTAssertEqual(store.rendererError, "Retry failed")
+
+        store.open(URL(fileURLWithPath: "/test/replacement.ds3"))
+        await store.loadTask?.value
+        XCTAssertNotEqual(store.rendererAttemptID, retryAttempt)
+        store.reportRendererError("Retired model failure", attemptID: retryAttempt)
+        XCTAssertNil(store.rendererError)
+
+        let acceptedAttempt = store.rendererAttemptID
+        store.stop()
+        store.reportRendererError("Closed window failure", attemptID: acceptedAttempt)
+        XCTAssertNil(store.rendererError)
+    }
+
     func testCancellingReplacementDoesNotDiscardCurrentMaterialBake() async throws {
         let frame = try snapshot()
         let baked = try await MeshBakingService().load(
