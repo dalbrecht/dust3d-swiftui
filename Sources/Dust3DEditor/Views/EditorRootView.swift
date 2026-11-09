@@ -17,6 +17,7 @@ struct EditorRootView: View {
     private let claimLaunchNeutralPreview: @MainActor (URL) async -> Bool
     @State private var store: EditorStore
     @State private var canvasFocus = CanvasProfileFocusControl()
+    @State private var previewFocus = MeshViewportFocus()
     @State private var exportDestinations: EditorGeometryExportDestinationService
     @State private var exportWorkflow: EditorGeometryExportWorkflow
     @State private var isInspectorPresented = true
@@ -468,6 +469,8 @@ struct EditorRootView: View {
                     onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                 ) { store.renderError = $0 }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
+                .withFocusTarget(previewFocus)
+                .focusedSceneValue(\.editorPreviewFocus, previewFocus)
                 .accessibilityLabel("3D mesh preview")
                 if store.isUpdatingMaterials {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)
