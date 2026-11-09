@@ -757,6 +757,11 @@ public class InteractiveMeshView: MTKView {
             super.keyDown(with: event)
             return
         }
+        if lastDragLocation != nil, event.charactersIgnoringModifiers == "\u{1b}" {
+            cancelCameraInteraction()
+            automaticOrbitBinding.cameraInputChanged()
+            return
+        }
         var camera = orbitCamera
         switch event.specialKey {
         case .leftArrow: camera.orbit(horizontal: -10, vertical: 0)
