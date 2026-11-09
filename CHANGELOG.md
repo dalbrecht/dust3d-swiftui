@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep an active preview drag in progress when the scroll wheel moves.
+
 - Orbit the preview with a middle-button drag, or hold Shift to pan.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.

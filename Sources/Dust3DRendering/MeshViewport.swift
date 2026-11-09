@@ -731,9 +731,15 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func scrollWheel(with event: NSEvent) {
+        let delta = Float(event.scrollingDeltaY)
+        guard cameraInteractionAllowed(), delta.isFinite, delta != 0 else {
+            super.scrollWheel(with: event)
+            return
+        }
+        guard lastDragLocation == nil else { return }
         cancelPicking()
         automaticOrbitBinding.cameraInputChanged()
-        orbitCamera.zoom(delta: Float(event.scrollingDeltaY))
+        orbitCamera.zoom(delta: delta)
         needsDisplay = true
     }
 
