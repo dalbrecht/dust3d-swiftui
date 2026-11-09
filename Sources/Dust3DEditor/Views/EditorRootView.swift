@@ -21,6 +21,7 @@ struct EditorRootView: View {
     @State private var exportWorkflow: EditorGeometryExportWorkflow
     @State private var isInspectorPresented = true
     @State private var inspectorSection = EditorInspectorSection.selection
+    @State private var rigInspectorDocumentID: UUID?
     @State private var recoveryRegistrationID: UUID?
     @State private var referenceComposition: ReferenceCompositionPresentation?
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
@@ -55,6 +56,18 @@ struct EditorRootView: View {
         let fitAction = toolbarFitAction
         let fileIdentity = file.identity
         let source = $file
+        let ownsWindow: @MainActor () -> Bool = { source.wrappedValue.identity == fileIdentity }
+        let navigateInspector = store.inspectorNavigationAction(fileIdentity: fileIdentity, ownsWindow: ownsWindow) {
+            destination in
+            isInspectorPresented = true
+            switch destination {
+            case .rig:
+                inspectorSection = .selection
+                rigInspectorDocumentID = store.snapshot?.documentIdentity
+            case .animations:
+                inspectorSection = .animations
+            }
+        }
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
@@ -95,7 +108,7 @@ struct EditorRootView: View {
                     VStack(spacing: 0) {
                         CanvasProfileHeader(
                             store: store, focusControl: canvasFocus, fileIdentity: fileIdentity,
-                            ownsWindow: { source.wrappedValue.identity == fileIdentity }
+                            ownsWindow: ownsWindow
                         )
                         .padding(12)
                         HStack {
@@ -211,6 +224,7 @@ struct EditorRootView: View {
             }
         }
         .focusedSceneValue(\.editorStore, store)
+        .focusedSceneValue(\.editorInspectorNavigation, navigateInspector)
         .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
         .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
         .focusedSceneValue(\.editorRestPreviewActions, restPreviewActions)
@@ -294,7 +308,7 @@ struct EditorRootView: View {
             if inspectorSection == .animations {
                 AnimationPanel(store: store)
             } else {
-                NodeInspector(store: store) {
+                NodeInspector(store: store, rigInspectorDocumentID: $rigInspectorDocumentID) {
                     visibility.wrappedValue && section.wrappedValue == .selection
                 }
             }

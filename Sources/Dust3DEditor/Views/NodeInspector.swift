@@ -6,17 +6,33 @@ struct NodeInspector: View {
     let store: EditorStore
     private let isRigAssignmentPresented: @MainActor () -> Bool
     @State private var draft: InspectorNodeDraft
+    @Binding private var rigInspectorDocumentID: UUID?
+    @State private var isRigExpanded = false
+    private enum Section { case rig }
 
     init(
         store: EditorStore, draft: InspectorNodeDraft = InspectorNodeDraft(),
+        rigInspectorDocumentID: Binding<UUID?> = .constant(nil),
         isRigAssignmentPresented: @escaping @MainActor () -> Bool = { true }
     ) {
         self.store = store
         self.isRigAssignmentPresented = isRigAssignmentPresented
         _draft = State(initialValue: draft)
+        _rigInspectorDocumentID = rigInspectorDocumentID
     }
 
-    var body: some View { ScrollView { content } }
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView { content }
+                .onChange(of: rigInspectorDocumentID, initial: true) { _, documentID in
+                    guard let documentID else { return }
+                    rigInspectorDocumentID = nil
+                    guard store.snapshot?.documentIdentity == documentID else { return }
+                    isRigExpanded = true
+                    proxy.scrollTo(Section.rig, anchor: .top)
+                }
+        }
+    }
 
     private var content: some View {
         let actionContext = store.snapshot.map { GraphInspectorActionContext(snapshot: $0) }
@@ -24,7 +40,10 @@ struct NodeInspector: View {
             Text("Selection inspector").font(.headline)
             AddModeControls(store: store)
             OriginControls(store: store)
-            RigSettingsControls(store: store, isAssignmentPresented: isRigAssignmentPresented)
+            RigSettingsControls(
+                store: store, expansion: $isRigExpanded, isAssignmentPresented: isRigAssignmentPresented
+            )
+            .id(Section.rig)
             NodeClipboardMenu(store: store)
             if let snapshot = store.snapshot, !snapshot.selectedComponentIDs.isEmpty {
                 ComponentDeletionButton(store: store, target: ComponentDeletionTarget(snapshot: snapshot))

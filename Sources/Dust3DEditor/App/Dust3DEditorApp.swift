@@ -12,6 +12,7 @@ struct Dust3DEditorApp: App {
         @FocusedValue(\.editorRestPreviewActions) private var restPreviewActions
     #endif
     @FocusedValue(\.editorStore) private var store
+    @FocusedValue(\.editorInspectorNavigation) private var navigateInspector
     @FocusedValue(\.editorGeometryExportAction) private var geometryExportAction
     @FocusedValue(\.rigAssignmentCommand) private var rigAssignmentCommand
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
@@ -124,6 +125,19 @@ struct Dust3DEditorApp: App {
             EditorGeometryExportCommands()
             InspectorCommands()
             CommandGroup(after: .windowArrangement) {
+                let window = NSApp.keyWindow
+                let navigate = navigateInspector
+                Button("Show Rig Settings") {
+                    guard NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
+                    navigate?(.rig)
+                }
+                .disabled(window == nil || navigate == nil || rigAssignmentFocus.hasSheet)
+                Button("Show Animations Inspector") {
+                    guard NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
+                    navigate?(.animations)
+                }
+                .disabled(window == nil || navigate == nil || rigAssignmentFocus.hasSheet)
+                Divider()
                 Button("Replay Steps…") {
                     guard let document = store?.snapshot?.document else { return }
                     replayRequest = WorkflowReplayRequest(document: document)
