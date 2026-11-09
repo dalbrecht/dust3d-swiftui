@@ -232,11 +232,13 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
         var writes: [Data] = []
         store.onDocumentChanged = { writes.append($0) }
-        let operation = try XCTUnwrap(store.applyStartupQtXML(sourceXML.xmlData, fileIdentity: identity))
+        let operation = try XCTUnwrap(
+            store.applyStartupQtXML(sourceXML.xmlData, fileIdentity: identity, settlesNewDocumentOrigin: true))
         await operation.value
         let pasted = try XCTUnwrap(store.snapshot?.document.encoded())
         let pastedDocument = try Dust3DDocument(data: pasted)
         XCTAssertFalse(String(decoding: pastedDocument.modelXML, as: UTF8.self).contains(missingProfile))
+        XCTAssertEqual(store.snapshot?.origin, .init(x: 0.5, y: 0, z: 0))
         XCTAssertEqual(store.snapshot?.nodes.count, 2)
         XCTAssertEqual(store.snapshot?.edges.count, 1)
         XCTAssertEqual(store.snapshot?.selectedIDs.count, 2)

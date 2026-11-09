@@ -261,7 +261,8 @@ struct EditorRootView: View {
                 launchPaste.document.fileURL?.standardizedFileURL == sourceURL?.standardizedFileURL,
                 !launchPaste.document.isDocumentEdited
             {
-                store.applyStartupQtXML(launchPaste.data, fileIdentity: identifier)
+                store.applyStartupQtXML(
+                    launchPaste.data, fileIdentity: identifier, settlesNewDocumentOrigin: sourceURL == nil)
             }
         }
         .onDisappear {
