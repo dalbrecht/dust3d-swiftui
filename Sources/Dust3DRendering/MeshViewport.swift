@@ -541,7 +541,7 @@ public class InteractiveMeshView: MTKView {
         return .none
     }
 
-    private func applyCameraGesture(
+    func applyCameraGesture(
         phase: NSEvent.Phase, update: (inout OrbitCamera) -> Bool
     ) {
         let phase = cameraGesturePhase(phase)
@@ -555,16 +555,19 @@ public class InteractiveMeshView: MTKView {
             automaticOrbitBinding.cameraInputChanged()
             return
         }
+        guard gestureActivity.admits(phase) else { return }
         var camera = orbitCamera
         guard update(&camera) else {
             if phase == .ended || phase == .none {
-                gestureActivity.cancel()
+                gestureActivity.update(phase)
                 automaticOrbitBinding.cameraInputChanged()
             }
             return
         }
+        let wasActive = gestureActivity.isActive
         cancelPicking()
         gestureActivity.update(phase)
+        if !wasActive && gestureActivity.isActive { window?.makeFirstResponder(self) }
         orbitCamera = camera
         automaticOrbitBinding.cameraInputChanged()
         needsDisplay = true
@@ -757,7 +760,7 @@ public class InteractiveMeshView: MTKView {
             super.keyDown(with: event)
             return
         }
-        if lastDragLocation != nil, event.charactersIgnoringModifiers == "\u{1b}" {
+        if isDraggingCamera, event.charactersIgnoringModifiers == "\u{1b}" {
             cancelCameraInteraction()
             automaticOrbitBinding.cameraInputChanged()
             return

@@ -309,6 +309,29 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertEqual(view.orbitCamera.transform(aspect: 1), initial)
     }
 
+    func testEscapeCancelsTrackpadGestureAndDiscardsItsRemainingEvents() throws {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        let escape = try XCTUnwrap(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0, context: nil,
+                characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}", isARepeat: false, keyCode: 53))
+
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        XCTAssertTrue(view.isDraggingCamera)
+        let cancelledTransform = view.orbitCamera.transform(aspect: 1)
+        view.keyDown(with: escape)
+        XCTAssertFalse(view.isDraggingCamera, "Escape must release the trackpad camera gesture")
+
+        view.applyCameraGesture(phase: .changed) { $0.rotateGesture(by: 15) }
+        view.applyCameraGesture(phase: .ended) { $0.magnify(by: 0.1) }
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), cancelledTransform)
+        XCTAssertFalse(view.isDraggingCamera)
+
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        XCTAssertTrue(view.isDraggingCamera)
+        XCTAssertNotEqual(view.orbitCamera.transform(aspect: 1), cancelledTransform)
+    }
+
     func testDefaultExpandedAndIndexedViewportValuesHaveNoOwner() {
         let mesh = Mesh(vertices: [], nodeCount: 0, partCount: 0, warning: "")
         let ordinary = MeshViewport(mesh: mesh, isWireframe: false, cameraReset: 0, onError: { _ in })
