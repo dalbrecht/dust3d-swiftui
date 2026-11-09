@@ -85,7 +85,7 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - mesh: Immutable copied geometry.
     ///   - isWireframe: Draw triangle edges.
     ///   - automaticallyOrbits: Opt-in turntable, paused by Reduce Motion, visibility and direct manipulation.
-    ///   - showsColor: Display source colors and materials; false uses neutral shading while preserving alpha policy.
+    ///   - showsColor: Display source materials; neutral procedural shading uses vertex alpha. Imported alpha policies stay active.
     ///   - cameraReset: Increment to fit the model.
     ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
     ///   - meshRevision: Increment for replacement geometry/material output.
@@ -113,7 +113,7 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - mesh: Immutable copied indexed geometry, retained as the failure fallback.
     ///   - isWireframe: Draw triangle edges.
     ///   - automaticallyOrbits: Opt-in turntable, paused by Reduce Motion, visibility and direct manipulation.
-    ///   - showsColor: Display source colors and materials; false uses neutral shading while preserving alpha policy.
+    ///   - showsColor: Display source materials; neutral procedural shading uses vertex alpha. Imported alpha policies stay active.
     ///   - cameraReset: Increment to fit the model.
     ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
     ///   - meshRevision: Increment for replacement geometry/material output or retry.

@@ -17,13 +17,24 @@ struct OwnedTexturedMetalResources: ~Copyable {
     var transparentBatches: [BakedDrawBatch]
     let textures: [any MTLTexture]
     let order: BakedTriangleOrder
+    let usesVertexAlphaInNeutralMode: Bool
+    var neutralDraws: TexturedNeutralDraws?
     let normalMapEnabled: Bool
     let camera: OrbitCamera
+}
+
+struct TexturedNeutralDraws {
+    let order: BakedTriangleOrder
+    let opaqueIndices: (any MTLBuffer)?
+    var transparentIndices: (any MTLBuffer)?
+    var transparentBatches: [BakedDrawBatch]
 }
 
 struct OwnedTexturedIndexBuffer: ~Copyable {
     let buffer: (any MTLBuffer)?
     let batches: [BakedDrawBatch]
+    let neutralBuffer: (any MTLBuffer)?
+    let neutralBatches: [BakedDrawBatch]
 }
 
 /// Shader compilation, CPU preparation and uploads run away from the UI executor.
@@ -72,6 +83,22 @@ actor TexturedMetalResourcesBuilder {
             mipmaps: mipmaps)
         let order = try BakedTriangleOrder(geometry: geometry, hasTransparentColor: plan.hasTransparentColor)
         let sorted = try order.transparentDraws(rotation: camera.rotation)
+        var usesVertexAlphaInNeutralMode = false
+        var neutralDraws: TexturedNeutralDraws?
+        if case .legacy = geometry.metadata {
+            usesVertexAlphaInNeutralMode = true
+            let neutralOrder = try BakedTriangleOrder(
+                geometry: geometry, hasTransparentColor: plan.hasTransparentColor, usesAtlasAlpha: false)
+            if neutralOrder != order {
+                guard geometry.indices.count <= (maximumPayloadBytes - plan.payloadBytes) / MemoryLayout<UInt32>.stride
+                else { throw BakedMetalPreparationError.payloadLimitExceeded }
+                let neutralSorted = try neutralOrder.transparentDraws(rotation: camera.rotation)
+                neutralDraws = TexturedNeutralDraws(
+                    order: neutralOrder, opaqueIndices: try Self.buffer(neutralOrder.opaqueIndices, device: device),
+                    transparentIndices: try Self.buffer(neutralSorted.indices, device: device),
+                    transparentBatches: neutralSorted.batches)
+            }
+        }
         let packaged = Bundle.main.resourceURL.flatMap {
             Bundle(url: $0.appendingPathComponent("Dust3DNative_Dust3DRendering.bundle"))
         }
@@ -140,17 +167,24 @@ actor TexturedMetalResourcesBuilder {
             device: device, queue: queue, pipeline: pipeline, opaqueDepth: opaqueDepth,
             transparentDepth: transparentDepth, sampler: sampler, vertices: vertices,
             opaqueIndices: opaque, transparentIndices: transparent, transparentBatches: sorted.batches,
-            textures: textures, order: order,
+            textures: textures, order: order, usesVertexAlphaInNeutralMode: usesVertexAlphaInNeutralMode,
+            neutralDraws: neutralDraws,
             normalMapEnabled: plan.normalMapEnabled, camera: camera)
     }
 
-    func reorder(order: BakedTriangleOrder, rotation: simd_float4x4, device: any MTLDevice) throws
+    func reorder(
+        order: BakedTriangleOrder, neutralOrder: BakedTriangleOrder?, rotation: simd_float4x4, device: any MTLDevice
+    ) throws
         -> sending OwnedTexturedIndexBuffer
     {
         let draws = try order.transparentDraws(rotation: rotation)
+        let neutral = try neutralOrder?.transparentDraws(rotation: rotation)
         let result = try Self.buffer(draws.indices, device: device)
+        let neutralBuffer = try Self.buffer(neutral?.indices ?? [], device: device)
         try Task.checkCancellation()
-        return OwnedTexturedIndexBuffer(buffer: result, batches: draws.batches)
+        return OwnedTexturedIndexBuffer(
+            buffer: result, batches: draws.batches, neutralBuffer: neutralBuffer, neutralBatches: neutral?.batches ?? []
+        )
     }
 
     nonisolated private static func buffer<Element: Sendable>(_ values: [Element], device: any MTLDevice) throws
