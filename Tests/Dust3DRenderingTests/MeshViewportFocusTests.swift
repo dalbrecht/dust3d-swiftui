@@ -23,6 +23,11 @@ final class MeshViewportFocusTests: XCTestCase {
         XCTAssertFalse(focus.moveFocus(in: otherWindow))
         XCTAssertTrue(focus.moveFocus(in: window))
         XCTAssertTrue(window.firstResponder === first)
+        replacement.isHidden = true
+        focus.bind(replacement)
+        XCTAssertFalse(focus.moveFocus(in: window), "A hidden preview cannot receive focus")
+        XCTAssertTrue(window.firstResponder === first)
+        replacement.isHidden = false
 
         focus.bind(replacement)
         focus.unbind(first)
