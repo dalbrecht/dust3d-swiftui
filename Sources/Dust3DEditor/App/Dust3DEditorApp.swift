@@ -132,6 +132,7 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.snapshot == nil)
             }
             CommandGroup(after: .toolbar) {
+                let allowsPreviewShortcuts = rigAssignmentFocus.allowsAssignment
                 #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
                     Picker(
                         "Preview Mode",
@@ -173,6 +174,7 @@ struct Dust3DEditorApp: App {
                         set: { previewDisplayActions?.setWireframe($0) })
                 )
                 .disabled(previewDisplayActions?.canChangeWireframe != true)
+                .keyboardShortcut(allowsPreviewShortcuts ? KeyboardShortcut("w", modifiers: []) : nil)
                 Toggle(
                     "Model Colors",
                     isOn: Binding(
@@ -194,9 +196,11 @@ struct Dust3DEditorApp: App {
                         })
                 )
                 .disabled(previewCameraActions?.canAutomaticallyOrbit != true)
+                .keyboardShortcut(allowsPreviewShortcuts ? KeyboardShortcut("r", modifiers: []) : nil)
                 .help("Pauses during dragging, while inactive, and when Reduce Motion is enabled.")
                 PreviewCameraMenu(
                     title: "Preview Camera", isEnabled: previewCameraActions?.canMove == true,
+                    allowsZoomShortcuts: allowsPreviewShortcuts,
                     move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() },
                     canvasWheelZoom: Binding(
                         get: { store?.canvasWheelZoomEnabled == true },
