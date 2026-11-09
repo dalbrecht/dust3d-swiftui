@@ -6,7 +6,8 @@ import XCTest
 @MainActor
 final class MeshViewportFocusTests: XCTestCase {
     private final class ResponderView: NSView {
-        override var acceptsFirstResponder: Bool { true }
+        var canFocus = true
+        override var acceptsFirstResponder: Bool { canFocus }
     }
 
     func testFocusIsScopedToTheAttachedWindowAndRetiresOnlyTheMatchingView() {
@@ -28,6 +29,11 @@ final class MeshViewportFocusTests: XCTestCase {
         XCTAssertFalse(focus.moveFocus(in: window), "A hidden preview cannot receive focus")
         XCTAssertTrue(window.firstResponder === first)
         replacement.isHidden = false
+
+        replacement.canFocus = false
+        XCTAssertFalse(focus.moveFocus(in: window), "An unavailable preview cannot receive focus")
+        XCTAssertTrue(window.firstResponder === first)
+        replacement.canFocus = true
 
         focus.bind(replacement)
         focus.unbind(first)
