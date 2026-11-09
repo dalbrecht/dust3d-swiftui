@@ -22,6 +22,9 @@ enum KeyboardShortcutHelp {
             action: "Decrease / Increase Radius", keys: "- / =",
             scope: "Focused canvas or node, with an editable graph selection and no active drag"),
         .init(
+            action: "Adjust Add Tool Preview Radius", keys: "- / =",
+            scope: "Focused canvas in the Add tool with a visible placement preview and no active drag"),
+        .init(
             action: "Rotate Selection −1° / +1°", keys: ", / .",
             scope: "Editable graph selection, outside text and animation controls"),
         .init(
