@@ -63,6 +63,131 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         }
         XCTFail("Context actions did not settle")
     }
+
+    func testStationaryVisibilityKeyRestoresHoveredOwnerBeforeSelectedOwner() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+        value.updateCanvasHover(at: projection.point(for: .init(x: 0.2, y: 0.5, z: 0.5)), projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .node("a"))
+        let h = CanvasPrecisionKeyInput(keyCode: 4, characters: "h", modifiers: [])
+        let retained = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertTrue(retained(h))
+        try await settle(value)
+        XCTAssertNil(value.canvasGraphHover)
+        XCTAssertEqual(value.snapshot?.parts.filter(\.isVisible).map(\.id), ["q"])
+        XCTAssertEqual(
+            CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300), projection)
+        XCTAssertFalse(retained(h))
+
+        let fresh = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertTrue(fresh(.init(keyCode: 4, characters: "H", modifiers: .capsLock, isRepeat: true)))
+        XCTAssertFalse(value.isWorking)
+        XCTAssertTrue(fresh(h))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.filter(\.isVisible).map(\.id), ["p", "q"])
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.filter(\.isVisible).map(\.id), ["q"])
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testPointerOrProjectionChangeRetiresHiddenVisibilityOwner() async throws {
+        for change in ["motion", "exit", "resize", "tool", "reopen"] {
+            let value = store()
+            defer { value.stop() }
+            await value.load(data: try source().encoded())
+            prepareCanvas(value)
+            value.select("x")
+            try await settle(value)
+            let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+            let point = projection.point(for: .init(x: 0.3, y: 0.5, z: 0.5))
+            value.updateCanvasHover(at: point, projection: projection)
+            XCTAssertEqual(value.canvasGraphHover, .edge("ab"))
+            let h = CanvasPrecisionKeyInput(keyCode: 4, characters: "h", modifiers: [])
+            XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(h))
+            XCTAssertTrue(value.tracksPartStateHoverWhileWorking)
+            switch change {
+            case "motion":
+                value.updateCanvasHover(at: .init(x: point.x + 0.1, y: point.y), projection: projection)
+            case "exit":
+                value.updateCanvasHover(at: nil, projection: projection)
+            case "resize":
+                value.setCanvasContext(
+                    projection: CanvasProjection(bounds: value.bounds, plane: value.plane, width: 450, height: 320),
+                    width: 450, height: 320)
+            default: break
+            }
+            try await settle(value)
+            if change == "tool" {
+                value.beginAddMode()
+                XCTAssertTrue(value.isAddingNodes)
+                value.cancelAddMode()
+            } else if change == "reopen" {
+                let hiddenArchive = try XCTUnwrap(value.snapshot?.document.encoded())
+                await value.load(data: Data("invalid archive".utf8))
+                XCTAssertFalse(value.canvasPartStateKeyHandler(profileLease: nil)(h))
+                await value.load(data: hiddenArchive)
+                prepareCanvas(value)
+                value.select("x")
+                try await settle(value)
+            }
+            XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(h), change)
+            try await settle(value)
+            XCTAssertEqual(value.snapshot?.parts.filter(\.isVisible).map(\.id), [], change)
+        }
+    }
+
+    func testVisibilityKeysToggleGlobalOrHoveredIsolationWithoutAmbiguousFallback() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        try await settle(value)
+        let h = CanvasPrecisionKeyInput(keyCode: 4, characters: "h", modifiers: [])
+        let shiftH = CanvasPrecisionKeyInput(keyCode: 4, characters: "H", modifiers: [.shift])
+        XCTAssertFalse(value.canvasPartStateKeyHandler(profileLease: nil)(shiftH))
+        XCTAssertFalse(
+            value.canvasPartStateKeyHandler(profileLease: nil)(
+                .init(keyCode: 4, characters: "h", modifiers: [.command])))
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(h))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.filter(\.isVisible).map(\.id), [])
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(h))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.filter(\.isVisible).map(\.id), ["p", "q"])
+
+        value.selectGraph(nodes: ["a", "x"], edges: [])
+        try await settle(value)
+        XCTAssertFalse(value.canvasPartStateKeyHandler(profileLease: nil)(h))
+        XCTAssertFalse(value.canvasPartStateKeyHandler(profileLease: nil)(shiftH))
+        value.select("a")
+        try await settle(value)
+        let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+        value.updateCanvasHover(at: projection.point(for: .init(x: 0.8, y: 0.5, z: 0.5)), projection: projection)
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(shiftH))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.filter(\.isVisible).map(\.id), ["q"])
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(shiftH))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.filter(\.isVisible).map(\.id), ["p", "q"])
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["a"])
+        for _ in 0..<4 {
+            value.undo()
+            try await settle(value)
+        }
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
     func testCanvasAxisKeysToggleOnlyWindowLocksWithoutEditingSelectionOrSource() async throws {
         let original = try source().encoded()
         let value = store()
