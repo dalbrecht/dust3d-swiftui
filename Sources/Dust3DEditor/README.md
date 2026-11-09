@@ -7,7 +7,7 @@ For headless output, pass one `.ds3` archive and one or more `.ds3`, `.obj` or
 `.fbx` destinations to the editor executable. `-o` and `-output` are interchangeable.
 
 ```sh
-Dust3DEditor input.ds3 -o copy.ds3 -output model.obj -o model.fbx
+Dust3DEditor input.ds3 -o copy.ds3 -output model.obj -o model.fbx --geometry-fbx geometry.fbx
 Dust3DEditor input.ds3 -paste-xml fragment.xml -o edited.ds3
 Dust3DEditor -paste-xml fragment.xml -o new.ds3
 ```
@@ -20,7 +20,9 @@ links. The command processes destinations in argument order and replaces individ
 archive files atomically. A failed destination is reported and the command continues
 with later destinations.
 
-OBJ and FBX write static procedural geometry. A `.glb` destination reports an
+OBJ writes static procedural geometry. FBX includes baked procedural textures and
+UVs by default, as in Qt. Use `--geometry-fbx output.fbx` for geometry only.
+The `--textured-fbx` spelling is also accepted. A `.glb` destination reports an
 unavailable export and later destinations are still processed. Exit status `0`
 means all outputs succeeded, `1` means an input or output failed, and `2` means
 a usage or path preflight error.

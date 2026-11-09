@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Headless FBX includes procedural textures and UVs by default. Use `--geometry-fbx` for geometry only.
+
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.

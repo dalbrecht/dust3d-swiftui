@@ -6,7 +6,9 @@ import Foundation
 
 /// Processes ordered outputs from one owned source archive before the editor creates any windows.
 enum EditorHeadlessDS3SaveCommand {
-    private static let outputOptions = ["-o", "-output"]
+    private static let geometryFBXOption = "--geometry-fbx"
+    private static let texturedFBXOption = "--textured-fbx"
+    private static let outputOptions = ["-o", "-output", geometryFBXOption, texturedFBXOption]
 
     private enum OutputKind: String {
         case ds3, obj, fbx, glb
@@ -24,7 +26,7 @@ enum EditorHeadlessDS3SaveCommand {
             case .usage:
                 "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment.xml] -o output.ds3 [-output another ...]. "
                     + "Supply one input archive or XML fragment and up to 64 distinct destinations. "
-                    + "Use .ds3 for a source copy, or .obj and .fbx for static geometry."
+                    + "Use --geometry-fbx for geometry-only FBX. Ordinary .fbx includes procedural textures."
             case .unsafeOutput(let url):
                 "Destination must be a regular file distinct from all inputs and other outputs: \(url.path)"
             case .geometryUnavailable(let kind):
@@ -40,7 +42,7 @@ enum EditorHeadlessDS3SaveCommand {
     private struct Invocation {
         var source: URL?
         var xml: URL?
-        var destinations: [(url: URL, kind: OutputKind)] = []
+        var destinations: [(url: URL, kind: OutputKind, geometryOnly: Bool)] = []
 
         init(options: ArraySlice<String>) throws {
             var options = options
@@ -52,7 +54,11 @@ enum EditorHeadlessDS3SaveCommand {
                     guard destinations.count < 64 else { throw Failure.usage }
                     let url = try Self.path(options.popFirst())
                     guard let kind = OutputKind(rawValue: url.pathExtension.lowercased()) else { throw Failure.usage }
-                    destinations.append((url, kind))
+                    let geometryOnly = argument == EditorHeadlessDS3SaveCommand.geometryFBXOption
+                    if geometryOnly || argument == EditorHeadlessDS3SaveCommand.texturedFBXOption {
+                        guard kind == .fbx else { throw Failure.usage }
+                    }
+                    destinations.append((url, kind, geometryOnly))
                 } else if parsesOptions, argument == "-paste-xml" {
                     guard xml == nil else { throw Failure.usage }
                     xml = try Self.path(options.popFirst(), extension: "xml")
@@ -122,7 +128,7 @@ enum EditorHeadlessDS3SaveCommand {
 
         let exports = geometryEncoder.map { DocumentExportFileService(encoder: $0) }
         var status: Int32 = 0
-        for (destination, kind) in invocation.destinations {
+        for (destination, kind, geometryOnly) in invocation.destinations {
             do {
                 switch kind {
                 case .ds3:
@@ -130,8 +136,9 @@ enum EditorHeadlessDS3SaveCommand {
                     stdout("Saved \(destination.path)\n")
                 case .obj, .fbx:
                     guard let exports else { throw Failure.geometryUnavailable(kind) }
+                    let format: DocumentExportFormat = kind == .obj ? .obj : .fbxTextured
                     let artifact = try await exports.export(
-                        document, format: kind == .obj ? .obj : .fbx, to: destination, sourceURL: invocation.source)
+                        document, format: geometryOnly ? .fbx : format, to: destination, sourceURL: invocation.source)
                     stdout("Exported \(destination.path)\n")
                     if !artifact.warning.isEmpty {
                         stderr("Export note for \(destination.path): \(artifact.warning)\n")
@@ -172,7 +179,7 @@ enum EditorHeadlessDS3SaveCommand {
         let inputs = [invocation.source, invocation.xml].compactMap { $0 }.map { $0.resolvingSymlinksInPath() }
         var paths = Set(inputs.map(pathKey))
         var identities = Set(try inputs.compactMap { try fileIdentity($0, isDestination: false) })
-        for (destination, _) in invocation.destinations {
+        for (destination, _, _) in invocation.destinations {
             guard paths.insert(pathKey(destination)).inserted else { throw Failure.unsafeOutput(destination) }
             if let identity = try fileIdentity(destination, isDestination: true), !identities.insert(identity).inserted
             {

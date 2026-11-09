@@ -174,6 +174,37 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         }
     }
 
+    func testHeadlessFBXDefaultsToTexturesAndOffersExplicitGeometry() async throws {
+        let directory = try temporaryDirectory()
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Dust3DKitTests/Fixtures/Capsule.ds3")
+        let geometry = directory.appendingPathComponent("geometry.fbx")
+        let textured = directory.appendingPathComponent("textured.FBX")
+        let alias = directory.appendingPathComponent("alias.fbx")
+        let original = try Data(contentsOf: fixture)
+
+        let result = await run(
+            [
+                "Editor", fixture.path, "-o", textured.path, "--geometry-fbx", geometry.path, "--textured-fbx",
+                alias.path,
+            ], geometryEncoder: NativeGeometryExportEncoder())
+        XCTAssertEqual(result.status, 0)
+        XCTAssertEqual(result.output.count, 3)
+        XCTAssertTrue(result.errors.isEmpty)
+        let uvNode = Data("LayerElementUV".utf8)
+        XCTAssertNotNil(try Data(contentsOf: textured).range(of: uvNode))
+        XCTAssertNil(try Data(contentsOf: geometry).range(of: uvNode))
+        XCTAssertEqual(try Data(contentsOf: alias), try Data(contentsOf: textured))
+        XCTAssertEqual(try Data(contentsOf: fixture), original)
+
+        let invalid = await run(
+            ["Editor", fixture.path, "--geometry-fbx", geometry.path, "-o", geometry.path],
+            geometryEncoder: NativeGeometryExportEncoder())
+        XCTAssertEqual(invalid.status, 2)
+        XCTAssertTrue(invalid.output.isEmpty)
+        XCTAssertNil(try Data(contentsOf: geometry).range(of: uvNode))
+    }
+
     func testDefaultEncoderExportsGeometryAndContinuesAfterUnavailableGLB() async throws {
         let directory = try temporaryDirectory()
         let source = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -189,7 +220,9 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         var errors: [String] = []
 
         let status = await EditorHeadlessDS3SaveCommand.run(
-            arguments: ["Editor", source.path, "-o", obj.path, "-o", glb.path, "-o", fbx.path, "-o", copy.path],
+            arguments: [
+                "Editor", source.path, "-o", obj.path, "-o", glb.path, "--geometry-fbx", fbx.path, "-o", copy.path,
+            ],
             stdout: { messages.append($0) }, stderr: { errors.append($0) })
 
         XCTAssertEqual(status, 1)
@@ -267,7 +300,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: glb.path))
         XCTAssertEqual(try Data(contentsOf: saved), original)
         let calls = await encoder.calls
-        XCTAssertEqual(calls.map(\.format), [.obj, .fbx])
+        XCTAssertEqual(calls.map(\.format), [.obj, .fbxTextured])
         XCTAssertEqual(calls.map(\.archive), [original, original])
     }
 
@@ -322,7 +355,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let archive = try Data(contentsOf: saved)
         XCTAssertEqual(try Dust3DDocument(data: archive).editorContents().nodes.count, 1)
         let calls = await encoder.calls
-        XCTAssertEqual(calls.map(\.format), [.fbx])
+        XCTAssertEqual(calls.map(\.format), [.fbxTextured])
         XCTAssertEqual(calls.map(\.archive), [archive])
     }
 

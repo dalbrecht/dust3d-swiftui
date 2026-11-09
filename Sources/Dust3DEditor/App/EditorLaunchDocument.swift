@@ -46,7 +46,7 @@ enum EditorLaunchRequest: Sendable, Equatable {
                 case "--":
                     parsesOptions = false
                     acceptsPositionals = true
-                case "-o", "-output":
+                case "-o", "-output", "--textured-fbx", "--geometry-fbx":
                     throw .unsupportedExportArgument
                 case "-paste-xml":
                     guard pasteXML == nil, let operand = arguments.popFirst(), !operand.hasPrefix("-"),
