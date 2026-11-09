@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Editor menu shortcuts for Wireframe, Automatic Rotation, and preview zoom.
+
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.

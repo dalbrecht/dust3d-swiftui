@@ -3,6 +3,15 @@ import XCTest
 @testable import Dust3DEditor
 
 final class KeyboardShortcutHelpTests: XCTestCase {
+    func testPreviewMenuKeysUseEditorWindowScope() {
+        for (action, keys) in [("Wireframe", "W"), ("Rotate Preview Automatically", "R"), ("Zoom Preview", "⌥- / ⌥=")] {
+            let entry = KeyboardShortcutHelp.matching(action).first { $0.action == action }
+            XCTAssertEqual(entry?.keys, keys)
+            XCTAssertEqual(
+                entry?.scope, "Focused editor window, outside text and animation controls and with no modal dialog")
+        }
+    }
+
     func testInspectorVisibilityShortcutMatchesNativeWindowCommand() throws {
         let entry = try XCTUnwrap(KeyboardShortcutHelp.entries.first { $0.action == "Show / Hide Inspector" })
         XCTAssertEqual(entry.keys, "⌃⌘I")
