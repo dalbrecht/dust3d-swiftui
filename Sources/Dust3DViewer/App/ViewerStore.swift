@@ -46,6 +46,7 @@ final class ViewerStore {
 
     private(set) var documentName = "Dust3D Viewer"
     private(set) var isLoading = false
+    var pendingOpenRevision: Int? { isLoading ? revision : nil }
     private(set) var isBakingMaterials = false
     var isUpdatingMaterials: Bool {
         isBakingMaterials
@@ -77,7 +78,6 @@ final class ViewerStore {
 
     func open(_ url: URL) {
         loadTask?.cancel()
-        clearMaterials()
         revision += 1
         let requestedRevision = revision
         isLoading = true
@@ -100,6 +100,14 @@ final class ViewerStore {
                 isLoading = false
             }
         }
+    }
+
+    func cancelOpen(revision: Int) {
+        guard pendingOpenRevision == revision else { return }
+        self.revision += 1
+        loadTask?.cancel()
+        loadTask = nil
+        isLoading = false
     }
 
     func retryMaterials() {
