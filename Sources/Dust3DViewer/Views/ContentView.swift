@@ -20,8 +20,11 @@ struct ContentView: View {
                         .accessibilityHidden(true)
                     Text(message).textSelection(.enabled)
                     Spacer()
+                    if let failure = store.openFailure {
+                        Button("Try Again") { store.retryOpen(failure) }
+                    }
                     Button("Dismiss") {
-                        store.errorMessage = nil
+                        store.dismissFileError()
                         rendererError = nil
                     }
                 }
@@ -135,7 +138,7 @@ struct ContentView: View {
         .fileImporter(isPresented: $isImporterPresented, allowedContentTypes: [.dust3DDocument]) { result in
             switch result {
             case .success(let url): store.open(url)
-            case .failure(let error): store.errorMessage = error.localizedDescription
+            case .failure(let error): store.reportFilePickerError(error)
             }
         }
         .onOpenURL { store.open($0) }
