@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Focus 3D Preview to the Editor’s View menu.
+
 - Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
