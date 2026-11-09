@@ -1007,7 +1007,7 @@ public actor EditorSession {
     /// Apply a selected XML file only to the source captured before presenting its picker.
     package func pasteQtXMLFile(
         _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil, selectsEditableGraph: Bool = true,
-        clearsMissingCutFaces: Bool = false
+        clearsMissingCutFaces: Bool = false, settlesNewDocumentOrigin: Bool = false
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
         guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
@@ -1018,12 +1018,12 @@ public actor EditorSession {
         }
         return try pasteQtSnapshot(
             snapshotXML, allowsEmptyGraph: true, parentID: parentID, selectsEditableGraph: selectsEditableGraph,
-            clearsMissingCutFaces: clearsMissingCutFaces)
+            clearsMissingCutFaces: clearsMissingCutFaces, settlesNewDocumentOrigin: settlesNewDocumentOrigin)
     }
 
     private func pasteQtSnapshot(
         _ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?, selectsEditableGraph: Bool,
-        clearsMissingCutFaces: Bool
+        clearsMissingCutFaces: Bool, settlesNewDocumentOrigin: Bool = false
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
@@ -1044,7 +1044,9 @@ public actor EditorSession {
                 fragment
             }
         let payload = try NodeClipboardPayload(fragment: prepared, identifier: identifier)
-        let next = try paste(payload: payload, parentID: parentID, selectsEditableGraph: selectsEditableGraph)
+        let next = try paste(
+            payload: payload, parentID: parentID, selectsEditableGraph: selectsEditableGraph,
+            settlesNewDocumentOrigin: settlesNewDocumentOrigin)
         lastQtTransfer = (Data(snapshotXML), identifier)
         return next
     }
@@ -1093,7 +1095,8 @@ public actor EditorSession {
     }
 
     private func paste(
-        payload: NodeClipboardPayload, parentID: String?, selectsEditableGraph: Bool = false
+        payload: NodeClipboardPayload, parentID: String?, selectsEditableGraph: Bool = false,
+        settlesNewDocumentOrigin: Bool = false
     ) throws -> EditorSnapshot {
         guard let state else { throw EditorError.notLoaded }
         let fragment = payload.fragment
@@ -1113,13 +1116,17 @@ public actor EditorSession {
             }
         }
         let selected = Set(fragment.selectedNodeIDs.compactMap { identities[$0] })
+        var commands: [DocumentCommand] = [
+            .pasteNodes(
+                clipboard: fragment, identities: identities,
+                offset: .init(x: 0, y: distance, z: distance), partitions: partitions)
+        ]
+        if settlesNewDocumentOrigin, state.snapshot.nodes.isEmpty, !contents.nodes.isEmpty {
+            let center = try OriginSettlement.center(of: contents.nodes.map(\.value))
+            commands.append(.setOrigin(.init(x: center.x, y: center.y + distance, z: center.z + distance)))
+        }
         let next = try updateWithResult(checkCancellationBeforePublication: true) { state in
-            try state.apply(
-                [
-                    .pasteNodes(
-                        clipboard: fragment, identities: identities,
-                        offset: .init(x: 0, y: distance, z: distance), partitions: partitions)
-                ], pasteParentID: parentID)
+            try state.apply(commands, pasteParentID: parentID)
             if selectsEditableGraph {
                 let snapshot = state.snapshot
                 let pastedEdges = Set(contents.edges.compactMap { identities[$0.id] })

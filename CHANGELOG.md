@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Settle the origin when launching the Editor with a Qt XML fragment and no document, in the same Undo step as the paste.
+
 - Clear missing cut-face links when opening the Editor with a Qt XML fragment.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
