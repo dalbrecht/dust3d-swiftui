@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Let the focused Viewer cancel a pending open or material update with Escape.
+
 - Let Viewer users retry a failed 3D preview while keeping the accepted model and camera.
 
 - Let Viewer users cancel a material update and retry it while keeping the model visible.
