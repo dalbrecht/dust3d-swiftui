@@ -63,8 +63,9 @@ struct ContentView: View {
             if let issue = store.materialIssue {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Showing geometry without materials")
+                        Text(ViewerErrorAnnouncement.materialFallbackTitle)
                         Text(issue).textSelection(.enabled)
                     }
                     Spacer()
@@ -105,7 +106,10 @@ struct ContentView: View {
                 .accessibilityIdentifier("material-source-notice")
             }
         }
-        .background(ViewerErrorAnnouncement(message: visibleError).frame(width: 0, height: 0))
+        .background(
+            ViewerErrorAnnouncement(message: visibleError, materialIssue: store.materialIssue)
+                .frame(width: 0, height: 0)
+        )
         .frame(minWidth: 650, minHeight: 450)
         .navigationTitle(store.documentName)
         .toolbar {

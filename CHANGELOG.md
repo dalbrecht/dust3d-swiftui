@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Announce when the active Viewer falls back to geometry without materials.
+
 - Announce new Viewer errors in the active window with VoiceOver.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
