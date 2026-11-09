@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep the active preview gesture in control when mouse and trackpad input overlap.
+
 - End preview camera gestures and pending picks when keyboard focus leaves the viewport.
 
 - Let Escape cancel active preview trackpad gestures and ignore their late events.

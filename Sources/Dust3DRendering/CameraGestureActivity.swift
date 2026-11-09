@@ -21,7 +21,11 @@ struct CameraGestureActivity {
         }
     }
     mutating func cancel() {
-        if isActive { discardsContinuation = true }
+        if isActive { discardContinuation() }
+    }
+
+    mutating func discardContinuation() {
+        discardsContinuation = true
         isActive = false
     }
 }

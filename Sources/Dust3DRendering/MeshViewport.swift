@@ -545,6 +545,10 @@ public class InteractiveMeshView: MTKView {
         phase: NSEvent.Phase, update: (inout OrbitCamera) -> Bool
     ) {
         let phase = cameraGesturePhase(phase)
+        guard lastDragLocation == nil else {
+            if phase != .none { gestureActivity.discardContinuation() }
+            return
+        }
         guard phase != .cancelled else {
             cancelCameraInteraction()
             automaticOrbitBinding.cameraInputChanged()
@@ -627,7 +631,7 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func mouseDown(with event: NSEvent) {
-        guard !isMiddleButtonDragging else { return }
+        guard !isMiddleButtonDragging, !gestureActivity.isActive else { return }
         window?.makeFirstResponder(self)
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
@@ -691,7 +695,7 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func mouseUp(with event: NSEvent) {
-        guard !isMiddleButtonDragging else { return }
+        guard !isMiddleButtonDragging, lastDragLocation != nil else { return }
         if event.modifierFlags.contains(.shift) { pickGesture.disallowClick() }
         let callback = pressedPick
         if cameraInteractionAllowed(), let lease = pickLease,
@@ -715,7 +719,7 @@ public class InteractiveMeshView: MTKView {
             super.otherMouseDown(with: event)
             return
         }
-        guard lastDragLocation == nil else { return }
+        guard !isDraggingCamera else { return }
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
             return
@@ -755,7 +759,7 @@ public class InteractiveMeshView: MTKView {
             super.scrollWheel(with: event)
             return
         }
-        guard lastDragLocation == nil else { return }
+        guard !isDraggingCamera else { return }
         cancelPicking()
         automaticOrbitBinding.cameraInputChanged()
         orbitCamera.zoom(delta: delta)
