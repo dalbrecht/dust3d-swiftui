@@ -57,6 +57,12 @@ enum KeyboardShortcutHelp {
     static func matching(_ query: String, in entries: [Entry] = entries) -> [Entry] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return entries }
+        let exactKeys = entries.filter { entry in
+            entry.keys.split(separator: "/").contains {
+                $0.trimmingCharacters(in: .whitespaces).caseInsensitiveCompare(query) == .orderedSame
+            }
+        }
+        if !exactKeys.isEmpty { return exactKeys }
         return entries.filter {
             [$0.action, $0.keys, $0.scope].contains { $0.localizedCaseInsensitiveContains(query) }
         }
