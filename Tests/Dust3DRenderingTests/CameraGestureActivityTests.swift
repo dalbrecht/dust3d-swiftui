@@ -6,7 +6,7 @@ final class CameraGestureActivityTests: XCTestCase {
     func testContinuousPhasesRemainActiveAcrossGestureReinterpretation() {
         var activity = CameraGestureActivity()
         XCTAssertFalse(activity.isActive)
-        for phase in [CameraGestureActivity.Phase.mayBegin, .began, .changed, .stationary, .changed] {
+        for phase in [CameraGestureActivity.Phase.began, .changed, .stationary, .changed] {
             activity.update(phase)
             XCTAssertTrue(activity.isActive)
         }
@@ -41,7 +41,10 @@ final class CameraGestureActivityTests: XCTestCase {
         activity.cancel()
         XCTAssertFalse(activity.isActive)
         activity.cancel()
-        activity.update(.mayBegin)
+        XCTAssertFalse(activity.admits(.mayBegin))
+        XCTAssertFalse(activity.admits(.changed))
+        XCTAssertTrue(activity.admits(.began))
+        activity.update(.began)
         XCTAssertTrue(activity.isActive)
     }
 }
