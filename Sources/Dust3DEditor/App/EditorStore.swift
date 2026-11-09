@@ -2808,7 +2808,7 @@ final class EditorStore {
     func reverseEdge(_ id: String) { perform { try await $0.apply([.reverseEdges([id])]) } }
 
     var canCopyNodes: Bool { !isWorking && snapshot?.canCopyNodes == true }
-    var canCutNodes: Bool { canSave && snapshot?.canCutNodes == true }
+    var canCutNodes: Bool { canSave && !isSelectingRigEdges && snapshot?.canCutNodes == true }
 
     /// Clipboard promise registration succeeds before a Cut can mutate the document.
     func copyNodes(cut: Bool = false, to pasteboard: any EditorClipboardWriting) {
@@ -2848,11 +2848,12 @@ final class EditorStore {
     struct ClipboardPasteRequest: Hashable, Sendable {
         fileprivate let context: CanvasAdjustmentTarget
         fileprivate let workingGroupRevision: UUID
+        fileprivate let rigSelectionEpoch: UUID
         fileprivate let parentID: String?
     }
 
     func clipboardPasteRequest() -> ClipboardPasteRequest? {
-        guard canSave, let snapshot, case .success(let accepted) = recoveryLoadResult,
+        guard canSave, !isSelectingRigEdges, let snapshot, case .success(let accepted) = recoveryLoadResult,
             accepted.documentIdentity == snapshot.documentIdentity
         else { return nil }
         let parentID: String?
@@ -2864,7 +2865,7 @@ final class EditorStore {
         }
         return ClipboardPasteRequest(
             context: CanvasAdjustmentTarget(snapshot: snapshot), workingGroupRevision: workingGroupRevision,
-            parentID: parentID)
+            rigSelectionEpoch: rigEdgeSelectionEpoch, parentID: parentID)
     }
 
     func pasteNodes(data: Data) {
@@ -2899,9 +2900,10 @@ final class EditorStore {
     }
 
     private func isCurrentQtXMLFileSource(_ request: QtXMLFilePasteRequest) -> Bool {
-        guard !stopped, let snapshot, case .success(let accepted) = recoveryLoadResult,
+        guard !stopped, !isSelectingRigEdges, let snapshot, case .success(let accepted) = recoveryLoadResult,
             accepted.fileIdentity == request.fileIdentity, accepted.documentIdentity == snapshot.documentIdentity,
             request.clipboard.workingGroupRevision == workingGroupRevision,
+            request.clipboard.rigSelectionEpoch == rigEdgeSelectionEpoch,
             request.clipboard.context.isCurrent(in: snapshot)
         else { return false }
         if let parentID = request.clipboard.parentID { return snapshot.addPlacementGroup(parentID) != nil }
@@ -2949,7 +2951,8 @@ final class EditorStore {
 
     @discardableResult
     func applyStartupQtXML(_ data: Data, fileIdentity: UUID) -> Task<Void, Never>? {
-        guard !Task.isCancelled, !isWorking, qtXMLFilePasteRequest == nil, let snapshot = acceptedDocumentSource,
+        guard !Task.isCancelled, !isWorking, !isSelectingRigEdges, qtXMLFilePasteRequest == nil,
+            let snapshot = acceptedDocumentSource,
             snapshot.documentRevision == 0, case .success(let accepted) = recoveryLoadResult,
             accepted.fileIdentity == fileIdentity
         else { return nil }
