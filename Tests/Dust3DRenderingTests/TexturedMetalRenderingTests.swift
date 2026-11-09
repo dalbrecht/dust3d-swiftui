@@ -393,6 +393,27 @@ final class TexturedMetalRenderingTests: XCTestCase {
         XCTAssertGreaterThan(Int(original[center + 2]), Int(original[center]) + 50, "Base-only rendering remains red")
     }
 
+    func testNeutralProceduralColorUsesVertexAlphaInsteadOfAtlasAlpha() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        for (atlasAlpha, vertexAlpha): (UInt8, UInt8) in [(64, 255), (255, 64)] {
+            let baked = try BakedMetalFixture.quad(
+                color: BakedMetalFixture.image([255, 0, 0, atlasAlpha]),
+                layers: [.init(color: SIMD4(1, 0, 0, Float(vertexAlpha) / 255))])
+            let owner = try await TexturedMetalResourcesBuilder().make(bakedMesh: baked, device: device)
+            let renderer = TexturedMeshRenderer(resources: owner)
+            let colored = try await pixels(renderer, device: device)
+            XCTAssertEqual(pixel(colored, x: 64, y: 64)[3], Int(atlasAlpha))
+
+            renderer.showsColor = false
+            let neutral = try await pixels(renderer, device: device)
+            XCTAssertEqual(pixel(neutral, x: 64, y: 64)[3], Int(vertexAlpha))
+
+            renderer.showsColor = true
+            let restored = try await pixels(renderer, device: device)
+            XCTAssertEqual(restored, colored)
+        }
+    }
+
     func testNeutralColorPreservesSourceAlphaPoliciesAndRestoresEveryMaterialMap() async throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
         for mode in [ImportedAlphaMode.opaque, .mask, .blend] {

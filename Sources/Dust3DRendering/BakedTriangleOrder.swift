@@ -1,7 +1,7 @@
 import Dust3DKit
 import simd
 
-struct BakedDrawBatch: Sendable {
+struct BakedDrawBatch: Sendable, Equatable {
     let policy: SourceBakedPolicy?
     let parameters: SIMD4<Float>
     let indexOffset: Int
@@ -29,8 +29,8 @@ struct BakedDrawIndices: Sendable {
 
 /// Opaque indices retain source order. Transparent triangles sort in view space;
 /// intersecting/coplanar transparent surfaces remain a documented sorting limit.
-struct BakedTriangleOrder: Sendable {
-    private struct Triangle: Sendable {
+struct BakedTriangleOrder: Sendable, Equatable {
+    private struct Triangle: Sendable, Equatable {
         let indices: SIMD3<UInt32>
         let center: SIMD3<Float>
         let ordinal: Int
@@ -42,7 +42,7 @@ struct BakedTriangleOrder: Sendable {
     private let transparent: [Triangle]
     var transparentIndexCount: Int { transparent.count * 3 }
 
-    init(geometry: TexturedRenderGeometry, hasTransparentColor: Bool) throws {
+    init(geometry: TexturedRenderGeometry, hasTransparentColor: Bool, usesAtlasAlpha: Bool = true) throws {
         var opaque: [Triangle] = []
         var transparent: [Triangle] = []
         for ordinal in 0..<geometry.metadata.triangleCount {
@@ -53,7 +53,7 @@ struct BakedTriangleOrder: Sendable {
             let second = geometry.vertices[Int(indices.y)]
             let third = geometry.vertices[Int(indices.z)]
             let observedTransparency =
-                geometry.metadata.hasMapping(at: ordinal)
+                usesAtlasAlpha && geometry.metadata.hasMapping(at: ordinal)
                 ? hasTransparentColor : (first.color.w < 1 || second.color.w < 1 || third.color.w < 1)
             let policy = geometry.metadata.policy(at: ordinal)
             let hasTransparency = policy.map { $0.alphaMode == .blend } ?? observedTransparency

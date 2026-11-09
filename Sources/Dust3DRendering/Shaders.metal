@@ -155,7 +155,7 @@ float3 materialDisplay(float3 baseColor, float3 normal, float metal, float rough
     return display;
 }
 
-// Match Qt's warm paper-white inspection mode while leaving the material alpha pass intact.
+// Match Qt's warm paper-white inspection mode.
 float3 neutralPreviewDisplay(float3 normal)
 {
     float key = abs(dot(normal, normalize(float3(-0.5, 0.8, 0.7))));
@@ -170,7 +170,7 @@ fragment float4 bakedMeshFragment(BakedVertexOutput input [[stage_in]],
     texture2d<float> metallicMap [[texture(2)]], texture2d<float> roughnessMap [[texture(3)]],
     texture2d<float> emissiveMap [[texture(4)]], sampler materialSampler [[sampler(0)]])
 {
-    bool mapped = input.textureCoordinate.z > 0.5;
+    bool mapped = input.textureCoordinate.z > 0.5 && uniforms.options.z < 0.5;
     float2 uv = input.textureCoordinate.xy;
     float4 base = mapped ? colorMap.sample(materialSampler, uv) : float4(bakedLinearColor(input.color.rgb), clamp(input.color.a, 0.0, 1.0));
     if (policy.x < 0.5) {

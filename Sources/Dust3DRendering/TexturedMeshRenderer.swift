@@ -41,7 +41,10 @@ final class TexturedMeshRenderer: NSObject, MTKViewDelegate {
     func waitForPendingOrdering() async { await orderingTask?.value }
 
     private func updateOrdering() {
-        guard resources.order.transparentIndexCount > 0 else { return }
+        let neutralOrder = resources.neutralDraws?.order
+        guard resources.order.transparentIndexCount > 0 || (neutralOrder?.transparentIndexCount ?? 0) > 0 else {
+            return
+        }
         orderingRevision += 1
         let revision = orderingRevision
         orderingTask?.cancel()
@@ -51,11 +54,14 @@ final class TexturedMeshRenderer: NSObject, MTKViewDelegate {
         let builder = builder
         orderingTask = Task { [weak self] in
             do {
-                let replacement = try await builder.reorder(order: order, rotation: rotation, device: device)
+                let replacement = try await builder.reorder(
+                    order: order, neutralOrder: neutralOrder, rotation: rotation, device: device)
                 try Task.checkCancellation()
                 guard let self, self.orderingRevision == revision else { return }
                 self.resources.transparentIndices = replacement.buffer
                 self.resources.transparentBatches = replacement.batches
+                self.resources.neutralDraws?.transparentIndices = replacement.neutralBuffer
+                self.resources.neutralDraws?.transparentBatches = replacement.neutralBatches
                 self.orderingError = nil
                 if let view = self.presentationView { view.setNeedsDisplay(view.bounds) }
             } catch is CancellationError {
@@ -117,7 +123,10 @@ final class TexturedMeshRenderer: NSObject, MTKViewDelegate {
         let distance = camera.distance / min(boundedAspect, 1)
         var uniforms = Uniforms(
             transform: camera.transform(aspect: aspect), rotation: camera.rotation,
-            eye: SIMD4(0, 0, distance, 1), options: SIMD4(resources.normalMapEnabled ? 1 : 0, showsColor ? 0 : 1, 0, 0))
+            eye: SIMD4(0, 0, distance, 1),
+            options: SIMD4(
+                resources.normalMapEnabled ? 1 : 0, showsColor ? 0 : 1,
+                !showsColor && resources.usesVertexAlphaInNeutralMode ? 1 : 0, 0))
         encoder.setRenderPipelineState(resources.pipeline)
         encoder.setFrontFacing(.counterClockwise)
         encoder.setCullMode(.none)
@@ -127,13 +136,18 @@ final class TexturedMeshRenderer: NSObject, MTKViewDelegate {
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
         encoder.setFragmentSamplerState(resources.sampler, index: 0)
         for (index, texture) in resources.textures.enumerated() { encoder.setFragmentTexture(texture, index: index) }
-        if let indices = resources.opaqueIndices {
+        let neutral = showsColor ? nil : resources.neutralDraws
+        let opaqueIndices = neutral == nil ? resources.opaqueIndices : neutral?.opaqueIndices
+        let transparentIndices = neutral == nil ? resources.transparentIndices : neutral?.transparentIndices
+        if let indices = opaqueIndices {
             encoder.setDepthStencilState(resources.opaqueDepth)
-            encodeBatches(resources.order.opaqueBatches, indices: indices, encoder: encoder)
+            encodeBatches(
+                neutral?.order.opaqueBatches ?? resources.order.opaqueBatches, indices: indices, encoder: encoder)
         }
-        if let indices = resources.transparentIndices {
+        if let indices = transparentIndices {
             encoder.setDepthStencilState(resources.transparentDepth)
-            encodeBatches(resources.transparentBatches, indices: indices, encoder: encoder)
+            encodeBatches(
+                neutral?.transparentBatches ?? resources.transparentBatches, indices: indices, encoder: encoder)
         }
     }
 
