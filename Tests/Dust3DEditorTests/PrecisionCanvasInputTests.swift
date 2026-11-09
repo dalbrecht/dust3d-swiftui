@@ -25,6 +25,29 @@ import XCTest
         document = try document.applying(.addEdge(id: edge, from: a, to: b))
         return try document.applying(.setOrigin(.init(x: 0.5, y: 0.5, z: 0.5)))
     }
+    func testBackspaceDeletesTheFocusedGraphSelectionWithOneUndo() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let source = try document()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectGraph(nodes: [], edges: [edge])
+        try await settle(store)
+
+        let handler = store.canvasPrecisionKeyHandler()
+        let backspace = "\u{7F}"
+        XCTAssertFalse(handler(.init(keyCode: 51, characters: backspace, modifiers: .option)))
+        XCTAssertTrue(handler(.init(keyCode: 51, characters: backspace, modifiers: [], isRepeat: true)))
+        XCTAssertFalse(store.canUndo)
+        XCTAssertTrue(handler(.init(keyCode: 51, characters: backspace, modifiers: [])))
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.edges.isEmpty == true)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testForwardDeleteRemovesTheCapturedGraphSelectionWithOneUndo() async throws {
         let store = EditorStore()
         defer { store.stop() }

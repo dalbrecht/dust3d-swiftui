@@ -42,6 +42,9 @@ struct CanvasPrecisionKeyInput {
 
     var isAlternateDelete: Bool {
         let editingModifiers = modifiers.intersection([.command, .control, .option, .shift, .function])
+        if characters == "\u{7F}" {  // AppKit's character for the keyboard Delete key
+            return editingModifiers.isEmpty
+        }
         if characters == "\u{F728}" {  // AppKit's forward-delete function character
             return editingModifiers.isEmpty || editingModifiers == .function
         }
