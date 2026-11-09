@@ -259,6 +259,30 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertLessThan(view.orbitCamera.distance, initial)
     }
 
+    func testPointerOrbitRetainsItsDirectionUntilTheNextPressAcrossAPole() throws {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        view.orbitCamera = OrbitCamera(yaw: 0, pitch: 1.5)
+        func mouse(_ type: NSEvent.EventType, x: CGFloat, y: CGFloat) throws -> NSEvent {
+            try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: type, location: CGPoint(x: x, y: y), modifierFlags: [], timestamp: 0, windowNumber: 0,
+                    context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+        }
+
+        view.mouseDown(with: try mouse(.leftMouseDown, x: 100, y: 100))
+        view.mouseDragged(with: try mouse(.leftMouseDragged, x: 100, y: 75))
+        XCTAssertGreaterThan(view.orbitCamera.pitch, .pi / 2)
+        view.mouseDragged(with: try mouse(.leftMouseDragged, x: 120, y: 75))
+        XCTAssertGreaterThan(view.orbitCamera.yaw, 0)
+        view.mouseUp(with: try mouse(.leftMouseUp, x: 120, y: 75))
+
+        let yaw = view.orbitCamera.yaw
+        view.mouseDown(with: try mouse(.leftMouseDown, x: 120, y: 75))
+        view.mouseDragged(with: try mouse(.leftMouseDragged, x: 140, y: 75))
+        XCTAssertLessThan(view.orbitCamera.yaw, yaw)
+        view.mouseUp(with: try mouse(.leftMouseUp, x: 140, y: 75))
+    }
+
     func testDefaultExpandedAndIndexedViewportValuesHaveNoOwner() {
         let mesh = Mesh(vertices: [], nodeCount: 0, partCount: 0, warning: "")
         let ordinary = MeshViewport(mesh: mesh, isWireframe: false, cameraReset: 0, onError: { _ in })

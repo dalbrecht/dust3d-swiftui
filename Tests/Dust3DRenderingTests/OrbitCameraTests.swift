@@ -54,11 +54,22 @@ final class OrbitCameraTests: XCTestCase {
         XCTAssertTrue(isInside(.zero, transform: camera.transform(aspect: 0.01)))
         camera.zoom(delta: 10_000)
         XCTAssertEqual(camera.distance, 1.25)
-        camera.orbit(horizontal: 0, vertical: 10_000)
-        XCTAssertEqual(camera.pitch, 1.5)
-        camera.orbit(horizontal: 0, vertical: -10_000)
-        XCTAssertEqual(camera.pitch, -1.5)
         XCTAssertTrue(isInside(.zero, transform: camera.transform(aspect: 0.01)))
+    }
+
+    func testVerticalOrbitCanInspectTopUndersideAndInvertedViews() {
+        for pitch in [-Float.pi / 2, Float.pi / 2, Float.pi] {
+            var camera = OrbitCamera(yaw: 0, pitch: 0)
+            camera.orbit(horizontal: 0, vertical: pitch / 0.01)
+            let up = camera.rotation * SIMD4<Float>(0, 1, 0, 0)
+            XCTAssertEqual(up.y, cos(pitch), accuracy: 0.000001)
+            XCTAssertEqual(up.z, sin(pitch), accuracy: 0.000001)
+        }
+        var camera = OrbitCamera(yaw: 0, pitch: 0.15)
+        camera.orbit(horizontal: 0, vertical: 10_000)
+        XCTAssertLessThanOrEqual(abs(camera.pitch), .pi)
+        camera.orbit(horizontal: 0, vertical: -10_000)
+        XCTAssertEqual(camera.pitch, 0.15, accuracy: 0.00001)
     }
 
     func testExtremePortraitZoomRetainsDistinctFrontAndBackDepths() {

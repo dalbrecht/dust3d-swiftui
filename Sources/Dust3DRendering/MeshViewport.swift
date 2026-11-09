@@ -520,6 +520,7 @@ public class InteractiveMeshView: MTKView {
     var cameraReset = 0
     private var lastDragLocation: CGPoint?
     private var isMiddleButtonDragging = false
+    private var reversesHorizontalOrbit = false
     var isDraggingCamera: Bool { lastDragLocation != nil || gestureActivity.isActive }
 
     /// Lifecycle loss discards incomplete input before automatic orbit reconciles.
@@ -625,13 +626,20 @@ public class InteractiveMeshView: MTKView {
             if event.modifierFlags.contains(.shift) { pickGesture.disallowClick() }
             pressedPick = onPick
         }
-        lastDragLocation = event.locationInWindow
+        beginCameraDrag(at: event.locationInWindow)
+    }
+
+    private func beginCameraDrag(at location: CGPoint) {
+        // Hold the direction from the press so crossing a pole does not reverse a continuous drag.
+        reversesHorizontalOrbit = abs(orbitCamera.pitch.remainder(dividingBy: 2 * .pi)) > .pi / 2
+        lastDragLocation = location
         automaticOrbitBinding.cameraInputChanged()
     }
 
     private func dragCamera(by delta: SIMD2<Float>, pans: Bool) {
         var camera = orbitCamera
-        guard camera.drag(by: delta, viewport: SIMD2(Float(bounds.width), Float(bounds.height)), pans: pans) else {
+        let motion = !pans && reversesHorizontalOrbit ? SIMD2(-delta.x, delta.y) : delta
+        guard camera.drag(by: motion, viewport: SIMD2(Float(bounds.width), Float(bounds.height)), pans: pans) else {
             return
         }
         orbitCamera = camera
@@ -702,8 +710,7 @@ public class InteractiveMeshView: MTKView {
         }
         window?.makeFirstResponder(self)
         isMiddleButtonDragging = true
-        lastDragLocation = event.locationInWindow
-        automaticOrbitBinding.cameraInputChanged()
+        beginCameraDrag(at: event.locationInWindow)
     }
 
     public override func otherMouseDragged(with event: NSEvent) {

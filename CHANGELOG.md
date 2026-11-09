@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Orbit the preview through the top and underside of the model.
+
 - Keep an active preview drag in progress when the scroll wheel moves.
 
 - Orbit the preview with a middle-button drag, or hold Shift to pan.

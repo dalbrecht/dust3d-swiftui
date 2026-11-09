@@ -20,7 +20,7 @@ struct OrbitCamera {
 
     mutating func orbit(horizontal: Float, vertical: Float) {
         yaw += horizontal * 0.01
-        pitch = min(1.5, max(-1.5, pitch + vertical * 0.01))
+        pitch = (pitch + vertical * 0.01).remainder(dividingBy: 2 * .pi)
     }
 
     mutating func zoom(delta: Float) {
