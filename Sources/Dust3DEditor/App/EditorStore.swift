@@ -1118,6 +1118,34 @@ final class EditorStore {
         return ReferenceCompositionTarget(snapshot: source)
     }
 
+    func referenceImageMenuActions(
+        fileIdentity: UUID, ownsWindow: @escaping @MainActor () -> Bool,
+        compose: @escaping @MainActor (ReferenceCompositionTarget) -> Void
+    ) -> ReferenceImageMenuActions? {
+        guard canSave, let source = acceptedDocumentSource, case .success(let accepted) = recoveryLoadResult,
+            accepted.fileIdentity == fileIdentity, ownsWindow()
+        else { return nil }
+        let documentIdentity = source.documentIdentity
+        let revision = source.documentRevision
+        let constraintRevision = source.constraintRevision
+        let target = ReferenceCompositionTarget(snapshot: source)
+        let isCurrent: @MainActor () -> Bool = { [weak self] in
+            guard let self, self.canSave, ownsWindow(), let current = self.acceptedDocumentSource else { return false }
+            return current.documentIdentity == documentIdentity && current.documentRevision == revision
+                && current.constraintRevision == constraintRevision
+        }
+        let remove: @MainActor () -> Void = { [weak self] in
+            guard isCurrent() else { return }
+            self?.removeReferenceImage()
+        }
+        return ReferenceImageMenuActions(
+            compose: {
+                guard isCurrent() else { return }
+                compose(target)
+            },
+            remove: source.document.hasReferenceImage ? remove : nil)
+    }
+
     func getStartedAdmission(fileIdentity: UUID) -> (@MainActor () -> Bool)? {
         guard let source = getStartedSource(fileIdentity: fileIdentity) else { return nil }
         let target = CanvasAdjustmentTarget(snapshot: source)

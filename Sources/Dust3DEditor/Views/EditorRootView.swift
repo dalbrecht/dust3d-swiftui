@@ -55,7 +55,13 @@ struct EditorRootView: View {
         let fitAction = toolbarFitAction
         let fileIdentity = file.identity
         let source = $file
-        HStack(spacing: 0) {
+        let referenceImageActions = store.referenceImageMenuActions(
+            fileIdentity: fileIdentity,
+            ownsWindow: { source.wrappedValue.identity == fileIdentity && referenceComposition == nil },
+            compose: { target in
+                referenceComposition = ReferenceCompositionPresentation(target: target)
+            })
+        let documentContent = HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Text("Nodes").font(.headline)
@@ -210,60 +216,63 @@ struct EditorRootView: View {
                     .id(requestID)
             }
         }
-        .focusedSceneValue(\.editorStore, store)
-        .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
-        .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
-        .focusedSceneValue(\.editorRestPreviewActions, restPreviewActions)
-        .focusedSceneValue(
-            \.editorGeometryExportAction,
-            EditorGeometryExportAction(
-                owner: store,
-                canPerform: exportWorkflow.canBegin,
-                perform: { format in exportWorkflow.begin(format: format, sourceURL: sourceURL) },
-                cancel: exportWorkflow.cancellationAction())
-        )
-        .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
-        .onChange(of: store.snapshot?.documentIdentity) { exportWorkflow.sourceDidChange() }
-        .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
-        .task(id: file.identity) {
-            let identifier = file.identity
-            let version = file.saveVersion
-            let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
-            let shouldHidePreviewColors =
-                if let sourceURL {
-                    await claimLaunchNeutralPreview(sourceURL)
-                } else {
-                    false
+        return
+            documentContent
+            .focusedSceneValue(\.editorReferenceImageActions, referenceImageActions)
+            .focusedSceneValue(\.editorStore, store)
+            .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
+            .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
+            .focusedSceneValue(\.editorRestPreviewActions, restPreviewActions)
+            .focusedSceneValue(
+                \.editorGeometryExportAction,
+                EditorGeometryExportAction(
+                    owner: store,
+                    canPerform: exportWorkflow.canBegin,
+                    perform: { format in exportWorkflow.begin(format: format, sourceURL: sourceURL) },
+                    cancel: exportWorkflow.cancellationAction())
+            )
+            .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
+            .onChange(of: store.snapshot?.documentIdentity) { exportWorkflow.sourceDidChange() }
+            .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
+            .task(id: file.identity) {
+                let identifier = file.identity
+                let version = file.saveVersion
+                let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
+                let shouldHidePreviewColors =
+                    if let sourceURL {
+                        await claimLaunchNeutralPreview(sourceURL)
+                    } else {
+                        false
+                    }
+                guard !Task.isCancelled, file.identity == identifier else { return }
+                if shouldHidePreviewColors { store.showsPreviewColor = false }
+                if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+                let recoveryStore = store
+                recoveryRegistrationID = identifier
+                EditorRecoveryCopyRegistry.shared.register(identifier) { [weak recoveryStore] in
+                    guard let recoveryStore else { throw EditorRecoveryCopyError.stopped }
+                    return try recoveryStore.recoverySnapshot(documentID: identifier)
                 }
-            guard !Task.isCancelled, file.identity == identifier else { return }
-            if shouldHidePreviewColors { store.showsPreviewColor = false }
-            if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
-            let recoveryStore = store
-            recoveryRegistrationID = identifier
-            EditorRecoveryCopyRegistry.shared.register(identifier) { [weak recoveryStore] in
-                guard let recoveryStore else { throw EditorRecoveryCopyError.stopped }
-                return try recoveryStore.recoverySnapshot(documentID: identifier)
+                store.onDocumentChanged = { file.data = $0 }
+                store.onEditingChanged = { file.setEditing($0) }
+                await store.load(data: file.data, fileIdentity: identifier)
+                if let launchPaste, !Task.isCancelled, file.identity == identifier, file.saveVersion == version,
+                    launchPaste.document === exportDestinations.attachedDocument,
+                    launchPaste.document.fileURL?.standardizedFileURL == sourceURL?.standardizedFileURL,
+                    !launchPaste.document.isDocumentEdited
+                {
+                    store.applyStartupQtXML(launchPaste.data, fileIdentity: identifier)
+                }
             }
-            store.onDocumentChanged = { file.data = $0 }
-            store.onEditingChanged = { file.setEditing($0) }
-            await store.load(data: file.data, fileIdentity: identifier)
-            if let launchPaste, !Task.isCancelled, file.identity == identifier, file.saveVersion == version,
-                launchPaste.document === exportDestinations.attachedDocument,
-                launchPaste.document.fileURL?.standardizedFileURL == sourceURL?.standardizedFileURL,
-                !launchPaste.document.isDocumentEdited
-            {
-                store.applyStartupQtXML(launchPaste.data, fileIdentity: identifier)
+            .onDisappear {
+                if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+                recoveryRegistrationID = nil
+                exportWorkflow.stop()
+                #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                    restPreview.stop()
+                #endif
+                store.stop()
             }
-        }
-        .onDisappear {
-            if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
-            recoveryRegistrationID = nil
-            exportWorkflow.stop()
-            #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
-                restPreview.stop()
-            #endif
-            store.stop()
-        }
     }
 
     @ViewBuilder private var getStartedCard: some View {

@@ -20,6 +20,53 @@ final class ReferenceImageStoreTests: XCTestCase {
         XCTFail("Reference-image operation did not settle")
     }
     @MainActor
+    func testFileMenuReferenceActionsStayWithTheirAcceptedDocumentAndRemovalUndoes() async throws {
+        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(.setReferenceImagePNG(png()))
+        let data = original.encoded()
+        let store = EditorStore()
+        defer { store.stop() }
+        let fileID = UUID()
+        var ownsWindow = true
+        var opened = 0
+        await store.load(data: data, fileIdentity: fileID)
+        try await waitForImage(store)
+        XCTAssertNil(store.referenceImageMenuActions(fileIdentity: UUID(), ownsWindow: { true }) { _ in })
+        let first = try XCTUnwrap(
+            store.referenceImageMenuActions(fileIdentity: fileID, ownsWindow: { ownsWindow }) { _ in opened += 1 })
+        let removeFirst = try XCTUnwrap(first.remove)
+        first.compose()
+        XCTAssertEqual(opened, 1)
+
+        ownsWindow = false
+        first.compose()
+        removeFirst()
+        XCTAssertEqual(opened, 1)
+        XCTAssertTrue(store.hasReferenceImage)
+
+        ownsWindow = true
+        await store.load(data: data, fileIdentity: fileID)
+        try await waitForImage(store)
+        first.compose()
+        removeFirst()
+        XCTAssertEqual(opened, 1)
+        XCTAssertTrue(store.hasReferenceImage)
+        XCTAssertFalse(store.canUndo)
+
+        let current = try XCTUnwrap(
+            store.referenceImageMenuActions(fileIdentity: fileID, ownsWindow: { ownsWindow }) { _ in opened += 1 })
+        let removeCurrent = try XCTUnwrap(current.remove)
+        removeCurrent()
+        try await waitForImage(store)
+        XCTAssertFalse(store.hasReferenceImage)
+        XCTAssertTrue(store.canUndo)
+        XCTAssertNil(store.referenceImageMenuActions(fileIdentity: fileID, ownsWindow: { true }) { _ in }?.remove)
+        store.undo()
+        try await waitForImage(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), data)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    @MainActor
     func testImportDisplaySettingsRemovalAndUndoRemainIndependentOfGeometry() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
