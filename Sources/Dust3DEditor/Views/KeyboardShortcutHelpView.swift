@@ -28,6 +28,9 @@ enum KeyboardShortcutHelp {
             action: "Delete Graph Selection", keys: "Delete",
             scope: "Graph selection, outside text, animation and component sidebar controls"),
         .init(
+            action: "Delete in Canvas", keys: "Forward Delete / ⌃D",
+            scope: "Focused canvas or graph handle with an editable selection and no active drag"),
+        .init(
             action: "Nudge Selection or Origin", keys: "← / → / ↑ / ↓",
             scope:
                 "Focused canvas, node or origin marker. Nudges the stored origin in Move Origin mode; otherwise the editable selection. No active drag"
