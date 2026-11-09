@@ -47,7 +47,13 @@ public enum SelectionTransform: String, CaseIterable, Sendable {
             case .sideClockwise, .sideCounterclockwise, .sideAlignCenter, .originSideCenter: [.z, .y]
             case .exchangeXZ: []
             }
-        return !snapshot.locks.isSuperset(of: axes) && snapshot.transformNodes.contains(where: \.isEditable)
+        guard !snapshot.locks.isSuperset(of: axes) else { return false }
+        let minimumNodes =
+            switch self {
+            case .frontAlignX, .frontAlignY, .frontAlignCenter, .sideAlignZ, .sideAlignY, .sideAlignCenter: 2
+            default: 1
+            }
+        return snapshot.transformNodes.lazy.filter(\.isEditable).prefix(minimumNodes).count == minimumNodes
     }
 
     func position(_ position: NodePosition, around center: NodePosition) -> NodePosition {
