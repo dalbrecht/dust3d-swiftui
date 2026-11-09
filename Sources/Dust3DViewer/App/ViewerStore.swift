@@ -7,6 +7,7 @@ import Observation
 @Observable
 final class ViewerStore {
     private(set) var mesh: IndexedMesh?
+    private(set) var cameraState = MeshCameraState()
     private(set) var isWireframe = false
     private(set) var automaticallyRotates = false
     private(set) var materials: MeshMaterialContent?
@@ -87,6 +88,16 @@ final class ViewerStore {
         automaticallyRotates = enabled
     }
 
+    func fitModel() {
+        guard mesh != nil else { return }
+        cameraState.fit()
+    }
+
+    func moveCamera(_ action: MeshCameraCommand.Action) {
+        guard mesh != nil else { return }
+        cameraState.move(action)
+    }
+
     func open(_ url: URL) {
         loadTask?.cancel()
         clearMaterials()
@@ -102,6 +113,7 @@ final class ViewerStore {
                 mesh = loaded.mesh
                 materialSourceCapabilities = loaded.materialSourceCapabilities
                 archiveData = loaded.data
+                cameraState = MeshCameraState()
                 meshRevision += 1
                 documentName = url.lastPathComponent
                 isLoading = false
@@ -151,6 +163,7 @@ final class ViewerStore {
     }
 
     func stop() {
+        cameraState = MeshCameraState()
         isWireframe = false
         automaticallyRotates = false
         revision += 1

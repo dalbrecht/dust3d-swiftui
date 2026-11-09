@@ -118,13 +118,14 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
     ///   - meshRevision: Increment for replacement geometry/material output or retry.
     ///   - materials: Mutually exclusive current material data; uploads off the main actor.
+    ///   - cameraState: Optional camera owner; when present, use its move and fit methods.
     ///   - onMaterialError: Original material preparation/GPU cause; defaults to onError.
     ///   - onMaterialRendered: Called only after a current material GPU frame completes.
     ///   - onError: Ordinary geometry setup failure on the main actor.
     public init(
         mesh: IndexedMesh, isWireframe: Bool, cameraReset: Int, meshRevision: Int = 0,
         materials: MeshMaterialContent?, cameraCommand: MeshCameraCommand? = nil, showsColor: Bool = true,
-        automaticallyOrbits: Bool = false,
+        automaticallyOrbits: Bool = false, cameraState: MeshCameraState? = nil,
         onMaterialError: ((String) -> Void)? = nil,
         onMaterialRendered: @escaping () -> Void = {}, onError: @escaping (String) -> Void
     ) {
@@ -135,8 +136,8 @@ public struct MeshViewport: NSViewRepresentable {
         drawRange = nil
         pickingRevision = nil
         onPick = nil
-        cameraState = nil
-        cameraRevision = nil
+        self.cameraState = cameraState
+        cameraRevision = cameraState?.revision
         cameraInteractionAllowed = { true }
         self.mesh = .indexed(mesh)
         self.isWireframe = isWireframe
