@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use B, U, and C on the canvas to toggle subdivision, rounded ends, and chamfer.
+
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.

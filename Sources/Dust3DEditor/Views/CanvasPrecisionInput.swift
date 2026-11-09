@@ -19,7 +19,31 @@ enum CanvasPrecisionAction: CaseIterable, Hashable, Sendable {
     }
 }
 
-/// Only actual bare arrow/bracket events belong to this responder boundary.
+enum CanvasPartShapeShortcut: String, CaseIterable {
+    case subdivision = "b"
+    case roundedEnds = "u"
+    case chamfer = "c"
+
+    var property: PartModifierProperty {
+        switch self {
+        case .subdivision: .subdivision
+        case .roundedEnds: .roundedEnds
+        case .chamfer: .chamfer
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .subdivision: "Toggle Subdivision"
+        case .roundedEnds: "Toggle Rounded Ends"
+        case .chamfer: "Toggle Chamfer"
+        }
+    }
+
+    var keyLabel: String { rawValue.uppercased() }
+}
+
+/// Routes canvas navigation and bare graph editing keys at the canvas responder boundary.
 struct CanvasPrecisionKeyInput {
     let keyCode: UInt16
     let characters: String
@@ -57,8 +81,13 @@ struct CanvasPrecisionKeyInput {
         default: return nil
         }
     }
+    var partShapeShortcut: CanvasPartShapeShortcut? {
+        guard isBareEditingKey else { return nil }
+        return CanvasPartShapeShortcut(rawValue: characters.lowercased())
+    }
+
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
-        guard axisLockConstraint != nil || partStateProperty != nil else { return true }
+        guard axisLockConstraint != nil || partStateProperty != nil || partShapeShortcut != nil else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil
     }

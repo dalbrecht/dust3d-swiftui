@@ -232,6 +232,40 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertEqual(value.snapshot?.document.encoded(), original)
     }
 
+    func testCanvasShapeKeysEditHoveredOwnerWithIndependentUndo() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        value.setHoveredNode("a")
+        let keys: [(String, PartModifierProperty)] = [
+            ("b", .subdivision), ("u", .roundedEnds), ("c", .chamfer),
+        ]
+        let first = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertFalse(first(.init(keyCode: 0, characters: "b", modifiers: [.command])))
+        XCTAssertTrue(first(.init(keyCode: 0, characters: "b", modifiers: [], isRepeat: true)))
+        XCTAssertFalse(value.canUndo)
+        for (key, property) in keys {
+            XCTAssertTrue(
+                value.canvasPartStateKeyHandler(profileLease: nil)(
+                    .init(keyCode: 0, characters: key, modifiers: [])))
+            try await settle(value)
+            XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.modifierValue(property), true)
+            XCTAssertEqual(value.snapshot?.parts.first { $0.id == "q" }?.modifierValue(property), false)
+            XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+        }
+
+        for _ in keys {
+            value.undo()
+            try await settle(value)
+        }
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testStationaryPartStateHoverLocksAndUnlocksTheSameOwner() async throws {
         let original = try source().encoded()
         let value = store()
