@@ -260,6 +260,12 @@ struct Dust3DEditorApp: App {
                     canZoomFromCanvas: previewCameraActions?.canZoomFromCanvas == true)
             }
             CommandMenu("Canvas") {
+                let openProperties = store.flatMap {
+                    $0.canvasComponentPropertiesAction(
+                        profileLease: $0.canvasProfiles.isDualProfile ? $0.canvasProfiles.lease : nil)
+                }
+                Button("Edit Owning Component Properties…") { _ = openProperties?(false) }
+                    .disabled(openProperties == nil)
                 Button("Switch Editing Profile") { _ = store?.switchSelectedCanvasProfile() }
                     .disabled(store?.canSwitchSelectedCanvasProfile != true)
                 Divider()

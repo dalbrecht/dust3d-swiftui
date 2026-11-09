@@ -295,6 +295,46 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(value.canUndo)
     }
 
+    func testSpaceOpensPropertiesWithoutReplacingGraphSelection() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        value.setHoveredNode("a")
+        let space = CanvasPrecisionKeyInput(keyCode: 49, characters: " ", modifiers: [])
+        let key = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertTrue(key(.init(keyCode: 49, characters: " ", modifiers: [], isRepeat: true)))
+        XCTAssertNil(value.canvasComponentProperties)
+        XCTAssertTrue(key(space))
+        let properties = try XCTUnwrap(value.canvasComponentProperties)
+        value.clearCanvasHover()
+        let before = try XCTUnwrap(value.snapshot)
+        let target = try XCTUnwrap(properties.target(in: before))
+        XCTAssertEqual(
+            ComponentMeshSelectionPresentation(snapshot: before, target: target).components.map(\.id), ["cp", "cq"])
+        XCTAssertEqual(before.selectedIDs, ["x"])
+        XCTAssertEqual(before.document.encoded(), original)
+        XCTAssertFalse(before.canUndo)
+        value.componentMeshAction(.combineMode(.uncombined), target: target)()
+        try await settle(value)
+        let edited = try XCTUnwrap(value.snapshot)
+        let updated = try XCTUnwrap(properties.target(in: edited))
+        XCTAssertEqual(
+            ComponentMeshSelectionPresentation(snapshot: edited, target: updated).combineMode, .uniform(.uncombined))
+        XCTAssertEqual(edited.selectedIDs, ["x"])
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+        value.select("a")
+        try await settle(value)
+        XCTAssertNil(properties.target(in: try XCTUnwrap(value.snapshot)))
+    }
+
     func testStationaryPartStateHoverLocksAndUnlocksTheSameOwner() async throws {
         let original = try source().encoded()
         let value = store()
