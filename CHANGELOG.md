@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Settle the origin from node bounds when a headless Qt XML paste creates a new document.
+
 - Headless FBX includes procedural textures and UVs by default. Use `--geometry-fbx` for geometry only.
 
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
