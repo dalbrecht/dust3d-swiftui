@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @State private var store = ViewerStore()
+    @State private var previewFocus = MeshViewportFocus()
     @State private var isImporterPresented = false
     @State private var isWireframe = false
     @State private var cameraReset = 0
@@ -37,6 +38,7 @@ struct ContentView: View {
                     ) { message in
                         rendererError = message
                     }
+                    .withFocusTarget(previewFocus)
                     .id(store.meshRevision)
                     .accessibilityLabel("3D mesh preview")
                 } else {
@@ -135,6 +137,7 @@ struct ContentView: View {
         .onDisappear { store.stop() }
         .onChange(of: store.meshRevision) { rendererError = nil }
         .focusedSceneValue(\.openDocument, { isImporterPresented = true })
+        .focusedSceneValue(\.viewerPreviewFocus, store.mesh != nil && !isImporterPresented ? previewFocus : nil)
     }
 }
 
