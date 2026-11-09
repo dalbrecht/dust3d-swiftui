@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show the Option and Command modifiers for both click and drag when removing graph selections.
+
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
