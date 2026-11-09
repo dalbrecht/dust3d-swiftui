@@ -6,7 +6,6 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @State private var store = ViewerStore()
     @State private var isImporterPresented = false
-    @State private var isWireframe = false
     @State private var cameraReset = 0
     @State private var rendererError: String?
 
@@ -30,7 +29,7 @@ struct ContentView: View {
                 if let mesh = store.mesh {
                     let materialRevision = store.meshRevision + store.materialRevision
                     MeshViewport(
-                        mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
+                        mesh: mesh, isWireframe: store.isWireframe, cameraReset: cameraReset,
                         meshRevision: store.meshRevision + store.materialRevision, materials: store.materials,
                         automaticallyOrbits: store.automaticallyRotates,
                         onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
@@ -114,7 +113,7 @@ struct ContentView: View {
                     Label("Open", systemImage: "folder")
                 }
                 .help("Open a .ds3 document (⌘O)")
-                Toggle(isOn: $isWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+                Toggle(isOn: store.wireframeBinding) { Label("Wireframe", systemImage: "square.3.layers.3d") }
                     .help("Show triangle edges")
                     .disabled(store.mesh == nil)
                 Button {

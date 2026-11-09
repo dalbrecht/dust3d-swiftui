@@ -22,6 +22,9 @@ struct Dust3DViewerApp: App {
         .defaultSize(width: 1000, height: 720)
         .commands {
             CommandMenu("View") {
+                Toggle("Wireframe", isOn: store?.wireframeBinding ?? .constant(false))
+                    .keyboardShortcut("w", modifiers: [])
+                    .disabled(store?.mesh == nil)
                 Toggle("Automatic Rotation", isOn: store?.automaticRotationBinding ?? .constant(false))
                     .keyboardShortcut("r", modifiers: [])
                     .disabled(store?.mesh == nil)
@@ -66,6 +69,10 @@ final class ViewerAppDelegate: NSObject, NSApplicationDelegate {
 }
 
 extension ViewerStore {
+    var wireframeBinding: Binding<Bool> {
+        Binding(get: { self.isWireframe }, set: { self.setWireframe($0) })
+    }
+
     var automaticRotationBinding: Binding<Bool> {
         Binding(get: { self.automaticallyRotates }, set: { self.setAutomaticallyRotates($0) })
     }

@@ -7,6 +7,7 @@ import Observation
 @Observable
 final class ViewerStore {
     private(set) var mesh: IndexedMesh?
+    private(set) var isWireframe = false
     private(set) var automaticallyRotates = false
     private(set) var materials: MeshMaterialContent?
     var bakedMesh: MeshWithBakedTextures? {
@@ -74,6 +75,11 @@ final class ViewerStore {
         self.service = service
         materialPreparation = ArchiveMaterialPreparationService(
             importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
+    }
+
+    func setWireframe(_ enabled: Bool) {
+        guard mesh != nil else { return }
+        isWireframe = enabled
     }
 
     func setAutomaticallyRotates(_ enabled: Bool) {
@@ -145,6 +151,7 @@ final class ViewerStore {
     }
 
     func stop() {
+        isWireframe = false
         automaticallyRotates = false
         revision += 1
         loadTask?.cancel()

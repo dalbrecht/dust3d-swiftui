@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Toggle Viewer wireframe from the View menu or with W.
+
 - Toggle automatic model rotation from the Viewer’s View menu or with R.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.

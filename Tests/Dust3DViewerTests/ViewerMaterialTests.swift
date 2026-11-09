@@ -6,6 +6,32 @@ import XCTest
 
 @MainActor
 final class ViewerMaterialTests: XCTestCase {
+    func testWireframeBindingBelongsToTheWindowAndRequiresAnAcceptedMesh() async throws {
+        let snapshot = try snapshot()
+        let first = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        let second = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        defer { second.stop() }
+
+        let wireframe = first.wireframeBinding
+        wireframe.wrappedValue = true
+        XCTAssertFalse(first.isWireframe)
+
+        first.open(URL(fileURLWithPath: "/test/first.ds3"))
+        second.open(URL(fileURLWithPath: "/test/second.ds3"))
+        await first.loadTask?.value
+        await second.loadTask?.value
+
+        wireframe.wrappedValue = true
+        XCTAssertTrue(first.isWireframe)
+        XCTAssertFalse(second.wireframeBinding.wrappedValue)
+        wireframe.wrappedValue = false
+        XCTAssertFalse(first.isWireframe)
+
+        wireframe.wrappedValue = true
+        first.stop()
+        XCTAssertFalse(wireframe.wrappedValue)
+    }
+
     func testAutomaticRotationBelongsToTheWindowAndRequiresAnAcceptedMesh() async throws {
         let snapshot = try snapshot()
         let first = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
