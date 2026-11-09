@@ -38,7 +38,7 @@ final class EditorGeometryExportWorkflow {
         let identity = snapshot.documentIdentity
         let revision = snapshot.documentRevision
         let stem = sourceURL?.deletingPathExtension().lastPathComponent
-        let suggestedName = (stem.flatMap { $0.isEmpty ? nil : $0 } ?? "Untitled") + "." + format.rawValue
+        let suggestedName = (stem.flatMap { $0.isEmpty ? nil : $0 } ?? "Untitled") + "." + format.fileExtension
         if case .failed(let cause) = phase, store.errorMessage == EditorStore.message(cause) {
             store.errorMessage = nil
         }
