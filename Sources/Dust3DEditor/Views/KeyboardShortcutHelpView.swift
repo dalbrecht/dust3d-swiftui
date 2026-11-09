@@ -10,6 +10,9 @@ enum KeyboardShortcutHelp {
     }
 
     static let entries: [Entry] = [
+        .init(
+            action: "Reveal Owning Component", keys: "F",
+            scope: "Focused canvas with a node or edge under the pointer"),
         .init(action: "Undo / Redo", keys: "⌘Z / ⇧⌘Z", scope: "Focused text editor or document history"),
         .init(action: "Cut / Copy / Paste", keys: "⌘X / ⌘C / ⌘V", scope: "Focused text or editable nodes"),
         .init(action: "Select All", keys: "⌘A", scope: "Focused text or graph; unavailable in animation controls"),

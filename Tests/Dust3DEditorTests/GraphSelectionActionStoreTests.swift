@@ -232,6 +232,33 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertEqual(value.snapshot?.document.encoded(), original)
     }
 
+    func testRevealKeyUsesOnlyCurrentHoveredOwnerWithoutChangingHistory() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        let reveal = CanvasPrecisionKeyInput(keyCode: 3, characters: "f", modifiers: [])
+        XCTAssertFalse(value.canvasPartStateKeyHandler(profileLease: nil)(reveal))
+
+        value.setHoveredNode("a")
+        let stale = value.canvasPartStateKeyHandler(profileLease: nil)
+        value.setHoveredNode("x")
+        XCTAssertFalse(stale(reveal))
+        value.setHoveredNode("a")
+        let current = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertTrue(current(.init(keyCode: 3, characters: "f", modifiers: [], isRepeat: true)))
+        XCTAssertNil(value.snapshot?.componentRevealHint)
+        XCTAssertTrue(current(reveal))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.componentRevealHint?.componentID, "cp")
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testStationaryPartStateHoverLocksAndUnlocksTheSameOwner() async throws {
         let original = try source().encoded()
         let value = store()

@@ -2522,7 +2522,26 @@ final class EditorStore {
 
     func canvasPartStateKeyHandler(profileLease: UUID?) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
         let handle = canvasPartStateHandler(profileLease: profileLease)
-        return { input in
+        let hover = canvasPartStateHover
+        let hoverEpoch = canvasPartStateHoverEpoch
+        let layout = precisionLayoutEpoch
+        let interaction = referenceColorInteractionEpoch
+        let context = acceptedDocumentSource.map(PartGraphSelectionContext.init(snapshot:))
+        return { [weak self] input in
+            if input.revealsOwningComponent {
+                guard let self, canToggleCanvasPartState, canvasPartStateHoverEpoch == hoverEpoch,
+                    precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction, let hover
+                else { return false }
+                let target: PartGraphTarget =
+                    switch hover {
+                    case .node(let id): .node(id)
+                    case .edge(let id): .edge(id)
+                    }
+                guard let reveal = revealOwningComponentAction(target, context: context, profileLease: profileLease)
+                else { return false }
+                if !input.isRepeat { reveal() }
+                return true
+            }
             guard let property = input.partStateProperty, let handle else { return false }
             return handle(property, input.isRepeat)
         }
