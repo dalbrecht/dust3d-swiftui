@@ -34,6 +34,19 @@ final class MeshViewportRecoveryTests: XCTestCase {
         XCTAssertEqual(reported, [2])
     }
 
+    func testDismantledViewportCannotReportItsQueuedFailure() async {
+        let retired = InteractiveMeshView(frame: .zero, device: nil)
+        let current = InteractiveMeshView(frame: .zero, device: nil)
+        var reported: [String] = []
+
+        viewport(revision: 1) { reported.append("retired") }.updateRenderer(in: retired)
+        MeshViewport.dismantleNSView(retired, coordinator: ())
+        viewport(revision: 1) { reported.append("current") }.updateRenderer(in: current)
+        await drainCallbacks()
+
+        XCTAssertEqual(reported, ["current"])
+    }
+
     func testValidLaterRevisionRecoversAndRetainsTheExistingCamera() async throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
         let view = InteractiveMeshView(frame: .zero, device: nil)

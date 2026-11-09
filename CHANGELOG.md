@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Discard pending preview errors when their view closes or is replaced.
+
 - Keep preview clicks available until a trackpad gesture commits.
 
 - Keep the active preview gesture in control when mouse and trackpad input overlap.
