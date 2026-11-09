@@ -15,6 +15,34 @@ final class MeshViewportRecoveryTests: XCTestCase {
         XCTAssertEqual(view.focusRingMaskBounds, .zero)
     }
 
+    func testUnavailablePreviewRejectsFocusAndHidesFocusRing() {
+        let view = InteractiveMeshView(frame: .init(x: 0, y: 0, width: 120, height: 80), device: nil)
+        view.cameraInteractionAllowed = { false }
+        XCTAssertFalse(view.acceptsFirstResponder)
+        XCTAssertEqual(view.focusRingMaskBounds, .zero)
+
+        view.cameraInteractionAllowed = { true }
+        XCTAssertTrue(view.acceptsFirstResponder)
+        XCTAssertEqual(view.focusRingMaskBounds, view.bounds.insetBy(dx: 4, dy: 4))
+    }
+
+    func testIndexedViewportChecksCurrentFrameAdmissionAtTheResponder() {
+        let view = InteractiveMeshView(frame: .init(x: 0, y: 0, width: 120, height: 80), device: nil)
+        @MainActor final class Request {
+            var revision = 2
+        }
+        let request = Request()
+        viewport(revision: 1) {}
+            .withCameraInteractionAllowed { request.revision == 1 }
+            .updateRenderer(in: view)
+
+        XCTAssertFalse(view.acceptsFirstResponder)
+        request.revision = 1
+        XCTAssertTrue(view.acceptsFirstResponder)
+        request.revision = 3
+        XCTAssertFalse(view.acceptsFirstResponder)
+    }
+
     func testFailureReportsOncePerRevisionAndRetriesTheNextRevisionWithoutADevice() async {
         let view = InteractiveMeshView(frame: .zero, device: nil)
         view.isPaused = true

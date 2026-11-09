@@ -329,6 +329,7 @@ struct WorkflowReplayView: View {
                 ) { message in
                     if requestedMeshStep == meshStep { meshFailure = message }
                 }
+                .withCameraInteractionAllowed { requestedMeshStep == meshStep }
                 .opacity(status == .updating ? 0.35 : 1)
                 .allowsHitTesting(status != .updating)
                 .accessibilityHidden(status == .updating)

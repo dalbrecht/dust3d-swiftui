@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Disable camera input on outdated Replay Steps previews while the current frame builds.
+
 - Show a native keyboard focus ring around the 3D preview.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
