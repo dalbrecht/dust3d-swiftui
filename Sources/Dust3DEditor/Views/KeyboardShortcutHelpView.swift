@@ -7,6 +7,22 @@ enum KeyboardShortcutHelp {
         let keys: String
         let scope: String
         var id: String { action }
+        var spokenKeys: String {
+            keys.split(separator: "/").map(KeyboardShortcutHelp.spokenKey).joined(separator: " or ")
+        }
+    }
+
+    private static let keyNames: [Character: String] = [
+        "⌘": "Command", "⌥": "Option", "⌃": "Control", "⇧": "Shift",
+        "←": "Left Arrow", "→": "Right Arrow", "↑": "Up Arrow", "↓": "Down Arrow",
+        "-": "Minus", "=": "Equals", ",": "Comma", ".": "Period",
+        "[": "Left Bracket", "]": "Right Bracket",
+    ]
+
+    private static func spokenKey(_ key: Substring) -> String {
+        key.map { character in
+            keyNames[character].map { " \($0) " } ?? String(character)
+        }.joined().split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
     static let entries: [Entry] = [
@@ -60,11 +76,12 @@ enum KeyboardShortcutHelp {
         let exactKeys = entries.filter { entry in
             entry.keys.split(separator: "/").contains {
                 $0.trimmingCharacters(in: .whitespaces).caseInsensitiveCompare(query) == .orderedSame
+                    || spokenKey($0).caseInsensitiveCompare(query) == .orderedSame
             }
         }
         if !exactKeys.isEmpty { return exactKeys }
         return entries.filter {
-            [$0.action, $0.keys, $0.scope].contains { $0.localizedCaseInsensitiveContains(query) }
+            [$0.action, $0.keys, $0.spokenKeys, $0.scope].contains { $0.localizedCaseInsensitiveContains(query) }
         }
     }
 }
@@ -89,7 +106,9 @@ struct KeyboardShortcutHelpView: View {
                         Text(entry.scope).font(.callout).foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
-                    .accessibilityElement(children: .combine)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(entry.action)
+                    .accessibilityValue("\(entry.spokenKeys). \(entry.scope)")
                 }
             }
             .overlay {

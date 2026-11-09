@@ -12,6 +12,17 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(parent.scope, "Focused component sidebar while browsing a group")
     }
 
+    func testSymbolicShortcutKeysHaveSpokenNamesAndCanBeSearchedByName() {
+        let zoom = KeyboardShortcutHelp.Entry(action: "Zoom", keys: "⌥- / ⌥=", scope: "Focused editor window")
+        let orbit = KeyboardShortcutHelp.Entry(action: "Orbit", keys: "← / → / ↑ / ↓", scope: "Focused preview")
+        let gesture = KeyboardShortcutHelp.Entry(action: "Remove", keys: "⌥⌘ click / drag", scope: "Focused canvas")
+        XCTAssertEqual(zoom.spokenKeys, "Option Minus or Option Equals")
+        XCTAssertEqual(orbit.spokenKeys, "Left Arrow or Right Arrow or Up Arrow or Down Arrow")
+        XCTAssertEqual(gesture.spokenKeys, "Option Command click or drag")
+        XCTAssertEqual(KeyboardShortcutHelp.matching("Option Equals", in: [zoom, orbit, gesture]), [zoom])
+        XCTAssertEqual(KeyboardShortcutHelp.matching("left arrow", in: [zoom, orbit, gesture]), [orbit])
+    }
+
     func testExactKeySearchReturnsEveryBindingWithoutScopeSubstringMatches() {
         let entries = [
             KeyboardShortcutHelp.Entry(action: "Wireframe", keys: "W", scope: "Focused editor window"),
