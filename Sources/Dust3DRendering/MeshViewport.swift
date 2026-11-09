@@ -600,8 +600,10 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func setFrameSize(_ newSize: NSSize) {
-        if frame.size != newSize { invalidatePickingProjection() }
+        let sizeChanged = frame.size != newSize
+        if sizeChanged { invalidatePickingProjection() }
         super.setFrameSize(newSize)
+        if sizeChanged && window?.firstResponder === self { noteFocusRingMaskChanged() }
     }
 
     public override func viewDidChangeBackingProperties() {
@@ -610,6 +612,17 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override var acceptsFirstResponder: Bool { true }
+    public override class var defaultFocusRingType: NSFocusRingType { .exterior }
+
+    public override var focusRingMaskBounds: NSRect {
+        // Keep the native ring inside the preview pane.
+        guard bounds.width > 8, bounds.height > 8 else { return .zero }
+        return bounds.insetBy(dx: 4, dy: 4)
+    }
+
+    public override func drawFocusRingMask() {
+        NSBezierPath(rect: focusRingMaskBounds).fill()
+    }
 
     public override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)

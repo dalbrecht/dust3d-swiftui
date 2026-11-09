@@ -6,6 +6,15 @@ import XCTest
 
 @MainActor
 final class MeshViewportRecoveryTests: XCTestCase {
+    func testPreviewUsesAnInsetNativeFocusRingAndHandlesTinyBounds() {
+        let view = InteractiveMeshView(frame: .init(x: 0, y: 0, width: 120, height: 80), device: nil)
+        XCTAssertTrue(view.acceptsFirstResponder)
+        XCTAssertEqual(type(of: view).defaultFocusRingType, .exterior)
+        XCTAssertEqual(view.focusRingMaskBounds, view.bounds.insetBy(dx: 4, dy: 4))
+        view.setFrameSize(.init(width: 8, height: 20))
+        XCTAssertEqual(view.focusRingMaskBounds, .zero)
+    }
+
     func testFailureReportsOncePerRevisionAndRetriesTheNextRevisionWithoutADevice() async {
         let view = InteractiveMeshView(frame: .zero, device: nil)
         view.isPaused = true
