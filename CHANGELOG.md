@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep preview clicks available until a trackpad gesture commits.
+
 - Keep the active preview gesture in control when mouse and trackpad input overlap.
 
 - End preview camera gestures and pending picks when keyboard focus leaves the viewport.
