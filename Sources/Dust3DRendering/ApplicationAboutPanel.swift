@@ -17,18 +17,23 @@ import Foundation
         return options(
             applicationName: applicationName,
             licenseURL: resources?.url(forResource: "ApplicationLicense", withExtension: "txt"),
+            authorsURL: resources?.url(forResource: "ApplicationAuthors", withExtension: "txt"),
             contributorsURL: resources?.url(forResource: "ApplicationContributors", withExtension: "txt"),
             supportersURL: resources?.url(forResource: "ApplicationSupporters", withExtension: "txt"))
     }
 
     static func options(
-        applicationName: String, licenseURL: URL?, contributorsURL: URL? = nil, supportersURL: URL? = nil
+        applicationName: String, licenseURL: URL?, authorsURL: URL? = nil, contributorsURL: URL? = nil,
+        supportersURL: URL? = nil
     ) -> [NSApplication.AboutPanelOptionKey: Any] {
         let license = resourceText(at: licenseURL, resource: "ApplicationLicense.txt", title: "License")
+        let authors = resourceText(at: authorsURL, resource: "ApplicationAuthors.txt", title: "Authors")
         let contributors = resourceText(
             at: contributorsURL, resource: "ApplicationContributors.txt", title: "Contributors")
         let supporters = resourceText(at: supportersURL, resource: "ApplicationSupporters.txt", title: "Supporters")
-        let credits = license + "\n\nContributors\n\n" + contributors + "\n\nSupporters\n\n" + supporters
+        let credits =
+            license + "\n\nAuthors\n\n" + authors + "\n\nContributors\n\n" + contributors
+            + "\n\nSupporters\n\n" + supporters
         var result: [NSApplication.AboutPanelOptionKey: Any] = [
             .applicationName: applicationName,
             .credits: NSAttributedString(string: credits),
