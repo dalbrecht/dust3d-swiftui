@@ -556,6 +556,8 @@ public class InteractiveMeshView: MTKView {
         }
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
+            // Restoring input eligibility does not admit the remainder of a rejected gesture.
+            if phase != .mayBegin && phase != .none { gestureActivity.discardContinuation() }
             automaticOrbitBinding.cameraInputChanged()
             return
         }
