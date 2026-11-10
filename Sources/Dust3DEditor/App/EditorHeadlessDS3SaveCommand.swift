@@ -162,7 +162,7 @@ enum EditorHeadlessDS3SaveCommand {
         if let source = invocation.source {
             do {
                 original = try await files.load(from: source)
-            } catch { throw Failure.input(source, cause: error.localizedDescription) }
+            } catch { throw Failure.input(source, cause: await EditorStore.message(error)) }
         } else {
             original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
         }
@@ -174,7 +174,7 @@ enum EditorHeadlessDS3SaveCommand {
             let pasted = try await session.pasteQtXMLFile(fragment, target: .init(snapshot: before))
             guard invocation.source == nil, !pasted.nodes.isEmpty else { return pasted.document }
             return try await session.centerOriginOnModel().document
-        } catch { throw Failure.input(xml, cause: error.localizedDescription) }
+        } catch { throw Failure.input(xml, cause: await EditorStore.message(error)) }
     }
 
     private static func validateDestinations(_ invocation: Invocation) throws {

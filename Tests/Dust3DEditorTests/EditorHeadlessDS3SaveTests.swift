@@ -160,6 +160,17 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         ])
         XCTAssertEqual(invalidXML.status, 1)
         XCTAssertTrue(invalidXML.errors.first?.contains(xml.path) == true)
+        XCTAssertTrue(invalidXML.errors.first?.contains("The document contains invalid or unsupported XML.") == true)
+
+        try Data("<canvas><nodes><node id='a' partId='p'/></nodes></canvas>".utf8).write(to: xml)
+        let invalidGraph = await run([
+            "Editor", source.path, "-o", existing.path, "-paste-xml", xml.path, "-o", absent.path,
+        ])
+        XCTAssertEqual(invalidGraph.status, 1)
+        XCTAssertTrue(invalidGraph.errors.first?.contains(xml.path) == true)
+        XCTAssertTrue(
+            invalidGraph.errors.first?.contains("The document contains invalid node, part, or edge data.") == true)
+        XCTAssertTrue(invalidGraph.output.isEmpty)
         XCTAssertTrue(invalidArchive.output.isEmpty && invalidXML.output.isEmpty)
         XCTAssertEqual(try Data(contentsOf: existing), original)
         XCTAssertFalse(FileManager.default.fileExists(atPath: absent.path))

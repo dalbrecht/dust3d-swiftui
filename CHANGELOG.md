@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Explain invalid document and Qt XML input in headless export diagnostics.
+
 - Settle the origin from node bounds when a headless Qt XML paste creates a new document.
 
 - Headless FBX includes procedural textures and UVs by default. Use `--geometry-fbx` for geometry only.
