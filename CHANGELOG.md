@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep canvas rotation shortcuts scoped to the active window and captured selection.
+
 - Scope canvas and node keyboard edits to the active editor window.
 
 - Handle Backspace directly in the focused drawing canvas with Undo support.

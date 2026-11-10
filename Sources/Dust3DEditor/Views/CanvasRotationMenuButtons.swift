@@ -3,21 +3,16 @@ import SwiftUI
 
 struct CanvasRotationMenuButtons: View {
     let store: EditorStore?
-    let animationFocus: Bool
-    let nativeTextFocus: Bool
+    let isInScope: @MainActor () -> Bool
 
     var body: some View {
         ForEach([",", "."], id: \.self) { key in
+            let rotate = store?.canvasRotationShortcutAction(characters: key, isInScope: isInScope)
             Button(key == "," ? "Rotate Selection −1°" : "Rotate Selection +1°") {
-                store?.handleCanvasRotationInput(
-                    characters: key, modifiers: CanvasRotationInput.currentKeyboardModifiers,
-                    animationFocus: animationFocus, nativeTextFocus: nativeTextFocus)
+                rotate?(CanvasRotationInput.currentKeyboardModifiers)
             }
             .keyboardShortcut(KeyEquivalent(Character(key)), modifiers: [])
-            .disabled(
-                !EditorCommandScope.allowsGraphShortcuts(
-                    animationFocus: animationFocus, nativeTextFocus: nativeTextFocus)
-                    || store?.canRotateCanvasSelection != true)
+            .disabled(rotate == nil)
         }
     }
 }
