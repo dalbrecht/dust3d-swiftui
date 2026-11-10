@@ -56,6 +56,73 @@ import XCTest
         XCTAssertFalse(first.canUndo)
         try render(second)
     }
+    func testRadiusMenuRetainsItsWindowSelectionAndCanvasStep() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let source = try document()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.select(a)
+        try await settle(store)
+        store.setCanvasHeight(100)
+
+        var isInScope = true
+        let retained = try XCTUnwrap(store.canvasRadiusAction(direction: 1) { isInScope })
+        isInScope = false
+        retained()
+        try await settle(store)
+        XCTAssertFalse(store.canUndo)
+
+        isInScope = true
+        store.select(b)
+        try await settle(store)
+        retained()
+        try await settle(store)
+        XCTAssertFalse(store.canUndo)
+
+        let beforeResize = try XCTUnwrap(store.canvasRadiusAction(direction: 1) { isInScope })
+        store.setCanvasHeight(200)
+        beforeResize()
+        try await settle(store)
+        XCTAssertFalse(store.canUndo)
+
+        let fresh = try XCTUnwrap(store.canvasRadiusAction(direction: 1) { isInScope })
+        fresh()
+        try await settle(store)
+        let edited = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(try edited.document.node(id: a).radius, 0.1, accuracy: 1e-12)
+        XCTAssertEqual(try edited.document.node(id: b).radius, 0.305, accuracy: 1e-12)
+        XCTAssertTrue(store.canUndo)
+    }
+
+    func testRadiusMenuKeepsAddPreviewSeparateFromSelection() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let source = try document()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.select(a)
+        try await settle(store)
+        store.setCanvasContext(
+            projection: .init(bounds: store.bounds, plane: store.plane, width: 400, height: 240),
+            width: 400, height: 240)
+        let selected = try XCTUnwrap(store.canvasRadiusAction(direction: 1) { true })
+        store.beginAddMode()
+        store.previewAddAtCanvasCenter()
+        let initialRadius = store.addGhostRadius
+        selected()
+        XCTAssertEqual(store.addGhostRadius, initialRadius)
+
+        let preview = try XCTUnwrap(store.canvasRadiusAction(direction: 1) { true })
+        preview()
+        XCTAssertEqual(store.addGhostRadius, initialRadius + 1)
+        store.cancelAddMode()
+        preview()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testWheelSelectionPrecedesHoverCommandScalesPositionsControlAdjustsRadiusAndUnsupportedPassesThrough()
         async throws
     {

@@ -266,10 +266,14 @@ struct Dust3DEditorApp: App {
                     }
                 }
                 .disabled(store?.canTransform != true)
-                Button("Decrease Radius") { store?.adjustSelectionRadius(direction: -1) }
-                    .disabled(store?.canAdjustRadiusInput != true)
-                Button("Increase Radius") { store?.adjustSelectionRadius(direction: 1) }
-                    .disabled(store?.canAdjustRadiusInput != true)
+                let decreaseRadius = canvasOwner?.canvasRadiusAction(direction: -1) {
+                    NSApp.keyWindow === canvasWindow && store === canvasOwner && rigAssignmentFocus.allowsAssignment
+                }
+                let increaseRadius = canvasOwner?.canvasRadiusAction(direction: 1) {
+                    NSApp.keyWindow === canvasWindow && store === canvasOwner && rigAssignmentFocus.allowsAssignment
+                }
+                Button("Decrease Radius") { decreaseRadius?() }.disabled(decreaseRadius == nil)
+                Button("Increase Radius") { increaseRadius?() }.disabled(increaseRadius == nil)
                 CanvasRotationMenuButtons(store: canvasOwner) {
                     NSApp.keyWindow === canvasWindow && store === canvasOwner && rigAssignmentFocus.allowsAssignment
                 }

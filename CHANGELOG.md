@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep Canvas menu radius commands on the original window, selection, or Add preview.
+
 - Keep canvas rotation shortcuts scoped to the active window and captured selection.
 
 - Scope canvas and node keyboard edits to the active editor window.
