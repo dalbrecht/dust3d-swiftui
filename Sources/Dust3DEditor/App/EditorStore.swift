@@ -583,6 +583,24 @@ final class EditorStore {
     var canAdjustSelectionRadius: Bool {
         !isSelectingRigEdges && canSave && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
     }
+    func canvasRadiusAction(
+        direction: Double, isInScope: @escaping @MainActor () -> Bool
+    ) -> (@MainActor () -> Void)? {
+        guard direction.isFinite, direction != 0, isInScope(), canAdjustRadiusInput,
+            let source = acceptedDocumentSource
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: source)
+        let layout = precisionLayoutEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        return { [weak self] in
+            guard let self, isInScope(), self.canAdjustRadiusInput, let current = self.acceptedDocumentSource,
+                target.isCurrent(in: current), self.precisionLayoutEpoch == layout,
+                self.rotationInputContextID == tool, self.addModeID == add
+            else { return }
+            self.adjustSelectionRadius(direction: direction)
+        }
+    }
     func adjustSelectionRadius(direction: Double) {
         if isAddingNodes {
             guard !isWorking, direction.isFinite, direction != 0 else { return }
