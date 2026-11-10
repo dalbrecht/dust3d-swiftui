@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Scope canvas and node keyboard edits to the active editor window.
+
 - Handle Backspace directly in the focused drawing canvas with Undo support.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.

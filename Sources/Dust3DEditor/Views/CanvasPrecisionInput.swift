@@ -68,9 +68,8 @@ struct CanvasPrecisionKeyInput {
         default: return nil
         }
     }
-    @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
-        guard isAlternateDelete || axisLockConstraint != nil || partStateProperty != nil else { return true }
-        return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
+    @MainActor static func permitsDispatch(in window: NSWindow) -> Bool {
+        window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil
     }
 

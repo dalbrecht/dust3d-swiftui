@@ -229,18 +229,20 @@ final class NodePointerView: NSView {
     }
 
     func routeRadiusKey(_ event: NSEvent) -> Bool {
-        guard enabled, activation == nil, window?.firstResponder === self,
-            let direction = CanvasRadiusKey.direction(for: event)
+        guard enabled, activation == nil, let window, window.firstResponder === self,
+            CanvasPrecisionKeyInput.permitsDispatch(in: window), let direction = CanvasRadiusKey.direction(for: event)
         else { return false }
         return radiusKey(direction)
     }
 
     override func keyDown(with event: NSEvent) {
         // The captured precision handler admits keyboard edits independently of pointer picking.
-        if activation == nil, superview != nil, let window, window.firstResponder === self {
+        if activation == nil, superview != nil, let window, window.firstResponder === self,
+            CanvasPrecisionKeyInput.permitsDispatch(in: window)
+        {
             let input = CanvasPrecisionKeyInput(event)
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
-                || (input.permitsDispatch(in: window) && precisionKey?(input) == true)
+                || precisionKey?(input) == true
             {
                 return
             }
