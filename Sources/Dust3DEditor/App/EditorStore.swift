@@ -280,13 +280,17 @@ final class EditorStore {
         pendingWholePartPick = nil
         if let pick { commitWholePartPick(pick) }
     }
-    func selectWholePart(at point: CanvasPoint, projection: CanvasProjection, context: PartGraphSelectionContext? = nil)
-    {
+    func selectWholePart(
+        at point: CanvasPoint, projection: CanvasProjection, context: PartGraphSelectionContext? = nil,
+        onBlank: (@MainActor () -> Void)? = nil
+    ) {
         guard !isSelectingRigEdges, canPickGraph, !isAddingNodes, let snapshot,
             context?.isCurrent(in: snapshot) != false
         else { return }
         if let hit = canvasGraphHoverCache.hit(at: point, projection: projection, snapshot: snapshot) {
             selectWholePart(hit.partTarget, context: context)
+        } else {
+            onBlank?()
         }
     }
     func partNodesSelectionAction(_ id: String) -> @MainActor () -> Void {
