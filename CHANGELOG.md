@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Suggest the Qt-style `_copy` name when duplicating a stored animation and include its type in the accessible list row.
+
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.

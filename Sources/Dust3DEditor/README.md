@@ -446,7 +446,8 @@ remain pending; ADR 0106 records remaining acceptance and unchanged quarantines.
 
 Use the Animations toolbar button (Command-Option-A), or choose Animations in the
 right inspector, to inspect stored animation records. Select a row to rename,
-duplicate or delete it. Rename and duplicate use an inline name field: Return
+duplicate or delete it. Duplicate suggests the stored name followed by `_copy`.
+Rename and duplicate use an inline name field: Return
 applies, Escape cancels, and a changed document disables the captured draft until
 you cancel and select again. Accepted changes use document Undo/Redo and Save.
 Native text editing retains its own undo and clipboard routing; graph clipboard
