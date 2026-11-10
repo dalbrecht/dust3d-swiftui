@@ -1,15 +1,16 @@
 import Dust3DDocument
 import Foundation
 
-/// Stored common timing for a type without a declared clip. No dynamic defaults or generator are inferred.
-package struct UnknownAnimationTimingDraft {
+/// Common stored parameters for a type without a declared clip.
+package struct UnknownAnimationParameterDraft {
     private enum Field: String, CaseIterable {
-        case durationSeconds, frameCount
+        case durationSeconds, frameCount, surfaceMaterial
     }
 
     package let defaultSeconds = 3.0
     package let defaultFrames = 90
     package let timing: AnimationTimingDefinition
+    package let surfaceMaterials: [String]
     private let record: DocumentAnimation
     private var changes: [Field: String?] = [:]
 
@@ -18,9 +19,10 @@ package struct UnknownAnimationTimingDraft {
             && record.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
     }
 
-    package init(record: DocumentAnimation, timing: AnimationTimingDefinition) {
+    package init(record: DocumentAnimation, catalog: AnimationAuthoringCatalog) {
         self.record = record
-        self.timing = timing
+        timing = catalog.timing
+        surfaceMaterials = catalog.surfaceMaterials
     }
 
     package func value(for name: String) -> String? {
@@ -42,12 +44,17 @@ package struct UnknownAnimationTimingDraft {
         try Field.allCases.compactMap { field in
             guard let change = changes[field] else { return nil }
             if let change {
-                guard let number = Double(change) else { throw AnimationCatalogError.invalidValue }
                 switch field {
                 case .durationSeconds:
+                    guard let number = Double(change) else { throw AnimationCatalogError.invalidValue }
                     try timing.validate(seconds: number, frames: Double(timing.minimumFrames))
                 case .frameCount:
+                    guard let number = Double(change) else { throw AnimationCatalogError.invalidValue }
                     try timing.validate(seconds: timing.minimumSeconds, frames: number)
+                case .surfaceMaterial:
+                    guard surfaceMaterials.contains(where: { $0.utf8.elementsEqual(change.utf8) }) else {
+                        throw AnimationCatalogError.invalidValue
+                    }
                 }
             }
             return .setParameter(name: field.rawValue, value: change)
