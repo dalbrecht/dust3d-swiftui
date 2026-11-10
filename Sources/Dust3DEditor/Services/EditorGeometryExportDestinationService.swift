@@ -25,6 +25,8 @@ final class EditorGeometryExportDestinationService: EditorGeometryExportDestinat
 
     var attachedDocument: NSDocument? { windowAnchor?.window?.windowController?.document as? NSDocument }
 
+    var hasActiveDocumentWindow: Bool { NSApp.isActive && windowAnchor?.window?.isKeyWindow == true }
+
     func trackWindowAnchor(_ anchor: NSView) { windowAnchor = anchor }
     func clearWindowAnchor(_ anchor: NSView) {
         if windowAnchor === anchor { windowAnchor = nil }
