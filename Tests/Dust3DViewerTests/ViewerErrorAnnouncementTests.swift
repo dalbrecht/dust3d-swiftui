@@ -38,11 +38,37 @@ final class ViewerErrorAnnouncementTests: XCTestCase {
 
         anchor.update(
             message: "Cannot open document", materialIssue: "Decode failed", isActive: true, announce: announce)
-        anchor.update(message: nil, materialIssue: "Decode failed", isActive: true, announce: announce)
+        anchor.update(
+            message: "Cannot open document", materialIssue: "Decode failed", isActive: true, announce: announce)
         XCTAssertEqual(spoken, ["Showing geometry without materials. Invalid image", "Cannot open document"])
+        anchor.update(message: nil, materialIssue: "Decode failed", isActive: true, announce: announce)
+        anchor.update(message: nil, materialIssue: "Decode failed", isActive: true, announce: announce)
+        XCTAssertEqual(
+            spoken,
+            [
+                "Showing geometry without materials. Invalid image", "Cannot open document",
+                "Showing geometry without materials. Decode failed",
+            ])
 
         anchor.update(message: nil, materialIssue: nil, isActive: true, announce: announce)
         anchor.update(message: nil, materialIssue: "Decode failed", isActive: true, announce: announce)
         XCTAssertEqual(spoken.last, "Showing geometry without materials. Decode failed")
+    }
+
+    func testDeferredFallbackDoesNotSpeakAfterItClearsOrTheWindowLosesFocus() {
+        let anchor = ViewerErrorAnnouncementAnchor()
+        var spoken: [String] = []
+        let announce: (String) -> Void = { spoken.append($0) }
+
+        anchor.update(message: "Open failed", materialIssue: "Decode failed", isActive: true, announce: announce)
+        anchor.update(message: "Open failed", materialIssue: "Decode failed", isActive: true, announce: announce)
+        anchor.update(message: "Open failed", materialIssue: nil, isActive: true, announce: announce)
+        anchor.update(message: nil, materialIssue: nil, isActive: true, announce: announce)
+        XCTAssertEqual(spoken, ["Open failed"])
+
+        anchor.update(message: "Open failed", materialIssue: "Decode failed", isActive: true, announce: announce)
+        anchor.update(message: nil, materialIssue: "Decode failed", isActive: false, announce: announce)
+        anchor.update(message: nil, materialIssue: "Decode failed", isActive: true, announce: announce)
+        XCTAssertEqual(spoken, ["Open failed", "Open failed"])
     }
 }

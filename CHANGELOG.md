@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Announce a Viewer material fallback after the file error that took priority is dismissed.
+
 - Announce when the active Viewer falls back to geometry without materials.
 
 - Announce new Viewer errors in the active window with VoiceOver.
