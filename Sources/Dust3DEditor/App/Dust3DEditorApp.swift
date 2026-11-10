@@ -197,7 +197,14 @@ struct Dust3DEditorApp: App {
                 .help("Pauses during dragging, while inactive, and when Reduce Motion is enabled.")
                 PreviewCameraMenu(
                     title: "Preview Camera", isEnabled: previewCameraActions?.canMove == true,
-                    move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() })
+                    move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() },
+                    canvasWheelZoom: Binding(
+                        get: { store?.canvasWheelZoomEnabled == true },
+                        set: { enabled in
+                            guard previewCameraActions?.canZoomFromCanvas == true else { return }
+                            store?.setCanvasWheelZoomEnabled(enabled)
+                        }),
+                    canZoomFromCanvas: previewCameraActions?.canZoomFromCanvas == true)
             }
             CommandMenu("Canvas") {
                 Button("Switch Editing Profile") { _ = store?.switchSelectedCanvasProfile() }
@@ -509,6 +516,12 @@ private struct EditorComponentSidebarSelectAllKey: FocusedValueKey {
     typealias Value = ComponentSidebarSelectAllTarget
 }
 
+private struct EditorEdgeSidebarSelectAllKey: FocusedValueKey {
+    typealias Value = EdgeSidebarSelectAllTarget
+}
+
+private struct EditorNodesSidebarSelectAllKey: FocusedValueKey { typealias Value = NodesSidebarSelectAll }
+
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 
 extension FocusedValues {
@@ -530,6 +543,16 @@ extension FocusedValues {
     var editorComponentSidebarSelectAll: ComponentSidebarSelectAllTarget? {
         get { self[EditorComponentSidebarSelectAllKey.self] }
         set { self[EditorComponentSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorEdgeSidebarSelectAll: EdgeSidebarSelectAllTarget? {
+        get { self[EditorEdgeSidebarSelectAllKey.self] }
+        set { self[EditorEdgeSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorNodesSidebarSelectAll: NodesSidebarSelectAll? {
+        get { self[EditorNodesSidebarSelectAllKey.self] }
+        set { self[EditorNodesSidebarSelectAllKey.self] = newValue }
     }
 
     var editorStore: EditorStore? {
