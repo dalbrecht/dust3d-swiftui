@@ -22,10 +22,18 @@ struct CanvasRotationMenuButtons: View {
     let positive: (@MainActor () -> Void)?
     let negative: (@MainActor () -> Void)?
 
-    init(store: EditorStore?, profileLease: UUID? = nil) {
+    init(
+        store: EditorStore?, profileLease: UUID? = nil,
+        isInScope: @escaping @MainActor () -> Bool = { true }
+    ) {
         axis = store?.plane == .side ? "Z" : "X"
-        positive = store?.orthogonalQuarterTurnAction(.positive, profileLease: profileLease)
-        negative = store?.orthogonalQuarterTurnAction(.negative, profileLease: profileLease)
+        func scoped(_ turn: OrthogonalQuarterTurn) -> (@MainActor () -> Void)? {
+            guard isInScope(), let rotate = store?.orthogonalQuarterTurnAction(turn, profileLease: profileLease)
+            else { return nil }
+            return { if isInScope() { rotate() } }
+        }
+        positive = scoped(.positive)
+        negative = scoped(.negative)
     }
 }
 
