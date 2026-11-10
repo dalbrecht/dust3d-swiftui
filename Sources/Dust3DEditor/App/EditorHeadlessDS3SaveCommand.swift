@@ -16,6 +16,7 @@ enum EditorHeadlessDS3SaveCommand {
         case usage
         case unsafeOutput(URL)
         case geometryUnavailable(OutputKind)
+        case unsupportedOutputFormat
         case input(URL, cause: String)
         case fileInspection(URL, code: Int)
 
@@ -29,6 +30,8 @@ enum EditorHeadlessDS3SaveCommand {
                 "Destination must be a regular file distinct from all inputs and other outputs: \(url.path)"
             case .geometryUnavailable(let kind):
                 "Headless .\(kind.rawValue) export is unavailable."
+            case .unsupportedOutputFormat:
+                "Unsupported output format. Use .ds3 for a source save."
             case .input(let url, let cause):
                 "Could not read or apply \(url.path): \(cause)"
             case .fileInspection(let url, let code):
@@ -40,7 +43,7 @@ enum EditorHeadlessDS3SaveCommand {
     private struct Invocation {
         var source: URL?
         var xml: URL?
-        var destinations: [(url: URL, kind: OutputKind)] = []
+        var destinations: [(url: URL, kind: OutputKind?)] = []
 
         init(options: ArraySlice<String>) throws {
             var options = options
@@ -51,8 +54,7 @@ enum EditorHeadlessDS3SaveCommand {
                 } else if parsesOptions, EditorHeadlessDS3SaveCommand.outputOptions.contains(argument) {
                     guard destinations.count < 64 else { throw Failure.usage }
                     let url = try Self.path(options.popFirst())
-                    guard let kind = OutputKind(rawValue: url.pathExtension.lowercased()) else { throw Failure.usage }
-                    destinations.append((url, kind))
+                    destinations.append((url, OutputKind(rawValue: url.pathExtension.lowercased())))
                 } else if parsesOptions, argument == "-paste-xml" {
                     guard xml == nil else { throw Failure.usage }
                     xml = try Self.path(options.popFirst(), extension: "xml")
@@ -124,6 +126,7 @@ enum EditorHeadlessDS3SaveCommand {
         var status: Int32 = 0
         for (destination, kind) in invocation.destinations {
             do {
+                guard let kind else { throw Failure.unsupportedOutputFormat }
                 switch kind {
                 case .ds3:
                     try await files.save(document, to: destination)

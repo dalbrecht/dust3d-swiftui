@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Continue headless export batches after an unsupported output format and report the failed destination.
+
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
 - Browse a selected component group with Command–Down Arrow while the sidebar has focus.
