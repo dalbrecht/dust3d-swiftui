@@ -111,10 +111,13 @@ struct AnimationAuthoringControls: View {
                             return (try? control.slider(for: value)) != nil
                         })
                     if control.minimumSlider < control.maximumSlider {
+                        let setPosition = workflow.parameterAction { workflow, value in
+                            workflow.setSlider(name: control.name, index: value)
+                        }
                         Slider(
                             value: Binding(
                                 get: { sliderPosition(control) ?? Double(control.defaultSlider) },
-                                set: { workflow.setSlider(name: control.name, index: $0) }),
+                                set: { setPosition($0) }),
                             in: Double(control.minimumSlider)...Double(control.maximumSlider), step: 1
                         )
                         .frame(minHeight: 40).accessibilityLabel(control.label)
@@ -172,19 +175,22 @@ struct AnimationAuthoringControls: View {
     private func numericField(
         name: String, label: String, defaultText: String, supported: @escaping (String) -> Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        let setText = workflow.parameterAction { workflow, value in
+            workflow.setText(name: name, value: value)
+        }
+        return VStack(alignment: .leading, spacing: 4) {
             Text(label).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 6) {
                 TextField(
                     "Default \(defaultText)",
                     text: Binding(
                         get: { workflow.parameterValue(for: name) ?? "" },
-                        set: { workflow.setText(name: name, value: $0) })
+                        set: { setText($0) })
                 )
                 .textFieldStyle(.roundedBorder).monospacedDigit().frame(minHeight: 40)
                 .focusedValue(\.editorTextEditing, true).accessibilityLabel(label)
                 Button {
-                    workflow.useDefault(name: name)
+                    setText(nil)
                 } label: {
                     Text("Default").frame(minWidth: 40, minHeight: 40)
                 }.buttonStyle(.borderless)
@@ -205,19 +211,22 @@ struct AnimationAuthoringControls: View {
     }
     private func surfacePicker(_ materials: [String]) -> some View {
         let raw = workflow.parameterValue(for: "surfaceMaterial")
+        let setMaterial = workflow.parameterAction { workflow, material in
+            workflow.setText(name: "surfaceMaterial", value: material)
+        }
         return Picker(
             "Surface material",
             selection: Binding<[UInt8]?>(
                 get: { workflow.parameterValue(for: "surfaceMaterial").map { Array($0.utf8) } },
                 set: { value in
                     guard let value else {
-                        workflow.useDefault(name: "surfaceMaterial")
+                        setMaterial(nil)
                         return
                     }
                     guard let selected = materials.first(where: { $0.utf8.elementsEqual(value) }) else {
                         return
                     }
-                    workflow.setText(name: "surfaceMaterial", value: selected)
+                    setMaterial(selected)
                 })
         ) {
             Text("Default").tag(Optional<[UInt8]>.none)

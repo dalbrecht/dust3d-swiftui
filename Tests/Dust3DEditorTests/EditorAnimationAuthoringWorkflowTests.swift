@@ -181,6 +181,27 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         XCTAssertEqual(store.animationSnapshot?.list.selectedRow?.source.type, "bIPEDRun")
     }
 
+    func testRetainedParameterControlsCannotEditReopenedDraft() async throws {
+        let store = try await store()
+        defer { store.stop() }
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        workflow.editAction(.parameters)()
+        let setFrames = workflow.parameterAction { workflow, value in
+            workflow.setText(name: "frameCount", value: value)
+        }
+        setFrames("120")
+        XCTAssertEqual(workflow.parameterValue(for: "frameCount"), "120")
+
+        workflow.cancel()
+        workflow.editAction(.parameters)()
+        let reopenedFrames = workflow.parameterValue(for: "frameCount")
+        setFrames("400")
+        XCTAssertEqual(workflow.parameterValue(for: "frameCount"), reopenedFrames)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testNoMatchingRigBlocksCreationButKeepsStoredTypeAndParametersEditable() async throws {
         for rig in [nil, "None", "Unsupported", "Fish"] {
             let store = try await store(type: "LegacyBiped", rig: rig)

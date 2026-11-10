@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep retained animation parameter controls from editing a reopened draft.
+
 - Keep animation type and parameter controls on the selected row that supplied them.
 
 - Edit the stored animation surface material when the archive uses an unknown animation type.

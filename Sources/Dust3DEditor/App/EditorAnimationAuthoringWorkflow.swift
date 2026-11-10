@@ -21,6 +21,7 @@ final class EditorAnimationAuthoringWorkflow {
 
     private let store: EditorStore
     private var stopped = false
+    private var parameterControlsID = UUID()
     private var lastIssue: (any Error)?
     private(set) var mode = Mode.idle
     private(set) var sourceTitle = ""
@@ -177,6 +178,16 @@ final class EditorAnimationAuthoringWorkflow {
     func parameterValue(for name: String) -> String? {
         parameterDraft?.value(for: name) ?? unknownParameterDraft?.value(for: name)
     }
+    func parameterAction<Value>(_ action: @escaping @MainActor (EditorAnimationAuthoringWorkflow, Value) -> Void)
+        -> @MainActor (Value) -> Void
+    {
+        let controlsID = parameterControlsID
+        return { [weak self] value in
+            guard let self, !stopped, !isSubmitting, isCurrent, parameterControlsID == controlsID else { return }
+            action(self, value)
+        }
+    }
+
     func setText(name: String, value: String?) {
         guard !isSubmitting else { return }
         if var draft = parameterDraft {
@@ -240,6 +251,7 @@ final class EditorAnimationAuthoringWorkflow {
         reset()
     }
     private func reset() {
+        parameterControlsID = UUID()
         mode = .idle
         sourceTitle = ""
         sourceType = nil
