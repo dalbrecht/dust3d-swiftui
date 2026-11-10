@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a Focus Object button for keyboard orbit in Quick Look.
+
 - Add keyboard-focusable Zoom In and Zoom Out buttons to Quick Look previews.
 - Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
 

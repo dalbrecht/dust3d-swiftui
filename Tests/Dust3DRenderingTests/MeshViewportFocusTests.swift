@@ -6,7 +6,30 @@ import XCTest
 @MainActor
 final class MeshViewportFocusTests: XCTestCase {
     private final class ResponderView: NSView {
-        override var acceptsFirstResponder: Bool { true }
+        var canFocus = true
+        override var acceptsFirstResponder: Bool { canFocus }
+    }
+
+    func testHostFocusFollowsOnlyTheCurrentVisibleViewport() {
+        let focus = MeshViewportFocus()
+        let window = NSWindow()
+        let otherWindow = NSWindow()
+        let viewport = ResponderView()
+        let otherViewport = ResponderView()
+        window.contentView?.addSubview(viewport)
+        otherWindow.contentView?.addSubview(otherViewport)
+        XCTAssertTrue(otherWindow.makeFirstResponder(otherViewport))
+
+        XCTAssertFalse(focus.moveFocusInHostWindow())
+        focus.bind(viewport)
+        XCTAssertTrue(focus.moveFocusInHostWindow())
+        XCTAssertTrue(window.firstResponder === viewport)
+        XCTAssertTrue(otherWindow.firstResponder === otherViewport)
+
+        viewport.isHidden = true
+        XCTAssertFalse(focus.moveFocusInHostWindow())
+        focus.unbind(viewport)
+        XCTAssertFalse(focus.moveFocusInHostWindow())
     }
 
     func testFocusIsScopedToTheAttachedWindowAndRetiresOnlyTheMatchingView() {
@@ -28,6 +51,11 @@ final class MeshViewportFocusTests: XCTestCase {
         XCTAssertFalse(focus.moveFocus(in: window), "A hidden preview cannot receive focus")
         XCTAssertTrue(window.firstResponder === first)
         replacement.isHidden = false
+
+        replacement.canFocus = false
+        XCTAssertFalse(focus.moveFocus(in: window), "An unavailable preview cannot receive focus")
+        XCTAssertTrue(window.firstResponder === first)
+        replacement.canFocus = true
 
         focus.bind(replacement)
         focus.unbind(first)
