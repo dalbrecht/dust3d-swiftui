@@ -2467,12 +2467,7 @@ final class EditorStore {
         _ id: String, degrees: String, target: CanvasAdjustmentTarget? = nil
     ) {
         guard !isWorking, !stopped else { return }
-        if let target {
-            guard let source = acceptedDocumentSource, target.isCurrent(in: source),
-                let component = source.selectedComponent, component.id.utf8.elementsEqual(id.utf8),
-                source.showsComponentSmoothing(for: [component])
-            else { return }
-        }
+        if let target, !admitsInspectedComponentMeshEdit(id, target: target) { return }
         guard let value = ComponentMeshSmoothingInput.value(degrees) else {
             errorMessage = Self.message(DocumentError.invalidComponentSmoothing)
             return
@@ -2482,8 +2477,19 @@ final class EditorStore {
                 [.setComponentSmoothCutoffDegrees(id: id, degrees: value)], selecting: nil, target: target)
         }
     }
-    func setComponentCombineMode(_ id: String, mode: ComponentCombineMode) {
-        perform { try await $0.apply([.setComponentCombineMode(id: id, mode: mode)]) }
+    func setComponentCombineMode(
+        _ id: String, mode: ComponentCombineMode, target: CanvasAdjustmentTarget? = nil
+    ) {
+        if let target, !admitsInspectedComponentMeshEdit(id, target: target) { return }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setComponentCombineMode(id: id, mode: mode)], selecting: nil, target: target)
+        }
+    }
+    private func admitsInspectedComponentMeshEdit(_ id: String, target: CanvasAdjustmentTarget) -> Bool {
+        guard let source = acceptedDocumentSource, target.isCurrent(in: source),
+            let component = source.selectedComponent, component.id.utf8.elementsEqual(id.utf8)
+        else { return false }
+        return source.showsComponentSmoothing(for: [component])
     }
     func renameComponent(_ id: String, name: String) {
         perform { try await $0.apply([.setComponentName(id: id, name: name)]) }

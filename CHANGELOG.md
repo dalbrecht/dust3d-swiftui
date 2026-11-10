@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Hide Combine Mode for Cut Face components and keep inspector edits scoped to the selection that supplied them.
+
 - Set an inspected component’s smoothing cutoff to zero in one Undo step.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.

@@ -8,6 +8,10 @@ struct ComponentInspector: View {
     @State private var name = ""
 
     var body: some View {
+        let snapshot = store.snapshot
+        let meshTarget = snapshot.flatMap { source in
+            source.showsComponentSmoothing(for: [component]) ? CanvasAdjustmentTarget(snapshot: source) : nil
+        }
         VStack(alignment: .leading, spacing: 16) {
             Text("Component inspector").font(.title3)
             Text(component.id).font(.caption).textSelection(.enabled)
@@ -28,28 +32,34 @@ struct ComponentInspector: View {
                 ComponentEquipmentSlotControls(store: store, component: component, target: target)
                     .id(snapshot.documentIdentity)
             }
-            Picker(
-                "Combine mode",
-                selection: Binding<ComponentCombineMode?>(
-                    get: { component.combineMode },
-                    set: { if let mode = $0 { store.setComponentCombineMode(component.id, mode: mode) } })
-            ) {
-                if component.combineMode == nil {
-                    Text("Unsupported source mode").tag(nil as ComponentCombineMode?)
+            if let meshTarget {
+                Picker(
+                    "Combine mode",
+                    selection: Binding<ComponentCombineMode?>(
+                        get: { component.combineMode },
+                        set: { mode in
+                            if let mode {
+                                store.setComponentCombineMode(component.id, mode: mode, target: meshTarget)
+                            }
+                        })
+                ) {
+                    if component.combineMode == nil {
+                        Text("Unsupported source mode").tag(nil as ComponentCombineMode?)
+                    }
+                    ForEach(ComponentCombineMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(Optional(mode))
+                    }
                 }
-                ForEach(ComponentCombineMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(Optional(mode))
-                }
+                .accessibilityIdentifier("component-combine-mode")
+                .help(
+                    "Normal unions, Inversion subtracts, and Uncombined retains separate geometry. Order matters. One undo step."
+                )
             }
-            .accessibilityIdentifier("component-combine-mode")
-            .help(
-                "Normal unions, Inversion subtracts, and Uncombined retains separate geometry. Order matters. One undo step."
-            )
             ComponentColorControls(store: store, component: component)
             ComponentColorImageControls(store: store, component: component)
-            if let snapshot = store.snapshot, snapshot.showsComponentSmoothing(for: [component]) {
+            if let snapshot, let meshTarget {
                 ComponentSmoothingControls(
-                    store: store, component: component, target: CanvasAdjustmentTarget(snapshot: snapshot)
+                    store: store, component: component, target: meshTarget
                 )
                 .id(snapshot.documentIdentity)
             }
