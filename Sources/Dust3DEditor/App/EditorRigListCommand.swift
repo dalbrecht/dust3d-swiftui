@@ -33,7 +33,8 @@ enum EditorRigListCommand {
     ) -> Int32? {
         let options = arguments.dropFirst()
         guard options.prefix(while: { $0 != "--" }).contains(option) else { return nil }
-        guard options.elementsEqual([option]) else {
+        // Qt lists the catalog before processing document and output arguments.
+        guard EditorLaunchMode(arguments: arguments) == .application else {
             stderr(Failure.invalidUsage.localizedDescription + "\n")
             return 2
         }

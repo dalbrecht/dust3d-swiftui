@@ -32,23 +32,33 @@ final class EditorRigListCommandTests: XCTestCase {
         }
     }
 
-    func testMixedOrRepeatedRequestsFailBeforeReadingOrPublishing() {
+    func testQtRigListingTakesPrecedenceOverOrdinaryArguments() {
         for options in [
-            ["-list-rigs", "model.ds3"], ["-list-rigs", "-list-rigs"],
-            ["--write-recovery-copies", "123", "-list-rigs"], ["-list-rigs", "--"],
+            ["-list-rigs", "model.ds3"], ["-list-rigs", "-list-rigs"], ["-list-rigs", "--"],
         ] {
-            var diagnostic = ""
+            var writes = 0
             let result = EditorRigListCommand.run(
                 arguments: ["editor"] + options,
-                load: { _ in
-                    XCTFail("Unexpected resource read")
-                    return nil
-                },
-                stdout: { _ in XCTFail("Unexpected stdout") },
-                stderr: { diagnostic += $0 })
-            XCTAssertEqual(result, 2)
-            XCTAssertTrue(diagnostic.contains("-list-rigs"))
+                load: { type in Data("<rig type=\"\(type)\"/>".utf8) },
+                stdout: { _ in writes += 1 },
+                stderr: { XCTFail($0) })
+            XCTAssertEqual(result, 0)
+            XCTAssertEqual(writes, 1)
         }
+    }
+
+    func testMixedRecoveryRequestFailsBeforeReadingOrPublishing() {
+        var diagnostic = ""
+        let result = EditorRigListCommand.run(
+            arguments: ["editor", "--write-recovery-copies", "123", "-list-rigs"],
+            load: { _ in
+                XCTFail("Unexpected resource read")
+                return nil
+            },
+            stdout: { _ in XCTFail("Unexpected stdout") },
+            stderr: { diagnostic += $0 })
+        XCTAssertEqual(result, 2)
+        XCTAssertTrue(diagnostic.contains("-list-rigs"))
     }
 
     func testPublishesOneQtOrderedXMLDocumentAfterAllResourceReads() throws {
