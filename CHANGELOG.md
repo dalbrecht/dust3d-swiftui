@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Retry Preview to the Editor’s View menu for the current document.
+
 - Retry a failed Editor renderer using the accepted mesh and prepared materials.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.

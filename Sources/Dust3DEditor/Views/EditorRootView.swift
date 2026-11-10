@@ -444,6 +444,7 @@ struct EditorRootView: View {
 
     private var modelPreview: some View {
         let rendererAttempt = store.previewRendererAttemptID
+        let retryPreview = store.previewRetryAction()
         return VStack(spacing: 0) {
             HStack {
                 Text("Mesh preview").font(.headline)
@@ -456,8 +457,8 @@ struct EditorRootView: View {
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }
-                        .disabled(store.isGenerating)
+                    Button("Retry Preview") { retryPreview?() }
+                        .disabled(retryPreview == nil)
                 }
             } else if let mesh = store.mesh {
                 let materialRevision = store.materialViewportRevision
@@ -497,7 +498,8 @@ struct EditorRootView: View {
                 }
                 if let error = store.previewState.errorMessage {
                     Text("Preview out of date: \(error)").font(.caption).padding(8)
-                    Button("Retry Preview") { store.retryPreview() }.padding(.bottom, 8)
+                    Button("Retry Preview") { retryPreview?() }
+                        .disabled(retryPreview == nil).padding(.bottom, 8)
                 }
                 Text("\(mesh.triangleCount) triangles · Drag to orbit · Scroll to zoom")
                     .font(.caption).foregroundStyle(.secondary).padding(8)

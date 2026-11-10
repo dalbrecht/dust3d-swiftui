@@ -3576,6 +3576,26 @@ final class EditorStore {
         renderError = nil
     }
 
+    private var previewRetrySource: EditorSnapshot? {
+        guard !isWorking, !isGenerating,
+            renderError != nil || previewState.errorMessage != nil
+        else { return nil }
+        return acceptedDocumentSource
+    }
+
+    func previewRetryAction(ownsWindow: @escaping @MainActor () -> Bool = { true }) -> (@MainActor () -> Void)? {
+        guard let source = previewRetrySource, ownsWindow() else { return nil }
+        let identity = source.documentIdentity
+        let revision = source.documentRevision
+        let attemptID = previewRendererAttemptID
+        return { [weak self] in
+            guard let self, ownsWindow(), let current = self.previewRetrySource,
+                current.documentIdentity == identity, current.documentRevision == revision
+            else { return }
+            self.retryPreview(rendererAttemptID: attemptID)
+        }
+    }
+
     func retryPreview(rendererAttemptID: UUID? = nil) {
         guard !stopped, !isGenerating, let snapshot,
             rendererAttemptID == nil || rendererAttemptID == previewRendererAttemptID
