@@ -266,19 +266,18 @@ struct Dust3DEditorApp: App {
                     }
                 }
                 .disabled(store?.canTransform != true)
-                let decreaseRadius = canvasOwner?.canvasRadiusAction(direction: -1) {
+                let canvasCommandIsInScope: @MainActor () -> Bool = {
                     NSApp.keyWindow === canvasWindow && store === canvasOwner && rigAssignmentFocus.allowsAssignment
                 }
-                let increaseRadius = canvasOwner?.canvasRadiusAction(direction: 1) {
-                    NSApp.keyWindow === canvasWindow && store === canvasOwner && rigAssignmentFocus.allowsAssignment
-                }
+                let decreaseRadius = canvasOwner?.canvasRadiusAction(direction: -1, isInScope: canvasCommandIsInScope)
+                let increaseRadius = canvasOwner?.canvasRadiusAction(direction: 1, isInScope: canvasCommandIsInScope)
                 Button("Decrease Radius") { decreaseRadius?() }.disabled(decreaseRadius == nil)
                 Button("Increase Radius") { increaseRadius?() }.disabled(increaseRadius == nil)
-                CanvasRotationMenuButtons(store: canvasOwner) {
-                    NSApp.keyWindow === canvasWindow && store === canvasOwner && rigAssignmentFocus.allowsAssignment
-                }
-                OrthogonalQuarterTurnMenu(actions: OrthogonalQuarterTurnActions(store: store))
-                CanvasPrecisionMenu(store: store)
+                CanvasRotationMenuButtons(store: canvasOwner, isInScope: canvasCommandIsInScope)
+                OrthogonalQuarterTurnMenu(
+                    actions: OrthogonalQuarterTurnActions(store: canvasOwner, isInScope: canvasCommandIsInScope))
+                CanvasPrecisionMenu(
+                    actions: CanvasPrecisionActions(store: canvasOwner, isInScope: canvasCommandIsInScope))
                 GraphColorizeMenu(store: store)
                 DescendantRotationMenu(store: store)
                 NodeConnectionControls(store: store)

@@ -30,6 +30,47 @@ import XCTest
         document = try document.applying(.addEdge(id: edge, from: a, to: b))
         return try document.applying(.setOrigin(.init(x: 0.5, y: 0.5, z: 0.5)))
     }
+    func testPrecisionAndQuarterTurnMenusRequireTheirOriginalCommandScope() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let source = try document()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectGraph(nodes: [a], edges: [edge])
+        try await settle(store)
+        store.setCanvasHeight(200)
+
+        var isInScope = false
+        let unavailable = CanvasPrecisionActions(store: store) { isInScope }
+        XCTAssertTrue(unavailable.entries.allSatisfy { !$0.enabled })
+        XCTAssertNil(OrthogonalQuarterTurnActions(store: store, isInScope: { isInScope }).positive)
+
+        isInScope = true
+        let nudge = try XCTUnwrap(
+            CanvasPrecisionActions(store: store) { isInScope }.entries.first { $0.action == .left })
+        let turn = try XCTUnwrap(OrthogonalQuarterTurnActions(store: store, isInScope: { isInScope }).positive)
+        XCTAssertTrue(nudge.enabled)
+        isInScope = false
+        nudge.invoke()
+        turn()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+
+        isInScope = true
+        nudge.invoke()
+        try await settle(store)
+        let nudged = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(try nudged.document.node(id: a).position.x, -0.005, accuracy: 1e-12)
+        turn()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), nudged.document.encoded())
+
+        try XCTUnwrap(OrthogonalQuarterTurnActions(store: store, isInScope: { isInScope }).positive)()
+        try await settle(store)
+        XCTAssertNotEqual(store.snapshot?.document.encoded(), nudged.document.encoded())
+    }
+
     func testBackspaceDeletesTheFocusedGraphSelectionWithOneUndo() async throws {
         let store = EditorStore()
         defer { store.stop() }
