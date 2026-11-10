@@ -109,7 +109,7 @@ struct AnimationPanel: View {
                     store.selectAnimation(id)
                 })
         ) {
-            ForEach(value.list.rows) { row in
+            ForEach(value.list.inspectorRows) { row in
                 HStack(spacing: 8) {
                     Image(systemName: "film").foregroundStyle(.secondary).frame(width: 16)
                     VStack(alignment: .leading, spacing: 2) {

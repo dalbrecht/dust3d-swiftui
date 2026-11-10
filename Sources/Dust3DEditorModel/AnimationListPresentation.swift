@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Foundation
 
 /// Pure stored-intent row; its byte identity avoids Swift canonical String identity collisions.
 public struct AnimationListRow: Sendable, Identifiable {
@@ -18,6 +19,8 @@ public struct AnimationListRow: Sendable, Identifiable {
 /// Read-only data-to-presentation transform; errors stay distinct from a successfully empty list.
 public struct AnimationListPresentation: Sendable {
     public let rows: [AnimationListRow]
+    /// Inspector display order. Archive order and exact selection identities stay in rows.
+    package let inspectorRows: [AnimationListRow]
     public let selectedID: [UInt8]?
     /// Original optional-metadata cause, not a playback or generator error.
     public let issue: (any Error)?
@@ -37,6 +40,14 @@ public struct AnimationListPresentation: Sendable {
         case .success(let records):
             let builtRows = records.enumerated().map { AnimationListRow(source: $0.element, index: $0.offset) }
             rows = builtRows
+            inspectorRows = builtRows.enumerated().sorted { left, right in
+                let first = left.element.title
+                let second = right.element.title
+                let comparison = first.compare(second, options: [.numeric, .caseInsensitive])
+                if comparison != .orderedSame { return comparison == .orderedAscending }
+                if first.utf16.count != second.utf16.count { return first.utf16.count < second.utf16.count }
+                return left.offset < right.offset
+            }.map(\.element)
             let candidate = selectedID.map { Array($0.utf8) }
             self.selectedID = candidate.flatMap { candidate in
                 builtRows.contains { $0.id == candidate } ? candidate : nil
@@ -44,6 +55,7 @@ public struct AnimationListPresentation: Sendable {
             issue = nil
         case .failure(let cause):
             rows = []
+            inspectorRows = []
             self.selectedID = nil
             issue = cause
         }

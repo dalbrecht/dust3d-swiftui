@@ -5,6 +5,26 @@ import XCTest
 @testable import Dust3DEditorModel
 
 final class AnimationSessionTests: XCTestCase {
+    func testInspectorSortsClipNamesWithoutChangingArchiveOrderOrSelection() throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><animations>
+                <animation id="ten" name="Walk 10" type="future"/>
+                <animation id="padded" name="Walk 02" type="future"/>
+                <animation id="two" name="walk 2" type="future"/>
+                <animation id="tie" name="WALK 2" type="future"/>
+                <animation id="idle" name="idle" type="future"/>
+                </animations></canvas>
+                """.utf8))
+        let original = document.encoded()
+        let presentation = AnimationListPresentation(catalog: .success(try document.animations()), selectedID: "ten")
+        XCTAssertEqual(presentation.rows.map(\.source.id), ["ten", "padded", "two", "tie", "idle"])
+        XCTAssertEqual(presentation.inspectorRows.map(\.source.id), ["idle", "two", "tie", "padded", "ten"])
+        XCTAssertEqual(presentation.selectedRow?.source.id, "ten")
+        XCTAssertEqual(document.encoded(), original)
+    }
+
     func testCreateDuplicateAndHistoryUseFreshIdentitiesAndCurrentSourceSnapshots() async throws {
         let session = EditorSession()
         let original = try await session.open(data: Dust3DDocument.emptyArchive())
