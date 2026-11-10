@@ -37,6 +37,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let rectangle: (CanvasSelectionRectangle?) -> Void
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    var wheelWhileDisabled: () -> Bool = { false }
+    var unhandledWheel: ((CanvasWheelInput) -> Bool)? = nil
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
@@ -48,14 +50,19 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var focusControl: CanvasProfileFocusControl? = nil
+    var focusTarget: CanvasProfileFocusTarget? = nil
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
         view.cancelActivation()
         view.enabled = false
+        view.wheelWhileDisabled = { false }
         view.precisionKey = nil
         view.profileFocusRequest = nil
         view.switchProfile = nil
+        view.focusControl?.detach(view)
+        view.focusControl = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         view.tracksHoverWhileDisabled = tracksHoverWhileDisabled
@@ -66,6 +73,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.rectangle = rectangle
         view.hover = hover
         view.wheel = wheel
+        view.wheelWhileDisabled = wheelWhileDisabled
+        view.unhandledWheel = unhandledWheel
         view.radiusKey = radiusKey
         view.doubleClick = doubleClick
         view.precisionKey = precisionKey
@@ -77,6 +86,8 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.profileFocusRequest = profileFocusRequest
         view.ownsProfile = ownsProfile
         view.switchProfile = switchProfile
+        view.focusControl = focusControl
+        if let focusTarget, ownsProfile() { focusControl?.attach(view, target: focusTarget) }
         view.scheduleProfileFocus()
     }
 }
@@ -91,6 +102,8 @@ final class CanvasPointerView: NSView {
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var wheelWhileDisabled: () -> Bool = { false }
+    var unhandledWheel: ((CanvasWheelInput) -> Bool)?
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
@@ -101,11 +114,23 @@ final class CanvasPointerView: NSView {
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    weak var focusControl: CanvasProfileFocusControl?
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
     private var tracking: NSTrackingArea?
     private var activity = CanvasPointerActivity()
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
+    override class var defaultFocusRingType: NSFocusRingType { .exterior }
+
+    override var focusRingMaskBounds: NSRect {
+        // Leave room for the native ring inside the drawing pane.
+        guard bounds.width > 8, bounds.height > 8 else { return .zero }
+        return bounds.insetBy(dx: 4, dy: 4)
+    }
+
+    override func drawFocusRingMask() {
+        NSBezierPath(rect: focusRingMaskBounds).fill()
+    }
 
     override func updateTrackingAreas() {
         if let tracking { removeTrackingArea(tracking) }
@@ -239,11 +264,8 @@ final class CanvasPointerView: NSView {
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self {
             let input = CanvasPrecisionKeyInput(event)
-            let ownsPartStateInput =
-                window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
-                && NSApp.modalWindow == nil
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
-                || ((input.partStateProperty == nil || ownsPartStateInput) && precisionKey?(input) == true)
+                || (input.permitsDispatch(in: window) && precisionKey?(input) == true)
             {
                 return
             }
@@ -280,8 +302,18 @@ final class CanvasPointerView: NSView {
         }
     }
 
-    func routeWheel(_ input: CanvasWheelInput) -> Bool { enabled && input.isSupported && wheel(input) }
+    func routeWheel(_ input: CanvasWheelInput, at point: CanvasPoint? = nil) -> Bool {
+        guard input.isSupported, enabled || wheelWhileDisabled() else { return false }
+        if enabled || tracksHoverWhileDisabled, !isAddingNodes, start == nil, let point {
+            hover(point)
+        }
+        if wheel(input) { return true }
+        return enabled && start == nil && unhandledWheel?(input) == true
+    }
+
     override func scrollWheel(with event: NSEvent) {
-        if !routeWheel(CanvasWheelInput(event)) { super.scrollWheel(with: event) }
+        if !routeWheel(CanvasWheelInput(event), at: point(event)) {
+            super.scrollWheel(with: event)
+        }
     }
 }
