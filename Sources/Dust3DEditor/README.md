@@ -28,6 +28,9 @@ unavailable export and later destinations are still processed. Exit status `0`
 means all outputs succeeded, `1` means an input or output failed, and `2` means
 a usage or path preflight error.
 
+Use `-list-rigs` to print the authored XML rig catalog. As in Qt, it takes
+precedence over document and export arguments and writes only to standard output.
+
 Open an existing `.ds3`, select a node in the list or canvas, drag it in Front
 (X/Y) or Side (Z/Y), or edit X/Y/Z/radius and press Apply. Undo/redo operates on
 committed edits. Native document scenes provide Open, Save, Save As and unsaved
