@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep Viewer preview retry with its active window and renderer attempt.
+
 - Keep Retry Preview available in the Viewer’s View menu after dismissing a renderer error.
 
 - Add Cancel Current Operation to the Viewer’s File menu for pending opens and material updates.

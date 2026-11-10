@@ -181,12 +181,12 @@ final class ViewerMaterialTests: XCTestCase {
 
         store.dismissRendererError(attemptID: originalAttempt)
         XCTAssertNil(store.rendererError)
-        let retryOriginal = try XCTUnwrap(store.rendererRetryAction)
+        let retryOriginal = try XCTUnwrap(store.rendererRetryAction())
         retryOriginal()
         let retryAttempt = store.rendererAttemptID
         XCTAssertNotEqual(retryAttempt, originalAttempt)
         XCTAssertNil(store.rendererError)
-        XCTAssertNil(store.rendererRetryAction)
+        XCTAssertNil(store.rendererRetryAction())
         XCTAssertTrue(store.cameraState === camera)
         XCTAssertEqual(camera.revision, 1)
         XCTAssertEqual(store.meshRevision, meshRevision)
@@ -205,11 +205,34 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertNotEqual(store.rendererAttemptID, retryAttempt)
         store.reportRendererError("Retired model failure", attemptID: retryAttempt)
         XCTAssertNil(store.rendererError)
-        XCTAssertNil(store.rendererRetryAction)
+        XCTAssertNil(store.rendererRetryAction())
 
         let acceptedAttempt = store.rendererAttemptID
         store.stop()
         store.reportRendererError("Closed window failure", attemptID: acceptedAttempt)
+        XCTAssertNil(store.rendererError)
+    }
+
+    func testCapturedPreviewRetryRequiresItsWindowAtDelivery() async throws {
+        let store = ViewerStore(service: SnapshotLoader(snapshot: try snapshot()))
+        defer { store.stop() }
+        store.open(URL(fileURLWithPath: "/test/model.ds3"))
+        await store.loadTask?.value
+
+        let failedAttempt = store.rendererAttemptID
+        store.reportRendererError("Metal failure", attemptID: failedAttempt)
+        var ownsWindow = false
+        XCTAssertNil(store.rendererRetryAction { ownsWindow })
+        ownsWindow = true
+        let retry = try XCTUnwrap(store.rendererRetryAction { ownsWindow })
+        ownsWindow = false
+        retry()
+        XCTAssertEqual(store.rendererAttemptID, failedAttempt)
+        XCTAssertEqual(store.rendererError, "Metal failure")
+
+        ownsWindow = true
+        retry()
+        XCTAssertNotEqual(store.rendererAttemptID, failedAttempt)
         XCTAssertNil(store.rendererError)
     }
 

@@ -8,7 +8,7 @@ struct Dust3DViewerApp: App {
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
     @FocusedValue(\.viewerCancellation) private var cancelOperation
-    @FocusedValue(\.viewerRetryPreview) private var retryPreview
+    @FocusedValue(\.viewerPreviewRetryStore) private var retryStore
     @FocusedValue(\.openDocument) private var openDocument
 
     private var applicationName: String {
@@ -23,6 +23,11 @@ struct Dust3DViewerApp: App {
         .defaultSize(width: 1000, height: 720)
         .commands {
             CommandMenu("View") {
+                let window = NSApp.keyWindow
+                let retryPreview = retryStore?.rendererRetryAction { [weak window] in
+                    guard let window, NSApp.keyWindow === window else { return false }
+                    return window.attachedSheet == nil && window.sheetParent == nil && NSApp.modalWindow == nil
+                }
                 Button("Retry Preview") { retryPreview?() }
                     .disabled(retryPreview == nil)
             }
@@ -75,14 +80,14 @@ private struct ViewerCancellationKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
-private struct ViewerRetryPreviewKey: FocusedValueKey {
-    typealias Value = @MainActor () -> Void
+private struct ViewerPreviewRetryStoreKey: FocusedValueKey {
+    typealias Value = ViewerStore
 }
 
 extension FocusedValues {
-    var viewerRetryPreview: (@MainActor () -> Void)? {
-        get { self[ViewerRetryPreviewKey.self] }
-        set { self[ViewerRetryPreviewKey.self] = newValue }
+    var viewerPreviewRetryStore: ViewerStore? {
+        get { self[ViewerPreviewRetryStoreKey.self] }
+        set { self[ViewerPreviewRetryStoreKey.self] = newValue }
     }
 
     var viewerCancellation: (() -> Void)? {

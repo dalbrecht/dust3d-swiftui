@@ -61,10 +61,13 @@ final class ViewerStore {
     private var rendererFailure: String?
     private var isRendererFailureDismissed = false
     var rendererError: String? { isRendererFailureDismissed ? nil : rendererFailure }
-    var rendererRetryAction: (@MainActor () -> Void)? {
-        guard rendererFailure != nil else { return nil }
+    func rendererRetryAction(ownsWindow: @escaping @MainActor () -> Bool = { true }) -> (@MainActor () -> Void)? {
+        guard rendererFailure != nil, ownsWindow() else { return nil }
         let attemptID = rendererAttemptID
-        return { [weak self] in self?.retryRenderer(attemptID: attemptID) }
+        return { [weak self] in
+            guard ownsWindow() else { return }
+            self?.retryRenderer(attemptID: attemptID)
+        }
     }
     private(set) var rendererAttemptID = UUID()
     private(set) var cameraState = MeshCameraState()
