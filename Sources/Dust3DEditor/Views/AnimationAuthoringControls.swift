@@ -210,19 +210,22 @@ struct AnimationAuthoringControls: View {
     }
     private func surfacePicker(_ materials: [String]) -> some View {
         let raw = workflow.parameterValue(for: "surfaceMaterial")
+        let setMaterial = workflow.parameterAction { workflow, material in
+            workflow.setText(name: "surfaceMaterial", value: material)
+        }
         return Picker(
             "Surface material",
             selection: Binding<[UInt8]?>(
                 get: { workflow.parameterValue(for: "surfaceMaterial").map { Array($0.utf8) } },
-                set: workflow.parameterAction { workflow, value in
+                set: { value in
                     guard let value else {
-                        workflow.useDefault(name: "surfaceMaterial")
+                        setMaterial(nil)
                         return
                     }
                     guard let selected = materials.first(where: { $0.utf8.elementsEqual(value) }) else {
                         return
                     }
-                    workflow.setText(name: "surfaceMaterial", value: selected)
+                    setMaterial(selected)
                 })
         ) {
             Text("Default").tag(Optional<[UInt8]>.none)
