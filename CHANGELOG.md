@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Announce Editor preview failures in the active document window for VoiceOver users.
+
 - Add Retry Preview to the Editor’s View menu for the current document.
 
 - Retry a failed Editor renderer using the accepted mesh and prepared materials.
