@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep animation type and parameter controls on the selected row that supplied them.
+
 - Edit the stored animation surface material when the archive uses an unknown animation type.
 
 - Edit duration and sample count for named stored animations whose type is unknown.

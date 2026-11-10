@@ -1194,6 +1194,23 @@ final class EditorStore {
         performAnimationMutation(completion: completion) { try await $0.editAnimation(edit, target: target) }
     }
 
+    func animationSelectedRowAction(
+        snapshot: EditorAnimationSnapshot,
+        perform: @escaping @MainActor (AnimationListRow, AnimationEditTarget) -> Void
+    ) -> @MainActor () -> Void {
+        guard let row = snapshot.list.selectedRow,
+            let target = try? AnimationEditTarget(snapshot: snapshot, animationID: row.source.id)
+        else { return {} }
+        let request = animationRequestID
+        return { [weak self] in
+            guard let self, self.canManageAnimations, self.animationRequestID == request,
+                let current = self.animationSnapshot, current.list.selectedID == row.id,
+                target.isCurrent(in: current.editor)
+            else { return }
+            perform(row, target)
+        }
+    }
+
     func duplicateAnimation(
         target: AnimationEditTarget, name: String, completion: (@MainActor (Bool) -> Void)? = nil
     ) {
