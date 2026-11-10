@@ -169,10 +169,12 @@ struct Dust3DEditorApp: App {
                 #endif
                 let previewOwner = store
                 let previewWindow = NSApp.keyWindow
-                let display = previewDisplayActions?.scoped { [weak previewOwner, weak previewWindow] in
+                let ownsPreviewMenu: @MainActor () -> Bool = { [weak previewOwner, weak previewWindow] in
                     guard let previewOwner, let previewWindow else { return false }
                     return NSApp.keyWindow === previewWindow && store === previewOwner && !rigAssignmentFocus.hasSheet
                 }
+                let display = previewDisplayActions?.scoped(to: ownsPreviewMenu)
+                let camera = previewCameraActions?.scoped(to: ownsPreviewMenu)
                 Toggle(
                     "Wireframe",
                     isOn: Binding(
@@ -192,29 +194,31 @@ struct Dust3DEditorApp: App {
                 Toggle(
                     "Rotate Preview Automatically",
                     isOn: Binding(
-                        get: {
-                            previewCameraActions?.supportsAutomaticOrbit == true
-                                && store?.automaticallyOrbitsPreview == true
+                        get: { [weak previewOwner] in
+                            ownsPreviewMenu() && camera?.supportsAutomaticOrbit == true
+                                && previewOwner?.automaticallyOrbitsPreview == true
                         },
-                        set: { enabled in
-                            guard previewCameraActions?.canAutomaticallyOrbit == true else { return }
-                            store?.automaticallyOrbitsPreview = enabled
+                        set: { [weak previewOwner] enabled in
+                            guard camera?.canAutomaticallyOrbit == true else { return }
+                            previewOwner?.automaticallyOrbitsPreview = enabled
                         })
                 )
-                .disabled(previewCameraActions?.canAutomaticallyOrbit != true)
+                .disabled(camera?.canAutomaticallyOrbit != true)
                 .keyboardShortcut(allowsPreviewShortcuts ? KeyboardShortcut("r", modifiers: []) : nil)
                 .help("Pauses during dragging, while inactive, and when Reduce Motion is enabled.")
                 PreviewCameraMenu(
-                    title: "Preview Camera", isEnabled: previewCameraActions?.canMove == true,
+                    title: "Preview Camera", isEnabled: camera?.canMove == true,
                     allowsZoomShortcuts: allowsPreviewShortcuts,
-                    move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() },
+                    move: { camera?.move($0) }, fit: { camera?.fit() },
                     canvasWheelZoom: Binding(
-                        get: { store?.canvasWheelZoomEnabled == true },
-                        set: { enabled in
-                            guard previewCameraActions?.canZoomFromCanvas == true else { return }
-                            store?.setCanvasWheelZoomEnabled(enabled)
+                        get: { [weak previewOwner] in
+                            ownsPreviewMenu() && previewOwner?.canvasWheelZoomEnabled == true
+                        },
+                        set: { [weak previewOwner] enabled in
+                            guard camera?.canZoomFromCanvas == true else { return }
+                            previewOwner?.setCanvasWheelZoomEnabled(enabled)
                         }),
-                    canZoomFromCanvas: previewCameraActions?.canZoomFromCanvas == true)
+                    canZoomFromCanvas: camera?.canZoomFromCanvas == true)
             }
             CommandMenu("Canvas") {
                 Button("Switch Editing Profile") { _ = store?.switchSelectedCanvasProfile() }

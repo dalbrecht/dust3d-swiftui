@@ -27,6 +27,14 @@ struct EditorPreviewCameraActions {
         wheelZoomAction = wheelZoom
     }
 
+    /// Apply scene command ownership in addition to the visible camera's own admission.
+    func scoped(to ownsMenu: @escaping @MainActor () -> Bool) -> Self {
+        Self(
+            canMove: available, supportsAutomaticOrbit: supportsAutomaticOrbit,
+            isCurrent: { ownsMenu() && isCurrent() },
+            move: moveAction, fit: fitAction, wheelZoom: wheelZoomAction)
+    }
+
     var canMove: Bool { available && isCurrent() }
     var canAutomaticallyOrbit: Bool { supportsAutomaticOrbit && canMove }
 
