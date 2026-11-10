@@ -35,6 +35,12 @@ package struct ComponentStitchingBatchTarget: Sendable {
         common { $0.scalarValue(property) }
     }
 
+    package var segmentDraftValues: [Int?] { groups.map(\.stitching.targetSegments) }
+
+    package func scalarDraftValues(_ property: ComponentStitchingScalarProperty) -> [Double?] {
+        groups.map { $0.stitching.scalarValue(property) }
+    }
+
     private func common<Value: Equatable & Sendable>(
         _ value: (ComponentStitchingSettings) -> Value?
     ) -> ComponentMeshSelectionValue<Value> {
