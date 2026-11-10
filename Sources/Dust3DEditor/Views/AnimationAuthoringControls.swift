@@ -17,13 +17,13 @@ struct AnimationAuthoringControls: View {
                     Text(message).font(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 HStack {
-                    Button(action: cancel) { Text("Cancel").frame(minWidth: 40, minHeight: 40) }
+                    Button(action: { cancel() }) { Text("Cancel").frame(minWidth: 40, minHeight: 40) }
                         .disabled(workflow.isSubmitting)
                     Spacer()
                     if workflow.isSubmitting {
                         ProgressView().controlSize(.small).accessibilityLabel("Applying animation settings")
                     }
-                    Button(action: submit) { Text(applyTitle).frame(minWidth: 40, minHeight: 40) }
+                    Button(action: { submit() }) { Text(applyTitle).frame(minWidth: 40, minHeight: 40) }
                         .buttonStyle(.borderedProminent).disabled(!workflow.canApply)
                         .keyboardShortcut(.return, modifiers: [.command])
                         .help("Apply animation settings (Command-Return)")
@@ -50,7 +50,7 @@ struct AnimationAuthoringControls: View {
             }
         }
         .buttonStyle(.bordered)
-        .onExitCommand(perform: cancel)
+        .onExitCommand { cancel() }
     }
 
     @ViewBuilder private var availability: some View {
@@ -82,9 +82,10 @@ struct AnimationAuthoringControls: View {
         switch workflow.mode {
         case .idle: EmptyView()
         case .create:
+            let setName = workflow.draftAction { $0.name = $1 }
             Text("New animation").font(.subheadline)
             AnimationNameField(
-                text: Binding(get: { workflow.name }, set: workflow.draftAction { $0.name = $1 }),
+                text: Binding(get: { workflow.name }, set: { setName($0) }),
                 onSubmit: submit, onCancel: cancel
             )
             .frame(height: 44).focusedValue(\.editorTextEditing, true)
@@ -160,10 +161,11 @@ struct AnimationAuthoringControls: View {
     }
 
     private var typePicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let setType = workflow.draftAction { $0.selectedType = $1 }
+        return VStack(alignment: .leading, spacing: 6) {
             Picker(
                 "Stored type",
-                selection: Binding(get: { workflow.selectedType }, set: workflow.draftAction { $0.selectedType = $1 })
+                selection: Binding(get: { workflow.selectedType }, set: { setType($0) })
             ) {
                 Text("Choose a type").tag([UInt8]()).disabled(true)
                 if let source = workflow.sourceType, workflow.catalog?.clip(type: source) == nil {
