@@ -40,6 +40,7 @@ if arguments[:2] == ['swift', 'package'] and arguments[-1] == 'resolve':
 elif arguments[:2] == ['swift', 'build']:
     previous = json.loads(state.read_text()) if state.exists() else {'resolved': False}
     previous['embedded'] = json.loads(pathlib.Path(arguments[-1]).read_text()) if arguments[-1].endswith('.json') else None
+    previous['build_arguments'] = arguments
     state.write_text(json.dumps(previous))
     if os.environ.get('IDENTITY_TEST_MUTATE_SOURCE') == '1':
         pathlib.Path('source.swift').write_text('let value = 2')
@@ -70,9 +71,31 @@ else:
         self.environment = dict(os.environ, PATH=str(self.fake_tools) + os.pathsep + os.environ['PATH'],
                                 DUST3D_BUILD_ROOT=str(self.build_root), IDENTITY_TEST_STATE=str(self.state))
 
+        self.environment.pop('SOURCE_DATE_EPOCH', None)
+
     def run_wrapper(self):
         return subprocess.run(['bash', str(self.root / 'script/swift.sh'), 'build'], cwd=self.root,
                               env=self.environment, capture_output=True, text=True, timeout=30)
+
+    def test_reproducible_flags_apply_only_when_source_date_epoch_is_set(self):
+        result = self.run_wrapper()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        normal = json.loads(self.state.read_text())['build_arguments']
+        self.assertNotIn('-fno-pch-timestamp', normal)
+        self.assertNotIn('-reproducible', normal)
+
+        self.environment['SOURCE_DATE_EPOCH'] = '1794294390'
+        result = self.run_wrapper()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        flagged = json.loads(self.state.read_text())
+        arguments = flagged['build_arguments']
+        compiler = arguments.index('-fno-pch-timestamp')
+        self.assertEqual(arguments[compiler - 7:compiler + 1], [
+            '-Xswiftc', '-Xcc', '-Xswiftc', '-Xclang', '-Xswiftc', '-Xcc', '-Xswiftc', '-fno-pch-timestamp',
+        ])
+        linker = arguments.index('-reproducible')
+        self.assertEqual(arguments[linker - 1], '-Xlinker')
+        self.assertEqual(flagged['embedded']['coreRevision'], 'd' * 40)
 
     def test_should_resolve_updated_manifest_before_embedding_core_identity(self):
         result = self.run_wrapper()
