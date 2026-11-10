@@ -1,3 +1,4 @@
+import Darwin
 import Dust3DDocument
 import Foundation
 import XCTest
@@ -56,7 +57,49 @@ final class MeshFileServiceTests: XCTestCase {
             XCTFail("A missing file must fail.")
         } catch {
             XCTAssertEqual((error as NSError).domain, NSCocoaErrorDomain)
+            XCTAssertEqual((error as NSError).code, CocoaError.fileReadNoSuchFile.rawValue)
         }
+    }
+
+    func testArchiveReaderRejectsADirectoryAsANonregularSource() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".ds3")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        do {
+            _ = try await MeshFileService().readArchive(url: directory, maximumBytes: 1024)
+            XCTFail("A directory must not be read as an archive")
+        } catch let error as MeshLoadingError {
+            XCTAssertEqual(error.status, 1)
+            XCTAssertEqual(error.message, "Choose a regular local document file.")
+        }
+    }
+
+    func testArchiveReaderRejectsANamedPipeAsANonregularSource() async throws {
+        let pipe = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".ds3")
+        XCTAssertEqual(Darwin.mkfifo(pipe.path, 0o600), 0)
+        defer { try? FileManager.default.removeItem(at: pipe) }
+        // Keep the test bounded even if a future regression opens the pipe in blocking mode.
+        let keeper = Darwin.open(pipe.path, O_RDWR | O_NONBLOCK | O_CLOEXEC)
+        guard keeper >= 0 else { throw POSIXError(.EIO) }
+        defer { _ = Darwin.close(keeper) }
+        do {
+            _ = try await MeshFileService().readArchive(url: pipe, maximumBytes: 1024)
+            XCTFail("A named pipe must not be read as an archive")
+        } catch let error as MeshLoadingError {
+            XCTAssertEqual(error.status, 1)
+            XCTAssertEqual(error.message, "Choose a regular local document file.")
+        }
+    }
+
+    func testArchiveReaderStillFollowsAnAliasToARegularArchive() async throws {
+        let fixture = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let alias = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".ds3")
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: fixture)
+        defer { try? FileManager.default.removeItem(at: alias) }
+        let bytes = try Data(contentsOf: fixture)
+        let loaded = try await MeshFileService().readArchive(url: alias, maximumBytes: bytes.count)
+        XCTAssertEqual(loaded, bytes)
     }
 
     func testOversizedFileIsRejectedBeforeReadingItsContents() async throws {
