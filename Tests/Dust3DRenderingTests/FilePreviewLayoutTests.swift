@@ -20,7 +20,7 @@ final class FilePreviewLayoutTests: XCTestCase {
         // Layout verification must not activate a test app or add a Dock item.
         NSApplication.shared.setActivationPolicy(.prohibited)
         let hosting = NSHostingController(rootView: FilePreviewView(document: document))
-        for width: CGFloat in [200, 250, 640] {
+        for width: CGFloat in [160, 200, 250, 640] {
             let size = hosting.sizeThatFits(in: CGSize(width: width, height: 240))
             XCTAssertLessThanOrEqual(size.width, width, "Quick Look hosts own their available width")
             XCTAssertGreaterThan(size.height, 0)
