@@ -1,5 +1,6 @@
 import Dust3DKit
 import Foundation
+import os
 
 struct EditorPreviewOutput: Sendable {
     let mesh: IndexedMesh
@@ -76,6 +77,12 @@ actor EditorPreviewService: EditorPreviewServing {
         let data: Data
         let scopeID: UUID
         let continuation: CheckedContinuation<EditorPreviewResult, any Error>
+        let callerCancelled: OSAllocatedUnfairLock<Bool>
+
+        func checkCancellation() throws {
+            try Task.checkCancellation()
+            if callerCancelled.withLock({ $0 }) { throw CancellationError() }
+        }
     }
     private struct ResetWork: Sendable {
         let id: UUID
@@ -111,23 +118,27 @@ actor EditorPreviewService: EditorPreviewServing {
     private var waitingResets: [ResetWork] = []
     /// Cleanup barriers waiting behind active work; bounded independently of previews.
     var pendingResetCount: Int { waitingResets.count }
+    private let beforeCancellationCleanup: (@Sendable () async -> Void)?
     private let makeSession: @Sendable (Int) throws -> any EditorMeshGenerating
 
     init(
         maximumCachePayloadBytes: Int = MeshGenerationSession.defaultMaximumCachePayloadBytes,
         maximumSourcePayloadBytes: Int = 0,
+        beforeCancellationCleanup: (@Sendable () async -> Void)? = nil,
         makeSession: @escaping @Sendable (Int) throws -> any EditorMeshGenerating = {
             try MeshGenerationSession(maximumCachePayloadBytes: $0)
         }
     ) {
         self.maximumCachePayloadBytes = maximumCachePayloadBytes
         self.maximumSourcePayloadBytes = maximumSourcePayloadBytes
+        self.beforeCancellationCleanup = beforeCancellationCleanup
         self.makeSession = makeSession
     }
 
     func generate(_ data: Data, scopeID: UUID) async throws -> EditorPreviewResult {
         try Task.checkCancellation()
         let id = UUID()
+        let callerCancelled = OSAllocatedUnfairLock(initialState: false)
         return try await withTaskCancellationHandler {
             let result = try await withCheckedThrowingContinuation {
                 (continuation: CheckedContinuation<EditorPreviewResult, any Error>) in
@@ -135,12 +146,20 @@ actor EditorPreviewService: EditorPreviewServing {
                     continuation.resume(throwing: CancellationError())
                     return
                 }
-                submitPreview(PreviewWork(id: id, data: data, scopeID: scopeID, continuation: continuation))
+                submitPreview(
+                    PreviewWork(
+                        id: id, data: data, scopeID: scopeID, continuation: continuation,
+                        callerCancelled: callerCancelled))
             }
             try Task.checkCancellation()
             return result
         } onCancel: {
-            Task { await self.cancel(id) }
+            // The worker can reach a backend boundary before the actor processes cleanup.
+            callerCancelled.withLock { $0 = true }
+            Task {
+                await self.beforeCancellationCleanup?()
+                await self.cancel(id)
+            }
         }
     }
 
@@ -194,9 +213,9 @@ actor EditorPreviewService: EditorPreviewServing {
         switch work {
         case .generate(let preview):
             do {
-                try Task.checkCancellation()
-                let result = try await generateNow(preview.data, scopeID: preview.scopeID)
-                try Task.checkCancellation()
+                try preview.checkCancellation()
+                let result = try await generateNow(preview)
+                try preview.checkCancellation()
                 preview.continuation.resume(returning: result)
             } catch {
                 preview.continuation.resume(throwing: error)
@@ -218,25 +237,26 @@ actor EditorPreviewService: EditorPreviewServing {
         }
     }
 
-    private func generateNow(_ data: Data, scopeID: UUID) async throws -> EditorPreviewResult {
+    private func generateNow(_ preview: PreviewWork) async throws -> EditorPreviewResult {
         let session: any EditorMeshGenerating
-        if let current, current.scopeID == scopeID {
+        if let current, current.scopeID == preview.scopeID {
             session = current.session
         } else {
             session = try makeSession(maximumCachePayloadBytes)
-            current = Context(scopeID: scopeID, session: session)
+            current = Context(scopeID: preview.scopeID, session: session)
         }
+        try preview.checkCancellation()
         do {
             let result = try await session.generateSourcedIndexed(
-                data: data, maximumPayloadBytes: 0, maximumSourcePayloadBytes: maximumSourcePayloadBytes)
-            try Task.checkCancellation()
+                data: preview.data, maximumPayloadBytes: 0, maximumSourcePayloadBytes: maximumSourcePayloadBytes)
+            try preview.checkCancellation()
             return EditorPreviewResult(sourced: result)
         } catch let source as MeshLoadingError where source.status == 3 || source.status == 4 {
             // Optional source output must not prevent an otherwise valid mesh preview.
-            try Task.checkCancellation()
+            try preview.checkCancellation()
             do {
-                let result = try await session.generateIndexed(data: data, maximumPayloadBytes: 0)
-                try Task.checkCancellation()
+                let result = try await session.generateIndexed(data: preview.data, maximumPayloadBytes: 0)
+                try preview.checkCancellation()
                 return EditorPreviewResult(ordinary: result, sourceIssue: source)
             } catch is CancellationError {
                 throw CancellationError()

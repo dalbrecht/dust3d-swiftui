@@ -63,6 +63,154 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertNil(ComponentGroupBrowse(tree: tree, groupID: "missing"))
     }
 
+    func testBrowseAutomaticallyPlacesToolbarAndPointerPartsWithExactUndo() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        let initial = try XCTUnwrap(value.snapshot)
+        value.componentBrowseAction("g", snapshot: initial)()
+        let retained = value.addNodeAction(newPart: true)
+        value.componentBrowseAction("sub", snapshot: initial)()
+        value.componentBrowseAction("g", snapshot: initial)()
+        retained()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+
+        value.componentBrowseAction("sub", snapshot: initial)()
+        XCTAssertTrue(value.snapshot?.selectedComponentIDs.isEmpty == true)
+        value.addNodeAction(newPart: true)()
+        try await settle(value)
+        XCTAssertEqual(
+            value.snapshot?.componentTree.rows.first { $0.component.partID != nil && $0.id != "owner" }?.component
+                .parentID, "sub")
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+
+        let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 500, height: 300)
+        value.setCanvasContext(projection: projection, width: 500, height: 300)
+        value.beginAddMode()
+        let oldMode = value.addModeID
+        value.previewAddAtCanvasCenter()
+        let point = try XCTUnwrap(value.addGhostPoint)
+        value.componentBrowseAction("g", snapshot: try XCTUnwrap(value.snapshot))()
+        XCTAssertFalse(value.isAddingNodes)
+        value.placeAddNode(at: point, modeID: oldMode)
+        XCTAssertFalse(value.isWorking)
+
+        value.beginAddMode()
+        value.previewAddAtCanvasCenter()
+        value.placeAddNode(at: try XCTUnwrap(value.addGhostPoint), modeID: value.addModeID)
+        try await settle(value)
+        XCTAssertEqual(
+            value.snapshot?.componentTree.rows.first { $0.component.partID != nil && $0.id != "owner" }?.component
+                .parentID, "g")
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testBrowseLeavesAnchoredAddInItsOriginalPart() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        value.select("z")
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        value.componentBrowseAction("g", snapshot: before)()
+        let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 500, height: 300)
+        value.setCanvasContext(projection: projection, width: 500, height: 300)
+        value.beginAddMode()
+        XCTAssertEqual(value.addPlacement.anchorID, "z")
+        let mode = value.addModeID
+        let point = projection.point(for: .init(x: 0.4, y: 0.5, z: 0.5))
+        value.updateAddPointer(at: point, modeID: mode)
+        value.componentBrowseAction("sub", snapshot: before)()
+        XCTAssertEqual(value.addModeID, mode)
+        value.placeAddNode(at: point, modeID: mode)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.nodes.map(\.partID), ["p", "p"])
+        XCTAssertEqual(value.snapshot?.componentTree.rows.first { $0.id == "owner" }?.component.parentID, "other")
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testBrowsePlacesNativeAndInteractiveXMLPasteButKeepsOverridesAndStartupRoot() async throws {
+        let document = try source()
+        let original = document.encoded()
+        let standalone = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let fragment = try standalone.copyingNodes(["a"])
+        let native = try NodeClipboardPayload(fragment: fragment, identifier: UUID().uuidString).encoded()
+        let xml = fragment.document.modelXML
+        let value = store()
+        defer { value.stop() }
+        let fileID = UUID()
+        await value.load(data: original, fileIdentity: fileID)
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        value.componentBrowseAction("g", snapshot: before)()
+        let retained = try XCTUnwrap(value.clipboardPasteRequest())
+        value.chooseQtXMLFile()
+        let retainedXML = try XCTUnwrap(value.qtXMLFilePasteRequestID)
+        value.componentBrowseAction("sub", snapshot: before)()
+        value.componentBrowseAction("g", snapshot: before)()
+        value.pasteNodes(data: native, request: retained)
+        XCTAssertFalse(value.isWorking)
+        let url = URL(fileURLWithPath: "/unused.xml")
+        XCTAssertNil(value.finishQtXMLFileChoice(requestID: retainedXML, result: .success([url]), read: { _ in xml }))
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+
+        value.pasteNodes(data: native)
+        try await settle(value)
+        XCTAssertEqual(
+            value.snapshot?.componentTree.rows.first { $0.component.partID != nil && $0.id != "owner" }?.component
+                .parentID, "g")
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+
+        value.chooseQtXMLFile()
+        let interactive = try XCTUnwrap(value.qtXMLFilePasteRequestID)
+        let operation = try XCTUnwrap(
+            value.finishQtXMLFileChoice(requestID: interactive, result: .success([url]), read: { _ in xml }))
+        await operation.value
+        XCTAssertEqual(
+            value.snapshot?.componentTree.rows.first { $0.component.partID != nil && $0.id != "owner" }?.component
+                .parentID, "g")
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+
+        for (destination, parentID): (AddPlacementDestination, String?) in [
+            (.documentRoot, nil), (.group("other"), "other"),
+        ] {
+            value.workingGroupAction(destination, snapshot: try XCTUnwrap(value.snapshot))()
+            value.pasteNodes(data: native)
+            try await settle(value)
+            let pasted = try XCTUnwrap(
+                value.snapshot?.componentTree.rows.first { $0.component.partID != nil && $0.id != "owner" })
+            XCTAssertEqual(pasted.component.parentID, parentID)
+            value.undo()
+            try await settle(value)
+            XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        }
+
+        await value.load(data: original, fileIdentity: fileID)
+        try await settle(value)
+        value.componentBrowseAction("g", snapshot: try XCTUnwrap(value.snapshot))()
+        let startup = try XCTUnwrap(value.applyStartupQtXML(xml, fileIdentity: fileID))
+        await startup.value
+        let pasted = try XCTUnwrap(
+            value.snapshot?.componentTree.rows.first { $0.component.partID != nil && $0.id != "owner" })
+        XCTAssertNil(pasted.component.parentID)
+    }
+
     func testBrowsingPreservesGraphAndWorkingGroupAndRejectsRetainedScope() async throws {
         let original = try source().encoded()
         let value = store()

@@ -4,11 +4,11 @@ import SwiftUI
 
 struct OriginControls: View {
     let store: EditorStore
-    @State private var x = ""
-    @State private var y = ""
-    @State private var z = ""
+    @State private var draft = OriginInspectorDraft()
 
     var body: some View {
+        let source = store.originInspectorSource
+        let apply = source.flatMap { store.originInspectorApplyAction(source: $0) }
         DisclosureGroup("Document Origin") {
             VStack(alignment: .leading, spacing: 12) {
                 if store.snapshot?.origin == nil {
@@ -19,26 +19,32 @@ struct OriginControls: View {
                 }
                 HStack {
                     Text("X").frame(width: 12)
-                    TextField("Origin X", text: $x).accessibilityIdentifier("origin-x")
+                    TextField("Origin X", text: $draft.x).accessibilityIdentifier("origin-x")
                         .disabled(store.locks.contains(.x))
                         .focusedValue(\.editorTextEditing, true)
                 }
                 HStack {
                     Text("Y").frame(width: 12)
-                    TextField("Origin Y", text: $y).accessibilityIdentifier("origin-y")
+                    TextField("Origin Y", text: $draft.y).accessibilityIdentifier("origin-y")
                         .disabled(store.locks.contains(.y))
                         .focusedValue(\.editorTextEditing, true)
                 }
                 HStack {
                     Text("Z").frame(width: 12)
-                    TextField("Origin Z", text: $z).accessibilityIdentifier("origin-z")
+                    TextField("Origin Z", text: $draft.z).accessibilityIdentifier("origin-z")
                         .disabled(store.locks.contains(.z))
                         .focusedValue(\.editorTextEditing, true)
                 }
                 HStack {
-                    Button("Reset Draft") { reset() }
+                    Button("Reset Draft") {
+                        if let source, store.originInspectorSource == source { draft.reset(for: source) }
+                    }
                     Spacer()
-                    Button("Apply Origin") { store.setOrigin(x: x, y: y, z: z) }
+                    Button("Apply Origin") {
+                        guard draft.source == source else { return }
+                        apply?(draft.x, draft.y, draft.z)
+                    }
+                    .disabled(apply == nil)
                 }
                 Button("Center Origin on Model") { store.centerOriginOnModel() }
                     .help(
@@ -52,18 +58,41 @@ struct OriginControls: View {
             .textFieldStyle(.roundedBorder)
             .padding(.top, 8)
         }
-        .disabled(store.isWorking || store.snapshot == nil)
-        .onChange(of: store.snapshot?.origin, initial: true) { _, _ in reset() }
+        .disabled(store.isWorking || source == nil || draft.source != source)
+        .onChange(of: source, initial: true) { _, current in draft.synchronize(to: current) }
         .onChange(of: store.locks) { previous, current in
-            let origin = store.snapshot?.origin
-            if current.contains(.x) && !previous.contains(.x) { x = origin.map { String($0.x) } ?? "" }
-            if current.contains(.y) && !previous.contains(.y) { y = origin.map { String($0.y) } ?? "" }
-            if current.contains(.z) && !previous.contains(.z) { z = origin.map { String($0.z) } ?? "" }
+            guard draft.source == source else { return }
+            let origin = source?.origin
+            if current.contains(.x) && !previous.contains(.x) { draft.x = origin.map { String($0.x) } ?? "" }
+            if current.contains(.y) && !previous.contains(.y) { draft.y = origin.map { String($0.y) } ?? "" }
+            if current.contains(.z) && !previous.contains(.z) { draft.z = origin.map { String($0.z) } ?? "" }
         }
     }
+}
 
-    private func reset() {
-        let origin = store.snapshot?.origin
+struct OriginInspectorSource: Equatable {
+    let documentIdentity: UUID
+    let origin: NodePosition?
+}
+
+struct OriginInspectorDraft {
+    private(set) var source: OriginInspectorSource?
+    var x = ""
+    var y = ""
+    var z = ""
+
+    mutating func synchronize(to source: OriginInspectorSource?) {
+        guard self.source != source else { return }
+        self.source = source
+        seed(from: source?.origin)
+    }
+
+    mutating func reset(for source: OriginInspectorSource) {
+        guard self.source == source else { return }
+        seed(from: source.origin)
+    }
+
+    private mutating func seed(from origin: NodePosition?) {
         x = origin.map { String($0.x) } ?? ""
         y = origin.map { String($0.y) } ?? ""
         z = origin.map { String($0.z) } ?? ""
