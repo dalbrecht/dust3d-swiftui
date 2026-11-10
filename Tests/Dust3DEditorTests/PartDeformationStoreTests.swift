@@ -24,6 +24,16 @@ final class PartDeformationStoreTests: XCTestCase {
         return try document.applying(
             .addEdge(id: "{55555555-5555-4555-8555-555555555555}", from: nodes[1], to: nodes[2]))
     }
+    @MainActor
+    func testQtPartScaleNoticeMatchesFloatSerializationThreshold() {
+        for value in ["0.99", "0.995", "1.005", "1.01"] {
+            XCTAssertTrue(PartDeformationControls.qtDropsPartScale(value), value)
+        }
+        for value in ["0", "0.985", "1", "1.015", "2", "invalid", "nan", "-1", "3"] {
+            XCTAssertFalse(PartDeformationControls.qtDropsPartScale(value), value)
+        }
+    }
+
     func testBoundaryScalesGenerateFiniteMeshes() throws {
         let baseline = try document()
         for property in PartDeformationProperty.allCases {

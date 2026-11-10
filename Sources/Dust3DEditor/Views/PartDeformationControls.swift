@@ -47,6 +47,12 @@ struct PartDeformationControls: View {
         }
     }
 
+    static func qtDropsPartScale(_ draft: String) -> Bool {
+        guard let value = EngineScalar.parse(draft, in: 0...2), value != 1 else { return false }
+        // Qt checks the stored float against a double-precision threshold.
+        return abs(Double(Float(value)) - 1) < 0.01
+    }
+
     private func setUnified(_ value: Bool) {
         if let graphTarget {
             store.editGraphPartCrossSection(.deformationUnified(value), target: graphTarget)
@@ -75,6 +81,11 @@ private struct PartDeformationScaleControl: View {
             if part.deformationScale(property) == nil {
                 Text("Unsupported source value. Enter a scale to replace it.")
                     .font(.caption).foregroundStyle(.primary)
+            }
+            if PartDeformationControls.qtDropsPartScale(draft) {
+                Text("Qt treats this part scale as 1. Mote3D preserves the entered value.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             HStack {
                 Button("Reset Draft") { reset() }
