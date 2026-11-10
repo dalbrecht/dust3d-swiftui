@@ -114,7 +114,9 @@ struct AnimationAuthoringControls: View {
                         Slider(
                             value: Binding(
                                 get: { sliderPosition(control) ?? Double(control.defaultSlider) },
-                                set: { workflow.setSlider(name: control.name, index: $0) }),
+                                set: workflow.parameterAction { workflow, value in
+                                    workflow.setSlider(name: control.name, index: value)
+                                }),
                             in: Double(control.minimumSlider)...Double(control.maximumSlider), step: 1
                         )
                         .frame(minHeight: 40).accessibilityLabel(control.label)
@@ -172,19 +174,22 @@ struct AnimationAuthoringControls: View {
     private func numericField(
         name: String, label: String, defaultText: String, supported: @escaping (String) -> Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        let setText = workflow.parameterAction { workflow, value in
+            workflow.setText(name: name, value: value)
+        }
+        return VStack(alignment: .leading, spacing: 4) {
             Text(label).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 6) {
                 TextField(
                     "Default \(defaultText)",
                     text: Binding(
                         get: { workflow.parameterValue(for: name) ?? "" },
-                        set: { workflow.setText(name: name, value: $0) })
+                        set: { setText($0) })
                 )
                 .textFieldStyle(.roundedBorder).monospacedDigit().frame(minHeight: 40)
                 .focusedValue(\.editorTextEditing, true).accessibilityLabel(label)
                 Button {
-                    workflow.useDefault(name: name)
+                    setText(nil)
                 } label: {
                     Text("Default").frame(minWidth: 40, minHeight: 40)
                 }.buttonStyle(.borderless)
@@ -209,7 +214,7 @@ struct AnimationAuthoringControls: View {
             "Surface material",
             selection: Binding<[UInt8]?>(
                 get: { workflow.parameterValue(for: "surfaceMaterial").map { Array($0.utf8) } },
-                set: { value in
+                set: workflow.parameterAction { workflow, value in
                     guard let value else {
                         workflow.useDefault(name: "surfaceMaterial")
                         return
