@@ -181,6 +181,33 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         XCTAssertEqual(store.animationSnapshot?.list.selectedRow?.source.type, "bIPEDRun")
     }
 
+    func testRetainedFormCallbacksCannotChangeOrCancelReopenedCreation() async throws {
+        let store = try await store()
+        defer { store.stop() }
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        workflow.creationAction()()
+        let setName = workflow.draftAction { workflow, value in workflow.name = value }
+        let setType = workflow.draftAction { workflow, value in workflow.selectedType = value }
+        let cancel = workflow.draftAction { $0.cancel() }
+        setType(Array("BipedWalk".utf8))
+        setName(AnimationNameText("Current Walk"))
+        XCTAssertEqual(workflow.name.value, "Current Walk")
+
+        workflow.cancel()
+        workflow.creationAction()()
+        let initialName = workflow.name
+        let initialType = workflow.selectedType
+        setName(AnimationNameText("Retired name"))
+        setType(Array("bIPEDRun".utf8))
+        XCTAssertEqual(workflow.name, initialName)
+        XCTAssertEqual(workflow.selectedType, initialType)
+        cancel()
+        XCTAssertTrue(workflow.isActive)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testRetainedParameterControlsCannotEditReopenedDraft() async throws {
         let store = try await store()
         defer { store.stop() }
