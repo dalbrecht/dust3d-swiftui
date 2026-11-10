@@ -3588,9 +3588,11 @@ final class EditorStore {
         let identity = source.documentIdentity
         let revision = source.documentRevision
         let attemptID = previewRendererAttemptID
+        let retriesRenderer = renderError != nil
         return { [weak self] in
             guard let self, ownsWindow(), let current = self.previewRetrySource,
-                current.documentIdentity == identity, current.documentRevision == revision
+                current.documentIdentity == identity, current.documentRevision == revision,
+                (self.renderError != nil) == retriesRenderer
             else { return }
             self.retryPreview(rendererAttemptID: attemptID)
         }
