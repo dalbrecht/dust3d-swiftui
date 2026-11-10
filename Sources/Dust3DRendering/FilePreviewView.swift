@@ -4,6 +4,7 @@ import SwiftUI
 public struct FilePreviewView: View {
     private let document: FilePreviewDocument
     @State private var isWireframe = false
+    @State private var viewportFocus = MeshViewportFocus()
     @State private var cameraReset = 0
     @State private var cameraCommand: MeshCameraCommand?
     @State private var renderIssue: String?
@@ -32,6 +33,7 @@ public struct FilePreviewView: View {
                     },
                     onMaterialRendered: { materialsRendered = true }, onError: { renderIssue = $0 }
                 )
+                .withFocusTarget(viewportFocus)
                 .accessibilityLabel("Read-only 3D object preview")
             } else {
                 ContentUnavailableView {
@@ -94,6 +96,13 @@ public struct FilePreviewView: View {
 
     private var cameraButtons: some View {
         HStack {
+            Button {
+                viewportFocus.moveFocusInHostWindow()
+            } label: {
+                Label("Focus Object", systemImage: "viewfinder").labelStyle(.iconOnly)
+            }
+            .accessibilityLabel("Focus Object")
+            .help("Focus the preview to orbit with the arrow keys")
             Button {
                 cameraCommand = MeshCameraCommand(.zoomOut)
             } label: {
