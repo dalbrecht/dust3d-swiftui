@@ -270,10 +270,9 @@ struct Dust3DEditorApp: App {
                     .disabled(store?.canAdjustRadiusInput != true)
                 Button("Increase Radius") { store?.adjustSelectionRadius(direction: 1) }
                     .disabled(store?.canAdjustRadiusInput != true)
-                CanvasRotationMenuButtons(
-                    store: store,
-                    animationFocus: isAnimationFocused == true,
-                    nativeTextFocus: hasTextEditingFocus)
+                CanvasRotationMenuButtons(store: canvasOwner) {
+                    NSApp.keyWindow === canvasWindow && store === canvasOwner && rigAssignmentFocus.allowsAssignment
+                }
                 OrthogonalQuarterTurnMenu(actions: OrthogonalQuarterTurnActions(store: store))
                 CanvasPrecisionMenu(store: store)
                 GraphColorizeMenu(store: store)

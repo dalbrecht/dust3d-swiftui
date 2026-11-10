@@ -2748,18 +2748,21 @@ final class EditorStore {
         let capturedTarget = target ?? CanvasAdjustmentTarget(snapshot: snapshot)
         perform { try await $0.rotateSelection(degrees: degrees, plane: capturedPlane, target: capturedTarget) }
     }
-    @discardableResult
-    func handleCanvasRotationInput(
-        characters: String, modifiers: NSEvent.ModifierFlags,
-        animationFocus: Bool, nativeTextFocus: Bool
-    ) -> Bool {
-        guard canRotateCanvasSelection,
+    func canvasRotationShortcutAction(
+        characters: String, isInScope: @escaping @MainActor () -> Bool
+    ) -> (@MainActor (NSEvent.ModifierFlags) -> Void)? {
+        guard isInScope(), canRotateCanvasSelection,
             let degrees = CanvasRotationInput.degrees(
-                characters: characters, modifiers: modifiers,
-                animationFocus: animationFocus, nativeTextFocus: nativeTextFocus)
-        else { return false }
-        rotateCanvasSelection(degrees: degrees)
-        return true
+                characters: characters, modifiers: [], animationFocus: false, nativeTextFocus: false)
+        else { return nil }
+        let rotate = canvasRotationAction(degrees: degrees)
+        return { modifiers in
+            guard isInScope(),
+                CanvasRotationInput.degrees(
+                    characters: characters, modifiers: modifiers, animationFocus: false, nativeTextFocus: false) != nil
+            else { return }
+            rotate()
+        }
     }
     private func canRotateOrthogonalQuarterTurn(profileLease: UUID?) -> Bool {
         !isSelectingRigEdges && canSave && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
