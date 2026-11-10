@@ -40,7 +40,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var wheelWhileDisabled: () -> Bool = { false }
     var unhandledWheel: ((CanvasWheelInput) -> Bool)? = nil
     var radiusKey: (Int) -> Bool = { _ in false }
-    var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var doubleClick: ((CanvasPoint, GraphSelectionMode) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var tracksHoverWhileDisabled = false
     var isAddingNodes = false
@@ -105,7 +105,7 @@ final class CanvasPointerView: NSView {
     var wheelWhileDisabled: () -> Bool = { false }
     var unhandledWheel: ((CanvasWheelInput) -> Bool)?
     var radiusKey: (Int) -> Bool = { _ in false }
-    var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var doubleClick: ((CanvasPoint, GraphSelectionMode) -> Void)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
@@ -189,7 +189,7 @@ final class CanvasPointerView: NSView {
         let mode = GraphSelectionMode.pointerMode(modifiers: event.modifierFlags)
         if mode != .subtract, event.clickCount == 2, let doubleClick {
             invalidate()
-            doubleClick(point(event))
+            doubleClick(point(event), mode)
             return
         }
         start = (point(event), mode)

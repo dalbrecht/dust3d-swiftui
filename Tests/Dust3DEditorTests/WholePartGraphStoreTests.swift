@@ -204,7 +204,7 @@ import XCTest
         var doubles = 0
         var placements = 0
         canvas.tap = { _, _ in canvasSingles += 1 }
-        canvas.doubleClick = { _ in doubles += 1 }
+        canvas.doubleClick = { _, _ in doubles += 1 }
         canvas.addPress = { _ in placements += 1 }
         for count in [1, 2] {
             canvas.mouseDown(with: try event(.leftMouseDown, count: count))
@@ -226,7 +226,8 @@ import XCTest
         defer { store.stop() }
         await store.load(data: source.encoded())
         try await settle(store)
-        let host = NSHostingView(rootView: NodeCanvas(store: store))
+        var opens = 0
+        let host = NSHostingView(rootView: NodeCanvas(store: store, openDocument: { opens += 1 }))
         let window = NSWindow(
             contentRect: .init(x: 0, y: 0, width: 500, height: 300), styleMask: [], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -244,6 +245,18 @@ import XCTest
         let nodeDouble = try XCTUnwrap(hit.doubleClick)
         let canvas = try XCTUnwrap(findCanvas(in: host))
         let backgroundDouble = try XCTUnwrap(canvas.doubleClick)
+        for modifiers: NSEvent.ModifierFlags in [[], .command] {
+            canvas.mouseDown(
+                with: try XCTUnwrap(
+                    NSEvent.mouseEvent(
+                        with: .leftMouseDown, location: .init(x: 2, y: 2), modifierFlags: modifiers,
+                        timestamp: 0, windowNumber: window.windowNumber, context: nil, eventNumber: 1,
+                        clickCount: 2, pressure: 1)))
+            XCTAssertEqual(opens, modifiers.contains(.command) ? 1 : 0)
+        }
+        backgroundDouble(point, .toggle)
+        try await settle(store)
+        XCTAssertEqual(opens, 1, "Geometry takes precedence over the blank canvas Open gesture")
         for count in [1, 2] {
             let down = try XCTUnwrap(
                 NSEvent.mouseEvent(
@@ -264,7 +277,8 @@ import XCTest
         await store.load(data: changed.encoded())
         try await settle(store)
         nodeDouble()
-        backgroundDouble(point)
+        backgroundDouble(.init(x: 2, y: 2), .toggle)
+        XCTAssertEqual(opens, 1, "A retired canvas cannot open the picker")
         XCTAssertEqual(store.snapshot?.selectedIDs, [])
         XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
         XCTAssertNil(store.snapshot?.componentRevealHint)
@@ -277,7 +291,7 @@ import XCTest
         try await settle(store)
         let before = store.snapshot?.selectionRevision
         store.selectWholePart(.node(a), context: freshContext)
-        freshBackgroundDouble(point)
+        freshBackgroundDouble(point, .replace)
         XCTAssertEqual(store.snapshot?.selectionRevision, before)
         XCTAssertEqual(store.snapshot?.selectedIDs, [a])
         XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
