@@ -8,6 +8,7 @@ struct Dust3DViewerApp: App {
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
     @FocusedValue(\.viewerCancellation) private var cancelOperation
+    @FocusedValue(\.viewerRetryPreview) private var retryPreview
     @FocusedValue(\.openDocument) private var openDocument
 
     private var applicationName: String {
@@ -21,6 +22,10 @@ struct Dust3DViewerApp: App {
         }
         .defaultSize(width: 1000, height: 720)
         .commands {
+            CommandMenu("View") {
+                Button("Retry Preview") { retryPreview?() }
+                    .disabled(retryPreview == nil)
+            }
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)") {
                     ApplicationAboutPanel.show(applicationName: applicationName)
@@ -70,7 +75,16 @@ private struct ViewerCancellationKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct ViewerRetryPreviewKey: FocusedValueKey {
+    typealias Value = @MainActor () -> Void
+}
+
 extension FocusedValues {
+    var viewerRetryPreview: (@MainActor () -> Void)? {
+        get { self[ViewerRetryPreviewKey.self] }
+        set { self[ViewerRetryPreviewKey.self] = newValue }
+    }
+
     var viewerCancellation: (() -> Void)? {
         get { self[ViewerCancellationKey.self] }
         set { self[ViewerCancellationKey.self] = newValue }

@@ -179,10 +179,14 @@ final class ViewerMaterialTests: XCTestCase {
         store.reportRendererError("Original Metal failure", attemptID: originalAttempt)
         XCTAssertEqual(store.rendererError, "Original Metal failure")
 
-        store.retryRenderer(attemptID: originalAttempt)
+        store.dismissRendererError(attemptID: originalAttempt)
+        XCTAssertNil(store.rendererError)
+        let retryOriginal = try XCTUnwrap(store.rendererRetryAction)
+        retryOriginal()
         let retryAttempt = store.rendererAttemptID
         XCTAssertNotEqual(retryAttempt, originalAttempt)
         XCTAssertNil(store.rendererError)
+        XCTAssertNil(store.rendererRetryAction)
         XCTAssertTrue(store.cameraState === camera)
         XCTAssertEqual(camera.revision, 1)
         XCTAssertEqual(store.meshRevision, meshRevision)
@@ -192,7 +196,7 @@ final class ViewerMaterialTests: XCTestCase {
         store.reportRendererError("Late diagnostic", attemptID: originalAttempt)
         XCTAssertNil(store.rendererError)
         store.reportRendererError("Retry failed", attemptID: retryAttempt)
-        store.retryRenderer(attemptID: originalAttempt)
+        retryOriginal()
         XCTAssertEqual(store.rendererAttemptID, retryAttempt)
         XCTAssertEqual(store.rendererError, "Retry failed")
 
@@ -201,6 +205,7 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertNotEqual(store.rendererAttemptID, retryAttempt)
         store.reportRendererError("Retired model failure", attemptID: retryAttempt)
         XCTAssertNil(store.rendererError)
+        XCTAssertNil(store.rendererRetryAction)
 
         let acceptedAttempt = store.rendererAttemptID
         store.stop()

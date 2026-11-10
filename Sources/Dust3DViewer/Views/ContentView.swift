@@ -20,7 +20,9 @@ struct ContentView: View {
                     if store.errorMessage != nil {
                         Button("Dismiss") { store.errorMessage = nil }
                     } else {
-                        Button("Retry Preview") { store.retryRenderer(attemptID: rendererAttempt) }
+                        if let retryPreview = store.rendererRetryAction {
+                            Button("Retry Preview", action: retryPreview)
+                        }
                         Button("Dismiss") { store.dismissRendererError(attemptID: rendererAttempt) }
                     }
                 }
@@ -149,6 +151,7 @@ struct ContentView: View {
         .onExitCommand(perform: cancelOperation)
         .onOpenURL { store.open($0) }
         .onDisappear { store.stop() }
+        .focusedSceneValue(\.viewerRetryPreview, isImporterPresented ? nil : store.rendererRetryAction)
         .focusedSceneValue(\.viewerCancellation, cancelOperation)
         .focusedSceneValue(\.openDocument, { isImporterPresented = true })
     }
