@@ -41,7 +41,8 @@ enum EditorHeadlessDS3SaveCommand {
 
     private struct Invocation {
         var source: URL?
-        var xml: URL?
+        var xmlInputs: [URL] = []
+        var xml: URL? { xmlInputs.last }
         var destinations: [(url: URL, kind: OutputKind, geometryOnly: Bool)] = []
 
         init(options: ArraySlice<String>) throws {
@@ -60,8 +61,7 @@ enum EditorHeadlessDS3SaveCommand {
                     }
                     destinations.append((url, kind, geometryOnly))
                 } else if parsesOptions, argument == "-paste-xml" {
-                    guard xml == nil else { throw Failure.usage }
-                    xml = try Self.path(options.popFirst())
+                    xmlInputs.append(try Self.path(options.popFirst()))
                 } else if parsesOptions, argument == "-toggle-color" {
                     // Qt accepts this display option alongside output. It does not change the source snapshot.
                     guard let operand = options.popFirst(), !operand.hasPrefix("-") else { throw Failure.usage }
@@ -178,7 +178,7 @@ enum EditorHeadlessDS3SaveCommand {
     }
 
     private static func validateDestinations(_ invocation: Invocation) throws {
-        let inputs = [invocation.source, invocation.xml].compactMap { $0 }.map { $0.resolvingSymlinksInPath() }
+        let inputs = ([invocation.source].compactMap { $0 } + invocation.xmlInputs).map { $0.resolvingSymlinksInPath() }
         var paths = Set(inputs.map(pathKey))
         var identities = Set(try inputs.compactMap { try fileIdentity($0, isDestination: false) })
         for (destination, _, _) in invocation.destinations {

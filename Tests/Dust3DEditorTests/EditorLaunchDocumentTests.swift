@@ -57,6 +57,13 @@ final class EditorLaunchDocumentTests: XCTestCase {
             .untitledPaste(URL(fileURLWithPath: path)))
     }
 
+    func testRepeatedQtPasteUsesLastFragment() throws {
+        let path = "/tmp/last fragment"
+        XCTAssertEqual(
+            try EditorLaunchRequest(arguments: ["Editor", "-paste-xml", "/tmp/first.xml", "-paste-xml", path]),
+            .untitledPaste(URL(fileURLWithPath: path)))
+    }
+
     @MainActor
     func testInvalidBatchAndUnsupportedQtOptionsNeverOpenAnyDocument() async {
         for (arguments, expected) in [

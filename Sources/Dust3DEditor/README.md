@@ -14,7 +14,8 @@ Dust3DEditor -paste-xml fragment.xml -o new.ds3
 
 The command validates and prepares one archive before opening any windows. It
 preserves exact bytes for a plain copy and applies a single Qt XML fragment to
-the source or a new document before saving. Up to 64 distinct destinations
+the source or a new document before saving. When `-paste-xml` is repeated,
+the last fragment is applied, as in Qt. Up to 64 distinct destinations
 are allowed. Destinations must be separate from the inputs and cannot be symbolic
 links. The command processes destinations in argument order and replaces individual
 archive files atomically. A failed destination is reported and the command continues
