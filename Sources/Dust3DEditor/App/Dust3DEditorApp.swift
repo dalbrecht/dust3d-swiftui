@@ -167,21 +167,27 @@ struct Dust3DEditorApp: App {
                     .disabled(restPreviewActions?.canChangeVisibility != true)
                     Divider()
                 #endif
+                let previewOwner = store
+                let previewWindow = NSApp.keyWindow
+                let display = previewDisplayActions?.scoped { [weak previewOwner, weak previewWindow] in
+                    guard let previewOwner, let previewWindow else { return false }
+                    return NSApp.keyWindow === previewWindow && store === previewOwner && !rigAssignmentFocus.hasSheet
+                }
                 Toggle(
                     "Wireframe",
                     isOn: Binding(
-                        get: { previewDisplayActions?.isWireframe == true },
-                        set: { previewDisplayActions?.setWireframe($0) })
+                        get: { display?.isWireframe == true },
+                        set: { display?.setWireframe($0) })
                 )
-                .disabled(previewDisplayActions?.canChangeWireframe != true)
+                .disabled(display?.canChangeWireframe != true)
                 .keyboardShortcut(allowsPreviewShortcuts ? KeyboardShortcut("w", modifiers: []) : nil)
                 Toggle(
                     "Model Colors",
                     isOn: Binding(
-                        get: { previewDisplayActions?.showsModelColors == true },
-                        set: { previewDisplayActions?.setModelColors($0) })
+                        get: { display?.showsModelColors == true },
+                        set: { display?.setModelColors($0) })
                 )
-                .disabled(previewDisplayActions?.canChangeModelColors != true)
+                .disabled(display?.canChangeModelColors != true)
                 Divider()
                 Toggle(
                     "Rotate Preview Automatically",
