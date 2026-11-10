@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add keyboard-focusable Zoom In and Zoom Out buttons to Quick Look previews.
+- Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
