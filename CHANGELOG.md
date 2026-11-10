@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Honor SOURCE_DATE_EPOCH when packaging app ZIPs so identical signed bundles produce identical archives.
+
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.

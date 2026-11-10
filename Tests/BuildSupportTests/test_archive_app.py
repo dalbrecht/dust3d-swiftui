@@ -5,6 +5,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import zipfile
 
@@ -20,9 +21,37 @@ class ArchiveAppTests(unittest.TestCase):
         self.archive = self.root / 'Example.zip'
         (self.bundle / 'Contents/MacOS').mkdir(parents=True)
 
-    def run_archive(self, output=None):
+    def run_archive(self, output=None, *, env=None):
         return subprocess.run([sys.executable, str(SCRIPT), str(self.bundle), str(output or self.archive)],
-                              capture_output=True, text=True, timeout=10)
+                              capture_output=True, text=True, timeout=10, env=env)
+
+    def test_source_date_epoch_makes_archive_independent_of_mtime_and_timezone(self):
+        executable = self.bundle / 'Contents/MacOS/Example'
+        executable.write_bytes(b'signed executable')
+        alias = executable.with_name('Alias')
+        alias.symlink_to(executable.name)
+        epoch = 1700000001
+        env = os.environ | {'SOURCE_DATE_EPOCH': str(epoch), 'TZ': 'UTC0'}
+        first = self.run_archive(env=env)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        original = self.archive.read_bytes()
+
+        for path in [self.bundle, *self.bundle.rglob('*')]:
+            os.utime(path, (epoch + 3600, epoch + 3600), follow_symlinks=False)
+        second = self.run_archive(env=env | {'TZ': 'EST5'})
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(self.archive.read_bytes(), original)
+        with zipfile.ZipFile(self.archive) as archive:
+            self.assertEqual({entry.date_time for entry in archive.infolist()}, {time.gmtime(epoch - 1)[:6]})
+
+    def test_malformed_source_date_epoch_preserves_previous_archive(self):
+        self.archive.write_bytes(b'previous archive')
+        for epoch in ('', '1700000000.5', '1_000', '１２３'):
+            with self.subTest(epoch=epoch):
+                result = self.run_archive(env=os.environ | {'SOURCE_DATE_EPOCH': epoch})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('SOURCE_DATE_EPOCH', result.stderr)
+                self.assertEqual(self.archive.read_bytes(), b'previous archive')
 
     def test_regular_signed_bytes_modes_empty_directories_and_literal_sidecar_names_are_preserved(self):
         files = {'Contents/MacOS/Example': b'\0executable\xff',
