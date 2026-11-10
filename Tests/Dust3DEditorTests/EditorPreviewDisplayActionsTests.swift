@@ -67,6 +67,33 @@ final class EditorPreviewDisplayActionsTests: XCTestCase {
         XCTAssertTrue(records.writes.isEmpty)
     }
 
+    func testMenuActionsRequireTheirOriginalWindowAndCurrentPresentation() {
+        let records = PreviewDisplayRecords()
+        let window = PreviewDisplayRecords()
+        let actions = EditorPreviewDisplayActions(
+            isCurrent: { records.current }, wireframe: { records.wireframe },
+            setWireframe: { records.wireframe = $0 }, modelColors: { records.colors },
+            setModelColors: { records.colors = $0 })
+        let menu = actions.scoped(to: { window.current })
+
+        window.current = false
+        XCTAssertFalse(menu.canChangeWireframe)
+        XCTAssertFalse(menu.canChangeModelColors)
+        menu.setWireframe(true)
+        menu.setModelColors(false)
+        XCTAssertFalse(records.wireframe)
+        XCTAssertTrue(records.colors)
+
+        window.current = true
+        menu.setWireframe(true)
+        XCTAssertTrue(records.wireframe)
+        records.current = false
+        menu.setWireframe(false)
+        menu.setModelColors(false)
+        XCTAssertTrue(records.wireframe)
+        XCTAssertTrue(records.colors)
+    }
+
     func testIncompleteOptionalColorAccessIsUnavailable() {
         let records = PreviewDisplayRecords()
         let getterOnly = EditorPreviewDisplayActions(
