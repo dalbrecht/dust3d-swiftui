@@ -76,7 +76,7 @@ final class NodePointerViewTests: XCTestCase {
     }
 
     func testShiftDragKeepsCanvasKeyboardFocusAndForwardsPrecisionKeys() throws {
-        let window = NSWindow(
+        let window = CanvasKeyboardTestWindow(
             contentRect: .init(x: -10000, y: -10000, width: 200, height: 200),
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false

@@ -157,7 +157,7 @@ import XCTest
         XCTAssertFalse(EditorCommandScope.allowsGraphShortcuts(animationFocus: true, nativeTextFocus: false))
     }
     func testRadiusKeysRequireTheActualCanvasResponderAndLeaveOtherControlsAlone() throws {
-        let window = NSWindow(
+        let window = CanvasKeyboardTestWindow(
             contentRect: .init(x: -10000, y: -10000, width: 400, height: 300),
             styleMask: [], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -195,6 +195,13 @@ import XCTest
         XCTAssertFalse(canvas.routeRadiusKey(try key("-")))
         XCTAssertFalse(node.routeRadiusKey(try key("=")))
         XCTAssertTrue(directions.isEmpty)
+        XCTAssertTrue(window.makeFirstResponder(canvas))
+        window.acceptsCanvasKeys = false
+        XCTAssertFalse(canvas.routeRadiusKey(try key("-")))
+        XCTAssertTrue(window.makeFirstResponder(node))
+        XCTAssertFalse(node.routeRadiusKey(try key("=")))
+        XCTAssertTrue(directions.isEmpty)
+        window.acceptsCanvasKeys = true
         XCTAssertTrue(window.makeFirstResponder(canvas))
         XCTAssertTrue(canvas.routeRadiusKey(try key("-")))
         XCTAssertTrue(canvas.routeRadiusKey(try key("=")))
@@ -350,7 +357,7 @@ import XCTest
         await store.load(data: source.encoded())
         try await settle(store)
         let host = NSHostingView(rootView: NodeCanvas(store: store).frame(width: 400, height: 240))
-        let window = NSWindow(
+        let window = CanvasKeyboardTestWindow(
             contentRect: .init(x: -10000, y: -10000, width: 400, height: 240),
             styleMask: [], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
