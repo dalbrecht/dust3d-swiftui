@@ -25,17 +25,29 @@ struct ViewerErrorAnnouncement: NSViewRepresentable {
 final class ViewerErrorAnnouncementAnchor: NSView {
     private var previousMessage: String?
     private var previousMaterialIssue: String?
+    private var pendingMaterialIssue: String?
 
     func update(message: String?, materialIssue: String? = nil, isActive: Bool, announce: (String) -> Void) {
         let newMessage = message != previousMessage ? message : nil
-        let newMaterialIssue = materialIssue != previousMaterialIssue ? materialIssue : nil
+        let materialIssueChanged = materialIssue != previousMaterialIssue
         previousMessage = message
         previousMaterialIssue = materialIssue
-        guard isActive else { return }
-        if let newMessage, !newMessage.isEmpty {
-            announce(newMessage)
-        } else if let newMaterialIssue, !newMaterialIssue.isEmpty {
-            announce(ViewerErrorAnnouncement.materialFallbackTitle + ". " + newMaterialIssue)
+        guard isActive else {
+            pendingMaterialIssue = nil
+            return
         }
+        if materialIssueChanged {
+            pendingMaterialIssue = materialIssue
+        }
+        // Keep the latest fallback available until the higher-priority error clears.
+        if let message, !message.isEmpty {
+            if let newMessage {
+                announce(newMessage)
+            }
+            return
+        }
+        guard let pendingMaterialIssue, !pendingMaterialIssue.isEmpty else { return }
+        self.pendingMaterialIssue = nil
+        announce(ViewerErrorAnnouncement.materialFallbackTitle + ". " + pendingMaterialIssue)
     }
 }
