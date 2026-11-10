@@ -20,6 +20,11 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(KeyboardShortcutHelp.matching(" \n ", in: entries), entries)
         XCTAssertTrue(KeyboardShortcutHelp.matching("unimplemented", in: entries).isEmpty)
     }
+    func testPreviousReplayStepShortcutIsDiscoverable() throws {
+        let entry = try XCTUnwrap(KeyboardShortcutHelp.matching("⌥←").first { $0.action == "Previous Replay Step" })
+        XCTAssertEqual(entry.scope, "Replay Steps window, after at least one step has completed")
+    }
+
     func testActualCatalogMakesFocusedRadiusAndOriginNudgingDiscoverable() {
         let focused = KeyboardShortcutHelp.matching("Focused canvas")
         XCTAssertTrue(focused.contains { $0.action == "Decrease / Increase Radius" })

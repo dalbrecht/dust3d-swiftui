@@ -26,6 +26,8 @@ enum WorkflowReplayPlaybackPhase: Equatable {
     case inProgress
     case complete
 
+    var canGoBack: Bool { self == .inProgress || self == .complete }
+
     func canAdvance(waitsForReference: Bool) -> Bool {
         self != .empty && self != .complete && !waitsForReference
     }
@@ -197,6 +199,9 @@ struct WorkflowReplayView: View {
                             isPlaying.toggle()
                         }
                         .disabled(phase == .complete)
+                        Button("Previous Step", action: rewind)
+                            .disabled(!phase.canGoBack)
+                            .keyboardShortcut(.leftArrow, modifiers: .option)
                         Button("Next Step") { advance(plan) }
                             .disabled(!phase.canAdvance(waitsForReference: waitsForReference))
                             .keyboardShortcut(.rightArrow, modifiers: .option)
@@ -300,7 +305,7 @@ struct WorkflowReplayView: View {
             guard let interval = playbackInterval, let plan else { return }
             while !Task.isCancelled, completedSteps < plan.steps.count {
                 do { try await Task.sleep(for: .milliseconds(interval)) } catch { return }
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, isPlaying else { return }
                 if let requestedMeshStep, meshStep != requestedMeshStep { continue }
                 advance(plan)
             }
@@ -310,6 +315,13 @@ struct WorkflowReplayView: View {
     private func retireCheckpoint() {
         checkpointRevision += 1
         checkpoint.cancel()
+    }
+
+    private func rewind() {
+        guard playbackPhase?.canGoBack == true else { return }
+        retireCheckpoint()
+        isPlaying = false
+        completedSteps -= 1
     }
 
     private func advance(_ plan: WorkflowReplayPlan) {
