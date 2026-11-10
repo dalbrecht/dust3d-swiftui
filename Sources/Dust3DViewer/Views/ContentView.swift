@@ -76,6 +76,7 @@ struct ContentView: View {
                 .padding(8)
             }
             if let issue = store.materialIssue {
+                let retryMaterials = store.materialRetryAction()
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 6) {
@@ -83,8 +84,8 @@ struct ContentView: View {
                         Text(issue).textSelection(.enabled)
                     }
                     Spacer()
-                    Button("Retry Materials") { store.retryMaterials() }
-                        .disabled(store.isLoading || store.isUpdatingMaterials)
+                    Button("Retry Materials") { retryMaterials?() }
+                        .disabled(retryMaterials == nil)
                 }
                 .font(.caption).padding(12)
             }

@@ -24,12 +24,16 @@ struct Dust3DViewerApp: App {
         .commands {
             CommandMenu("View") {
                 let window = NSApp.keyWindow
-                let retryPreview = retryStore?.rendererRetryAction { [weak window] in
+                let ownsPreviewWindow: @MainActor () -> Bool = { [weak window] in
                     guard let window, NSApp.keyWindow === window else { return false }
                     return window.attachedSheet == nil && window.sheetParent == nil && NSApp.modalWindow == nil
                 }
+                let retryPreview = retryStore?.rendererRetryAction(ownsWindow: ownsPreviewWindow)
                 Button("Retry Preview") { retryPreview?() }
                     .disabled(retryPreview == nil)
+                let retryMaterials = retryStore?.materialRetryAction(ownsWindow: ownsPreviewWindow)
+                Button("Retry Materials") { retryMaterials?() }
+                    .disabled(retryMaterials == nil)
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)") {

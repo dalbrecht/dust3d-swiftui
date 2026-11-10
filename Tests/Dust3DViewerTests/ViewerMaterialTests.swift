@@ -343,7 +343,14 @@ final class ViewerMaterialTests: XCTestCase {
         await initialTask.value
         XCTAssertNil(store.materials)
 
-        store.retryMaterials()
+        var ownsWindow = true
+        let capturedRetry = try XCTUnwrap(store.materialRetryAction { ownsWindow })
+        ownsWindow = false
+        capturedRetry()
+        XCTAssertNil(store.materialRetryAction { ownsWindow })
+        XCTAssertFalse(store.isUpdatingMaterials)
+        ownsWindow = true
+        capturedRetry()
         try await waitForRequests(2, baker)
         let uploadRequest = try XCTUnwrap(store.pendingMaterialUpdateID)
         store.cancelMaterialUpdate(requestID: initialRequest)
@@ -357,7 +364,10 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertNil(store.materials)
         XCTAssertFalse(store.isUpdatingMaterials)
 
-        store.retryMaterials()
+        capturedRetry()
+        XCTAssertFalse(store.isUpdatingMaterials)
+        let currentRetry = try XCTUnwrap(store.materialRetryAction())
+        currentRetry()
         try await waitForRequests(3, baker)
         await baker.finish(2, baked)
         await store.materialTask?.value
