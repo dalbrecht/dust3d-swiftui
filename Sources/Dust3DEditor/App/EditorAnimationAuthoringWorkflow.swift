@@ -17,6 +17,8 @@ final class EditorAnimationAuthoringWorkflow {
         case type(AnimationEditTarget)
         case parameters(AnimationEditTarget)
     }
+    enum EditKind { case type, parameters }
+
     private let store: EditorStore
     private var stopped = false
     private var lastIssue: (any Error)?
@@ -142,35 +144,35 @@ final class EditorAnimationAuthoringWorkflow {
         return candidate
     }
 
-    func beginType() {
-        guard canBeginType, let value = store.animationSnapshot, let row = value.list.selectedRow else { return }
-        do {
-            let target = try AnimationEditTarget(snapshot: value, animationID: row.source.id)
-            reset()
-            sourceTitle = row.title
-            sourceType = row.source.type
-            selectedType = Array((row.source.type ?? "").utf8)
-            mode = .type(target)
-        } catch { lastIssue = error }
-    }
-    func beginParameters() {
-        guard canBeginParameters, let value = store.animationSnapshot, let row = value.list.selectedRow, let catalog
-        else {
-            return
+    func editAction(_ kind: EditKind) -> @MainActor () -> Void {
+        guard kind == .type ? canBeginType : canBeginParameters, let snapshot = store.animationSnapshot else {
+            return {}
         }
-        do {
-            let target = try AnimationEditTarget(snapshot: value, animationID: row.source.id)
-            let hasDeclaredType = row.source.type.flatMap { catalog.clip(type: $0) } != nil
-            let draft = hasDeclaredType ? try AnimationParameterDraft(record: row.source, catalog: catalog) : nil
-            reset()
-            sourceTitle = row.title
-            sourceType = row.source.type
-            parameterDraft = draft
-            if !hasDeclaredType {
-                unknownParameterDraft = UnknownAnimationParameterDraft(record: row.source, catalog: catalog)
+        return store.animationSelectedRowAction(snapshot: snapshot) { [weak self] row, target in
+            guard let self, kind == .type ? canBeginType : canBeginParameters, let catalog else { return }
+            switch kind {
+            case .type:
+                reset()
+                sourceTitle = row.title
+                sourceType = row.source.type
+                selectedType = Array((row.source.type ?? "").utf8)
+                mode = .type(target)
+            case .parameters:
+                do {
+                    let hasDeclaredType = row.source.type.flatMap { catalog.clip(type: $0) } != nil
+                    let draft =
+                        hasDeclaredType ? try AnimationParameterDraft(record: row.source, catalog: catalog) : nil
+                    reset()
+                    sourceTitle = row.title
+                    sourceType = row.source.type
+                    parameterDraft = draft
+                    if !hasDeclaredType {
+                        unknownParameterDraft = UnknownAnimationParameterDraft(record: row.source, catalog: catalog)
+                    }
+                    mode = .parameters(target)
+                } catch { lastIssue = error }
             }
-            mode = .parameters(target)
-        } catch { lastIssue = error }
+        }
     }
     func parameterValue(for name: String) -> String? {
         parameterDraft?.value(for: name) ?? unknownParameterDraft?.value(for: name)
