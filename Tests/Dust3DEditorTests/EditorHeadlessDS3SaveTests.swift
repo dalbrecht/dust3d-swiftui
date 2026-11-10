@@ -110,7 +110,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
     func testPasteIntoSourceOrEmptyDocumentBeforeSaving() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
-        let xml = directory.appendingPathComponent("fragment.xml")
+        let xml = directory.appendingPathComponent("Modèle fragment.dust3d-fragment")
         let first = directory.appendingPathComponent("first.ds3")
         let second = directory.appendingPathComponent("second.ds3")
         let original = try archive()
@@ -143,7 +143,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
     func testInvalidInputLeavesEveryDestinationUntouched() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
-        let xml = directory.appendingPathComponent("fragment.xml")
+        let xml = directory.appendingPathComponent("invalid-fragment")
         let existing = directory.appendingPathComponent("existing.ds3")
         let absent = directory.appendingPathComponent("absent.ds3")
         let original = Data("previous destination".utf8)

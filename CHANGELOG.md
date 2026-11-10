@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Accept Qt XML fragments by content regardless of filename suffix when using `-paste-xml`.
+
 - Explain invalid document and Qt XML input in headless export diagnostics.
 
 - Settle the origin from node bounds when a headless Qt XML paste creates a new document.
