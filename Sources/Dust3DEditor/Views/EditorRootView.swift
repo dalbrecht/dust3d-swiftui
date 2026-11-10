@@ -16,6 +16,7 @@ struct EditorRootView: View {
     private let claimStartupPaste: @MainActor (URL?, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery?
     private let claimLaunchNeutralPreview: @MainActor (URL) async -> Bool
     @State private var store: EditorStore
+    @State private var canvasFocus = CanvasProfileFocusControl()
     @State private var exportDestinations: EditorGeometryExportDestinationService
     @State private var exportWorkflow: EditorGeometryExportWorkflow
     @State private var isInspectorPresented = true
@@ -52,6 +53,8 @@ struct EditorRootView: View {
 
     var body: some View {
         let fitAction = toolbarFitAction
+        let fileIdentity = file.identity
+        let source = $file
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
@@ -67,15 +70,7 @@ struct EditorRootView: View {
                     .disabled(!store.canAddNewPart)
                 }.padding(12)
                 Divider()
-                List(selection: Binding(get: { store.snapshot?.selectedIDs ?? [] }, set: { store.select($0) })) {
-                    ForEach(store.snapshot?.nodes ?? []) { node in
-                        Label(node.title, systemImage: node.isEditable ? "circle.dotted" : "lock")
-                            .tag(node.id)
-                            .help(node.id)
-                    }
-                }
-                .listStyle(.sidebar)
-                .disabled(store.isWorking || store.isSelectingRigEdges)
+                CanvasNodeSidebar(store: store)
                 ComponentSidebar(store: store)
                 PartSidebar(store: store)
                 EdgeSidebar(store: store)
@@ -98,7 +93,11 @@ struct EditorRootView: View {
                     onReveal: { NSWorkspace.shared.activateFileViewerSelecting([$0]) })
                 HSplitView {
                     VStack(spacing: 0) {
-                        CanvasProfileHeader(store: store).padding(12)
+                        CanvasProfileHeader(
+                            store: store, focusControl: canvasFocus, fileIdentity: fileIdentity,
+                            ownsWindow: { source.wrappedValue.identity == fileIdentity }
+                        )
+                        .padding(12)
                         HStack {
                             Text("Locks").font(.caption).foregroundStyle(.secondary)
                             ForEach(EditingConstraint.allCases, id: \.self) { constraint in
@@ -129,7 +128,7 @@ struct EditorRootView: View {
                         EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
-                        CanvasProfilePanes(store: store)
+                        CanvasProfilePanes(store: store, focusControl: canvasFocus, previewCamera: previewCameraActions)
                             .overlay(alignment: .bottom) { getStartedCard }
                     }
                     .frame(minWidth: 300)
@@ -355,13 +354,15 @@ struct EditorRootView: View {
                     restPreview?.presentationRevision == presentation && store?.canMovePreviewCamera == true
                 },
                 move: { [weak store] in store?.movePreviewCamera($0) },
-                fit: { [weak store] in store?.fitPreviewCamera() })
+                fit: { [weak store] in store?.fitPreviewCamera() },
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
         #else
             return EditorPreviewCameraActions(
                 canMove: store.canMovePreviewCamera,
                 isCurrent: { [weak store] in store?.canMovePreviewCamera == true },
                 move: { [weak store] in store?.movePreviewCamera($0) },
-                fit: { [weak store] in store?.fitPreviewCamera() })
+                fit: { [weak store] in store?.fitPreviewCamera() },
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
         #endif
     }
 
@@ -466,6 +467,7 @@ struct EditorRootView: View {
                     onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                     onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                 ) { store.renderError = $0 }
+                .withCanvasWheelZoom(store.canvasWheelZoom)
                 .accessibilityLabel("3D mesh preview")
                 if store.isUpdatingMaterials {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)
