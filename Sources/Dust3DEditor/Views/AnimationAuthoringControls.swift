@@ -111,12 +111,13 @@ struct AnimationAuthoringControls: View {
                             return (try? control.slider(for: value)) != nil
                         })
                     if control.minimumSlider < control.maximumSlider {
+                        let setPosition = workflow.parameterAction { workflow, value in
+                            workflow.setSlider(name: control.name, index: value)
+                        }
                         Slider(
                             value: Binding(
                                 get: { sliderPosition(control) ?? Double(control.defaultSlider) },
-                                set: workflow.parameterAction { workflow, value in
-                                    workflow.setSlider(name: control.name, index: value)
-                                }),
+                                set: { setPosition($0) }),
                             in: Double(control.minimumSlider)...Double(control.maximumSlider), step: 1
                         )
                         .frame(minHeight: 40).accessibilityLabel(control.label)
