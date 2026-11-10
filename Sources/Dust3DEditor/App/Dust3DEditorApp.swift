@@ -132,6 +132,13 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.snapshot == nil)
             }
             CommandGroup(after: .toolbar) {
+                let window = NSApp.keyWindow
+                let retryPreview = store?.previewRetryAction { [weak window] in
+                    guard let window, NSApp.keyWindow === window else { return false }
+                    return window.attachedSheet == nil && window.sheetParent == nil && NSApp.modalWindow == nil
+                }
+                Button("Retry Preview") { retryPreview?() }
+                    .disabled(retryPreview == nil)
                 #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
                     Picker(
                         "Preview Mode",

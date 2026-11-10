@@ -108,6 +108,7 @@ import XCTest
         await store.load(data: source.encoded())
         try await settle(store)
         let acceptedMesh = try XCTUnwrap(store.mesh)
+        XCTAssertNil(store.previewRetryAction())
         let revision = store.previewRevision
         let attemptID = store.previewRendererAttemptID
         let materialRevision = store.materialViewportRevision
@@ -116,12 +117,20 @@ import XCTest
         store.reportPreviewRendererError("Renderer unavailable", attemptID: attemptID, revision: materialRevision)
         XCTAssertEqual(store.renderError, "Renderer unavailable")
 
-        store.retryPreview(rendererAttemptID: attemptID)
+        var ownsWindow = true
+        let retry = try XCTUnwrap(store.previewRetryAction { ownsWindow })
+        ownsWindow = false
+        retry()
+        XCTAssertEqual(store.renderError, "Renderer unavailable")
+        XCTAssertEqual(store.previewRendererAttemptID, attemptID)
+        ownsWindow = true
+        retry()
 
         XCTAssertNotEqual(store.previewRendererAttemptID, attemptID)
         store.reportPreviewRendererError("Retired renderer", attemptID: attemptID, revision: materialRevision)
-        store.retryPreview(rendererAttemptID: attemptID)
+        retry()
         XCTAssertNil(store.renderError)
+        XCTAssertNil(store.previewRetryAction())
         XCTAssertFalse(store.isGenerating)
         try await settle(store)
         XCTAssertEqual(store.previewRevision, revision)
