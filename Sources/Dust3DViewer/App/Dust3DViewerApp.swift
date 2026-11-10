@@ -7,6 +7,7 @@ struct Dust3DViewerApp: App {
     @Environment(\.openWindow) private var openWindow
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
+    @FocusedValue(\.viewerCancellation) private var cancelOperation
     @FocusedValue(\.openDocument) private var openDocument
 
     private var applicationName: String {
@@ -38,6 +39,8 @@ struct Dust3DViewerApp: App {
                 }
                 .keyboardShortcut("o")
                 .disabled(openDocument == nil)
+                Button("Cancel Current Operation") { cancelOperation?() }
+                    .disabled(cancelOperation == nil)
             }
         }
         Window("Build Diagnostics – \(applicationName)", id: "build-diagnostics") {
@@ -63,7 +66,16 @@ private struct OpenDocumentKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct ViewerCancellationKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
 extension FocusedValues {
+    var viewerCancellation: (() -> Void)? {
+        get { self[ViewerCancellationKey.self] }
+        set { self[ViewerCancellationKey.self] = newValue }
+    }
+
     var openDocument: (() -> Void)? {
         get { self[OpenDocumentKey.self] }
         set { self[OpenDocumentKey.self] = newValue }

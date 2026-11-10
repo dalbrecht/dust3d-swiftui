@@ -244,7 +244,7 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertFalse(store.isUpdatingMaterials)
     }
 
-    func testExitCommandCancelsOpeningBeforeTheAcceptedModelMaterialUpdate() async throws {
+    func testCancellationCommandsStayBoundToTheirPendingOperation() async throws {
         let frame = try snapshot()
         let baked = try await MeshBakingService().load(
             data: frame.data,
@@ -254,7 +254,7 @@ final class ViewerMaterialTests: XCTestCase {
         let store = ViewerStore(service: loader, materialBaker: baker)
         defer { store.stop() }
 
-        XCTAssertFalse(store.hasPendingCancellation)
+        XCTAssertNil(store.pendingCancellation)
         store.open(URL(fileURLWithPath: "/test/model.ds3"))
         try await waitForFileRequests(1, loader)
         await loader.finish(0, frame)
@@ -262,20 +262,25 @@ final class ViewerMaterialTests: XCTestCase {
         try await waitForRequests(1, baker)
         let materialTask = try XCTUnwrap(store.materialTask)
         let materialID = try XCTUnwrap(store.pendingMaterialUpdateID)
+        let cancelMaterials = try XCTUnwrap(store.pendingCancellation)
 
         store.open(URL(fileURLWithPath: "/test/replacement.ds3"))
         try await waitForFileRequests(2, loader)
         let openTask = try XCTUnwrap(store.loadTask)
-        XCTAssertTrue(store.hasPendingCancellation)
-        store.cancelPendingOperation()
+        let cancelOpening = try XCTUnwrap(store.pendingCancellation)
+        cancelMaterials()
+        XCTAssertFalse(materialTask.isCancelled)
+        cancelOpening()
         XCTAssertTrue(openTask.isCancelled)
         XCTAssertNil(store.pendingOpenRevision)
         XCTAssertEqual(store.pendingMaterialUpdateID, materialID)
         XCTAssertFalse(materialTask.isCancelled)
 
-        store.cancelPendingOperation()
+        cancelOpening()
+        XCTAssertFalse(materialTask.isCancelled)
+        try XCTUnwrap(store.pendingCancellation)()
         XCTAssertTrue(materialTask.isCancelled)
-        XCTAssertFalse(store.hasPendingCancellation)
+        XCTAssertNil(store.pendingCancellation)
         XCTAssertEqual(store.documentName, "model.ds3")
         await loader.finish(1, frame)
         await baker.finish(0, baked)
