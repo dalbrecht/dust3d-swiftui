@@ -14,7 +14,7 @@ enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
         case .unsupportedExportArgument:
             "Export at launch is unavailable. Open the document and use File > Export Geometry."
         case .invalidPasteArgument:
-            "Supply one local .xml path after -paste-xml, at most 4096 UTF-8 bytes."
+            "Supply one local XML fragment path after -paste-xml, at most 4096 UTF-8 bytes."
         case .invalidColorArgument:
             "Use -toggle-color followed by true or false, or choose Model Colors in the View menu."
         }
@@ -49,13 +49,12 @@ enum EditorLaunchRequest: Sendable, Equatable {
                 case "-o", "-output", "--geometry-fbx", "--textured-fbx":
                     throw .unsupportedExportArgument
                 case "-paste-xml":
-                    guard pasteXML == nil, let operand = arguments.popFirst(), !operand.hasPrefix("-"),
+                    guard pasteXML == nil, let operand = arguments.popFirst(), !operand.isEmpty,
+                        !operand.hasPrefix("-"),
                         operand.hasPrefix("/") || URLComponents(string: operand)?.scheme == nil,
                         operand.utf8.count <= 4096, !operand.utf8.contains(0)
                     else { throw .invalidPasteArgument }
-                    let url = URL(fileURLWithPath: operand).standardizedFileURL
-                    guard url.pathExtension.lowercased() == "xml" else { throw .invalidPasteArgument }
-                    pasteXML = url
+                    pasteXML = URL(fileURLWithPath: operand).standardizedFileURL
                 case "-toggle-color":
                     guard let operand = arguments.popFirst(), !operand.hasPrefix("-") else {
                         throw .invalidColorArgument

@@ -38,7 +38,7 @@ enum EditorHeadlessDS3SaveCommand {
         var errorDescription: String? {
             switch self {
             case .usage:
-                "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment.xml] -o output.ds3 [-output another ...]. "
+                "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment] -o output.ds3 [-output another ...]. "
                     + "Supply one input archive or XML fragment and up to 64 distinct .ds3, .obj, or .fbx destinations. "
                     + "FBX includes procedural textures. Use --geometry-fbx output.fbx for geometry only. "
                     + "GLB export is unavailable."
@@ -78,7 +78,7 @@ enum EditorHeadlessDS3SaveCommand {
                     destinations.append((url, kind))
                 } else if parsesOptions, argument == "-paste-xml" {
                     guard xml == nil else { throw Failure.usage }
-                    xml = try Self.path(options.popFirst(), extension: "xml")
+                    xml = try Self.path(options.popFirst())
                 } else if parsesOptions, argument == "-toggle-color" {
                     // Qt accepts this display option alongside output. It does not change the source snapshot.
                     guard let operand = options.popFirst(), !operand.hasPrefix("-") else { throw Failure.usage }
