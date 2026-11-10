@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct ComponentInspector: View {
@@ -46,8 +47,11 @@ struct ComponentInspector: View {
             )
             ComponentColorControls(store: store, component: component)
             ComponentColorImageControls(store: store, component: component)
-            if store.snapshot?.showsComponentSmoothing(for: [component]) == true {
-                ComponentSmoothingControls(store: store, component: component)
+            if let snapshot = store.snapshot, snapshot.showsComponentSmoothing(for: [component]) {
+                ComponentSmoothingControls(
+                    store: store, component: component, target: CanvasAdjustmentTarget(snapshot: snapshot)
+                )
+                .id(snapshot.documentIdentity)
             }
             if component.isGroup {
                 ComponentWrappingControls(store: store, component: component)
