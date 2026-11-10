@@ -359,6 +359,24 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertEqual(picks, 0)
     }
 
+    func testTrackpadGestureDeniedAtBeginCannotResumeAfterInputBecomesAvailable() {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        view.cameraInteractionAllowed = { false }
+        let original = view.orbitCamera.transform(aspect: 1)
+
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        view.cameraInteractionAllowed = { true }
+        view.applyCameraGesture(phase: .changed) { $0.rotateGesture(by: 15) }
+        XCTAssertFalse(view.isDraggingCamera)
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), original)
+        view.applyCameraGesture(phase: .ended) { $0.magnify(by: 0.1) }
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), original)
+
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        XCTAssertTrue(view.isDraggingCamera)
+        XCTAssertNotEqual(view.orbitCamera.transform(aspect: 1), original)
+    }
+
     func testActivePointerPressKeepsOwnershipAgainstTrackpadGesture() throws {
         let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
         var picks = 0
