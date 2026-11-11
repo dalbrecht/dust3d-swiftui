@@ -1413,7 +1413,7 @@ final class EditorStore {
 
         func isCurrent(in snapshot: EditorSnapshot) -> Bool {
             switch self {
-            case .component(let target): target.isCurrent(in: snapshot)
+            case .component(let target): target.isCurrentColorImage(in: snapshot)
             case .graph(let target): !target.graphColorImageComponents(in: snapshot).isEmpty
             }
         }
@@ -1430,7 +1430,7 @@ final class EditorStore {
         let components: [DocumentComponent]
         switch destination {
         case .component(let target):
-            guard target.isCurrent(in: source), let component = source.selectedComponent else { return nil }
+            guard target.isCurrentColorImage(in: source), let component = source.selectedComponent else { return nil }
             components = [component]
         case .graph(let target):
             components = target.graphColorImageComponents(in: source)

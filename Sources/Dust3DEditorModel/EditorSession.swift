@@ -535,6 +535,7 @@ public actor EditorSession {
     /// - Throws: Cancellation, stale-target or typed document/resource errors without partial state.
     public func importComponentColorImage(png: Data, target: ComponentColorImageTarget) throws -> EditorSnapshot {
         try update { state in
+            guard hasAcceptedSource else { throw EditorError.staleColorImageTarget }
             try state.applyColorImage(
                 .importComponentColorImage(id: target.componentID, imageID: Self.identifier(), png: png), target: target
             )
@@ -547,6 +548,7 @@ public actor EditorSession {
     /// - Throws: Cancellation, stale-target or original reference errors atomically.
     public func setComponentColorImage(imageID: String?, target: ComponentColorImageTarget) throws -> EditorSnapshot {
         try update { state in
+            guard hasAcceptedSource else { throw EditorError.staleColorImageTarget }
             try state.applyColorImage(.setComponentColorImage(id: target.componentID, imageID: imageID), target: target)
         }
     }
