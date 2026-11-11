@@ -301,6 +301,76 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.document.encoded(), typed)
     }
 
+    func testParameterApplyKeepsSameRowWithFreshDraftAndSeparateUndoSteps() async throws {
+        let store = try await store()
+        defer { store.stop() }
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        workflow.editAction(.parameters)()
+        let oldSpeed: @MainActor (String) -> Void = workflow.parameterAction { workflow, value in
+            workflow.setText(name: "speed", value: value)
+        }
+        workflow.setText(name: "durationSeconds", value: "1.125")
+        XCTAssertEqual(workflow.dismissalTitle, "Cancel")
+        workflow.submit()
+        try await settle(store)
+        let first = try XCTUnwrap(store.snapshot?.document.encoded())
+        XCTAssertNotEqual(first, original)
+        XCTAssertTrue(workflow.isActive)
+        XCTAssertTrue(workflow.isCurrent)
+        XCTAssertFalse(workflow.canApply)
+        XCTAssertEqual(workflow.parameterValue(for: "durationSeconds"), "1.125")
+        XCTAssertEqual(workflow.dismissalTitle, "Done")
+        oldSpeed("0.4")
+        XCTAssertEqual(workflow.parameterValue(for: "speed"), "1.000")
+        XCTAssertFalse(workflow.canApply)
+
+        workflow.setText(name: "speed", value: "0.5")
+        XCTAssertTrue(workflow.canApply)
+        workflow.submit()
+        try await settle(store)
+        XCTAssertTrue(workflow.isCurrent)
+        XCTAssertFalse(workflow.canApply)
+        let row = try XCTUnwrap(store.animationSnapshot?.list.selectedRow?.source)
+        XCTAssertEqual(row.id, "a")
+        XCTAssertEqual(row.parameter(named: "speed"), "0.5")
+        XCTAssertEqual(row.parameter(named: "opaque"), "keep")
+        workflow.cancel()
+        XCTAssertFalse(workflow.isActive)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), first)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testPendingParameterApplyCannotRebaseToAReplacementWithTheSameRowID() async throws {
+        let store = try await store()
+        defer { store.stop() }
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        workflow.editAction(.parameters)()
+        workflow.setText(name: "durationSeconds", value: "1.125")
+        workflow.submit()
+        XCTAssertTrue(workflow.isSubmitting)
+
+        let replacement = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas rigType='Biped'><animations><animation id='a' name='Replacement' type='Known' speed='0.25'/></animations></canvas>"
+                    .utf8))
+        await store.load(data: replacement.encoded())
+        try await settle(store)
+        for _ in 0..<300 where workflow.isSubmitting {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertFalse(workflow.isSubmitting)
+        XCTAssertFalse(workflow.isCurrent)
+        XCTAssertFalse(workflow.canApply)
+        XCTAssertEqual(store.snapshot?.document.encoded(), replacement.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testUnknownStoredTypeEditsCommonTimingWithQtDefaultsAndExactUndo() async throws {
         let store = try await store(type: "Future")
         defer { store.stop() }
