@@ -65,6 +65,36 @@ final class PartProfileOptionsTests: XCTestCase {
         XCTAssertEqual(snapshot.document.encoded(), source.encoded())
     }
 
+    func testCyclePreflightMatchesPartAndNodeDependencyValidation() throws {
+        let safe = "{dddddddd-dddd-4ddd-8ddd-dddddddddddd}"
+        let peer = "{eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee}"
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                <node id='dependent' partId='\(second)' cutFace='\(first)' x='1' y='0' z='0' radius='.1'/>
+                </nodes><parts>
+                <part id='\(owner)'/>
+                <part id='\(first)' target='CutFace' cutFace='\(owner)'/>
+                <part id='\(second)' target='CutFace'/>
+                <part id='\(safe)' target='CutFace' cutFace='\(peer)'/>
+                <part id='\(peer)' target='CutFace' cutFace='\(safe)'/>
+                </parts><components/></canvas>
+                """.utf8))
+        let snapshot = try EditorState(document: source).snapshot
+        let blocked = CutFaceLinks.cyclicChoices(from: owner, parts: snapshot.parts, nodes: snapshot.nodes)
+        XCTAssertEqual(blocked, [first, second])
+        for id in [first, second] {
+            XCTAssertThrowsError(try source.applying(.setPartCutFace(id: owner, selection: .linkedPart(id)))) {
+                XCTAssertEqual($0 as? DocumentError, .cyclicProfile)
+            }
+        }
+        for id in [safe, peer] {
+            XCTAssertNoThrow(try source.applying(.setPartCutFace(id: owner, selection: .linkedPart(id))))
+        }
+        XCTAssertEqual(snapshot.document.encoded(), source.encoded())
+    }
+
     func testSearchMatchesTitlesAndExactSourceIdentityCaseInsensitivelyInSourceOrder() throws {
         let parts = try document().editorContents().parts
         for query in ["CURVE", "曲線", "duplicate"] {

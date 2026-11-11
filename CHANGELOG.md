@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Explain and disable linked profile choices that would create a cycle.
+
 - List Cut Face parts and existing linked profiles in Front view order.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
