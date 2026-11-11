@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import XCTest
 
 @testable import Dust3DEditor
@@ -44,6 +45,27 @@ final class PartMaterialStoreTests: XCTestCase {
             try await settle(store)
             XCTAssertEqual(store.snapshot?.document.encoded(), changed)
             XCTAssertEqual(try Dust3DDocument(data: changed).editorContents().parts, store.snapshot?.parts)
+
+            let retired = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(store.snapshot))
+            store.selectPart(nil)
+            try await settle(store)
+            store.selectPart(part)
+            try await settle(store)
+            store.resetInspectedPartMaterial(part, property: property, target: retired)
+            try await settle(store)
+            XCTAssertEqual(store.snapshot?.document.encoded(), changed)
+
+            let current = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(store.snapshot))
+            let beforeReset = publications
+            let preview = store.previewRevision
+            store.resetInspectedPartMaterial(part, property: property, target: current)
+            try await settle(store)
+            XCTAssertEqual(store.snapshot?.selectedPart?.materialValue(property), property.defaultValue)
+            XCTAssertEqual(publications, beforeReset + 1)
+            XCTAssertEqual(store.previewRevision, preview)
+            store.undo()
+            try await settle(store)
+            XCTAssertEqual(store.snapshot?.document.encoded(), changed)
         }
     }
 

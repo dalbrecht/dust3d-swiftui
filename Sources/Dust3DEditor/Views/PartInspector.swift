@@ -44,7 +44,12 @@ struct PartInspector: View {
                 if part.target == .model { PartHollowControls(store: store, partID: part.id).id(part.id) }
             #endif
             PartCutFaceControls(store: store, part: part)
-            if part.target == .model { PartMaterialControls(store: store, part: part) }
+            if part.target == .model, let snapshot = store.snapshot {
+                PartMaterialControls(
+                    store: store, part: part, inspectorTarget: CanvasAdjustmentTarget(snapshot: snapshot)
+                )
+                .id(snapshot.documentIdentity)
+            }
             Text("Part names are independent of component names.").font(.caption).foregroundStyle(.secondary)
         }
         .disabled(store.isWorking)
