@@ -97,6 +97,42 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertFalse(value.canUndo)
     }
 
+    func testBrowseSelectedGroupRequiresVisibleSingleSelectionAndCurrentDisclosure() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        let disclosure = ComponentSidebarDisclosure()
+
+        value.selectComponents(["g", "other"])
+        try await settle(value)
+        XCTAssertNil(
+            value.componentSidebarBrowseSelectionAction(
+                snapshot: try XCTUnwrap(value.snapshot), disclosure: disclosure))
+
+        value.selectComponents(["sub"])
+        try await settle(value)
+        let selected = try XCTUnwrap(value.snapshot)
+        let stale = try XCTUnwrap(
+            value.componentSidebarBrowseSelectionAction(
+                snapshot: selected, disclosure: disclosure))
+        disclosure.collapsedIDs = ["g"]
+        stale()
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertNil(value.componentSidebarBrowseSelectionAction(snapshot: selected, disclosure: disclosure))
+        disclosure.collapsedIDs = []
+
+        let browse = try XCTUnwrap(
+            value.componentSidebarBrowseSelectionAction(
+                snapshot: selected, disclosure: disclosure))
+        browse()
+        try await settle(value)
+        XCTAssertEqual(value.componentGroupBrowse?.path.map(\.id), ["g", "sub"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testBrowseAutomaticallyPlacesToolbarAndPointerPartsWithExactUndo() async throws {
         let original = try source().encoded()
         let value = store()
