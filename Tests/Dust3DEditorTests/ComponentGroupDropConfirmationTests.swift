@@ -35,6 +35,10 @@ private struct GroupDropNoNative: EditorPreviewServing, ArchiveTextureBaking, Ar
                 </components></canvas>
                 """.utf8)
         ).encoded()
+        return await open(original)
+    }
+
+    private func open(_ original: Data) async -> (EditorStore, Data) {
         let stub = GroupDropNoNative()
         let store = EditorStore(
             preview: stub, materialBaker: stub, importedMaterialLoader: stub, sourceMaterialBaker: stub,
@@ -103,6 +107,61 @@ private struct GroupDropNoNative: EditorPreviewServing, ArchiveTextureBaking, Ar
         try await settle(store)
         XCTAssertNil(store.pendingComponentGroupDrop)
         XCTAssertNil(store.snapshot?.componentTree.rows.first { $0.id == "child" }?.component.parentID)
+    }
+
+    func testAncestorBreadcrumbDropStagesExactDestinationAndRejectsRetiredScope() async throws {
+        let archive = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><components>
+                <component id='outer' name='Outer'>
+                    <component id='inner' name='Inner'><component id='leaf' name='Leaf'/></component>
+                    <component id='sibling' name='Sibling'/>
+                </component>
+                </components></canvas>
+                """.utf8)
+        ).encoded()
+        let (store, original) = await open(archive)
+        defer { store.stop() }
+
+        func browse(_ id: String) throws {
+            store.componentBrowseAction(id, snapshot: try XCTUnwrap(store.snapshot))()
+        }
+
+        try browse("inner")
+        let retiredScope = store.componentBrowseEpoch
+        try browse("outer")
+        try browse("inner")
+        let scope = store.componentBrowseEpoch
+        XCTAssertNotEqual(scope, retiredScope)
+        XCTAssertEqual(store.componentGroupBrowse?.path.map(\.id), ["outer", "inner"])
+        store.selectComponents(["leaf"])
+        try await settle(store)
+
+        let token = try XCTUnwrap(store.beginComponentDrag(grabbedID: "leaf"))
+        XCTAssertFalse(store.dropComponents(token: token, in: .component("outer"), scopeEpoch: retiredScope))
+        XCTAssertNil(store.pendingComponentGroupDrop)
+        XCTAssertTrue(store.dropComponents(token: token, in: .component("outer"), scopeEpoch: scope))
+        let proposal = try XCTUnwrap(store.pendingComponentGroupDrop)
+        XCTAssertEqual(proposal.destinationTitle, "Outer")
+        XCTAssertEqual(proposal.componentCount, 1)
+        store.cancelComponentGroupDrop(proposal.id)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+
+        let confirmedToken = try XCTUnwrap(store.beginComponentDrag(grabbedID: "leaf"))
+        XCTAssertTrue(store.dropComponents(token: confirmedToken, in: .component("outer"), scopeEpoch: scope))
+        XCTAssertTrue(store.confirmComponentGroupDrop(try XCTUnwrap(store.pendingComponentGroupDrop?.id)))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), ["outer", "inner", "sibling", "leaf"])
+        XCTAssertEqual(store.componentGroupBrowse?.path.map(\.id), ["outer", "inner"])
+        XCTAssertEqual(store.snapshot?.selectedComponentIDs, [])
+        XCTAssertEqual(
+            store.snapshot?.componentTree.rows.first { $0.id == "leaf" }?.component.parentID, "outer")
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
     }
 
     func testStaleSelectionScopeAndSourceCannotCommitOrCancelNewerProposal() async throws {

@@ -280,21 +280,48 @@ struct ComponentSidebar: View {
     }
 
     private func browsePath(_ browse: ComponentGroupBrowse, snapshot: EditorSnapshot) -> some View {
-        HStack {
-            Button(
-                "Up", systemImage: "chevron.up",
-                action: store.componentBrowseAction(
-                    browse.path.dropLast().last?.id, snapshot: snapshot)
-            )
-            .help("Browse the parent group or return to the full tree.")
-            Menu(browse.path.last?.title ?? "Group") {
-                Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
-                ForEach(browse.path.dropLast()) { row in
-                    Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+        let ancestors = browse.path.dropLast()
+        let parent = ancestors.last
+        let scopeEpoch = store.componentBrowseEpoch
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                if let parent {
+                    ComponentParentDropZone(store: store, parent: .component(parent.id), scopeEpoch: scopeEpoch) {
+                        Button(
+                            parent.title, systemImage: "chevron.up",
+                            action: store.componentBrowseAction(parent.id, snapshot: snapshot)
+                        )
+                        .lineLimit(1)
+                    }
+                    .help("Browse or drop components into \(parent.title).")
+                } else {
+                    Button(
+                        "Up", systemImage: "chevron.up", action: store.componentBrowseAction(nil, snapshot: snapshot)
+                    )
+                    .help("Return to the full component tree.")
                 }
+                Menu(browse.path.last?.title ?? "Group") {
+                    Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
+                    ForEach(ancestors) { row in
+                        Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+                    }
+                }
+                .accessibilityLabel("Group breadcrumb")
+                .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
             }
-            .accessibilityLabel("Group breadcrumb")
-            .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
+            if ancestors.count > 1 {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 4) {
+                        ForEach(ancestors.dropLast()) { row in
+                            ComponentParentDropZone(store: store, parent: .component(row.id), scopeEpoch: scopeEpoch) {
+                                Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+                            }
+                            .help("Browse or drop components into \(row.title).")
+                        }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .focusedValue(\.editorComponentSidebarFocus, true)
         .focusedValue(
