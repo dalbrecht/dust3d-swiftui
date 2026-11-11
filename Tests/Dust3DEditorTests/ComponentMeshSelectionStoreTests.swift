@@ -166,6 +166,41 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertFalse(value.canUndo)
     }
 
+    func testInspectedMaterialAppliesAndResetsForSharedComponentOwner() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><parts><part id='p' emissive='.75'/></parts><components>
+                <component id='a' linkDataType='partId' linkData='p'/>
+                <component id='b' linkDataType='partId' linkData='p'/>
+                </components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        try await settle(value)
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        let selected = try XCTUnwrap(value.snapshot)
+        XCTAssertNil(selected.selectedPart)
+        XCTAssertEqual(selected.inspectedPart?.id, "p")
+
+        value.setPartMaterial("p", property: .emissive, value: "2", target: CanvasAdjustmentTarget(snapshot: selected))
+        try await settle(value)
+        let edited = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(edited.inspectedPart?.materialValue(.emissive), 2)
+        value.resetInspectedPartMaterial("p", property: .emissive, target: CanvasAdjustmentTarget(snapshot: edited))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.inspectedPart?.materialValue(.emissive), 0)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, selected.selectedComponentIDs)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), edited.document.encoded())
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+    }
+
     func testGraphOwnerMaterialApplyAndResetRejectRetiredAndFailedSourceTargets() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(

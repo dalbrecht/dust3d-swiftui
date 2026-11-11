@@ -2241,7 +2241,7 @@ final class EditorStore {
     }
 
     private func admitsInspectedPartMaterialEdit(_ id: String, target: CanvasAdjustmentTarget) -> Bool {
-        guard let source = acceptedDocumentSource, target.isCurrent(in: source), let part = source.selectedPart
+        guard let source = acceptedDocumentSource, target.isCurrent(in: source), let part = source.inspectedPart
         else { return false }
         return part.id.utf8.elementsEqual(id.utf8) && part.target == .model
     }
