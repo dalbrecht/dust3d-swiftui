@@ -212,6 +212,11 @@ struct ComponentSidebar: View {
                         }
                         .focusedValue(\.editorComponentSidebarFocus, true)
                         .focusedValue(
+                            \.editorComponentSidebarBrowseSelection,
+                            store.componentSidebarBrowseSelectionAction(
+                                snapshot: sidebarSnapshot, disclosure: disclosure)
+                        )
+                        .focusedValue(
                             \.editorComponentSidebarSelectAll,
                             ComponentSidebarSelectAllTarget(
                                 snapshot: sidebarSnapshot, visibleIDs: Set(visibleRows.map(\.id)),
