@@ -204,11 +204,7 @@ struct AnimationAuthoringControls: View {
                 .focusedValue(\.editorTextEditing, true).accessibilityLabel(label)
                 if let timingStep {
                     let step = workflow.parameterAction { workflow, increasing in
-                        if let value = steppedTimingText(
-                            workflow, name: name, timingStep: timingStep, increasing: increasing)
-                        {
-                            workflow.setText(name: name, value: value)
-                        }
+                        workflow.stepTiming(name: name, increasing: increasing)
                     }
                     Stepper(
                         label,

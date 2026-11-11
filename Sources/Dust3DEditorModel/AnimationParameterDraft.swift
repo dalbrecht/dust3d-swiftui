@@ -107,6 +107,18 @@ public struct AnimationParameterDraft: Sendable {
             timing: timing, increasing: increasing)
     }
 
+    package mutating func stepTiming(name: String, increasing: Bool) {
+        guard let next = steppedTimingText(name: name, increasing: increasing) else { return }
+        let original = source.parameter(named: name)
+        let fallback = name == "durationSeconds" ? clip.seconds : Double(clip.samples)
+        setText(name: name, value: Self.timingStepOverride(next, original: original, fallback: fallback))
+    }
+
+    package static func timingStepOverride(_ next: String, original: String?, fallback: Double) -> String? {
+        let originalValue = original.map { Double($0) } ?? fallback
+        return Double(next) == originalValue ? original : next
+    }
+
     /// Explicitly remove an override; unsupported retained fields are otherwise untouched.
     /// - Parameter name: Known parameter whose inherited default should be used after publication.
     /// - Example: `draft.useDefault(name: "durationSeconds")`.
