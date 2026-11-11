@@ -1852,6 +1852,13 @@ final class EditorStore {
         }
     }
 
+    func componentBrowseParentAction() -> (@MainActor () -> Void)? {
+        guard canBrowseComponents, let current = acceptedDocumentSource, let group = componentGroupBrowse else {
+            return nil
+        }
+        return componentBrowseAction(group.path.dropLast().last?.id, snapshot: current)
+    }
+
     private func changeComponentBrowseGroup(_ groupID: String?, reset: Bool = false) {
         let changed = componentBrowseGroupID.map { Data($0.utf8) } != groupID.map { Data($0.utf8) }
         guard reset || changed else { return }

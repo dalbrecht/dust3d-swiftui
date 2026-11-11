@@ -1,6 +1,14 @@
 import Dust3DEditorModel
 import SwiftUI
 
+extension ComponentTreeRow {
+    var sidebarSymbolName: String { component.isGroup ? "folder" : "square.stack.3d.up" }
+
+    var sidebarAccessibilityLabel: String {
+        component.isGroup ? "Group \(title)" : "Component \(title)"
+    }
+}
+
 struct ComponentSidebar: View {
     let store: EditorStore
     @State private var disclosure: ComponentSidebarDisclosure
@@ -249,17 +257,23 @@ struct ComponentSidebar: View {
                         systemName: disclosure.collapsedIDs.contains(row.id)
                             ? "chevron.right" : "chevron.down"
                     )
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
                 }
-                .frame(width: 12)
                 .buttonStyle(.plain)
                 .accessibilityLabel(
                     "\(disclosure.collapsedIDs.contains(row.id) ? "Expand" : "Collapse") \(row.title)"
                 )
             } else {
-                Color.clear.frame(width: 12, height: 1).accessibilityHidden(true)
+                Color.clear.frame(width: 20, height: 1).accessibilityHidden(true)
             }
-            Label(row.title, systemImage: row.hasChildren ? "folder" : "square.stack.3d.up")
-                .lineLimit(1)
+            Label {
+                Text(row.title).lineLimit(1)
+            } icon: {
+                Image(systemName: row.sidebarSymbolName)
+                    .foregroundStyle(Color.primary)
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.leading, !scoped ? CGFloat(min(row.depth, 6) * 10) : 0)
         .modifier(
@@ -270,7 +284,7 @@ struct ComponentSidebar: View {
         .tag(row.id)
         .id(row.id)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Component \(row.title)")
+        .accessibilityLabel(row.sidebarAccessibilityLabel)
         .help("\(row.title) · \(row.id)")
     }
 
