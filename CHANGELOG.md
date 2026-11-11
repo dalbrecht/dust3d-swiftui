@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reset imported model width and thickness scales independently.
+
 - Reset imported model rotation to zero from its orientation controls.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.

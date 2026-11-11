@@ -2314,15 +2314,17 @@ final class EditorStore {
     func partDeformationResetAction(
         _ property: PartDeformationProperty, partID: String
     ) -> (@MainActor () -> Void)? {
-        guard let snapshot, let part = snapshot.inspectedPart, part.target == .model,
+        guard let snapshot = acceptedDocumentSource, let part = snapshot.inspectedPart, part.supportsDeformationScales,
             part.id.utf8.elementsEqual(partID.utf8)
         else { return nil }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         return { [weak self] in
-            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+            guard let self, !self.stopped, !self.isWorking, let current = self.acceptedDocumentSource,
                 target.isCurrent(in: current)
             else { return }
-            self.perform { try await $0.resetPartDeformationScale(property, partID: partID, target: target) }
+            self.perform(acceptCommittedCancellation: true) {
+                try await $0.resetPartDeformationScale(property, partID: partID, target: target)
+            }
         }
     }
 
