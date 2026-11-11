@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Select visible nodes when their circles intersect the marquee.
 - Announce reference-image composition errors with VoiceOver in the active sheet.
 - Identify the composed reference preview and profile-specific crop actions in VoiceOver.
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.

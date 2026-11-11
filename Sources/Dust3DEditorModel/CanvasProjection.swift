@@ -110,14 +110,19 @@ public struct CanvasProjection: Equatable, Sendable {
         return position
     }
 
-    /// Select visible node centers, including centers on the rectangle boundary.
+    /// Select visible node circles that cross into the rectangle, matching Qt item-shape selection.
     public func nodeIDs(in rectangle: CanvasSelectionRectangle, nodes: [DocumentNode]) -> Set<String> {
         guard rectangle.isValid else { return [] }
         return Set(
             nodes.filter { node in
+                guard node.isVisible else { return false }
                 let point = point(for: node.value.position)
-                return node.isVisible && point.x >= rectangle.minimum.x && point.x <= rectangle.maximum.x
-                    && point.y >= rectangle.minimum.y && point.y <= rectangle.maximum.y
+                guard point.x.isFinite, point.y.isFinite else { return false }
+                let marker = CanvasNodeMarkerGeometry(
+                    projectedDiameter: node.value.radius * scale * 2, selected: false, hovered: false)
+                let x = max(rectangle.minimum.x - point.x, 0, point.x - rectangle.maximum.x)
+                let y = max(rectangle.minimum.y - point.y, 0, point.y - rectangle.maximum.y)
+                return hypot(x, y) < marker.marqueeRadius
             }.map(\.id))
     }
 
