@@ -284,14 +284,20 @@ struct ComponentSidebar: View {
         let parent = ancestors.last
         let scopeEpoch = store.componentBrowseEpoch
         return VStack(alignment: .leading, spacing: 4) {
-            HStack {
+            VStack(alignment: .leading, spacing: 4) {
                 if let parent {
                     ComponentParentDropZone(store: store, parent: .component(parent.id), scopeEpoch: scopeEpoch) {
-                        Button(
-                            parent.title, systemImage: "chevron.up",
-                            action: store.componentBrowseAction(parent.id, snapshot: snapshot)
-                        )
-                        .lineLimit(1)
+                        Button(action: store.componentBrowseAction(parent.id, snapshot: snapshot)) {
+                            HStack(alignment: .top, spacing: 5) {
+                                Image(systemName: "chevron.up").foregroundStyle(.secondary)
+                                Text(parent.title)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                     .help("Browse or drop components into \(parent.title).")
                 } else {
@@ -300,14 +306,24 @@ struct ComponentSidebar: View {
                     )
                     .help("Return to the full component tree.")
                 }
-                Menu(browse.path.last?.title ?? "Group") {
-                    Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
-                    ForEach(ancestors) { row in
-                        Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+                HStack(alignment: .top, spacing: 4) {
+                    Text(browse.path.last?.title ?? "Group")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.isHeader)
+                    Menu {
+                        Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
+                        ForEach(ancestors) { row in
+                            Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
                     }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .accessibilityLabel("Group breadcrumb")
+                    .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
                 }
-                .accessibilityLabel("Group breadcrumb")
-                .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
             }
             if ancestors.count > 1 {
                 ScrollView(.horizontal) {
