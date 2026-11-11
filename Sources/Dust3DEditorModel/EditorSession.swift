@@ -625,11 +625,23 @@ public actor EditorSession {
     public func placeComponents(
         at placement: ComponentDropPlacement, target: ComponentPlacementTarget
     ) throws -> EditorSnapshot {
+        try placeComponents(at: placement, target: target, clearingMovedPicks: false)
+    }
+
+    package func placeComponents(
+        at placement: ComponentDropPlacement, target: ComponentPlacementTarget, clearingMovedPicks: Bool
+    ) throws -> EditorSnapshot {
         try update { state in
             guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
                 throw EditorError.staleComponentMove
             }
             try state.apply([.placeComponents(ids: target.ids, placement: placement)])
+            if clearingMovedPicks {
+                let selected = state.snapshot.selectedComponentIDs
+                let moved = Set(target.ids.map { Data($0.utf8) })
+                let retained = selected.filter { !moved.contains(Data($0.utf8)) }
+                if retained.count != selected.count { try state.selectComponents(retained) }
+            }
             try Task.checkCancellation()
         }
     }

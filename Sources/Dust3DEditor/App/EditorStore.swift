@@ -2170,6 +2170,7 @@ final class EditorStore {
         fileprivate let placement: ComponentDropPlacement
         fileprivate let target: ComponentPlacementTarget
         fileprivate let scopeEpoch: UUID
+        fileprivate let clearsMovedPicks: Bool
     }
 
     private var componentGroupDropProposal: ComponentGroupDropProposal?
@@ -2206,21 +2207,26 @@ final class EditorStore {
                 }?.title : nil
             componentGroupDropProposal = ComponentGroupDropProposal(
                 destinationTitle: destination.title, sourceTitle: sourceTitle, componentCount: target.ids.count,
-                placement: placement, target: target, scopeEpoch: componentBrowseEpoch)
+                placement: placement, target: target, scopeEpoch: componentBrowseEpoch,
+                clearsMovedPicks: componentGroupBrowse?.path.dropLast().contains {
+                    $0.id.utf8.elementsEqual(parentID.utf8)
+                } == true)
             return true
         }
         return placeComponents(at: placement, target: target)
     }
 
-    func dropComponents(token: UUID, in parent: ComponentParent) -> Bool {
-        dropComponents(token: token, at: .into(parentID: parent.componentID))
+    func dropComponents(token: UUID, in parent: ComponentParent, scopeEpoch: UUID? = nil) -> Bool {
+        guard scopeEpoch == nil || scopeEpoch == componentBrowseEpoch else { return false }
+        return dropComponents(token: token, at: .into(parentID: parent.componentID))
     }
 
     @discardableResult
     func confirmComponentGroupDrop(_ id: UUID) -> Bool {
         guard let proposal = pendingComponentGroupDrop, proposal.id == id else { return false }
         componentGroupDropProposal = nil
-        return placeComponents(at: proposal.placement, target: proposal.target)
+        return placeComponents(
+            at: proposal.placement, target: proposal.target, clearingMovedPicks: proposal.clearsMovedPicks)
     }
 
     func cancelComponentGroupDrop(_ id: UUID) {
@@ -2235,10 +2241,12 @@ final class EditorStore {
     }
 
     @discardableResult
-    func placeComponents(at placement: ComponentDropPlacement, target: ComponentPlacementTarget) -> Bool {
+    func placeComponents(
+        at placement: ComponentDropPlacement, target: ComponentPlacementTarget, clearingMovedPicks: Bool = false
+    ) -> Bool {
         guard canSave, let snapshot, target.canPlace(at: placement, in: snapshot) else { return false }
         perform(acceptCommittedCancellation: true) {
-            try await $0.placeComponents(at: placement, target: target)
+            try await $0.placeComponents(at: placement, target: target, clearingMovedPicks: clearingMovedPicks)
         }
         return true
     }

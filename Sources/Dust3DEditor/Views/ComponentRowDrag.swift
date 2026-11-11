@@ -64,8 +64,7 @@ struct ComponentParentDropZone<Content: View>: View {
         ComponentDropZone(
             alignment: nil,
             receive: { token in
-                guard scopeEpoch.map({ $0 == store.componentBrowseEpoch }) != false else { return }
-                _ = store.dropComponents(token: token, in: parent)
+                _ = store.dropComponents(token: token, in: parent, scopeEpoch: scopeEpoch)
             }, content: content)
     }
 }
