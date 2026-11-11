@@ -142,7 +142,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let tooMany = (0..<64).flatMap { ["-o", directory.appendingPathComponent("\($0).ds3").path] }
         for invalid in [
             ["Editor", "-o", output.path], arguments + ["-o"], arguments + ["another.ds3"],
-            arguments + ["-output", "unsupported.txt"], arguments + ["-o", output.path],
+            arguments + ["-output", "-"], arguments + ["-o", output.path],
             arguments + ["-o", source.path], arguments + tooMany,
             arguments + ["-paste-xml", "one.xml", "-paste-xml", "two.xml"],
         ] {
@@ -174,22 +174,27 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         }
     }
 
-    func testUnavailableGeometryLeavesExistingFilesAndContinuesInOrder() async throws {
+    func testUnavailableAndUnsupportedOutputsPreserveFilesAndContinueInOrder() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
         let first = directory.appendingPathComponent("first.ds3")
         let obj = directory.appendingPathComponent("geometry.obj")
         let glb = directory.appendingPathComponent("geometry.glb")
+        let unsupported = directory.appendingPathComponent("geometry.txt")
         let last = directory.appendingPathComponent("last.ds3")
         let original = try archive().encoded()
         let previous = Data("previous output".utf8)
         try original.write(to: source)
         try previous.write(to: obj)
         try previous.write(to: glb)
+        try previous.write(to: unsupported)
 
         var messages: [String] = []
         let status = await EditorHeadlessDS3SaveCommand.run(
-            arguments: ["Editor", source.path, "-o", first.path, "-o", obj.path, "-o", glb.path, "-o", last.path],
+            arguments: [
+                "Editor", source.path, "-o", first.path, "-o", obj.path, "-o", glb.path, "-o", unsupported.path, "-o",
+                last.path,
+            ],
             stdout: { messages.append($0) }, stderr: { messages.append($0) })
 
         XCTAssertEqual(status, 1)
@@ -197,11 +202,14 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: last), original)
         XCTAssertEqual(try Data(contentsOf: obj), previous)
         XCTAssertEqual(try Data(contentsOf: glb), previous)
-        XCTAssertEqual(messages.count, 4)
-        for (message, destination) in zip(messages, [first, obj, glb, last]) {
+        XCTAssertEqual(try Data(contentsOf: unsupported), previous)
+        XCTAssertEqual(try Data(contentsOf: source), original)
+        XCTAssertEqual(messages.count, 5)
+        for (message, destination) in zip(messages, [first, obj, glb, unsupported, last]) {
             XCTAssertTrue(message.contains(destination.path), message)
         }
         XCTAssertEqual(messages.filter { $0.localizedCaseInsensitiveContains("unavailable") }.count, 2)
+        XCTAssertTrue(messages.contains { $0.contains("Unsupported output format") && $0.contains(unsupported.path) })
     }
 
     func testMixedOutputsUseOneCapturedArchiveAndContinueAfterEncoderFailure() async throws {
