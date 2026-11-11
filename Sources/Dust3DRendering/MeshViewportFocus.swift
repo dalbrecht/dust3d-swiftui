@@ -13,6 +13,23 @@ package final class MeshViewportFocus {
         if self.view === view { self.view = nil }
     }
 
+    package typealias CanvasDrag = (update: @MainActor (SIMD2<Float>, Bool) -> Bool, end: @MainActor () -> Void)
+
+    package func beginCanvasDrag() -> CanvasDrag? {
+        guard let viewport = view as? InteractiveMeshView, viewport.window?.isKeyWindow == true,
+            !viewport.isHiddenOrHasHiddenAncestor, let token = viewport.beginCanvasDrag()
+        else { return nil }
+        return (
+            update: { [weak self, weak viewport] delta, pans in
+                guard let self, let viewport, self.view === viewport, viewport.window?.isKeyWindow == true,
+                    !viewport.isHiddenOrHasHiddenAncestor
+                else { return false }
+                return viewport.updateCanvasDrag(token, by: delta, pans: pans)
+            },
+            end: { [weak viewport] in viewport?.endCanvasDrag(token) }
+        )
+    }
+
     @discardableResult
     package func moveFocus(in window: NSWindow?) -> Bool {
         guard let view, let window, view.window === window, !view.isHiddenOrHasHiddenAncestor else { return false }
