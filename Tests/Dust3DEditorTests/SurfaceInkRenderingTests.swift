@@ -1,5 +1,6 @@
 import AppKit
 import Dust3DDocument
+import Dust3DEditorModel
 import Foundation
 import SwiftUI
 import XCTest
@@ -21,7 +22,7 @@ import XCTest
         var commits: [DocumentColor] = []
         let png = try InspectorRenderer.png(
             SurfaceInkControls(
-                source: source, draft: draft, canEdit: { true }, apply: { commits.append($0) }, automatic: {}),
+                source: .uniform(source), draft: draft, canEdit: { true }, apply: { commits.append($0) }, automatic: {}),
             width: 290, scheme: .light,
             inspect: { host in
                 let well = try XCTUnwrap(self.wells(in: host).first)
@@ -42,13 +43,15 @@ import XCTest
         XCTAssertGreaterThan(png.count, 100)
     }
     func testInkControlsRenderSupportedAutomaticAndUnsupportedSourceInBothAppearances() throws {
-        for (name, source) in [
-            ("auto", ComponentColorValue.unset), ("rgb", .value(.init(red: 120, green: 40, blue: 20))),
-            ("unsupported", .unsupported("future-ink")),
-        ] {
+        let sources: [(String, ComponentWrappingSelectionValue<ComponentColorValue>)] = [
+            ("auto", .uniform(.unset)), ("rgb", .uniform(.value(.init(red: 120, green: 40, blue: 20)))),
+            ("unsupported", .uniform(.unsupported("future-ink"))), ("mixed", .mixed),
+        ]
+        for (name, source) in sources {
             for scheme in [ColorScheme.light, .dark] {
                 let png = try InspectorRenderer.png(
-                    SurfaceInkControls(source: source, canEdit: { true }, apply: { _ in }, automatic: {}), width: 290,
+                    SurfaceInkControls(source: source, canEdit: { true }, apply: { _ in }, automatic: {}),
+                    width: 290,
                     scheme: scheme)
                 XCTAssertGreaterThan(png.count, 100)
                 if let output = ProcessInfo.processInfo.environment["DUST3D_UI_QA_OUTPUT_DIR"] {
