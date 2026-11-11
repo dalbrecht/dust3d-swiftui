@@ -15,6 +15,7 @@ enum EditorHeadlessDS3SaveCommand {
     private enum Failure: LocalizedError {
         case usage
         case unsafeOutput(URL)
+        case directoryOutput
         case geometryUnavailable(OutputKind)
         case unsupportedOutputFormat
         case input(URL, cause: String)
@@ -28,6 +29,7 @@ enum EditorHeadlessDS3SaveCommand {
                     + "Headless geometry export is currently unavailable."
             case .unsafeOutput(let url):
                 "Destination must be a regular file distinct from all inputs and other outputs: \(url.path)"
+            case .directoryOutput: "Destination is a directory."
             case .geometryUnavailable(let kind):
                 "Headless .\(kind.rawValue) export is unavailable."
             case .unsupportedOutputFormat:
@@ -105,9 +107,10 @@ enum EditorHeadlessDS3SaveCommand {
         else { return nil }
 
         let invocation: Invocation
+        let directoryOutputs: Set<URL>
         do {
             invocation = try Invocation(options: options)
-            try validateDestinations(invocation)
+            directoryOutputs = try validateDestinations(invocation)
         } catch {
             stderr(error.localizedDescription + "\n")
             return 2
@@ -126,6 +129,7 @@ enum EditorHeadlessDS3SaveCommand {
         var status: Int32 = 0
         for (destination, kind) in invocation.destinations {
             do {
+                if directoryOutputs.contains(destination) { throw Failure.directoryOutput }
                 guard let kind else { throw Failure.unsupportedOutputFormat }
                 switch kind {
                 case .ds3:
@@ -171,17 +175,24 @@ enum EditorHeadlessDS3SaveCommand {
         } catch { throw Failure.input(xml, cause: error.localizedDescription) }
     }
 
-    private static func validateDestinations(_ invocation: Invocation) throws {
+    private static func validateDestinations(_ invocation: Invocation) throws -> Set<URL> {
         let inputs = [invocation.source, invocation.xml].compactMap { $0 }.map { $0.resolvingSymlinksInPath() }
         var paths = Set(inputs.map(pathKey))
         var identities = Set(try inputs.compactMap { try fileIdentity($0, isDestination: false) })
+        var directories: Set<URL> = []
         for (destination, _) in invocation.destinations {
             guard paths.insert(pathKey(destination)).inserted else { throw Failure.unsafeOutput(destination) }
-            if let identity = try fileIdentity(destination, isDestination: true), !identities.insert(identity).inserted
-            {
-                throw Failure.unsafeOutput(destination)
+            do {
+                if let identity = try fileIdentity(destination, isDestination: true),
+                    !identities.insert(identity).inserted
+                {
+                    throw Failure.unsafeOutput(destination)
+                }
+            } catch Failure.directoryOutput {
+                directories.insert(destination)
             }
         }
+        return directories
     }
 
     private static func pathKey(_ url: URL) -> String {
@@ -200,7 +211,9 @@ enum EditorHeadlessDS3SaveCommand {
         }
         if code == ENOENT || code == ENOTDIR { return nil }
         guard code == 0 else { throw Failure.fileInspection(url, code: Int(code)) }
-        guard metadata.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else {
+        let type = metadata.st_mode & mode_t(S_IFMT)
+        if isDestination, type == mode_t(S_IFDIR) { throw Failure.directoryOutput }
+        guard type == mode_t(S_IFREG) else {
             if isDestination { throw Failure.unsafeOutput(url) }
             throw Failure.input(url, cause: "Expected a regular file.")
         }
