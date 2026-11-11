@@ -5,13 +5,15 @@ import SwiftUI
 struct ComponentStitchingControls: View {
     let store: EditorStore
     let component: DocumentComponent
+    let support: ComponentStitchingBatchSupport
 
     private var identity: String { (store.snapshot?.documentIdentity.uuidString ?? "") + component.id }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Stitching").font(.headline)
-            ForEach(ComponentStitchingClosureProperty.allCases, id: \.self) { property in
+            ForEach(ComponentStitchingClosureProperty.allCases.filter { $0 == .back || support.line }, id: \.self) {
+                property in
                 if let value = component.stitching.closureValue(property) {
                     Toggle(
                         stitchingClosureTitle(property),
@@ -47,29 +49,30 @@ struct ComponentStitchingControls: View {
                     }
                 }
             }
-            StitchingNumberControl(
-                title: "Target segments", identifier: "component-target-segments", identity: identity,
-                source: component.stitching.targetSegments.map { String($0) }
-            ) {
-                store.setComponentTargetSegments(component.id, segments: $0)
-            }
-            ForEach(ComponentStitchingScalarProperty.allCases, id: \.self) { property in
+            if support.line {
                 StitchingNumberControl(
-                    title: property == .depthRatio ? "Loop cap depth" : "Loop cap sharpness",
-                    identifier: "component-\(property.rawValue)", identity: identity,
-                    source: component.stitching.scalarValue(property).map { String($0) }
+                    title: "Target segments (0–100; 0 = automatic)", identifier: "component-target-segments",
+                    identity: identity, source: component.stitching.targetSegments.map { String($0) }
                 ) {
-                    store.setComponentStitchingScalar(component.id, property: property, value: $0)
+                    store.setComponentTargetSegments(component.id, segments: $0)
                 }
             }
-            Text(
-                "Target segments: 0–100 (0 = automatic). Loop cap depth: 0–2; sharpness: 0–1. Each choice or Apply is one undo step."
-            )
-            .font(.caption).foregroundStyle(.primary)
-            Text(
-                "Line closures join spline ends and end profiles. Loop caps use Back closed and depend on profile orientation. These settings apply to stitching children in this group."
-            )
-            .font(.caption).foregroundStyle(.primary)
+            if support.loop {
+                ForEach(ComponentStitchingScalarProperty.allCases, id: \.self) { property in
+                    StitchingNumberControl(
+                        title: property == .depthRatio ? "Loop cap depth (0–2)" : "Loop cap sharpness (0–1)",
+                        identifier: "component-\(property.rawValue)", identity: identity,
+                        source: component.stitching.scalarValue(property).map { String($0) }
+                    ) {
+                        store.setComponentStitchingScalar(component.id, property: property, value: $0)
+                    }
+                    .disabled(!support.cap)
+                }
+                if !support.cap {
+                    Text("Turn on Back closed to edit the loop cap.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 

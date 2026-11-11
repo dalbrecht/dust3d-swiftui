@@ -16,7 +16,8 @@ package struct ComponentStitchingBatchTarget: Sendable {
         let components = snapshot.componentTree.rows.map(\.component)
         groups = snapshot.selectedComponentRows.map(\.component)
         support = ComponentStitchingBatchSupport(
-            groups: groups.count == target.count ? groups : [], components: components, parts: snapshot.parts)
+            groups: groups.count > 1 && groups.count == target.count ? groups : [], components: components,
+            parts: snapshot.parts)
     }
 
     package func isCurrent(in snapshot: EditorSnapshot) -> Bool {

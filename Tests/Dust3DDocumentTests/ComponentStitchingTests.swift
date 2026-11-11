@@ -18,6 +18,43 @@ final class ComponentStitchingTests: XCTestCase {
         try XCTUnwrap(document.components().first(where: { $0.id == "g" })).stitching
     }
 
+    func testSingletonStitchingSupportUsesDirectChildRoles() throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><parts>
+                    <part id='model'/>
+                    <part id='line' target='StitchingLine'/>
+                    <part id='loop' target='StitchingLoop'/>
+                </parts><components>
+                    <component id='ordinary'><component id='model-leaf' linkDataType='partId' linkData='model'/></component>
+                    <component id='outer'>
+                        <component id='line-group'><component id='line-leaf' linkDataType='partId' linkData='line'/></component>
+                    </component>
+                    <component id='loop-group' backClosed='false' backCloseDepthRatio='0.5'>
+                        <component id='loop-leaf' linkDataType='partId' linkData='loop'/>
+                    </component>
+                    <component id='closed-loop' backClosed='true'>
+                        <component id='closed-loop-leaf' linkDataType='partId' linkData='loop'/>
+                    </component>
+                </components></canvas>
+                """.utf8))
+        let components = try document.components()
+        let parts = try document.editorContents().parts
+        for (id, line, loop, cap) in [
+            ("ordinary", false, false, false), ("outer", false, false, false),
+            ("line-group", true, false, false), ("loop-group", false, true, false),
+            ("closed-loop", false, true, true),
+        ] {
+            let group = try XCTUnwrap(components.first { $0.id == id })
+            let support = ComponentStitchingBatchSupport(groups: [group], components: components, parts: parts)
+            XCTAssertEqual(support.line, line, id)
+            XCTAssertEqual(support.loop, loop, id)
+            XCTAssertEqual(support.back, line || loop, id)
+            XCTAssertEqual(support.cap, cap, id)
+        }
+    }
+
     func testDefaultsAndKnownOrUnsupportedSourceValuesNeverRewriteArchive() throws {
         let source = try document()
         let defaults = try settings(source)
