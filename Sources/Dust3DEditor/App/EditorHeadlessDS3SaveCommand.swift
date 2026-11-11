@@ -25,15 +25,15 @@ enum EditorHeadlessDS3SaveCommand {
             switch self {
             case .usage:
                 "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment.xml] -o output.ds3 [-output another ...]. "
-                    + "Supply one input archive or XML fragment and up to 64 distinct destinations. "
-                    + "Headless geometry export is currently unavailable."
+                    + "Supply one input archive or XML fragment and up to 64 distinct .ds3, .obj, or .fbx destinations. "
+                    + "GLB export is unavailable."
             case .unsafeOutput(let url):
                 "Destination must be a regular file distinct from all inputs and other outputs: \(url.path)"
             case .directoryOutput: "Destination is a directory."
             case .geometryUnavailable(let kind):
                 "Headless .\(kind.rawValue) export is unavailable."
             case .unsupportedOutputFormat:
-                "Unsupported output format. Use .ds3 for a source save."
+                "Unsupported output format. Use .ds3, .obj, or .fbx."
             case .input(let url, let cause):
                 "Could not read or apply \(url.path): \(cause)"
             case .fileInspection(let url, let code):
