@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DKit
 import Foundation
 import XCTest
 
@@ -141,7 +142,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let tooMany = (0..<64).flatMap { ["-o", directory.appendingPathComponent("\($0).ds3").path] }
         for invalid in [
             ["Editor", "-o", output.path], arguments + ["-o"], arguments + ["another.ds3"],
-            arguments + ["-output", "geometry.obj"], arguments + ["-o", output.path],
+            arguments + ["-output", "unsupported.txt"], arguments + ["-o", output.path],
             arguments + ["-o", source.path], arguments + tooMany,
             arguments + ["-paste-xml", "one.xml", "-paste-xml", "two.xml"],
         ] {
@@ -173,11 +174,134 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         }
     }
 
-    private func run(_ arguments: [String]) async -> (status: Int32?, output: [String], errors: [String]) {
+    func testUnavailableGeometryLeavesExistingFilesAndContinuesInOrder() async throws {
+        let directory = try temporaryDirectory()
+        let source = directory.appendingPathComponent("source.ds3")
+        let first = directory.appendingPathComponent("first.ds3")
+        let obj = directory.appendingPathComponent("geometry.obj")
+        let glb = directory.appendingPathComponent("geometry.glb")
+        let last = directory.appendingPathComponent("last.ds3")
+        let original = try archive().encoded()
+        let previous = Data("previous output".utf8)
+        try original.write(to: source)
+        try previous.write(to: obj)
+        try previous.write(to: glb)
+
+        var messages: [String] = []
+        let status = await EditorHeadlessDS3SaveCommand.run(
+            arguments: ["Editor", source.path, "-o", first.path, "-o", obj.path, "-o", glb.path, "-o", last.path],
+            stdout: { messages.append($0) }, stderr: { messages.append($0) })
+
+        XCTAssertEqual(status, 1)
+        XCTAssertEqual(try Data(contentsOf: first), original)
+        XCTAssertEqual(try Data(contentsOf: last), original)
+        XCTAssertEqual(try Data(contentsOf: obj), previous)
+        XCTAssertEqual(try Data(contentsOf: glb), previous)
+        XCTAssertEqual(messages.count, 4)
+        for (message, destination) in zip(messages, [first, obj, glb, last]) {
+            XCTAssertTrue(message.contains(destination.path), message)
+        }
+        XCTAssertEqual(messages.filter { $0.localizedCaseInsensitiveContains("unavailable") }.count, 2)
+    }
+
+    func testMixedOutputsUseOneCapturedArchiveAndContinueAfterEncoderFailure() async throws {
+        let directory = try temporaryDirectory()
+        let source = directory.appendingPathComponent("source.ds3")
+        let obj = directory.appendingPathComponent("geometry.obj")
+        let fbx = directory.appendingPathComponent("geometry.fbx")
+        let glb = directory.appendingPathComponent("geometry.glb")
+        let saved = directory.appendingPathComponent("output.ds3")
+        let original = try archive().encoded()
+        let replacement = Dust3DDocument.emptyArchive()
+        let previous = Data("previous OBJ".utf8)
+        try original.write(to: source)
+        try previous.write(to: obj)
+        let encoder = FakeGeometryEncoder(source: source, replacement: replacement)
+
+        let result = await run(
+            ["Editor", source.path, "-o", obj.path, "-o", fbx.path, "-o", glb.path, "-o", saved.path],
+            geometryEncoder: encoder)
+
+        XCTAssertEqual(result.status, 1)
+        XCTAssertEqual(result.errors.count, 2)
+        XCTAssertTrue(result.errors.first?.contains(obj.path) == true)
+        XCTAssertTrue(result.errors.last?.contains(glb.path) == true)
+        XCTAssertEqual(result.output.count, 2)
+        XCTAssertTrue(result.output.first?.contains(fbx.path) == true)
+        XCTAssertTrue(result.output.last?.contains(saved.path) == true)
+        XCTAssertEqual(try Data(contentsOf: source), replacement)
+        XCTAssertEqual(try Data(contentsOf: obj), previous)
+        XCTAssertEqual(try Data(contentsOf: fbx), Data("inert FBX".utf8))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: glb.path))
+        XCTAssertEqual(try Data(contentsOf: saved), original)
+        let calls = await encoder.calls
+        XCTAssertEqual(calls.map(\.format), [.obj, .fbx])
+        XCTAssertEqual(calls.map(\.archive), [original, original])
+    }
+
+    func testMixedPreflightRejectsHardLinkToXMLAndCrossFormatOutputAlias() async throws {
+        let directory = try temporaryDirectory()
+        let source = directory.appendingPathComponent("source.ds3")
+        let xml = directory.appendingPathComponent("fragment.xml")
+        let saved = directory.appendingPathComponent("saved.ds3")
+        let obj = directory.appendingPathComponent("geometry.obj")
+        let fbx = directory.appendingPathComponent("geometry.fbx")
+        let original = try archive()
+        try original.encoded().write(to: source)
+        try original.modelXML.write(to: xml)
+        let encoder = FakeGeometryEncoder(source: source, replacement: Data())
+        let arguments = ["Editor", source.path, "-paste-xml", xml.path, "-o", saved.path, "-o", obj.path]
+        try FileManager.default.linkItem(at: xml, to: obj)
+
+        let inputAlias = await run(arguments, geometryEncoder: encoder)
+        XCTAssertEqual(inputAlias.status, 2)
+        XCTAssertTrue(inputAlias.output.isEmpty)
+
+        try FileManager.default.removeItem(at: obj)
+        let previous = Data("previous output".utf8)
+        try previous.write(to: obj)
+        try FileManager.default.linkItem(at: obj, to: fbx)
+        let outputAlias = await run(arguments + ["-o", fbx.path], geometryEncoder: encoder)
+        XCTAssertEqual(outputAlias.status, 2)
+        XCTAssertTrue(outputAlias.output.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: saved.path))
+        XCTAssertEqual(try Data(contentsOf: xml), original.modelXML)
+        XCTAssertEqual(try Data(contentsOf: obj), previous)
+        XCTAssertEqual(try Data(contentsOf: fbx), previous)
+        let calls = await encoder.calls
+        XCTAssertTrue(calls.isEmpty)
+    }
+
+    func testXMLOnlyMixedBatchSucceedsWithInertGeometryEncoder() async throws {
+        let directory = try temporaryDirectory()
+        let xml = directory.appendingPathComponent("fragment.xml")
+        let fbx = directory.appendingPathComponent("geometry.fbx")
+        let saved = directory.appendingPathComponent("saved.ds3")
+        try archive().modelXML.write(to: xml)
+        let encoder = FakeGeometryEncoder(source: nil, replacement: Data())
+
+        let result = await run(
+            ["Editor", "-paste-xml", xml.path, "-output", fbx.path, "-o", saved.path],
+            geometryEncoder: encoder)
+
+        XCTAssertEqual(result.status, 0)
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.output.count, 2)
+        let archive = try Data(contentsOf: saved)
+        XCTAssertEqual(try Dust3DDocument(data: archive).editorContents().nodes.count, 1)
+        let calls = await encoder.calls
+        XCTAssertEqual(calls.map(\.format), [.fbx])
+        XCTAssertEqual(calls.map(\.archive), [archive])
+    }
+
+    private func run(_ arguments: [String], geometryEncoder: (any DocumentExportEncoding)? = nil) async
+        -> (status: Int32?, output: [String], errors: [String])
+    {
         var output: [String] = []
         var errors: [String] = []
         let status = await EditorHeadlessDS3SaveCommand.run(
-            arguments: arguments, stdout: { output.append($0) }, stderr: { errors.append($0) })
+            arguments: arguments, geometryEncoder: geometryEncoder, stdout: { output.append($0) },
+            stderr: { errors.append($0) })
         return (status, output, errors)
     }
 
@@ -200,5 +324,27 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
             Data((prefix + String(format: "%010d\r\n", prefix.utf8.count + 12 + header.utf8.count) + header).utf8)
             + model + asset
         return try Dust3DDocument(data: bytes)
+    }
+}
+
+private actor FakeGeometryEncoder: DocumentExportEncoding {
+    private enum Failure: Error { case obj }
+
+    let source: URL?
+    let replacement: Data
+    private(set) var calls: [(archive: Data, format: DocumentExportFormat)] = []
+
+    init(source: URL?, replacement: Data) {
+        self.source = source
+        self.replacement = replacement
+    }
+
+    func encode(archive: Data, format: DocumentExportFormat) async throws -> DocumentExportArtifact {
+        calls.append((archive, format))
+        if calls.count == 1, let source {
+            try replacement.write(to: source, options: .atomic)
+        }
+        if format == .obj { throw Failure.obj }
+        return DocumentExportArtifact(bytes: Data("inert FBX".utf8), warning: "")
     }
 }

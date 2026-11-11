@@ -14,13 +14,17 @@ Dust3DEditor -paste-xml fragment.xml -o new.ds3
 
 The command validates and prepares one archive before opening any windows. It
 preserves exact bytes for a plain copy and applies a single Qt XML fragment to
-the source or a new document before saving. Up to 64 distinct `.ds3` destinations
+the source or a new document before saving. Up to 64 distinct destinations
 are allowed. Destinations must be separate from the inputs and cannot be symbolic
-links. Writes replace individual files atomically. A failed write is reported
-for that destination and the command continues with later destinations.
-Exit status `0` means all saves succeeded, `1` indicates an input or write
-failure, and `2` indicates a usage or path preflight error. This route saves
-editable archives. Geometry formats use their separate export routes.
+links. The command processes destinations in argument order and replaces individual
+archive files atomically. A failed destination is reported and the command continues
+with later destinations.
+
+The editor CLI recognizes `.obj`, `.fbx`, and `.glb` destinations and reports
+headless geometry export as unavailable for each one. Any `.ds3` destinations
+in the same command are still processed. Exit status `0` means all outputs
+succeeded, `1` means an input or output failed, and `2` means a usage or path
+preflight error.
 
 Open an existing `.ds3`, select a node in the list or canvas, drag it in Front
 (X/Y) or Side (Z/Y), or edit X/Y/Z/radius and press Apply. Undo/redo operates on

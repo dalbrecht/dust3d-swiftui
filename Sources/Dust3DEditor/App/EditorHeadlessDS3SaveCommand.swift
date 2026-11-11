@@ -1,25 +1,34 @@
 import Darwin
 import Dust3DDocument
 import Dust3DEditorModel
+import Dust3DKit
 import Foundation
 
-/// Saves an owned source archive before the editor creates any windows.
+/// Processes ordered outputs from one owned source archive before the editor creates any windows.
 enum EditorHeadlessDS3SaveCommand {
     private static let outputOptions = ["-o", "-output"]
+
+    private enum OutputKind: String {
+        case ds3, obj, fbx, glb
+    }
 
     private enum Failure: LocalizedError {
         case usage
         case unsafeOutput(URL)
+        case geometryUnavailable(OutputKind)
         case input(URL, cause: String)
         case fileInspection(URL, code: Int)
 
         var errorDescription: String? {
             switch self {
             case .usage:
-                "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment.xml] -o output.ds3 [-output another.ds3 ...]. "
-                    + "Supply one input archive or XML fragment and up to 64 distinct .ds3 destinations."
+                "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment.xml] -o output.ds3 [-output another ...]. "
+                    + "Supply one input archive or XML fragment and up to 64 distinct destinations. "
+                    + "Headless geometry export is currently unavailable."
             case .unsafeOutput(let url):
                 "Destination must be a regular file distinct from all inputs and other outputs: \(url.path)"
+            case .geometryUnavailable(let kind):
+                "Headless .\(kind.rawValue) export is unavailable."
             case .input(let url, let cause):
                 "Could not read or apply \(url.path): \(cause)"
             case .fileInspection(let url, let code):
@@ -31,7 +40,7 @@ enum EditorHeadlessDS3SaveCommand {
     private struct Invocation {
         var source: URL?
         var xml: URL?
-        var destinations: [URL] = []
+        var destinations: [(url: URL, kind: OutputKind)] = []
 
         init(options: ArraySlice<String>) throws {
             var options = options
@@ -41,7 +50,9 @@ enum EditorHeadlessDS3SaveCommand {
                     parsesOptions = false
                 } else if parsesOptions, EditorHeadlessDS3SaveCommand.outputOptions.contains(argument) {
                     guard destinations.count < 64 else { throw Failure.usage }
-                    destinations.append(try Self.path(options.popFirst(), extension: "ds3"))
+                    let url = try Self.path(options.popFirst())
+                    guard let kind = OutputKind(rawValue: url.pathExtension.lowercased()) else { throw Failure.usage }
+                    destinations.append((url, kind))
                 } else if parsesOptions, argument == "-paste-xml" {
                     guard xml == nil else { throw Failure.usage }
                     xml = try Self.path(options.popFirst(), extension: "xml")
@@ -61,7 +72,8 @@ enum EditorHeadlessDS3SaveCommand {
             guard !destinations.isEmpty, source != nil || xml != nil else { throw Failure.usage }
         }
 
-        private static func path(_ argument: String?, extension suffix: String, allowsLeadingDash: Bool = false) throws
+        private static func path(_ argument: String?, extension suffix: String? = nil, allowsLeadingDash: Bool = false)
+            throws
             -> URL
         {
             guard let argument, !argument.isEmpty, allowsLeadingDash || !argument.hasPrefix("-"),
@@ -69,7 +81,7 @@ enum EditorHeadlessDS3SaveCommand {
                 argument.hasPrefix("/") || URLComponents(string: argument)?.scheme == nil
             else { throw Failure.usage }
             let url = URL(fileURLWithPath: argument).standardizedFileURL
-            guard url.pathExtension.lowercased() == suffix else { throw Failure.usage }
+            if let suffix, url.pathExtension.lowercased() != suffix { throw Failure.usage }
             return url
         }
     }
@@ -81,7 +93,8 @@ enum EditorHeadlessDS3SaveCommand {
 
     /// A nil status leaves the ordinary application and other startup commands in charge.
     @MainActor static func run(
-        arguments: [String], stdout: (String) -> Void, stderr: (String) -> Void
+        arguments: [String], geometryEncoder: (any DocumentExportEncoding)? = nil,
+        stdout: (String) -> Void, stderr: (String) -> Void
     ) async -> Int32? {
         let options = arguments.dropFirst()
         let switches = options.prefix(while: { $0 != "--" })
@@ -107,14 +120,29 @@ enum EditorHeadlessDS3SaveCommand {
             return 1
         }
 
+        let exports = geometryEncoder.map { DocumentExportFileService(encoder: $0) }
         var status: Int32 = 0
-        for destination in invocation.destinations {
+        for (destination, kind) in invocation.destinations {
             do {
-                try await files.save(document, to: destination)
-                stdout("Saved \(destination.path)\n")
+                switch kind {
+                case .ds3:
+                    try await files.save(document, to: destination)
+                    stdout("Saved \(destination.path)\n")
+                case .obj, .fbx:
+                    guard let exports else { throw Failure.geometryUnavailable(kind) }
+                    let artifact = try await exports.export(
+                        document, format: kind == .obj ? .obj : .fbx, to: destination, sourceURL: invocation.source)
+                    stdout("Exported \(destination.path)\n")
+                    if !artifact.warning.isEmpty {
+                        stderr("Export note for \(destination.path): \(artifact.warning)\n")
+                    }
+                case .glb:
+                    throw Failure.geometryUnavailable(kind)
+                }
             } catch {
                 status = 1
-                stderr("Could not save \(destination.path): \(error.localizedDescription)\n")
+                let operation = kind == .ds3 ? "save" : "export"
+                stderr("Could not \(operation) \(destination.path): \(error.localizedDescription)\n")
             }
         }
         return status
@@ -144,7 +172,7 @@ enum EditorHeadlessDS3SaveCommand {
         let inputs = [invocation.source, invocation.xml].compactMap { $0 }.map { $0.resolvingSymlinksInPath() }
         var paths = Set(inputs.map(pathKey))
         var identities = Set(try inputs.compactMap { try fileIdentity($0, isDestination: false) })
-        for destination in invocation.destinations {
+        for (destination, _) in invocation.destinations {
             guard paths.insert(pathKey(destination)).inserted else { throw Failure.unsafeOutput(destination) }
             if let identity = try fileIdentity(destination, isDestination: true), !identities.insert(identity).inserted
             {
