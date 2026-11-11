@@ -7,6 +7,7 @@ struct OriginHandle: View {
     let origin: NodePosition
     let projection: CanvasProjection
     var profileLease: UUID? = nil
+    var previewDrag: CanvasPreviewDrag.Begin? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
 
@@ -31,7 +32,8 @@ struct OriginHandle: View {
                     cancel: { store.cancelOriginDrag(token: $0) }, select: {}, toggle: {},
                     precisionKey: { ownsProfile && precisionKey($0) }, isRectangular: true,
                     clickCancel: { store.endOriginClick(token: $0) },
-                    admitsPrimaryPress: { store.admitsCanvasPrimaryPress(clickCount: $0, lease: profileLease) }
+                    admitsPrimaryPress: { store.admitsCanvasPrimaryPress(clickCount: $0, lease: profileLease) },
+                    previewDrag: previewDrag
                 )
             }
             .position(x: point.x, y: point.y)

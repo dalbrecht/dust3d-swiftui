@@ -751,6 +751,34 @@ final class EditorStore {
         }
     }
 
+    func canvasPreviewDragAction(
+        lease: UUID?, camera: EditorPreviewCameraActions?
+    ) -> CanvasPreviewDrag.Begin? {
+        guard let source = acceptedDocumentSource, let camera, camera.canMove else { return nil }
+        let profile = rigEdgeSelectionEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        let renderer = previewRevision
+        let document = source.documentIdentity
+        let revision = source.documentRevision
+        let isCurrent: @MainActor () -> Bool = { [weak self] in
+            guard let self, self.admitsCanvasSelectionInput(epoch: profile, lease: lease),
+                self.rotationInputContextID == tool, self.addModeID == add, self.previewRevision == renderer,
+                !self.isWorking, !self.isAddingNodes, !self.isMovingOrigin,
+                self.originDrag == nil, !self.referenceColorInteractionActive,
+                let current = self.acceptedDocumentSource, current.documentIdentity == document,
+                current.documentRevision == revision
+            else { return false }
+            return camera.canMove
+        }
+        return {
+            guard isCurrent(), let target = camera.beginCanvasDrag() else { return nil }
+            return .init(
+                update: { delta, pans in isCurrent() && target.update(delta, pans) },
+                end: target.end)
+        }
+    }
+
     func zoomPreviewFromCanvas(step: Int) {
         guard canMovePreviewCamera, canvasWheelZoomEnabled, step == 1 || step == -1 else { return }
         canvasWheelZoom.append(step: step)
