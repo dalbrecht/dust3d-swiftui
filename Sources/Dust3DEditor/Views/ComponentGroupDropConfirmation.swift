@@ -17,6 +17,10 @@ struct ComponentGroupDropConfirmation: View {
                         .buttonStyle(.borderedProminent)
                 }
                 .controlSize(.small)
+                if let reorder = proposal.siblingReorderTitle {
+                    Button(reorder) { store.confirmComponentGroupSiblingReorder(proposal.id) }
+                        .controlSize(.small)
+                }
             }
             .font(.callout)
             .padding(10)
@@ -24,7 +28,8 @@ struct ComponentGroupDropConfirmation: View {
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
             .padding(.horizontal, 8)
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("Confirm move into group")
+            .accessibilityLabel(
+                proposal.siblingReorderTitle == nil ? "Confirm move into group" : "Confirm component placement")
         }
     }
 }
