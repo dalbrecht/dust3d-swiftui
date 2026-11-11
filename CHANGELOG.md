@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep Part inspector profiles and rotation on the selection that supplied them.
+
 - Keep Part inspector deformation edits on the selection that supplied them.
 
 - Reset imported model width and thickness scales independently.
