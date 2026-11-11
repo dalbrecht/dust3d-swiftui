@@ -27,10 +27,8 @@ import SwiftUI
         action(target)
     }
 
-    func referenceDrop(_ urls: [URL]) -> ReferenceCompositionPresentation? {
-        guard admitsInput(), let target = store?.referenceCompositionTarget,
-            let drop = ReferenceCompositionDrop(urls: urls)
-        else { return nil }
+    func referenceDrop(_ drop: ReferenceCompositionDrop) -> ReferenceCompositionPresentation? {
+        guard admitsInput(), let target = store?.referenceCompositionTarget else { return nil }
         return ReferenceCompositionPresentation(target: target, droppedSources: drop)
     }
 
