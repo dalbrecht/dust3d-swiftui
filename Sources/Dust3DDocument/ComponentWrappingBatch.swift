@@ -74,16 +74,16 @@ enum ComponentWrappingBatch {
                 }
                 guard current.scalarValue(property) != value else { continue }
                 name = property.rawValue
-                replacement = current.mode.map { property.defaultValue(for: $0) == value } == true ? nil : String(value)
+                replacement = String(value)
             case .keepChildren(let value):
                 guard current.keepsChildren != value else { continue }
                 name = "wrapKeep"
-                replacement = current.mode.map { ($0 == .cloth) == value } == true ? nil : value ? "true" : "false"
+                replacement = value ? "true" : "false"
             case .targetFaces(let value):
                 guard (64...20000).contains(value) else { throw DocumentError.invalidComponentWrapping }
                 guard current.targetFaces != value else { continue }
                 name = "wrapFaces"
-                replacement = current.mode.map { ($0 == .cloth ? 1200 : 1600) == value } == true ? nil : String(value)
+                replacement = String(value)
             case .surfacePattern(let pattern):
                 guard current.surfaceDetails.pattern != pattern else { continue }
                 name = "wrapPattern"
