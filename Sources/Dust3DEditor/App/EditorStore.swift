@@ -1883,6 +1883,28 @@ final class EditorStore {
             && acceptedDocumentSource.map { context.isCurrent(in: $0) } == true
     }
 
+    func componentSidebarPrimaryAction(
+        snapshot: EditorSnapshot, rows: [ComponentTreeRow], scopeEpoch: UUID, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor (Set<String>) -> Void {
+        let source = PartGraphSelectionContext(snapshot: snapshot)
+        let disclosureEpoch = disclosure.epoch
+        let scoped = componentBrowseGroupID != nil
+        return { [weak self] ids in
+            guard let self, disclosure.epoch == disclosureEpoch,
+                self.admitsComponentSidebarInput(context: source, scopeEpoch: scopeEpoch),
+                ids.count == 1, let id = ids.first,
+                let row = rows.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
+            else { return }
+            if row.component.isGroup, scoped || row.hasChildren {
+                self.componentBrowseAction(id, snapshot: snapshot)()
+            } else if row.hasChildren {
+                disclosure.collapsedIDs.remove(id)
+            } else {
+                self.selectComponentGraph(ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids))
+            }
+        }
+    }
+
     func selectBrowsedComponents(_ ids: Set<String>, scopeEpoch: UUID) {
         guard canBrowseComponents, componentBrowseEpoch == scopeEpoch,
             componentGroupBrowse.map({ ids.allSatisfy($0.contains) }) != false

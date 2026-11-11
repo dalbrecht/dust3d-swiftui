@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open a component group directly by double-clicking its row in the full tree.
+
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
