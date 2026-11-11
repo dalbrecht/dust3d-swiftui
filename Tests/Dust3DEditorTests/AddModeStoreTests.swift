@@ -237,8 +237,8 @@ import XCTest
         XCTAssertEqual(store.snapshot?.document.encoded(), source)
         XCTAssertFalse(store.canUndo)
     }
-    func testConnectionExitsAndRejectedJoinFallbackCommitsWithOriginalDiagnostic() async throws {
-        for rejectedTarget in [false, true] {
+    func testAddConnectionUsesVisibleNodeRadiusAndPreservesRejectedJoinDiagnostic() async throws {
+        for (rejectedTarget, outsideOutline) in [(false, false), (true, false), (false, true)] {
             var source = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
             let a = "{11111111-1111-4111-8111-111111111111}"
             let b = "{22222222-2222-4222-8222-222222222222}"
@@ -268,13 +268,24 @@ import XCTest
             let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 500, height: 300)
             store.setCanvasContext(projection: projection, width: 500, height: 300)
             store.beginAddMode()
-            let point = projection.point(for: try XCTUnwrap(store.snapshot?.nodes.first { $0.id == b }).value.position)
+            let target = try XCTUnwrap(store.snapshot?.nodes.first { $0.id == b })
+            let center = projection.point(for: target.value.position)
+            let outlineRadius =
+                CanvasNodeMarkerGeometry(
+                    projectedDiameter: target.value.radius * projection.scale * 2, selected: false, hovered: false
+                ).outlineDiameter / 2
+            XCTAssertGreaterThan(outlineRadius, 25)
+            let point = CanvasPoint(x: center.x, y: center.y + (outsideOutline ? outlineRadius + 4 : 25))
             store.updateAddPointer(at: point, modeID: store.addModeID)
             store.placeAddNode(at: point, modeID: store.addModeID)
             try await settle(store)
-            XCTAssertEqual(store.snapshot?.nodes.count, rejectedTarget ? 4 : 2)
+            XCTAssertEqual(store.snapshot?.nodes.count, rejectedTarget ? 4 : (outsideOutline ? 3 : 2))
             XCTAssertEqual(store.snapshot?.edges.count, 1)
-            XCTAssertEqual(store.isAddingNodes, rejectedTarget)
+            if !rejectedTarget && !outsideOutline {
+                let edge = try XCTUnwrap(store.snapshot?.edges.first)
+                XCTAssertEqual(Set([edge.fromID, edge.toID]), [a, b])
+            }
+            XCTAssertEqual(store.isAddingNodes, rejectedTarget || outsideOutline)
             XCTAssertEqual(store.addPlacementNotice != nil, rejectedTarget)
             XCTAssertNil(store.errorMessage)
             store.undo()
