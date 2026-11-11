@@ -1607,9 +1607,18 @@ final class EditorStore {
         let sourceTitle: String?
         let componentCount: Int
         fileprivate let placement: ComponentDropPlacement
+        fileprivate let siblingReorder: ComponentDropPlacement?
         fileprivate let target: ComponentPlacementTarget
         fileprivate let scopeEpoch: UUID
         fileprivate let clearsMovedPicks: Bool
+
+        var siblingReorderTitle: String? {
+            switch siblingReorder {
+            case .before: "Reorder Before “\(destinationTitle)”"
+            case .after: "Reorder After “\(destinationTitle)”"
+            default: nil
+            }
+        }
     }
 
     private var componentGroupDropProposal: ComponentGroupDropProposal?
@@ -1633,7 +1642,7 @@ final class EditorStore {
         return token
     }
 
-    func dropComponents(token: UUID, at placement: ComponentDropPlacement) -> Bool {
+    func dropComponents(token: UUID, at placement: ComponentDropPlacement, offersSiblingReorder: Bool = false) -> Bool {
         guard let target = consumeComponentDrag(token) else { return false }
         if case .into(let parentID?) = placement {
             guard let snapshot, target.canPlace(at: placement, in: snapshot),
@@ -1646,7 +1655,10 @@ final class EditorStore {
                 }?.title : nil
             componentGroupDropProposal = ComponentGroupDropProposal(
                 destinationTitle: destination.title, sourceTitle: sourceTitle, componentCount: target.ids.count,
-                placement: placement, target: target, scopeEpoch: componentBrowseEpoch,
+                placement: placement,
+                siblingReorder: offersSiblingReorder
+                    ? target.groupCenterSiblingPlacement(anchorID: parentID, in: snapshot) : nil,
+                target: target, scopeEpoch: componentBrowseEpoch,
                 clearsMovedPicks: componentGroupBrowse?.path.dropLast().contains {
                     $0.id.utf8.elementsEqual(parentID.utf8)
                 } == true)
@@ -1655,9 +1667,12 @@ final class EditorStore {
         return placeComponents(at: placement, target: target)
     }
 
-    func dropComponents(token: UUID, in parent: ComponentParent, scopeEpoch: UUID? = nil) -> Bool {
+    func dropComponents(
+        token: UUID, in parent: ComponentParent, scopeEpoch: UUID? = nil, offersSiblingReorder: Bool = false
+    ) -> Bool {
         guard scopeEpoch == nil || scopeEpoch == componentBrowseEpoch else { return false }
-        return dropComponents(token: token, at: .into(parentID: parent.componentID))
+        return dropComponents(
+            token: token, at: .into(parentID: parent.componentID), offersSiblingReorder: offersSiblingReorder)
     }
 
     @discardableResult
@@ -1666,6 +1681,14 @@ final class EditorStore {
         componentGroupDropProposal = nil
         return placeComponents(
             at: proposal.placement, target: proposal.target, clearingMovedPicks: proposal.clearsMovedPicks)
+    }
+
+    @discardableResult
+    func confirmComponentGroupSiblingReorder(_ id: UUID) -> Bool {
+        guard let proposal = pendingComponentGroupDrop, proposal.id == id, let placement = proposal.siblingReorder
+        else { return false }
+        componentGroupDropProposal = nil
+        return placeComponents(at: placement, target: proposal.target)
     }
 
     func cancelComponentGroupDrop(_ id: UUID) {
