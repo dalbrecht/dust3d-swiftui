@@ -461,13 +461,42 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertEqual(result.status, 0)
         XCTAssertTrue(result.errors.isEmpty)
         let calls = await encoder.calls
-        XCTAssertEqual(calls.map(\.format), [.fbxTextured, .fbx, .fbxTextured])
+        XCTAssertEqual(calls.map(\.format), [.fbxTextured, .fbx])
+        let bakedBytes = try Data(contentsOf: baked)
+        XCTAssertFalse(bakedBytes.isEmpty)
+        XCTAssertEqual(try Data(contentsOf: explicit), bakedBytes)
+        XCTAssertFalse(try Data(contentsOf: geometry).isEmpty)
 
         let wrongSuffix = directory.appendingPathComponent("wrong.obj")
         let invalid = await run(
             ["Editor", source.path, "--geometry-fbx", wrongSuffix.path], geometryEncoder: encoder)
         XCTAssertEqual(invalid.status, 2)
         XCTAssertFalse(FileManager.default.fileExists(atPath: wrongSuffix.path))
+    }
+
+    func testBatchReleasesCachedBytesAfterLastDestinationFailsPreflight() async throws {
+        let directory = try temporaryDirectory()
+        let source = directory.appendingPathComponent("source.ds3")
+        let obj = directory.appendingPathComponent("first.obj")
+        let duplicate = directory.appendingPathComponent("second.obj")
+        let missing = directory.appendingPathComponent("missing/last.obj")
+        let fbx = directory.appendingPathComponent("mesh.fbx")
+        try archive().encoded().write(to: source)
+        let encoder = BatchArtifactLifetimeEncoder()
+
+        let result = await run(
+            [
+                "Editor", source.path, "-o", obj.path, "-o", duplicate.path, "-o", missing.path,
+                "--geometry-fbx", fbx.path,
+            ], geometryEncoder: encoder)
+
+        XCTAssertEqual(result.status, 1)
+        XCTAssertEqual(try Data(contentsOf: obj), try Data(contentsOf: duplicate))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: missing.path))
+        let formats = await encoder.formats
+        XCTAssertEqual(formats, [.obj, .fbx])
+        let retainedOBJDuringFBX = await encoder.retainedOBJDuringFBX
+        XCTAssertEqual(retainedOBJDuringFBX, false)
     }
 
     private func run(_ arguments: [String], geometryEncoder: (any DocumentExportEncoding)? = nil) async
@@ -522,5 +551,32 @@ private actor FakeGeometryEncoder: DocumentExportEncoding {
         }
         if format == .obj { throw Failure.obj }
         return DocumentExportArtifact(bytes: Data("inert FBX".utf8), warning: "")
+    }
+}
+
+private actor BatchArtifactLifetimeEncoder: DocumentExportEncoding {
+    private final class Lifetime: Sendable {}
+
+    private weak var objLifetime: Lifetime?
+    private(set) var retainedOBJDuringFBX: Bool?
+    private(set) var formats: [DocumentExportFormat] = []
+
+    func encode(archive: Data, format: DocumentExportFormat) async throws -> DocumentExportArtifact {
+        formats.append(format)
+        guard format == .obj else {
+            retainedOBJDuringFBX = objLifetime != nil
+            return DocumentExportArtifact(bytes: Data(format.rawValue.utf8), warning: "")
+        }
+        let lifetime = Lifetime()
+        objLifetime = lifetime
+        let count = 4096
+        let pointer = UnsafeMutableRawPointer.allocate(byteCount: count, alignment: 1)
+        pointer.initializeMemory(as: UInt8.self, repeating: 42, count: count)
+        let data = Data(
+            bytesNoCopy: pointer, count: count,
+            deallocator: .custom { pointer, _ in
+                withExtendedLifetime(lifetime) { pointer.deallocate() }
+            })
+        return DocumentExportArtifact(bytes: data, warning: "")
     }
 }
