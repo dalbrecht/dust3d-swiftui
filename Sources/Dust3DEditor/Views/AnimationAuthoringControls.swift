@@ -17,7 +17,7 @@ struct AnimationAuthoringControls: View {
                     Text(message).font(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 HStack {
-                    Button(action: { cancel() }) { Text("Cancel").frame(minWidth: 40, minHeight: 40) }
+                    Button(action: { cancel() }) { Text(workflow.dismissalTitle).frame(minWidth: 40, minHeight: 40) }
                         .disabled(workflow.isSubmitting)
                     Spacer()
                     if workflow.isSubmitting {

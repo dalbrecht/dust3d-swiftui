@@ -114,6 +114,13 @@ final class EditorAnimationAuthoringWorkflow {
         }
     }
 
+    var dismissalTitle: String {
+        if case .parameters = mode, isCurrent, (try? validatedParameterEdits().isEmpty) == true {
+            return "Done"
+        }
+        return "Cancel"
+    }
+
     func creationAction() -> @MainActor () -> Void {
         guard canBeginCreation, let value = store.animationSnapshot,
             let target = try? AnimationCreationTarget(snapshot: value)
@@ -160,22 +167,28 @@ final class EditorAnimationAuthoringWorkflow {
                 selectedType = Array((row.source.type ?? "").utf8)
                 mode = .type(target)
             case .parameters:
-                do {
-                    let hasDeclaredType = row.source.type.flatMap { catalog.clip(type: $0) } != nil
-                    let draft =
-                        hasDeclaredType ? try AnimationParameterDraft(record: row.source, catalog: catalog) : nil
-                    reset()
-                    sourceTitle = row.title
-                    sourceType = row.source.type
-                    parameterDraft = draft
-                    if !hasDeclaredType {
-                        unknownParameterDraft = UnknownAnimationParameterDraft(record: row.source, catalog: catalog)
-                    }
-                    mode = .parameters(target)
-                } catch { lastIssue = error }
+                installParameters(row, target: target, catalog: catalog)
             }
         }
     }
+
+    private func installParameters(
+        _ row: AnimationListRow, target: AnimationEditTarget, catalog: AnimationAuthoringCatalog
+    ) {
+        do {
+            let hasDeclaredType = row.source.type.flatMap { catalog.clip(type: $0) } != nil
+            let draft = hasDeclaredType ? try AnimationParameterDraft(record: row.source, catalog: catalog) : nil
+            reset()
+            sourceTitle = row.title
+            sourceType = row.source.type
+            parameterDraft = draft
+            if !hasDeclaredType {
+                unknownParameterDraft = UnknownAnimationParameterDraft(record: row.source, catalog: catalog)
+            }
+            mode = .parameters(target)
+        } catch { lastIssue = error }
+    }
+
     func parameterValue(for name: String) -> String? {
         parameterDraft?.value(for: name) ?? unknownParameterDraft?.value(for: name)
     }
@@ -254,8 +267,17 @@ final class EditorAnimationAuthoringWorkflow {
                 store.editAnimation(.setType(clip.type), target: target, completion: completion)
             case .parameters(let target):
                 let edits = try validatedParameterEdits()
+                let submittedDraft = draftID
                 isSubmitting = true
-                store.editAnimation(edits, target: target, completion: completion)
+                store.editAnimationParameters(edits, target: target) { [weak self] refreshed in
+                    guard let self, !stopped, draftID == submittedDraft else { return }
+                    isSubmitting = false
+                    guard let refreshed, let row = refreshed.list.selectedRow, let catalog,
+                        row.id.elementsEqual(target.animationID.utf8),
+                        let nextTarget = try? AnimationEditTarget(snapshot: refreshed, animationID: target.animationID)
+                    else { return }
+                    installParameters(row, target: nextTarget, catalog: catalog)
+                }
             }
         } catch {
             isSubmitting = false
