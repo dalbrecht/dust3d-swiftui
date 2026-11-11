@@ -124,6 +124,28 @@ final class ComponentStitchingBatchTests: XCTestCase {
         XCTAssertEqual(try attribute("backClosed", on: "loop-a", in: closed.document), "True")
     }
 
+    func testLoopCapBatchRequiresEveryBackClosedAndPreservesDormantValues() async throws {
+        let original = try Dust3DDocument(data: source()).applying(
+            .setComponentStitchingClosure(id: "loop-b", property: .back, value: false))
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let before = try await session.selectComponents(loops)
+        let target = ComponentStitchingBatchTarget(snapshot: before)
+        XCTAssertEqual(target.closure(.back), .mixed)
+        await rejects(.scalar(.sharpness, 0.75), target: target, in: session)
+        let retained = try await session.animationSnapshot().editor
+        XCTAssertEqual(retained.document.encoded(), before.document.encoded())
+        XCTAssertFalse(retained.canUndo)
+
+        let closed = try await session.editComponentStitchingBatch(.closure(.back, true), target: target)
+        XCTAssertEqual(try attribute("backCloseSharpness", on: "loop-b", in: closed.document), ".1")
+        let changed = try await session.editComponentStitchingBatch(
+            .scalar(.sharpness, 0.75), target: .init(snapshot: closed))
+        XCTAssertEqual(ComponentStitchingBatchTarget(snapshot: changed).scalar(.sharpness), .uniform(0.75))
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), closed.document.encoded())
+    }
+
     func testInvalidHeterogeneousStaleAndFailedSourceRejectAtomically() async throws {
         let original = try source()
         let session = EditorSession()

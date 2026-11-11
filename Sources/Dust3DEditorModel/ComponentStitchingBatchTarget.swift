@@ -8,6 +8,7 @@ package struct ComponentStitchingBatchTarget: Sendable {
 
     package var supportsLine: Bool { support.line }
     package var supportsLoop: Bool { support.loop }
+    package var supportsCap: Bool { support.cap }
     package var supportsBack: Bool { support.back }
     var ids: [String] { target.ids }
 
@@ -24,7 +25,10 @@ package struct ComponentStitchingBatchTarget: Sendable {
         supportsBack && target.isCurrent(in: snapshot)
     }
 
-    package func permits(_ edit: ComponentStitchingEdit) -> Bool { support.permits(edit) }
+    package func permits(_ edit: ComponentStitchingEdit) -> Bool {
+        if case .scalar = edit { return supportsCap }
+        return support.permits(edit)
+    }
 
     package func closure(_ property: ComponentStitchingClosureProperty) -> ComponentMeshSelectionValue<Bool> {
         common { $0.closureValue(property) }

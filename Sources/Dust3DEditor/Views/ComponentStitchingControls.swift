@@ -99,11 +99,17 @@ struct ComponentStitchingBatchControls: View {
                     "Loop cap depth (0–2)", identifier: "batch-stitching-depth", value: target.scalar(.depthRatio),
                     sourceValues: target.scalarDraftValues(.depthRatio)
                 ) { store.setBatchStitchingScalar(.depthRatio, draft: $0, target: target) }
+                .disabled(!target.supportsCap)
                 number(
                     "Loop cap sharpness (0–1)", identifier: "batch-stitching-sharpness",
                     value: target.scalar(.sharpness),
                     sourceValues: target.scalarDraftValues(.sharpness)
                 ) { store.setBatchStitchingScalar(.sharpness, draft: $0, target: target) }
+                .disabled(!target.supportsCap)
+                if !target.supportsCap {
+                    Text("Turn on Back closed for all selected groups to edit the loop caps.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             Text("Each edit applies to all selected groups and can be undone in one step.")
                 .font(.caption).foregroundStyle(.secondary)
