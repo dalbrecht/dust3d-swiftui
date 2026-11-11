@@ -63,6 +63,17 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertNil(ComponentGroupBrowse(tree: tree, groupID: "missing"))
     }
 
+    func testSidebarDistinguishesEmptyGroupsFromParts() throws {
+        let rows = try EditorState(document: source()).snapshot.componentTree.rows
+        let emptyGroup = try XCTUnwrap(rows.first { $0.id == "one" })
+        let part = try XCTUnwrap(rows.first { $0.id == "owner" })
+        XCTAssertFalse(emptyGroup.hasChildren)
+        XCTAssertEqual(emptyGroup.sidebarSymbolName, "folder")
+        XCTAssertEqual(emptyGroup.sidebarAccessibilityLabel, "Group \(emptyGroup.title)")
+        XCTAssertEqual(part.sidebarSymbolName, "square.stack.3d.up")
+        XCTAssertEqual(part.sidebarAccessibilityLabel, "Component \(part.title)")
+    }
+
     func testBrowseAutomaticallyPlacesToolbarAndPointerPartsWithExactUndo() async throws {
         let original = try source().encoded()
         let value = store()
