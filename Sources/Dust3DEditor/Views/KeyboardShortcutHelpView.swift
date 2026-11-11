@@ -38,6 +38,9 @@ enum KeyboardShortcutHelp {
         .init(action: "Lock X / Y / Z / Radius", keys: "⌥⌘X / ⌥⌘Y / ⌥⌘Z / ⌥⌘R", scope: "Active document"),
         .init(action: "Show / Hide Inspector", keys: "⌃⌘I", scope: "Focused editor window"),
         .init(action: "Show Animations Inspector", keys: "⌥⌘A", scope: "Editor window"),
+        .init(
+            action: "Discard Inspector Draft", keys: "Escape",
+            scope: "Focused width, thickness, rotation or smoothing field"),
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
         .init(action: "Next Replay Step", keys: "⌥→", scope: "Replay Steps window, when a next step is available"),
         .init(

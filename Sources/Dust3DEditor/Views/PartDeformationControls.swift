@@ -72,6 +72,7 @@ private struct PartDeformationScaleControl: View {
                 .accessibilityIdentifier("part-deformation-\(property.rawValue)")
                 .focusedValue(\.editorTextEditing, true)
                 .onSubmit { apply() }
+                .onExitCommand { reset() }
             if part.deformationScale(property) == nil {
                 Text("Unsupported source value. Enter a scale to replace it.")
                     .font(.caption).foregroundStyle(.primary)
