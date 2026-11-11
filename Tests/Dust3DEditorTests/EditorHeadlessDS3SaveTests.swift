@@ -224,6 +224,39 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertTrue(messages.contains { $0.contains("Unsupported output format") && $0.contains(unsupported.path) })
     }
 
+    func testNativeEncoderExportsGeometryAndContinuesAfterUnavailableGLB() async throws {
+        let directory = try temporaryDirectory()
+        let source = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Dust3DKitTests/Fixtures/Capsule.ds3")
+        let original = try Data(contentsOf: source)
+        let obj = directory.appendingPathComponent("model.obj")
+        let glb = directory.appendingPathComponent("existing.glb")
+        let fbx = directory.appendingPathComponent("model.fbx")
+        let copy = directory.appendingPathComponent("copy.ds3")
+        let previousGLB = Data("previous GLB".utf8)
+        try previousGLB.write(to: glb)
+        var messages: [String] = []
+        var errors: [String] = []
+
+        let status = await EditorHeadlessDS3SaveCommand.run(
+            arguments: ["Editor", source.path, "-o", obj.path, "-o", glb.path, "-o", fbx.path, "-o", copy.path],
+            geometryEncoder: NativeGeometryExportEncoder(),
+            stdout: { messages.append($0) }, stderr: { errors.append($0) })
+
+        XCTAssertEqual(status, 1)
+        XCTAssertEqual(messages.count, 3)
+        XCTAssertEqual(errors.count, 1)
+        XCTAssertTrue(errors.first?.contains(glb.path) == true)
+        XCTAssertTrue(
+            try String(contentsOf: obj, encoding: .utf8).split(separator: "\n").contains {
+                $0.hasPrefix("f ")
+            })
+        XCTAssertTrue(try Data(contentsOf: fbx).starts(with: "Kaydara FBX Binary".utf8))
+        XCTAssertEqual(try Data(contentsOf: glb), previousGLB)
+        XCTAssertEqual(try Data(contentsOf: source), original)
+        XCTAssertEqual(try Data(contentsOf: copy), original)
+    }
+
     func testMixedOutputsUseOneCapturedArchiveAndContinueAfterEncoderFailure() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")

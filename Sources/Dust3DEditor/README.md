@@ -20,9 +20,8 @@ links. The command processes destinations in argument order and replaces individ
 archive files atomically. A failed destination is reported and the command continues
 with later destinations.
 
-The editor CLI recognizes `.obj`, `.fbx`, and `.glb` destinations and reports
-headless geometry export as unavailable for each one. Any `.ds3` destinations
-in the same command are still processed. Exit status `0` means all outputs
+The editor CLI also exports procedural geometry to `.obj` and `.fbx`.
+A `.glb` destination reports that export is unavailable. Exit status `0` means all outputs
 succeeded, `1` means an input or output failed, and `2` means a usage or path
 preflight error.
 
