@@ -113,7 +113,8 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
         let degraded = EditorPreviewResult(
             sourced: try await MeshGenerationSession(maximumCachePayloadBytes: 1).generateSourcedIndexed(data: bytes))
         let preview = SuspendedPreviewService()
-        let store = EditorStore(preview: preview)
+        let diagnostics = EditorSessionDiagnostics()
+        let store = EditorStore(preview: preview, diagnostics: diagnostics)
         defer {
             store.stop()
             Task { await preview.finishAll(normal) }
@@ -142,6 +143,10 @@ final class EditorPreviewSessionStoreTests: XCTestCase {
         XCTAssertNotNil(store.previewSourceHints)
         XCTAssertEqual(store.previewCacheStatistics?.cacheIssue?.status, 4)
         XCTAssertEqual(store.snapshot?.document.encoded(), bytes)
+        XCTAssertEqual(
+            diagnostics.entries.map(\.event.rawValue),
+            ["Document opened", "Mesh preview failed", "Mesh preview recovered"])
+        XCTAssertFalse(diagnostics.exportText.contains("Original preview generation cause"))
     }
 
     private func settle(_ store: EditorStore) async throws {

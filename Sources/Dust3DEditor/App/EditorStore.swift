@@ -774,6 +774,7 @@ final class EditorStore {
         }
     }
     var mesh: IndexedMesh? { previewState.value?.mesh }
+    private var previewRecoveryPending = false
     var previewSourceHints: MeshSourceHints? {
         guard !previewState.isStale, !isWorking, !stopped else { return nil }
         return previewState.value?.sourceHints
@@ -3476,6 +3477,7 @@ final class EditorStore {
         clearMaterials()
         generation?.cancel()
         previewState.clear()
+        previewRecoveryPending = false
         previewCacheStatistics = nil
         previewSourceIssue = nil
         let previousScope = previewScopeID
@@ -3519,16 +3521,19 @@ final class EditorStore {
                 previewSourceIssue = result.sourceIssue
                 if let output = result.output {
                     previewState.succeed(output, requestID: requestID)
+                    if previewRecoveryPending { diagnostics?.record(.previewRecovered) }
                     if let currentSnapshot = self.snapshot { generateMaterials(currentSnapshot) }
                 } else {
                     previewState.succeedEmpty(requestID: requestID)
                 }
+                previewRecoveryPending = false
             } catch {
                 guard !Task.isCancelled, !stopped, scopeID == previewScopeID,
                     self.snapshot?.previewIdentity.geometry == snapshot.previewIdentity.geometry,
                     previewState.isCurrent(requestID: requestID)
                 else { return }
                 previewState.fail(Self.message(error), requestID: requestID)
+                previewRecoveryPending = true
                 diagnostics?.record(.previewFailed)
             }
         }
