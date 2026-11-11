@@ -281,6 +281,58 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertNil(pasted.component.parentID)
     }
 
+    func testPrimaryActivationBrowsesFromTheFullTreeAndRetiresOldRows() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        let initial = try XCTUnwrap(value.snapshot)
+        let visible = initial.componentTree.visibleRows(collapsing: [])
+        let disclosure = ComponentSidebarDisclosure()
+        let staleDisclosure = value.componentSidebarPrimaryAction(
+            snapshot: initial, rows: visible, scopeEpoch: value.componentBrowseEpoch, disclosure: disclosure)
+        disclosure.collapsedIDs = ["g"]
+        staleDisclosure(["g"])
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertEqual(disclosure.collapsedIDs, ["g"])
+        disclosure.collapsedIDs = []
+        let rootActivate = value.componentSidebarPrimaryAction(
+            snapshot: initial, rows: visible, scopeEpoch: value.componentBrowseEpoch, disclosure: disclosure)
+        rootActivate(["g", "other"])
+        XCTAssertNil(value.componentGroupBrowse)
+
+        rootActivate(["g"])
+        try await settle(value)
+        XCTAssertEqual(value.componentGroupBrowse?.path.last?.id, "g")
+        XCTAssertEqual(value.componentGroupBrowse?.children.map(\.id), ["one", "sub"])
+        rootActivate(["other"])
+        XCTAssertEqual(value.componentGroupBrowse?.path.last?.id, "g")
+        let scoped = try XCTUnwrap(value.snapshot)
+        value.componentBrowseAction(nil, snapshot: scoped)()
+        XCTAssertNil(value.componentGroupBrowse)
+        rootActivate(["g"])
+        XCTAssertNil(value.componentGroupBrowse)
+
+        let next = try XCTUnwrap(value.snapshot)
+        disclosure.collapsedIDs = ["other"]
+        let collapsed = value.componentSidebarPrimaryAction(
+            snapshot: next, rows: next.componentTree.visibleRows(collapsing: disclosure.collapsedIDs),
+            scopeEpoch: value.componentBrowseEpoch, disclosure: disclosure)
+        collapsed(["owner"])
+        XCTAssertFalse(value.isWorking)
+        disclosure.collapsedIDs = []
+        let expanded = value.componentSidebarPrimaryAction(
+            snapshot: next, rows: next.componentTree.visibleRows(collapsing: []),
+            scopeEpoch: value.componentBrowseEpoch, disclosure: disclosure)
+        expanded(["owner"])
+        try await settle(value)
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["z"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testBrowsingPreservesGraphAndWorkingGroupAndRejectsRetainedScope() async throws {
         let original = try source().encoded()
         let value = store()

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Open a component group directly by double-clicking its row in the full tree.
 - Use the last Qt paste fragment when an earlier headless paste operand is a directory.
 - Keep modified keyboard shortcuts available when the model preview has focus.
 
