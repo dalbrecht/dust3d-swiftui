@@ -288,7 +288,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: glb.path))
         XCTAssertEqual(try Data(contentsOf: saved), original)
         let calls = await encoder.calls
-        XCTAssertEqual(calls.map(\.format), [.obj, .fbx])
+        XCTAssertEqual(calls.map(\.format), [.obj, .fbxTextured])
         XCTAssertEqual(calls.map(\.archive), [original, original])
     }
 
@@ -343,8 +343,34 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let archive = try Data(contentsOf: saved)
         XCTAssertEqual(try Dust3DDocument(data: archive).editorContents().nodes.count, 1)
         let calls = await encoder.calls
-        XCTAssertEqual(calls.map(\.format), [.fbx])
+        XCTAssertEqual(calls.map(\.format), [.fbxTextured])
         XCTAssertEqual(calls.map(\.archive), [archive])
+    }
+
+    func testFBXDefaultsToTexturesAndKeepsExplicitGeometryOutput() async throws {
+        let directory = try temporaryDirectory()
+        let source = directory.appendingPathComponent("source.ds3")
+        let baked = directory.appendingPathComponent("baked.fbx")
+        let geometry = directory.appendingPathComponent("geometry.fbx")
+        let explicit = directory.appendingPathComponent("explicit.fbx")
+        try archive().encoded().write(to: source)
+        let encoder = FakeGeometryEncoder(source: nil, replacement: Data())
+        let result = await run(
+            [
+                "Editor", source.path, "-o", baked.path, "--geometry-fbx", geometry.path, "--textured-fbx",
+                explicit.path,
+            ],
+            geometryEncoder: encoder)
+        XCTAssertEqual(result.status, 0)
+        XCTAssertTrue(result.errors.isEmpty)
+        let calls = await encoder.calls
+        XCTAssertEqual(calls.map(\.format), [.fbxTextured, .fbx, .fbxTextured])
+
+        let wrongSuffix = directory.appendingPathComponent("wrong.obj")
+        let invalid = await run(
+            ["Editor", source.path, "--geometry-fbx", wrongSuffix.path], geometryEncoder: encoder)
+        XCTAssertEqual(invalid.status, 2)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: wrongSuffix.path))
     }
 
     private func run(_ arguments: [String], geometryEncoder: (any DocumentExportEncoding)? = nil) async
