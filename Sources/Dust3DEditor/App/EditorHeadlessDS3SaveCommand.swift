@@ -198,14 +198,17 @@ enum EditorHeadlessDS3SaveCommand {
     }
 
     private static func validateDestinations(_ invocation: Invocation) throws -> Set<URL> {
-        let inputs = ([invocation.source].compactMap { $0 } + invocation.xmlInputs).map { $0.resolvingSymlinksInPath() }
-        var paths = Set(inputs.map(pathKey))
-        var identities = Set(try inputs.compactMap { try fileIdentity($0, isDestination: false) })
+        let activeInputs = [invocation.source, invocation.xml].compactMap { $0?.resolvingSymlinksInPath() }
+        let supersededInputs = invocation.xmlInputs.dropLast().map { $0.resolvingSymlinksInPath() }
+        var paths = Set((activeInputs + supersededInputs).map(pathKey))
+        var identities = Set(try activeInputs.compactMap { try fileIdentity($0, purpose: .input) })
+        // Still protect earlier operands and their hard links from output replacement.
+        identities.formUnion(try supersededInputs.compactMap { try fileIdentity($0, purpose: .supersededInput) })
         var directories: Set<URL> = []
         for (destination, _) in invocation.destinations {
             guard paths.insert(pathKey(destination)).inserted else { throw Failure.unsafeOutput(destination) }
             do {
-                if let identity = try fileIdentity(destination, isDestination: true),
+                if let identity = try fileIdentity(destination, purpose: .destination),
                     !identities.insert(identity).inserted
                 {
                     throw Failure.unsafeOutput(destination)
@@ -225,7 +228,13 @@ enum EditorHeadlessDS3SaveCommand {
         return caseSensitive == false ? path.lowercased() : path
     }
 
-    private static func fileIdentity(_ url: URL, isDestination: Bool) throws -> FileIdentity? {
+    private enum PathPurpose {
+        case input
+        case supersededInput
+        case destination
+    }
+
+    private static func fileIdentity(_ url: URL, purpose: PathPurpose) throws -> FileIdentity? {
         var metadata = stat()
         let code = url.withUnsafeFileSystemRepresentation { path in
             guard let path else { return EINVAL }
@@ -234,9 +243,10 @@ enum EditorHeadlessDS3SaveCommand {
         if code == ENOENT || code == ENOTDIR { return nil }
         guard code == 0 else { throw Failure.fileInspection(url, code: Int(code)) }
         let type = metadata.st_mode & mode_t(S_IFMT)
-        if isDestination, type == mode_t(S_IFDIR) { throw Failure.directoryOutput }
+        if purpose == .destination, type == mode_t(S_IFDIR) { throw Failure.directoryOutput }
         guard type == mode_t(S_IFREG) else {
-            if isDestination { throw Failure.unsafeOutput(url) }
+            if purpose == .supersededInput { return nil }
+            if purpose == .destination { throw Failure.unsafeOutput(url) }
             throw Failure.input(url, cause: "Expected a regular file.")
         }
         return FileIdentity(device: metadata.st_dev, inode: metadata.st_ino)
