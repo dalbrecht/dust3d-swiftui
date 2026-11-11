@@ -230,6 +230,17 @@ final class EditorAnimationAuthoringWorkflow {
         lastIssue = nil
     }
 
+    func stepTiming(name: String, increasing: Bool) {
+        guard !isSubmitting else { return }
+        if var draft = parameterDraft {
+            draft.stepTiming(name: name, increasing: increasing)
+            parameterDraft = draft
+        } else {
+            unknownParameterDraft?.stepTiming(name: name, increasing: increasing)
+        }
+        lastIssue = nil
+    }
+
     private func validatedParameterEdits() throws -> [AnimationEdit] {
         if let parameterDraft { return try parameterDraft.validatedEdits() }
         return try unknownParameterDraft?.validatedEdits() ?? []

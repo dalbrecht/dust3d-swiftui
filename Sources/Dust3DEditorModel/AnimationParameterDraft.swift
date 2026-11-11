@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Foundation
 
 /// Pure parameter intent for one fixed stored type; source ownership is enforced by AnimationEditTarget.
 /// Unchanged unsupported values never become edits or block a different explicit repair.
@@ -67,6 +68,55 @@ public struct AnimationParameterDraft: Sendable {
         } else {
             setText(name: name, value: String(number))
         }
+    }
+
+    package static func steppedTimingText(
+        name: String, current: String?, fallback: Double, timing: AnimationTimingDefinition, increasing: Bool
+    ) -> String? {
+        let value = current.map { Double($0) } ?? fallback
+        guard let value, value.isFinite else { return nil }
+        switch name {
+        case "durationSeconds":
+            let range = timing.minimumSeconds...timing.maximumSeconds
+            guard range.contains(value) else { return nil }
+            let candidate = min(
+                max(value + (increasing ? timing.secondsStep : -timing.secondsStep), range.lowerBound),
+                range.upperBound)
+            let scale = pow(10.0, Double(timing.decimalPlaces))
+            let scaled = candidate * scale
+            let rounded = scaled.isFinite ? (scaled.rounded() / scale) : candidate
+            let next = min(max(rounded, range.lowerBound), range.upperBound)
+            guard increasing ? next > value : next < value else { return nil }
+            return String(next)
+        case "frameCount":
+            guard let frames = Int(exactly: value), (timing.minimumFrames...timing.maximumFrames).contains(frames)
+            else { return nil }
+            let next = min(
+                max(frames + (increasing ? timing.framesStep : -timing.framesStep), timing.minimumFrames),
+                timing.maximumFrames)
+            return next == frames ? nil : String(next)
+        default:
+            return nil
+        }
+    }
+
+    package func steppedTimingText(name: String, increasing: Bool) -> String? {
+        Self.steppedTimingText(
+            name: name, current: value(for: name),
+            fallback: name == "durationSeconds" ? clip.seconds : Double(clip.samples),
+            timing: timing, increasing: increasing)
+    }
+
+    package mutating func stepTiming(name: String, increasing: Bool) {
+        guard let next = steppedTimingText(name: name, increasing: increasing) else { return }
+        let original = source.parameter(named: name)
+        let fallback = name == "durationSeconds" ? clip.seconds : Double(clip.samples)
+        setText(name: name, value: Self.timingStepOverride(next, original: original, fallback: fallback))
+    }
+
+    package static func timingStepOverride(_ next: String, original: String?, fallback: Double) -> String? {
+        let originalValue = original.map { Double($0) } ?? fallback
+        return Double(next) == originalValue ? original : next
     }
 
     /// Explicitly remove an override; unsupported retained fields are otherwise untouched.

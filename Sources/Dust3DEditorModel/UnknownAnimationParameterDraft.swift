@@ -40,6 +40,18 @@ package struct UnknownAnimationParameterDraft {
         }
     }
 
+    package mutating func stepTiming(name: String, increasing: Bool) {
+        let fallback = name == "durationSeconds" ? defaultSeconds : Double(defaultFrames)
+        guard
+            let next = AnimationParameterDraft.steppedTimingText(
+                name: name, current: value(for: name), fallback: fallback, timing: timing, increasing: increasing)
+        else { return }
+        setText(
+            name: name,
+            value: AnimationParameterDraft.timingStepOverride(
+                next, original: record.parameter(named: name), fallback: fallback))
+    }
+
     package func validatedEdits() throws -> [AnimationEdit] {
         try Field.allCases.compactMap { field in
             guard let change = changes[field] else { return nil }
