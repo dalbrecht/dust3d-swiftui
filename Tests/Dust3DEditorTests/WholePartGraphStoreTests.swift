@@ -103,11 +103,24 @@ import XCTest
             XCTAssertEqual(store.snapshot?.selectedIDs, [c, d])
             XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [otherEdge])
         }
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 1000, height: 500)
+        let target = try XCTUnwrap(store.snapshot?.nodes.first { $0.id == b })
+        let center = projection.point(for: target.value.position)
+        XCTAssertGreaterThan(target.value.radius * projection.scale, 25)
+        let insideOutline = CanvasPoint(x: center.x, y: center.y + 25)
+        var openCount = 0
+        store.selectWholePart(at: insideOutline, projection: projection, onBlank: { openCount += 1 })
+        try await settle(store)
+        XCTAssertEqual(openCount, 0)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [a, b])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [edge])
+
         let beforeBlank = store.snapshot?.selectionRevision
-        store.selectWholePart(
-            at: .init(x: -5000, y: -5000),
-            projection: .init(bounds: store.bounds, plane: .front, width: 500, height: 300))
+        store.selectWholePart(at: .init(x: -5000, y: -5000), projection: projection, onBlank: { openCount += 1 })
+        XCTAssertEqual(openCount, 1)
         XCTAssertEqual(store.snapshot?.selectionRevision, beforeBlank)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
     }
     func testRevealExpandsAncestorsWithoutComponentSelectionOrGraphReplacement() async throws {
         let store = EditorStore()

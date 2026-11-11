@@ -257,7 +257,9 @@ final class EditorStore {
         else { return }
         if let node = snapshot.nodes.last(where: {
             let center = projection.point(for: $0.value.position)
-            return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
+            let hitRadius = CanvasNodeMarkerGeometry.hitRadius(
+                projectedDiameter: $0.value.radius * projection.scale * 2)
+            return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= hitRadius
         }) {
             selectWholePart(.node(node.id), context: context)
         } else if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: snapshot.edges) {
