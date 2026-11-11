@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep profile names readable in narrow inspectors.
+
 - Explain and disable linked profile choices that would create a cycle.
 
 - List Cut Face parts and existing linked profiles in Front view order.
