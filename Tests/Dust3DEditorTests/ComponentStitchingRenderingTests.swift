@@ -42,7 +42,12 @@ final class ComponentStitchingRenderingTests: XCTestCase {
             try await settle(store)
             store.selectComponent(StitchingFixture.groupID)
             try await settle(store)
-            let component = try XCTUnwrap(store.snapshot?.selectedComponent)
+            let snapshot = try XCTUnwrap(store.snapshot)
+            let component = try XCTUnwrap(snapshot.selectedComponent)
+            let support = ComponentStitchingBatchSupport(
+                groups: [component], components: snapshot.componentTree.rows.map(\.component), parts: snapshot.parts)
+            XCTAssertTrue(support.line)
+            XCTAssertFalse(support.loop)
             XCTAssertTrue(component.isGroup)
             if unsupported {
                 XCTAssertNotNil(store.previewState.errorMessage)
@@ -57,7 +62,8 @@ final class ComponentStitchingRenderingTests: XCTestCase {
                     name: "component-inspector-" + suffix)
                 try save(
                     InspectorRenderer.png(
-                        ComponentStitchingControls(store: store, component: component), width: 250, scheme: scheme),
+                        ComponentStitchingControls(store: store, component: component, support: support), width: 250,
+                        scheme: scheme),
                     name: "component-stitching-" + suffix)
                 XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
                 XCTAssertFalse(store.canUndo)
