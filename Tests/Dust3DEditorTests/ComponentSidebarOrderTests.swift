@@ -85,6 +85,58 @@ private struct SidebarOrderNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertFalse(store.canUndo)
     }
 
+    func testSelectedSiblingBlockMovesDownInOneUndoAndRejectsMixedParents() async throws {
+        let original = try source().encoded()
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: original)
+        try await settle(store)
+
+        store.selectComponents(["a", "middle"])
+        try await settle(store)
+        let mixed = try XCTUnwrap(ComponentPlacementTarget(snapshot: try XCTUnwrap(store.snapshot)))
+        for move in ComponentOrderMove.allCases {
+            XCTAssertFalse(
+                store.canReorderSidebarComponent(move, target: mixed, scopeEpoch: store.componentBrowseEpoch))
+        }
+
+        store.selectComponents(["first", "middle"])
+        try await settle(store)
+        let target = try XCTUnwrap(ComponentPlacementTarget(snapshot: try XCTUnwrap(store.snapshot)))
+        let epoch = store.componentBrowseEpoch
+        XCTAssertFalse(store.canReorderSidebarComponent(.up, target: target, scopeEpoch: epoch))
+        XCTAssertTrue(store.canReorderSidebarComponent(.down, target: target, scopeEpoch: epoch))
+        XCTAssertTrue(store.reorderSidebarComponent(.down, target: target, scopeEpoch: epoch))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), ["a", "group", "last", "first", "middle", "c"])
+        XCTAssertEqual(store.snapshot?.selectedComponentIDs, ["first", "middle"])
+        XCTAssertFalse(store.reorderSidebarComponent(.up, target: target, scopeEpoch: epoch))
+
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testNoncontiguousSiblingsCanMoveToTopOrBottomAtBothBoundaries() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: try source().encoded())
+        try await settle(store)
+        store.selectComponents(["first", "last"])
+        try await settle(store)
+
+        let target = try XCTUnwrap(ComponentPlacementTarget(snapshot: try XCTUnwrap(store.snapshot)))
+        let epoch = store.componentBrowseEpoch
+        XCTAssertFalse(store.canReorderSidebarComponent(.up, target: target, scopeEpoch: epoch))
+        XCTAssertFalse(store.canReorderSidebarComponent(.down, target: target, scopeEpoch: epoch))
+        XCTAssertTrue(store.canReorderSidebarComponent(.first, target: target, scopeEpoch: epoch))
+        XCTAssertTrue(store.canReorderSidebarComponent(.last, target: target, scopeEpoch: epoch))
+        XCTAssertTrue(store.reorderSidebarComponent(.first, target: target, scopeEpoch: epoch))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), ["a", "group", "first", "last", "middle", "c"])
+    }
+
     func testRetainedRootTargetRejectsSelectionABAAndFailedSource() async throws {
         let original = try source().encoded()
         let store = makeStore()

@@ -26,6 +26,8 @@ struct ComponentSidebar: View {
             {
                 let tree = sidebarSnapshot.componentTree
                 let browse = store.componentGroupBrowse
+                let visibleRows = browse?.children ?? tree.visibleRows(collapsing: disclosure.collapsedIDs)
+                let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
                 let scopeEpoch = store.componentBrowseEpoch
                 let admitsScope: @MainActor () -> Bool = { store.componentBrowseEpoch == scopeEpoch }
                 Divider()
@@ -59,8 +61,8 @@ struct ComponentSidebar: View {
                         if let group = sidebarSnapshot.selectedComponent, group.isGroup {
                             browseButton(group.id, snapshot: sidebarSnapshot)
                         }
-                        if let id = sidebarSnapshot.selectedComponentID,
-                            let target = ComponentPlacementTarget(snapshot: sidebarSnapshot, singleComponentID: id)
+                        if sidebarSnapshot.selectedComponentIDs.allSatisfy({ visibleKeys.contains(Data($0.utf8)) }),
+                            let target = ComponentPlacementTarget(snapshot: sidebarSnapshot)
                         {
                             ComponentSidebarOrderMenu(store: store, target: target, scopeEpoch: scopeEpoch)
                         }
@@ -149,7 +151,6 @@ struct ComponentSidebar: View {
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12).padding(.bottom, 12)
                 } else {
                     ScrollViewReader { proxy in
-                        let visibleRows = browse?.children ?? tree.visibleRows(collapsing: disclosure.collapsedIDs)
                         let revealKey = revealScrollKey(visibleRows: visibleRows)
                         let documentIdentity = sidebarSnapshot.documentIdentity
                         let context = PartGraphSelectionContext(snapshot: sidebarSnapshot)
@@ -171,7 +172,6 @@ struct ComponentSidebar: View {
                             }
                         }
                         .contextMenu(forSelectionType: String.self) { ids in
-                            let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
                             if admitsRows(), !ids.isEmpty, ids.allSatisfy({ visibleKeys.contains(Data($0.utf8)) }) {
                                 if ids.count == 1, let id = ids.first,
                                     visibleRows.contains(where: {
@@ -180,9 +180,8 @@ struct ComponentSidebar: View {
                                 {
                                     browseButton(id, snapshot: sidebarSnapshot)
                                 }
-                                if ids.count == 1, let id = ids.first,
-                                    let target = ComponentPlacementTarget(
-                                        snapshot: sidebarSnapshot, singleComponentID: id)
+                                if let target = ComponentPlacementTarget(
+                                    snapshot: sidebarSnapshot, componentIDs: ids)
                                 {
                                     ComponentSidebarOrderMenu(store: store, target: target, scopeEpoch: scopeEpoch)
                                 }
