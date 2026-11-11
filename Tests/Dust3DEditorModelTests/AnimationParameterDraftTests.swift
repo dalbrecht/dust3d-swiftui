@@ -56,6 +56,26 @@ final class AnimationParameterDraftTests: XCTestCase {
         XCTAssertTrue(try draft.validatedEdits().isEmpty)
     }
 
+    func testTimingStepsUseDeclaredIncrementsAndPreserveUneditedRawValues() throws {
+        var draft = try AnimationParameterDraft(record: record(), catalog: catalog())
+        XCTAssertNil(draft.steppedTimingText(name: "durationSeconds", increasing: true))
+        XCTAssertNil(draft.steppedTimingText(name: "frameCount", increasing: false))
+        XCTAssertTrue(try draft.validatedEdits().isEmpty)
+
+        draft.useDefault(name: "durationSeconds")
+        draft.useDefault(name: "frameCount")
+        XCTAssertEqual(draft.steppedTimingText(name: "durationSeconds", increasing: true), "4.1")
+        XCTAssertEqual(draft.steppedTimingText(name: "frameCount", increasing: false), "85")
+
+        draft.setText(name: "durationSeconds", value: "59.950")
+        draft.setText(name: "frameCount", value: "2")
+        XCTAssertEqual(draft.steppedTimingText(name: "durationSeconds", increasing: true), "59.99")
+        XCTAssertEqual(draft.steppedTimingText(name: "frameCount", increasing: false), "1")
+        XCTAssertEqual(draft.value(for: "durationSeconds"), "59.950")
+        draft.setText(name: "durationSeconds", value: "59.990")
+        XCTAssertNil(draft.steppedTimingText(name: "durationSeconds", increasing: true))
+    }
+
     func testChangedTimingValidatesIndependentlyOfOtherUnsupportedRetainedFields() throws {
         var draft = try AnimationParameterDraft(record: record(), catalog: catalog())
         draft.setText(name: "durationSeconds", value: "1.125")

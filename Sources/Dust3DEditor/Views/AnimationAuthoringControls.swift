@@ -151,13 +151,13 @@ struct AnimationAuthoringControls: View {
             supported: { text in
                 guard let value = Double(text) else { return false }
                 return (try? timing.validate(seconds: value, frames: Double(timing.minimumFrames))) != nil
-            })
+            }, timingStep: (timing, seconds))
         numericField(
             name: "frameCount", label: "Sample count", defaultText: String(frames),
             supported: { text in
                 guard let value = Double(text) else { return false }
                 return (try? timing.validate(seconds: timing.minimumSeconds, frames: value)) != nil
-            })
+            }, timingStep: (timing, Double(frames)))
     }
 
     private var typePicker: some View {
@@ -185,7 +185,8 @@ struct AnimationAuthoringControls: View {
     }
 
     private func numericField(
-        name: String, label: String, defaultText: String, supported: @escaping (String) -> Bool
+        name: String, label: String, defaultText: String, supported: @escaping (String) -> Bool,
+        timingStep: (definition: AnimationTimingDefinition, fallback: Double)? = nil
     ) -> some View {
         let setText = workflow.parameterAction { workflow, value in
             workflow.setText(name: name, value: value)
@@ -201,6 +202,27 @@ struct AnimationAuthoringControls: View {
                 )
                 .textFieldStyle(.roundedBorder).monospacedDigit().frame(minHeight: 40)
                 .focusedValue(\.editorTextEditing, true).accessibilityLabel(label)
+                if let timingStep {
+                    let step = workflow.parameterAction { workflow, increasing in
+                        if let value = steppedTimingText(
+                            workflow, name: name, timingStep: timingStep, increasing: increasing)
+                        {
+                            workflow.setText(name: name, value: value)
+                        }
+                    }
+                    Stepper(
+                        label,
+                        onIncrement: steppedTimingText(workflow, name: name, timingStep: timingStep, increasing: true)
+                            != nil
+                            ? { step(true) } : nil,
+                        onDecrement: steppedTimingText(workflow, name: name, timingStep: timingStep, increasing: false)
+                            != nil
+                            ? { step(false) } : nil
+                    )
+                    .labelsHidden()
+                    .accessibilityLabel(label)
+                    .accessibilityValue(workflow.parameterValue(for: name) ?? defaultText)
+                }
                 Button {
                     setText(nil)
                 } label: {
@@ -216,6 +238,18 @@ struct AnimationAuthoringControls: View {
             }
         }
     }
+    private func steppedTimingText(
+        _ workflow: EditorAnimationAuthoringWorkflow, name: String,
+        timingStep: (definition: AnimationTimingDefinition, fallback: Double), increasing: Bool
+    ) -> String? {
+        if let draft = workflow.parameterDraft {
+            return draft.steppedTimingText(name: name, increasing: increasing)
+        }
+        return AnimationParameterDraft.steppedTimingText(
+            name: name, current: workflow.parameterValue(for: name), fallback: timingStep.fallback,
+            timing: timingStep.definition, increasing: increasing)
+    }
+
     private func sliderPosition(_ control: AnimationControlDefinition) -> Double? {
         guard let text = workflow.parameterDraft?.value(for: control.name) else { return Double(control.defaultSlider) }
         guard let number = Double(text), let index = try? control.slider(for: number) else { return nil }
