@@ -80,7 +80,7 @@ struct NodeCanvas: View {
                     tap: { point, mode in
                         guard admitsInput(), store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin
                         else { return }
-                        store.pickEdge(at: point, projection: projection, mode: mode)
+                        store.pickCanvasGraph(at: point, projection: projection, mode: mode, lease: profileLease)
                     },
                     rectangle: { if admitsInput() { marquee = $0 } },
                     hover: { point in
@@ -345,6 +345,12 @@ struct NodeCanvas: View {
                 marquee = nil
             }
             .contextMenu {
+                if let reveal = store.canvasHoverRevealAction(profileLease: profileLease) {
+                    Button("Reveal Owning Component") { if admitsInput() { reveal() } }
+                }
+                if let select = store.canvasHoverWholePartAction(profileLease: profileLease) {
+                    Button("Select Whole Part") { if admitsInput() { select() } }
+                }
                 GraphSelectionMenu(actions: graphActions)
                 GraphColorizeMenu(actions: colorizeActions, contextual: true)
                 OrthogonalQuarterTurnMenu(actions: quarterTurns, contextual: true)

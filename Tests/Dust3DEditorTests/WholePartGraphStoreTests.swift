@@ -103,6 +103,24 @@ import XCTest
             XCTAssertEqual(store.snapshot?.selectedIDs, [c, d])
             XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [otherEdge])
         }
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 1000, height: 500)
+        let target = try XCTUnwrap(store.snapshot?.nodes.first { $0.id == b })
+        let center = projection.point(for: target.value.position)
+        XCTAssertGreaterThan(target.value.radius * projection.scale, 25)
+        let insideOutline = CanvasPoint(x: center.x, y: center.y + 25)
+        store.select(nil)
+        try await settle(store)
+        store.pickCanvasGraph(at: insideOutline, projection: projection, mode: .replace, lease: nil)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [b])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        store.updateCanvasHover(at: insideOutline, projection: projection)
+        let selectOwner = try XCTUnwrap(store.canvasHoverWholePartAction(profileLease: nil))
+        selectOwner()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [a, b])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [edge])
+
         let beforeBlank = store.snapshot?.selectionRevision
         store.selectWholePart(
             at: .init(x: -5000, y: -5000),
