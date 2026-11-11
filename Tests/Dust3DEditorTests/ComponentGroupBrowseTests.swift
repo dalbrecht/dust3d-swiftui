@@ -74,6 +74,29 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertEqual(part.sidebarAccessibilityLabel, "Component \(part.title)")
     }
 
+    func testEnclosingGroupCommandRetiresOnNavigationAndPreservesDocument() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        XCTAssertNil(value.componentBrowseParentAction())
+        value.componentBrowseAction("sub", snapshot: try XCTUnwrap(value.snapshot))()
+        let up = try XCTUnwrap(value.componentBrowseParentAction())
+        up()
+        try await settle(value)
+        XCTAssertEqual(value.componentGroupBrowse?.path.last?.id, "g")
+        value.componentBrowseAction("sub", snapshot: try XCTUnwrap(value.snapshot))()
+        up()
+        XCTAssertEqual(value.componentGroupBrowse?.path.last?.id, "sub")
+        try XCTUnwrap(value.componentBrowseParentAction())()
+        try await settle(value)
+        try XCTUnwrap(value.componentBrowseParentAction())()
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testBrowseAutomaticallyPlacesToolbarAndPointerPartsWithExactUndo() async throws {
         let original = try source().encoded()
         let value = store()
