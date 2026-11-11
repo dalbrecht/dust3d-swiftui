@@ -294,21 +294,34 @@ struct ComponentSidebar: View {
     }
 
     private func browsePath(_ browse: ComponentGroupBrowse, snapshot: EditorSnapshot) -> some View {
-        HStack {
-            Button(
-                "Up", systemImage: "chevron.up",
-                action: store.componentBrowseAction(
-                    browse.path.dropLast().last?.id, snapshot: snapshot)
-            )
-            .help("Browse the parent group or return to the full tree.")
-            Menu(browse.path.last?.title ?? "Group") {
+        let parent = browse.path.dropLast().last
+        let destination = parent?.title ?? "Full Component Tree"
+        return HStack {
+            Button(action: store.componentBrowseAction(parent?.id, snapshot: snapshot)) {
+                Label {
+                    Text(destination).lineLimit(1)
+                } icon: {
+                    Image(systemName: "chevron.up")
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: 20)
+                .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Go to \(destination)")
+            .help("Go to \(destination).")
+            Menu {
                 Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
                 ForEach(browse.path.dropLast()) { row in
                     Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
                 }
+            } label: {
+                Text(browse.path.last?.title ?? "Group")
+                    .lineLimit(1)
+                    .frame(minWidth: 20, minHeight: 20)
             }
-            .accessibilityLabel("Group breadcrumb")
+            .accessibilityLabel("Go to Ancestor Group")
             .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
+            .help("Go to an ancestor group or the full component tree.")
         }
         .focusedValue(\.editorComponentSidebarFocus, true)
         .focusedValue(
