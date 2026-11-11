@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Accept Qt XML fragments by content regardless of filename suffix when using `-paste-xml`.
+- Show the authored order of stitching lines in each component listing.
 
 - Explain invalid document and Qt XML input in headless export diagnostics.
 
