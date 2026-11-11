@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Identify empty and populated groups in the component sidebar and enlarge disclosure controls.
+
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
