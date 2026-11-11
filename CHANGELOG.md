@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Continue a headless batch when an output destination is an existing directory.
+
 - Continue headless export batches after an unsupported output format and report the failed destination.
 
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.

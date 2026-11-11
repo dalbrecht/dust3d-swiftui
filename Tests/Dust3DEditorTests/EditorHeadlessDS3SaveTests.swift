@@ -48,18 +48,24 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: source), original)
     }
 
-    func testSavePreservesSourceBytesAndContinuesAfterOneDestinationFails() async throws {
+    func testSavePreservesSourceBytesAndContinuesAfterDestinationsFail() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
         let first = directory.appendingPathComponent("first.ds3")
+        let directoryOutput = directory.appendingPathComponent("directory.ds3", isDirectory: true)
+        let sentinel = directoryOutput.appendingPathComponent("existing.txt")
         let failed = directory.appendingPathComponent("missing/failed.ds3")
         let last = directory.appendingPathComponent("last.ds3")
         let bytes = try archive().encoded()
         try bytes.write(to: source)
+        try FileManager.default.createDirectory(at: directoryOutput, withIntermediateDirectories: false)
+        let sentinelBytes = Data("existing directory contents".utf8)
+        try sentinelBytes.write(to: sentinel)
         try Data("old destination".utf8).write(to: first)
 
         let result = await run([
-            "Editor", "-o", first.path, source.path, "-toggle-color", "True", "-output", failed.path, "-o", last.path,
+            "Editor", "-o", first.path, source.path, "-toggle-color", "True",
+            "-output", directoryOutput.path, "-output", failed.path, "-o", last.path,
         ])
 
         XCTAssertEqual(result.status, 1)
@@ -70,8 +76,10 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertEqual(result.output.count, 2)
         XCTAssertTrue(result.output.first?.contains(first.path) == true)
         XCTAssertTrue(result.output.last?.contains(last.path) == true)
-        XCTAssertEqual(result.errors.count, 1)
-        XCTAssertTrue(result.errors.first?.contains(failed.path) == true)
+        XCTAssertEqual(try Data(contentsOf: sentinel), sentinelBytes)
+        XCTAssertEqual(result.errors.count, 2)
+        XCTAssertTrue(result.errors.first?.contains(directoryOutput.path) == true)
+        XCTAssertTrue(result.errors.last?.contains(failed.path) == true)
     }
 
     func testPasteIntoSourceOrEmptyDocumentBeforeSaving() async throws {
@@ -159,14 +167,18 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
         let first = directory.appendingPathComponent("first.ds3")
+        let directoryOutput = directory.appendingPathComponent("directory.ds3", isDirectory: true)
         let hardLink = directory.appendingPathComponent("hard.ds3")
         let symlink = directory.appendingPathComponent("symbolic.ds3")
         let bytes = try archive().encoded()
         try bytes.write(to: source)
+        try FileManager.default.createDirectory(at: directoryOutput, withIntermediateDirectories: false)
         try FileManager.default.linkItem(at: source, to: hardLink)
         try FileManager.default.createSymbolicLink(at: symlink, withDestinationURL: source)
         for alias in [hardLink, symlink] {
-            let result = await run(["Editor", source.path, "-o", first.path, "-o", alias.path])
+            let result = await run([
+                "Editor", source.path, "-o", first.path, "-o", directoryOutput.path, "-o", alias.path,
+            ])
             XCTAssertEqual(result.status, 2)
             XCTAssertTrue(result.output.isEmpty)
             XCTAssertFalse(FileManager.default.fileExists(atPath: first.path))
