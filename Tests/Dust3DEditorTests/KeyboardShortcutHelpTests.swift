@@ -3,6 +3,15 @@ import XCTest
 @testable import Dust3DEditor
 
 final class KeyboardShortcutHelpTests: XCTestCase {
+    func testGroupNavigationShortcutsDescribeSidebarFocus() throws {
+        let browse = try XCTUnwrap(KeyboardShortcutHelp.matching("⌘↓").first)
+        XCTAssertEqual(browse.action, "Browse Selected Component Group")
+        XCTAssertEqual(browse.scope, "Focused component sidebar with one visible group selected")
+        let parent = try XCTUnwrap(KeyboardShortcutHelp.matching("⌘↑").first)
+        XCTAssertEqual(parent.action, "Go to Enclosing Component Group")
+        XCTAssertEqual(parent.scope, "Focused component sidebar while browsing a group")
+    }
+
     func testInspectorVisibilityShortcutMatchesNativeWindowCommand() throws {
         let entry = try XCTUnwrap(KeyboardShortcutHelp.entries.first { $0.action == "Show / Hide Inspector" })
         XCTAssertEqual(entry.keys, "⌃⌘I")

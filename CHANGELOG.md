@@ -4,6 +4,8 @@
 
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
+- Browse a selected component group with Command–Down Arrow while the sidebar has focus.
+
 - Name the destinations of component breadcrumb controls, including the full tree.
 
 - Go to the enclosing component group from the View menu or with Command–Up Arrow while the component sidebar has focus.

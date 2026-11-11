@@ -18,6 +18,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorPreviewDisplayActions) private var previewDisplayActions
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     @FocusedValue(\.editorTextEditing) private var isEditingText
+    @FocusedValue(\.editorComponentSidebarBrowseSelection) private var browseSidebarSelection
     @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
     @State private var pasteboard = EditorPasteboard()
     @State private var replayRequest: WorkflowReplayRequest?
@@ -134,6 +135,20 @@ struct Dust3DEditorApp: App {
             CommandGroup(after: .toolbar) {
                 let browseWindow = NSApp.keyWindow
                 let browseOwner = store
+                let browseSelected = browseSidebarSelection
+                Button("Browse Selected Component Group") {
+                    guard let browseWindow, NSApp.keyWindow === browseWindow,
+                        store === browseOwner, !rigAssignmentFocus.hasSheet,
+                        isComponentSidebarFocused == true, !hasTextEditingFocus
+                    else { return }
+                    browseSelected?()
+                }
+                .disabled(
+                    browseWindow == nil || browseSelected == nil || rigAssignmentFocus.hasSheet || hasTextEditingFocus
+                )
+                .keyboardShortcut(
+                    isComponentSidebarFocused == true && !hasTextEditingFocus
+                        ? KeyboardShortcut(.downArrow, modifiers: [.command]) : nil)
                 let browseParent = browseOwner?.componentBrowseParentAction()
                 Button("Go to Enclosing Component Group") {
                     guard let browseWindow, NSApp.keyWindow === browseWindow,
@@ -525,6 +540,10 @@ private struct EditorTextEditingKey: FocusedValueKey { typealias Value = Bool }
 
 private struct EditorComponentSidebarFocusKey: FocusedValueKey { typealias Value = Bool }
 
+private struct EditorComponentSidebarBrowseSelectionKey: FocusedValueKey {
+    typealias Value = @MainActor () -> Void
+}
+
 private struct EditorComponentSidebarSelectAllKey: FocusedValueKey {
     typealias Value = ComponentSidebarSelectAllTarget
 }
@@ -551,6 +570,11 @@ extension FocusedValues {
     var editorComponentSidebarFocus: Bool? {
         get { self[EditorComponentSidebarFocusKey.self] }
         set { self[EditorComponentSidebarFocusKey.self] = newValue }
+    }
+
+    var editorComponentSidebarBrowseSelection: (@MainActor () -> Void)? {
+        get { self[EditorComponentSidebarBrowseSelectionKey.self] }
+        set { self[EditorComponentSidebarBrowseSelectionKey.self] = newValue }
     }
 
     var editorComponentSidebarSelectAll: ComponentSidebarSelectAllTarget? {

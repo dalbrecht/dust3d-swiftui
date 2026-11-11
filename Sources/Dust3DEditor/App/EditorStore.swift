@@ -1852,6 +1852,21 @@ final class EditorStore {
         }
     }
 
+    func componentSidebarBrowseSelectionAction(
+        snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> (@MainActor () -> Void)? {
+        guard canBrowseComponents, let group = snapshot.selectedComponent, group.isGroup else { return nil }
+        let rows =
+            componentGroupBrowse?.children ?? snapshot.componentTree.visibleRows(collapsing: disclosure.collapsedIDs)
+        guard rows.contains(where: { $0.id.utf8.elementsEqual(group.id.utf8) }) else { return nil }
+        let disclosureEpoch = disclosure.epoch
+        let browse = componentBrowseAction(group.id, snapshot: snapshot)
+        return {
+            guard disclosure.epoch == disclosureEpoch else { return }
+            browse()
+        }
+    }
+
     func componentBrowseParentAction() -> (@MainActor () -> Void)? {
         guard canBrowseComponents, let current = acceptedDocumentSource, let group = componentGroupBrowse else {
             return nil
