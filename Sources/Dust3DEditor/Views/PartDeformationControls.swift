@@ -6,12 +6,16 @@ struct PartDeformationControls: View {
     let store: EditorStore
     let part: DocumentPart
     var graphTarget: GraphPartCrossSectionTarget? = nil
+    var inspectorTarget: CanvasAdjustmentTarget? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Cross-section deformation").font(.headline)
             ForEach(PartDeformationProperty.allCases, id: \.self) { property in
-                PartDeformationScaleControl(store: store, part: part, property: property, graphTarget: graphTarget)
+                PartDeformationScaleControl(
+                    store: store, part: part, property: property, graphTarget: graphTarget,
+                    inspectorTarget: inspectorTarget
+                )
             }
             if !part.isImportedModel {
                 if let value = part.isDeformationUnified {
@@ -52,8 +56,8 @@ struct PartDeformationControls: View {
     private func setUnified(_ value: Bool) {
         if let graphTarget {
             store.editGraphPartCrossSection(.deformationUnified(value), target: graphTarget)
-        } else {
-            store.setPartDeformationUnified(part.id, value: value)
+        } else if let inspectorTarget {
+            store.setPartDeformationUnified(part.id, value: value, target: inspectorTarget)
         }
     }
 }
@@ -63,6 +67,7 @@ private struct PartDeformationScaleControl: View {
     let part: DocumentPart
     let property: PartDeformationProperty
     let graphTarget: GraphPartCrossSectionTarget?
+    let inspectorTarget: CanvasAdjustmentTarget?
     @State private var draft = ""
 
     private var title: String { property == .width ? "Width scale" : "Thickness scale" }
@@ -106,8 +111,8 @@ private struct PartDeformationScaleControl: View {
     private func apply() {
         if let graphTarget {
             store.setGraphPartDeformationScale(property, value: draft, target: graphTarget)
-        } else {
-            store.setPartDeformationScale(part.id, property: property, value: draft)
+        } else if let inspectorTarget {
+            store.setPartDeformationScale(part.id, property: property, value: draft, target: inspectorTarget)
         }
     }
 }

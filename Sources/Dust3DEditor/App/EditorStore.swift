@@ -2303,13 +2303,19 @@ final class EditorStore {
         editGraphPartCrossSection(.deformationScale(property, scale), target: target)
     }
 
-    func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
+    func setPartDeformationScale(
+        _ id: String, property: PartDeformationProperty, value: String, target: CanvasAdjustmentTarget? = nil
+    ) {
         guard !isWorking, !stopped else { return }
+        if let target, currentInspectedDeformationPart(id, target: target) == nil { return }
         guard let scale = EngineScalar.parse(value, in: 0...2) else {
             errorMessage = Self.message(DocumentError.invalidPartDeformation)
             return
         }
-        perform { try await $0.apply([.setPartDeformationScale(id: id, property: property, value: scale)]) }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply(
+                [.setPartDeformationScale(id: id, property: property, value: scale)], selecting: nil, target: target)
+        }
     }
     func partDeformationResetAction(
         _ property: PartDeformationProperty, partID: String
@@ -2328,8 +2334,18 @@ final class EditorStore {
         }
     }
 
-    func setPartDeformationUnified(_ id: String, value: Bool) {
-        perform { try await $0.apply([.setPartDeformationUnified(id: id, value: value)]) }
+    func setPartDeformationUnified(_ id: String, value: Bool, target: CanvasAdjustmentTarget? = nil) {
+        if let target, currentInspectedDeformationPart(id, target: target)?.target != .model { return }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setPartDeformationUnified(id: id, value: value)], selecting: nil, target: target)
+        }
+    }
+    private func currentInspectedDeformationPart(_ id: String, target: CanvasAdjustmentTarget) -> DocumentPart? {
+        guard let source = acceptedDocumentSource, target.isCurrent(in: source),
+            let part = source.inspectedPart, part.supportsDeformationScales,
+            part.id.utf8.elementsEqual(id.utf8)
+        else { return nil }
+        return part
     }
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }

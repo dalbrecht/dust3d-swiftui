@@ -166,6 +166,64 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertFalse(value.canUndo)
     }
 
+    func testInspectedDeformationEditsRequireCurrentSharedOwnerAndSupportedRole() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><parts><part id='p'/><part id='i' target='ImportedModel'/></parts><components>
+                <component id='a' linkDataType='partId' linkData='p'/>
+                <component id='b' linkDataType='partId' linkData='p'/>
+                </components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        try await settle(value)
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        let retired = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.selectPart("i")
+        try await settle(value)
+        let imported = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.setPartDeformationUnified("i", value: true, target: imported)
+        try await settle(value)
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        value.setPartDeformationScale("p", property: .width, value: "1.5", target: retired)
+        try await settle(value)
+        value.setPartDeformationUnified("p", value: true, target: retired)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(value.canUndo)
+
+        let current = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.setPartDeformationScale("p", property: .width, value: "1.5", target: current)
+        try await settle(value)
+        let scaled = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(scaled.inspectedPart?.deformationScale(.width), 1.5)
+        value.setPartDeformationUnified("p", value: true, target: CanvasAdjustmentTarget(snapshot: scaled))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.inspectedPart?.isDeformationUnified, true)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["a", "b"])
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), scaled.document.encoded())
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+
+        value.selectPart("i")
+        try await settle(value)
+        let selected = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.setPartDeformationScale("i", property: .thickness, value: "0.5", target: selected)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.inspectedPart?.deformationScale(.thickness), 0.5)
+        XCTAssertEqual(value.snapshot?.inspectedPart?.isDeformationUnified, false)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+    }
+
     func testGraphOwnerMaterialApplyAndResetRejectRetiredAndFailedSourceTargets() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(
