@@ -87,7 +87,19 @@ private actor SubtractionPreviewCounter: EditorPreviewServing {
         XCTAssertEqual(store.snapshot?.selectedIDs, ["b"])
         XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
         let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 500, height: 500)
+        let target = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: nil))
+        store.activateCanvasNode("b", action: .pointerReplace, target: target)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["b"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(store.snapshot?.selectionRevision, after.selectionRevision)
+
         let crossing = projection.point(for: .init(x: 0.35, y: 0.5, z: 0.5))
+        store.pickEdge(at: crossing, projection: projection, mode: .replace)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["b"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(store.snapshot?.selectionRevision, after.selectionRevision)
         store.selectMarquee(
             .init(
                 from: .init(x: crossing.x - 2, y: crossing.y - 2),
@@ -101,6 +113,31 @@ private actor SubtractionPreviewCounter: EditorPreviewServing {
         try await settle(store)
         XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [], "Clicking an unselected edge never adds it")
         XCTAssertEqual(store.snapshot?.selectedIDs, ["b"])
+
+        let unpickedEdge = projection.point(for: .init(x: 0.65, y: 0.5, z: 0.5))
+        store.pickEdge(at: unpickedEdge, projection: projection, mode: .replace)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["bc"])
+        store.pickEdge(at: .init(x: -500, y: -500), projection: projection, mode: .replace)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+
+        store.selectGraph(nodes: ["a", "b"], edges: ["ab"])
+        try await settle(store)
+        let explicitTarget = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: nil))
+        store.activateCanvasNode("b", action: .selection(.replace), target: explicitTarget)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["b"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        let pointerTarget = try XCTUnwrap(store.canvasNodeSelectionTarget(profileLease: nil))
+        store.activateCanvasNode("c", action: .pointerReplace, target: pointerTarget)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["c"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        XCTAssertEqual(store.snapshot?.document.encoded(), before.document.encoded())
+        XCTAssertFalse(store.canUndo)
         XCTAssertEqual(publications, 0)
     }
     private func sidebarStore(includeEdge: Bool = false) async throws -> (EditorStore, Data) {

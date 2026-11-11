@@ -152,6 +152,9 @@ final class EditorStore {
         guard let target, admitsCanvasNodeSelection(target) else { return }
         switch action {
         case .wholePart: selectWholePart(.node(id), context: target.context)
+        case .pointerReplace:
+            guard snapshot?.selectedIDs.contains(where: { $0.utf8.elementsEqual(id.utf8) }) != true else { return }
+            select(id)
         case .selection(.replace): select(id)
         case .selection(.toggle): toggleSelection(id)
         case .selection(let mode): selectGraph(nodes: [id], edges: [], mode: mode)
@@ -1758,6 +1761,11 @@ final class EditorStore {
         guard !isWorking, let snapshot else { return }
         let edges = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: mode) : snapshot.edges
         if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: edges) {
+            if mode == .replace, !isSelectingRigEdges,
+                snapshot.selectedEdgeIDs.contains(where: { $0.utf8.elementsEqual(edge.utf8) })
+            {
+                return
+            }
             selectGraph(nodes: [], edges: [edge], mode: mode)
         } else if mode == .replace {
             selectGraph(nodes: [], edges: [])
