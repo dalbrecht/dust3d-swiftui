@@ -14,6 +14,7 @@ struct PartProfileChooser: View {
         let candidates =
             snapshot.map { PartProfileOptions.candidates(in: $0, excluding: part.id, matching: query) }
             ?? []
+        let spokenTitles = PartProfileOptions.spokenTitles(for: candidates)
         let cyclicProfiles =
             snapshot.map { CutFaceLinks.cyclicChoices(from: part.id, parts: $0.parts, nodes: $0.nodes) }
             ?? []
@@ -29,24 +30,27 @@ struct PartProfileChooser: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(candidates) { candidate in
+                            let spokenTitle = spokenTitles[candidate.id] ?? candidate.title
                             let wouldCycle =
                                 cyclicProfiles.contains(candidate.id)
                                 && part.cutFace != .linkedPart(candidate.id)
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(candidate.title).lineLimit(1)
-                                    Text(candidate.id).font(.caption2).lineLimit(1)
-                                    if wouldCycle {
-                                        Text("Would create a profile cycle").font(.caption2).foregroundStyle(.secondary)
-                                    }
+                            let label = VStack(alignment: .leading, spacing: 2) {
+                                Text(candidate.title).fixedSize(horizontal: false, vertical: true)
+                                if spokenTitle != candidate.title {
+                                    Text(candidate.id).font(.caption2).monospaced()
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
-                                Spacer(minLength: 4)
+                                if wouldCycle {
+                                    Text("Would create a profile cycle").font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
+                            let actions = HStack(spacing: 8) {
                                 Button("Preview") {
                                     guard let snapshot, store.snapshot?.documentIdentity == snapshot.documentIdentity
                                     else { return }
                                     preview = (snapshot.documentIdentity, ownerID, Array(candidate.id.utf8))
                                 }
-                                .accessibilityLabel("Preview profile \(candidate.title), \(candidate.id)")
+                                .accessibilityLabel("Preview profile \(spokenTitle)")
                                 Button("Choose") {
                                     guard !wouldCycle, let snapshot, let current = store.snapshot,
                                         current.documentIdentity == snapshot.documentIdentity,
@@ -58,8 +62,12 @@ struct PartProfileChooser: View {
                                         store.setPartCutFace(part.id, selection: .linkedPart(candidate.id))
                                     }
                                 }
-                                .accessibilityLabel("Link profile \(candidate.title), \(candidate.id)")
+                                .accessibilityLabel("Link profile \(spokenTitle)")
                                 .disabled(wouldCycle)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                label
+                                actions.frame(maxWidth: .infinity, alignment: .trailing)
                             }
                             .help(candidate.title + "\n" + candidate.id)
                         }

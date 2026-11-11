@@ -95,6 +95,14 @@ final class PartProfileOptionsTests: XCTestCase {
         XCTAssertEqual(snapshot.document.encoded(), source.encoded())
     }
 
+    func testVisibleProfileIDsOnlyDisambiguateDuplicateTitlesInTheCurrentResults() throws {
+        let parts = try document().editorContents().parts
+        let matches = PartProfileOptions.candidates(in: parts, excluding: owner, matching: "")
+        XCTAssertEqual(PartProfileOptions.profileIDsWithDuplicateTitles(matches), [first, second])
+        let oneMatch = PartProfileOptions.candidates(in: parts, excluding: owner, matching: first)
+        XCTAssertTrue(PartProfileOptions.profileIDsWithDuplicateTitles(oneMatch).isEmpty)
+    }
+
     func testSearchMatchesTitlesAndExactSourceIdentityCaseInsensitivelyInSourceOrder() throws {
         let parts = try document().editorContents().parts
         for query in ["CURVE", "曲線", "duplicate"] {

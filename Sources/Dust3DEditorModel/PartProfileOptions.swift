@@ -45,4 +45,22 @@ public enum PartProfileOptions {
         }
         return matches.sorted { (centers[Data($0.id.utf8)] ?? 0) < (centers[Data($1.id.utf8)] ?? 0) }
     }
+    package static func profileIDsWithDuplicateTitles(_ candidates: [DocumentPart]) -> Set<String> {
+        let groups = Dictionary(grouping: candidates, by: \.title)
+        return Set(groups.values.filter { $0.count > 1 }.joined().map(\.id))
+    }
+
+    /// Provide spoken profile names, using the source ID to distinguish duplicate visible titles.
+    /// - Parameter candidates: The compatible, filtered parts currently shown in the chooser.
+    /// - Returns: A spoken name keyed by each candidate's part ID.
+    /// - Example: `PartProfileOptions.spokenTitles(for: visibleParts)`.
+    public static func spokenTitles(for candidates: [DocumentPart]) -> [String: String] {
+        let duplicateIDs = profileIDsWithDuplicateTitles(candidates)
+        var titles: [String: String] = [:]
+        for candidate in candidates {
+            let hasDuplicateTitle = duplicateIDs.contains(candidate.id)
+            titles[candidate.id] = hasDuplicateTitle ? "\(candidate.title), \(candidate.id)" : candidate.title
+        }
+        return titles
+    }
 }
