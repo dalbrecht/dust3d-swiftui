@@ -4,6 +4,28 @@ import Foundation
 import XCTest
 
 final class QtClipboardSessionTests: XCTestCase {
+    @MainActor func testQtCopyRejectsSelectionThatChangedAndReturned() async throws {
+        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let first = try await session.selectGraph(nodes: ["a"], edges: [])
+        let target = CanvasAdjustmentTarget(snapshot: first)
+        _ = try await session.selectGraph(nodes: [], edges: [])
+        let current = try await session.selectGraph(nodes: ["a"], edges: [])
+        do {
+            _ = try await session.copySelectionAsQtXML(target: target)
+            XCTFail("A retained Qt copy must not reacquire admission")
+        } catch let error as EditorError {
+            XCTAssertEqual(error, .staleCanvasAdjustment)
+        }
+        let xml = try await session.copySelectionAsQtXML(target: .init(snapshot: current))
+        XCTAssertEqual(try Dust3DDocument(snapshotXML: xml).editorContents().nodes.map(\.id), ["a"])
+        let retained = try await session.animationSnapshot().editor
+        XCTAssertEqual(retained.document.encoded(), original.encoded())
+        XCTAssertFalse(retained.canUndo)
+    }
+
     @MainActor func testQtPasteSelectsFreshEditableEdgesForImmediateMidpointButNativePasteSelectsNodesOnly()
         async throws
     {

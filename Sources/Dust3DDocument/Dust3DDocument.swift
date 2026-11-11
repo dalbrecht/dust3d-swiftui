@@ -1638,10 +1638,25 @@ public struct Dust3DDocument: Sendable {
     /// Copy selected graph objects and their linked-profile dependencies into a bounded fragment.
     /// Unknown attached fields and all archive assets are retained; canvas-global objects are excluded.
     public func copyingNodes(_ ids: Set<String>) throws -> NodeClipboard {
+        try NodeClipboard(document: replacingModel(selectedGraphXML(ids)), selectedNodeIDs: ids)
+    }
+
+    /// Copy the selected graph and linked profiles as bounded Qt canvas XML.
+    /// This text can carry inherited junctions and omits archive assets.
+    /// - Parameter ids: The exact selected node identities.
+    /// - Returns: UTF-8 canvas XML preserving directed edges and attached attributes.
+    /// - Throws: A document error if the selection cannot be represented as valid clipboard XML.
+    public func copyingNodesAsQtXML(_ ids: Set<String>) throws -> Data {
+        let xml = try selectedGraphXML(ids)
+        let fragment = try Dust3DDocument(snapshotXML: xml)
+        _ = try NodeClipboard.validate(fragment, selectedNodeIDs: ids, allowsJunctions: true)
+        return xml
+    }
+
+    private func selectedGraphXML(_ ids: Set<String>) throws -> Data {
         let model = try Self.xml(modelXML, root: "canvas")
         try NodeClipboardMutation.extract(ids, model: model, contents: editorContents())
-        return try NodeClipboard(
-            document: replacingModel(model.xmlData(options: [.nodePreserveAll])), selectedNodeIDs: ids)
+        return model.xmlData(options: [.nodePreserveAll])
     }
 
     private func mergingAssets(

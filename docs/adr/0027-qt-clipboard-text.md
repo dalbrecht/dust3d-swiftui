@@ -14,6 +14,11 @@ Keep the native representation first in the SwiftUI Transferable declaration. Ad
 
 Both inputs use the same paste normalization, fresh IDs, construction splits and one-step undo transaction. The session retains the most recent successful XML/token pair (bounded by the input limit), comparing exact bytes to advance repeated-paste placement without hash collisions. Failed pastes do not replace this pair. Open clears it. Identical text recopied externally is treated as the same source until another successful XML paste or Open; plain text has no Copy token.
 
+
+**Copy Nodes as Qt XML** writes a bounded, asset-free snapshot for Qt. It can
+include inherited junctions that the native clipboard rejects. The command
+does not edit the document. Paste and Cut retain their topology requirements.
+
 ## Limits
 
 Plain XML contains no embedded asset bytes. Qt text transfers graph attributes and may retain references to assets unavailable in the destination. Only native transfers promise asset and explicit-selection fidelity. Menu help exposes this distinction. No import fabricates assets, strips unknown fields or claims full Qt GUI interoperability. Legacy snapshot schemas, branching topologies and missing-asset editing remain constrained by existing validation; do not relax engine assumptions as part of transport work.
