@@ -10,15 +10,14 @@ final class EditorDocumentDropTests: XCTestCase {
         XCTAssertEqual(admitted.url.absoluteString, original.absoluteString)
     }
 
-    func testEmptyMultipleMixedRemoteAndMalformedDropsAreRejected() throws {
-        let model = URL(fileURLWithPath: "/tmp/model.ds3")
+    func testDropsWithoutLocalDocumentsAreRejected() throws {
         let image = URL(fileURLWithPath: "/tmp/front.png")
         let directory = URL(fileURLWithPath: "/tmp/Directory.ds3", isDirectory: true)
         let remote = try XCTUnwrap(URL(string: "https://example.com/model.ds3"))
         let remoteFile = try XCTUnwrap(URL(string: "file://example.com/tmp/model.ds3"))
         let query = try XCTUnwrap(URL(string: "file:///tmp/model.ds3?other=1"))
         for urls in [
-            [], [model, model], [model, image], [image], [directory], [remote], [remoteFile], [query],
+            [], [image], [directory], [remote], [remoteFile], [query], [image, remoteFile, directory, query],
             [URL(fileURLWithPath: "/tmp/" + String(repeating: "x", count: 4096) + ".ds3")],
             [URL(fileURLWithPath: "/tmp/invalid\0name.ds3")],
         ] {
@@ -26,11 +25,40 @@ final class EditorDocumentDropTests: XCTestCase {
         }
     }
 
+    func testCanvasDropPrefersReferenceImagesOnlyOnTheEmptyCanvas() throws {
+        let first = URL(fileURLWithPath: "/tmp/first.ds3")
+        let last = URL(fileURLWithPath: "/tmp/last.ds3")
+        let front = URL(fileURLWithPath: "/tmp/front.png")
+        let side = URL(fileURLWithPath: "/tmp/side.png")
+        let mixed = [first, front, last, side]
+        guard case .reference(let staged) = EditorCanvasDrop(urls: mixed, acceptsReference: true) else {
+            return XCTFail("An empty canvas should stage the reference images")
+        }
+        XCTAssertEqual(staged.front, front)
+        XCTAssertEqual(staged.side, side)
+        guard case .document(let open) = EditorCanvasDrop(urls: mixed, acceptsReference: false) else {
+            return XCTFail("A populated canvas should open the last local document")
+        }
+        XCTAssertEqual(open.url, last)
+        guard case .document(let openOnEmpty) = EditorCanvasDrop(urls: [last], acceptsReference: true) else {
+            return XCTFail("A document-only drop should open on an empty canvas")
+        }
+        XCTAssertEqual(openOnEmpty.url, last)
+        XCTAssertNil(EditorCanvasDrop(urls: [front], acceptsReference: false))
+        XCTAssertNil(EditorCanvasDrop(urls: [front, side, front, last], acceptsReference: true))
+    }
+
     @MainActor
-    func testAdmittedDropInvokesNativeRouteOnceAndPreservesOriginalError() async throws {
+    func testMixedDropOpensLastEligibleDocumentOnceAndPreservesOriginalError() async throws {
         enum OpenFailure: Error, Equatable { case denied }
-        let url = URL(fileURLWithPath: "/tmp/model.ds3")
-        let drop = try XCTUnwrap(EditorDocumentDrop(urls: [url]))
+        let url = URL(fileURLWithPath: "/tmp/Dust3D Examples/../My Model.DS3")
+        let mixed = [
+            URL(fileURLWithPath: "/tmp/first.ds3"), URL(fileURLWithPath: "/tmp/reference.png"), url,
+            try XCTUnwrap(URL(string: "file://remote.example/tmp/remote.ds3")),
+            URL(fileURLWithPath: "/tmp/Folder.ds3", isDirectory: true),
+        ]
+        let drop = try XCTUnwrap(EditorDocumentDrop(urls: mixed))
+        XCTAssertEqual(drop.url.absoluteString, url.absoluteString)
         var opened: [URL] = []
         var errors: [OpenFailure] = []
         await drop.open(
