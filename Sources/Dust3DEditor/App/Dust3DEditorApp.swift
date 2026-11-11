@@ -132,6 +132,19 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.snapshot == nil)
             }
             CommandGroup(after: .toolbar) {
+                let browseWindow = NSApp.keyWindow
+                let browseOwner = store
+                let browseParent = browseOwner?.componentBrowseParentAction()
+                Button("Go to Enclosing Component Group") {
+                    guard let browseWindow, NSApp.keyWindow === browseWindow,
+                        store === browseOwner, !rigAssignmentFocus.hasSheet
+                    else { return }
+                    browseParent?()
+                }
+                .disabled(browseWindow == nil || browseParent == nil || rigAssignmentFocus.hasSheet)
+                .keyboardShortcut(
+                    isComponentSidebarFocused == true && !hasTextEditingFocus
+                        ? KeyboardShortcut(.upArrow, modifiers: [.command]) : nil)
                 #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
                     Picker(
                         "Preview Mode",

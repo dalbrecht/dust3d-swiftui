@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Go to the enclosing component group from the View menu or with Command–Up Arrow while the component sidebar has focus.
+
 - Identify empty and populated groups in the component sidebar and enlarge disclosure controls.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
