@@ -34,11 +34,13 @@ final class ReferenceImageStoreTests: XCTestCase {
         let first = try XCTUnwrap(
             store.referenceImageMenuActions(fileIdentity: fileID, ownsWindow: { ownsWindow }) { _ in opened += 1 })
         let removeFirst = try XCTUnwrap(first.remove)
+        let clearFirst = try XCTUnwrap(first.clearArtwork)
         first.compose()
         XCTAssertEqual(opened, 1)
 
         ownsWindow = false
         first.compose()
+        clearFirst()
         removeFirst()
         XCTAssertEqual(opened, 1)
         XCTAssertTrue(store.hasReferenceImage)
@@ -47,6 +49,7 @@ final class ReferenceImageStoreTests: XCTestCase {
         await store.load(data: data, fileIdentity: fileID)
         try await waitForImage(store)
         first.compose()
+        clearFirst()
         removeFirst()
         XCTAssertEqual(opened, 1)
         XCTAssertTrue(store.hasReferenceImage)
@@ -59,10 +62,44 @@ final class ReferenceImageStoreTests: XCTestCase {
         try await waitForImage(store)
         XCTAssertFalse(store.hasReferenceImage)
         XCTAssertTrue(store.canUndo)
-        XCTAssertNil(store.referenceImageMenuActions(fileIdentity: fileID, ownsWindow: { true }) { _ in }?.remove)
+        let empty = store.referenceImageMenuActions(fileIdentity: fileID, ownsWindow: { true }, compose: { _ in })
+        XCTAssertNil(empty?.clearArtwork)
+        XCTAssertNil(empty?.remove)
         store.undo()
         try await waitForImage(store)
         XCTAssertEqual(store.snapshot?.document.encoded(), data)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    @MainActor
+    func testClearingReferenceArtworkKeepsEmbeddedAlignmentAndOneUndo() async throws {
+        let origin = NodePosition(x: 3, y: 4, z: 5)
+        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+            .applying(.setReferenceImagePNG(png()))
+            .applying(.setOrigin(origin))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: original.encoded())
+        try await waitForImage(store)
+
+        store.clearReferenceArtwork()
+        try await waitForImage(store)
+        let cleared = try XCTUnwrap(store.snapshot)
+        XCTAssertNotEqual(cleared.document.referenceImagePNG, original.referenceImagePNG)
+        XCTAssertEqual(cleared.origin, origin)
+        XCTAssertTrue(store.hasReferenceImage)
+        XCTAssertEqual(store.referenceImage?.width, 1)
+        XCTAssertEqual(store.referenceImage?.height, 1)
+        XCTAssertTrue(store.canUndo)
+        XCTAssertEqual(
+            try Dust3DDocument(data: cleared.document.encoded()).referenceImagePNG, cleared.document.referenceImagePNG)
+
+        store.clearReferenceArtwork()
+        try await waitForImage(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), cleared.document.encoded())
+        store.undo()
+        try await waitForImage(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
         XCTAssertFalse(store.canUndo)
     }
 
