@@ -1,10 +1,12 @@
 #if MOTE3D_EXPERIMENTAL_HOLLOW
     import Dust3DDocument
+    import Dust3DEditorModel
     import SwiftUI
 
     struct PartHollowControls: View {
         let store: EditorStore
         let partID: String
+        let target: CanvasAdjustmentTarget
         @State private var draft = ""
         @State private var savedThickness = ""
 
@@ -35,7 +37,7 @@
         }
 
         private func apply() {
-            store.setExperimentalHollowThickness(partID, value: draft)
+            store.setExperimentalHollowThickness(partID, value: draft, target: target)
         }
     }
 
