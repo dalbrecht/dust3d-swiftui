@@ -1812,16 +1812,19 @@ final class EditorStore {
         }
     }
 
-    var edgeSidebarSelectAllTarget: EdgeSidebarSelectAllTarget? {
+    func edgeSidebarSelectAllTarget(
+        displayedIDs: Set<String>? = nil, admitsFilter: @escaping @MainActor () -> Bool = { true }
+    ) -> EdgeSidebarSelectAllTarget? {
         guard let snapshot, !snapshot.edges.isEmpty else { return nil }
         let eligible = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: .replace) : snapshot.edges
+        let ids = Set(eligible.map(\.id))
         return .init(
-            ids: Set(eligible.map(\.id)), context: CanvasAdjustmentTarget(snapshot: snapshot),
-            rigModeEpoch: rigEdgeSelectionEpoch)
+            ids: displayedIDs.map { ids.intersection($0) } ?? ids, context: CanvasAdjustmentTarget(snapshot: snapshot),
+            rigModeEpoch: rigEdgeSelectionEpoch, admitsFilter: admitsFilter)
     }
 
     func canSelectAllSidebarEdges(_ target: EdgeSidebarSelectAllTarget) -> Bool {
-        guard canSave, let snapshot, !target.ids.isEmpty else { return false }
+        guard canSave, target.admitsFilter(), let snapshot, !target.ids.isEmpty else { return false }
         return rigEdgeSelectionEpoch == target.rigModeEpoch && target.context.isCurrent(in: snapshot)
     }
 
