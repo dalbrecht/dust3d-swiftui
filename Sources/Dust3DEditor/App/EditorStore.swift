@@ -2182,16 +2182,22 @@ final class EditorStore {
         perform(acceptCommittedCancellation: true) { try await $0.setGraphPartRole(role, target: target) }
     }
 
-    func setPartCutFace(_ id: String, selection: CutFaceSelection) {
-        perform { try await $0.apply([.setPartCutFace(id: id, selection: selection)]) }
+    func setPartCutFace(_ id: String, selection: CutFaceSelection, target: CanvasAdjustmentTarget? = nil) {
+        if let target, currentInspectedModelPart(id, target: target)?.target != .model { return }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setPartCutFace(id: id, selection: selection)], selecting: nil, target: target)
+        }
     }
-    func setPartCutRotation(_ id: String, rotation: String) {
+    func setPartCutRotation(_ id: String, rotation: String, target: CanvasAdjustmentTarget? = nil) {
         guard !isWorking, !stopped else { return }
+        if let target, currentInspectedModelPart(id, target: target) == nil { return }
         guard let value = EngineScalar.parse(rotation, in: -1...1) else {
             errorMessage = Self.message(DocumentError.invalidPartCutRotation)
             return
         }
-        perform { try await $0.apply([.setPartCutRotation(id: id, rotation: value)]) }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setPartCutRotation(id: id, rotation: value)], selecting: nil, target: target)
+        }
     }
     func partCutRotationPresetAction(_ preset: PartCutRotationPreset, partID: String) -> @MainActor () -> Void {
         guard let snapshot = acceptedDocumentSource, snapshot.cutRotationPresets(for: partID).contains(preset)
@@ -2307,7 +2313,7 @@ final class EditorStore {
         _ id: String, property: PartDeformationProperty, value: String, target: CanvasAdjustmentTarget? = nil
     ) {
         guard !isWorking, !stopped else { return }
-        if let target, currentInspectedDeformationPart(id, target: target) == nil { return }
+        if let target, currentInspectedModelPart(id, target: target) == nil { return }
         guard let scale = EngineScalar.parse(value, in: 0...2) else {
             errorMessage = Self.message(DocumentError.invalidPartDeformation)
             return
@@ -2335,12 +2341,12 @@ final class EditorStore {
     }
 
     func setPartDeformationUnified(_ id: String, value: Bool, target: CanvasAdjustmentTarget? = nil) {
-        if let target, currentInspectedDeformationPart(id, target: target)?.target != .model { return }
+        if let target, currentInspectedModelPart(id, target: target)?.target != .model { return }
         perform(acceptCommittedCancellation: target != nil) {
             try await $0.apply([.setPartDeformationUnified(id: id, value: value)], selecting: nil, target: target)
         }
     }
-    private func currentInspectedDeformationPart(_ id: String, target: CanvasAdjustmentTarget) -> DocumentPart? {
+    private func currentInspectedModelPart(_ id: String, target: CanvasAdjustmentTarget) -> DocumentPart? {
         guard let source = acceptedDocumentSource, target.isCurrent(in: source),
             let part = source.inspectedPart, part.supportsDeformationScales,
             part.id.utf8.elementsEqual(id.utf8)
