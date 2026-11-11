@@ -39,7 +39,12 @@ struct PartInspector: View {
             .font(.caption).foregroundStyle(.secondary)
             PartModifierControls(store: store, part: part)
             PartMirrorControls(store: store)
-            if part.supportsDeformationScales { PartDeformationControls(store: store, part: part) }
+            if part.supportsDeformationScales, let snapshot = store.snapshot {
+                PartDeformationControls(
+                    store: store, part: part, inspectorTarget: CanvasAdjustmentTarget(snapshot: snapshot)
+                )
+                .id(snapshot.documentIdentity)
+            }
             #if MOTE3D_EXPERIMENTAL_HOLLOW
                 if part.target == .model { PartHollowControls(store: store, partID: part.id).id(part.id) }
             #endif
