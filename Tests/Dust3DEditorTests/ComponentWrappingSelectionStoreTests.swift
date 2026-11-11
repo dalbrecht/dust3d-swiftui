@@ -50,6 +50,61 @@ private struct MultiWrappingNoPreview: EditorPreviewServing {
         XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
         XCTAssertFalse(store.snapshot?.canUndo == true)
     }
+    func testMixedInkDraftCancelRetainedCallbackAndSingleUndo() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes/><edges/><parts/><components>
+                  <component id='a' wrap='Skin' wrapPatternColor='#123456'/>
+                  <component id='b' wrap='Cloth' wrapPatternColor='#654321'/>
+                </components></canvas>
+                """.utf8))
+        let store = EditorStore(preview: MultiWrappingNoPreview())
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        store.selectComponents(["a", "b"])
+        try await settle(store)
+        let selected = try XCTUnwrap(store.snapshot)
+        let ink = ComponentWrappingSelectionPresentation(snapshot: selected).ink
+        XCTAssertEqual(ink, .mixed)
+        let draft = SurfaceInkDraft(selection: ink)
+        XCTAssertFalse(draft.canApply)
+
+        let target = ComponentWrappingSelectionTarget(snapshot: selected)
+        let choose = draft.choosingAction { store.canEditComponentWrappingSelection(target) }
+        let replacement = DocumentColor(red: 10, green: 20, blue: 30)
+        choose(replacement)
+        XCTAssertTrue(draft.canApply)
+        draft.cancel(selection: ink)
+        choose(replacement)
+        XCTAssertFalse(draft.canApply)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+
+        let retained = draft.choosingAction { store.canEditComponentWrappingSelection(target) }
+        let apply = store.componentWrappingSelectionAction(.surfaceInk(replacement), target: target)
+        store.selectComponents(["a"])
+        try await settle(store)
+        store.selectComponents(["a", "b"])
+        try await settle(store)
+        retained(replacement)
+        apply()
+        XCTAssertFalse(draft.canApply)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+
+        let current = try XCTUnwrap(store.snapshot)
+        let currentTarget = ComponentWrappingSelectionTarget(snapshot: current)
+        draft.choosingAction { store.canEditComponentWrappingSelection(currentTarget) }(replacement)
+        let color = try XCTUnwrap(draft.color.parsedColor)
+        store.componentWrappingSelectionAction(.surfaceInk(color), target: currentTarget)()
+        try await settle(store)
+        let changed = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(ComponentWrappingSelectionPresentation(snapshot: changed).ink, .uniform(.value(replacement)))
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.snapshot?.canUndo == true)
+    }
+
     func testStoppedStoreRejectsRetainedValidAndInvalidNumericCallbacksWithoutErrors() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(
