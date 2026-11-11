@@ -20,6 +20,9 @@ struct ReferenceImageControls: View {
                     .disabled(store.referenceCompositionTarget == nil)
                     Button("Import Reference Image…") { isImporting = true }
                         .disabled(store.isWorking || store.snapshot == nil)
+                    Button("Clear Reference Artwork") { store.clearReferenceArtwork() }
+                        .disabled(!store.canClearReferenceArtwork)
+                        .help("Clear the image while keeping its dimensions and canvas alignment. You can undo this.")
                     Button("Remove Reference Image", role: .destructive) { store.removeReferenceImage() }
                         .disabled(store.isWorking || !store.hasReferenceImage)
                 }

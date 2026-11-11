@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ReferenceImageMenuActions {
     let compose: @MainActor () -> Void
+    let clearArtwork: (@MainActor () -> Void)?
     let remove: (@MainActor () -> Void)?
 }
 
@@ -33,6 +34,11 @@ struct EditorReferenceImageCommands: Commands {
                 capturedActions?.compose()
             }
             .disabled(capturedActions == nil || !admitsWindow())
+            Button("Clear Reference Artwork") {
+                guard admitsWindow() else { return }
+                capturedActions?.clearArtwork?()
+            }
+            .disabled(capturedActions?.clearArtwork == nil || !admitsWindow())
             Button("Remove Reference Image", role: .destructive) {
                 guard admitsWindow() else { return }
                 capturedActions?.remove?()

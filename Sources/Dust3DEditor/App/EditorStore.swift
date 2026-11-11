@@ -1138,11 +1138,16 @@ final class EditorStore {
             guard isCurrent() else { return }
             self?.removeReferenceImage()
         }
+        let clearArtwork: @MainActor () -> Void = { [weak self] in
+            guard isCurrent() else { return }
+            self?.clearReferenceArtwork()
+        }
         return ReferenceImageMenuActions(
             compose: {
                 guard isCurrent() else { return }
                 compose(target)
             },
+            clearArtwork: canClearReferenceArtwork ? clearArtwork : nil,
             remove: source.document.hasReferenceImage ? remove : nil)
     }
 
@@ -3354,6 +3359,22 @@ final class EditorStore {
         perform(reloadReferenceImage: true) { session in
             let png = try await service.importImage(url: url)
             return try await session.apply([.setReferenceImagePNG(png)])
+        }
+    }
+
+    var canClearReferenceArtwork: Bool {
+        canSave && hasReferenceImage && referenceImage != nil && !isLoadingReferenceImage
+    }
+
+    func clearReferenceArtwork() {
+        guard canClearReferenceArtwork, let source = acceptedDocumentSource,
+            let png = source.document.referenceImagePNG
+        else { return }
+        let target = ReferenceCompositionTarget(snapshot: source)
+        perform(reloadReferenceImage: true, acceptCommittedCancellation: true) { session in
+            let cleared = try await ReferenceImageService.clearArtwork(png)
+            try Task.checkCancellation()
+            return try await session.applyReferenceComposition(png: cleared, origin: nil, target: target)
         }
     }
 

@@ -23,6 +23,25 @@ final class ReferenceImageCodecTests: XCTestCase {
         XCTAssertTrue(CGImageDestinationFinalize(destination))
         return output as Data
     }
+    func testClearingArtworkProducesTransparentPNGAtTheSameDimensions() throws {
+        let input = try imageData(width: 3, height: 2)
+        let cleared = try ReferenceImageCodec.clearArtwork(input)
+        let image = try ReferenceImageCodec.decodePNG(cleared)
+        XCTAssertEqual(image.width, 3)
+        XCTAssertEqual(image.height, 2)
+        let context = try XCTUnwrap(
+            CGContext(
+                data: nil, width: 3, height: 2, bitsPerComponent: 8, bytesPerRow: 12,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        let bounds = CGRect(x: 0, y: 0, width: 3, height: 2)
+        context.setBlendMode(.copy)
+        context.draw(image, in: bounds)
+        let pixels = try XCTUnwrap(context.data).assumingMemoryBound(to: UInt8.self)
+        XCTAssertTrue(UnsafeBufferPointer(start: pixels, count: 24).allSatisfy { $0 == 0 })
+        XCTAssertEqual(try ReferenceImageCodec.clearArtwork(cleared), cleared)
+        XCTAssertThrowsError(try ReferenceImageCodec.clearArtwork(Data("invalid".utf8)))
+    }
+
     func testSupportedRasterFormatsConvertToBoundedPNG() throws {
         for type in [UTType.png, .jpeg, .bmp, .gif, .tiff] {
             let input = try imageData(type: type)
