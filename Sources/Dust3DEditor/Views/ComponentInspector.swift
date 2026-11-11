@@ -51,7 +51,7 @@ struct ComponentInspector: View {
             }
             if component.isGroup {
                 ComponentWrappingControls(store: store, component: component)
-                if let snapshot {
+                if let snapshot = store.snapshot {
                     let support = ComponentStitchingBatchSupport(
                         groups: [component], components: snapshot.componentTree.rows.map(\.component),
                         parts: snapshot.parts)
