@@ -2027,6 +2027,21 @@ final class EditorStore {
         return placeComponents(at: .into(parentID: parent.componentID), target: target)
     }
 
+    func componentListEndDropAction(
+        snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor @Sendable (UUID) -> Bool {
+        let source = PartGraphSelectionContext(snapshot: snapshot)
+        let scope = componentBrowseEpoch
+        let disclosureEpoch = disclosure.epoch
+        let parentID = componentBrowseGroupID
+        return { [weak self] token in
+            guard let self, disclosure.epoch == disclosureEpoch,
+                self.admitsComponentSidebarInput(context: source, scopeEpoch: scope)
+            else { return false }
+            return self.dropComponents(token: token, at: .end(parentID: parentID))
+        }
+    }
+
     private func consumeComponentDrag(_ token: UUID) -> ComponentPlacementTarget? {
         guard let drag = pendingComponentDrag, drag.token == token else { return nil }
         pendingComponentDrag = nil

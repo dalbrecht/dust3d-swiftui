@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use Drop at End below the last row to move sibling components to the end of the current listing.
+
 - Open a component group directly by double-clicking its row in the full tree.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.

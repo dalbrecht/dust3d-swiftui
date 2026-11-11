@@ -99,6 +99,74 @@ final class ComponentOrderStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
     }
 
+    @MainActor func testListEndReordersOnlySiblingsAndRejectsRetiredScopes() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes/><edges/><parts/><components>
+                <component id='a'/><component id='b'/>
+                <component id='g'><component id='x'/><component id='y'/><component id='z'/></component>
+                </components></canvas>
+                """.utf8))
+        let original = source.encoded()
+        let store = EditorStore()
+        let other = EditorStore()
+        defer {
+            store.stop()
+            other.stop()
+        }
+        await store.load(data: original)
+        await other.load(data: original)
+        try await settle(store)
+        try await settle(other)
+        let disclosure = ComponentSidebarDisclosure()
+        let initial = try XCTUnwrap(store.snapshot)
+        let staleDisclosure = store.componentListEndDropAction(snapshot: initial, disclosure: disclosure)
+        disclosure.collapsedIDs = ["g"]
+        disclosure.collapsedIDs = []
+        let noOp = try XCTUnwrap(store.beginComponentDrag(grabbedID: "g"))
+        XCTAssertFalse(staleDisclosure(noOp))
+        let root = store.componentListEndDropAction(snapshot: initial, disclosure: disclosure)
+        XCTAssertFalse(root(noOp))
+        XCTAssertFalse(store.canUndo)
+        let child = try XCTUnwrap(store.beginComponentDrag(grabbedID: "x"))
+        XCTAssertFalse(root(child))
+        XCTAssertFalse(store.isWorking)
+
+        store.selectComponents(["b", "a"])
+        try await settle(store)
+        let block = try XCTUnwrap(store.beginComponentDrag(grabbedID: "a"))
+        let foreign = other.componentListEndDropAction(
+            snapshot: try XCTUnwrap(other.snapshot), disclosure: ComponentSidebarDisclosure())
+        XCTAssertFalse(foreign(block))
+        XCTAssertTrue(root(block))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), ["g", "x", "y", "z", "a", "b"])
+        XCTAssertEqual(store.snapshot?.selectedComponentIDs, ["a", "b"])
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+
+        store.componentBrowseAction("g", snapshot: try XCTUnwrap(store.snapshot))()
+        try await settle(store)
+        XCTAssertEqual(store.componentGroupBrowse?.path.last?.id, "g")
+        store.selectComponents(["y", "x"])
+        try await settle(store)
+        let scoped = store.componentListEndDropAction(
+            snapshot: try XCTUnwrap(store.snapshot), disclosure: disclosure)
+        let scopedBlock = try XCTUnwrap(store.beginComponentDrag(grabbedID: "x"))
+        XCTAssertFalse(root(scopedBlock))
+        XCTAssertTrue(scoped(scopedBlock))
+        try await settle(store)
+        XCTAssertEqual(store.componentGroupBrowse?.children.map(\.id), ["z", "x", "y"])
+        XCTAssertEqual(store.snapshot?.selectedComponentIDs, ["x", "y"])
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
     @MainActor func testInteriorSiblingChoicesAndPlacementForSingleAndMultipleRows() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(

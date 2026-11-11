@@ -164,6 +164,14 @@ struct ComponentSidebar: View {
                             ForEach(visibleRows) { row in
                                 componentRow(row, scoped: browse != nil, scopeEpoch: scopeEpoch)
                             }
+                            if !visibleRows.isEmpty {
+                                ComponentListEndDropZone(
+                                    receive: store.componentListEndDropAction(
+                                        snapshot: sidebarSnapshot, disclosure: disclosure)
+                                )
+                                .selectionDisabled()
+                                .listRowSeparator(.hidden)
+                            }
                         }
                         .contextMenu(forSelectionType: String.self) { ids in
                             let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
