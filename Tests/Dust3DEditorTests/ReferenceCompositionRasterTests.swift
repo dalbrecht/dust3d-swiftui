@@ -165,6 +165,55 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         XCTAssertEqual(digest, "d3aeb0d3f14253efc53f2591ecb1b0d38f9115e74b160769e77f36a38ad5ad86")
     }
 
+    func testWidePNGImportRetainsOriginalChannelPrecision() async throws {
+        let png = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABEAYAAACksqPJAAAAGUlEQVR4nGNgZGSprmUUZI7KYL5/WvHfbQAdzgV9aeiJnQAAAABJRU5ErkJggg=="
+            ))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "wide-reference-\(UUID().uuidString).png")
+        try png.write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        let source = try await ReferenceCompositionService().importSource(url: url)
+        let wide = try XCTUnwrap(source.wideImage)
+        XCTAssertEqual(wide.bitsPerComponent, 16)
+        XCTAssertEqual(wide.width, 2)
+        XCTAssertEqual(wide.height, 1)
+        XCTAssertNil(source.straightRGBA)
+    }
+
+    func testWidePNGAreaSamplingMatchesQt() throws {
+        let width = 453
+        let height = 1201
+        var pixels = Data(capacity: width * height * 8)
+        for y in 0..<height {
+            for x in 0..<width {
+                for channel in [
+                    x * 18247 + y * 3371, x * 5939 + y * 7453,
+                    x * 24901 + y * 1801, x * 4903 + y * 21373,
+                ] {
+                    pixels.append(UInt8(truncatingIfNeeded: channel >> 8))
+                    pixels.append(UInt8(truncatingIfNeeded: channel))
+                }
+            }
+        }
+        let provider = try XCTUnwrap(CGDataProvider(data: pixels as CFData))
+        let colorSpace = try XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB))
+        let wide = try XCTUnwrap(
+            CGImage(
+                width: width, height: height, bitsPerComponent: 16, bitsPerPixel: 64, bytesPerRow: width * 8,
+                space: colorSpace,
+                bitmapInfo: [.byteOrder16Big, CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue)],
+                provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let source = try ReferenceCompositionSource(
+            image: wide, crop: .init(size: .init(width: width, height: height)), wideImage: wide)
+        let result = try ReferenceCompositionRaster.compose(front: source, side: nil)
+        let output = try XCTUnwrap(result.image.dataProvider?.data) as Data
+        let digest = SHA256.hash(data: output).map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(digest, "5b4c3f964295b3fd1df47077e7f099867c83e2b7ac87c7d59d049fc2ba1f6605")
+    }
+
     func testTaggedWideGamutImportKeepsColorManagedRendering() async throws {
         let source = try await importTaggedPNG(colorSpace: CGColorSpace.displayP3, orientation: 1)
         XCTAssertEqual(source.image.width, 2)

@@ -9,14 +9,16 @@ struct ReferenceCompositionSource: Sendable {
     let isMirrored: Bool
     let straightRGBA: Data?
     let isIndexed: Bool
+    let wideImage: CGImage?
     var displayedCrop: ReferenceImageCrop { isMirrored ? crop.mirroredHorizontally : crop }
 
     init(
         image: CGImage, crop: ReferenceImageCrop, isMirrored: Bool = false,
-        straightRGBA: Data? = nil, isIndexed: Bool = false
+        straightRGBA: Data? = nil, isIndexed: Bool = false, wideImage: CGImage? = nil
     ) throws {
         guard image.width == crop.size.width, image.height == crop.size.height,
-            straightRGBA.map({ $0.count == image.width * image.height * 4 }) ?? true
+            straightRGBA.map({ $0.count == image.width * image.height * 4 }) ?? true,
+            wideImage.map({ $0.width == image.width && $0.height == image.height }) ?? true
         else {
             throw ReferenceCompositionError.invalidDimensions
         }
@@ -25,6 +27,7 @@ struct ReferenceCompositionSource: Sendable {
         self.isMirrored = isMirrored
         self.straightRGBA = straightRGBA
         self.isIndexed = isIndexed && straightRGBA != nil
+        self.wideImage = wideImage
     }
 }
 
@@ -68,6 +71,14 @@ enum ReferenceCompositionRaster {
                 scales
                 && (placement.width * 2 < crop.width || layout.height * 2 < crop.height
                     || crop.width * crop.height >= 1 << 20)
+            if let wide = source.wideImage {
+                let scaled = try ReferenceWideAlphaRaster.scale(
+                    source, image: wide, width: placement.width, height: layout.height,
+                    usesAreaSampling: usesAreaSampling)
+                context.draw(
+                    scaled, in: CGRect(x: placement.x, y: 0, width: placement.width, height: layout.height))
+                continue
+            }
             let premultiplied = usesAreaSampling ? try premultipliedCrop(source) : nil
             if opaque || premultiplied != nil {
                 let scaled = try FixedPointReferenceScaler.scale(

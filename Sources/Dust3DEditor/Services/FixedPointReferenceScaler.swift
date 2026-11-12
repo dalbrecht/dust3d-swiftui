@@ -9,7 +9,7 @@ enum FixedPointReferenceScaler {
 
     private typealias Pixel = SIMD4<Int>
 
-    private struct Sample {
+    struct Sample {
         let index: Int
         let weight: Int
     }
@@ -126,7 +126,7 @@ enum FixedPointReferenceScaler {
         }
     }
 
-    private static func samples(source: Int, destination: Int) -> [[Sample]] {
+    static func samples(source: Int, destination: Int) -> [[Sample]] {
         let step = source * positionUnit / destination
         if destination >= source {
             let start = source * (positionUnit / 2) / destination - positionUnit / 2

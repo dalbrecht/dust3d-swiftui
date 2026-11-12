@@ -132,7 +132,7 @@ struct ReferenceCompositionDrop {
             assign(
                 try .init(
                     image: source.image, crop: crop, isMirrored: source.isMirrored, straightRGBA: source.straightRGBA,
-                    isIndexed: source.isIndexed),
+                    isIndexed: source.isIndexed, wideImage: source.wideImage),
                 to: profile)
             render()
         } catch { fail(error) }
@@ -172,7 +172,7 @@ struct ReferenceCompositionDrop {
         do {
             self.side = try .init(
                 image: side.image, crop: side.crop, isMirrored: !side.isMirrored, straightRGBA: side.straightRGBA,
-                isIndexed: side.isIndexed)
+                isIndexed: side.isIndexed, wideImage: side.wideImage)
             sourceEpoch += 1
             render()
         } catch { fail(error) }
