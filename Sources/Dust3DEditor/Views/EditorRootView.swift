@@ -27,6 +27,8 @@ struct EditorRootView: View {
     @State private var isInspectorPresented = true
     @State private var inspectorSection = EditorInspectorSection.selection
     @State private var recoveryRegistrationID: UUID?
+    @State private var isImportingReferenceImage = false
+    @State private var admitReferenceImageImport: (@MainActor () -> Bool)?
     @State private var referenceComposition: ReferenceCompositionPresentation?
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
         @State private var restPreview: GeneratedRigPreviewSession
@@ -126,6 +128,7 @@ struct EditorRootView: View {
                 }
             }
             .focusedSceneValue(\.editorStore, store)
+            .focusedSceneValue(\.editorReferenceImageActions, referenceImageActions)
             .focusedSceneValue(\.editorInspectorNavigation, inspectorNavigation)
             .focusedSceneValue(\.editorSidebarVisibility, isSidebarPresented)
             .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
@@ -298,8 +301,11 @@ struct EditorRootView: View {
                         .disabled(store.isWorking || store.snapshot?.origin == nil || store.isSelectingRigEdges)
                         .help("Drag the origin marker; Escape cancels. Node picking resumes when this mode is off.")
                         .padding(.horizontal, 12).padding(.bottom, 8)
-                        ReferenceImageControls(store: store, composition: $referenceComposition)
-                            .padding(.horizontal, 12).padding(.bottom, 8)
+                        ReferenceImageControls(
+                            store: store, actions: referenceImageActions, composition: $referenceComposition,
+                            isImporting: $isImportingReferenceImage, completeImport: finishReferenceImageImport
+                        )
+                        .padding(.horizontal, 12).padding(.bottom, 8)
                         EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
@@ -325,6 +331,40 @@ struct EditorRootView: View {
                 }
                 .font(.caption).foregroundStyle(.secondary).padding(10)
             }
+        }
+    }
+
+    private var referenceImageActions: EditorReferenceImageActions? {
+        let fileIdentity = file.identity
+        let source = $file
+        let ownsWindow: @MainActor () -> Bool = { source.wrappedValue.identity == fileIdentity }
+        guard !isImportingReferenceImage, referenceComposition == nil,
+            let admit = store.referenceImageActionAdmission(fileIdentity: fileIdentity, ownsWindow: ownsWindow)
+        else { return nil }
+        return EditorReferenceImageActions(canRemove: store.hasReferenceImage) { action in
+            guard admit(), !isImportingReferenceImage, referenceComposition == nil else { return }
+            switch action {
+            case .compose:
+                guard let target = store.referenceCompositionTarget else { return }
+                referenceComposition = ReferenceCompositionPresentation(target: target)
+            case .importImage:
+                admitReferenceImageImport = admit
+                isImportingReferenceImage = true
+            case .remove:
+                guard store.hasReferenceImage else { return }
+                store.removeReferenceImage()
+            }
+        }
+    }
+
+    private func finishReferenceImageImport(_ result: Result<URL, Error>) {
+        defer { admitReferenceImageImport = nil }
+        guard admitReferenceImageImport?() == true else { return }
+        switch result {
+        case .success(let url):
+            store.importReferenceImage(from: url)
+        case .failure(let error):
+            if (error as? CocoaError)?.code != .userCancelled { store.errorMessage = EditorStore.message(error) }
         }
     }
 

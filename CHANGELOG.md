@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
+- Compose, import, or remove the active document’s reference image from the File menu.
 
 - Select the owning component of the canvas picks from the Canvas menu.
 - Use A to toggle Add and S to return to selection while the canvas has keyboard focus.

@@ -125,6 +125,7 @@ struct Dust3DEditorApp: App {
                 }
             }
             EditorGeometryExportCommands()
+            EditorReferenceImageCommands()
             InspectorCommands()
             CommandGroup(after: .windowArrangement) {
                 let window = NSApp.keyWindow
