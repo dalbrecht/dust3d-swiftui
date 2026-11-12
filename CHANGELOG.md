@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open requested documents and report the error when a startup Qt XML fragment cannot be pasted.
+
 - Clear missing cut-face links from Qt XML pasted in headless exports.
 
 - Move selected sibling components from the sidebar reorder menu in one undo step.
