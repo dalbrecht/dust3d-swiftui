@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 - Use the last Qt paste fragment when an earlier headless paste operand is a directory.
 - Keep modified keyboard shortcuts available when the model preview has focus.
 

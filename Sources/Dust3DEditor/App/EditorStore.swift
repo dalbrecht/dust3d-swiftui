@@ -179,18 +179,21 @@ final class EditorStore {
         return nil
     }
     /// Build a targeted view action from the rendered document, never from a later replacement.
-    func wholePartSelectionAction(_ target: PartGraphTarget) -> @MainActor () -> Void {
+    func wholePartSelectionAction(
+        _ target: PartGraphTarget, admitsInput: @escaping @MainActor () -> Bool = { true }
+    ) -> @MainActor () -> Void {
         let context = snapshot.map { PartGraphSelectionContext(snapshot: $0) }
         let epoch = rigEdgeSelectionEpoch
         return { [weak self] in
-            guard let self, let context, self.rigEdgeSelectionEpoch == epoch else { return }
+            guard admitsInput(), let self, let context, self.rigEdgeSelectionEpoch == epoch else { return }
             self.selectWholePart(target, context: context)
         }
     }
     @ObservationIgnored private var graphComponentRevealLookup: GraphComponentRevealLookup?
 
     func revealOwningComponentAction(
-        _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil
+        _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil,
+        admitsInput: @escaping @MainActor () -> Bool = { true }
     ) -> (@MainActor () -> Void)? {
         guard let context, let source = revealSource(context: context, profileLease: profileLease) else { return nil }
         if graphComponentRevealLookup?.isCurrent(in: source) != true {
@@ -199,7 +202,7 @@ final class EditorStore {
         guard graphComponentRevealLookup?.contains(target, in: source) == true else { return nil }
         let modeID = addModeID
         return { [weak self] in
-            guard let self, self.addModeID == modeID,
+            guard admitsInput(), let self, self.addModeID == modeID,
                 let current = self.revealSource(context: context, profileLease: profileLease),
                 current.canRevealOwningComponent(target)
             else { return }

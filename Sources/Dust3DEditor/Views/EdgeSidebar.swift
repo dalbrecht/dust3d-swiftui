@@ -69,9 +69,10 @@ struct EdgeSidebar: View {
                             guard admitsFilter() else { return }
                             action(mode)
                         }
-                        let selectWholePart = store.wholePartSelectionAction(.edge(edge.id))
+                        let selectWholePart = store.wholePartSelectionAction(
+                            .edge(edge.id), admitsInput: admitsFilter)
                         let revealOwningComponent = store.revealOwningComponentAction(
-                            .edge(edge.id), context: partContext)
+                            .edge(edge.id), context: partContext, admitsInput: admitsFilter)
                         let title = "\(edge.from) → \(edge.to)"
                         let isSelected = store.snapshot?.selectedEdgeIDs.contains(edge.id) == true
                         Button {
