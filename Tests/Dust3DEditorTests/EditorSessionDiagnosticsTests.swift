@@ -30,6 +30,29 @@ import XCTest
         XCTAssertEqual(snapshot.split(separator: "\n").count, 256)
     }
 
+    func testDocumentReadingRecordsRejectedFilesWithoutChangingTheError() throws {
+        let log = EditorSessionDiagnostics()
+        let recordFailure = { log.record(.documentOpenFailed) }
+        let invalidData = Data("private input must stay out of diagnostics".utf8)
+        let invalidFile = FileWrapper(regularFileWithContents: invalidData)
+
+        var expected: (any Error)?
+        XCTAssertThrowsError(try EditorFileDocument(data: invalidData)) { expected = $0 }
+        XCTAssertThrowsError(try EditorFileDocument(reading: invalidFile, onFailure: recordFailure)) { actual in
+            XCTAssertEqual(actual as NSError, expected.map { $0 as NSError })
+        }
+        XCTAssertThrowsError(
+            try EditorFileDocument(reading: FileWrapper(directoryWithFileWrappers: [:]), onFailure: recordFailure)
+        ) { error in
+            XCTAssertEqual((error as? CocoaError)?.code, .fileReadCorruptFile)
+        }
+        let validFile = FileWrapper(regularFileWithContents: Dust3DDocument.emptyArchive())
+        _ = try EditorFileDocument(reading: validFile, onFailure: recordFailure)
+
+        XCTAssertEqual(log.entries.map(\.event), [.documentOpenFailed, .documentOpenFailed])
+        XCTAssertFalse(log.exportText.contains("private input"))
+    }
+
     func testEditorLoadsRecordOutcomesWithoutCopyingInvalidInputIntoTheLog() async {
         let log = EditorSessionDiagnostics()
         let store = EditorStore(diagnostics: log)

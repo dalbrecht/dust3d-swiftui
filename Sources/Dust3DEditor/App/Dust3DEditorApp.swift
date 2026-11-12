@@ -23,7 +23,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorComponentSidebarBrowseSelection) private var browseSidebarSelection
     @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
     @State private var pasteboard = EditorPasteboard()
-    @State private var sessionDiagnostics = EditorSessionDiagnostics()
+    private let sessionDiagnostics = EditorSessionDiagnostics.shared
     @State private var replayRequest: WorkflowReplayRequest?
     @State private var nativeUndoCommands = NativeUndoCommandState()
 

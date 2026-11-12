@@ -27,6 +27,15 @@ final class EditorSessionDiagnostics {
         let event: Event
     }
 
+    static let shared = EditorSessionDiagnostics()
+
+    nonisolated static func recordDocumentReadFailure() {
+        let occurredAt = Date.now
+        Task { @MainActor in
+            shared.record(.documentOpenFailed, at: occurredAt)
+        }
+    }
+
     private static let capacity = 256
     private static let logger = Logger(
         subsystem: RuntimeBuildIdentity.current.loggingSubsystem(fallback: "org.dust3d.editor"),
