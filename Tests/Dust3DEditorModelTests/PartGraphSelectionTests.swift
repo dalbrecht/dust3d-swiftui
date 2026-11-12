@@ -91,6 +91,34 @@ final class PartGraphSelectionTests: XCTestCase {
         XCTAssertEqual(state.snapshot.componentRevealHint, edge.componentRevealHint)
     }
 
+    func testHoveredOwnerSelectionKeepsComponentAndCanvasEditsScoped() async throws {
+        let source = try document(malformed: true)
+        let session = EditorSession()
+        _ = try await session.open(data: source.encoded())
+        let before = try await session.selectGraph(nodes: ["a"], edges: ["ab"])
+        let selected = try await session.revealOwningComponent(
+            .edge("foreign"), context: PartGraphSelectionContext(snapshot: before), selecting: true)
+        let componentID = try XCTUnwrap(selected.selectedComponentID)
+        let color = DocumentColor(red: 10, green: 20, blue: 30, alpha: 255)
+        let colored = try await session.apply([.setComponentColor(id: componentID, color: color)])
+        XCTAssertEqual(colored.selectedComponentIDs, ["leafq"])
+        XCTAssertEqual(colored.selectedIDs, ["a"])
+        XCTAssertEqual(colored.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(colored.componentTree.rows.first { $0.id == "leafq" }?.component.color, .value(color))
+        XCTAssertEqual(colored.componentTree.rows.first { $0.id == "leafp" }?.component.color, .unset)
+
+        let transformed = try await session.transformSelection(.flipX)
+        XCTAssertEqual(try transformed.document.node(id: "a").position.x, 1)
+        XCTAssertEqual(try transformed.document.node(id: "b").position.x, 0)
+        XCTAssertEqual(try transformed.document.node(id: "u").position.x, 6)
+        XCTAssertEqual(transformed.selectedComponentIDs, ["leafq"])
+        let undoTransform = try await session.undo()
+        XCTAssertEqual(undoTransform.document.encoded(), colored.document.encoded())
+        let undoColor = try await session.undo()
+        XCTAssertEqual(undoColor.document.encoded(), source.encoded())
+        XCTAssertFalse(undoColor.canUndo)
+    }
+
     func testRevealOwningComponentRejectsStaleOrUnresolvedTargets() throws {
         let source = try document(malformed: true)
         var state = try EditorState(document: source)
