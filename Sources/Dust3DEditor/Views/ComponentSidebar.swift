@@ -241,7 +241,7 @@ struct ComponentSidebar: View {
                         .disabled(store.isWorking)
                         .onChange(of: store.snapshot?.componentRevealHint?.revision, initial: true) { _, _ in
                             guard let snapshot = store.snapshot, let hint = snapshot.componentRevealHint else { return }
-                            disclosure.reveal(hint)
+                            disclosure.reveal(hint, documentIdentity: snapshot.documentIdentity)
                         }
                         .task(id: revealKey) { @MainActor in
                             guard revealKey != nil, let hint = store.snapshot?.componentRevealHint else { return }

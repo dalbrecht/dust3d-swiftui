@@ -140,7 +140,10 @@ struct EditorRootView: View {
                     cancel: exportWorkflow.cancellationAction())
             )
             .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
-            .onChange(of: store.snapshot?.documentIdentity) { exportWorkflow.sourceDidChange() }
+            .onChange(of: store.snapshot?.documentIdentity) {
+                exportWorkflow.sourceDidChange()
+                sidebarDisclosure.collapsedIDs = []
+            }
             .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
             .task(id: file.identity) {
                 let identifier = file.identity

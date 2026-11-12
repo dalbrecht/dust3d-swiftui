@@ -109,6 +109,32 @@ import XCTest
             projection: .init(bounds: store.bounds, plane: .front, width: 500, height: 300))
         XCTAssertEqual(store.snapshot?.selectionRevision, beforeBlank)
     }
+    func testSidebarRemountDoesNotReplayAnAlreadyHandledReveal() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: try document().encoded())
+        try await settle(store)
+        let disclosure = ComponentSidebarDisclosure(collapsedIDs: [group, "unrelated"])
+        store.selectWholePart(.edge(edge))
+        try await settle(store)
+        let snapshot = try XCTUnwrap(store.snapshot)
+        let hint = try XCTUnwrap(snapshot.componentRevealHint)
+
+        disclosure.reveal(hint, documentIdentity: snapshot.documentIdentity)
+        XCTAssertEqual(disclosure.collapsedIDs, ["unrelated"])
+        disclosure.collapsedIDs.insert(group)
+        let manualEpoch = disclosure.epoch
+        disclosure.reveal(hint, documentIdentity: snapshot.documentIdentity)
+        XCTAssertEqual(disclosure.collapsedIDs, [group, "unrelated"])
+        XCTAssertEqual(disclosure.epoch, manualEpoch)
+
+        store.selectWholePart(.edge(edge))
+        try await settle(store)
+        let newHint = try XCTUnwrap(store.snapshot?.componentRevealHint)
+        disclosure.reveal(newHint, documentIdentity: snapshot.documentIdentity)
+        XCTAssertEqual(disclosure.collapsedIDs, ["unrelated"])
+    }
+
     func testRevealExpandsAncestorsWithoutComponentSelectionOrGraphReplacement() async throws {
         let store = EditorStore()
         defer { store.stop() }
