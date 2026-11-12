@@ -3,6 +3,13 @@ import XCTest
 @testable import Dust3DEditor
 
 final class KeyboardShortcutHelpTests: XCTestCase {
+    func testProfileSwitchShortcutDescribesItsFocusedSideBySideScope() throws {
+        let entry = try XCTUnwrap(KeyboardShortcutHelp.matching("E").first)
+        XCTAssertEqual(entry.action, "Switch Editing Profile")
+        XCTAssertEqual(entry.spokenKeys, "E")
+        XCTAssertEqual(entry.scope, "Focused Side by Side canvas or node with a graph selection and no active drag")
+    }
+
     func testGroupNavigationShortcutsDescribeSidebarFocus() throws {
         let browse = try XCTUnwrap(KeyboardShortcutHelp.matching("⌘↓").first)
         XCTAssertEqual(browse.action, "Browse Selected Component Group")
