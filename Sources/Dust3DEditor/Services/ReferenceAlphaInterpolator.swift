@@ -36,7 +36,11 @@ enum ReferenceAlphaInterpolator {
                     let offset = ((crop.y + row) * crop.size.width + x) * 4
                     let alpha = Int(bytes[offset + 3])
                     let channels = Pixel(Int(bytes[offset]), Int(bytes[offset + 1]), Int(bytes[offset + 2]), 255)
-                    pixels.append((channels &* Pixel(repeating: alpha * 257) &+ Pixel(repeating: 127)) / 255)
+                    let premultiplied =
+                        source.isIndexed
+                        ? divideBy255(channels &* Pixel(repeating: alpha))
+                        : (channels &* Pixel(repeating: alpha * 257) &+ Pixel(repeating: 127)) / 255
+                    pixels.append(premultiplied)
                 }
             }
             return pixels
@@ -48,7 +52,11 @@ enum ReferenceAlphaInterpolator {
             Coordinate(position: step / 2 - unit / 2 + column * step, limit: crop.width)
         }
         let boundary = Double(crop.width) / inverseScale - Double(width - 1)
-        let edgeCoverage = min(255, max(0, Int(boundary * 255)))
+        let geometricCoverage = min(255, max(0, Int(boundary * 255)))
+        let edgeCoverage =
+            source.isIndexed && geometricCoverage < 255
+            ? max(0, geometricCoverage - 1) : geometricCoverage
+        let fractionMask = source.isIndexed ? 0xFF00 : 0xFFFF
         let vectorWidth = width - width % 4
         var output = Data(count: width * height * 4)
         try output.withUnsafeMutableBytes { (bytes: UnsafeMutableRawBufferPointer) in
@@ -60,13 +68,25 @@ enum ReferenceAlphaInterpolator {
                 for (column, x) in horizontal.enumerated() {
                     let top = y.first * crop.width
                     let bottom = y.second * crop.width
-                    let left = interpolate(pixels[top + x.first], pixels[bottom + x.first], fraction: y.fraction)
-                    let right = interpolate(pixels[top + x.second], pixels[bottom + x.second], fraction: y.fraction)
-                    var pixel = interpolate(left, right, fraction: x.fraction)
+                    let left = interpolate(
+                        pixels[top + x.first], pixels[bottom + x.first], fraction: y.fraction & fractionMask)
+                    let right = interpolate(
+                        pixels[top + x.second], pixels[bottom + x.second], fraction: y.fraction & fractionMask)
+                    var pixel = interpolate(left, right, fraction: x.fraction & fractionMask)
                     if column == width - 1 && edgeCoverage < 255 {
-                        pixel = (pixel &* Pixel(repeating: edgeCoverage) &+ Pixel(repeating: 127)) / 255
+                        let covered = pixel &* Pixel(repeating: edgeCoverage)
+                        pixel =
+                            source.isIndexed
+                            ? divideBy255(covered) : (covered &+ Pixel(repeating: 127)) / 255
                     }
                     let offset = (row * width + column) * 4
+                    if source.isIndexed {
+                        for channel in 0..<3 {
+                            bytes[offset + channel] = UInt8(pixel[channel] + 255 - pixel.w)
+                        }
+                        bytes[offset + 3] = 255
+                        continue
+                    }
                     let alpha = (pixel.w + 128) / 257
                     for channel in 0..<3 {
                         let straight = pixel.w == 0 ? 0 : min(65535, (pixel[channel] * 65535 + pixel.w / 2) / pixel.w)
@@ -110,6 +130,10 @@ enum ReferenceAlphaInterpolator {
         if scalarTail { return UInt8((product + 127) / 255 + 255 - alpha) }
         let rounding = product == 128 ? 128 : 127
         return UInt8(((product + (product >> 8) + rounding) >> 8) + 255 - alpha)
+    }
+
+    private static func divideBy255(_ value: Pixel) -> Pixel {
+        (value &+ (value &>> 8) &+ Pixel(repeating: 128)) &>> 8
     }
 
     private static func interpolate(_ first: Pixel, _ second: Pixel, fraction: Int) -> Pixel {

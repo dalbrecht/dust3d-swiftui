@@ -141,6 +141,30 @@ final class ReferenceCompositionRasterTests: XCTestCase {
             ]))
     }
 
+    func testIndexedPNGImportRetainsPaletteAlphaAndMatchesQt() async throws {
+        let png = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAcAAAAJCAMAAADJhsaRAAAADFBMVEUeUKrICWRheA0VyZvqxXS5AAAABHRSTlMAQJ//GNKSAgAAABtJREFUeJxjYGBkYgZiBmYIg4EJwoAKwxmE5AENOABevHNQlAAAAABJRU5ErkJggg=="
+            ))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "indexed-reference-\(UUID().uuidString).png")
+        try png.write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        let service = ReferenceCompositionService()
+        let source = try await service.importSource(url: url)
+        XCTAssertTrue(source.isIndexed)
+        XCTAssertEqual(
+            try XCTUnwrap(source.straightRGBA).prefix(16),
+            Data([
+                30, 80, 170, 0, 200, 9, 100, 64, 97, 120, 13, 159, 21, 201, 155, 255,
+            ]))
+        let result = try await service.compose(front: source, side: nil)
+        let pixels = try XCTUnwrap(result.image.dataProvider?.data) as Data
+        let digest = SHA256.hash(data: pixels).map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(digest, "d3aeb0d3f14253efc53f2591ecb1b0d38f9115e74b160769e77f36a38ad5ad86")
+    }
+
     func testTaggedWideGamutImportKeepsColorManagedRendering() async throws {
         let source = try await importTaggedPNG(colorSpace: CGColorSpace.displayP3, orientation: 1)
         XCTAssertEqual(source.image.width, 2)

@@ -18,26 +18,31 @@ actor ReferenceCompositionService: ReferenceCompositionServing {
         let png = try ReferenceImageCodec.importPNG(original)
         try Task.checkCancellation()
         let image = try ReferenceImageCodec.decodePNG(png)
+        let channels = try straightPNGChannels(original, width: image.width, height: image.height)
         return try ReferenceCompositionSource(
             image: image, crop: .init(size: .init(width: image.width, height: image.height)),
-            straightRGBA: straightPNGChannels(original, width: image.width, height: image.height))
+            straightRGBA: channels?.pixels, isIndexed: channels?.isIndexed ?? false)
     }
 
-    private func straightPNGChannels(_ original: Data, width: Int, height: Int) throws -> Data? {
+    private func straightPNGChannels(_ original: Data, width: Int, height: Int) throws -> (
+        pixels: Data, isIndexed: Bool
+    )? {
         let decodedLimit = 64 * 1024 * 1024
         guard
             let metadata = try? PNGContainerMetadata(
                 data: original, maximumEncodedBytes: ReferenceImageCodec.maximumEncodedBytes,
                 maximumDecodedBytes: decodedLimit),
-            metadata.bitDepth == 8,
-            metadata.colorType == 6 || (metadata.colorType == 2 && metadata.hasTransparencyKey),
+            metadata.colorType == 3 && metadata.hasTransparencyKey
+                || (metadata.bitDepth == 8
+                    && (metadata.colorType == 6 || (metadata.colorType == 2 && metadata.hasTransparencyKey))),
             metadata.width == width, metadata.height == height,
             ReferenceImageCodec.canReuseStraightSRGBSamples(original)
         else { return nil }
         do {
-            return try MeshPNGDecoder.decode(
+            let decoded = try MeshPNGDecoder.decode(
                 original, imageID: "reference-image", maximumDecodedBytes: decodedLimit
-            ).pixels
+            )
+            return (decoded.pixels, metadata.colorType == 3)
         } catch is MeshPNGDecodingError {
             // The preview decoder can still display PNG layouts unsupported by the sample decoder.
             return nil
