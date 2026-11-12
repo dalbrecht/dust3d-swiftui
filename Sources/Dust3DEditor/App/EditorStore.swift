@@ -1170,12 +1170,16 @@ final class EditorStore {
     func referenceImageActionAdmission(
         fileIdentity: UUID, ownsWindow: @escaping @MainActor () -> Bool
     ) -> (@MainActor () -> Bool)? {
-        guard !isWorking, ownsWindow(), let documentIdentity = acceptedDocumentSource?.documentIdentity,
+        guard !isWorking, ownsWindow(), let source = acceptedDocumentSource,
             case .success(let accepted) = recoveryLoadResult, accepted.fileIdentity == fileIdentity
         else { return nil }
+        let documentIdentity = source.documentIdentity
+        let documentRevision = source.documentRevision
+        let constraintRevision = source.constraintRevision
         return { [weak self] in
             guard let self, !self.isWorking, ownsWindow(),
-                self.acceptedDocumentSource?.documentIdentity == documentIdentity,
+                let current = self.acceptedDocumentSource, current.documentIdentity == documentIdentity,
+                current.documentRevision == documentRevision, current.constraintRevision == constraintRevision,
                 case .success(let accepted) = self.recoveryLoadResult, accepted.fileIdentity == fileIdentity
             else { return false }
             return true

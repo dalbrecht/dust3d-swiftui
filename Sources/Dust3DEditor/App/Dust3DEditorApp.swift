@@ -125,7 +125,6 @@ struct Dust3DEditorApp: App {
                 }
             }
             EditorGeometryExportCommands()
-            EditorReferenceImageCommands()
             InspectorCommands()
             CommandGroup(after: .windowArrangement) {
                 let window = NSApp.keyWindow
@@ -371,6 +370,7 @@ struct Dust3DEditorApp: App {
             }
         }
         .commands {
+            EditorReferenceImageCommands()
             CommandMenu("Rig") {
                 if let rigAssignmentCommand, rigAssignmentCommand.canInvoke(in: store, focus: rigAssignmentFocus) {
                     Button("Assign Selected Edges to Bone") {

@@ -24,7 +24,8 @@ final class ReferenceImageStoreTests: XCTestCase {
         let store = EditorStore()
         defer { store.stop() }
         let file = UUID()
-        let data = Dust3DDocument.emptyArchive()
+        let document = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(.setReferenceImagePNG(png()))
+        let data = document.encoded()
         await store.load(data: data, fileIdentity: file)
         try await waitForImage(store)
 
@@ -36,6 +37,9 @@ final class ReferenceImageStoreTests: XCTestCase {
         ownsWindow = false
         XCTAssertFalse(admit())
         ownsWindow = true
+        store.removeReferenceImage()
+        try await waitForImage(store)
+        XCTAssertFalse(admit())
 
         await store.load(data: data, fileIdentity: file)
         try await waitForImage(store)
