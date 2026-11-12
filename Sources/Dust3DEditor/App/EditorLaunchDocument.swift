@@ -49,7 +49,7 @@ enum EditorLaunchRequest: Sendable, Equatable {
                 case "-o", "-output", "--geometry-fbx", "--textured-fbx":
                     throw .unsupportedExportArgument
                 case "-paste-xml":
-                    guard pasteXML == nil, let operand = arguments.popFirst(), !operand.isEmpty,
+                    guard let operand = arguments.popFirst(), !operand.isEmpty,
                         !operand.hasPrefix("-"),
                         operand.hasPrefix("/") || URLComponents(string: operand)?.scheme == nil,
                         operand.utf8.count <= 4096, !operand.utf8.contains(0)
