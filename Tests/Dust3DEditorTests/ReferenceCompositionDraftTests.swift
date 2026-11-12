@@ -175,6 +175,13 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         draft.setCrop(profile: .side, values: ["bad", "0", "1", "2"])
         XCTAssertNil(draft.result)
         XCTAssertNotNil(draft.errorMessage)
+        XCTAssertNil(draft.announcementMessage(editingCrop: .side))
+        XCTAssertEqual(draft.announcementMessage(editingCrop: .front), draft.errorMessage)
+        XCTAssertEqual(draft.announcementMessage(editingCrop: nil), draft.errorMessage)
+
+        draft.reportRejectedInput(ReferenceImageError.invalidImage)
+        XCTAssertNotNil(draft.errorMessage)
+        XCTAssertEqual(draft.announcementMessage(editingCrop: .side), draft.errorMessage)
         draft.setCrop(profile: .side, values: ["0", "0", "1", "2"])
         try await settle(draft)
         XCTAssertNotNil(draft.result)

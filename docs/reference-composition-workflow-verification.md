@@ -51,3 +51,10 @@ the two Remove actions identify Front and Side independently, and that each
 Use Full Image action identifies the profile it resets. Confirm that resetting
 Side leaves Front's crop intact and that keyboard focus can still reach the
 numeric crop fields and Apply.
+
+While editing a crop number, clear the field and enter a valid value.
+Verify that the temporary empty value stays quiet. Then leave an invalid
+value and move focus out of that profile’s numeric fields. Verify that the
+error is announced once and Apply stays disabled until the crop is valid.
+An import or preview error should still announce while a numeric field has
+focus. This VoiceOver interaction remains pending on hardware.

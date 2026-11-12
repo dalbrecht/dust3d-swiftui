@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
     @Environment(\.dismiss) private var dismiss
     @State private var recoveryIdentity = UUID()
     @State private var draft = ReferenceCompositionDraft()
+    @FocusState private var focusedCropField: ReferenceCropField?
     @State private var importingProfile = ReferenceProfile.front
     @State private var isImporting = false
     @State private var didSeedDrop = false
@@ -29,7 +30,9 @@ import UniformTypeIdentifiers
                     .foregroundStyle(.secondary)
                     HStack(alignment: .top, spacing: 16) {
                         ForEach(ReferenceProfile.allCases, id: \.self) { profile in
-                            ReferenceCompositionPanel(profile: profile, draft: draft) {
+                            ReferenceCompositionPanel(
+                                profile: profile, draft: draft, focusedCropField: $focusedCropField
+                            ) {
                                 importingProfile = profile
                                 isImporting = true
                             }
@@ -80,7 +83,10 @@ import UniformTypeIdentifiers
         }
         .padding(20)
         .frame(width: 920, height: 760)
-        .background(ReferenceCompositionErrorAnnouncement(message: draft.errorMessage))
+        .background(
+            ReferenceCompositionErrorAnnouncement(
+                message: draft.announcementMessage(editingCrop: focusedCropField?.profile))
+        )
         .background(ReferenceCompositionErrorAnnouncement(message: applyError))
         .disabled(isApplying)
         .interactiveDismissDisabled(isApplying)
@@ -127,9 +133,15 @@ import UniformTypeIdentifiers
     }
 }
 
+private struct ReferenceCropField: Hashable {
+    let profile: ReferenceProfile
+    let index: Int
+}
+
 @MainActor private struct ReferenceCompositionPanel: View {
     let profile: ReferenceProfile
     let draft: ReferenceCompositionDraft
+    @FocusState.Binding var focusedCropField: ReferenceCropField?
     let importImage: () -> Void
     @State private var values = ["", "", "", ""]
     @State private var isAdjustingCrop = false
@@ -186,6 +198,9 @@ import UniformTypeIdentifiers
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(["X", "Y", "Width", "Height"][index]).font(.caption)
                                 TextField("", text: $values[index])
+                                    .focused(
+                                        $focusedCropField, equals: ReferenceCropField(profile: profile, index: index)
+                                    )
                                     .accessibilityLabel(
                                         "\(profile.rawValue) crop \(["X", "Y", "Width", "Height"][index])")
                             }
