@@ -6,17 +6,31 @@ import Foundation
 
 /// Processes ordered outputs from one owned source archive before the editor creates any windows.
 enum EditorHeadlessDS3SaveCommand {
-    private static let outputOptions = ["-o", "-output"]
+    private static let geometryFBXOption = "--geometry-fbx"
+    private static let texturedFBXOption = "--textured-fbx"
+    private static let outputOptions = ["-o", "-output", geometryFBXOption, texturedFBXOption]
 
-    private enum OutputKind: String {
-        case ds3, obj, fbx, glb
+    private enum OutputKind: Equatable {
+        case ds3
+        case geometry(DocumentExportFormat)
+        case glb
+
+        init?(suffix: String) {
+            switch suffix {
+            case "ds3": self = .ds3
+            case "obj": self = .geometry(.obj)
+            case "fbx": self = .geometry(.fbxTextured)
+            case "glb": self = .glb
+            default: return nil
+            }
+        }
     }
 
     private enum Failure: LocalizedError {
         case usage
         case unsafeOutput(URL)
         case directoryOutput
-        case geometryUnavailable(OutputKind)
+        case geometryUnavailable(String)
         case unsupportedOutputFormat
         case input(URL, cause: String)
         case fileInspection(URL, code: Int)
@@ -26,12 +40,13 @@ enum EditorHeadlessDS3SaveCommand {
             case .usage:
                 "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment.xml] -o output.ds3 [-output another ...]. "
                     + "Supply one input archive or XML fragment and up to 64 distinct .ds3, .obj, or .fbx destinations. "
+                    + "FBX includes procedural textures. Use --geometry-fbx output.fbx for geometry only. "
                     + "GLB export is unavailable."
             case .unsafeOutput(let url):
                 "Destination must be a regular file distinct from all inputs and other outputs: \(url.path)"
             case .directoryOutput: "Destination is a directory."
             case .geometryUnavailable(let kind):
-                "Headless .\(kind.rawValue) export is unavailable."
+                "Headless .\(kind) export is unavailable."
             case .unsupportedOutputFormat:
                 "Unsupported output format. Use .ds3, .obj, or .fbx."
             case .input(let url, let cause):
@@ -55,8 +70,12 @@ enum EditorHeadlessDS3SaveCommand {
                     parsesOptions = false
                 } else if parsesOptions, EditorHeadlessDS3SaveCommand.outputOptions.contains(argument) {
                     guard destinations.count < 64 else { throw Failure.usage }
-                    let url = try Self.path(options.popFirst())
-                    destinations.append((url, OutputKind(rawValue: url.pathExtension.lowercased())))
+                    let geometryOnly = argument == EditorHeadlessDS3SaveCommand.geometryFBXOption
+                    let explicitFBX = geometryOnly || argument == EditorHeadlessDS3SaveCommand.texturedFBXOption
+                    let url = try Self.path(options.popFirst(), extension: explicitFBX ? "fbx" : nil)
+                    let kind: OutputKind? =
+                        geometryOnly ? .geometry(.fbx) : OutputKind(suffix: url.pathExtension.lowercased())
+                    destinations.append((url, kind))
                 } else if parsesOptions, argument == "-paste-xml" {
                     guard xml == nil else { throw Failure.usage }
                     xml = try Self.path(options.popFirst(), extension: "xml")
@@ -135,16 +154,16 @@ enum EditorHeadlessDS3SaveCommand {
                 case .ds3:
                     try await files.save(document, to: destination)
                     stdout("Saved \(destination.path)\n")
-                case .obj, .fbx:
-                    guard let exports else { throw Failure.geometryUnavailable(kind) }
+                case .geometry(let format):
+                    guard let exports else { throw Failure.geometryUnavailable(format.fileExtension) }
                     let artifact = try await exports.export(
-                        document, format: kind == .obj ? .obj : .fbx, to: destination, sourceURL: invocation.source)
+                        document, format: format, to: destination, sourceURL: invocation.source)
                     stdout("Exported \(destination.path)\n")
                     if !artifact.warning.isEmpty {
                         stderr("Export note for \(destination.path): \(artifact.warning)\n")
                     }
                 case .glb:
-                    throw Failure.geometryUnavailable(kind)
+                    throw Failure.geometryUnavailable("glb")
                 }
             } catch {
                 status = 1

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Headless FBX includes procedural textures and UVs by default. Use `--geometry-fbx` for geometry only.
+
 - Continue a headless batch when an output destination is an existing directory.
 
 - Continue headless export batches after an unsupported output format and report the failed destination.

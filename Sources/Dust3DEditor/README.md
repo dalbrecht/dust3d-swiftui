@@ -20,7 +20,9 @@ links. The command processes destinations in argument order and replaces individ
 archive files atomically. A failed destination is reported and the command continues
 with later destinations.
 
-The editor CLI also exports procedural geometry to `.obj` and `.fbx`.
+The editor CLI exports procedural geometry to `.obj` and textured geometry to
+`.fbx`. Use `--geometry-fbx output.fbx` to export geometry only or
+`--textured-fbx output.fbx` to request the textured mode explicitly.
 A `.glb` destination reports that export is unavailable. Exit status `0` means all outputs
 succeeded, `1` means an input or output failed, and `2` means a usage or path
 preflight error.
