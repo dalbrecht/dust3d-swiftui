@@ -7,6 +7,70 @@ import XCTest
 
 @MainActor
 final class EditorHeadlessDS3SaveTests: XCTestCase {
+    func testQtPasteClearsOnlyMissingCutFaceLinksBeforeSaving() async throws {
+        let directory = try temporaryDirectory()
+        let source = directory.appendingPathComponent("source.ds3")
+        let fragment = directory.appendingPathComponent("fragment.xml")
+        let output = directory.appendingPathComponent("output.ds3")
+        let missing = "{11111111-1111-4111-8111-111111111111}"
+        let existing = "{22222222-2222-4222-8222-222222222222}"
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                <nodes><node id="profile" partId="\(existing)" x="0" y="0" z="0" radius=".1"/></nodes>
+                <parts><part id="\(existing)" target="CutFace" cutFace="\(missing)"/></parts>
+                </canvas>
+                """.utf8)
+        ).encoded()
+        try original.write(to: source)
+        let xml = Data(
+            """
+            <canvas>
+            <nodes>
+              <node id="a" partId="p" x="0" y="0" z="0" radius=".1" cutFace="\(missing)" cutRotation=".5"/>
+              <node id="b" partId="q" x="1" y="0" z="0" radius=".1" cutFace="\(existing)" cutRotation=".3"/>
+            </nodes>
+            <parts>
+              <part id="p" name="Missing" cutFace="\(missing)" cutRotation=".25"/>
+              <part id="q" name="Existing" cutFace="\(existing)"/>
+            </parts>
+            </canvas>
+            """.utf8)
+        try xml.write(to: fragment)
+
+        let result = await run(["Editor", source.path, "-paste-xml", fragment.path, "-o", output.path])
+
+        XCTAssertEqual(result.status, 0)
+        XCTAssertTrue(result.errors.isEmpty)
+        let saved = try Dust3DDocument(data: Data(contentsOf: output))
+        let root = try XCTUnwrap(XMLDocument(data: saved.modelXML).rootElement())
+        let parts = root.elements(forName: "parts").flatMap { $0.elements(forName: "part") }
+        let missingPart = try XCTUnwrap(parts.first { $0.attribute(forName: "name")?.stringValue == "Missing" })
+        let existingPart = try XCTUnwrap(parts.first { $0.attribute(forName: "name")?.stringValue == "Existing" })
+        XCTAssertNil(missingPart.attribute(forName: "cutFace"))
+        XCTAssertEqual(missingPart.attribute(forName: "cutRotation")?.stringValue, ".25")
+        XCTAssertEqual(existingPart.attribute(forName: "cutFace")?.stringValue, existing)
+        XCTAssertEqual(
+            parts.first { $0.attribute(forName: "id")?.stringValue == existing }?.attribute(forName: "cutFace")?
+                .stringValue, missing)
+        let nodes = root.elements(forName: "nodes").flatMap { $0.elements(forName: "node") }
+        let missingNode = try XCTUnwrap(
+            nodes.first {
+                $0.attribute(forName: "partId")?.stringValue == missingPart.attribute(forName: "id")?.stringValue
+            })
+        let existingNode = try XCTUnwrap(
+            nodes.first {
+                $0.attribute(forName: "partId")?.stringValue == existingPart.attribute(forName: "id")?.stringValue
+            })
+        XCTAssertNil(missingNode.attribute(forName: "cutFace"))
+        XCTAssertNil(missingNode.attribute(forName: "cutRotation"))
+        XCTAssertEqual(existingNode.attribute(forName: "cutFace")?.stringValue, existing)
+        XCTAssertEqual(existingNode.attribute(forName: "cutRotation")?.stringValue, ".3")
+        XCTAssertEqual(try Data(contentsOf: source), original)
+        XCTAssertEqual(try Data(contentsOf: fragment), xml)
+    }
+
     func testOrdinaryLaunchAndOtherHeadlessCommandsFallThrough() async {
         for arguments in [
             ["Editor"], ["Editor", "input.ds3", "-paste-xml", "fragment.xml"], ["Editor", "-list-rigs"],
