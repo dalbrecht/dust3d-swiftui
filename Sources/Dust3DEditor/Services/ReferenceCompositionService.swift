@@ -20,22 +20,35 @@ actor ReferenceCompositionService: ReferenceCompositionServing {
         let metadata = try? PNGContainerMetadata(
             data: original, maximumEncodedBytes: ReferenceImageCodec.maximumEncodedBytes,
             maximumDecodedBytes: decodedLimit)
+        let normalized: Data
         let image: CGImage
         if let metadata, metadata.bitDepth == 16,
             metadata.colorType == 4 || (metadata.colorType == 0 && metadata.hasTransparencyKey)
         {
             // ImageIO can decode the source but cannot round-trip this PNG through its encoder.
-            image = try ReferenceImageCodec.decodePNG(original)
+            normalized = original
+            image = try ReferenceImageCodec.decodePNG(normalized)
         } else {
-            image = try ReferenceImageCodec.decodePNG(ReferenceImageCodec.importPNG(original))
+            normalized = try ReferenceImageCodec.importPNG(original)
+            image = try ReferenceImageCodec.decodePNG(normalized)
         }
         try Task.checkCancellation()
         let channels = try metadata.flatMap {
             try straightPNGChannels(original, metadata: $0, image: image, decodedLimit: decodedLimit)
         }
+        let gifPixels: Data?
+        if original.starts(with: "GIF87a".utf8) || original.starts(with: "GIF89a".utf8),
+            let decoded = try? MeshPNGDecoder.decode(
+                normalized, imageID: "reference-gif", maximumDecodedBytes: decodedLimit)
+        {
+            gifPixels = decoded.pixels
+        } else {
+            gifPixels = nil
+        }
         return try ReferenceCompositionSource(
             image: image, crop: .init(size: .init(width: image.width, height: image.height)),
-            straightRGBA: channels?.pixels, isIndexed: channels?.isIndexed ?? false, wideImage: channels?.wideImage)
+            straightRGBA: channels?.pixels ?? gifPixels, isIndexed: channels?.isIndexed ?? false,
+            wideImage: channels?.wideImage)
     }
 
     private func straightPNGChannels(
