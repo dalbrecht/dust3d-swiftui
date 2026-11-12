@@ -40,14 +40,18 @@ enum ReferenceImageCodec {
         return output as Data
     }
 
-    static func canReuseStraightSRGBSamples(_ data: Data) -> Bool {
-        let options = [kCGImageSourceShouldCache: false] as CFDictionary
+    static func straightSRGBImage(_ data: Data) -> CGImage? {
+        let options = [kCGImageSourceShouldCache: false, kCGImageSourceShouldAllowFloat: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, options),
             let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, options) as? [CFString: Any],
             ((properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1) == 1,
-            let colorSpace = CGImageSourceCreateImageAtIndex(source, 0, options)?.colorSpace
-        else { return false }
-        return colorSpace.name == CGColorSpace.sRGB || colorSpace == CGColorSpaceCreateDeviceRGB()
+            let image = CGImageSourceCreateImageAtIndex(source, 0, options),
+            CGImageSourceGetStatusAtIndex(source, 0) == .statusComplete,
+            let colorSpace = image.colorSpace
+        else { return nil }
+        let rgb = colorSpace.model == .indexed ? colorSpace.baseColorSpace : colorSpace
+        guard rgb?.name == CGColorSpace.sRGB || rgb == CGColorSpaceCreateDeviceRGB() else { return nil }
+        return image
     }
 
     static func decodePNG(_ data: Data) throws -> CGImage { try decode(data, pngOnly: true) }

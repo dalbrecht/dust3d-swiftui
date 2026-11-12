@@ -47,7 +47,9 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         let fixtures = [
             (1, 400, false, "8aa4f899a1ae08a0c4a69dfdc7602d9e9c4da07d3d014e3bdbfacdb69f9249a6"),
             (1, 700, false, "f2fb3cf9c238a415b7ef0746abc942a3339427e9f506d2783303dee9eed5aabd"),
+            (19, 512, true, "ada671f3f7bd9b320c304b41a4238db78e0cc0850fb06fa6dafb2c3fadf6508b"),
             (7, 9, false, "dfa3aa5112e22b45b802a1b7571b909d932a8d11e897e84793b1b963a53ab285"),
+            (7, 9, true, "6d108d3c2742214c8e41536ff5c7aa4e67ed9fb9945c9b2924ab9668b47b777f"),
             (701, 893, false, "8e60941b7a02883089cf39cb089103459ee72e44df8c15137685e4e3c676d2e8"),
             (453, 1201, false, "ba151442bb927afcf199e46f2ac946ee7746617d242877dddd9341d0a5587af6"),
             (453, 1201, true, "a3dc2fbddbbee758acac0856d32750d694c336da9bc7ece0edff7daf764cfdce"),
@@ -120,6 +122,105 @@ final class ReferenceCompositionRasterTests: XCTestCase {
             Data([
                 164, 58, 206, 7, 3, 4, 5, 0, 32, 64, 128, 4, 250, 34, 5, 255,
             ]))
+    }
+
+    func testRGBTransparencyKeyRetainsStraightPNGChannels() async throws {
+        let png = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAABnRSTlMAHgBQAKrryUo0AAAAFUlEQVR4nGOQC1i1xOocg4JDA5AFACEoBL306nrqAAAAAElFTkSuQmCC"
+            ))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "keyed-reference-\(UUID().uuidString).png")
+        try png.write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        let source = try await ReferenceCompositionService().importSource(url: url)
+        XCTAssertEqual(
+            source.straightRGBA,
+            Data([
+                30, 80, 170, 0, 164, 58, 206, 255, 32, 64, 128, 255, 30, 80, 170, 0,
+            ]))
+    }
+
+    func testIndexedPNGImportRetainsPaletteAlphaAndMatchesQt() async throws {
+        let fixtures = [
+            (
+                "iVBORw0KGgoAAAANSUhEUgAAAAcAAAAJCAMAAADJhsaRAAAADFBMVEUeUKrICWRheA0VyZvqxXS5AAAABHRSTlMAQJ//GNKSAgAAABtJREFUeJxjYGBkYgZiBmYIg4EJwoAKwxmE5AENOABevHNQlAAAAABJRU5ErkJggg==",
+                "d3aeb0d3f14253efc53f2591ecb1b0d38f9115e74b160769e77f36a38ad5ad86"
+            ),
+            (
+                "iVBORw0KGgoAAAANSUhEUgAAAAcAAAAICAMAAAAC2hU0AAAADFBMVEUeUKrICWRheA0VyZvqxXS5AAAABHRSTlMAQJ//GNKSAgAAABtJREFUeJxjYGBkYgZiBmYIg4EJwoAKwxm45AEKcABVpzyi+wAAAABJRU5ErkJggg==",
+                "e90453e142703f783d4794207b9bbc5f6e781c51b8172872cbbb7f5c1aa16193"
+            ),
+        ]
+        let service = ReferenceCompositionService()
+        for (encoded, expected) in fixtures {
+            let png = try XCTUnwrap(Data(base64Encoded: encoded))
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+                "indexed-reference-\(UUID().uuidString).png")
+            try png.write(to: url)
+            addTeardownBlock { try FileManager.default.removeItem(at: url) }
+            let source = try await service.importSource(url: url)
+            XCTAssertTrue(source.isIndexed)
+            XCTAssertEqual(
+                try XCTUnwrap(source.straightRGBA).prefix(16),
+                Data([
+                    30, 80, 170, 0, 200, 9, 100, 64, 97, 120, 13, 159, 21, 201, 155, 255,
+                ]))
+            let result = try await service.compose(front: source, side: nil)
+            let pixels = try XCTUnwrap(result.image.dataProvider?.data) as Data
+            let digest = SHA256.hash(data: pixels).map { String(format: "%02x", $0) }.joined()
+            XCTAssertEqual(digest, expected)
+        }
+    }
+
+    func testWidePNGImportRetainsOriginalChannelPrecision() async throws {
+        let png = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABEAYAAACksqPJAAAAGUlEQVR4nGNgZGSprmUUZI7KYL5/WvHfbQAdzgV9aeiJnQAAAABJRU5ErkJggg=="
+            ))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "wide-reference-\(UUID().uuidString).png")
+        try png.write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        let source = try await ReferenceCompositionService().importSource(url: url)
+        let wide = try XCTUnwrap(source.wideImage)
+        XCTAssertEqual(wide.bitsPerComponent, 16)
+        XCTAssertEqual(wide.width, 2)
+        XCTAssertEqual(wide.height, 1)
+        XCTAssertNil(source.straightRGBA)
+    }
+
+    func testWidePNGAreaSamplingMatchesQt() throws {
+        let width = 453
+        let height = 1201
+        var pixels = Data(capacity: width * height * 8)
+        for y in 0..<height {
+            for x in 0..<width {
+                for channel in [
+                    x * 18247 + y * 3371, x * 5939 + y * 7453,
+                    x * 24901 + y * 1801, x * 4903 + y * 21373,
+                ] {
+                    pixels.append(UInt8(truncatingIfNeeded: channel >> 8))
+                    pixels.append(UInt8(truncatingIfNeeded: channel))
+                }
+            }
+        }
+        let provider = try XCTUnwrap(CGDataProvider(data: pixels as CFData))
+        let colorSpace = try XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB))
+        let wide = try XCTUnwrap(
+            CGImage(
+                width: width, height: height, bitsPerComponent: 16, bitsPerPixel: 64, bytesPerRow: width * 8,
+                space: colorSpace,
+                bitmapInfo: [.byteOrder16Big, CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue)],
+                provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let source = try ReferenceCompositionSource(
+            image: wide, crop: .init(size: .init(width: width, height: height)), wideImage: wide)
+        let result = try ReferenceCompositionRaster.compose(front: source, side: nil)
+        let output = try XCTUnwrap(result.image.dataProvider?.data) as Data
+        let digest = SHA256.hash(data: output).map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(digest, "5b4c3f964295b3fd1df47077e7f099867c83e2b7ac87c7d59d049fc2ba1f6605")
     }
 
     func testTaggedWideGamutImportKeepsColorManagedRendering() async throws {
