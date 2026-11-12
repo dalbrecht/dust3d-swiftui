@@ -64,6 +64,33 @@ final class PartGraphSelectionTests: XCTestCase {
         XCTAssertFalse(edge.canUndo)
     }
 
+    func testSelectOwningComponentKeepsCanvasPicksAndRevealsTheExactStoredOwner() throws {
+        let source = try document(malformed: true)
+        var state = try EditorState(document: source)
+        try state.selectGraph(nodes: ["a"], edges: ["ab"])
+        let before = state.snapshot
+        let context = PartGraphSelectionContext(snapshot: before)
+
+        try state.revealOwningComponent(.node("c"), context: context, selecting: true)
+        XCTAssertEqual(state.snapshot.selectedComponentIDs, ["leafp"])
+        XCTAssertEqual(state.snapshot.componentRevealHint?.ancestorIDs, ["root", "group"])
+        try state.revealOwningComponent(.edge("foreign"), context: context, selecting: true)
+        let edge = state.snapshot
+        XCTAssertEqual(edge.selectedComponentIDs, ["leafq"])
+        XCTAssertEqual(edge.componentRevealHint?.componentID, "leafq")
+        XCTAssertEqual(edge.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(edge.selectedEdgeIDs, before.selectedEdgeIDs)
+        XCTAssertEqual(edge.document.encoded(), before.document.encoded())
+        XCTAssertEqual(edge.previewIdentity, before.previewIdentity)
+        XCTAssertFalse(edge.canUndo)
+
+        XCTAssertThrowsError(try state.revealOwningComponent(.edge("unowned"), context: context, selecting: true)) {
+            XCTAssertEqual($0 as? DocumentError, .invalidComponent)
+        }
+        XCTAssertEqual(state.snapshot.selectedComponentIDs, edge.selectedComponentIDs)
+        XCTAssertEqual(state.snapshot.componentRevealHint, edge.componentRevealHint)
+    }
+
     func testRevealOwningComponentRejectsStaleOrUnresolvedTargets() throws {
         let source = try document(malformed: true)
         var state = try EditorState(document: source)

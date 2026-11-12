@@ -356,7 +356,7 @@ public struct EditorState: Sendable {
     }
 
     package mutating func revealOwningComponent(
-        _ target: PartGraphTarget, context: PartGraphSelectionContext
+        _ target: PartGraphTarget, context: PartGraphSelectionContext, selecting: Bool = false
     ) throws {
         let current = snapshot
         guard context.isCurrent(in: current) else { throw EditorError.stalePartGraphSelection }
@@ -364,6 +364,13 @@ public struct EditorState: Sendable {
             let hint = ComponentRevealHint.make(
                 componentID: id, tree: componentTree, revision: componentRevealRevision + 1)
         else { throw DocumentError.invalidComponent }
+        if selecting {
+            let alreadySelected =
+                selectedComponentIDs.count == 1
+                && selectedComponentIDs.first?.utf8.elementsEqual(id.utf8) == true
+            if !alreadySelected { selectionRevision += 1 }
+            selectedComponentIDs = [id]
+        }
         componentRevealRevision = hint.revision
         componentRevealHint = hint
     }
