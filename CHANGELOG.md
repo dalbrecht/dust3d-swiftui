@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Include retained locked nodes when finding the selection center for local alignment.
+
 - Use the last Qt paste fragment when an earlier headless paste operand is a directory.
 - Keep modified keyboard shortcuts available when the model preview has focus.
 
