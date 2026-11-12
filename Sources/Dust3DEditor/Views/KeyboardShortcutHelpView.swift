@@ -58,6 +58,9 @@ enum KeyboardShortcutHelp {
             action: "Switch Editing Profile", keys: "E",
             scope: "Focused Side by Side canvas or node with a graph selection and no active drag"),
         .init(
+            action: "Select Hovered Item’s Component", keys: "F",
+            scope: "Focused canvas or node with a hovered graph item and no active drag"),
+        .init(
             action: "Browse Selected Component Group", keys: "⌘↓",
             scope: "Focused component sidebar with one visible group selected"),
         .init(

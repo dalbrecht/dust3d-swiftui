@@ -190,7 +190,8 @@ final class EditorStore {
     @ObservationIgnored private var graphComponentRevealLookup: GraphComponentRevealLookup?
 
     func revealOwningComponentAction(
-        _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil
+        _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil,
+        selecting: Bool = false
     ) -> (@MainActor () -> Void)? {
         guard let context, let source = revealSource(context: context, profileLease: profileLease) else { return nil }
         if graphComponentRevealLookup?.isCurrent(in: source) != true {
@@ -203,7 +204,9 @@ final class EditorStore {
                 let current = self.revealSource(context: context, profileLease: profileLease),
                 current.canRevealOwningComponent(target)
             else { return }
-            self.perform(commits: false) { try await $0.revealOwningComponent(target, context: context) }
+            self.perform(commits: false) {
+                try await $0.revealOwningComponent(target, context: context, selecting: selecting)
+            }
         }
     }
 
@@ -2542,9 +2545,38 @@ final class EditorStore {
         return { _ = handle(property, false) }
     }
 
+    func canvasOwningComponentAction(profileLease: UUID?) -> (@MainActor (Bool) -> Bool)? {
+        guard canToggleCanvasPartState, let snapshot = acceptedDocumentSource, let context = canvasRotationContext,
+            let hover = canvasPartStateHover
+        else { return nil }
+        let target: PartGraphTarget =
+            switch hover {
+            case .node(let id): .node(id)
+            case .edge(let id): .edge(id)
+            }
+        guard
+            let select = revealOwningComponentAction(
+                target, context: PartGraphSelectionContext(snapshot: snapshot), profileLease: profileLease,
+                selecting: true)
+        else { return nil }
+        let hoverEpoch = canvasPartStateHoverEpoch
+        let layout = precisionLayoutEpoch
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] isRepeat in
+            guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
+                canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
+                precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction
+            else { return false }
+            if !isRepeat { select() }
+            return true
+        }
+    }
+
     func canvasPartStateKeyHandler(profileLease: UUID?) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
         let handle = canvasPartStateHandler(profileLease: profileLease)
+        let selectOwner = canvasOwningComponentAction(profileLease: profileLease)
         return { input in
+            if input.selectsOwningComponent { return selectOwner?(input.isRepeat) ?? false }
             guard let property = input.partStateProperty, let handle else { return false }
             return handle(property, input.isRepeat)
         }

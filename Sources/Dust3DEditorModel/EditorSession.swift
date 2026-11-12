@@ -220,9 +220,9 @@ public actor EditorSession {
         try update { try $0.selectWholePart(target, context: context) }
     }
     package func revealOwningComponent(
-        _ target: PartGraphTarget, context: PartGraphSelectionContext
+        _ target: PartGraphTarget, context: PartGraphSelectionContext, selecting: Bool = false
     ) throws -> EditorSnapshot {
-        try update { try $0.revealOwningComponent(target, context: context) }
+        try update { try $0.revealOwningComponent(target, context: context, selecting: selecting) }
     }
 
     /// Select only the captured existing part's nodes without edge inference, history or reveal side effects.

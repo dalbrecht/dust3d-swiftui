@@ -232,6 +232,34 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertEqual(value.snapshot?.document.encoded(), original)
     }
 
+    func testCanvasFSelectsHoveredOwnerAndRetainsCanvasPicks() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        let key = CanvasPrecisionKeyInput(keyCode: 3, characters: "f", modifiers: [])
+        XCTAssertFalse(value.canvasPartStateKeyHandler(profileLease: nil)(key))
+
+        value.setHoveredNode("a")
+        let retained = value.canvasPartStateKeyHandler(profileLease: nil)
+        value.setHoveredNode("b")
+        XCTAssertFalse(retained(key))
+        let current = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertFalse(current(.init(keyCode: 3, characters: "f", modifiers: [.command])))
+        XCTAssertTrue(current(.init(keyCode: 3, characters: "f", modifiers: [], isRepeat: true)))
+        XCTAssertTrue(value.snapshot?.selectedComponentIDs.isEmpty == true)
+        XCTAssertTrue(current(key))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["cp"])
+        XCTAssertEqual(value.snapshot?.componentRevealHint?.componentID, "cp")
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testStationaryPartStateHoverLocksAndUnlocksTheSameOwner() async throws {
         let original = try source().encoded()
         let value = store()
