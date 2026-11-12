@@ -49,6 +49,7 @@ final class ReferenceCompositionRasterTests: XCTestCase {
             (1, 700, false, "f2fb3cf9c238a415b7ef0746abc942a3339427e9f506d2783303dee9eed5aabd"),
             (19, 512, true, "ada671f3f7bd9b320c304b41a4238db78e0cc0850fb06fa6dafb2c3fadf6508b"),
             (7, 9, false, "dfa3aa5112e22b45b802a1b7571b909d932a8d11e897e84793b1b963a53ab285"),
+            (7, 9, true, "6d108d3c2742214c8e41536ff5c7aa4e67ed9fb9945c9b2924ab9668b47b777f"),
             (701, 893, false, "8e60941b7a02883089cf39cb089103459ee72e44df8c15137685e4e3c676d2e8"),
             (453, 1201, false, "ba151442bb927afcf199e46f2ac946ee7746617d242877dddd9341d0a5587af6"),
             (453, 1201, true, "a3dc2fbddbbee758acac0856d32750d694c336da9bc7ece0edff7daf764cfdce"),

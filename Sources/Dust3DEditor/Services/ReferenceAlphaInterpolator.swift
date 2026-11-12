@@ -40,12 +40,14 @@ enum ReferenceAlphaInterpolator {
                     let x = crop.x + (source.isMirrored ? crop.width - 1 - column : column)
                     let offset = ((crop.y + row) * crop.size.width + x) * 4
                     let alpha = Int(bytes[offset + 3])
-                    let channels = Pixel(Int(bytes[offset]), Int(bytes[offset + 1]), Int(bytes[offset + 2]), 255)
-                    let premultiplied =
-                        source.isIndexed
-                        ? divideBy255(channels &* Pixel(repeating: alpha))
-                        : (channels &* Pixel(repeating: alpha * 257) &+ Pixel(repeating: 127)) / 255
-                    pixels.append(premultiplied)
+                    let channels = Pixel(Int(bytes[offset]), Int(bytes[offset + 1]), Int(bytes[offset + 2]), alpha)
+                    if source.isIndexed {
+                        let associated = divideBy255(
+                            Pixel(channels.x, channels.y, channels.z, 255) &* Pixel(repeating: alpha))
+                        pixels.append(associated)
+                    } else {
+                        pixels.append(channels)
+                    }
                 }
             }
             return pixels
@@ -80,10 +82,21 @@ enum ReferenceAlphaInterpolator {
                 for (column, x) in horizontal.enumerated() {
                     let top = y.first * crop.width
                     let bottom = y.second * crop.width
-                    let left = interpolate(
-                        pixels[top + x.first], pixels[bottom + x.first], fraction: y.fraction & fractionMask)
-                    let right = interpolate(
-                        pixels[top + x.second], pixels[bottom + x.second], fraction: y.fraction & fractionMask)
+                    let left: Pixel
+                    let right: Pixel
+                    if source.isIndexed {
+                        left = interpolate(
+                            pixels[top + x.first], pixels[bottom + x.first], fraction: y.fraction & fractionMask)
+                        right = interpolate(
+                            pixels[top + x.second], pixels[bottom + x.second], fraction: y.fraction & fractionMask)
+                    } else {
+                        let pairedColumn = column ^ 1
+                        let adjacent = pairedColumn < width ? horizontal[pairedColumn] : nil
+                        let topPair = associatedPair(pixels, row: top, at: x, adjacent: adjacent)
+                        let bottomPair = associatedPair(pixels, row: bottom, at: x, adjacent: adjacent)
+                        left = interpolate(topPair.0, bottomPair.0, fraction: y.fraction)
+                        right = interpolate(topPair.1, bottomPair.1, fraction: y.fraction)
+                    }
                     var pixel = interpolate(left, right, fraction: x.fraction & fractionMask)
                     if column == width - 1 && edgeCoverage < 255 {
                         let covered = pixel &* Pixel(repeating: edgeCoverage)
@@ -142,6 +155,32 @@ enum ReferenceAlphaInterpolator {
         if scalarTail { return UInt8((product + 127) / 255 + 255 - alpha) }
         let rounding = product == 128 ? 128 : 127
         return UInt8(((product + (product >> 8) + rounding) >> 8) + 255 - alpha)
+    }
+
+    private static func associatedPair(
+        _ pixels: [Pixel], row: Int, at coordinate: Coordinate, adjacent: Coordinate?
+    ) -> (Pixel, Pixel) {
+        let first = pixels[row + coordinate.first]
+        let second = pixels[row + coordinate.second]
+        let useVector: Bool
+        if let adjacent {
+            // Qt expands two adjacent bilinear pairs together. A fully opaque batch keeps
+            // the full channel range instead of applying the premultiplication approximation.
+            useVector = min(first.w, second.w, pixels[row + adjacent.first].w, pixels[row + adjacent.second].w) < 255
+        } else {
+            useVector = false
+        }
+        return (associate(first, useVector: useVector), associate(second, useVector: useVector))
+    }
+
+    private static func associate(_ pixel: Pixel, useVector: Bool) -> Pixel {
+        let product = pixel &* Pixel(repeating: pixel.w)
+        var channels =
+            useVector
+            ? product &+ (product &>> 7)
+            : (product &* Pixel(repeating: 257) &+ Pixel(repeating: 127)) / 255
+        channels.w = pixel.w * 257
+        return channels
     }
 
     private static func divideBy255(_ value: Pixel) -> Pixel {
