@@ -142,27 +142,35 @@ final class ReferenceCompositionRasterTests: XCTestCase {
     }
 
     func testIndexedPNGImportRetainsPaletteAlphaAndMatchesQt() async throws {
-        let png = try XCTUnwrap(
-            Data(
-                base64Encoded:
-                    "iVBORw0KGgoAAAANSUhEUgAAAAcAAAAJCAMAAADJhsaRAAAADFBMVEUeUKrICWRheA0VyZvqxXS5AAAABHRSTlMAQJ//GNKSAgAAABtJREFUeJxjYGBkYgZiBmYIg4EJwoAKwxmE5AENOABevHNQlAAAAABJRU5ErkJggg=="
-            ))
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "indexed-reference-\(UUID().uuidString).png")
-        try png.write(to: url)
-        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        let fixtures = [
+            (
+                "iVBORw0KGgoAAAANSUhEUgAAAAcAAAAJCAMAAADJhsaRAAAADFBMVEUeUKrICWRheA0VyZvqxXS5AAAABHRSTlMAQJ//GNKSAgAAABtJREFUeJxjYGBkYgZiBmYIg4EJwoAKwxmE5AENOABevHNQlAAAAABJRU5ErkJggg==",
+                "d3aeb0d3f14253efc53f2591ecb1b0d38f9115e74b160769e77f36a38ad5ad86"
+            ),
+            (
+                "iVBORw0KGgoAAAANSUhEUgAAAAcAAAAICAMAAAAC2hU0AAAADFBMVEUeUKrICWRheA0VyZvqxXS5AAAABHRSTlMAQJ//GNKSAgAAABtJREFUeJxjYGBkYgZiBmYIg4EJwoAKwxm45AEKcABVpzyi+wAAAABJRU5ErkJggg==",
+                "e90453e142703f783d4794207b9bbc5f6e781c51b8172872cbbb7f5c1aa16193"
+            ),
+        ]
         let service = ReferenceCompositionService()
-        let source = try await service.importSource(url: url)
-        XCTAssertTrue(source.isIndexed)
-        XCTAssertEqual(
-            try XCTUnwrap(source.straightRGBA).prefix(16),
-            Data([
-                30, 80, 170, 0, 200, 9, 100, 64, 97, 120, 13, 159, 21, 201, 155, 255,
-            ]))
-        let result = try await service.compose(front: source, side: nil)
-        let pixels = try XCTUnwrap(result.image.dataProvider?.data) as Data
-        let digest = SHA256.hash(data: pixels).map { String(format: "%02x", $0) }.joined()
-        XCTAssertEqual(digest, "d3aeb0d3f14253efc53f2591ecb1b0d38f9115e74b160769e77f36a38ad5ad86")
+        for (encoded, expected) in fixtures {
+            let png = try XCTUnwrap(Data(base64Encoded: encoded))
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+                "indexed-reference-\(UUID().uuidString).png")
+            try png.write(to: url)
+            addTeardownBlock { try FileManager.default.removeItem(at: url) }
+            let source = try await service.importSource(url: url)
+            XCTAssertTrue(source.isIndexed)
+            XCTAssertEqual(
+                try XCTUnwrap(source.straightRGBA).prefix(16),
+                Data([
+                    30, 80, 170, 0, 200, 9, 100, 64, 97, 120, 13, 159, 21, 201, 155, 255,
+                ]))
+            let result = try await service.compose(front: source, side: nil)
+            let pixels = try XCTUnwrap(result.image.dataProvider?.data) as Data
+            let digest = SHA256.hash(data: pixels).map { String(format: "%02x", $0) }.joined()
+            XCTAssertEqual(digest, expected)
+        }
     }
 
     func testWidePNGImportRetainsOriginalChannelPrecision() async throws {

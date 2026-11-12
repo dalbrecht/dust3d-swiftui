@@ -57,11 +57,17 @@ enum ReferenceAlphaInterpolator {
             Coordinate(
                 position: painterPosition(0.5, inverseScale: inverseScale) + column * step, limit: crop.width)
         }
-        let boundary = Double(crop.width) / inverseScale - Double(width - 1)
-        let geometricCoverage = min(255, max(0, Int(boundary * 255)))
-        let edgeCoverage =
-            source.isIndexed && geometricCoverage < 255
-            ? max(0, geometricCoverage - 1) : geometricCoverage
+        let rightCoverageNumerator = crop.width * height - (width - 1) * crop.height
+        let edgeCoverage: Int
+        if rightCoverageNumerator >= crop.height {
+            edgeCoverage = 255
+        } else if source.isIndexed {
+            // Qt's indexed painter quantizes partial spans before multiplying the 8-bit channels.
+            let quantized = (rightCoverageNumerator * 255 + crop.height - 1) / crop.height
+            edgeCoverage = max(0, quantized - 2)
+        } else {
+            edgeCoverage = max(0, rightCoverageNumerator * 255 / crop.height)
+        }
         let fractionMask = source.isIndexed ? 0xFF00 : 0xFFFF
         let vectorWidth = width - width % 4
         var output = Data(count: width * height * 4)
