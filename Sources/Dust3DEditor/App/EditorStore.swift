@@ -1093,6 +1093,7 @@ final class EditorStore {
     private let materialPreparation: any ArchiveMaterialPreparing
     private(set) var materialGeneration: Task<Void, Never>?
     private let preview: any EditorPreviewServing
+    private let diagnostics: EditorSessionDiagnostics?
     private var previewScopeID = UUID()
     private(set) var previewCacheStatistics: MeshGenerationStatistics?
     private(set) var previewSourceIssue: MeshLoadingError?
@@ -1137,7 +1138,8 @@ final class EditorStore {
         animationCatalog: (any AnimationCatalogLoading)? = nil,
         addPlacements: any AddPlacementServing = AddPlacementService(),
         referenceColorRaster: any ReferenceColorRasterServing = ReferenceColorRasterService(),
-        referenceColorApplying: any ReferenceColorApplying = ReferenceColorApplicationService()
+        referenceColorApplying: any ReferenceColorApplying = ReferenceColorApplicationService(),
+        diagnostics: EditorSessionDiagnostics? = nil
     ) {
         self.referenceColorRaster = referenceColorRaster
         self.referenceColorApplying = referenceColorApplying
@@ -1147,6 +1149,7 @@ final class EditorStore {
         self.colorImages = colorImages
         self.referenceImages = referenceImages
         self.preview = preview
+        self.diagnostics = diagnostics
         materialPreparation = ArchiveMaterialPreparationService(
             importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
     }
@@ -1450,6 +1453,7 @@ final class EditorStore {
             guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
             snapshot = next
             recoveryLoadResult = .success(.init(documentIdentity: next.documentIdentity, fileIdentity: fileIdentity))
+            diagnostics?.record(.documentOpened)
             referenceImage = nil
             fit()
             clearPreview()
@@ -1458,6 +1462,7 @@ final class EditorStore {
         } catch {
             if !Task.isCancelled, operationRequestID == requestID {
                 recoveryLoadResult = .failure(error)
+                diagnostics?.record(.documentOpenFailed)
                 errorMessage = Self.message(error)
             }
         }
@@ -3690,6 +3695,7 @@ final class EditorStore {
                     previewState.isCurrent(requestID: requestID)
                 else { return }
                 previewState.fail(Self.message(error), requestID: requestID)
+                diagnostics?.record(.previewFailed)
             }
         }
     }
