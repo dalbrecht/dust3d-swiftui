@@ -145,7 +145,7 @@ struct EditorRootView: View {
             .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
             .onChange(of: store.snapshot?.documentIdentity) {
                 exportWorkflow.sourceDidChange()
-                sidebarDisclosure.collapsedIDs = []
+                sidebarDisclosure.restore(from: store.snapshot)
             }
             .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
             .task(id: file.identity) { await loadCurrentDocument() }

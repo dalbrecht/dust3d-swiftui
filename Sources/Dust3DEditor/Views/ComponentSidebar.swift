@@ -256,7 +256,9 @@ struct ComponentSidebar: View {
                 }
             }
         }
-        .onChange(of: store.snapshot?.documentIdentity) { _, _ in disclosure.collapsedIDs = [] }
+        .onChange(of: store.snapshot?.documentIdentity, initial: true) { _, _ in
+            disclosure.restore(from: store.snapshot)
+        }
     }
     private func componentRow(
         _ row: ComponentTreeRow, scoped: Bool, scopeEpoch: UUID,

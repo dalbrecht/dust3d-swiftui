@@ -114,16 +114,20 @@ import XCTest
         defer { store.stop() }
         await store.load(data: try document().encoded())
         try await settle(store)
-        let disclosure = ComponentSidebarDisclosure(collapsedIDs: [group, "unrelated"])
+        let disclosure = ComponentSidebarDisclosure()
+        disclosure.restore(from: store.snapshot)
+        disclosure.collapsedIDs = [group, "unrelated"]
         store.selectWholePart(.edge(edge))
         try await settle(store)
         let snapshot = try XCTUnwrap(store.snapshot)
         let hint = try XCTUnwrap(snapshot.componentRevealHint)
 
+        disclosure.restore(from: snapshot)
         disclosure.reveal(hint, documentIdentity: snapshot.documentIdentity)
         XCTAssertEqual(disclosure.collapsedIDs, ["unrelated"])
         disclosure.collapsedIDs.insert(group)
         let manualEpoch = disclosure.epoch
+        disclosure.restore(from: snapshot)
         disclosure.reveal(hint, documentIdentity: snapshot.documentIdentity)
         XCTAssertEqual(disclosure.collapsedIDs, [group, "unrelated"])
         XCTAssertEqual(disclosure.epoch, manualEpoch)
@@ -140,7 +144,9 @@ import XCTest
         defer { store.stop() }
         await store.load(data: try document().encoded())
         try await settle(store)
-        let disclosure = ComponentSidebarDisclosure(collapsedIDs: [group, "unrelated"])
+        let disclosure = ComponentSidebarDisclosure()
+        disclosure.restore(from: store.snapshot)
+        disclosure.collapsedIDs = [group, "unrelated"]
         let host = NSHostingView(
             rootView: VStack(alignment: .leading, spacing: 0) { ComponentSidebar(store: store, disclosure: disclosure) }
                 .frame(width: 300, height: 240))
@@ -178,7 +184,9 @@ import XCTest
             fileURLWithPath: ProcessInfo.processInfo.environment["DUST3D_BUILD_ROOT"] ?? NSTemporaryDirectory()
         ).appendingPathComponent("ui-qa/whole-part")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let freshDisclosure = ComponentSidebarDisclosure(collapsedIDs: [group])
+        let freshDisclosure = ComponentSidebarDisclosure()
+        freshDisclosure.restore(from: store.snapshot)
+        freshDisclosure.collapsedIDs = [group]
         let freshHost = NSHostingView(
             rootView: VStack(alignment: .leading, spacing: 0) {
                 ComponentSidebar(store: store, disclosure: freshDisclosure)
@@ -198,6 +206,7 @@ import XCTest
         freshHost.layoutSubtreeIfNeeded()
         try await Task.sleep(for: .milliseconds(100))
         freshHost.layoutSubtreeIfNeeded()
+        XCTAssertFalse(freshDisclosure.collapsedIDs.contains(group))
         let freshTable = try XCTUnwrap(findTable(in: freshHost))
         XCTAssertTrue(
             NSLocationInRange(ownerIndex, freshTable.rows(in: freshTable.visibleRect)),

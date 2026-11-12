@@ -52,6 +52,8 @@
 
 - Identify empty and populated groups in the component sidebar and enlarge disclosure controls.
 
+- Honor saved component collapse flags when opening older Dust3D documents.
+
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
