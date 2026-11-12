@@ -184,7 +184,12 @@ private struct ReferenceCropField: Hashable {
                                 source.displayedCrop.x, source.displayedCrop.y, source.displayedCrop.width,
                                 source.displayedCrop.height,
                             ],
-                            isAdjusting: isAdjustingCrop))
+                            isAdjusting: isAdjustingCrop)
+                    )
+                    .accessibilityLabel("\(profile.rawValue) crop preview")
+                    .accessibilityValue(
+                        "\(source.displayedCrop.width) by \(source.displayedCrop.height) pixels, X \(source.displayedCrop.x), Y \(source.displayedCrop.y)"
+                    )
                     Text("\(source.image.width) × \(source.image.height) pixels")
                         .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                     Text(
@@ -295,7 +300,8 @@ struct ReferenceCropPreview: View {
             }
         }
         .frame(height: 180)
-        .accessibilityLabel("Profile crop preview")
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isImage)
         .accessibilityHint(
             "Draw a crop, or use Adjust to move its interior and resize its handles. Use crop fields for keyboard editing."
         )
