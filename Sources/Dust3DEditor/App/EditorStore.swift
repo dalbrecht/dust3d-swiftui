@@ -405,6 +405,37 @@ final class EditorStore {
         }
     }
 
+    func canvasAddModeKeyHandler(profileLease: UUID?) -> @MainActor (CanvasAddModeKey) -> Bool {
+        let target = acceptedDocumentSource.map { CanvasAdjustmentTarget(snapshot: $0) }
+        let workingGroup = workingGroupRevision
+        let mode = addModeID
+        let tool = rotationInputContextID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] key in
+            guard let self, let target, let current = self.acceptedDocumentSource, target.isCurrent(in: current),
+                self.ownsCanvasProfile(profileLease), self.workingGroupRevision == workingGroup,
+                self.addModeID == mode, self.rotationInputContextID == tool,
+                self.referenceColorInteractionEpoch == interaction, !self.referenceColorInteractionActive,
+                !self.isMovingOrigin, !self.isSelectingRigEdges
+            else { return false }
+            switch key {
+            case .ignored: return false
+            case .consumeRepeat: return true
+            case .select:
+                guard self.isAddingNodes else { return false }
+                self.cancelAddMode()
+            case .toggleAdd:
+                if self.isAddingNodes {
+                    self.cancelAddMode()
+                } else {
+                    guard self.canBeginAddMode else { return false }
+                    self.beginAddMode()
+                }
+            }
+            return self.addModeID != mode
+        }
+    }
+
     private func changeAddPlacementDestination(_ destination: AddPlacementDestination) {
         guard addPlacementDestination != destination else { return }
         addPlacementDestination = destination
