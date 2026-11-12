@@ -23,6 +23,26 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         }
     }
 
+    @MainActor func testPanelDropImportsOneLocalImageIntoTheChosenProfile() async throws {
+        let input = try source()
+        let service = HeldDropCompositionService(source: input)
+        let draft = ReferenceCompositionDraft(service: service)
+        defer { draft.stop() }
+
+        let url = URL(fileURLWithPath: "/tmp/reference.PNG")
+        XCTAssertFalse(draft.importDroppedSource(urls: [url, url], profile: .side))
+        XCTAssertFalse(draft.importDroppedSource(urls: [URL(fileURLWithPath: "/tmp/model.ds3")], profile: .side))
+        XCTAssertTrue(draft.importDroppedSource(urls: [url], profile: .side))
+        try await settle(draft)
+        let paths = await service.paths
+        XCTAssertEqual(paths, ["reference.PNG"])
+        XCTAssertNil(draft.front)
+        XCTAssertEqual(draft.side?.crop, input.crop)
+        XCTAssertTrue(draft.canApply)
+        draft.stop()
+        XCTAssertFalse(draft.importDroppedSource(urls: [url], profile: .front))
+    }
+
     @MainActor func testDropPublishesBothSourcesAndPreviewTogether() async throws {
         let input = try source()
         let service = HeldDropCompositionService(source: input)
