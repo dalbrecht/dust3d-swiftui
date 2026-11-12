@@ -71,7 +71,7 @@ class QtFreeTests(unittest.TestCase):
 
     def run_gate(self):
         return subprocess.run(
-            ["bash", self.script], env={**os.environ, "DUST3D_BUILD_ROOT": str(self.build)},
+            ["bash", self.script], env={**os.environ, "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "DUST3D_BUILD_ROOT": str(self.build)},
             capture_output=True, text=True, timeout=30)
 
     def test_clean_sources_and_products_pass(self):

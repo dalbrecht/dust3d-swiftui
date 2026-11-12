@@ -9,7 +9,7 @@ check_no_qt() {
     local failure_message="$2"
     local scan_status
     shift 2
-    if rg "$@"; then
+    if /usr/bin/grep -E "$@"; then
         echo "$match_message" >&2
         return 1
     else
@@ -23,7 +23,7 @@ check_no_qt() {
 
 core_sources="$DUST3D_BUILD_ROOT/build/checkouts/dust3d-core"
 check_no_qt "Qt references found in native targets" "Could not scan native sources for Qt references" \
-    -n '#include\s*[<"]Q[A-Z]|\b(QObject|QString|QImage|QWidget)\b' \
+    -nrI '#include[[:space:]]*[<"]Q[A-Z]|(^|[^[:alnum:]_])(QObject|QString|QImage|QWidget)([^[:alnum:]_]|$)' \
     Sources "$core_sources/dust3d" "$core_sources/native/Engine"
 
 mkdir -p "$DUST3D_BUILD_ROOT/clang"
