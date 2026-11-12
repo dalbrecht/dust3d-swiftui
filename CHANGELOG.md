@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
+
 - Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.
 
 - Select visible nodes when their circles intersect the marquee.

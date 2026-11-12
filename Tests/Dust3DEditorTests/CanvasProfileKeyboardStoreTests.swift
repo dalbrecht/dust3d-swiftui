@@ -426,6 +426,54 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
     }
 
+    func testEdgeSidebarRowActionsRejectAReplacedSearch() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                  <node id='a' partId='p' x='0' y='0' z='0' radius='.1'/>
+                  <node id='b' partId='p' x='0' y='0' z='1' radius='.1'/>
+                </nodes><edges><edge id='ab' from='a' to='b' partId='p'/></edges>
+                <parts><part id='p'/></parts>
+                <components><component id='owner' linkDataType='partId' linkData='p'/></components></canvas>
+                """.utf8))
+        await store.load(data: document.encoded())
+        try await settle(store)
+        let snapshot = try XCTUnwrap(store.snapshot)
+        let target = PartGraphTarget.edge("ab")
+        var searchIsCurrent = true
+        let reveal = try XCTUnwrap(
+            store.revealOwningComponentAction(
+                target, context: PartGraphSelectionContext(snapshot: snapshot),
+                admitsInput: { searchIsCurrent }))
+        let select = store.wholePartSelectionAction(target, admitsInput: { searchIsCurrent })
+
+        searchIsCurrent = false
+        reveal()
+        XCTAssertFalse(store.isWorking)
+        try await settle(store)
+        XCTAssertNil(store.snapshot?.componentRevealHint)
+        select()
+        XCTAssertFalse(store.isWorking)
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+        XCTAssertTrue(store.snapshot?.selectedEdgeIDs.isEmpty == true)
+
+        let currentReveal = try XCTUnwrap(
+            store.revealOwningComponentAction(target, context: PartGraphSelectionContext(snapshot: snapshot)))
+        currentReveal()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentRevealHint?.componentID, "owner")
+        store.wholePartSelectionAction(target)()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a", "b"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testEdgeSidebarSelectAllKeepsReadonlyInspectionAndUsesRigEligibility() async throws {
         let store = makeStore()
         defer { store.stop() }
