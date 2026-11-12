@@ -287,6 +287,24 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         }
     }
 
+    func testPackedBMPReferenceUsesQtChannelExpansion() async throws {
+        let bmp = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "Qk3SAAAAAAAAAEIAAAAoAAAABwAAAAkAAAABABAAAwAAAJAAAAAAAAAAAAAAAAAAAAAAAAAAAPgAAOAHAAAfAAAAR2/zr7/wazk3gsPKjxMAAEZeEqfe74owNnHiua4CAABlTTGW/d6JJ1VoAbHO+QAAhERQjfzNqBZ0XyGgzegAAKMzT3wbxccNlFYgl+zfAACiIm5rOrTn/JNFX44L1wAAwRmNYlqr5uuyNH59KsYAAOAIrVFZmgXj0SuddCm1AAAAAKxAeIkk0vAanGNIrAAA"
+            ))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "packed-reference-\(UUID().uuidString).bmp")
+        try bmp.write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        let service = ReferenceCompositionService()
+        let source = try await service.importSource(url: url)
+        let result = try await service.compose(front: source, side: nil)
+        let pixels = try XCTUnwrap(result.image.dataProvider?.data) as Data
+        let digest = SHA256.hash(data: pixels).map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(digest, "cee5823f8012b2eda924cbe0dbcf0770b5b86a4365ada346bac88c604577b7f4")
+    }
+
     func testWidePNGSamplingMatchesQt() throws {
         let fixtures = [
             (453, 1201, "5b4c3f964295b3fd1df47077e7f099867c83e2b7ac87c7d59d049fc2ba1f6605"),
