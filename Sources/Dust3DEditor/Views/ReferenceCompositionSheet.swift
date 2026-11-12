@@ -218,7 +218,7 @@ private struct ReferenceCropField: Hashable {
         .onChange(of: source?.displayedCrop, initial: true) { _, crop in
             values = crop.map { [$0.x, $0.y, $0.width, $0.height].map(String.init) } ?? ["", "", "", ""]
         }
-        .onChange(of: draft.sourceEpoch) { _, _ in
+        .onChange(of: draft.cropFieldRevision(profile)) { _, _ in
             values =
                 source.map {
                     [$0.displayedCrop.x, $0.displayedCrop.y, $0.displayedCrop.width, $0.displayedCrop.height].map(
