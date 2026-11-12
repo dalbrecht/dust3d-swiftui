@@ -42,7 +42,7 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         XCTAssertEqual(draft.front?.crop, input.crop)
         XCTAssertEqual(draft.side?.crop, input.crop)
         XCTAssertNotNil(draft.result)
-        XCTAssertEqual(draft.sourceEpoch, 1)
+        XCTAssertEqual(draft.cropFieldRevision(.front), 1)
     }
 
     @MainActor func testDropPartialFailureLeavesPreviouslyApplicableDraftIntact() async throws {
@@ -53,13 +53,13 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         draft.useExisting(input.image)
         try await settle(draft)
         let original = try XCTUnwrap(draft.result?.png)
-        let epoch = draft.sourceEpoch
+        let epoch = draft.cropFieldRevision(.front)
 
         draft.importDroppedSources(try dropPair())
         try await waitForDropSide(service)
         await service.finishSide(.failure(.invalidImage))
         try await settle(draft)
-        XCTAssertEqual(draft.sourceEpoch, epoch)
+        XCTAssertEqual(draft.cropFieldRevision(.front), epoch)
         XCTAssertEqual(draft.result?.png, original)
         XCTAssertNil(draft.side)
         XCTAssertTrue(draft.canApply)
@@ -79,7 +79,7 @@ final class ReferenceCompositionDraftTests: XCTestCase {
             try await settle(draft)
             XCTAssertNil(draft.side)
             XCTAssertEqual(draft.canApply, !stop)
-            XCTAssertEqual(draft.sourceEpoch, stop ? 0 : 1)
+            XCTAssertEqual(draft.cropFieldRevision(.front), stop ? 0 : 1)
         }
     }
 
@@ -209,6 +209,15 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         XCTAssertNotNil(draft.announcementMessage(editingCrop: .side))
         XCTAssertNil(draft.announcementMessage(editingCrop: .front))
 
+        let frontRevision = draft.cropFieldRevision(.front)
+        let sideRevision = draft.cropFieldRevision(.side)
+        draft.useFullImage(.side)
+        try await settle(draft)
+        XCTAssertEqual(draft.cropFieldRevision(.front), frontRevision)
+        XCTAssertGreaterThan(draft.cropFieldRevision(.side), sideRevision)
+        XCTAssertFalse(draft.canApply)
+        XCTAssertNotNil(draft.announcementMessage(editingCrop: .side))
+
         draft.setCrop(profile: .front, values: ["0", "0", "4", "2"])
         try await settle(draft)
         XCTAssertTrue(draft.canApply)
@@ -221,12 +230,12 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         defer { draft.stop() }
         draft.useExisting(input.image)
         try await settle(draft)
-        let epoch = draft.sourceEpoch
+        let epoch = draft.cropFieldRevision(.front)
         draft.setCrop(profile: .front, values: ["bad", "0", "4", "2"])
         XCTAssertNil(draft.result)
         draft.useExisting(input.image)
         try await settle(draft)
-        XCTAssertGreaterThan(draft.sourceEpoch, epoch)
+        XCTAssertGreaterThan(draft.cropFieldRevision(.front), epoch)
         XCTAssertNil(draft.errorMessage)
         draft.setCrop(profile: .front, values: ["1", "0", "2", "2"])
         try await settle(draft)
@@ -238,10 +247,10 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         try await settle(draft)
         XCTAssertEqual(draft.front?.crop, displayed)
         draft.setCrop(profile: .front, values: ["bad", "0", "1", "2"])
-        let resetEpoch = draft.sourceEpoch
+        let resetEpoch = draft.cropFieldRevision(.front)
         draft.useFullImage(.front)
         try await settle(draft)
-        XCTAssertGreaterThan(draft.sourceEpoch, resetEpoch)
+        XCTAssertGreaterThan(draft.cropFieldRevision(.front), resetEpoch)
         XCTAssertEqual(draft.front?.crop, input.crop)
         draft.setCrop(profile: .front, values: ["2", "0", "1", "2"])
         try await settle(draft)
@@ -283,11 +292,11 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         draft.useExisting(input.image)
         try await settle(draft)
         let png = try XCTUnwrap(draft.result?.png)
-        let epoch = draft.sourceEpoch
+        let epoch = draft.cropFieldRevision(.front)
         draft.reportRejectedInput(ReferenceImageError.fileReadFailed("provider item unavailable"))
         XCTAssertEqual(draft.result?.png, png)
         XCTAssertTrue(draft.canApply)
-        XCTAssertEqual(draft.sourceEpoch, epoch)
+        XCTAssertEqual(draft.cropFieldRevision(.front), epoch)
         XCTAssertTrue(draft.errorMessage?.contains("provider item unavailable") == true)
         draft.setCrop(profile: .front, values: ["bad", "0", "4", "2"])
         draft.reportRejectedInput(ReferenceImageError.fileReadFailed("provider unavailable again"))

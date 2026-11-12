@@ -48,7 +48,9 @@ struct ReferenceCompositionDrop {
         return "\(invalid.rawValue) crop is invalid. \(EditorStore.message(ReferenceCompositionError.invalidCrop))"
     }
 
-    private(set) var sourceEpoch = 0
+    private var cropFieldRevisions: [ReferenceProfile: Int] = [:]
+
+    func cropFieldRevision(_ profile: ReferenceProfile) -> Int { cropFieldRevisions[profile, default: 0] }
     private let service: any ReferenceCompositionServing
     private var operation: Task<Void, Never>?
     private var requestID = UUID()
@@ -80,7 +82,7 @@ struct ReferenceCompositionDrop {
                 let source = try await service.importSource(url: url)
                 guard !Task.isCancelled, !stopped, request == requestID else { return }
                 assign(source, to: profile)
-                resetNumericFields()
+                resetNumericFields(profile)
                 render()
             } catch {
                 guard !Task.isCancelled, !stopped, request == requestID else { return }
@@ -115,7 +117,7 @@ struct ReferenceCompositionDrop {
                 self.front = front
                 self.side = side
                 result = composed
-                resetNumericFields()
+                resetNumericFields(.front, .side)
                 isWorking = false
             } catch {
                 guard !Task.isCancelled, !stopped, request == requestID else { return }
@@ -130,7 +132,7 @@ struct ReferenceCompositionDrop {
         do {
             front = try ReferenceCompositionSource(
                 image: image, crop: .init(size: .init(width: image.width, height: image.height)))
-            resetNumericFields()
+            resetNumericFields(.front)
             render()
         } catch { fail(error) }
     }
@@ -178,13 +180,13 @@ struct ReferenceCompositionDrop {
                 size: current.crop.size, x: crop.x, y: crop.y, width: crop.width, height: crop.height)
             applyCrop(displayed, profile: profile, source: current)
         } catch { fail(error) }
-        resetNumericFields()
+        resetNumericFields(profile)
     }
 
     func useFullImage(_ profile: ReferenceProfile) {
         guard !stopped, let source = source(profile) else { return }
         applyCrop(ReferenceImageCrop(size: source.crop.size), profile: profile, source: source)
-        resetNumericFields()
+        resetNumericFields(profile)
     }
 
     func reportRejectedInput(_ error: Error) {
@@ -195,7 +197,7 @@ struct ReferenceCompositionDrop {
     func swapProfiles() {
         guard !stopped else { return }
         swap(&front, &side)
-        resetNumericFields()
+        resetNumericFields(.front, .side)
         render()
     }
 
@@ -205,7 +207,7 @@ struct ReferenceCompositionDrop {
             self.side = try .init(
                 image: side.image, crop: side.crop, isMirrored: !side.isMirrored, straightRGBA: side.straightRGBA,
                 isIndexed: side.isIndexed, wideImage: side.wideImage)
-            resetNumericFields()
+            resetNumericFields(.side)
             render()
         } catch { fail(error) }
     }
@@ -213,7 +215,7 @@ struct ReferenceCompositionDrop {
     func remove(_ profile: ReferenceProfile) {
         guard !stopped else { return }
         assign(nil, to: profile)
-        resetNumericFields()
+        resetNumericFields(profile)
         render()
     }
 
@@ -227,9 +229,11 @@ struct ReferenceCompositionDrop {
         operationError = nil
     }
 
-    private func resetNumericFields() {
-        invalidCropProfiles.removeAll()
-        sourceEpoch += 1
+    private func resetNumericFields(_ profiles: ReferenceProfile...) {
+        for profile in profiles {
+            invalidCropProfiles.remove(profile)
+            cropFieldRevisions[profile, default: 0] += 1
+        }
     }
 
     private func assign(_ source: ReferenceCompositionSource?, to profile: ReferenceProfile) {
