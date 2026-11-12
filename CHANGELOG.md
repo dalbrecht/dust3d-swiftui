@@ -10,6 +10,8 @@
 - Announce new Viewer errors in the active window with VoiceOver.
 
 - Explain invalid document and Qt XML input in headless export diagnostics.
+- Read shortcut key names aloud and support searching by their names.
+
 - Prefer exact key bindings when searching Keyboard Shortcuts Help.
 
 - Settle the origin from node bounds when a headless Qt XML paste creates a new document.
