@@ -72,6 +72,12 @@ enum ReferenceCompositionRaster {
                     scaled, in: CGRect(x: placement.x, y: 0, width: placement.width, height: layout.height))
                 continue
             }
+            if let straight = source.straightRGBA, crop.height != layout.height {
+                let scaled = try ReferenceAlphaInterpolator.scale(
+                    source, straight: straight, width: placement.width, height: layout.height)
+                context.draw(scaled, in: CGRect(x: placement.x, y: 0, width: placement.width, height: layout.height))
+                continue
+            }
             context.saveGState()
             context.translateBy(x: CGFloat(placement.x + (source.isMirrored ? placement.width : 0)), y: 0)
             if source.isMirrored { context.scaleBy(x: -1, y: 1) }

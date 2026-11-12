@@ -99,7 +99,12 @@ enum FixedPointReferenceScaler {
                 }
             }
         }
-        guard let provider = CGDataProvider(data: output as CFData),
+        return try opaqueImage(output, width: width, height: height)
+    }
+
+    static func opaqueImage(_ output: Data, width: Int, height: Int) throws -> CGImage {
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+            let provider = CGDataProvider(data: output as CFData),
             let result = CGImage(
                 width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
                 bytesPerRow: width * 4, space: colorSpace,
