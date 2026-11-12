@@ -59,17 +59,7 @@ enum ReferenceAlphaInterpolator {
             Coordinate(
                 position: painterPosition(0.5, inverseScale: inverseScale) + column * step, limit: crop.width)
         }
-        let rightCoverageNumerator = crop.width * height - (width - 1) * crop.height
-        let edgeCoverage: Int
-        if rightCoverageNumerator >= crop.height {
-            edgeCoverage = 255
-        } else if source.isIndexed {
-            // Qt's indexed painter quantizes partial spans before multiplying the 8-bit channels.
-            let quantized = (rightCoverageNumerator * 255 + crop.height - 1) / crop.height
-            edgeCoverage = max(0, quantized - 2)
-        } else {
-            edgeCoverage = max(0, rightCoverageNumerator * 255 / crop.height)
-        }
+        let edges = PainterEdges(sourceWidth: crop.width, sourceHeight: crop.height, width: width, height: height)
         let fractionMask = source.isIndexed ? 0xFF00 : 0xFFFF
         let vectorWidth = width - width % 4
         var output = Data(count: width * height * 4)
@@ -98,11 +88,15 @@ enum ReferenceAlphaInterpolator {
                         right = interpolate(topPair.1, bottomPair.1, fraction: y.fraction)
                     }
                     var pixel = interpolate(left, right, fraction: x.fraction & fractionMask)
-                    if column == width - 1 && edgeCoverage < 255 {
-                        let covered = pixel &* Pixel(repeating: edgeCoverage)
-                        pixel =
-                            source.isIndexed
-                            ? divideBy255(covered) : (covered &+ Pixel(repeating: 127)) / 255
+                    if column == width - 1 || row == height - 1 {
+                        let span = edges.coverage(right: column == width - 1, bottom: row == height - 1)
+                        if span < 255 {
+                            if source.isIndexed {
+                                pixel = divideBy255(pixel &* Pixel(repeating: (span * 255) >> 8))
+                            } else {
+                                pixel = (pixel &* Pixel(repeating: span) &+ Pixel(repeating: 127)) / 255
+                            }
+                        }
                     }
                     let offset = (row * width + column) * 4
                     if source.isIndexed {
@@ -123,6 +117,38 @@ enum ReferenceAlphaInterpolator {
             }
         }
         return try FixedPointReferenceScaler.opaqueImage(output, width: width, height: height)
+    }
+
+    struct PainterEdges {
+        let rightWidth: Int
+        let bottomHeight: Int
+
+        init(sourceWidth: Int, sourceHeight: Int, width: Int, height: Int) {
+            // The antialiased painter constructs its rectangle from a clipped horizontal centerline.
+            let scale = Double(height) / Double(sourceHeight)
+            let horizontalExtent = Double(sourceWidth) * scale
+            let clippedWidth = min(Double(width), horizontalExtent)
+            let aspect = Double(sourceHeight) / Double(sourceWidth)
+            let clippedAspect = aspect * sqrt(horizontalExtent * horizontalExtent / (clippedWidth * clippedWidth))
+            let centerY = Double(sourceHeight) * 0.5 * scale
+            let halfHeight = clippedAspect * (clippedWidth * 0.5)
+            let top = centerY - halfHeight
+            let bottom = centerY + halfHeight
+            let right = clippedWidth * 0.5 + (0.5 * (1 / clippedAspect)) * (bottom - top)
+            rightWidth = Self.partialExtent(right, limit: width)
+            bottomHeight = Self.partialExtent(bottom, limit: height)
+        }
+
+        func coverage(right: Bool, bottom: Bool) -> Int {
+            let column = right ? rightWidth : unit
+            let row = bottom ? bottomHeight : unit
+            return column * row * 255 / (unit * unit)
+        }
+
+        private static func partialExtent(_ extent: Double, limit: Int) -> Int {
+            let end = Int(min(Double(limit), extent) * Double(unit))
+            return max(0, end - (limit - 1) * unit)
+        }
     }
 
     private static func compositeUnscaled(_ source: ReferenceCompositionSource, straight: Data) throws -> CGImage {

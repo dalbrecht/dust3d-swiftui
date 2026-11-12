@@ -9,10 +9,15 @@ enum ReferenceWideAlphaRaster {
     private static let maximum = unit - 1
 
     static func scale(
-        _ source: ReferenceCompositionSource, image: CGImage, width: Int, height: Int, usesAreaSampling: Bool
+        _ source: ReferenceCompositionSource, image: CGImage, width: Int, height: Int,
+        usesAreaSampling requiresAreaSampling: Bool
     ) throws -> CGImage {
         let crop = source.crop
         let layout = try ImageSampleLayout(image)
+        // Qt RGBX64 always takes the smooth scaler.
+        let isOpaqueRGB = image.colorSpace?.model == .rgb && image.alphaInfo != .last
+        let scales = width != crop.width || height != crop.height
+        let usesAreaSampling = requiresAreaSampling || (isOpaqueRGB && scales)
         let span = image.bytesPerRow.multipliedReportingOverflow(by: image.height)
         guard let data = image.dataProvider?.data, let storage = CFDataGetBytePtr(data),
             !span.overflow, image.bytesPerRow >= image.width * layout.bytesPerPixel,
@@ -30,8 +35,8 @@ enum ReferenceWideAlphaRaster {
 
         let inverseScale = Double(crop.height) / Double(height)
         let step = Int(inverseScale * Double(unit))
-        let boundary = Double(crop.width) / inverseScale - Double(width - 1)
-        let edge = min(255, max(0, Int(boundary * 255)))
+        let edges = ReferenceAlphaInterpolator.PainterEdges(
+            sourceWidth: crop.width, sourceHeight: crop.height, width: width, height: height)
         let horizontal =
             usesAreaSampling
             ? FixedPointReferenceScaler.samples(source: crop.width, destination: width) : []
@@ -53,16 +58,32 @@ enum ReferenceWideAlphaRaster {
                 for column in 0..<width {
                     let pixel: Pixel
                     if usesAreaSampling && !reducesWidth && !reducesHeight {
+                        let columns = horizontal[column]
+                        let rows = vertical[row]
+                        let interpolatesBothAxes =
+                            columns.dropFirst().contains { $0.weight > 0 }
+                            && rows.dropFirst().contains { $0.weight > 0 }
                         var total = Pixel.zero
-                        for x in horizontal[column] {
-                            var verticalTotal = Pixel.zero
-                            for y in vertical[row] {
-                                verticalTotal =
-                                    try verticalTotal &+ sample(x.index, y.index) &* Pixel(repeating: y.weight)
+                        if interpolatesBothAxes {
+                            for x in columns {
+                                var verticalTotal = Pixel.zero
+                                for y in rows {
+                                    verticalTotal =
+                                        try verticalTotal &+ sample(x.index, y.index) &* Pixel(repeating: y.weight)
+                                }
+                                total = total &+ (verticalTotal &>> 8) &* Pixel(repeating: x.weight)
                             }
-                            total = total &+ (verticalTotal &>> 8) &* Pixel(repeating: x.weight)
+                            total = total &>> 8
+                        } else {
+                            // A single-axis interpolation truncates each weighted term before addition.
+                            for y in rows {
+                                for x in columns {
+                                    let term = try sample(x.index, y.index) &* Pixel(repeating: x.weight * y.weight)
+                                    total = total &+ (term &>> 16)
+                                }
+                            }
                         }
-                        pixel = total &>> 8
+                        pixel = total
                     } else if usesAreaSampling {
                         var total = Pixel.zero
                         for y in vertical[row] {
@@ -78,14 +99,19 @@ enum ReferenceWideAlphaRaster {
                         let left = try blend(sample(x.first, y.first), sample(x.first, y.second), y.fraction)
                         let right = try blend(sample(x.second, y.first), sample(x.second, y.second), y.fraction)
                         let mixed = blend(left, right, x.fraction)
+                        let coverage = edges.coverage(right: column == width - 1, bottom: row == height - 1)
                         pixel =
-                            column == width - 1 && edge < 255
-                            ? (mixed &* Pixel(repeating: edge) &+ Pixel(repeating: 127)) / 255 : mixed
+                            coverage < 255
+                            ? (mixed &* Pixel(repeating: coverage) &+ Pixel(repeating: 127)) / 255 : mixed
                     }
                     let offset = (row * width + column) * 4
-                    let white = maximum - pixel.w
                     for channel in 0..<3 {
-                        bytes[offset + channel] = UInt8((pixel[channel] + white + 128) / 257)
+                        // The opaque conversion normalizes any padding lost to interpolation truncation.
+                        let value =
+                            isOpaqueRGB && pixel.w != maximum
+                            ? (pixel[channel] * maximum + pixel.w / 2) / pixel.w
+                            : pixel[channel] + maximum - pixel.w
+                        bytes[offset + channel] = UInt8((value + 128) / 257)
                     }
                     bytes[offset + 3] = 255
                 }

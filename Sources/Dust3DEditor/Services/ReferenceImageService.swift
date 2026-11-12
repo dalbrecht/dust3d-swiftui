@@ -24,7 +24,23 @@ enum ReferenceImageCodec {
     }
 
     static func importPNG(_ data: Data) throws -> Data {
-        try encodePNG(decode(data, pngOnly: false))
+        let image = try decode(data, pngOnly: false)
+        if image.bitsPerComponent == 16, image.colorSpace?.model == .monochrome,
+            [.first, .last, .premultipliedFirst, .premultipliedLast].contains(image.alphaInfo)
+        {
+            // ImageIO's PNG writer cannot encode its 16-bit grayscale-alpha thumbnail.
+            // Draw through a wide RGB context to retain the alpha precision and apply the source color space.
+            guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+                let context = CGContext(
+                    data: nil, width: image.width, height: image.height, bitsPerComponent: 16,
+                    bytesPerRow: 0, space: colorSpace,
+                    bitmapInfo: CGBitmapInfo.byteOrder16Little.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { throw ReferenceImageError.conversionFailed }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            guard let converted = context.makeImage() else { throw ReferenceImageError.conversionFailed }
+            return try encodePNG(converted)
+        }
+        return try encodePNG(image)
     }
 
     static func encodePNG(_ image: CGImage) throws -> Data {
@@ -40,7 +56,7 @@ enum ReferenceImageCodec {
         return output as Data
     }
 
-    static func straightSRGBImage(_ data: Data) -> CGImage? {
+    static func straightStandardPNGImage(_ data: Data) -> CGImage? {
         let options = [kCGImageSourceShouldCache: false, kCGImageSourceShouldAllowFloat: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, options),
             let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, options) as? [CFString: Any],
@@ -50,7 +66,11 @@ enum ReferenceImageCodec {
             let colorSpace = image.colorSpace
         else { return nil }
         let rgb = colorSpace.model == .indexed ? colorSpace.baseColorSpace : colorSpace
-        guard rgb?.name == CGColorSpace.sRGB || rgb == CGColorSpaceCreateDeviceRGB() else { return nil }
+        let isUnprofiledGray =
+            colorSpace.name == CGColorSpace.genericGrayGamma2_2
+            && properties[kCGImagePropertyProfileName] == nil
+        guard rgb?.name == CGColorSpace.sRGB || rgb == CGColorSpaceCreateDeviceRGB() || isUnprofiledGray
+        else { return nil }
         return image
     }
 
