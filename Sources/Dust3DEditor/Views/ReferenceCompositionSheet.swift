@@ -145,6 +145,7 @@ private struct ReferenceCropField: Hashable {
     let importImage: () -> Void
     @State private var values = ["", "", "", ""]
     @State private var isAdjustingCrop = false
+    @State private var isDropTargeted = false
     private var source: ReferenceCompositionSource? { draft.source(profile) }
 
     var body: some View {
@@ -214,6 +215,20 @@ private struct ReferenceCropField: Hashable {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .contentShape(Rectangle())
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(Color.accentColor, lineWidth: 2)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            draft.importDroppedSource(urls: urls, profile: profile)
+        } isTargeted: {
+            isDropTargeted = $0
         }
         .onChange(of: source?.displayedCrop, initial: true) { _, crop in
             values = crop.map { [$0.x, $0.y, $0.width, $0.height].map(String.init) } ?? ["", "", "", ""]
