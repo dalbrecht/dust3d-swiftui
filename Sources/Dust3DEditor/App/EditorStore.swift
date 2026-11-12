@@ -2632,7 +2632,7 @@ final class EditorStore {
             let context = canvasRotationContext
         else { return nil }
         let hovered: PartGraphTarget? =
-            switch canvasGraphHover {
+            switch canvasPartStateHover {
             case .node(let id): .node(id)
             case .edge(let id): .edge(id)
             case nil: nil
