@@ -52,6 +52,13 @@ enum ReferenceCompositionRaster {
             else {
                 throw ReferenceImageError.conversionFailed
             }
+            if image.bitsPerComponent == 8 && [.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo) {
+                let scaled = try FixedPointReferenceScaler.scale(
+                    image, width: placement.width, height: layout.height, isMirrored: source.isMirrored)
+                context.draw(
+                    scaled, in: CGRect(x: placement.x, y: 0, width: placement.width, height: layout.height))
+                continue
+            }
             context.saveGState()
             context.translateBy(x: CGFloat(placement.x + (source.isMirrored ? placement.width : 0)), y: 0)
             if source.isMirrored { context.scaleBy(x: -1, y: 1) }

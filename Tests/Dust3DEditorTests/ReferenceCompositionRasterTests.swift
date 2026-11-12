@@ -1,4 +1,5 @@
 import CoreGraphics
+import CryptoKit
 import Dust3DEditorModel
 import XCTest
 
@@ -40,6 +41,38 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         XCTAssertEqual(try pixel(decoded, x: 896, y: 256), [0, 255, 0, 255])
         XCTAssertEqual(try pixel(decoded, x: 1536, y: 256), [255, 255, 255, 255])
     }
+    func testOpaqueCompositionMatchesQtSmoothResampling() throws {
+        let fixtures = [
+            (7, 9, "dfa3aa5112e22b45b802a1b7571b909d932a8d11e897e84793b1b963a53ab285"),
+            (701, 893, "8e60941b7a02883089cf39cb089103459ee72e44df8c15137685e4e3c676d2e8"),
+            (453, 1201, "ba151442bb927afcf199e46f2ac946ee7746617d242877dddd9341d0a5587af6"),
+        ]
+        for (width, height, expected) in fixtures {
+            var bytes = Data(capacity: width * height * 4)
+            for y in 0..<height {
+                for x in 0..<width {
+                    bytes.append(UInt8((x * 71 + y * 13) % 256))
+                    bytes.append(UInt8((x * 23 + y * 29) % 256))
+                    bytes.append(UInt8((x * 97 + y * 7) % 256))
+                    bytes.append(255)
+                }
+            }
+            let provider = try XCTUnwrap(CGDataProvider(data: bytes as CFData))
+            let image = try XCTUnwrap(
+                CGImage(
+                    width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                    bytesPerRow: width * 4, space: XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB)),
+                    bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+                    provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+            let source = try ReferenceCompositionSource(
+                image: image, crop: .init(size: .init(width: width, height: height)))
+            let result = try ReferenceCompositionRaster.compose(front: source, side: nil)
+            let rgba = try XCTUnwrap(result.image.dataProvider?.data) as Data
+            let digest = SHA256.hash(data: rgba).map { String(format: "%02x", $0) }.joined()
+            XCTAssertEqual(digest, expected, "\(width) × \(height)")
+        }
+    }
+
     func testServiceImportsNormalizedPixelsAndComposesOnItsActor() async throws {
         let image = try stripes()
         let png = try ReferenceImageCodec.encodePNG(image)
