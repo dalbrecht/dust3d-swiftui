@@ -25,6 +25,9 @@ enum ReferenceImageCodec {
 
     static func importPNG(_ data: Data) throws -> Data {
         let image = try decode(data, pngOnly: false)
+        if let packed = try decodePackedBMP(data, width: image.width, height: image.height) {
+            return try encodePNG(packed)
+        }
         if image.bitsPerComponent == 16, image.colorSpace?.model == .monochrome,
             [.first, .last, .premultipliedFirst, .premultipliedLast].contains(image.alphaInfo)
         {
@@ -41,6 +44,65 @@ enum ReferenceImageCodec {
             return try encodePNG(converted)
         }
         return try encodePNG(image)
+    }
+
+    /// Match Qt's bit replication for the common Windows RGB555 and RGB565 BMP layouts.
+    private static func decodePackedBMP(_ data: Data, width: Int, height: Int) throws -> CGImage? {
+        try data.withUnsafeBytes { (input: UnsafeRawBufferPointer) in
+            guard input.count >= 54, input[0] == 0x42, input[1] == 0x4d else { return nil }
+
+            func word(_ offset: Int) -> UInt16 {
+                UInt16(littleEndian: input.loadUnaligned(fromByteOffset: offset, as: UInt16.self))
+            }
+            func dword(_ offset: Int) -> UInt32 {
+                UInt32(littleEndian: input.loadUnaligned(fromByteOffset: offset, as: UInt32.self))
+            }
+
+            let signedHeight = Int(Int32(bitPattern: dword(22)))
+            guard dword(14) == 40, dword(18) == width, abs(signedHeight) == height,
+                word(26) == 1, word(28) == 16
+            else { return nil }
+
+            let offset = Int(dword(10))
+            let isRGB565: Bool
+            switch dword(30) {
+            case 0:
+                guard offset >= 54 else { return nil }
+                isRGB565 = false
+            case 3:
+                guard input.count >= 66, offset >= 66, dword(62) == 0x001f else { return nil }
+                switch (dword(54), dword(58)) {
+                case (0xf800, 0x07e0): isRGB565 = true
+                case (0x7c00, 0x03e0): isRGB565 = false
+                default: return nil
+                }
+            default: return nil
+            }
+            let rowBytes = (width * 2 + 3) & ~3
+            guard offset <= input.count, height <= (input.count - offset) / rowBytes else { return nil }
+
+            func expand5(_ sample: UInt16) -> UInt8 {
+                UInt8((sample << 3) | (sample >> 2))
+            }
+
+            var pixels = Data(count: width * height * 4)
+            try pixels.withUnsafeMutableBytes { (output: UnsafeMutableRawBufferPointer) in
+                for y in 0..<height {
+                    try Task.checkCancellation()
+                    let sourceY = signedHeight < 0 ? y : height - 1 - y
+                    for x in 0..<width {
+                        let value = word(offset + sourceY * rowBytes + x * 2)
+                        let target = (y * width + x) * 4
+                        let green = (value >> 5) & (isRGB565 ? 63 : 31)
+                        output[target] = expand5((value >> (isRGB565 ? 11 : 10)) & 31)
+                        output[target + 1] = isRGB565 ? UInt8((green << 2) | (green >> 4)) : expand5(green)
+                        output[target + 2] = expand5(value & 31)
+                        output[target + 3] = 255
+                    }
+                }
+            }
+            return try FixedPointReferenceScaler.opaqueImage(pixels, width: width, height: height)
+        }
     }
 
     static func encodePNG(_ image: CGImage) throws -> Data {
