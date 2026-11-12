@@ -7,6 +7,7 @@
 
 - Select the owning component of the canvas picks from the Canvas menu.
 - Use A to toggle Add and S to return to selection while the canvas has keyboard focus.
+- Open properties for the canvas graph owners with Space or the Canvas menu.
 
 - Include retained locked nodes when finding the selection center for local alignment.
 

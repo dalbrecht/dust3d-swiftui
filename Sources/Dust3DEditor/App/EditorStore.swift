@@ -2625,6 +2625,32 @@ final class EditorStore {
         }
     }
 
+    var canvasComponentProperties: CanvasComponentProperties?
+
+    func canvasComponentPropertiesAction(profileLease: UUID?) -> (@MainActor (Bool) -> Bool)? {
+        guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
+            let context = canvasRotationContext
+        else { return nil }
+        let hovered: PartGraphTarget? =
+            switch canvasPartStateHover {
+            case .node(let id): .node(id)
+            case .edge(let id): .edge(id)
+            case nil: nil
+            }
+        guard let properties = CanvasComponentProperties(snapshot: snapshot, hovered: hovered) else { return nil }
+        let hoverEpoch = canvasPartStateHoverEpoch
+        let layoutEpoch = precisionLayoutEpoch
+        let interactionEpoch = referenceColorInteractionEpoch
+        return { [weak self] isRepeat in
+            guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
+                canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
+                precisionLayoutEpoch == layoutEpoch, referenceColorInteractionEpoch == interactionEpoch
+            else { return false }
+            if !isRepeat && canvasComponentProperties == nil { canvasComponentProperties = properties }
+            return true
+        }
+    }
+
     func canvasOwningComponentAction(profileLease: UUID?) -> (@MainActor (Bool) -> Bool)? {
         guard canToggleCanvasPartState, let snapshot = acceptedDocumentSource, let context = canvasRotationContext,
             let hover = canvasPartStateHover
@@ -2654,8 +2680,10 @@ final class EditorStore {
 
     func canvasPartStateKeyHandler(profileLease: UUID?) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
         let handle = canvasPartStateHandler(profileLease: profileLease)
+        let openProperties = canvasComponentPropertiesAction(profileLease: profileLease)
         let selectOwner = canvasOwningComponentAction(profileLease: profileLease)
         return { input in
+            if input.opensComponentProperties { return openProperties?(input.isRepeat) ?? false }
             if input.selectsOwningComponent { return selectOwner?(input.isRepeat) ?? false }
             guard let property = input.partStateProperty, let handle else { return false }
             return handle(property, input.isRepeat)

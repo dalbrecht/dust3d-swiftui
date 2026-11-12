@@ -72,6 +72,9 @@ struct EditorRootView: View {
                 ReferenceCompositionSheet(
                     store: store, target: presentation.target, droppedSources: presentation.droppedSources)
             }
+            .sheet(item: canvasComponentPropertiesBinding) { properties in
+                CanvasComponentPropertiesSheet(store: store, properties: properties)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     Toggle(isOn: $isSidebarPresented) {
@@ -150,6 +153,12 @@ struct EditorRootView: View {
             .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
             .task(id: file.identity) { await loadCurrentDocument() }
             .onDisappear(perform: stopDocument)
+    }
+
+    private var canvasComponentPropertiesBinding: Binding<CanvasComponentProperties?> {
+        Binding(
+            get: { store.canvasComponentProperties },
+            set: { store.canvasComponentProperties = $0 })
     }
 
     private func loadCurrentDocument() async {

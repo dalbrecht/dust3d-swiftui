@@ -295,6 +295,85 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(value.canUndo)
     }
 
+    func testSpaceOpensPropertiesWithoutReplacingGraphSelection() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        value.setHoveredNode("a")
+        let space = CanvasPrecisionKeyInput(keyCode: 49, characters: " ", modifiers: [])
+        let key = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertTrue(key(.init(keyCode: 49, characters: " ", modifiers: [], isRepeat: true)))
+        XCTAssertNil(value.canvasComponentProperties)
+        XCTAssertTrue(key(space))
+        let properties = try XCTUnwrap(value.canvasComponentProperties)
+        value.clearCanvasHover()
+        let before = try XCTUnwrap(value.snapshot)
+        let target = try XCTUnwrap(properties.target(in: before))
+        XCTAssertEqual(
+            ComponentMeshSelectionPresentation(snapshot: before, target: target).components.map(\.id), ["cp", "cq"])
+        XCTAssertEqual(before.selectedIDs, ["x"])
+        XCTAssertEqual(before.document.encoded(), original)
+        XCTAssertFalse(before.canUndo)
+        value.componentMeshAction(.combineMode(.uncombined), target: target)()
+        try await settle(value)
+        let edited = try XCTUnwrap(value.snapshot)
+        let updated = try XCTUnwrap(properties.target(in: edited))
+        XCTAssertEqual(
+            ComponentMeshSelectionPresentation(snapshot: edited, target: updated).combineMode, .uniform(.uncombined))
+        XCTAssertEqual(edited.selectedIDs, ["x"])
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+        value.select("a")
+        try await settle(value)
+        XCTAssertNil(properties.target(in: try XCTUnwrap(value.snapshot)))
+    }
+
+    func testSpacePropertiesIgnoresHoverFromRetiredCanvasProjection() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        let initial = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+        let resized = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 520, height: 360)
+        let position = NodePosition(x: 0.2, y: 0.5, z: 0.5)
+        value.setCanvasContext(projection: resized, width: 520, height: 360)
+        value.updateCanvasHover(at: initial.point(for: position), projection: initial)
+        XCTAssertEqual(value.canvasGraphHover, .node("a"))
+
+        let space = CanvasPrecisionKeyInput(keyCode: 49, characters: " ", modifiers: [])
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(space))
+        let snapshot = try XCTUnwrap(value.snapshot)
+        let properties = try XCTUnwrap(value.canvasComponentProperties)
+        let target = try XCTUnwrap(properties.target(in: snapshot))
+        let presentation = ComponentMeshSelectionPresentation(snapshot: snapshot, target: target)
+        XCTAssertEqual(presentation.components.map(\.id), ["cq"])
+        XCTAssertEqual(snapshot.selectedIDs, ["x"])
+        XCTAssertEqual(snapshot.document.encoded(), original)
+        XCTAssertFalse(snapshot.canUndo)
+
+        value.canvasComponentProperties = nil
+        let retained = value.canvasPartStateKeyHandler(profileLease: nil)
+        value.updateCanvasHover(at: resized.point(for: position), projection: resized)
+        XCTAssertFalse(retained(space))
+        XCTAssertNil(value.canvasComponentProperties)
+        XCTAssertTrue(value.canvasPartStateKeyHandler(profileLease: nil)(space))
+        let currentProperties = try XCTUnwrap(value.canvasComponentProperties)
+        let currentTarget = try XCTUnwrap(currentProperties.target(in: snapshot))
+        XCTAssertEqual(
+            ComponentMeshSelectionPresentation(snapshot: snapshot, target: currentTarget).components.map(\.id),
+            ["cp", "cq"])
+    }
+
     func testStationaryPartStateHoverLocksAndUnlocksTheSameOwner() async throws {
         let original = try source().encoded()
         let value = store()

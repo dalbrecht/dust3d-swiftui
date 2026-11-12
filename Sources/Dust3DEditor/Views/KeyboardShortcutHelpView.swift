@@ -78,6 +78,9 @@ enum KeyboardShortcutHelp {
         .init(
             action: "Commit Animation Draft", keys: "⌘Return",
             scope: "Animation authoring controls, when the draft is valid"),
+        .init(
+            action: "Edit Owning Component Properties", keys: "Space",
+            scope: "Focused canvas with selected or hovered graph owners"),
     ]
 
     static func matching(_ query: String, in entries: [Entry] = entries) -> [Entry] {
