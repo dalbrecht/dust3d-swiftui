@@ -57,8 +57,12 @@ struct CanvasPrecisionKeyInput {
         default: return nil
         }
     }
+    var togglesPartMirror: Bool {
+        isBareEditingKey && (characters == "m" || characters == "M")
+    }
+
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
-        guard axisLockConstraint != nil || partStateProperty != nil else { return true }
+        guard axisLockConstraint != nil || partStateProperty != nil || togglesPartMirror else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil
     }

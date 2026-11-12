@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Press M on the canvas to toggle X mirror on the owning Model part.
+
 - Include retained locked nodes when finding the selection center for local alignment.
 
 - Use the last Qt paste fragment when an earlier headless paste operand is a directory.

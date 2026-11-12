@@ -191,6 +191,65 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(keys(.init(keyCode: 0, characters: "z", modifiers: [])))
     }
 
+    func testCanvasMirrorKeyUsesHoveredOwnerAndPreservesSelectionAndUndo() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+        value.updateCanvasHover(at: projection.point(for: .init(x: 0.3, y: 0.5, z: 0.5)), projection: projection)
+        XCTAssertEqual(value.canvasGraphHover, .edge("ab"))
+        let handle = value.canvasPartStateKeyHandler(profileLease: nil)
+        XCTAssertFalse(handle(.init(keyCode: 46, characters: "m", modifiers: .command)))
+        XCTAssertTrue(handle(.init(keyCode: 46, characters: "m", modifiers: [], isRepeat: true)))
+        XCTAssertFalse(value.isWorking)
+        XCTAssertTrue(handle(.init(keyCode: 46, characters: "m", modifiers: [])))
+        try await settle(value)
+
+        let changed = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(changed.parts.first { $0.id == "p" }?.xMirrored, true)
+        XCTAssertEqual(changed.parts.first { $0.id == "q" }?.xMirrored, false)
+        XCTAssertEqual(changed.selectedIDs, ["x"])
+        XCTAssertNotNil(changed.origin)
+        XCTAssertFalse(handle(.init(keyCode: 46, characters: "m", modifiers: [])))
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testCanvasMirrorMenuRejectsRetiredHoverAndFallsBackOnlyToOneSelectedOwner() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+        value.select("x")
+        try await settle(value)
+        let projection = CanvasProjection(bounds: value.bounds, plane: value.plane, width: 400, height: 300)
+        value.updateCanvasHover(at: projection.point(for: .init(x: 0.3, y: 0.5, z: 0.5)), projection: projection)
+        let retained = try XCTUnwrap(value.canvasPartMirrorAction())
+        value.clearCanvasHover()
+        retained()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+
+        value.select(["a", "x"])
+        try await settle(value)
+        XCTAssertNil(value.canvasPartMirrorAction())
+        value.select("x")
+        try await settle(value)
+        let fallback = try XCTUnwrap(value.canvasPartMirrorAction())
+        fallback()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "p" }?.xMirrored, false)
+        XCTAssertEqual(value.snapshot?.parts.first { $0.id == "q" }?.xMirrored, true)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["x"])
+    }
+
     func testCanvasPartStateHoverFirstThenUnambiguousFallbackWithExactUndo() async throws {
         let original = try source().encoded()
         let value = store()
