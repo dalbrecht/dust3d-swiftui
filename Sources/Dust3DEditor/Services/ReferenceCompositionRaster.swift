@@ -7,15 +7,21 @@ struct ReferenceCompositionSource: Sendable {
     let image: CGImage
     let crop: ReferenceImageCrop
     let isMirrored: Bool
+    let straightRGBA: Data?
     var displayedCrop: ReferenceImageCrop { isMirrored ? crop.mirroredHorizontally : crop }
 
-    init(image: CGImage, crop: ReferenceImageCrop, isMirrored: Bool = false) throws {
-        guard image.width == crop.size.width, image.height == crop.size.height else {
+    init(
+        image: CGImage, crop: ReferenceImageCrop, isMirrored: Bool = false, straightRGBA: Data? = nil
+    ) throws {
+        guard image.width == crop.size.width, image.height == crop.size.height,
+            straightRGBA.map({ $0.count == image.width * image.height * 4 }) ?? true
+        else {
             throw ReferenceCompositionError.invalidDimensions
         }
         self.image = image
         self.crop = crop
         self.isMirrored = isMirrored
+        self.straightRGBA = straightRGBA
     }
 }
 
@@ -52,6 +58,26 @@ enum ReferenceCompositionRaster {
             else {
                 throw ReferenceImageError.conversionFailed
             }
+            let opaque =
+                image.bitsPerComponent == 8 && [.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo)
+            let usesAreaSampling =
+                placement.width * 2 < crop.width || layout.height * 2 < crop.height
+                || crop.width * crop.height >= 1 << 20
+            let premultiplied = usesAreaSampling ? try premultipliedCrop(source) : nil
+            if opaque || premultiplied != nil {
+                let scaled = try FixedPointReferenceScaler.scale(
+                    image, width: placement.width, height: layout.height, isMirrored: source.isMirrored,
+                    premultipliedRGBA: premultiplied)
+                context.draw(
+                    scaled, in: CGRect(x: placement.x, y: 0, width: placement.width, height: layout.height))
+                continue
+            }
+            if let straight = source.straightRGBA, crop.height != layout.height {
+                let scaled = try ReferenceAlphaInterpolator.scale(
+                    source, straight: straight, width: placement.width, height: layout.height)
+                context.draw(scaled, in: CGRect(x: placement.x, y: 0, width: placement.width, height: layout.height))
+                continue
+            }
             context.saveGState()
             context.translateBy(x: CGFloat(placement.x + (source.isMirrored ? placement.width : 0)), y: 0)
             if source.isMirrored { context.scaleBy(x: -1, y: 1) }
@@ -63,5 +89,29 @@ enum ReferenceCompositionRaster {
         let png = try ReferenceImageCodec.encodePNG(image)
         try Task.checkCancellation()
         return .init(png: png, image: image, layout: layout)
+    }
+    private static func premultipliedCrop(_ source: ReferenceCompositionSource) throws -> Data? {
+        guard let straight = source.straightRGBA else { return nil }
+        let crop = source.crop
+        var output = Data(count: crop.width * crop.height * 4)
+        try straight.withUnsafeBytes { (input: UnsafeRawBufferPointer) in
+            try output.withUnsafeMutableBytes { (pixels: UnsafeMutableRawBufferPointer) in
+                for row in 0..<crop.height {
+                    try Task.checkCancellation()
+                    for column in 0..<crop.width {
+                        let x = crop.x + (source.isMirrored ? crop.width - 1 - column : column)
+                        let from = ((crop.y + row) * crop.size.width + x) * 4
+                        let to = (row * crop.width + column) * 4
+                        let alpha = input[from + 3]
+                        for channel in 0..<3 {
+                            let product = Int(input[from + channel]) * Int(alpha)
+                            pixels[to + channel] = UInt8((product + (product >> 8) + 128) >> 8)
+                        }
+                        pixels[to + 3] = alpha
+                    }
+                }
+            }
+        }
+        return output
     }
 }

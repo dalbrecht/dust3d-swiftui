@@ -129,7 +129,10 @@ struct ReferenceCompositionDrop {
                 size: source.crop.size, x: numbers[0], y: numbers[1], width: numbers[2], height: numbers[3])
             let crop = source.isMirrored ? displayed.mirroredHorizontally : displayed
             if crop == source.crop && errorMessage == nil { return }
-            assign(try .init(image: source.image, crop: crop, isMirrored: source.isMirrored), to: profile)
+            assign(
+                try .init(
+                    image: source.image, crop: crop, isMirrored: source.isMirrored, straightRGBA: source.straightRGBA),
+                to: profile)
             render()
         } catch { fail(error) }
     }
@@ -166,7 +169,8 @@ struct ReferenceCompositionDrop {
     func toggleSideMirror() {
         guard !stopped, let side else { return }
         do {
-            self.side = try .init(image: side.image, crop: side.crop, isMirrored: !side.isMirrored)
+            self.side = try .init(
+                image: side.image, crop: side.crop, isMirrored: !side.isMirrored, straightRGBA: side.straightRGBA)
             sourceEpoch += 1
             render()
         } catch { fail(error) }
