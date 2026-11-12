@@ -20,7 +20,9 @@ enum CanvasAddModeKey: Equatable {
     }
 
     @MainActor static func route(_ event: NSEvent, in window: NSWindow, handle: Handler?) -> Bool {
-        guard let handle, window.isKeyWindow, window.attachedSheet == nil else { return false }
+        guard let handle, window.isKeyWindow, window.attachedSheet == nil, window.sheetParent == nil,
+            NSApp.modalWindow == nil
+        else { return false }
         let key = disposition(
             characters: event.characters ?? "", modifiers: event.modifierFlags, isRepeat: event.isARepeat)
         switch key {
