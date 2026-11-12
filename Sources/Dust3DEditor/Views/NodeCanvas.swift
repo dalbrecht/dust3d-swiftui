@@ -14,6 +14,7 @@ struct NodeCanvas: View {
     @State private var nodeDrag = NodeDragLifecycle()
     @State private var shiftedDrag: (token: UUID, plan: CanvasShiftDrag, positions: [String: NodePosition])?
     @State private var marquee: CanvasSelectionRectangle?
+    @State private var visibilityFocus: (document: UUID, request: CanvasProfileFocusRequest)?
 
     var body: some View {
         GeometryReader { geometry in
@@ -48,6 +49,10 @@ struct NodeCanvas: View {
             let graphHover = store.canvasGraphHover
             let addModeID = store.addModeID
             let wheelDocument = store.snapshot?.documentIdentity
+            let documentID = wheelDocument
+            let visibilityFocusRequest =
+                visibilityFocus?.document == documentID && visibilityFocus?.request.isPending == true
+                ? visibilityFocus?.request : nil
             let shiftContext = store.canvasRotationContext
             let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
             let focusTarget = profileLease.flatMap { lease in
@@ -115,9 +120,9 @@ struct NodeCanvas: View {
                     addPress: { if admitsInput() { store.placeAddNode(at: $0, modeID: addModeID) } },
                     cancelInput: { if admitsInput() { cancelAddInput() } },
                     admitsPrimaryPress: { admitsInput() && admitPrimaryPress($0) },
-                    profileFocusRequest: profileFocusRequest,
-                    ownsProfile: { ownsProfile }, switchProfile: switchProfile,
-                    focusControl: focusControl, focusTarget: focusTarget
+                    profileFocusRequest: visibilityFocusRequest ?? profileFocusRequest,
+                    ownsProfile: { ownsProfile && store.snapshot?.documentIdentity == documentID },
+                    switchProfile: switchProfile, focusControl: focusControl, focusTarget: focusTarget
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"
@@ -290,7 +295,11 @@ struct NodeCanvas: View {
                             shiftedDrag = (token, plan, [:])
                             store.beginCanvasProfileMotion(token: token, lease: profileLease)
                         },
-                        admitsPrimaryPress: { admitsNodeInput() && admitPrimaryPress($0) }, switchProfile: switchProfile
+                        admitsPrimaryPress: { admitsNodeInput() && admitPrimaryPress($0) },
+                        switchProfile: switchProfile,
+                        retainVisibilityFocus: { request in
+                            if let documentID { visibilityFocus = (documentID, request) }
+                        }
                     )
                     .id(addModeID)
                     .id(selectionEpoch)
@@ -452,6 +461,7 @@ private struct NodeHandle: View {
     let beginShiftDrag: (UUID) -> Void
     let admitsPrimaryPress: (Int) -> Bool
     let switchProfile: ((CanvasProfileFocusRequest) -> Bool)?
+    let retainVisibilityFocus: (CanvasProfileFocusRequest) -> Void
 
     var body: some View {
         let point = projection.point(for: position)
@@ -472,7 +482,8 @@ private struct NodeHandle: View {
                 select: select, toggle: toggle, add: add, subtract: subtract, wheel: wheel, radiusKey: radiusKey,
                 doubleClick: doubleClick,
                 precisionKey: precisionKey,
-                beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress, switchProfile: switchProfile
+                beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress,
+                switchProfile: switchProfile, retainVisibilityFocus: retainVisibilityFocus
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)

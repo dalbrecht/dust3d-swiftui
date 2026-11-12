@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Press H to toggle canvas visibility and Shift-H to isolate the owning part.
+
 - Include retained locked nodes when finding the selection center for local alignment.
 
 - Use the last Qt paste fragment when an earlier headless paste operand is a directory.

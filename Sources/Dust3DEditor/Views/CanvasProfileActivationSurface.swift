@@ -109,7 +109,8 @@ final class CanvasProfileFocusRequest {
     func claim(for view: CanvasPointerView, ownsProfile: Bool) -> Bool {
         guard isPending, view.superview != nil, let attachedWindow = view.window else { return false }
         isPending = false
-        guard ownsProfile, attachedWindow === window, attachedWindow.isKeyWindow, attachedWindow.attachedSheet == nil
+        guard ownsProfile, attachedWindow === window, attachedWindow.isKeyWindow,
+            attachedWindow.attachedSheet == nil, attachedWindow.sheetParent == nil, NSApp.modalWindow == nil
         else { return false }
         let current = attachedWindow.firstResponder
         let detachedCanvas = previousWasCanvas && (previousResponder as? NSView)?.window == nil
