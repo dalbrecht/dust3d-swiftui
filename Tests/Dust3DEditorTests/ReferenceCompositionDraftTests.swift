@@ -175,6 +175,13 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         draft.setCrop(profile: .side, values: ["bad", "0", "1", "2"])
         XCTAssertNil(draft.result)
         XCTAssertNotNil(draft.errorMessage)
+        XCTAssertNil(draft.announcementMessage(editingCrop: .side))
+        XCTAssertEqual(draft.announcementMessage(editingCrop: .front), draft.errorMessage)
+        XCTAssertEqual(draft.announcementMessage(editingCrop: nil), draft.errorMessage)
+
+        draft.reportRejectedInput(ReferenceImageError.invalidImage)
+        XCTAssertNotNil(draft.errorMessage)
+        XCTAssertEqual(draft.announcementMessage(editingCrop: .side), draft.errorMessage)
         draft.setCrop(profile: .side, values: ["0", "0", "1", "2"])
         try await settle(draft)
         XCTAssertNotNil(draft.result)
@@ -183,6 +190,31 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         XCTAssertNil(draft.result)
         XCTAssertNil(draft.side)
     }
+    @MainActor func testEditingAnotherProfileCannotValidateAnInvalidCrop() async throws {
+        let input = try source()
+        let draft = ReferenceCompositionDraft(service: ImmediateCompositionService(source: input))
+        defer { draft.stop() }
+        for profile in ReferenceProfile.allCases {
+            draft.importSource(url: URL(fileURLWithPath: "/unused"), profile: profile)
+            try await settle(draft)
+        }
+
+        draft.setCrop(profile: .front, values: ["bad", "0", "4", "2"])
+        draft.setCrop(profile: .side, values: ["0", "bad", "4", "2"])
+        draft.setCrop(profile: .side, values: ["1", "0", "2", "2"])
+        try await settle(draft)
+
+        XCTAssertEqual(draft.side?.crop.x, 1)
+        XCTAssertFalse(draft.canApply)
+        XCTAssertNotNil(draft.announcementMessage(editingCrop: .side))
+        XCTAssertNil(draft.announcementMessage(editingCrop: .front))
+
+        draft.setCrop(profile: .front, values: ["0", "0", "4", "2"])
+        try await settle(draft)
+        XCTAssertTrue(draft.canApply)
+        XCTAssertNil(draft.errorMessage)
+    }
+
     @MainActor func testSourceActionsResetInvalidFieldsAndStalePointerDoesNotOverwriteNewCrop() async throws {
         let input = try source()
         let draft = ReferenceCompositionDraft(service: ImmediateCompositionService(source: input))
