@@ -56,5 +56,7 @@ While editing a crop number, clear the field and enter a valid value.
 Verify that the temporary empty value stays quiet. Then leave an invalid
 value and move focus out of that profile’s numeric fields. Verify that the
 error is announced once and Apply stays disabled until the crop is valid.
+With both profiles imported, correct Side while Front remains invalid.
+Check that Apply stays disabled and the remaining error identifies Front.
 An import or preview error should still announce while a numeric field has
 focus. This VoiceOver interaction remains pending on hardware.
