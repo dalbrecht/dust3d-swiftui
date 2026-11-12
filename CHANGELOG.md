@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move selected sibling components from the sidebar reorder menu in one undo step.
+
 - Headless FBX includes procedural textures and UVs by default. Use `--geometry-fbx` for geometry only.
 
 - Continue a headless batch when an output destination is an existing directory.
