@@ -10,6 +10,12 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(entry.scope, "Focused Side by Side canvas or node with a graph selection and no active drag")
     }
 
+    func testCanvasFocusMenuIsDiscoverableFromKeyboardHelp() throws {
+        let entry = try XCTUnwrap(KeyboardShortcutHelp.matching("Focus Canvas").first)
+        XCTAssertEqual(entry.action, "Nudge Selection or Origin")
+        XCTAssertTrue(entry.scope.contains("Choose Focus Canvas from the Canvas menu."))
+    }
+
     func testGroupNavigationShortcutsDescribeSidebarFocus() throws {
         let browse = try XCTUnwrap(KeyboardShortcutHelp.matching("⌘↓").first)
         XCTAssertEqual(browse.action, "Browse Selected Component Group")

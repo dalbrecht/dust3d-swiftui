@@ -14,6 +14,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorStore) private var store
     @FocusedValue(\.editorInspectorNavigation) private var navigateInspector
     @FocusedValue(\.editorSidebarVisibility) private var isSidebarPresented
+    @FocusedValue(\.editorCanvasFocus) private var focusCanvas
     @FocusedValue(\.editorGeometryExportAction) private var geometryExportAction
     @FocusedValue(\.rigAssignmentCommand) private var rigAssignmentCommand
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
@@ -30,6 +31,17 @@ struct Dust3DEditorApp: App {
     private var applicationName: String {
         BuildIdentityPresentation.applicationName(
             bundleIdentifier: buildIdentity.launchBundleIdentifier, fallback: "Dust3D Editor")
+    }
+
+    private var focusCanvasMenuButton: some View {
+        let window = NSApp.keyWindow
+        let command = EditorCanvasFocusCommand(window: window, focus: focusCanvas)
+        return Button("Focus Canvas") {
+            let currentWindow = NSApp.keyWindow
+            let hasSheet = currentWindow?.attachedSheet != nil || currentWindow?.sheetParent != nil
+            _ = command.perform(in: currentWindow, hasSheet: hasSheet || NSApp.modalWindow != nil)
+        }
+        .disabled(!command.isAvailable(in: window, hasSheet: rigAssignmentFocus.hasSheet))
     }
 
     private var nativeTextEditor: NSTextView? {
@@ -262,6 +274,7 @@ struct Dust3DEditorApp: App {
                     canZoomFromCanvas: previewCameraActions?.canZoomFromCanvas == true)
             }
             CommandMenu("Canvas") {
+                focusCanvasMenuButton
                 let openProperties = store.flatMap {
                     $0.canvasComponentPropertiesAction(
                         profileLease: $0.canvasProfiles.isDualProfile ? $0.canvasProfiles.lease : nil)
@@ -602,6 +615,7 @@ private struct EditorEdgeSidebarSelectAllKey: FocusedValueKey {
 private struct EditorNodesSidebarSelectAllKey: FocusedValueKey { typealias Value = NodesSidebarSelectAll }
 
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
+private struct EditorCanvasFocusKey: FocusedValueKey { typealias Value = @MainActor () -> Bool }
 
 extension FocusedValues {
     var editorAnimationFocus: Bool? {
@@ -637,6 +651,11 @@ extension FocusedValues {
     var editorNodesSidebarSelectAll: NodesSidebarSelectAll? {
         get { self[EditorNodesSidebarSelectAllKey.self] }
         set { self[EditorNodesSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorCanvasFocus: (@MainActor () -> Bool)? {
+        get { self[EditorCanvasFocusKey.self] }
+        set { self[EditorCanvasFocusKey.self] = newValue }
     }
 
     var editorStore: EditorStore? {
