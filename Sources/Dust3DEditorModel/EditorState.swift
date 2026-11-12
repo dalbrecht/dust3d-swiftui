@@ -765,18 +765,21 @@ public struct EditorState: Sendable {
 
     /// Apply a basic transform as one atomic undo step, retaining selection and radii.
     public mutating func transformSelection(_ transform: SelectionTransform) throws {
-        let nodes = (transform == .exchangeXZ ? snapshot.selectedNodes : snapshot.transformNodes).filter(\.isEditable)
+        let participants = transform == .exchangeXZ ? snapshot.selectedNodes : snapshot.transformNodes
+        let nodes = participants.filter(\.isEditable)
         guard !nodes.isEmpty else { return }
-        let count = Double(nodes.count)
         let center: NodePosition
         if transform.usesOrigin {
             guard let origin = contents.origin else { throw EditorError.unavailableOrigin }
             center = origin
         } else {
+            // Qt local alignment measures the retained selection before applying movement locks.
+            let centerNodes = transform.alignsToSelectionCenter ? participants.filter(\.isVisible) : nodes
+            let count = Double(centerNodes.count)
             center = NodePosition(
-                x: nodes.reduce(0) { $0 + $1.value.position.x } / count,
-                y: nodes.reduce(0) { $0 + $1.value.position.y } / count,
-                z: nodes.reduce(0) { $0 + $1.value.position.z } / count)
+                x: centerNodes.reduce(0) { $0 + $1.value.position.x } / count,
+                y: centerNodes.reduce(0) { $0 + $1.value.position.y } / count,
+                z: centerNodes.reduce(0) { $0 + $1.value.position.z } / count)
         }
         let updates = nodes.map { node in
             let original = node.value.position
