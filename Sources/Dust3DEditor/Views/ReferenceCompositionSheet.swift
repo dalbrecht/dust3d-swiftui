@@ -51,8 +51,9 @@ import UniformTypeIdentifiers
                     }
                     GroupBox("Composed preview") {
                         if let result = draft.result {
-                            Image(decorative: result.image, scale: 1).resizable().scaledToFit()
-                                .accessibilityLabel("Composed turnaround image")
+                            Image(result.image, scale: 1, label: Text("Composed turnaround image"))
+                                .resizable().scaledToFit()
+                                .accessibilityValue("\(result.image.width) by \(result.image.height) pixels")
                         } else {
                             ContentUnavailableView(
                                 draft.isWorking ? "Preparing preview…" : "Import a profile to begin",
@@ -139,7 +140,9 @@ import UniformTypeIdentifiers
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Button("Import \(profile.rawValue)…", action: importImage)
-                    Button("Remove") { draft.remove(profile) }.disabled(source == nil)
+                    Button("Remove") { draft.remove(profile) }
+                        .accessibilityLabel("Remove \(profile.rawValue) reference image")
+                        .disabled(source == nil)
                     if profile == .side {
                         Button(source?.isMirrored == true ? "Unmirror Side" : "Mirror Side") {
                             draft.toggleSideMirror()
@@ -190,6 +193,7 @@ import UniformTypeIdentifiers
                         }
                     }
                     Button("Use Full Image") { draft.useFullImage(profile) }
+                        .accessibilityLabel("Use full \(profile.rawValue) reference image")
                 } else {
                     ContentUnavailableView("No \(profile.rawValue) source", systemImage: "photo").frame(height: 180)
                 }
