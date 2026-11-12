@@ -123,6 +123,24 @@ final class ReferenceCompositionRasterTests: XCTestCase {
             ]))
     }
 
+    func testRGBTransparencyKeyRetainsStraightPNGChannels() async throws {
+        let png = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAABnRSTlMAHgBQAKrryUo0AAAAFUlEQVR4nGOQC1i1xOocg4JDA5AFACEoBL306nrqAAAAAElFTkSuQmCC"
+            ))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "keyed-reference-\(UUID().uuidString).png")
+        try png.write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        let source = try await ReferenceCompositionService().importSource(url: url)
+        XCTAssertEqual(
+            source.straightRGBA,
+            Data([
+                30, 80, 170, 0, 164, 58, 206, 255, 32, 64, 128, 255, 30, 80, 170, 0,
+            ]))
+    }
+
     func testTaggedWideGamutImportKeepsColorManagedRendering() async throws {
         let source = try await importTaggedPNG(colorSpace: CGColorSpace.displayP3, orientation: 1)
         XCTAssertEqual(source.image.width, 2)

@@ -29,7 +29,8 @@ actor ReferenceCompositionService: ReferenceCompositionServing {
             let metadata = try? PNGContainerMetadata(
                 data: original, maximumEncodedBytes: ReferenceImageCodec.maximumEncodedBytes,
                 maximumDecodedBytes: decodedLimit),
-            metadata.bitDepth == 8, metadata.colorType == 6,
+            metadata.bitDepth == 8,
+            metadata.colorType == 6 || (metadata.colorType == 2 && metadata.hasTransparencyKey),
             metadata.width == width, metadata.height == height,
             ReferenceImageCodec.canReuseStraightSRGBSamples(original)
         else { return nil }
