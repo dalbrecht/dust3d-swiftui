@@ -145,46 +145,53 @@ struct EditorRootView: View {
                 sidebarDisclosure.collapsedIDs = []
             }
             .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
-            .task(id: file.identity) {
-                let identifier = file.identity
-                let version = file.saveVersion
-                let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
-                let shouldHidePreviewColors =
-                    if let sourceURL {
-                        await claimLaunchNeutralPreview(sourceURL)
-                    } else {
-                        false
-                    }
-                guard !Task.isCancelled, file.identity == identifier else { return }
-                if shouldHidePreviewColors { store.showsPreviewColor = false }
-                if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
-                let recoveryStore = store
-                recoveryRegistrationID = identifier
-                EditorRecoveryCopyRegistry.shared.register(identifier) { [weak recoveryStore] in
-                    guard let recoveryStore else { throw EditorRecoveryCopyError.stopped }
-                    return try recoveryStore.recoverySnapshot(documentID: identifier)
-                }
-                store.onDocumentChanged = { file.data = $0 }
-                store.onEditingChanged = { file.setEditing($0) }
-                await store.load(data: file.data, fileIdentity: identifier)
-                if let launchPaste, !Task.isCancelled, file.identity == identifier, file.saveVersion == version,
-                    launchPaste.document === exportDestinations.attachedDocument,
-                    launchPaste.document.fileURL?.standardizedFileURL == sourceURL?.standardizedFileURL,
-                    !launchPaste.document.isDocumentEdited
-                {
-                    store.applyStartupQtXML(
-                        launchPaste.data, fileIdentity: identifier, settlesNewDocumentOrigin: sourceURL == nil)
-                }
+            .task(id: file.identity) { await loadCurrentDocument() }
+            .onDisappear(perform: stopDocument)
+    }
+
+    private func loadCurrentDocument() async {
+        let identifier = file.identity
+        let version = file.saveVersion
+        let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
+        let shouldHidePreviewColors =
+            if let sourceURL {
+                await claimLaunchNeutralPreview(sourceURL)
+            } else {
+                false
             }
-            .onDisappear {
-                if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
-                recoveryRegistrationID = nil
-                exportWorkflow.stop()
-                #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
-                    restPreview.stop()
-                #endif
-                store.stop()
-            }
+        guard !Task.isCancelled, file.identity == identifier else { return }
+        if shouldHidePreviewColors { store.showsPreviewColor = false }
+        if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+        let recoveryStore = store
+        recoveryRegistrationID = identifier
+        EditorRecoveryCopyRegistry.shared.register(identifier) { [weak recoveryStore] in
+            guard let recoveryStore else { throw EditorRecoveryCopyError.stopped }
+            return try recoveryStore.recoverySnapshot(documentID: identifier)
+        }
+        store.onDocumentChanged = { file.data = $0 }
+        store.onEditingChanged = { file.setEditing($0) }
+        await store.load(data: file.data, fileIdentity: identifier)
+        guard let launchPaste, !Task.isCancelled, file.identity == identifier, file.saveVersion == version else {
+            return
+        }
+        let document = launchPaste.document
+        let attachedDocument = exportDestinations.attachedDocument
+        guard document === attachedDocument else { return }
+        let documentURL = document.fileURL?.standardizedFileURL
+        let expectedURL = sourceURL?.standardizedFileURL
+        guard documentURL == expectedURL, !document.isDocumentEdited else { return }
+        store.applyStartupQtXML(
+            launchPaste.data, fileIdentity: identifier, settlesNewDocumentOrigin: sourceURL == nil)
+    }
+
+    private func stopDocument() {
+        if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+        recoveryRegistrationID = nil
+        exportWorkflow.stop()
+        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+            restPreview.stop()
+        #endif
+        store.stop()
     }
 
     private var inspectorNavigation: (@MainActor (EditorInspectorDestination) -> Void)? {
