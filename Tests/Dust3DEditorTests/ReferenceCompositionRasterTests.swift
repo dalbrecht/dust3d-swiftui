@@ -41,31 +41,43 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         XCTAssertEqual(try pixel(decoded, x: 896, y: 256), [0, 255, 0, 255])
         XCTAssertEqual(try pixel(decoded, x: 1536, y: 256), [255, 255, 255, 255])
     }
-    func testOpaqueCompositionMatchesQtSmoothResampling() throws {
+    func testFixedPointCompositionMatchesQtSmoothResampling() throws {
         let fixtures = [
-            (7, 9, "dfa3aa5112e22b45b802a1b7571b909d932a8d11e897e84793b1b963a53ab285"),
-            (701, 893, "8e60941b7a02883089cf39cb089103459ee72e44df8c15137685e4e3c676d2e8"),
-            (453, 1201, "ba151442bb927afcf199e46f2ac946ee7746617d242877dddd9341d0a5587af6"),
+            (7, 9, false, "dfa3aa5112e22b45b802a1b7571b909d932a8d11e897e84793b1b963a53ab285"),
+            (701, 893, false, "8e60941b7a02883089cf39cb089103459ee72e44df8c15137685e4e3c676d2e8"),
+            (453, 1201, false, "ba151442bb927afcf199e46f2ac946ee7746617d242877dddd9341d0a5587af6"),
+            (453, 1201, true, "a3dc2fbddbbee758acac0856d32750d694c336da9bc7ece0edff7daf764cfdce"),
         ]
-        for (width, height, expected) in fixtures {
+        for (width, height, hasAlpha, expected) in fixtures {
             var bytes = Data(capacity: width * height * 4)
             for y in 0..<height {
                 for x in 0..<width {
                     bytes.append(UInt8((x * 71 + y * 13) % 256))
                     bytes.append(UInt8((x * 23 + y * 29) % 256))
                     bytes.append(UInt8((x * 97 + y * 7) % 256))
-                    bytes.append(255)
+                    bytes.append(hasAlpha ? UInt8((x * 19 + y * 83) % 256) : 255)
                 }
             }
-            let provider = try XCTUnwrap(CGDataProvider(data: bytes as CFData))
+            var preview = bytes
+            if hasAlpha {
+                for offset in stride(from: 0, to: preview.count, by: 4) {
+                    for channel in 0..<3 {
+                        preview[offset + channel] = UInt8(
+                            (Int(bytes[offset + channel]) * Int(bytes[offset + 3]) + 127) / 255)
+                    }
+                }
+            }
+            let provider = try XCTUnwrap(CGDataProvider(data: preview as CFData))
             let image = try XCTUnwrap(
                 CGImage(
                     width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
                     bytesPerRow: width * 4, space: XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB)),
-                    bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+                    bitmapInfo: CGBitmapInfo(
+                        rawValue: (hasAlpha ? CGImageAlphaInfo.premultipliedLast : .noneSkipLast).rawValue),
                     provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
             let source = try ReferenceCompositionSource(
-                image: image, crop: .init(size: .init(width: width, height: height)))
+                image: image, crop: .init(size: .init(width: width, height: height)),
+                straightRGBA: hasAlpha ? bytes : nil)
             let result = try ReferenceCompositionRaster.compose(front: source, side: nil)
             let rgba = try XCTUnwrap(result.image.dataProvider?.data) as Data
             let digest = SHA256.hash(data: rgba).map { String(format: "%02x", $0) }.joined()
@@ -86,6 +98,24 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         let result = try await service.compose(front: imported, side: imported)
         XCTAssertEqual(result.layout.width, 1024)
         XCTAssertEqual(try ReferenceImageCodec.decodePNG(result.png).height, 512)
+    }
+
+    func testCompositionImportRetainsStraightPNGChannels() async throws {
+        let png = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAGklEQVR4nGNYYnWOnZmFlYFBwaGB5ZcS638AJsMExMfuGgkAAAAASUVORK5CYII="
+            ))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "straight-reference-\(UUID().uuidString).png")
+        try png.write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        let source = try await ReferenceCompositionService().importSource(url: url)
+        XCTAssertEqual(
+            source.straightRGBA,
+            Data([
+                164, 58, 206, 7, 3, 4, 5, 0, 32, 64, 128, 4, 250, 34, 5, 255,
+            ]))
     }
 
     func testSideMirrorAndSourceSizeMismatch() throws {

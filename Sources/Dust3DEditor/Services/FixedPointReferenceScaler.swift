@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// Smooth resampling for opaque 8-bit reference crops, matching the Qt 6.8 raster convention.
+/// Smooth resampling for 8-bit reference crops, matching the Qt 6.8 raster convention.
 enum FixedPointReferenceScaler {
     private static let positionUnit = 1 << 16
     private static let interpolationUnit = 1 << 8
@@ -14,10 +14,12 @@ enum FixedPointReferenceScaler {
         let weight: Int
     }
 
-    static func scale(_ image: CGImage, width: Int, height: Int, isMirrored: Bool) throws -> CGImage {
+    static func scale(
+        _ image: CGImage, width: Int, height: Int, isMirrored: Bool, premultipliedRGBA: Data? = nil
+    ) throws -> CGImage {
         let sourceWidth = image.width
         let sourceHeight = image.height
-        if sourceWidth == width && sourceHeight == height && !isMirrored { return image }
+        if sourceWidth == width && sourceHeight == height && !isMirrored && premultipliedRGBA == nil { return image }
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
             let context = CGContext(
                 data: nil, width: sourceWidth, height: sourceHeight,
@@ -26,11 +28,19 @@ enum FixedPointReferenceScaler {
             let source = context.data?.assumingMemoryBound(to: UInt8.self)
         else { throw ReferenceImageError.conversionFailed }
 
-        if isMirrored {
-            context.translateBy(x: CGFloat(sourceWidth), y: 0)
-            context.scaleBy(x: -1, y: 1)
+        let hasAlpha = premultipliedRGBA != nil
+        if let premultipliedRGBA {
+            guard premultipliedRGBA.count == sourceWidth * sourceHeight * 4 else {
+                throw ReferenceImageError.conversionFailed
+            }
+            premultipliedRGBA.copyBytes(to: source, count: premultipliedRGBA.count)
+        } else {
+            if isMirrored {
+                context.translateBy(x: CGFloat(sourceWidth), y: 0)
+                context.scaleBy(x: -1, y: 1)
+            }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: sourceWidth, height: sourceHeight))
         }
-        context.draw(image, in: CGRect(x: 0, y: 0, width: sourceWidth, height: sourceHeight))
         let horizontal = samples(source: sourceWidth, destination: width)
         let vertical = samples(source: sourceHeight, destination: height)
         let reducesWidth = width < sourceWidth
@@ -48,7 +58,8 @@ enum FixedPointReferenceScaler {
                             columns.reduce(Pixel.zero) { total, column in
                                 total
                                     &+ ((weighted(
-                                        rows, base: column.index, stride: sourceWidth, source: source)
+                                        rows, base: column.index, stride: sourceWidth, source: source,
+                                        hasAlpha: hasAlpha)
                                         &>> 8) &* Pixel(repeating: column.weight))
                             } &>> 8
                     case (true, true):
@@ -56,7 +67,8 @@ enum FixedPointReferenceScaler {
                             rows.reduce(Pixel.zero) { total, row in
                                 total
                                     &+ ((weighted(
-                                        columns, base: row.index * sourceWidth, stride: 1, source: source)
+                                        columns, base: row.index * sourceWidth, stride: 1, source: source,
+                                        hasAlpha: hasAlpha)
                                         &>> 4) &* Pixel(repeating: row.weight))
                             } &>> 24
                     case (true, false):
@@ -64,7 +76,8 @@ enum FixedPointReferenceScaler {
                             rows.reduce(Pixel.zero) { total, row in
                                 total
                                     &+ (weighted(
-                                        columns, base: row.index * sourceWidth, stride: 1, source: source)
+                                        columns, base: row.index * sourceWidth, stride: 1, source: source,
+                                        hasAlpha: hasAlpha)
                                         &* Pixel(repeating: row.weight))
                             } &>> 22
                     case (false, true):
@@ -72,14 +85,16 @@ enum FixedPointReferenceScaler {
                             columns.reduce(Pixel.zero) { total, column in
                                 total
                                     &+ (weighted(
-                                        rows, base: column.index, stride: sourceWidth, source: source)
+                                        rows, base: column.index, stride: sourceWidth, source: source,
+                                        hasAlpha: hasAlpha)
                                         &* Pixel(repeating: column.weight))
                             } &>> 22
                     }
                     let offset = (y * width + x) * 4
-                    bytes[offset] = UInt8(pixel.x)
-                    bytes[offset + 1] = UInt8(pixel.y)
-                    bytes[offset + 2] = UInt8(pixel.z)
+                    let white = hasAlpha ? 255 - pixel.w : 0
+                    bytes[offset] = UInt8(pixel.x + white)
+                    bytes[offset + 1] = UInt8(pixel.y + white)
+                    bytes[offset + 2] = UInt8(pixel.z + white)
                     bytes[offset + 3] = 255
                 }
             }
@@ -95,13 +110,13 @@ enum FixedPointReferenceScaler {
     }
 
     private static func weighted(
-        _ samples: [Sample], base: Int, stride: Int, source: UnsafePointer<UInt8>
+        _ samples: [Sample], base: Int, stride: Int, source: UnsafePointer<UInt8>, hasAlpha: Bool
     ) -> Pixel {
         samples.reduce(Pixel.zero) { total, sample in
             let offset = (base + sample.index * stride) * 4
             let pixel = Pixel(
                 Int(source[offset]), Int(source[offset + 1]), Int(source[offset + 2]),
-                0)
+                hasAlpha ? Int(source[offset + 3]) : 0)
             return total &+ (pixel &* Pixel(repeating: sample.weight))
         }
     }

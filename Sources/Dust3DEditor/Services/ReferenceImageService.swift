@@ -40,6 +40,13 @@ enum ReferenceImageCodec {
         return output as Data
     }
 
+    static func isOrientationNormalized(_ data: Data) -> Bool {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        else { return false }
+        return (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1 == 1
+    }
+
     static func decodePNG(_ data: Data) throws -> CGImage { try decode(data, pngOnly: true) }
 
     private static func decode(_ data: Data, pngOnly: Bool) throws -> CGImage {
@@ -90,6 +97,13 @@ actor ReferenceImageService: ReferenceImageServing {
     private var cachedImage: CGImage?
 
     func importImage(url: URL) throws -> Data {
+        let data = try readEncodedImage(url: url)
+        let result = try ReferenceImageCodec.importPNG(data)
+        try Task.checkCancellation()
+        return result
+    }
+
+    func readEncodedImage(url: URL) throws -> Data {
         try Task.checkCancellation()
         guard url.isFileURL else { throw ReferenceImageError.invalidImage }
         let access = url.startAccessingSecurityScopedResource()
@@ -128,9 +142,7 @@ actor ReferenceImageService: ReferenceImageServing {
             throw ReferenceImageError.fileReadFailed(error.localizedDescription)
         }
         try Task.checkCancellation()
-        let result = try ReferenceImageCodec.importPNG(data)
-        try Task.checkCancellation()
-        return result
+        return data
     }
 
     func preview(document: Dust3DDocument) throws -> ReferenceImagePreview {
