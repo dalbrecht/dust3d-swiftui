@@ -38,7 +38,8 @@ enum ReferenceWideAlphaRaster {
         let vertical =
             usesAreaSampling
             ? FixedPointReferenceScaler.samples(source: crop.height, destination: height) : []
-        let horizontalPainter = (0..<width).map { indices(step / 2 - unit / 2 + $0 * step, limit: crop.width) }
+        let first = ReferenceAlphaInterpolator.painterPosition(0.5, inverseScale: inverseScale)
+        let horizontalPainter = (0..<width).map { indices(first + $0 * step, limit: crop.width) }
         let reducesWidth = width < crop.width
         let reducesHeight = height < crop.height
         let areaShift = (reducesWidth ? 14 : 8) + (reducesHeight ? 14 : 8)
@@ -47,7 +48,8 @@ enum ReferenceWideAlphaRaster {
             for row in 0..<height {
                 try Task.checkCancellation()
                 let y = indices(
-                    Int((Double(row) + 0.5) * inverseScale * Double(unit)) - unit / 2, limit: crop.height)
+                    ReferenceAlphaInterpolator.painterPosition(Double(row) + 0.5, inverseScale: inverseScale),
+                    limit: crop.height)
                 for column in 0..<width {
                     let pixel: Pixel
                     if usesAreaSampling && !reducesWidth && !reducesHeight {

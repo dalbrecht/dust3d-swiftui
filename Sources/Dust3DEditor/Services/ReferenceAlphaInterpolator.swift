@@ -6,6 +6,11 @@ enum ReferenceAlphaInterpolator {
     private typealias Pixel = SIMD4<Int>
     private static let unit = 1 << 16
 
+    // The Qt raster transform subtracts a single 16.16 unit before sampling.
+    static func painterPosition(_ coordinate: Double, inverseScale: Double) -> Int {
+        Int(coordinate * inverseScale * Double(unit) - 1) - unit / 2
+    }
+
     private struct Coordinate {
         let first: Int
         let second: Int
@@ -49,7 +54,8 @@ enum ReferenceAlphaInterpolator {
         let inverseScale = Double(crop.height) / Double(height)
         let step = Int(inverseScale * Double(unit))
         let horizontal = (0..<width).map { column in
-            Coordinate(position: step / 2 - unit / 2 + column * step, limit: crop.width)
+            Coordinate(
+                position: painterPosition(0.5, inverseScale: inverseScale) + column * step, limit: crop.width)
         }
         let boundary = Double(crop.width) / inverseScale - Double(width - 1)
         let geometricCoverage = min(255, max(0, Int(boundary * 255)))
@@ -63,7 +69,7 @@ enum ReferenceAlphaInterpolator {
             for row in 0..<height {
                 try Task.checkCancellation()
                 let y = Coordinate(
-                    position: Int((Double(row) + 0.5) * inverseScale * Double(unit)) - unit / 2,
+                    position: painterPosition(Double(row) + 0.5, inverseScale: inverseScale),
                     limit: crop.height)
                 for (column, x) in horizontal.enumerated() {
                     let top = y.first * crop.width
