@@ -11,6 +11,7 @@
 - Compose, import, or remove the active document’s reference image from the File menu.
 - Review and save recent document, preview, and export outcomes from Window → Session Log.
 - Open the bundled upstream Dust3D acknowledgements from the Help menu.
+- Open the upstream Dust3D sponsorship page from the Help menu.
 
 - Select the owning component of the canvas picks from the Canvas menu.
 - Use A to toggle Add and S to return to selection while the canvas has keyboard focus.

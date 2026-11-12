@@ -7,6 +7,7 @@ public enum ApplicationHelpLink: CaseIterable, Hashable, Sendable {
     case reportIssue
     case upstreamWebsite
     case upstreamAcknowledgements
+    case upstreamSupport
 
     /// Human-readable menu title; the upstream project is distinct from the native issue tracker.
     public var title: String {
@@ -15,6 +16,7 @@ public enum ApplicationHelpLink: CaseIterable, Hashable, Sendable {
         case .reportIssue: "Report an Issue"
         case .upstreamWebsite: "Upstream Dust3D Website"
         case .upstreamAcknowledgements: "Upstream Dust3D Acknowledgements"
+        case .upstreamSupport: "Support Upstream Dust3D"
         }
     }
 
@@ -24,6 +26,7 @@ public enum ApplicationHelpLink: CaseIterable, Hashable, Sendable {
         case .reportIssue: "https://github.com/dalbrecht/dust3d-swiftui/issues/new"
         case .upstreamWebsite: "https://dust3d.org/"
         case .upstreamAcknowledgements: nil
+        case .upstreamSupport: "https://fund.dust3d.org/"
         }
     }
 

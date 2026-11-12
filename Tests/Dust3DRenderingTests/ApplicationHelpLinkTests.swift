@@ -48,6 +48,17 @@ import XCTest
         XCTAssertEqual(errors, [.missingBundledResource("ACKNOWLEDGEMENTS.html")])
     }
 
+    func testSupportCommandUsesTheUpstreamDestination() {
+        var destinations: [URL] = []
+        ApplicationHelpLink.upstreamSupport.open(
+            using: {
+                destinations.append($0)
+                return true
+            }, report: { _ in XCTFail("Valid upstream support link failed") })
+        XCTAssertEqual(destinations.map(\.absoluteString), ["https://fund.dust3d.org/"])
+        XCTAssertEqual(ApplicationHelpLink.upstreamSupport.title, "Support Upstream Dust3D")
+    }
+
     func testExplicitIssueCommandOpensNativeTrackerOnce() {
         var opened: [URL] = []
         var errors: [ApplicationHelpLinkError] = []
