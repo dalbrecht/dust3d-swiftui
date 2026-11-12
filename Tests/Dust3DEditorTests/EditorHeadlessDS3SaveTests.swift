@@ -146,6 +146,39 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertTrue(result.errors.last?.contains(failed.path) == true)
     }
 
+    func testHeadlessQtPasteSettlesOnlyANewDocumentsOrigin() async throws {
+        let directory = try temporaryDirectory()
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Dust3DKitTests/Fixtures/Capsule.ds3")
+        let source = try Data(contentsOf: fixture)
+        let fragment = directory.appendingPathComponent("fragment.xml")
+        let xml = try Dust3DDocument(data: source).modelXML
+        try xml.write(to: fragment)
+        let existing = directory.appendingPathComponent("existing-source.ds3")
+        let existingBytes = Dust3DDocument.emptyArchive()
+        try existingBytes.write(to: existing)
+
+        for (name, input, expectedZ) in [
+            ("new", [String](), 1.0),
+            ("existing", [existing.path], 0.5),
+        ] {
+            let archive = directory.appendingPathComponent(name + ".ds3")
+            let geometry = directory.appendingPathComponent(name + ".obj")
+            let result = await run(
+                ["Editor"] + input + ["-paste-xml", fragment.path, "-o", archive.path, "-o", geometry.path],
+                geometryEncoder: NativeGeometryExportEncoder())
+            XCTAssertEqual(result.status, 0, result.errors.joined())
+            let saved = try Dust3DDocument(data: Data(contentsOf: archive))
+            let canvas = try XCTUnwrap(XMLDocument(data: saved.modelXML).rootElement())
+            let z = try XCTUnwrap(canvas.attribute(forName: "originZ")?.stringValue.flatMap(Double.init))
+            XCTAssertEqual(z, expectedZ, accuracy: 1e-12)
+            XCTAssertTrue(FileManager.default.fileExists(atPath: geometry.path))
+        }
+        XCTAssertEqual(try Data(contentsOf: existing), existingBytes)
+        XCTAssertEqual(try Data(contentsOf: fixture), source)
+        XCTAssertEqual(try Data(contentsOf: fragment), xml)
+    }
+
     func testPasteIntoSourceOrEmptyDocumentBeforeSaving() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
