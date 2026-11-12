@@ -12,6 +12,17 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(parent.scope, "Focused component sidebar while browsing a group")
     }
 
+    func testExactKeySearchReturnsEveryBindingWithoutScopeSubstringMatches() {
+        let entries = [
+            KeyboardShortcutHelp.Entry(action: "Wireframe", keys: "W", scope: "Focused editor window"),
+            KeyboardShortcutHelp.Entry(action: "Other W action", keys: "Q / W", scope: "Focused canvas"),
+            KeyboardShortcutHelp.Entry(action: "Zoom Preview", keys: "⌥- / ⌥=", scope: "Focused editor window"),
+        ]
+        XCTAssertEqual(KeyboardShortcutHelp.matching(" w ", in: entries), Array(entries.prefix(2)))
+        XCTAssertEqual(KeyboardShortcutHelp.matching("⌥=", in: entries), [entries[2]])
+        XCTAssertEqual(KeyboardShortcutHelp.matching("window", in: entries), [entries[0], entries[2]])
+    }
+
     func testInspectorVisibilityShortcutMatchesNativeWindowCommand() throws {
         let entry = try XCTUnwrap(KeyboardShortcutHelp.entries.first { $0.action == "Show / Hide Inspector" })
         XCTAssertEqual(entry.keys, "⌃⌘I")
