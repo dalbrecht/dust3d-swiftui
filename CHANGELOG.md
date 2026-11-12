@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Explain invalid document and Qt XML input in headless export diagnostics.
+
 - Settle the origin from node bounds when a headless Qt XML paste creates a new document.
 
 - Settle the origin when launching the Editor with a Qt XML fragment and no document, in the same Undo step as the paste.
