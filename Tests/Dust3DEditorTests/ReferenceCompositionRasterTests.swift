@@ -305,6 +305,25 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         XCTAssertEqual(digest, "cee5823f8012b2eda924cbe0dbcf0770b5b86a4365ada346bac88c604577b7f4")
     }
 
+    func testTransparentGIFReferenceMatchesQtCanvas() async throws {
+        let gif = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "R0lGODdhBwAJAOYAAAAAAKQECGsIrTEQVfYV+kMbXgwcBvAeabAfEHgntT0tXI0vw1U1afc4cBo6Dr4+FtdDJIREvJxMyGBRcAZVdidXFhtbg8tbHeJiKhpmgKho0GpqgGNz5DJ1Gyp4jO9/MbWE1qqLRXuMfkKQI3CR7DaWkmaZ//qeOMOh3benTIiohE6uKkOxmAq4P7+/Vc/A5VzLMIvL+ZnMmVHQnxbWRt/f6tLgW6LikZfnAWjoN13tpyTzTer4893+Yq7/mv///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAkAAEAALAAAAAAHAAkAAAc7gECCQBYcIQYMEhgeJCkOExofJYIVgywxNh0iKC0zOD0jKi80OgFAK4NACA0wNzwDCQ8UOT4EChEXQIEAOw=="
+            ))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "reference-transparent-\(UUID().uuidString).gif")
+        try gif.write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+
+        let service = ReferenceCompositionService()
+        let source = try await service.importSource(url: url)
+        let result = try await service.compose(front: source, side: nil)
+        let pixels = try XCTUnwrap(result.image.dataProvider?.data) as Data
+        let digest = SHA256.hash(data: pixels).map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(digest, "bde1a1f845a1d6c7d1b40cb32a2710e4921820044c830e623fbf62acb0045d18")
+    }
+
     func testWidePNGSamplingMatchesQt() throws {
         let fixtures = [
             (453, 1201, "5b4c3f964295b3fd1df47077e7f099867c83e2b7ac87c7d59d049fc2ba1f6605"),
