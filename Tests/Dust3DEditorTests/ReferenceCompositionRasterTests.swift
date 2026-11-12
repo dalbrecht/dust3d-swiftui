@@ -1,6 +1,8 @@
 import CoreGraphics
 import CryptoKit
 import Dust3DEditorModel
+import ImageIO
+import UniformTypeIdentifiers
 import XCTest
 
 @testable import Dust3DEditor
@@ -116,6 +118,39 @@ final class ReferenceCompositionRasterTests: XCTestCase {
             Data([
                 164, 58, 206, 7, 3, 4, 5, 0, 32, 64, 128, 4, 250, 34, 5, 255,
             ]))
+    }
+
+    func testTaggedWideGamutImportKeepsColorManagedRendering() async throws {
+        let source = try await importTaggedPNG(colorSpace: CGColorSpace.displayP3, orientation: 1)
+        XCTAssertEqual(source.image.width, 2)
+        XCTAssertEqual(source.image.height, 1)
+        XCTAssertNil(source.straightRGBA)
+    }
+
+    func testOrientationTaggedImportKeepsNormalizedCoordinates() async throws {
+        let source = try await importTaggedPNG(colorSpace: CGColorSpace.sRGB, orientation: 6)
+        XCTAssertEqual(source.image.width, 1)
+        XCTAssertEqual(source.image.height, 2)
+        XCTAssertNil(source.straightRGBA)
+    }
+
+    private func importTaggedPNG(colorSpace: CFString, orientation: Int) async throws -> ReferenceCompositionSource {
+        let space = try XCTUnwrap(CGColorSpace(name: colorSpace))
+        let provider = try XCTUnwrap(CGDataProvider(data: Data([96, 10, 20, 128, 21, 80, 35, 128]) as CFData))
+        let image = try XCTUnwrap(
+            CGImage(
+                width: 2, height: 1, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 8,
+                space: space, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let output = NSMutableData()
+        let writer = try XCTUnwrap(CGImageDestinationCreateWithData(output, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(writer, image, [kCGImagePropertyOrientation: orientation] as CFDictionary)
+        XCTAssertTrue(CGImageDestinationFinalize(writer))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "tagged-reference-\(UUID().uuidString).png")
+        try (output as Data).write(to: url)
+        addTeardownBlock { try FileManager.default.removeItem(at: url) }
+        return try await ReferenceCompositionService().importSource(url: url)
     }
 
     func testSideMirrorAndSourceSizeMismatch() throws {

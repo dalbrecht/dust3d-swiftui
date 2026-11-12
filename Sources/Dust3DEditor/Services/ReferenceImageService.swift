@@ -40,11 +40,14 @@ enum ReferenceImageCodec {
         return output as Data
     }
 
-    static func isOrientationNormalized(_ data: Data) -> Bool {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+    static func canReuseStraightSRGBSamples(_ data: Data) -> Bool {
+        let options = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, options),
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, options) as? [CFString: Any],
+            ((properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1) == 1,
+            let colorSpace = CGImageSourceCreateImageAtIndex(source, 0, options)?.colorSpace
         else { return false }
-        return (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1 == 1
+        return colorSpace.name == CGColorSpace.sRGB || colorSpace == CGColorSpaceCreateDeviceRGB()
     }
 
     static func decodePNG(_ data: Data) throws -> CGImage { try decode(data, pngOnly: true) }

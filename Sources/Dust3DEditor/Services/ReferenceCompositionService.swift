@@ -31,7 +31,7 @@ actor ReferenceCompositionService: ReferenceCompositionServing {
                 maximumDecodedBytes: decodedLimit),
             metadata.bitDepth == 8, metadata.colorType == 6,
             metadata.width == width, metadata.height == height,
-            ReferenceImageCodec.isOrientationNormalized(original)
+            ReferenceImageCodec.canReuseStraightSRGBSamples(original)
         else { return nil }
         do {
             return try MeshPNGDecoder.decode(
