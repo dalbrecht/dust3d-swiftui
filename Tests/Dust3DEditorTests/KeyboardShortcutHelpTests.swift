@@ -41,6 +41,12 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(KeyboardShortcutHelp.matching("window", in: entries), [entries[0], entries[2]])
     }
 
+    func testSidebarVisibilityShortcutIsSearchableInTheFocusedWindow() throws {
+        let entries = KeyboardShortcutHelp.matching("⌃⌘S")
+        XCTAssertEqual(entries.map(\.action), ["Show / Hide Sidebar"])
+        XCTAssertEqual(try XCTUnwrap(entries.first).scope, "Focused editor window")
+    }
+
     func testInspectorVisibilityShortcutMatchesNativeWindowCommand() throws {
         let entry = try XCTUnwrap(KeyboardShortcutHelp.entries.first { $0.action == "Show / Hide Inspector" })
         XCTAssertEqual(entry.keys, "⌃⌘I")

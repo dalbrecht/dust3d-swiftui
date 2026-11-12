@@ -922,6 +922,21 @@ final class EditorStore {
         return !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
     }
 
+    func inspectorNavigationAction(
+        fileIdentity: UUID, ownsWindow: @escaping @MainActor () -> Bool = { true },
+        _ reveal: @escaping @MainActor (EditorInspectorDestination) -> Void
+    ) -> (@MainActor (EditorInspectorDestination) -> Void)? {
+        guard let documentIdentity = acceptedDocumentSource?.documentIdentity,
+            case .success(let accepted) = recoveryLoadResult, accepted.fileIdentity == fileIdentity, ownsWindow()
+        else { return nil }
+        return { [weak self] destination in
+            guard let self, ownsWindow(), self.acceptedDocumentSource?.documentIdentity == documentIdentity,
+                case .success(let accepted) = self.recoveryLoadResult, accepted.fileIdentity == fileIdentity
+            else { return }
+            reveal(destination)
+        }
+    }
+
     func focusCanvasAction(
         fileIdentity: UUID? = nil, ownsWindow: @escaping @MainActor () -> Bool = { true },
         _ focus: @escaping @MainActor (CanvasProfileFocusTarget) -> Bool

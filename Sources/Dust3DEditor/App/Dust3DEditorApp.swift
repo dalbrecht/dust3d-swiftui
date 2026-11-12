@@ -12,6 +12,8 @@ struct Dust3DEditorApp: App {
         @FocusedValue(\.editorRestPreviewActions) private var restPreviewActions
     #endif
     @FocusedValue(\.editorStore) private var store
+    @FocusedValue(\.editorInspectorNavigation) private var navigateInspector
+    @FocusedValue(\.editorSidebarVisibility) private var isSidebarPresented
     @FocusedValue(\.editorGeometryExportAction) private var geometryExportAction
     @FocusedValue(\.rigAssignmentCommand) private var rigAssignmentCommand
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
@@ -125,6 +127,20 @@ struct Dust3DEditorApp: App {
             EditorGeometryExportCommands()
             InspectorCommands()
             CommandGroup(after: .windowArrangement) {
+                let window = NSApp.keyWindow
+                let navigate = navigateInspector
+                Button("Show Rig Settings") {
+                    guard let window, NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
+                    navigate?(.rig)
+                }
+                .disabled(window == nil || navigate == nil || rigAssignmentFocus.hasSheet)
+                Button("Show Animations Inspector") {
+                    guard let window, NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
+                    navigate?(.animations)
+                }
+                .keyboardShortcut("a", modifiers: [.command, .option])
+                .disabled(window == nil || navigate == nil || rigAssignmentFocus.hasSheet)
+                Divider()
                 Button("Replay Steps…") {
                     guard let document = store?.snapshot?.document else { return }
                     replayRequest = WorkflowReplayRequest(document: document)
@@ -160,6 +176,15 @@ struct Dust3DEditorApp: App {
                 .keyboardShortcut(
                     isComponentSidebarFocused == true && !hasTextEditingFocus
                         ? KeyboardShortcut(.upArrow, modifiers: [.command]) : nil)
+                let window = NSApp.keyWindow
+                let navigate = navigateInspector
+                let isVisible = isSidebarPresented == true
+                Button(isVisible ? "Hide Sidebar" : "Show Sidebar") {
+                    guard let window, NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
+                    navigate?(.sidebar(!isVisible))
+                }
+                .keyboardShortcut("s", modifiers: [.control, .command])
+                .disabled(window == nil || navigate == nil || isSidebarPresented == nil || rigAssignmentFocus.hasSheet)
                 #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
                     Picker(
                         "Preview Mode",
