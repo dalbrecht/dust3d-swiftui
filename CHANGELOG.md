@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Use the last Qt paste fragment when an earlier headless paste operand is a directory.
+- Keep modified keyboard shortcuts available when the model preview has focus.
 
 - Accept Qt XML fragments by content regardless of filename suffix when using `-paste-xml`.
 - Show the authored order of stitching lines in each component listing.
