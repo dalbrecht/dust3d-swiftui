@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Announce reference-image composition errors with VoiceOver in the active sheet.
+
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
 

@@ -79,6 +79,8 @@ import UniformTypeIdentifiers
         }
         .padding(20)
         .frame(width: 920, height: 760)
+        .background(ReferenceCompositionErrorAnnouncement(message: draft.errorMessage))
+        .background(ReferenceCompositionErrorAnnouncement(message: applyError))
         .disabled(isApplying)
         .interactiveDismissDisabled(isApplying)
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.png, .jpeg, .bmp, .gif, .tiff]) { result in
