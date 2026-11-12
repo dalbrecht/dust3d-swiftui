@@ -101,7 +101,8 @@ struct NodeInspector: View {
             }
             if let component = store.snapshot?.selectedComponent {
                 ComponentInspector(store: store, component: component)
-            } else if let part = store.snapshot?.inspectedPart {
+            }
+            if let part = store.snapshot?.inspectedPart {
                 PartInspector(store: store, part: part)
             } else if store.snapshot?.selectedEdgeIDs.isEmpty == false
                 && (store.snapshot?.selectedIDs.isEmpty == false || (store.snapshot?.selectedEdgeIDs.count ?? 0) > 1)
@@ -159,7 +160,7 @@ struct NodeInspector: View {
                     .disabled(!store.canPerformInspectorAction(delete))
                 Text("Coordinates use document units. Dragging moves in the selected canvas plane.")
                     .font(.caption).foregroundStyle(.secondary)
-            } else {
+            } else if store.snapshot?.selectedComponent == nil {
                 Text("Select a node, edge, part or component.").foregroundStyle(.secondary)
             }
             Spacer()

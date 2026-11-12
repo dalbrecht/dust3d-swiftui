@@ -119,6 +119,25 @@ final class PartGraphSelectionTests: XCTestCase {
         XCTAssertFalse(undoColor.canUndo)
     }
 
+    func testRevealedComponentKeepsExplicitEdgeActionsAvailable() async throws {
+        let original = try document(malformed: true)
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let picked = try await session.selectGraph(nodes: [], edges: ["ab"])
+        let selected = try await session.revealOwningComponent(
+            .edge("foreign"), context: PartGraphSelectionContext(snapshot: picked), selecting: true)
+        XCTAssertEqual(selected.selectedComponentIDs, ["leafq"])
+        XCTAssertEqual(selected.selectedEdgeIDs, ["ab"])
+        let target = GraphInspectorActionContext(snapshot: selected).target(for: .reverseEdge(id: "ab"))
+        XCTAssertTrue(target.isCurrent(in: selected))
+        XCTAssertTrue(EdgeBoneAssignmentTarget(snapshot: selected).isAvailable)
+        let reversed = try await session.performInspectorAction(target: target)
+        XCTAssertEqual(reversed.edges.first { $0.id == "ab" }?.fromID, "b")
+        XCTAssertEqual(reversed.selectedComponentIDs, ["leafq"])
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), original.encoded())
+    }
+
     func testRevealOwningComponentRejectsStaleOrUnresolvedTargets() throws {
         let source = try document(malformed: true)
         var state = try EditorState(document: source)
