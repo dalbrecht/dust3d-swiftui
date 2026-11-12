@@ -1,3 +1,4 @@
+import Accessibility
 import AppKit
 import Dust3DDocument
 import Dust3DEditorModel
@@ -90,7 +91,15 @@ struct EditorRootView: View {
                 EditorGeometryExportStatusView(
                     phase: exportWorkflow.phase, format: exportWorkflow.format,
                     onCancel: exportWorkflow.cancel, onDismiss: exportWorkflow.dismissResult,
-                    onReveal: { NSWorkspace.shared.activateFileViewerSelecting([$0]) })
+                    onReveal: { NSWorkspace.shared.activateFileViewerSelecting([$0]) }
+                )
+                .onChange(of: store.errorMessage) { _, message in
+                    if let announcement = exportWorkflow.phase.editorErrorAnnouncement(
+                        message, isKeyWindow: exportDestinations.hasActiveDocumentWindow)
+                    {
+                        AccessibilityNotification.Announcement(announcement).post()
+                    }
+                }
                 HSplitView {
                     VStack(spacing: 0) {
                         CanvasProfileHeader(
