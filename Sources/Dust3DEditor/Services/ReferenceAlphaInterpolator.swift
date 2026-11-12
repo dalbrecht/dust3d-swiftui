@@ -23,6 +23,9 @@ enum ReferenceAlphaInterpolator {
         _ source: ReferenceCompositionSource, straight: Data, width: Int, height: Int
     ) throws -> CGImage {
         let crop = source.crop
+        if width == crop.width && height == crop.height {
+            return try compositeUnscaled(source, straight: straight)
+        }
         let pixels = try straight.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
             var pixels = [Pixel]()
             pixels.reserveCapacity(crop.width * crop.height)
@@ -67,15 +70,46 @@ enum ReferenceAlphaInterpolator {
                     let alpha = (pixel.w + 128) / 257
                     for channel in 0..<3 {
                         let straight = pixel.w == 0 ? 0 : min(65535, (pixel[channel] * 65535 + pixel.w / 2) / pixel.w)
-                        let product = ((straight + 128) / 257) * alpha
-                        let rounding = column < vectorWidth ? (product == 128 ? 128 : 127) : 128
-                        bytes[offset + channel] = UInt8(((product + (product >> 8) + rounding) >> 8) + 255 - alpha)
+                        bytes[offset + channel] = compositeOnWhite(
+                            (straight + 128) / 257, alpha: alpha, scalarTail: column >= vectorWidth)
                     }
                     bytes[offset + 3] = 255
                 }
             }
         }
         return try FixedPointReferenceScaler.opaqueImage(output, width: width, height: height)
+    }
+
+    private static func compositeUnscaled(_ source: ReferenceCompositionSource, straight: Data) throws -> CGImage {
+        let crop = source.crop
+        let vectorWidth = crop.width - crop.width % 4
+        var output = Data(count: crop.width * crop.height * 4)
+        try straight.withUnsafeBytes { (input: UnsafeRawBufferPointer) in
+            try output.withUnsafeMutableBytes { (bytes: UnsafeMutableRawBufferPointer) in
+                for row in 0..<crop.height {
+                    try Task.checkCancellation()
+                    for column in 0..<crop.width {
+                        let x = crop.x + (source.isMirrored ? crop.width - 1 - column : column)
+                        let from = ((crop.y + row) * crop.size.width + x) * 4
+                        let to = (row * crop.width + column) * 4
+                        let alpha = Int(input[from + 3])
+                        for channel in 0..<3 {
+                            bytes[to + channel] = compositeOnWhite(
+                                Int(input[from + channel]), alpha: alpha, scalarTail: column >= vectorWidth)
+                        }
+                        bytes[to + 3] = 255
+                    }
+                }
+            }
+        }
+        return try FixedPointReferenceScaler.opaqueImage(output, width: crop.width, height: crop.height)
+    }
+
+    private static func compositeOnWhite(_ channel: Int, alpha: Int, scalarTail: Bool) -> UInt8 {
+        let product = channel * alpha
+        if scalarTail { return UInt8((product + 127) / 255 + 255 - alpha) }
+        let rounding = product == 128 ? 128 : 127
+        return UInt8(((product + (product >> 8) + rounding) >> 8) + 255 - alpha)
     }
 
     private static func interpolate(_ first: Pixel, _ second: Pixel, fraction: Int) -> Pixel {

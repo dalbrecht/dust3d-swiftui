@@ -47,6 +47,7 @@ final class ReferenceCompositionRasterTests: XCTestCase {
         let fixtures = [
             (1, 400, false, "8aa4f899a1ae08a0c4a69dfdc7602d9e9c4da07d3d014e3bdbfacdb69f9249a6"),
             (1, 700, false, "f2fb3cf9c238a415b7ef0746abc942a3339427e9f506d2783303dee9eed5aabd"),
+            (19, 512, true, "ada671f3f7bd9b320c304b41a4238db78e0cc0850fb06fa6dafb2c3fadf6508b"),
             (7, 9, false, "dfa3aa5112e22b45b802a1b7571b909d932a8d11e897e84793b1b963a53ab285"),
             (701, 893, false, "8e60941b7a02883089cf39cb089103459ee72e44df8c15137685e4e3c676d2e8"),
             (453, 1201, false, "ba151442bb927afcf199e46f2ac946ee7746617d242877dddd9341d0a5587af6"),
