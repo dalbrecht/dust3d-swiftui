@@ -118,6 +118,50 @@ private struct SidebarOrderNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertFalse(store.canUndo)
     }
 
+    func testMovingSelectedStitchingLinesUpdatesOrdinalsAndUndoRestoresThem() async throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes/><edges/><parts>
+                <part id='p1' target='StitchingLine'/><part id='p2' target='StitchingLine'/>
+                <part id='p3' target='StitchingLine'/><part id='m' target='Model'/>
+                </parts><components><component id='group'>
+                <component id='first' linkDataType='partId' linkData='p1'/>
+                <component id='model' linkDataType='partId' linkData='m'/>
+                <component id='middle' linkDataType='partId' linkData='p2'/>
+                <component id='last' linkDataType='partId' linkData='p3'/>
+                </component></components></canvas>
+                """.utf8))
+        let original = document.encoded()
+        let store = makeStore()
+        defer { store.stop() }
+        await store.load(data: original)
+        try await settle(store)
+        store.selectComponents(["first", "middle"])
+        try await settle(store)
+        let before = try XCTUnwrap(store.snapshot)
+        let initial = ComponentStitchingOrder(snapshot: before)
+        XCTAssertEqual(initial.ordinal(for: "first"), .init(position: 1, count: 3))
+        XCTAssertEqual(initial.ordinal(for: "middle"), .init(position: 2, count: 3))
+        XCTAssertEqual(initial.ordinal(for: "last"), .init(position: 3, count: 3))
+        XCTAssertNil(initial.ordinal(for: "model"))
+
+        let target = try XCTUnwrap(ComponentPlacementTarget(snapshot: before))
+        XCTAssertTrue(store.reorderSidebarComponent(.down, target: target, scopeEpoch: store.componentBrowseEpoch))
+        try await settle(store)
+        let after = ComponentStitchingOrder(snapshot: try XCTUnwrap(store.snapshot))
+        XCTAssertEqual(after.ordinal(for: "last"), .init(position: 1, count: 3))
+        XCTAssertEqual(after.ordinal(for: "first"), .init(position: 2, count: 3))
+        XCTAssertEqual(after.ordinal(for: "middle"), .init(position: 3, count: 3))
+        XCTAssertNil(after.ordinal(for: "model"))
+
+        store.undo()
+        try await settle(store)
+        let undone = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(undone.document.encoded(), original)
+        XCTAssertEqual(ComponentStitchingOrder(snapshot: undone).ordinal(for: "first"), initial.ordinal(for: "first"))
+    }
+
     func testNoncontiguousSiblingsCanMoveToTopOrBottomAtBothBoundaries() async throws {
         let store = makeStore()
         defer { store.stop() }

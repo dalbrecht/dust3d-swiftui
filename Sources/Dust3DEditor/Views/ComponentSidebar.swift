@@ -28,6 +28,7 @@ struct ComponentSidebar: View {
                 let browse = store.componentGroupBrowse
                 let visibleRows = browse?.children ?? tree.visibleRows(collapsing: disclosure.collapsedIDs)
                 let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
+                let stitching = ComponentStitchingOrder(snapshot: sidebarSnapshot)
                 let scopeEpoch = store.componentBrowseEpoch
                 let admitsScope: @MainActor () -> Bool = { store.componentBrowseEpoch == scopeEpoch }
                 Divider()
@@ -143,6 +144,14 @@ struct ComponentSidebar: View {
                             .padding(.horizontal, 12)
                     }
                 }
+                if stitching.hasLineOrder(in: browse?.path.last?.id) {
+                    Text("Stitching follows line order. Drag the lines or use the Move commands to reorder.")
+                        .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
+                }
+                if browse == nil, stitching.hasUngroupedStitching {
+                    Text("Group stitching lines and loops to configure stitching parameters.")
+                        .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
+                }
                 if let failure = tree.failureDescription {
                     Label(
                         "Hierarchy unavailable: \(failure). Source data is preserved.",
@@ -168,7 +177,9 @@ struct ComponentSidebar: View {
                             )
                         ) {
                             ForEach(visibleRows) { row in
-                                componentRow(row, scoped: browse != nil, scopeEpoch: scopeEpoch)
+                                componentRow(
+                                    row, scoped: browse != nil, scopeEpoch: scopeEpoch,
+                                    stitchingOrdinal: stitching.ordinal(for: row.id))
                             }
                         }
                         .contextMenu(forSelectionType: String.self) { ids in
@@ -247,7 +258,10 @@ struct ComponentSidebar: View {
         }
         .onChange(of: store.snapshot?.documentIdentity) { _, _ in disclosure.collapsedIDs = [] }
     }
-    private func componentRow(_ row: ComponentTreeRow, scoped: Bool, scopeEpoch: UUID) -> some View {
+    private func componentRow(
+        _ row: ComponentTreeRow, scoped: Bool, scopeEpoch: UUID,
+        stitchingOrdinal: ComponentStitchingOrder.Ordinal?
+    ) -> some View {
         HStack(spacing: 4) {
             if !scoped && row.hasChildren {
                 Button {
@@ -278,6 +292,14 @@ struct ComponentSidebar: View {
                     .foregroundStyle(Color.primary)
                     .accessibilityHidden(true)
             }
+            if let stitchingOrdinal {
+                Spacer(minLength: 4)
+                Text("Line \(stitchingOrdinal.position)/\(stitchingOrdinal.count)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.leading, !scoped ? CGFloat(min(row.depth, 6) * 10) : 0)
         .modifier(
@@ -289,6 +311,9 @@ struct ComponentSidebar: View {
         .id(row.id)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(row.sidebarAccessibilityLabel)
+        .accessibilityValue(
+            stitchingOrdinal.map { Text("Stitching line \($0.position) of \($0.count)") } ?? Text("")
+        )
         .help("\(row.title) · \(row.id)")
     }
 
