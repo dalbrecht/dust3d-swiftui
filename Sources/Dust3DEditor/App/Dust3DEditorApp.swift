@@ -255,6 +255,7 @@ struct Dust3DEditorApp: App {
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 let canvasOwner = store
                 let canvasWindow = NSApp.keyWindow
+                let selectGraphOwner = canvasOwner?.selectedGraphOwningComponentAction()
                 let cancelCanvasInput = canvasOwner?.canvasInputCancellationAction()
                 if escapeDestination == .canvas {
                     Button("Cancel Canvas Input") {
@@ -274,6 +275,13 @@ struct Dust3DEditorApp: App {
                 Button("Select All Nodes") { store?.selectAllNodes() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
                     .disabled(store?.snapshot == nil || store?.isWorking != false || store?.isSelectingRigEdges == true)
+                Button("Select Owning Component") {
+                    guard let canvasWindow, NSApp.keyWindow === canvasWindow, store === canvasOwner,
+                        rigAssignmentFocus.allowsAssignment
+                    else { return }
+                    selectGraphOwner?()
+                }
+                .disabled(canvasWindow == nil || selectGraphOwner == nil || !rigAssignmentFocus.allowsAssignment)
                 Button("Select Whole Part") {
                     if let target = store?.wholePartActionTarget { store?.selectWholePart(target) }
                 }

@@ -260,6 +260,41 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         XCTAssertFalse(value.canUndo)
     }
 
+    func testCanvasOwnerMenuUsesSelectedGraphAndRejectsAmbiguousOrRetiredPicks() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        prepareCanvas(value)
+
+        value.selectGraph(nodes: ["a"], edges: ["ab"])
+        try await settle(value)
+        let select = try XCTUnwrap(value.selectedGraphOwningComponentAction())
+        value.setHoveredNode("x")
+        select()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["cp"])
+        XCTAssertEqual(value.snapshot?.componentRevealHint?.componentID, "cp")
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["a"])
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["ab"])
+
+        value.selectGraph(nodes: ["x"], edges: ["ab"])
+        try await settle(value)
+        XCTAssertNil(value.selectedGraphOwningComponentAction())
+        value.select("a")
+        try await settle(value)
+        let retired = try XCTUnwrap(value.selectedGraphOwningComponentAction())
+        value.select("x")
+        try await settle(value)
+        value.select("a")
+        try await settle(value)
+        retired()
+        try await settle(value)
+        XCTAssertTrue(value.snapshot?.selectedComponentIDs.isEmpty == true)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testStationaryPartStateHoverLocksAndUnlocksTheSameOwner() async throws {
         let original = try source().encoded()
         let value = store()

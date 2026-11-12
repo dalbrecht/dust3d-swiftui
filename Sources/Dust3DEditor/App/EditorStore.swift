@@ -2545,6 +2545,21 @@ final class EditorStore {
         return { _ = handle(property, false) }
     }
 
+    func selectedGraphOwningComponentAction() -> (@MainActor () -> Void)? {
+        guard canToggleCanvasPartState, let source = acceptedDocumentSource,
+            let owner = CanvasPartStateTarget(snapshot: source, hovered: nil),
+            let select = revealOwningComponentAction(
+                .part(owner.part.id), context: PartGraphSelectionContext(snapshot: source),
+                profileLease: canvasProfiles.lease, selecting: true)
+        else { return nil }
+        return { [weak self] in
+            guard let self, self.canToggleCanvasPartState, let current = self.acceptedDocumentSource,
+                owner.isCurrent(in: current)
+            else { return }
+            select()
+        }
+    }
+
     func canvasOwningComponentAction(profileLease: UUID?) -> (@MainActor (Bool) -> Bool)? {
         guard canToggleCanvasPartState, let snapshot = acceptedDocumentSource, let context = canvasRotationContext,
             let hover = canvasPartStateHover

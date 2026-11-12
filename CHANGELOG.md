@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select the owning component of the canvas picks from the Canvas menu.
+
 - Include retained locked nodes when finding the selection center for local alignment.
 
 - Use the last Qt paste fragment when an earlier headless paste operand is a directory.
