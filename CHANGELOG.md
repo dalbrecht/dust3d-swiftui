@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Honor SOURCE_DATE_EPOCH when packaging app ZIPs so identical signed bundles produce identical archives.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
