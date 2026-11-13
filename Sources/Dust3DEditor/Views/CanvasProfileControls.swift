@@ -2,6 +2,20 @@ import AppKit
 import Dust3DEditorModel
 import SwiftUI
 
+@MainActor struct EditorCanvasFocusCommand {
+    weak var window: NSWindow?
+    let focus: (@MainActor () -> Bool)?
+
+    func isAvailable(in keyWindow: NSWindow?, hasSheet: Bool) -> Bool {
+        window != nil && window === keyWindow && !hasSheet && focus != nil
+    }
+
+    func perform(in keyWindow: NSWindow?, hasSheet: Bool) -> Bool {
+        guard isAvailable(in: keyWindow, hasSheet: hasSheet) else { return false }
+        return focus?() == true
+    }
+}
+
 struct CanvasProfileHeader: View {
     @Bindable var store: EditorStore
     let focusControl: CanvasProfileFocusControl
@@ -9,13 +23,12 @@ struct CanvasProfileHeader: View {
     let ownsWindow: @MainActor () -> Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let focusCanvas = store.focusCanvasAction(
+            fileIdentity: fileIdentity, ownsWindow: ownsWindow, focusControl.focus)
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Node canvas").font(.headline)
                 Spacer()
-                let focusCanvas = store.focusCanvasAction(
-                    fileIdentity: fileIdentity, ownsWindow: { ownsWindow() }
-                ) { target in focusControl.focus(target) }
                 Button("Focus Canvas") { _ = focusCanvas?() }
                     .disabled(focusCanvas == nil)
                     .help("Move keyboard focus to the active drawing profile.")
@@ -40,13 +53,26 @@ struct CanvasProfileHeader: View {
             )
             .disabled(!store.canChangeRigEdgeSelection)
             .help("Pick edges in the canvas, then choose a template bone and assign the selected edges.")
+            Picker(
+                "Drag Selection",
+                selection: Binding(
+                    get: { store.canvasUsesLasso }, set: { store.setCanvasUsesLasso($0) })
+            ) {
+                Text("Rectangle").tag(false)
+                Text("Lasso").tag(true)
+            }
+            .pickerStyle(.menu)
+            .disabled(!store.canPickGraph || store.isAddingNodes || store.isMovingOrigin)
+            .help("Drag in the active canvas to draw the selection shape. Keyboard selection remains available.")
         }
+        .focusedSceneValue(\.editorCanvasFocus, focusCanvas)
     }
 }
 
 struct CanvasProfilePanes: View {
     let store: EditorStore
     let focusControl: CanvasProfileFocusControl
+    var previewCamera: EditorPreviewCameraActions? = nil
     @State private var requestedFocus: (lease: UUID, request: CanvasProfileFocusRequest)?
 
     var body: some View {
@@ -122,7 +148,7 @@ struct CanvasProfilePanes: View {
         return NodeCanvas(
             store: store, profileLease: lease,
             profileFocusRequest: requestedFocus?.lease == lease ? requestedFocus?.request : nil,
-            switchProfile: switchProfile, focusControl: focusControl
+            switchProfile: switchProfile, focusControl: focusControl, previewCamera: previewCamera
         )
         .id(lease)
     }
