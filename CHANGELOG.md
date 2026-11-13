@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Disable camera input on outdated Replay Steps previews while the current frame builds.
+
 - Show a native keyboard focus ring around the 3D preview.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
