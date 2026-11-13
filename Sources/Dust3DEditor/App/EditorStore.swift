@@ -83,6 +83,84 @@ final class EditorStore {
         rigEdgeSelectionEpoch == epoch && ownsCanvasProfile(lease)
     }
 
+    struct CanvasNodeSelectionTarget {
+        fileprivate let context: PartGraphSelectionContext
+        fileprivate let profileLease: UUID?
+        fileprivate let selectionEpoch: UUID
+        fileprivate let addModeID: UUID
+        fileprivate let toolEpoch: UUID
+    }
+
+    func canvasNodeSelectionTarget(profileLease: UUID?) -> CanvasNodeSelectionTarget? {
+        guard canPickGraph, !isSelectingRigEdges, !isAddingNodes, !isMovingOrigin,
+            ownsCanvasProfile(profileLease), let snapshot
+        else { return nil }
+        return CanvasNodeSelectionTarget(
+            context: PartGraphSelectionContext(snapshot: snapshot), profileLease: profileLease,
+            selectionEpoch: rigEdgeSelectionEpoch, addModeID: addModeID, toolEpoch: rotationInputContextID)
+    }
+
+    private func admitsCanvasNodeSelection(_ target: CanvasNodeSelectionTarget) -> Bool {
+        canPickGraph && !isSelectingRigEdges && !isAddingNodes && !isMovingOrigin
+            && admitsCanvasSelectionInput(epoch: target.selectionEpoch, lease: target.profileLease)
+            && addModeID == target.addModeID && rotationInputContextID == target.toolEpoch
+            && snapshot.map { target.context.isCurrent(in: $0) } == true
+    }
+
+    func canvasNodeSidebarPresentation(profileLease: UUID?) -> CanvasNodeSidebarPresentation? {
+        guard !isWorking, let snapshot, let target = canvasNodeSelectionTarget(profileLease: profileLease) else {
+            return nil
+        }
+        return CanvasNodeSidebarPresentation(snapshot: snapshot, profileLease: profileLease, target: target)
+    }
+
+    @discardableResult
+    func selectCanvasSidebarNodes(
+        _ ids: Set<String>, matching query: String, in presentation: CanvasNodeSidebarPresentation
+    ) -> Bool {
+        guard admitsCanvasNodeSidebarSelection(presentation) else { return false }
+        let rows = presentation.rows(matching: query)
+        let displayed = Set(rows.map(\.id))
+        let displayedSelection = presentation.selectedIDs.intersection(displayed)
+        let displayedKeys = Set(displayed.map { Data($0.utf8) })
+        guard ids.allSatisfy({ displayedKeys.contains(Data($0.utf8)) }), ids != displayedSelection else { return false }
+        if ids.isEmpty {
+            perform(commits: false, selectionOnly: true) {
+                try await $0.removeFromSelection(nodes: displayedSelection, edges: [])
+            }
+        } else {
+            select(ids)
+        }
+        return true
+    }
+
+    @discardableResult
+    func selectAllCanvasSidebarNodes(matching query: String, in presentation: CanvasNodeSidebarPresentation) -> Bool {
+        guard admitsCanvasNodeSidebarSelection(presentation) else { return false }
+        let ids = Set(presentation.rows(matching: query).map(\.id))
+        guard !ids.isEmpty else { return false }
+        select(ids)
+        return true
+    }
+
+    private func admitsCanvasNodeSidebarSelection(_ presentation: CanvasNodeSidebarPresentation) -> Bool {
+        !isWorking && admitsCanvasNodeSelection(presentation.target)
+            && snapshot?.selectionRevision == presentation.selectionRevision
+    }
+
+    func activateCanvasNode(_ id: String, action: CanvasNodeSelectionAction, target: CanvasNodeSelectionTarget?) {
+        guard let target, admitsCanvasNodeSelection(target) else { return }
+        switch action {
+        case .wholePart: selectWholePart(.node(id), context: target.context)
+        case .pointerReplace:
+            guard snapshot?.selectedIDs.contains(where: { $0.utf8.elementsEqual(id.utf8) }) != true else { return }
+            select(id)
+        case .selection(.replace): select(id)
+        case .selection(.toggle): toggleSelection(id)
+        case .selection(let mode): selectGraph(nodes: [id], edges: [], mode: mode)
+        }
+    }
+
     private struct PendingWholePartPick {
         let target: PartGraphTarget
         let context: PartGraphSelectionContext
@@ -93,6 +171,32 @@ final class EditorStore {
     func canSelectWholePart(_ target: PartGraphTarget) -> Bool {
         !isSelectingRigEdges && canPickGraph && snapshot?.canSelectWholePart(target) == true
     }
+    func canvasHoverWholePartAction(profileLease: UUID?) -> (@MainActor () -> Void)? {
+        guard ownsCanvasProfile(profileLease), canSave, !isAddingNodes, !isMovingOrigin,
+            let target = canvasGraphHover?.partTarget, canSelectWholePart(target)
+        else { return nil }
+        let select = wholePartSelectionAction(target)
+        let tool = addModeID
+        return { [weak self] in
+            guard let self, self.ownsCanvasProfile(profileLease), self.canSave,
+                self.addModeID == tool, !self.isAddingNodes, !self.isMovingOrigin
+            else { return }
+            select()
+        }
+    }
+
+    func canvasHoverRevealAction(profileLease: UUID?) -> (@MainActor () -> Void)? {
+        guard !isSelectingRigEdges, let target = canvasGraphHover?.partTarget, let snapshot,
+            let reveal = revealOwningComponentAction(
+                target, context: PartGraphSelectionContext(snapshot: snapshot), profileLease: profileLease)
+        else { return nil }
+        let epoch = rigEdgeSelectionEpoch
+        return { [weak self] in
+            guard self?.rigEdgeSelectionEpoch == epoch else { return }
+            reveal()
+        }
+    }
+
     var wholePartActionTarget: PartGraphTarget? {
         if !isAddingNodes, let hoveredNodeID { return .node(hoveredNodeID) }
         guard let snapshot else { return nil }
@@ -104,18 +208,22 @@ final class EditorStore {
         return nil
     }
     /// Build a targeted view action from the rendered document, never from a later replacement.
-    func wholePartSelectionAction(_ target: PartGraphTarget) -> @MainActor () -> Void {
+    func wholePartSelectionAction(
+        _ target: PartGraphTarget, admitsInput: @escaping @MainActor () -> Bool = { true }
+    ) -> @MainActor () -> Void {
         let context = snapshot.map { PartGraphSelectionContext(snapshot: $0) }
         let epoch = rigEdgeSelectionEpoch
         return { [weak self] in
-            guard let self, let context, self.rigEdgeSelectionEpoch == epoch else { return }
+            guard admitsInput(), let self, let context, self.rigEdgeSelectionEpoch == epoch else { return }
             self.selectWholePart(target, context: context)
         }
     }
     @ObservationIgnored private var graphComponentRevealLookup: GraphComponentRevealLookup?
 
     func revealOwningComponentAction(
-        _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil
+        _ target: PartGraphTarget, context: PartGraphSelectionContext?, profileLease: UUID? = nil,
+        selecting: Bool = false,
+        admitsInput: @escaping @MainActor () -> Bool = { true }
     ) -> (@MainActor () -> Void)? {
         guard let context, let source = revealSource(context: context, profileLease: profileLease) else { return nil }
         if graphComponentRevealLookup?.isCurrent(in: source) != true {
@@ -124,11 +232,13 @@ final class EditorStore {
         guard graphComponentRevealLookup?.contains(target, in: source) == true else { return nil }
         let modeID = addModeID
         return { [weak self] in
-            guard let self, self.addModeID == modeID,
+            guard admitsInput(), let self, self.addModeID == modeID,
                 let current = self.revealSource(context: context, profileLease: profileLease),
                 current.canRevealOwningComponent(target)
             else { return }
-            self.perform(commits: false) { try await $0.revealOwningComponent(target, context: context) }
+            self.perform(commits: false) {
+                try await $0.revealOwningComponent(target, context: context, selecting: selecting)
+            }
         }
     }
 
@@ -173,18 +283,17 @@ final class EditorStore {
         pendingWholePartPick = nil
         if let pick { commitWholePartPick(pick) }
     }
-    func selectWholePart(at point: CanvasPoint, projection: CanvasProjection, context: PartGraphSelectionContext? = nil)
-    {
+    func selectWholePart(
+        at point: CanvasPoint, projection: CanvasProjection, context: PartGraphSelectionContext? = nil,
+        onBlank: (@MainActor () -> Void)? = nil
+    ) {
         guard !isSelectingRigEdges, canPickGraph, !isAddingNodes, let snapshot,
             context?.isCurrent(in: snapshot) != false
         else { return }
-        if let node = snapshot.nodes.last(where: {
-            let center = projection.point(for: $0.value.position)
-            return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
-        }) {
-            selectWholePart(.node(node.id), context: context)
-        } else if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: snapshot.edges) {
-            selectWholePart(.edge(edge), context: context)
+        if let hit = canvasGraphHoverCache.hit(at: point, projection: projection, snapshot: snapshot) {
+            selectWholePart(hit.partTarget, context: context)
+        } else {
+            onBlank?()
         }
     }
     func partNodesSelectionAction(_ id: String) -> @MainActor () -> Void {
@@ -242,21 +351,30 @@ final class EditorStore {
     ) {
         guard ownsCanvasProfile(lease), lease == nil || projection.plane == plane else { return }
         canvasGeometryUsesProfileLease = lease != nil
+        var currentProjection = projection
+        if frozenAddProjection != nil, canvasWidth != width || canvasHeight != height {
+            if isWorking || addPlacementRequestID != nil {
+                cancelAddMode()
+            } else {
+                addPlacement.suspendProjectionForProfileChange()
+                addModeID = UUID()
+                // The mounted canvas still renders its frozen Add projection during the size callback.
+                currentProjection = CanvasProjection(bounds: bounds, plane: plane, width: width, height: height)
+            }
+        }
         if isAddingNodes, frozenAddProjection == nil {
-            guard projection.plane == plane, width.isFinite, width > 0, height.isFinite, height > 0,
+            guard currentProjection.plane == plane, width.isFinite, width > 0, height.isFinite, height > 0,
                 let snapshot
             else { return }
             do {
-                try addPlacement.reproject(snapshot: snapshot, projection: projection, canvasHeight: height)
+                try addPlacement.reproject(snapshot: snapshot, projection: currentProjection, canvasHeight: height)
             } catch {
                 cancelAddMode()
                 errorMessage = Self.message(error)
                 return
             }
-        } else if isAddingNodes && (canvasWidth != width || canvasHeight != height) {
-            cancelAddMode()
         }
-        updatePrecisionCanvasIdentity(projection: projection, width: width, height: height)
+        updatePrecisionCanvasIdentity(projection: currentProjection, width: width, height: height)
         canvasWidth = width
         setCanvasHeight(height)
         // Mode entry rebuilds against current bounds/plane, which may change before SwiftUI renders again.
@@ -327,6 +445,37 @@ final class EditorStore {
         }
     }
 
+    func canvasAddModeKeyHandler(profileLease: UUID?) -> @MainActor (CanvasAddModeKey) -> Bool {
+        let target = acceptedDocumentSource.map { CanvasAdjustmentTarget(snapshot: $0) }
+        let workingGroup = workingGroupRevision
+        let mode = addModeID
+        let tool = rotationInputContextID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] key in
+            guard let self, let target, let current = self.acceptedDocumentSource, target.isCurrent(in: current),
+                self.ownsCanvasProfile(profileLease), self.workingGroupRevision == workingGroup,
+                self.addModeID == mode, self.rotationInputContextID == tool,
+                self.referenceColorInteractionEpoch == interaction, !self.referenceColorInteractionActive,
+                !self.isMovingOrigin, !self.isSelectingRigEdges
+            else { return false }
+            switch key {
+            case .ignored: return false
+            case .consumeRepeat: return true
+            case .select:
+                guard self.isAddingNodes else { return false }
+                self.cancelAddMode()
+            case .toggleAdd:
+                if self.isAddingNodes {
+                    self.cancelAddMode()
+                } else {
+                    guard self.canBeginAddMode else { return false }
+                    self.beginAddMode()
+                }
+            }
+            return self.addModeID != mode
+        }
+    }
+
     private func changeAddPlacementDestination(_ destination: AddPlacementDestination) {
         guard addPlacementDestination != destination else { return }
         addPlacementDestination = destination
@@ -380,17 +529,7 @@ final class EditorStore {
         else { return }
         do {
             try addPlacement.updatePointer(point)
-            var candidate: String?
-            var nearestDistance = 18.0
-            for node in snapshot.nodes where node.isVisible {
-                let center = projection.point(for: node.value.position)
-                let distance = hypot(center.x - point.x, center.y - point.y)
-                // On an exact tie the later, topmost node keeps precedence.
-                if distance <= nearestDistance {
-                    nearestDistance = distance
-                    candidate = node.id
-                }
-            }
+            let candidate = addConnectionCandidate(at: point, projection: projection, snapshot: snapshot)
             guard let request = addPlacement.request(connectingTo: candidate) else { return }
             let placementID = UUID()
             addPlacementRequestID = placementID
@@ -409,6 +548,34 @@ final class EditorStore {
                 })
         } catch { errorMessage = Self.message(error) }
     }
+    private func addConnectionCandidate(
+        at point: CanvasPoint, projection: CanvasProjection, snapshot: EditorSnapshot
+    ) -> String? {
+        var candidate: String?
+        var nearestDistance = Double.infinity
+        var centers: [Data: CanvasPoint] = [:]
+        for node in snapshot.nodes where node.isVisible {
+            let center = projection.point(for: node.value.position)
+            centers[Data(node.id.utf8)] = center
+            let distance = hypot(center.x - point.x, center.y - point.y)
+            let hitRadius = CanvasNodeMarkerGeometry.hitRadius(
+                projectedDiameter: node.value.radius * projection.scale * 2)
+            // On an exact tie the later, topmost node keeps precedence.
+            if distance <= hitRadius, distance <= nearestDistance {
+                nearestDistance = distance
+                candidate = node.id
+            }
+        }
+        guard let candidate else { return nil }
+        if CanvasGraphHover.taperedEdge(
+            at: point, edges: snapshot.edges, position: { centers[Data($0.utf8)] }, closerThan: nearestDistance)
+            != nil
+        {
+            return nil
+        }
+        return candidate
+    }
+
     private func acceptAddPlacement(_ receipt: AddPlacementReceipt, modeID: UUID) {
         guard isAddingNodes, modeID == addModeID else { return }
         do {
@@ -494,29 +661,166 @@ final class EditorStore {
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         perform { try await $0.adjustSelectionRadius(by: delta, target: target) }
     }
-    func handleCanvasWheel(_ input: CanvasWheelInput) -> Bool {
-        guard !isSelectingRigEdges else { return false }
+    private enum GraphWheelEdit: Sendable {
+        case selectionRadius(Double)
+        case nodeRadius(String, Double)
+        case spacing(Double)
+
+        var usesHover: Bool {
+            if case .nodeRadius = self { return true }
+            return false
+        }
+    }
+
+    private struct GraphWheelScope: Equatable {
+        let document: UUID
+        let selection: Int
+        let constraints: Int
+        let lease: UUID?
+        let layout: UUID
+        let tool: UUID
+        let interaction: UUID
+        let hover: UUID?
+    }
+
+    private struct GraphWheelQueue {
+        let id = UUID()
+        let scope: GraphWheelScope
+        var revision: Int
+        var operation: UUID?
+        var pending: [GraphWheelEdit] = []
+    }
+
+    @ObservationIgnored private var graphWheelQueue: GraphWheelQueue?
+
+    var canRouteGraphWheelWhileWorking: Bool {
+        isWorking && graphWheelQueue?.operation == operationRequestID
+    }
+
+    func handleCanvasWheel(_ input: CanvasWheelInput, profileLease: UUID? = nil) -> Bool {
+        guard input.isSupported, ownsCanvasProfile(profileLease), !isSelectingRigEdges else { return false }
         if isAddingNodes {
-            guard input.isSupported, !isWorking, addGhostPoint != nil else { return false }
+            guard !isWorking, addGhostPoint != nil else { return false }
             adjustSelectionRadius(direction: input.verticalDelta)
             return true
         }
-        guard input.isSupported, canSave, canvasHeight > 0, let snapshot else { return false }
+        guard let snapshot = acceptedDocumentSource, admitsGraphWheel else { return false }
         let step = (input.verticalDelta > 0 ? 1.0 : -1.0) / canvasHeight
-        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let edit: GraphWheelEdit
         let hasGraphSelection = !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
         if hasGraphSelection && input.modifiers.contains(.command) {
-            guard canTransform else { return false }
-            perform { try await $0.scaleSelection(positionFactor: 1 + step, radiusFactor: 1, target: target) }
-        } else if hasGraphSelection && canAdjustSelectionRadius {
-            perform { try await $0.adjustSelectionRadius(by: step, target: target) }
-        } else if let hoveredNodeID, snapshot.canAdjustNodeRadius(id: hoveredNodeID) {
-            perform { try await $0.adjustNodeRadius(id: hoveredNodeID, by: step, target: target) }
+            guard snapshot.transformNodes.contains(where: \.isEditable) else { return false }
+            edit = .spacing(1 + step)
+        } else if hasGraphSelection && snapshot.canAdjustSelectionRadius {
+            edit = .selectionRadius(step)
         } else {
-            return false
+            let hover = isWorking ? canvasPartStateHover : canvasGraphHover
+            guard case .node(let id) = hover, snapshot.canAdjustNodeRadius(id: id) else { return false }
+            edit = .nodeRadius(id, step)
         }
+
+        let scope = graphWheelScope(snapshot, lease: profileLease, usesHover: edit.usesHover)
+        if let queue = graphWheelQueue {
+            guard canRouteGraphWheelWhileWorking, queue.scope == scope,
+                queue.revision == snapshot.documentRevision
+            else { return false }
+            // A recognized excess sample must not fall through to a different scroll command.
+            if queue.pending.count < 32 { graphWheelQueue?.pending.append(edit) }
+            return true
+        }
+        guard !isWorking else { return false }
+        graphWheelQueue = GraphWheelQueue(scope: scope, revision: snapshot.documentRevision)
+        dispatchGraphWheel(edit, snapshot: snapshot)
         return true
     }
+
+    private var admitsGraphWheel: Bool {
+        !isSelectingRigEdges && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
+            && originDrag == nil && canvasProfileMotion == nil && canvasHeight > 0
+    }
+
+    private func graphWheelScope(_ snapshot: EditorSnapshot, lease: UUID?, usesHover: Bool) -> GraphWheelScope {
+        GraphWheelScope(
+            document: snapshot.documentIdentity, selection: snapshot.selectionRevision,
+            constraints: snapshot.constraintRevision, lease: lease, layout: precisionLayoutEpoch,
+            tool: rotationInputContextID, interaction: referenceColorInteractionEpoch,
+            hover: usesHover ? canvasPartStateHoverEpoch : nil)
+    }
+
+    private func dispatchGraphWheel(_ edit: GraphWheelEdit, snapshot: EditorSnapshot) {
+        guard let queue = graphWheelQueue else { return }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        perform(
+            acceptCommittedCancellation: true, preservePartStateHover: edit.usesHover,
+            completion: { [weak self] succeeded in
+                guard let self, var active = self.graphWheelQueue, active.id == queue.id else { return }
+                guard succeeded, active.operation == self.operationRequestID, !self.isWorking,
+                    let current = self.acceptedDocumentSource, self.admitsGraphWheel,
+                    self.ownsCanvasProfile(queue.scope.lease),
+                    self.graphWheelScope(current, lease: queue.scope.lease, usesHover: edit.usesHover) == queue.scope,
+                    current.documentRevision == queue.revision || current.documentRevision == queue.revision + 1,
+                    !active.pending.isEmpty
+                else {
+                    self.graphWheelQueue = nil
+                    return
+                }
+                let next = active.pending.removeFirst()
+                active.revision = current.documentRevision
+                self.graphWheelQueue = active
+                self.dispatchGraphWheel(next, snapshot: current)
+            },
+            { session in
+                switch edit {
+                case .selectionRadius(let delta): try await session.adjustSelectionRadius(by: delta, target: target)
+                case .nodeRadius(let id, let delta):
+                    try await session.adjustNodeRadius(id: id, by: delta, target: target)
+                case .spacing(let factor):
+                    try await session.scaleSelection(positionFactor: factor, radiusFactor: 1, target: target)
+                }
+            })
+        if graphWheelQueue?.id == queue.id { graphWheelQueue?.operation = operationRequestID }
+    }
+
+    private(set) var canvasWheelZoomEnabled = false
+    private var canvasWheelZoomEpoch = UUID()
+    private(set) var canvasWheelZoom = MeshCameraWheelZoom()
+
+    func setCanvasWheelZoomEnabled(_ enabled: Bool) {
+        guard canvasWheelZoomEnabled != enabled, acceptedDocumentSource != nil else { return }
+        canvasWheelZoomEnabled = enabled
+        canvasWheelZoomEpoch = UUID()
+    }
+
+    func canvasPreviewWheelAction(
+        lease: UUID?, camera: EditorPreviewCameraActions?
+    ) -> @MainActor (CanvasWheelInput) -> Bool {
+        guard canvasWheelZoomEnabled, let source = acceptedDocumentSource, let camera else {
+            return { _ in false }
+        }
+        let target = CanvasAdjustmentTarget(snapshot: source)
+        let profile = rigEdgeSelectionEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        let setting = canvasWheelZoomEpoch
+        return { [weak self] input in
+            guard let self, input.isSupported,
+                input.modifiers.intersection([.shift, .command, .option, .control, .function]).isEmpty,
+                self.admitsCanvasSelectionInput(epoch: profile, lease: lease),
+                self.rotationInputContextID == tool, self.addModeID == add, self.canvasWheelZoomEpoch == setting,
+                !self.isWorking, !self.isAddingNodes, !self.isMovingOrigin, !self.isSelectingRigEdges,
+                self.originDrag == nil, !self.referenceColorInteractionActive, self.canvasGraphHover == nil,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current),
+                current.selectedIDs.isEmpty, current.selectedEdgeIDs.isEmpty
+            else { return false }
+            return camera.zoomFromCanvas(step: input.verticalDelta > 0 ? 1 : -1)
+        }
+    }
+
+    func zoomPreviewFromCanvas(step: Int) {
+        guard canMovePreviewCamera, canvasWheelZoomEnabled, step == 1 || step == -1 else { return }
+        canvasWheelZoom.append(step: step)
+    }
+
     private(set) var isWorking = false {
         didSet {
             if isWorking {
@@ -527,7 +831,12 @@ final class EditorStore {
         }
     }
     private(set) var previewState = MeshPreviewState<EditorPreviewOutput>() {
-        didSet { if previewState.value == nil { previewCameraCommand = nil } }
+        didSet {
+            if previewState.value == nil {
+                previewCameraCommand = nil
+                canvasWheelZoom = .init()
+            }
+        }
     }
     var mesh: IndexedMesh? { previewState.value?.mesh }
     var previewSourceHints: MeshSourceHints? {
@@ -642,6 +951,21 @@ final class EditorStore {
             return false
         }
         return !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty
+    }
+
+    func inspectorNavigationAction(
+        fileIdentity: UUID, ownsWindow: @escaping @MainActor () -> Bool = { true },
+        _ reveal: @escaping @MainActor (EditorInspectorDestination) -> Void
+    ) -> (@MainActor (EditorInspectorDestination) -> Void)? {
+        guard let documentIdentity = acceptedDocumentSource?.documentIdentity,
+            case .success(let accepted) = recoveryLoadResult, accepted.fileIdentity == fileIdentity, ownsWindow()
+        else { return nil }
+        return { [weak self] destination in
+            guard let self, ownsWindow(), self.acceptedDocumentSource?.documentIdentity == documentIdentity,
+                case .success(let accepted) = self.recoveryLoadResult, accepted.fileIdentity == fileIdentity
+            else { return }
+            reveal(destination)
+        }
     }
 
     func focusCanvasAction(
@@ -800,6 +1124,7 @@ final class EditorStore {
     private let materialPreparation: any ArchiveMaterialPreparing
     private(set) var materialGeneration: Task<Void, Never>?
     private let preview: any EditorPreviewServing
+    private let diagnostics: EditorSessionDiagnostics?
     private var previewScopeID = UUID()
     private(set) var previewCacheStatistics: MeshGenerationStatistics?
     private(set) var previewSourceIssue: MeshLoadingError?
@@ -844,7 +1169,8 @@ final class EditorStore {
         animationCatalog: (any AnimationCatalogLoading)? = nil,
         addPlacements: any AddPlacementServing = AddPlacementService(),
         referenceColorRaster: any ReferenceColorRasterServing = ReferenceColorRasterService(),
-        referenceColorApplying: any ReferenceColorApplying = ReferenceColorApplicationService()
+        referenceColorApplying: any ReferenceColorApplying = ReferenceColorApplicationService(),
+        diagnostics: EditorSessionDiagnostics? = nil
     ) {
         self.referenceColorRaster = referenceColorRaster
         self.referenceColorApplying = referenceColorApplying
@@ -854,6 +1180,7 @@ final class EditorStore {
         self.colorImages = colorImages
         self.referenceImages = referenceImages
         self.preview = preview
+        self.diagnostics = diagnostics
         materialPreparation = ArchiveMaterialPreparationService(
             importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
     }
@@ -872,6 +1199,25 @@ final class EditorStore {
     var referenceCompositionTarget: ReferenceCompositionTarget? {
         guard canSave, let source = acceptedDocumentSource else { return nil }
         return ReferenceCompositionTarget(snapshot: source)
+    }
+
+    func referenceImageActionAdmission(
+        fileIdentity: UUID, ownsWindow: @escaping @MainActor () -> Bool
+    ) -> (@MainActor () -> Bool)? {
+        guard !isWorking, ownsWindow(), let source = acceptedDocumentSource,
+            case .success(let accepted) = recoveryLoadResult, accepted.fileIdentity == fileIdentity
+        else { return nil }
+        let documentIdentity = source.documentIdentity
+        let documentRevision = source.documentRevision
+        let constraintRevision = source.constraintRevision
+        return { [weak self] in
+            guard let self, !self.isWorking, ownsWindow(),
+                let current = self.acceptedDocumentSource, current.documentIdentity == documentIdentity,
+                current.documentRevision == documentRevision, current.constraintRevision == constraintRevision,
+                case .success(let accepted) = self.recoveryLoadResult, accepted.fileIdentity == fileIdentity
+            else { return false }
+            return true
+        }
     }
 
     func getStartedAdmission(fileIdentity: UUID) -> (@MainActor () -> Bool)? {
@@ -1123,6 +1469,7 @@ final class EditorStore {
         cancelAnimationQuery()
         cancelExport()
         cancelColorImagePreparation()
+        graphWheelQueue = nil
         operation?.cancel()
         let requestID = UUID()
         operationRequestID = requestID
@@ -1137,6 +1484,7 @@ final class EditorStore {
             guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
             snapshot = next
             recoveryLoadResult = .success(.init(documentIdentity: next.documentIdentity, fileIdentity: fileIdentity))
+            diagnostics?.record(.documentOpened)
             referenceImage = nil
             fit()
             clearPreview()
@@ -1145,6 +1493,7 @@ final class EditorStore {
         } catch {
             if !Task.isCancelled, operationRequestID == requestID {
                 recoveryLoadResult = .failure(error)
+                diagnostics?.record(.documentOpenFailed)
                 errorMessage = Self.message(error)
             }
         }
@@ -1459,13 +1808,8 @@ final class EditorStore {
     func selectEdge(_ id: String?) { perform(commits: false, selectionOnly: true) { try await $0.selectEdge(id) } }
     func selectGraph(nodes: Set<String>, edges: Set<String>, mode: GraphSelectionMode = .replace) {
         guard !isSelectingRigEdges || nodes.isEmpty else { return }
-        perform(commits: false, selectionOnly: true) { session in
-            switch mode {
-            case .replace: try await session.selectGraph(nodes: nodes, edges: edges)
-            case .add: try await session.addToSelection(nodes: nodes, edges: edges)
-            case .toggle: try await session.toggleGraphSelection(nodes: nodes, edges: edges)
-            case .subtract: try await session.removeFromSelection(nodes: nodes, edges: edges)
-            }
+        perform(commits: false, selectionOnly: true) {
+            try await $0.applyGraphPicks(nodes: nodes, edges: edges, mode: mode)
         }
     }
     func edgeSidebarSelectionAction(
@@ -1484,6 +1828,28 @@ final class EditorStore {
         }
     }
 
+    func edgeSidebarSelectAllTarget(
+        displayedIDs: Set<String>? = nil, admitsFilter: @escaping @MainActor () -> Bool = { true }
+    ) -> EdgeSidebarSelectAllTarget? {
+        guard let snapshot, !snapshot.edges.isEmpty else { return nil }
+        let eligible = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: .replace) : snapshot.edges
+        let ids = Set(eligible.map(\.id))
+        return .init(
+            ids: displayedIDs.map { ids.intersection($0) } ?? ids, context: CanvasAdjustmentTarget(snapshot: snapshot),
+            rigModeEpoch: rigEdgeSelectionEpoch, admitsFilter: admitsFilter)
+    }
+
+    func canSelectAllSidebarEdges(_ target: EdgeSidebarSelectAllTarget) -> Bool {
+        guard canSave, target.admitsFilter(), let snapshot, !target.ids.isEmpty else { return false }
+        return rigEdgeSelectionEpoch == target.rigModeEpoch && target.context.isCurrent(in: snapshot)
+    }
+
+    func selectAllSidebarEdges(_ target: EdgeSidebarSelectAllTarget) {
+        guard canSelectAllSidebarEdges(target) else { return }
+        let (ids, context) = (target.ids, target.context)
+        perform(commits: false, selectionOnly: true) { try await $0.selectEdges(ids, target: context) }
+    }
+
     func selectEdges(_ ids: Set<String>) {
         perform(commits: false, selectionOnly: true) { try await $0.selectEdges(ids) }
     }
@@ -1494,11 +1860,37 @@ final class EditorStore {
         guard !isWorking, let snapshot else { return }
         let edges = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: mode) : snapshot.edges
         if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: edges) {
-            selectGraph(nodes: [], edges: [edge], mode: mode)
+            pickCanvasEdge(edge, mode: mode, snapshot: snapshot)
         } else if mode == .replace {
             selectGraph(nodes: [], edges: [])
         }
     }
+    func pickCanvasGraph(at point: CanvasPoint, projection: CanvasProjection, mode: GraphSelectionMode, lease: UUID?) {
+        guard ownsCanvasProfile(lease), !isWorking, !isAddingNodes, !isMovingOrigin, let snapshot else { return }
+        if isSelectingRigEdges {
+            pickEdge(at: point, projection: projection, mode: mode)
+            return
+        }
+        switch canvasGraphHoverCache.hit(at: point, projection: projection, snapshot: snapshot) {
+        case .node(let id):
+            activateCanvasNode(
+                id, action: mode == .replace ? .pointerReplace : .selection(mode),
+                target: canvasNodeSelectionTarget(profileLease: lease))
+        case .edge(let id):
+            pickCanvasEdge(id, mode: mode, snapshot: snapshot)
+        case nil:
+            if mode == .replace { selectGraph(nodes: [], edges: []) }
+        }
+    }
+    private func pickCanvasEdge(_ id: String, mode: GraphSelectionMode, snapshot: EditorSnapshot) {
+        if mode == .replace, !isSelectingRigEdges,
+            snapshot.selectedEdgeIDs.contains(where: { $0.utf8.elementsEqual(id.utf8) })
+        {
+            return
+        }
+        selectGraph(nodes: [], edges: [id], mode: mode)
+    }
+
     func selectMarquee(_ rectangle: CanvasSelectionRectangle, projection: CanvasProjection, mode: GraphSelectionMode) {
         guard !isWorking, let snapshot else { return }
         let edges = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: mode) : snapshot.edges
@@ -1507,6 +1899,52 @@ final class EditorStore {
             edges: projection.edgeIDs(
                 in: rectangle, nodes: snapshot.nodes, edges: edges, selectedEdgeIDs: snapshot.selectedEdgeIDs),
             mode: mode)
+    }
+
+    private(set) var canvasUsesLasso = false
+    private var canvasLassoModeEpoch = UUID()
+
+    func setCanvasUsesLasso(_ enabled: Bool) {
+        guard canvasUsesLasso != enabled, canPickGraph, !isAddingNodes, !isMovingOrigin else { return }
+        canvasUsesLasso = enabled
+        canvasLassoModeEpoch = UUID()
+    }
+
+    func lassoInteraction(
+        projection: CanvasProjection, canvas: ReferenceColorCanvasIdentity, lease: UUID?, mode: GraphSelectionMode
+    ) -> CanvasLassoInteraction? {
+        guard canvasUsesLasso, ownsCanvasProfile(lease), !isWorking, !isAddingNodes, !isMovingOrigin,
+            referenceColorCanvas?.identity == canvas, let source = acceptedDocumentSource
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: source)
+        let layout = precisionLayoutEpoch
+        let tool = rotationInputContextID
+        let modeEpoch = canvasLassoModeEpoch
+        let selectionEpoch = rigEdgeSelectionEpoch
+        let plan = CanvasLassoPickPlan(
+            projection: projection, nodes: source.nodes,
+            edges: isSelectingRigEdges ? rigEdgePickCandidates(in: source, mode: mode) : source.edges,
+            selected: (source.selectedIDs, source.selectedEdgeIDs), mode: mode, includesNodes: !isSelectingRigEdges)
+        let isCurrent: @MainActor () -> Bool = { [weak self] in
+            guard let self, !self.isWorking, !self.isAddingNodes, !self.isMovingOrigin,
+                self.admitsCanvasSelectionInput(epoch: selectionEpoch, lease: lease),
+                self.precisionLayoutEpoch == layout, self.rotationInputContextID == tool,
+                self.canvasLassoModeEpoch == modeEpoch, self.referenceColorCanvas?.identity == canvas,
+                let current = self.acceptedDocumentSource
+            else { return false }
+            return target.isCurrent(in: current)
+        }
+        return CanvasLassoInteraction(
+            plan: plan, isCurrent: isCurrent,
+            commit: { [weak self] path, completion in
+                guard let self, isCurrent() else {
+                    completion(false)
+                    return
+                }
+                self.perform(commits: false, selectionOnly: true, completion: completion) {
+                    try await $0.applyLasso(plan: plan, path: path, target: target)
+                }
+            })
     }
 
     private func rigEdgePickCandidates(in snapshot: EditorSnapshot, mode: GraphSelectionMode) -> [DocumentEdge] {
@@ -1586,6 +2024,28 @@ final class EditorStore {
                 },
                 { try await $0.selectComponents(retained, target: target) })
         }
+    }
+
+    func componentSidebarBrowseSelectionAction(
+        snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> (@MainActor () -> Void)? {
+        guard canBrowseComponents, let group = snapshot.selectedComponent, group.isGroup else { return nil }
+        let rows =
+            componentGroupBrowse?.children ?? snapshot.componentTree.visibleRows(collapsing: disclosure.collapsedIDs)
+        guard rows.contains(where: { $0.id.utf8.elementsEqual(group.id.utf8) }) else { return nil }
+        let disclosureEpoch = disclosure.epoch
+        let browse = componentBrowseAction(group.id, snapshot: snapshot)
+        return {
+            guard disclosure.epoch == disclosureEpoch else { return }
+            browse()
+        }
+    }
+
+    func componentBrowseParentAction() -> (@MainActor () -> Void)? {
+        guard canBrowseComponents, let current = acceptedDocumentSource, let group = componentGroupBrowse else {
+            return nil
+        }
+        return componentBrowseAction(group.path.dropLast().last?.id, snapshot: current)
     }
 
     private func changeComponentBrowseGroup(_ groupID: String?, reset: Bool = false) {
@@ -1909,6 +2369,15 @@ final class EditorStore {
     func setPartTarget(_ id: String, target: PartTarget) {
         perform { try await $0.apply([.setPartTarget(id: id, target: target)]) }
     }
+    func canEditGraphPartRole(_ target: GraphPartRoleTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func setGraphPartRole(_ role: PartTarget, target: GraphPartRoleTarget) {
+        guard canEditGraphPartRole(target) else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.setGraphPartRole(role, target: target) }
+    }
+
     func setPartCutFace(_ id: String, selection: CutFaceSelection) {
         perform { try await $0.apply([.setPartCutFace(id: id, selection: selection)]) }
     }
@@ -2116,9 +2585,17 @@ final class EditorStore {
         return { [weak self] in
             guard let self, self.canSelectBoneEdges(target) else { return }
             self.boneEdgeHover = nil
-            self.perform(commits: false, acceptCommittedCancellation: true, selectionOnly: true) {
-                try await $0.selectBoneEdges(target: target)
-            }
+            let profileContext = self.rotationInputContextID
+            self.perform(
+                commits: false, acceptCommittedCancellation: true, selectionOnly: true,
+                completion: { [weak self] succeeded in
+                    guard succeeded, let self, self.rotationInputContextID == profileContext,
+                        self.snapshot?.selectedEdgeIDs.isEmpty == false
+                    else { return }
+                    self.plane = .side
+                },
+                { try await $0.selectBoneEdges(target: target) }
+            )
         }
     }
     func boneEdgeHoverAction(_ target: BoneEdgeSelectionTarget, owner: BoneEdgeHoverOwner) -> @MainActor (Bool) -> Void
@@ -2247,9 +2724,81 @@ final class EditorStore {
         return { _ = handle(property, false) }
     }
 
+    func selectedGraphOwningComponentAction() -> (@MainActor () -> Void)? {
+        guard canToggleCanvasPartState, let source = acceptedDocumentSource,
+            let owner = CanvasPartStateTarget(snapshot: source, hovered: nil),
+            let select = revealOwningComponentAction(
+                .part(owner.part.id), context: PartGraphSelectionContext(snapshot: source),
+                profileLease: canvasProfiles.lease, selecting: true)
+        else { return nil }
+        return { [weak self] in
+            guard let self, self.canToggleCanvasPartState, let current = self.acceptedDocumentSource,
+                owner.isCurrent(in: current)
+            else { return }
+            select()
+        }
+    }
+
+    var canvasComponentProperties: CanvasComponentProperties?
+
+    func canvasComponentPropertiesAction(profileLease: UUID?) -> (@MainActor (Bool) -> Bool)? {
+        guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
+            let context = canvasRotationContext
+        else { return nil }
+        let hovered: PartGraphTarget? =
+            switch canvasPartStateHover {
+            case .node(let id): .node(id)
+            case .edge(let id): .edge(id)
+            case nil: nil
+            }
+        guard let properties = CanvasComponentProperties(snapshot: snapshot, hovered: hovered) else { return nil }
+        let hoverEpoch = canvasPartStateHoverEpoch
+        let layoutEpoch = precisionLayoutEpoch
+        let interactionEpoch = referenceColorInteractionEpoch
+        return { [weak self] isRepeat in
+            guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
+                canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
+                precisionLayoutEpoch == layoutEpoch, referenceColorInteractionEpoch == interactionEpoch
+            else { return false }
+            if !isRepeat && canvasComponentProperties == nil { canvasComponentProperties = properties }
+            return true
+        }
+    }
+
+    func canvasOwningComponentAction(profileLease: UUID?) -> (@MainActor (Bool) -> Bool)? {
+        guard canToggleCanvasPartState, let snapshot = acceptedDocumentSource, let context = canvasRotationContext,
+            let hover = canvasPartStateHover
+        else { return nil }
+        let target: PartGraphTarget =
+            switch hover {
+            case .node(let id): .node(id)
+            case .edge(let id): .edge(id)
+            }
+        guard
+            let select = revealOwningComponentAction(
+                target, context: PartGraphSelectionContext(snapshot: snapshot), profileLease: profileLease,
+                selecting: true)
+        else { return nil }
+        let hoverEpoch = canvasPartStateHoverEpoch
+        let layout = precisionLayoutEpoch
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] isRepeat in
+            guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
+                canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
+                precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction
+            else { return false }
+            if !isRepeat { select() }
+            return true
+        }
+    }
+
     func canvasPartStateKeyHandler(profileLease: UUID?) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
         let handle = canvasPartStateHandler(profileLease: profileLease)
+        let openProperties = canvasComponentPropertiesAction(profileLease: profileLease)
+        let selectOwner = canvasOwningComponentAction(profileLease: profileLease)
         return { input in
+            if input.opensComponentProperties { return openProperties?(input.isRepeat) ?? false }
+            if input.selectsOwningComponent { return selectOwner?(input.isRepeat) ?? false }
             guard let property = input.partStateProperty, let handle else { return false }
             return handle(property, input.isRepeat)
         }
@@ -2664,7 +3213,8 @@ final class EditorStore {
                     throw QtXMLFilePasteError.staleTarget
                 }
                 return try await session.pasteQtXMLFile(
-                    data, target: request.clipboard.context, parentID: request.clipboard.parentID)
+                    data, target: request.clipboard.context, parentID: request.clipboard.parentID,
+                    clearsMissingCutFaces: true)
             }
             return operation
         } catch {
@@ -2674,14 +3224,18 @@ final class EditorStore {
     }
 
     @discardableResult
-    func applyStartupQtXML(_ data: Data, fileIdentity: UUID) -> Task<Void, Never>? {
+    func applyStartupQtXML(
+        _ data: Data, fileIdentity: UUID, settlesNewDocumentOrigin: Bool = false
+    ) -> Task<Void, Never>? {
         guard !Task.isCancelled, !isWorking, qtXMLFilePasteRequest == nil, let snapshot = acceptedDocumentSource,
             snapshot.documentRevision == 0, case .success(let accepted) = recoveryLoadResult,
             accepted.fileIdentity == fileIdentity
         else { return nil }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         perform(acceptCommittedCancellation: true) { session in
-            try await session.pasteQtXMLFile(data, target: target, parentID: nil)
+            try await session.pasteQtXMLFile(
+                data, target: target, parentID: nil, selectsEditableGraph: false, clearsMissingCutFaces: true,
+                settlesNewDocumentOrigin: settlesNewDocumentOrigin)
         }
         return operation
     }
@@ -3096,11 +3650,13 @@ final class EditorStore {
     func fitPreviewCamera() {
         guard canMovePreviewCamera else { return }
         previewCameraCommand = nil
+        canvasWheelZoom = .init()
         cameraReset += 1
     }
 
     func fit() {
         previewCameraCommand = nil
+        canvasWheelZoom = .init()
         cancelOriginDrag()
         fitCanvas()
         cameraReset += 1
@@ -3139,6 +3695,7 @@ final class EditorStore {
         isWorking = false
         cancelOriginDrag()
         stopped = true
+        graphWheelQueue = nil
         operation?.cancel()
         generation?.cancel()
         referenceGeneration?.cancel()
@@ -3276,6 +3833,7 @@ final class EditorStore {
                     previewState.isCurrent(requestID: requestID)
                 else { return }
                 previewState.fail(Self.message(error), requestID: requestID)
+                diagnostics?.record(.previewFailed)
             }
         }
     }

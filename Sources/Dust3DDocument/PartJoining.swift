@@ -2,7 +2,10 @@ import Foundation
 
 /// Endpoint joins preserve unrelated XML; consuming target settings is an explicit graph operation.
 enum PartJoining {
-    static func apply(id: String, from: String, to: String, model: XMLDocument, contents: DocumentContents) throws {
+    static func apply(
+        id: String, from: String, to: String, model: XMLDocument, contents: DocumentContents,
+        repairingLegacyIslands: Bool = false
+    ) throws {
         let nodes = Dictionary(uniqueKeysWithValues: contents.nodes.map { ($0.id, $0) })
         guard !id.isEmpty, from != to, contents.edges.count < 20_000,
             let source = nodes[from], let target = nodes[to], source.isEditable, target.isEditable,
@@ -79,7 +82,9 @@ enum PartJoining {
             set(edge, name, value)
         }
         edges.addChild(edge)
-        try validateConnectedPart(sourcePart, nodes: nodeElements, edges: edges.elements(forName: "edge"))
+        try validatePartTopology(
+            sourcePart, nodes: nodeElements, edges: edges.elements(forName: "edge"),
+            requiresConnectivity: !repairingLegacyIslands)
         try validateProfileLinks(parts: parts.elements(forName: "part"), nodes: nodeElements)
     }
 
@@ -104,7 +109,9 @@ enum PartJoining {
         return result
     }
 
-    private static func validateConnectedPart(_ id: String, nodes: [XMLElement], edges: [XMLElement]) throws {
+    private static func validatePartTopology(
+        _ id: String, nodes: [XMLElement], edges: [XMLElement], requiresConnectivity: Bool
+    ) throws {
         let members = Set(
             nodes.filter { $0.attribute(forName: "partId")?.stringValue == id }.compactMap {
                 $0.attribute(forName: "id")?.stringValue
@@ -120,6 +127,7 @@ enum PartJoining {
             }
         }
         guard neighbors.values.allSatisfy({ $0.count <= 2 }) else { throw DocumentError.invalidNode }
+        guard requiresConnectivity else { return }
         var pending = Array(members.prefix(1))
         var visited = Set(pending)
         var cursor = 0

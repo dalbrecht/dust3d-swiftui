@@ -26,6 +26,8 @@ struct EditorGeometryExportCommands: Commands {
                 .disabled(action?.canPerform != true)
             Button("Export FBX Geometry…") { action?.perform(.fbx) }
                 .disabled(action?.canPerform != true)
+            Button("Export Textured FBX…") { action?.perform(.fbxTextured) }
+                .disabled(action?.canPerform != true)
         }
     }
 }
