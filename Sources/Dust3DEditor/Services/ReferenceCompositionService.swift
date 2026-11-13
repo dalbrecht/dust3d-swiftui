@@ -1,4 +1,7 @@
+import CoreGraphics
+import Dust3DDocument
 import Dust3DEditorModel
+import Dust3DKit
 import Foundation
 
 protocol ReferenceCompositionServing: Sendable {
@@ -12,11 +15,71 @@ actor ReferenceCompositionService: ReferenceCompositionServing {
     private let images = ReferenceImageService()
 
     func importSource(url: URL) async throws -> ReferenceCompositionSource {
-        let png = try await images.importImage(url: url)
+        let original = try await images.readEncodedImage(url: url)
+        let decodedLimit = 64 * 1024 * 1024
+        let metadata = try? PNGContainerMetadata(
+            data: original, maximumEncodedBytes: ReferenceImageCodec.maximumEncodedBytes,
+            maximumDecodedBytes: decodedLimit)
+        let normalized: Data
+        let image: CGImage
+        if let metadata, metadata.bitDepth == 16,
+            metadata.colorType == 4 || (metadata.colorType == 0 && metadata.hasTransparencyKey)
+        {
+            // ImageIO can decode the source but cannot round-trip this PNG through its encoder.
+            normalized = original
+            image = try ReferenceImageCodec.decodePNG(normalized)
+        } else {
+            normalized = try ReferenceImageCodec.importPNG(original)
+            image = try ReferenceImageCodec.decodePNG(normalized)
+        }
         try Task.checkCancellation()
-        let image = try ReferenceImageCodec.decodePNG(png)
+        let channels = try metadata.flatMap {
+            try straightPNGChannels(original, metadata: $0, image: image, decodedLimit: decodedLimit)
+        }
+        let gifPixels: Data?
+        if original.starts(with: "GIF87a".utf8) || original.starts(with: "GIF89a".utf8),
+            let decoded = try? MeshPNGDecoder.decode(
+                normalized, imageID: "reference-gif", maximumDecodedBytes: decodedLimit)
+        {
+            gifPixels = decoded.pixels
+        } else {
+            gifPixels = nil
+        }
         return try ReferenceCompositionSource(
-            image: image, crop: .init(size: .init(width: image.width, height: image.height)))
+            image: image, crop: .init(size: .init(width: image.width, height: image.height)),
+            straightRGBA: channels?.pixels ?? gifPixels, isIndexed: channels?.isIndexed ?? false,
+            wideImage: channels?.wideImage)
+    }
+
+    private func straightPNGChannels(
+        _ original: Data, metadata: PNGContainerMetadata, image: CGImage, decodedLimit: Int
+    ) throws -> (pixels: Data?, isIndexed: Bool, wideImage: CGImage?)? {
+        let width = image.width
+        let height = image.height
+        let isWide = metadata.bitDepth == 16 && [0, 2, 4, 6].contains(metadata.colorType)
+        let isIndexedAlpha = [0, 3].contains(metadata.colorType) && metadata.hasTransparencyKey
+        let isDirectAlpha =
+            metadata.bitDepth == 8
+            && ([4, 6].contains(metadata.colorType) || (metadata.colorType == 2 && metadata.hasTransparencyKey))
+        guard isWide || isIndexedAlpha || isDirectAlpha,
+            metadata.width == width, metadata.height == height,
+            let rawImage = ReferenceImageCodec.straightStandardPNGImage(original)
+        else { return nil }
+        if metadata.bitDepth == 16 {
+            guard rawImage.bitsPerComponent == 16, rawImage.width == width, rawImage.height == height,
+                (try? ImageSampleLayout(rawImage)) != nil
+            else { return nil }
+            return (nil, false, rawImage)
+        }
+        do {
+            let decoded = try MeshPNGDecoder.decode(
+                original, imageID: "reference-image", maximumDecodedBytes: decodedLimit
+            )
+            return (decoded.pixels, isIndexedAlpha, nil)
+        } catch is MeshPNGDecodingError {
+            // The preview decoder can still display PNG layouts unsupported by the sample decoder.
+            return nil
+        }
     }
 
     func compose(front: ReferenceCompositionSource?, side: ReferenceCompositionSource?) throws

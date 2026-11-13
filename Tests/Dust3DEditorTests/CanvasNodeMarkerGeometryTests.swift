@@ -1,6 +1,5 @@
+import Dust3DEditorModel
 import XCTest
-
-@testable import Dust3DEditor
 
 final class CanvasNodeMarkerGeometryTests: XCTestCase {
     func testSmallestHoveredRingClearsTheOpaqueCenter() {
