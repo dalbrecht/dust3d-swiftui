@@ -14,13 +14,19 @@ Dust3DEditor -paste-xml fragment.xml -o new.ds3
 
 The command validates and prepares one archive before opening any windows. It
 preserves exact bytes for a plain copy and applies a single Qt XML fragment to
-the source or a new document before saving. Up to 64 distinct `.ds3` destinations
+the source or a new document before saving. When `-paste-xml` is repeated,
+the last fragment is applied, as in Qt. Up to 64 distinct destinations
 are allowed. Destinations must be separate from the inputs and cannot be symbolic
-links. Writes replace individual files atomically. A failed write is reported
-for that destination and the command continues with later destinations.
-Exit status `0` means all saves succeeded, `1` indicates an input or write
-failure, and `2` indicates a usage or path preflight error. This route saves
-editable archives. Geometry formats use their separate export routes.
+links. The command processes destinations in argument order and replaces individual
+archive files atomically. A failed destination is reported and the command continues
+with later destinations.
+
+The editor CLI exports procedural geometry to `.obj` and textured geometry to
+`.fbx`. Use `--geometry-fbx output.fbx` to export geometry only or
+`--textured-fbx output.fbx` to request the textured mode explicitly.
+A `.glb` destination reports that export is unavailable. Exit status `0` means all outputs
+succeeded, `1` means an input or output failed, and `2` means a usage or path
+preflight error.
 
 Open an existing `.ds3`, select a node in the list or canvas, drag it in Front
 (X/Y) or Side (Z/Y), or edit X/Y/Z/radius and press Apply. Undo/redo operates on
@@ -459,14 +465,18 @@ for owned offscreen evidence and the live keyboard/accessibility acceptance limi
 ### Original procedural geometry export (#281, #286)
 
 Choose File → Export OBJ Geometry… (Command-Shift-E), File → Export FBX
-Geometry…, or choose either format from the toolbar Export menu. The destination sheet belongs to the current document window. It exports
-the captured current state, including unsaved edits, without marking the document
-saved or changing Undo/Redo. Source path/inode aliases are rejected. A changed
-source while choosing a destination cancels that export intent.
+Geometry…, or File → Export Textured FBX…. The toolbar Export menu offers the
+same three choices. The destination sheet belongs to the current document window.
+Export captures the current state, including unsaved edits, without marking the
+document saved or changing Undo/Redo. Source path and inode aliases are rejected.
+A source change while choosing a destination cancels that export intent.
 
-This exports original procedural geometry. OBJ contains positions/faces; FBX
-retains supplied static corner streams without generating an atlas. Materials,
-textures, embedded imported models, rigs and animation are unsupported. The completion strip
+OBJ Geometry exports positions and faces. FBX Geometry exports procedural
+geometry and any supplied static corner data. Textured FBX also bakes supported
+procedural materials into an embedded atlas and requires complete packed UVs.
+If Textured FBX reports missing packed UVs, choose FBX Geometry to export the
+mesh without the baked texture. Embedded imported models, rigs, and animation
+remain unsupported by these commands. The completion strip
 shows the destination, byte count and original warning. Failures use the existing
 error banner. Cancel/Escape prevents uncommitted publication; synchronous native
 generation must finish before the workflow becomes available again. “Finishing
