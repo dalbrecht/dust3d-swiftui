@@ -1,3 +1,4 @@
+import Darwin
 import Dust3DDocument
 import Dust3DEditorModel
 import Foundation
@@ -241,6 +242,88 @@ final class RecoveryCopyFileTests: XCTestCase {
         XCTAssertEqual(result.receiptError as? CopyFixtureError, .receipt)
     }
 
+    func testStagedCopyModeFailurePreservesPriorCopyAndAllowsLaterPublication() async throws {
+        let root = directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = try document()
+        let changed = try source.applying(.setRigType(.bird))
+        let retained = EditorRecoverySnapshot(documentID: UUID(), revision: 0, document: source)
+        let next = EditorRecoverySnapshot(documentID: UUID(), revision: 0, document: changed)
+        _ = try await EditorRecoveryCopyFileService(directory: root)
+            .write(captures: [.snapshot(retained)], requestID: UUID())
+        let target = root.appendingPathComponent(retained.request.filename)
+        let service = EditorRecoveryCopyFileService(
+            directory: root,
+            writeData: { data, url in
+                if url == target {
+                    try EditorRecoveryCopyFileService.publishPrivately(data, to: url) { descriptor in
+                        try Self.assertPrivateStage(descriptor)
+                        throw CopyFixtureError.mode
+                    }
+                } else {
+                    try EditorRecoveryCopyFileService.publishPrivately(data, to: url)
+                }
+            })
+
+        let report = try await service.write(
+            captures: [
+                .snapshot(.init(documentID: retained.request.documentID, revision: 1, document: changed)),
+                .snapshot(next),
+            ], requestID: UUID())
+
+        XCTAssertEqual(report.copied, [next.request])
+        XCTAssertEqual(report.failures.first?.documentID, retained.request.documentID)
+        XCTAssertEqual(report.failures.first?.cause as? CopyFixtureError, .mode)
+        XCTAssertNil(report.receiptError)
+        XCTAssertEqual(try Data(contentsOf: target), source.encoded())
+        XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent(next.request.filename)), changed.encoded())
+        XCTAssertEqual(
+            Set(try FileManager.default.contentsOfDirectory(atPath: root.path)),
+            [retained.request.filename, next.request.filename, "latest-recovery.json"])
+    }
+
+    func testStagedReceiptModeFailureLeavesPreviousReceiptAndRetainsSuccessfulCopy() async throws {
+        let root = directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = try document()
+        let receipt = root.appendingPathComponent("latest-recovery.json")
+        _ = try await EditorRecoveryCopyFileService(directory: root).write(captures: [], requestID: UUID())
+        let previous = try Data(contentsOf: receipt)
+        let snapshot = EditorRecoverySnapshot(documentID: UUID(), revision: 0, document: source)
+        let service = EditorRecoveryCopyFileService(
+            directory: root,
+            writeData: { data, url in
+                if url == receipt {
+                    try EditorRecoveryCopyFileService.publishPrivately(data, to: url) { descriptor in
+                        try Self.assertPrivateStage(descriptor)
+                        throw CopyFixtureError.mode
+                    }
+                } else {
+                    try EditorRecoveryCopyFileService.publishPrivately(data, to: url)
+                }
+            })
+
+        let report = try await service.write(captures: [.snapshot(snapshot)], requestID: UUID())
+
+        XCTAssertEqual(report.copied, [snapshot.request])
+        XCTAssertTrue(report.failures.isEmpty)
+        XCTAssertEqual(report.receiptError as? CopyFixtureError, .mode)
+        XCTAssertEqual(try Data(contentsOf: receipt), previous)
+        XCTAssertEqual(
+            try FileManager.default.attributesOfItem(atPath: receipt.path)[.posixPermissions] as? Int, 0o600)
+        XCTAssertEqual(
+            try Data(contentsOf: root.appendingPathComponent(snapshot.request.filename)), source.encoded())
+        XCTAssertEqual(
+            Set(try FileManager.default.contentsOfDirectory(atPath: root.path)),
+            [snapshot.request.filename, "latest-recovery.json"])
+    }
+
+    private static func assertPrivateStage(_ descriptor: Int32) throws {
+        var metadata = stat()
+        guard Darwin.fstat(descriptor, &metadata) == 0 else { throw CopyFixtureError.copy }
+        XCTAssertEqual(metadata.st_mode & 0o077, 0)
+    }
+
     func testPrivateDirectoryRejectsSymlinkAndQuotaBeforeChangingRetainedFiles() async throws {
         let parent = directory()
         try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
@@ -273,7 +356,7 @@ final class RecoveryCopyFileTests: XCTestCase {
     }
 }
 
-private enum CopyFixtureError: Error, Equatable { case copy, capture, receipt }
+private enum CopyFixtureError: Error, Equatable { case copy, capture, receipt, mode }
 
 private struct LongRecoveryError: Error, CustomStringConvertible {
     var description: String { String(repeating: "x", count: 2048) }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve existing recovery copies and receipts if preparing a private replacement fails.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
