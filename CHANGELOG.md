@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
