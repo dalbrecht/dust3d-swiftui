@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open the last eligible Dust3D document in a mixed Finder drop.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
