@@ -39,6 +39,40 @@ final class NodeClipboardTests: XCTestCase {
         XCTAssertTrue(history.redo())
         XCTAssertEqual(history.document.encoded(), pasted.encoded())
     }
+    func testQtTextCopyPreservesInheritedJunctionWithoutAdmittingItToNativePaste() throws {
+        let source = try archive(
+            """
+            <canvas><nodes>
+              <node id='a' partId='p' x='0' y='0' z='0' radius='.1'/>
+              <node id='b' partId='p' x='1' y='0' z='0' radius='.1'/>
+              <node id='c' partId='p' x='0' y='1' z='0' radius='.1'/>
+              <node id='d' partId='p' x='0' y='0' z='1' radius='.1'/>
+              <node id='e' partId='p' x='0' y='0' z='2' radius='.1'/>
+            </nodes><edges>
+              <edge id='ab' partId='p' from='a' to='b' future='keep'/>
+              <edge id='ca' partId='p' from='c' to='a'/>
+              <edge id='ad' partId='p' from='a' to='d'/>
+              <edge id='de' partId='p' from='d' to='e'/>
+            </edges><parts><part id='p'/></parts><components>
+              <component id='component' linkDataType='partId' linkData='p'/>
+            </components></canvas>
+            """, asset: [0, 255])
+        let original = source.encoded()
+        let selected: Set<String> = ["a", "b", "c", "d"]
+        let xml = try source.copyingNodesAsQtXML(selected)
+        let fragment = try Dust3DDocument(snapshotXML: xml)
+        let contents = try fragment.editorContents()
+        XCTAssertEqual(contents.nodes.map(\.id), ["a", "b", "c", "d"])
+        XCTAssertEqual(contents.edges.map { "\($0.id):\($0.fromID)→\($0.toID)" }, ["ab:a→b", "ca:c→a", "ad:a→d"])
+        let model = try XMLDocument(data: xml)
+        XCTAssertEqual(try model.nodes(forXPath: "/canvas/edges/edge[@id='ab']/@future").first?.stringValue, "keep")
+        XCTAssertNil(fragment.asset(named: "opaque"))
+        XCTAssertThrowsError(try source.copyingNodes(selected))
+        XCTAssertThrowsError(try NodeClipboard(document: fragment, selectedNodeIDs: selected))
+        XCTAssertThrowsError(try source.copyingNodesAsQtXML(["missing"]))
+        XCTAssertEqual(source.encoded(), original)
+    }
+
     private func archive(
         _ xml: String, asset: [UInt8]? = nil, assetType: String = "image", metadata: String = "",
         headerNamespaces: String = ""

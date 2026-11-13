@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Copy selected nodes and inherited junctions as Qt XML.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.

@@ -36,6 +36,8 @@ struct EditorClipboardCommands: Commands {
             } else {
                 NodeClipboardPasteButton(store: store).keyboardShortcut("v")
             }
+            Button("Copy Nodes as Qt XML") { store?.copyNodesAsQtXML(to: pasteboard) }
+                .disabled(textView != nil || isAnimationFocused == true || store?.canCopyNodes != true)
             Button("Paste Nodes from Qt XML File…") { store?.chooseQtXMLFile() }
                 .disabled(store?.canChooseQtXMLFile != true)
             Divider()

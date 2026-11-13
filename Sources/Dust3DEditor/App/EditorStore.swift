@@ -3086,8 +3086,22 @@ final class EditorStore {
     var canCopyNodes: Bool { !isWorking && snapshot?.canCopyNodes == true }
     var canCutNodes: Bool { canSave && snapshot?.canCutNodes == true }
 
+    private enum GraphClipboardDestination {
+        case native(any EditorClipboardWriting)
+        case qtXML(EditorPasteboard, CanvasAdjustmentTarget)
+    }
+
     /// Clipboard promise registration succeeds before a Cut can mutate the document.
     func copyNodes(cut: Bool = false, to pasteboard: any EditorClipboardWriting) {
+        copyGraph(to: .native(pasteboard), cut: cut)
+    }
+
+    func copyNodesAsQtXML(to pasteboard: EditorPasteboard) {
+        guard let snapshot = acceptedDocumentSource else { return }
+        copyGraph(to: .qtXML(pasteboard, CanvasAdjustmentTarget(snapshot: snapshot)))
+    }
+
+    private func copyGraph(to destination: GraphClipboardDestination, cut: Bool = false) {
         guard cut ? canCutNodes : canCopyNodes, !stopped else { return }
         let sourceIdentity = acceptedDocumentSource?.documentIdentity
         cancelColorImagePreparation()
@@ -3098,9 +3112,18 @@ final class EditorStore {
         operation = Task {
             defer { if operationRequestID == requestID { isWorking = false } }
             do {
-                let data = try await session.copyRepresentations(identifier: UUID().uuidString, onlyEditable: cut)
-                guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
-                try pasteboard.write(data.native, snapshotXML: data.snapshotXML)
+                switch destination {
+                case .native(let pasteboard):
+                    let data = try await session.copyRepresentations(identifier: UUID().uuidString, onlyEditable: cut)
+                    guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
+                    try pasteboard.write(data.native, snapshotXML: data.snapshotXML)
+                case .qtXML(let pasteboard, let target):
+                    let xml = try await session.copySelectionAsQtXML(target: target)
+                    guard !Task.isCancelled, !stopped, operationRequestID == requestID,
+                        acceptedDocumentSource.map({ target.isCurrent(in: $0) }) == true
+                    else { return }
+                    try pasteboard.writeQtXML(xml)
+                }
                 if cut {
                     guard !Task.isCancelled, operationRequestID == requestID,
                         let sourceIdentity, acceptedDocumentSource?.documentIdentity == sourceIdentity
