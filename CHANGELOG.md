@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- List Cut Face parts and existing linked profiles in Front view order.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
