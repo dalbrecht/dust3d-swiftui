@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a keyboard-accessible Focus 3D Preview control to Replay Steps.
+
 - Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.

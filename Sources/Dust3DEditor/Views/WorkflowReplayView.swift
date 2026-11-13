@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Dust3DDocument
 import Dust3DEditorModel
@@ -84,6 +85,7 @@ struct WorkflowReplayView: View {
     @State private var isPlaying = false
     @State private var speed = Double(WorkflowReplaySpeed.initial)
     @State private var presentation: Presentation = .front
+    @State private var previewFocus = MeshViewportFocus()
     @State private var meshLoader = WorkflowReplayMeshLoader()
     @State private var mesh: IndexedMesh?
     @State private var materials: MeshMaterialContent?
@@ -131,6 +133,12 @@ struct WorkflowReplayView: View {
                     }
                     .pickerStyle(.segmented)
                     if presentation == .mesh {
+                        Button("Focus 3D Preview") {
+                            guard mesh != nil, requestedMeshStep == meshStep else { return }
+                            previewFocus.moveFocus(in: NSApp.keyWindow)
+                        }
+                        .disabled(mesh == nil || requestedMeshStep != meshStep)
+                        .help("Use the arrow keys to orbit and F to reset the camera.")
                         meshPreview
                     } else {
                         replayCanvas(plan, plane: presentation == .front ? .front : .side)
@@ -329,6 +337,7 @@ struct WorkflowReplayView: View {
                 ) { message in
                     if requestedMeshStep == meshStep { meshFailure = message }
                 }
+                .withFocusTarget(previewFocus)
                 .opacity(status == .updating ? 0.35 : 1)
                 .allowsHitTesting(status != .updating)
                 .accessibilityHidden(status == .updating)
