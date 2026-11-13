@@ -1,3 +1,4 @@
+import Accessibility
 import AppKit
 import Dust3DDocument
 import Dust3DEditorModel
@@ -19,9 +20,15 @@ struct EditorRootView: View {
     @State private var canvasFocus = CanvasProfileFocusControl()
     @State private var exportDestinations: EditorGeometryExportDestinationService
     @State private var exportWorkflow: EditorGeometryExportWorkflow
+    @State private var isSidebarPresented = true
+    @State private var sidebarNodeQuery = ""
+    @State private var sidebarDisclosure = ComponentSidebarDisclosure()
+    @State private var rigInspectorDocumentID: UUID?
     @State private var isInspectorPresented = true
     @State private var inspectorSection = EditorInspectorSection.selection
     @State private var recoveryRegistrationID: UUID?
+    @State private var isImportingReferenceImage = false
+    @State private var admitReferenceImageImport: (@MainActor () -> Bool)?
     @State private var referenceComposition: ReferenceCompositionPresentation?
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
         @State private var restPreview: GeneratedRigPreviewSession
@@ -29,6 +36,7 @@ struct EditorRootView: View {
 
     init(
         file: Binding<EditorFileDocument>, sourceURL: URL? = nil,
+        diagnostics: EditorSessionDiagnostics? = nil,
         claimLaunchNeutralPreview: @escaping @MainActor (URL) async -> Bool = { _ in false },
         claimStartupPaste: @escaping @MainActor (URL?, @MainActor () -> NSDocument?) async -> StartupQtXMLDelivery? = {
             _, _ in nil
@@ -36,7 +44,7 @@ struct EditorRootView: View {
     ) {
         let store = EditorStore(
             exportService: DocumentExportFileService(encoder: NativeGeometryExportEncoder()),
-            animationCatalog: NativeAnimationCatalogLoader())
+            animationCatalog: NativeAnimationCatalogLoader(), diagnostics: diagnostics)
         let destinations = EditorGeometryExportDestinationService()
         _file = file
         self.sourceURL = sourceURL
@@ -44,7 +52,9 @@ struct EditorRootView: View {
         self.claimStartupPaste = claimStartupPaste
         _store = State(initialValue: store)
         _exportDestinations = State(initialValue: destinations)
-        _exportWorkflow = State(initialValue: EditorGeometryExportWorkflow(store: store, destinations: destinations))
+        _exportWorkflow = State(
+            initialValue: EditorGeometryExportWorkflow(
+                store: store, destinations: destinations, diagnostics: diagnostics))
         #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
             _restPreview = State(
                 initialValue: GeneratedRigPreviewSession(readSnapshot: { [weak store] in store?.snapshot }))
@@ -53,30 +63,202 @@ struct EditorRootView: View {
 
     var body: some View {
         let fitAction = toolbarFitAction
+        editorLayout
+            .frame(minWidth: 800, minHeight: 600)
+            .inspector(isPresented: $isInspectorPresented) {
+                inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
+            }
+            #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                .environment(restPreview)
+            #endif
+            .sheet(item: $referenceComposition) { presentation in
+                ReferenceCompositionSheet(
+                    store: store, target: presentation.target, droppedSources: presentation.droppedSources)
+            }
+            .sheet(item: canvasComponentPropertiesBinding) { properties in
+                CanvasComponentPropertiesSheet(store: store, properties: properties)
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Toggle(isOn: $isSidebarPresented) {
+                        Label("Sidebar", systemImage: "sidebar.left")
+                    }
+                    .toggleStyle(.button)
+                    .accessibilityIdentifier("editor.sidebar.visibility")
+                    .help("Show or hide the sidebar")
+                }
+                ToolbarItemGroup {
+                    Button(action: openDocument) {
+                        Label("Open", systemImage: "folder")
+                    }
+                    Button {
+                        NSApp.sendAction(#selector(NSDocument.save(_:)), to: nil, from: nil)
+                    } label: {
+                        Label("Save", systemImage: "square.and.arrow.down")
+                    }.disabled(!store.canSave)
+                    EditorGeometryExportMenu(canExport: exportWorkflow.canBegin) { format in
+                        exportWorkflow.begin(format: format, sourceURL: sourceURL)
+                    }
+                    Divider()
+                    Button {
+                        store.undo()
+                    } label: {
+                        Label("Undo", systemImage: "arrow.uturn.backward")
+                    }.disabled(!store.canUndo)
+                    Button {
+                        store.redo()
+                    } label: {
+                        Label("Redo", systemImage: "arrow.uturn.forward")
+                    }.disabled(!store.canRedo)
+                    Button {
+                        fitAction()
+                    } label: {
+                        Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
+                    }
+                    EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
+                    Button {
+                        isInspectorPresented = true
+                        inspectorSection = .animations
+                    } label: {
+                        Label("Animations", systemImage: "film")
+                    }
+                    .accessibilityLabel("Show animations inspector")
+                    Toggle(isOn: previewWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+                }
+            }
+            .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
+            .background {
+                if let requestID = store.qtXMLFilePasteRequestID {
+                    QtXMLFilePicker(store: store, requestID: requestID)
+                        .id(requestID)
+                }
+            }
+            .focusedSceneValue(\.editorStore, store)
+            .focusedSceneValue(\.editorReferenceImageActions, referenceImageActions)
+            .focusedSceneValue(\.editorInspectorNavigation, inspectorNavigation)
+            .focusedSceneValue(\.editorSidebarVisibility, isSidebarPresented)
+            .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
+            .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
+            .focusedSceneValue(\.editorRestPreviewActions, restPreviewActions)
+            .focusedSceneValue(
+                \.editorGeometryExportAction,
+                EditorGeometryExportAction(
+                    owner: store,
+                    canPerform: exportWorkflow.canBegin,
+                    perform: { format in exportWorkflow.begin(format: format, sourceURL: sourceURL) },
+                    cancel: exportWorkflow.cancellationAction())
+            )
+            .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
+            .onChange(of: store.snapshot?.documentIdentity) {
+                exportWorkflow.sourceDidChange()
+                sidebarDisclosure.restore(from: store.snapshot)
+            }
+            .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
+            .task(id: file.identity) { await loadCurrentDocument() }
+            .onDisappear(perform: stopDocument)
+    }
+
+    private var canvasComponentPropertiesBinding: Binding<CanvasComponentProperties?> {
+        Binding(
+            get: { store.canvasComponentProperties },
+            set: { store.canvasComponentProperties = $0 })
+    }
+
+    private func loadCurrentDocument() async {
+        let identifier = file.identity
+        let version = file.saveVersion
+        let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
+        let shouldHidePreviewColors =
+            if let sourceURL {
+                await claimLaunchNeutralPreview(sourceURL)
+            } else {
+                false
+            }
+        guard !Task.isCancelled, file.identity == identifier else { return }
+        if shouldHidePreviewColors { store.showsPreviewColor = false }
+        if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+        let recoveryStore = store
+        recoveryRegistrationID = identifier
+        EditorRecoveryCopyRegistry.shared.register(identifier) { [weak recoveryStore] in
+            guard let recoveryStore else { throw EditorRecoveryCopyError.stopped }
+            return try recoveryStore.recoverySnapshot(documentID: identifier)
+        }
+        store.onDocumentChanged = { file.data = $0 }
+        store.onEditingChanged = { file.setEditing($0) }
+        await store.load(data: file.data, fileIdentity: identifier)
+        guard let launchPaste, !Task.isCancelled, file.identity == identifier, file.saveVersion == version else {
+            return
+        }
+        let document = launchPaste.document
+        let attachedDocument = exportDestinations.attachedDocument
+        guard document === attachedDocument else { return }
+        let documentURL = document.fileURL?.standardizedFileURL
+        let expectedURL = sourceURL?.standardizedFileURL
+        guard documentURL == expectedURL, !document.isDocumentEdited else { return }
+        store.applyStartupQtXML(
+            launchPaste.data, fileIdentity: identifier, settlesNewDocumentOrigin: sourceURL == nil)
+    }
+
+    private func stopDocument() {
+        if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
+        recoveryRegistrationID = nil
+        exportWorkflow.stop()
+        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
+            restPreview.stop()
+        #endif
+        store.stop()
+    }
+
+    private var inspectorNavigation: (@MainActor (EditorInspectorDestination) -> Void)? {
         let fileIdentity = file.identity
         let source = $file
-        HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("Nodes").font(.headline)
-                    Spacer()
-                    Menu {
-                        Button("Add Node", action: store.addNodeAction()).disabled(!store.canAddNode)
-                        Button("New Part", action: store.addNodeAction(newPart: true))
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Create node or part")
-                    .disabled(!store.canAddNewPart)
-                }.padding(12)
-                Divider()
-                CanvasNodeSidebar(store: store)
-                ComponentSidebar(store: store)
-                PartSidebar(store: store)
-                EdgeSidebar(store: store)
+        let ownsWindow: @MainActor () -> Bool = { source.wrappedValue.identity == fileIdentity }
+        return store.inspectorNavigationAction(fileIdentity: fileIdentity, ownsWindow: ownsWindow) { destination in
+            switch destination {
+            case .sidebar(let visible):
+                isSidebarPresented = visible
+            case .rig:
+                isInspectorPresented = true
+                inspectorSection = .selection
+                rigInspectorDocumentID = store.snapshot?.documentIdentity
+            case .animations:
+                isInspectorPresented = true
+                inspectorSection = .animations
             }
-            .frame(width: 180)
+        }
+    }
+
+    private var editorSidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Nodes").font(.headline)
+                Spacer()
+                Menu {
+                    Button("Add Node", action: store.addNodeAction()).disabled(!store.canAddNode)
+                    Button("New Part", action: store.addNodeAction(newPart: true))
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Create node or part")
+                .disabled(!store.canAddNewPart)
+            }.padding(12)
             Divider()
+            CanvasNodeSidebar(store: store, query: $sidebarNodeQuery)
+            ComponentSidebar(store: store, disclosure: sidebarDisclosure)
+            PartSidebar(store: store)
+            EdgeSidebar(store: store)
+        }
+        .frame(width: 180)
+    }
+
+    private var editorLayout: some View {
+        let fileIdentity = file.identity
+        let source = $file
+        return HStack(spacing: 0) {
+            if isSidebarPresented {
+                editorSidebar
+                Divider()
+            }
             VStack(spacing: 0) {
                 if let error = store.errorMessage {
                     HStack {
@@ -90,7 +272,15 @@ struct EditorRootView: View {
                 EditorGeometryExportStatusView(
                     phase: exportWorkflow.phase, format: exportWorkflow.format,
                     onCancel: exportWorkflow.cancel, onDismiss: exportWorkflow.dismissResult,
-                    onReveal: { NSWorkspace.shared.activateFileViewerSelecting([$0]) })
+                    onReveal: { NSWorkspace.shared.activateFileViewerSelecting([$0]) }
+                )
+                .onChange(of: store.errorMessage) { _, message in
+                    if let announcement = exportWorkflow.phase.editorErrorAnnouncement(
+                        message, isKeyWindow: exportDestinations.hasActiveDocumentWindow)
+                    {
+                        AccessibilityNotification.Announcement(announcement).post()
+                    }
+                }
                 HSplitView {
                     VStack(spacing: 0) {
                         CanvasProfileHeader(
@@ -123,13 +313,15 @@ struct EditorRootView: View {
                         .disabled(store.isWorking || store.snapshot?.origin == nil || store.isSelectingRigEdges)
                         .help("Drag the origin marker; Escape cancels. Node picking resumes when this mode is off.")
                         .padding(.horizontal, 12).padding(.bottom, 8)
-                        ReferenceImageControls(store: store, composition: $referenceComposition)
-                            .padding(.horizontal, 12).padding(.bottom, 8)
+                        ReferenceImageControls(
+                            store: store, actions: referenceImageActions, composition: $referenceComposition,
+                            isImporting: $isImportingReferenceImage, completeImport: finishReferenceImageImport
+                        )
+                        .padding(.horizontal, 12).padding(.bottom, 8)
                         EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
-                        CanvasProfilePanes(store: store, focusControl: canvasFocus, previewCamera: previewCameraActions)
-                            .overlay(alignment: .bottom) { getStartedCard }
+                        canvasWithGetStarted
                     }
                     .frame(minWidth: 300)
                     preview.frame(minWidth: 240, idealWidth: 320)
@@ -151,133 +343,62 @@ struct EditorRootView: View {
                 .font(.caption).foregroundStyle(.secondary).padding(10)
             }
         }
-        .frame(minWidth: 800, minHeight: 600)
-        .inspector(isPresented: $isInspectorPresented) {
-            inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
-        }
-        #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
-            .environment(restPreview)
-        #endif
-        .sheet(item: $referenceComposition) { presentation in
-            ReferenceCompositionSheet(
-                store: store, target: presentation.target, droppedSources: presentation.droppedSources)
-        }
-        .toolbar {
-            ToolbarItemGroup {
-                Button(action: openDocument) {
-                    Label("Open", systemImage: "folder")
-                }
-                Button {
-                    NSApp.sendAction(#selector(NSDocument.save(_:)), to: nil, from: nil)
-                } label: {
-                    Label("Save", systemImage: "square.and.arrow.down")
-                }.disabled(!store.canSave)
-                EditorGeometryExportMenu(canExport: exportWorkflow.canBegin) { format in
-                    exportWorkflow.begin(format: format, sourceURL: sourceURL)
-                }
-                Divider()
-                Button {
-                    store.undo()
-                } label: {
-                    Label("Undo", systemImage: "arrow.uturn.backward")
-                }.disabled(!store.canUndo)
-                Button {
-                    store.redo()
-                } label: {
-                    Label("Redo", systemImage: "arrow.uturn.forward")
-                }.disabled(!store.canRedo)
-                Button {
-                    fitAction()
-                } label: {
-                    Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
-                }
-                EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
-                Button {
-                    isInspectorPresented = true
-                    inspectorSection = .animations
-                } label: {
-                    Label("Animations", systemImage: "film")
-                }
-                .keyboardShortcut("a", modifiers: [.command, .option])
-                .accessibilityLabel("Show animations inspector")
-                Toggle(isOn: previewWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+    }
+
+    private var referenceImageActions: EditorReferenceImageActions? {
+        let fileIdentity = file.identity
+        let source = $file
+        let ownsWindow: @MainActor () -> Bool = { source.wrappedValue.identity == fileIdentity }
+        guard !isImportingReferenceImage, referenceComposition == nil,
+            let admit = store.referenceImageActionAdmission(fileIdentity: fileIdentity, ownsWindow: ownsWindow)
+        else { return nil }
+        return EditorReferenceImageActions(canRemove: store.hasReferenceImage) { action in
+            guard admit(), !isImportingReferenceImage, referenceComposition == nil else { return }
+            switch action {
+            case .compose:
+                guard let target = store.referenceCompositionTarget else { return }
+                referenceComposition = ReferenceCompositionPresentation(target: target)
+            case .importImage:
+                admitReferenceImageImport = admit
+                isImportingReferenceImage = true
+            case .remove:
+                guard store.hasReferenceImage else { return }
+                store.removeReferenceImage()
             }
-        }
-        .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
-        .background {
-            if let requestID = store.qtXMLFilePasteRequestID {
-                QtXMLFilePicker(store: store, requestID: requestID)
-                    .id(requestID)
-            }
-        }
-        .focusedSceneValue(\.editorStore, store)
-        .focusedSceneValue(\.editorPreviewCameraActions, previewCameraActions)
-        .focusedSceneValue(\.editorPreviewDisplayActions, previewDisplayActions)
-        .focusedSceneValue(\.editorRestPreviewActions, restPreviewActions)
-        .focusedSceneValue(
-            \.editorGeometryExportAction,
-            EditorGeometryExportAction(
-                owner: store,
-                canPerform: exportWorkflow.canBegin,
-                perform: { format in exportWorkflow.begin(format: format, sourceURL: sourceURL) },
-                cancel: exportWorkflow.cancellationAction())
-        )
-        .onChange(of: sourceURL) { exportWorkflow.sourceDidChange() }
-        .onChange(of: store.snapshot?.documentIdentity) { exportWorkflow.sourceDidChange() }
-        .onChange(of: store.snapshot?.documentRevision) { exportWorkflow.sourceDidChange() }
-        .task(id: file.identity) {
-            let identifier = file.identity
-            let version = file.saveVersion
-            let launchPaste = await claimStartupPaste(sourceURL) { exportDestinations.attachedDocument }
-            let shouldHidePreviewColors =
-                if let sourceURL {
-                    await claimLaunchNeutralPreview(sourceURL)
-                } else {
-                    false
-                }
-            guard !Task.isCancelled, file.identity == identifier else { return }
-            if shouldHidePreviewColors { store.showsPreviewColor = false }
-            if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
-            let recoveryStore = store
-            recoveryRegistrationID = identifier
-            EditorRecoveryCopyRegistry.shared.register(identifier) { [weak recoveryStore] in
-                guard let recoveryStore else { throw EditorRecoveryCopyError.stopped }
-                return try recoveryStore.recoverySnapshot(documentID: identifier)
-            }
-            store.onDocumentChanged = { file.data = $0 }
-            store.onEditingChanged = { file.setEditing($0) }
-            await store.load(data: file.data, fileIdentity: identifier)
-            if let launchPaste, !Task.isCancelled, file.identity == identifier, file.saveVersion == version,
-                launchPaste.document === exportDestinations.attachedDocument,
-                launchPaste.document.fileURL?.standardizedFileURL == sourceURL?.standardizedFileURL,
-                !launchPaste.document.isDocumentEdited
-            {
-                store.applyStartupQtXML(launchPaste.data, fileIdentity: identifier)
-            }
-        }
-        .onDisappear {
-            if let recoveryRegistrationID { EditorRecoveryCopyRegistry.shared.unregister(recoveryRegistrationID) }
-            recoveryRegistrationID = nil
-            exportWorkflow.stop()
-            #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
-                restPreview.stop()
-            #endif
-            store.stop()
         }
     }
 
-    @ViewBuilder private var getStartedCard: some View {
+    private func finishReferenceImageImport(_ result: Result<URL, Error>) {
+        defer { admitReferenceImageImport = nil }
+        guard admitReferenceImageImport?() == true else { return }
+        switch result {
+        case .success(let url):
+            store.importReferenceImage(from: url)
+        case .failure(let error):
+            if (error as? CocoaError)?.code != .userCancelled { store.errorMessage = EditorStore.message(error) }
+        }
+    }
+
+    private var canvasWithGetStarted: some View {
         let identity = file.identity
         let source = $file
-        if let actions = EditorGetStartedActions(
+        let actions = EditorGetStartedActions(
             store: store, fileIdentity: identity, ownsWindow: { source.wrappedValue.identity == identity })
-        {
-            EditorGetStartedCard(actions: actions, openDocument: openDocument) { target in
-                guard referenceComposition == nil else { return }
-                referenceComposition = ReferenceCompositionPresentation(target: target)
+        return CanvasProfilePanes(store: store, focusControl: canvasFocus, previewCamera: previewCameraActions)
+            .overlay(alignment: .bottom) {
+                if let actions {
+                    EditorGetStartedCard(actions: actions, openDocument: openDocument) { target in
+                        guard referenceComposition == nil else { return }
+                        referenceComposition = ReferenceCompositionPresentation(target: target)
+                    }
+                    .padding(12)
+                }
             }
-            .padding(12)
-        }
+            .dropDestination(for: URL.self) { urls, _ in
+                guard referenceComposition == nil, let presentation = actions?.referenceDrop(urls) else { return false }
+                referenceComposition = presentation
+                return true
+            }
     }
 
     private func openDocument() { NSDocumentController.shared.openDocument(nil) }
@@ -294,7 +415,7 @@ struct EditorRootView: View {
             if inspectorSection == .animations {
                 AnimationPanel(store: store)
             } else {
-                NodeInspector(store: store) {
+                NodeInspector(store: store, rigInspectorDocumentID: $rigInspectorDocumentID) {
                     visibility.wrappedValue && section.wrappedValue == .selection
                 }
             }

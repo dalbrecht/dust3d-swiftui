@@ -45,6 +45,24 @@ final class RigAssignmentBrowserSelection {
             self?.isVisible == true && self?.revision == expectedRevision && isPresented()
         }
     }
+
+    func clearCommand(
+        for name: String, includeDescendants: Bool, store: EditorStore, context: RigTemplateBrowserContext,
+        isPresented: @escaping @MainActor () -> Bool = { true }
+    ) -> (@MainActor () -> Void)? {
+        guard isVisible, isPresented(), store.canSave, let snapshot = store.snapshot, context.isCurrent(in: snapshot),
+            context.hasAssignments(name: name, includeDescendants: includeDescendants)
+        else { return nil }
+        let expectedRevision = revision
+        return { [weak self, weak store] in
+            guard let self, self.isVisible, self.revision == expectedRevision, isPresented(),
+                let store, let snapshot = store.snapshot, context.isCurrent(in: snapshot),
+                let target = context.clearTarget(name: name, includeDescendants: includeDescendants)
+            else { return }
+            store.clearBoneAssignmentsAction(target)()
+        }
+    }
+
 }
 
 @MainActor struct RigAssignmentCommand {
