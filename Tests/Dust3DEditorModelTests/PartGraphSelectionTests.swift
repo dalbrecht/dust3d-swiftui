@@ -109,6 +109,80 @@ final class PartGraphSelectionTests: XCTestCase {
         XCTAssertFalse(edge.canUndo)
     }
 
+    func testSelectOwningComponentKeepsCanvasPicksAndRevealsTheExactStoredOwner() throws {
+        let source = try document(malformed: true)
+        var state = try EditorState(document: source)
+        try state.selectGraph(nodes: ["a"], edges: ["ab"])
+        let before = state.snapshot
+        let context = PartGraphSelectionContext(snapshot: before)
+
+        try state.revealOwningComponent(.node("c"), context: context, selecting: true)
+        XCTAssertEqual(state.snapshot.selectedComponentIDs, ["leafp"])
+        XCTAssertEqual(state.snapshot.componentRevealHint?.ancestorIDs, ["root", "group"])
+        try state.revealOwningComponent(.edge("foreign"), context: context, selecting: true)
+        let edge = state.snapshot
+        XCTAssertEqual(edge.selectedComponentIDs, ["leafq"])
+        XCTAssertEqual(edge.componentRevealHint?.componentID, "leafq")
+        XCTAssertEqual(edge.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(edge.selectedEdgeIDs, before.selectedEdgeIDs)
+        XCTAssertEqual(edge.document.encoded(), before.document.encoded())
+        XCTAssertEqual(edge.previewIdentity, before.previewIdentity)
+        XCTAssertFalse(edge.canUndo)
+
+        XCTAssertThrowsError(try state.revealOwningComponent(.edge("unowned"), context: context, selecting: true)) {
+            XCTAssertEqual($0 as? DocumentError, .invalidComponent)
+        }
+        XCTAssertEqual(state.snapshot.selectedComponentIDs, edge.selectedComponentIDs)
+        XCTAssertEqual(state.snapshot.componentRevealHint, edge.componentRevealHint)
+    }
+
+    func testHoveredOwnerSelectionKeepsComponentAndCanvasEditsScoped() async throws {
+        let source = try document(malformed: true)
+        let session = EditorSession()
+        _ = try await session.open(data: source.encoded())
+        let before = try await session.selectGraph(nodes: ["a"], edges: ["ab"])
+        let selected = try await session.revealOwningComponent(
+            .edge("foreign"), context: PartGraphSelectionContext(snapshot: before), selecting: true)
+        let componentID = try XCTUnwrap(selected.selectedComponentID)
+        let color = DocumentColor(red: 10, green: 20, blue: 30, alpha: 255)
+        let colored = try await session.apply([.setComponentColor(id: componentID, color: color)])
+        XCTAssertEqual(colored.selectedComponentIDs, ["leafq"])
+        XCTAssertEqual(colored.selectedIDs, ["a"])
+        XCTAssertEqual(colored.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(colored.componentTree.rows.first { $0.id == "leafq" }?.component.color, .value(color))
+        XCTAssertEqual(colored.componentTree.rows.first { $0.id == "leafp" }?.component.color, .unset)
+
+        let transformed = try await session.transformSelection(.flipX)
+        XCTAssertEqual(try transformed.document.node(id: "a").position.x, 1)
+        XCTAssertEqual(try transformed.document.node(id: "b").position.x, 0)
+        XCTAssertEqual(try transformed.document.node(id: "u").position.x, 6)
+        XCTAssertEqual(transformed.selectedComponentIDs, ["leafq"])
+        let undoTransform = try await session.undo()
+        XCTAssertEqual(undoTransform.document.encoded(), colored.document.encoded())
+        let undoColor = try await session.undo()
+        XCTAssertEqual(undoColor.document.encoded(), source.encoded())
+        XCTAssertFalse(undoColor.canUndo)
+    }
+
+    func testRevealedComponentKeepsExplicitEdgeActionsAvailable() async throws {
+        let original = try document(malformed: true)
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let picked = try await session.selectGraph(nodes: [], edges: ["ab"])
+        let selected = try await session.revealOwningComponent(
+            .edge("foreign"), context: PartGraphSelectionContext(snapshot: picked), selecting: true)
+        XCTAssertEqual(selected.selectedComponentIDs, ["leafq"])
+        XCTAssertEqual(selected.selectedEdgeIDs, ["ab"])
+        let target = GraphInspectorActionContext(snapshot: selected).target(for: .reverseEdge(id: "ab"))
+        XCTAssertTrue(target.isCurrent(in: selected))
+        XCTAssertTrue(EdgeBoneAssignmentTarget(snapshot: selected).isAvailable)
+        let reversed = try await session.performInspectorAction(target: target)
+        XCTAssertEqual(reversed.edges.first { $0.id == "ab" }?.fromID, "b")
+        XCTAssertEqual(reversed.selectedComponentIDs, ["leafq"])
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), original.encoded())
+    }
+
     func testRevealOwningComponentRejectsStaleOrUnresolvedTargets() throws {
         let source = try document(malformed: true)
         var state = try EditorState(document: source)

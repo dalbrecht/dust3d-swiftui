@@ -4,6 +4,79 @@
 
 - Select Whole Part uses exact stored ownership for graph picks and the revealed component.
 
+- Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
+
+- Wrap long component breadcrumb labels in narrow sidebars.
+
+- Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.
+
+- Select visible nodes when their circles intersect the marquee.
+- Announce reference-image composition errors with VoiceOver in the active sheet.
+- Identify the composed reference preview and profile-specific crop actions in VoiceOver.
+- Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
+- Keep Apply disabled when either reference profile has invalid crop numbers.
+- Focus the drawing canvas from the Canvas menu.
+
+- Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
+- Compose, import, or remove the active document’s reference image from the File menu.
+- Review and save recent document, preview, and export outcomes from Window → Session Log.
+- Open the bundled upstream Dust3D acknowledgements from the Help menu.
+- Open the upstream Dust3D sponsorship page from the Help menu.
+
+- Select the owning component of the canvas picks from the Canvas menu.
+- Use A to toggle Add and S to return to selection while the canvas has keyboard focus.
+- Open properties for the canvas graph owners with Space or the Canvas menu.
+
+- Include retained locked nodes when finding the selection center for local alignment.
+
+- Use the last Qt paste fragment when an earlier headless paste operand is a directory.
+- Keep modified keyboard shortcuts available when the model preview has focus.
+
+- Accept Qt XML fragments by content regardless of filename suffix when using `-paste-xml`.
+- Show the authored order of stitching lines in each component listing.
+- Announce new Viewer errors in the active window with VoiceOver.
+
+- Explain invalid document and Qt XML input in headless export diagnostics.
+- Read shortcut key names aloud and support searching by their names.
+
+- Prefer exact key bindings when searching Keyboard Shortcuts Help.
+
+- Settle the origin from node bounds when a headless Qt XML paste creates a new document.
+
+- Settle the origin when launching the Editor with a Qt XML fragment and no document, in the same Undo step as the paste.
+
+- Announce document errors through VoiceOver in the active editor window.
+
+- Clear missing cut-face links when opening the Editor with a Qt XML fragment.
+
+- Open requested documents and report the error when a startup Qt XML fragment cannot be pasted.
+
+- Clear missing cut-face links from Qt XML pasted in headless exports.
+
+- Move selected sibling components from the sidebar reorder menu in one undo step.
+
+- Headless FBX includes procedural textures and UVs by default. Use `--geometry-fbx` for geometry only.
+
+- Continue a headless batch when an output destination is an existing directory.
+
+- Continue headless export batches after an unsupported output format and report the failed destination.
+
+- Continue saving headless DS3 outputs in a mixed batch when another output fails.
+
+- Browse a selected component group with Command–Down Arrow while the sidebar has focus.
+
+- Name the destinations of component breadcrumb controls, including the full tree.
+
+- Go to the enclosing component group from the View menu or with Command–Up Arrow while the component sidebar has focus.
+
+- Identify empty and populated groups in the component sidebar and enlarge disclosure controls.
+
+- Honor saved component collapse flags when opening older Dust3D documents.
+
+- Open the document picker with Command-double-click on blank canvas.
+
+- Select All in the focused Nodes sidebar selects the filtered node rows.
+
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
 
 - Stop cancelled preview requests before they start fallback mesh generation.
@@ -23,6 +96,8 @@
 - Preview authored linked cross-section outlines before choosing a profile.
 
 - Repair edge directions in an unambiguous open chain from the Edge Inspector, with one-step Undo.
+
+- Choose Lasso in Drag Selection to pick graph items within a freehand outline and preview the affected picks while drawing.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 

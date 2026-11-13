@@ -10,6 +10,7 @@ struct EditorClipboardCommands: Commands {
     @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
     @FocusedValue(\.editorComponentSidebarSelectAll) private var sidebarSelectAll
     @FocusedValue(\.editorEdgeSidebarSelectAll) private var edgeSidebarSelectAll
+    @FocusedValue(\.editorNodesSidebarSelectAll) private var nodesSelectAll
 
     private var textView: NSTextView? {
         _ = isEditingText
@@ -47,7 +48,8 @@ struct EditorClipboardCommands: Commands {
     private var selectAllDestination: EditorCommandScope.SelectAllDestination {
         EditorCommandScope.selectAllDestination(
             nativeTextFocus: textView != nil, componentSidebarFocus: isComponentSidebarFocused == true,
-            animationFocus: isAnimationFocused == true, edgeSidebarFocus: edgeSidebarSelectAll != nil)
+            animationFocus: isAnimationFocused == true, edgeSidebarFocus: edgeSidebarSelectAll != nil,
+            nodesSidebarFocus: nodesSelectAll != nil)
     }
 
     private var canSelectAll: Bool {
@@ -57,6 +59,7 @@ struct EditorClipboardCommands: Commands {
             sidebarSelectAll.map { store?.canSelectAllVisibleComponents($0) == true } ?? false
         case .edges:
             edgeSidebarSelectAll.map { store?.canSelectAllSidebarEdges($0) == true } ?? false
+        case .nodes: nodesSelectAll?.isEnabled == true
         case .graph: store?.canSave == true
         case .unavailable: false
         }
@@ -71,6 +74,7 @@ struct EditorClipboardCommands: Commands {
             if let sidebarSelectAll { store?.selectAllVisibleComponents(sidebarSelectAll) }
         case .edges:
             if let edgeSidebarSelectAll { store?.selectAllSidebarEdges(edgeSidebarSelectAll) }
+        case .nodes: nodesSelectAll?.perform()
         case .graph: store?.selectAll()
         case .unavailable: break
         }
