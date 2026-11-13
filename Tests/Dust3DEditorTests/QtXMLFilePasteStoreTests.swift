@@ -47,6 +47,46 @@ private actor HeldQtXMLReader {
 
 @MainActor
 final class QtXMLFilePasteStoreTests: XCTestCase {
+    func testPasteRequestsExpireAcrossRigPickingEvenWithUnchangedSelection() async throws {
+        let empty = Dust3DDocument.emptyArchive()
+        let source = try Dust3DDocument(data: empty).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let store = makeStore()
+        defer { store.stop() }
+        let fileID = UUID()
+        await store.load(data: empty, fileIdentity: fileID)
+        try await settle(store)
+        let staleClipboard = try XCTUnwrap(store.clipboardPasteRequest())
+        store.chooseQtXMLFile()
+        let staleFile = try XCTUnwrap(store.qtXMLFilePasteRequestID)
+        let url = URL(fileURLWithPath: "/unused/fragment.xml")
+
+        store.setRigEdgeSelection(true)
+        XCTAssertTrue(store.isSelectingRigEdges)
+        XCTAssertNil(store.clipboardPasteRequest())
+        store.pasteQtNodes(snapshotXML: source.modelXML)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), empty)
+        XCTAssertFalse(store.canUndo)
+
+        store.setRigEdgeSelection(false)
+        XCTAssertFalse(store.isSelectingRigEdges)
+        let delivery = store.finishQtXMLFileChoice(requestID: staleFile, result: .success([url])) { _ in source.modelXML
+        }
+        XCTAssertNil(delivery)
+        await delivery?.value
+        store.pasteQtNodes(snapshotXML: source.modelXML, request: staleClipboard)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), empty)
+        XCTAssertFalse(store.canUndo)
+
+        XCTAssertTrue(store.canChooseQtXMLFile)
+        store.pasteQtNodes(snapshotXML: source.modelXML)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        XCTAssertTrue(store.canUndo)
+    }
+
     func testPickerLeaseRejectsStaleDeliveryAndPublishesOnlyToTheCapturedStore() async throws {
         let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
             .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1)
