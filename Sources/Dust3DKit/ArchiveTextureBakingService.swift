@@ -1,4 +1,3 @@
-import Dust3DDocument
 import Foundation
 
 /// Logical retained-image quotas; ImageIO/native workspace and archive storage are separate.
@@ -77,17 +76,7 @@ public actor ArchiveTextureBakingService: ArchiveTextureBaking {
         data: Data, options: MeshBakeOptions = MeshBakeOptions(), limits: ArchiveTextureLimits = ArchiveTextureLimits()
     ) async throws -> MeshWithBakedTextures {
         try Task.checkCancellation()
-        try ArchiveTextureImagePreparation.validate(limits)
-        let document = try Dust3DDocument(data: data)
-        let references = try document.textureImageReferences()
-        var remainingEncoded = limits.maximumEncodedTotalBytes
-        try ArchiveTextureImagePreparation.preflight(
-            references, maximumImageBytes: limits.maximumEncodedImageBytes,
-            remainingEncoded: &remainingEncoded)
-        var remainingDecoded = limits.maximumDecodedTotalBytes
-        let images = try ArchiveTextureImagePreparation.decode(
-            references, document: document,
-            maximumImageBytes: limits.maximumEncodedImageBytes, remainingDecoded: &remainingDecoded)
+        let images = try ArchiveTextureImagePreparation.load(data: data, limits: limits)
         try Task.checkCancellation()
         return try await baker.load(data: data, images: images, options: options)
     }

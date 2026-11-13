@@ -19,6 +19,22 @@ final class ComponentMeshSelectionTests: XCTestCase {
         return try Dust3DDocument(snapshotXML: Data(xml.utf8))
     }
 
+    func testHoverCanOpenPropertiesWithoutSelectionAndUsesTheStoredEdgeOwner() throws {
+        let snapshot = try EditorState(document: graphDocument()).snapshot
+        let edge = ComponentMeshSelectionTarget(graphSelection: snapshot, hovered: .edge("e"))
+        XCTAssertEqual(edge.ids, ["ownerQ"])
+        XCTAssertTrue(edge.isCurrent(in: snapshot))
+        XCTAssertFalse(
+            ComponentMeshSelectionTarget(graphSelection: snapshot, hovered: .node("orphan"))
+                .isCurrent(in: snapshot))
+
+        let duplicate = "<component id='alias' linkDataType='partId' linkData='p'/>"
+        let shared = try EditorState(document: graphDocument(extraComponents: duplicate)).snapshot
+        XCTAssertFalse(
+            ComponentMeshSelectionTarget(graphSelection: shared, hovered: .node("n1"))
+                .isCurrent(in: shared))
+    }
+
     func testGraphOwnerBatchUsesExplicitEdgeOwnerAndKeepsPicksThroughUndo() async throws {
         let source = try graphDocument()
         let session = EditorSession()
