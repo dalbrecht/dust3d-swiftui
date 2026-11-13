@@ -59,6 +59,19 @@ final class TransformAvailabilityTests: XCTestCase {
         XCTAssertTrue(SelectionTransform.sideAlignCenter.canApply(in: state.snapshot))
     }
 
+    func testLocalAlignmentRequiresTwoEditableNodesButOriginAlignmentDoesNot() throws {
+        var state = try makeState(withOrigin: true)
+        try state.select("a")
+        let local: [SelectionTransform] = [
+            .frontAlignX, .frontAlignY, .frontAlignCenter, .sideAlignZ, .sideAlignY, .sideAlignCenter,
+        ]
+        for action in local { XCTAssertFalse(action.canApply(in: state.snapshot), action.rawValue) }
+        XCTAssertTrue(SelectionTransform.originFrontX.canApply(in: state.snapshot))
+
+        try state.selectGraph(nodes: [], edges: ["ab"])
+        for action in local { XCTAssertTrue(action.canApply(in: state.snapshot), action.rawValue) }
+    }
+
     func testOriginAlignmentRequiresAStoredOriginAndAnUnlockedAxis() throws {
         var withoutOrigin = try makeState()
         try withoutOrigin.select(["a", "b"])
