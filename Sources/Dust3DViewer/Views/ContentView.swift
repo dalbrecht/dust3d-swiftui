@@ -34,6 +34,7 @@ struct ContentView: View {
                     MeshViewport(
                         mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
                         meshRevision: store.meshRevision + store.materialRevision, materials: store.materials,
+                        automaticallyOrbits: store.automaticallyRotates,
                         onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                         onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                     ) { message in
@@ -138,6 +139,7 @@ struct ContentView: View {
         .onDisappear { store.stop() }
         .onChange(of: store.meshRevision) { rendererError = nil }
         .focusedSceneValue(\.openDocument, { isImporterPresented = true })
+        .focusedSceneValue(\.viewerStore, store)
     }
 }
 

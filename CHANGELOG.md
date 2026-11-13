@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Toggle automatic model rotation from the Viewer’s View menu or with R.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.

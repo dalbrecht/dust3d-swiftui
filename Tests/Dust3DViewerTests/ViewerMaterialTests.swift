@@ -6,6 +6,32 @@ import XCTest
 
 @MainActor
 final class ViewerMaterialTests: XCTestCase {
+    func testAutomaticRotationBelongsToTheWindowAndRequiresAnAcceptedMesh() async throws {
+        let snapshot = try snapshot()
+        let first = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        let second = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        defer { second.stop() }
+
+        first.setAutomaticallyRotates(true)
+        XCTAssertFalse(first.automaticallyRotates)
+
+        first.open(URL(fileURLWithPath: "/test/first.ds3"))
+        second.open(URL(fileURLWithPath: "/test/second.ds3"))
+        await first.loadTask?.value
+        await second.loadTask?.value
+        XCTAssertFalse(first.automaticallyRotates)
+
+        first.setAutomaticallyRotates(true)
+        XCTAssertTrue(first.automaticallyRotates)
+        XCTAssertFalse(second.automaticallyRotates)
+        first.setAutomaticallyRotates(false)
+        XCTAssertFalse(first.automaticallyRotates)
+
+        first.setAutomaticallyRotates(true)
+        first.stop()
+        XCTAssertFalse(first.automaticallyRotates)
+    }
+
     func testShouldKeepGeometryOnMaterialFailureAndRetryTheExactSnapshot() async throws {
         let snapshot = try snapshot()
         let baker = SuspendedViewerBaker()
