@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open the shared group in the component sidebar after assigning stitching roles to multiple parts.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.

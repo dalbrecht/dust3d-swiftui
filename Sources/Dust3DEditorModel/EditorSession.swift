@@ -447,11 +447,20 @@ public actor EditorSession {
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws
         -> EditorSnapshot
     {
+        try setSelectedComponentPartRole(role, target: target, retainingBrowsePicks: false)
+    }
+
+    package func setSelectedComponentPartRole(
+        _ role: PartTarget, target: ComponentPartRoleTarget, retainingBrowsePicks: Bool
+    ) throws -> EditorSnapshot {
         try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw ComponentPartRoleError.staleContext }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw ComponentPartRoleError.staleContext
+            }
             let plan = try state.snapshot.componentPartRolePlan(role)
             try state.setSelectedComponentPartRole(
-                role, target: target, newGroupID: plan.requiresNewGroup ? Self.identifier() : nil)
+                role, target: target, newGroupID: plan.requiresNewGroup ? Self.identifier() : nil,
+                retainingBrowsePicks: retainingBrowsePicks)
             try Task.checkCancellation()
         }
     }
