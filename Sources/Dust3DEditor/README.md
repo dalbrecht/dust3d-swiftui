@@ -464,14 +464,18 @@ for owned offscreen evidence and the live keyboard/accessibility acceptance limi
 ### Original procedural geometry export (#281, #286)
 
 Choose File → Export OBJ Geometry… (Command-Shift-E), File → Export FBX
-Geometry…, or choose either format from the toolbar Export menu. The destination sheet belongs to the current document window. It exports
-the captured current state, including unsaved edits, without marking the document
-saved or changing Undo/Redo. Source path/inode aliases are rejected. A changed
-source while choosing a destination cancels that export intent.
+Geometry…, or File → Export Textured FBX…. The toolbar Export menu offers the
+same three choices. The destination sheet belongs to the current document window.
+Export captures the current state, including unsaved edits, without marking the
+document saved or changing Undo/Redo. Source path and inode aliases are rejected.
+A source change while choosing a destination cancels that export intent.
 
-This exports original procedural geometry. OBJ contains positions/faces; FBX
-retains supplied static corner streams without generating an atlas. Materials,
-textures, embedded imported models, rigs and animation are unsupported. The completion strip
+OBJ Geometry exports positions and faces. FBX Geometry exports procedural
+geometry and any supplied static corner data. Textured FBX also bakes supported
+procedural materials into an embedded atlas and requires complete packed UVs.
+If Textured FBX reports missing packed UVs, choose FBX Geometry to export the
+mesh without the baked texture. Embedded imported models, rigs, and animation
+remain unsupported by these commands. The completion strip
 shows the destination, byte count and original warning. Failures use the existing
 error banner. Cancel/Escape prevents uncommitted publication; synchronous native
 generation must finish before the workflow becomes available again. “Finishing

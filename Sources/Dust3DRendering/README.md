@@ -207,13 +207,12 @@ full upstream attribution/help inventory remain separate.
 
 ### Project Help commands
 
-Editor and Viewer enumerate the same ApplicationHelpLink destinations under Help:
-Project on GitHub, Report an Issue and Upstream Dust3D Website. Reports target
-the native repository rather than the upstream tracker. Navigation happens only
-inside the explicit menu action. A small main-actor NSWorkspace boundary reports
-invalid destinations or macOS's declined-open result through the standard error
-UI, retaining the address. Injected opener/reporter tests invoke no external
-application. See docs/native-project-help-verification.md for acceptance limits.
+Editor and Viewer share the project, issue reporting and upstream website
+commands under Help. Upstream Dust3D Acknowledgements opens the bundled upstream
+document in the system's HTML handler and works offline. Reports target the
+native repository. Navigation occurs inside an explicit menu action, and macOS's
+standard error UI reports invalid destinations, missing resources or declined
+opens. Injected opener/reporter tests require no external application. See docs/native-project-help-verification.md for acceptance limits.
 
 About resolves the rendering bundle under the application's Resources directory
 first. Installed apps never consult SwiftPM's absolute development path, including
