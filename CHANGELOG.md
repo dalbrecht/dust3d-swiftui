@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Explain and disable linked profile choices that would create a cycle.
+
 - List Cut Face parts and existing linked profiles in Front view order.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
