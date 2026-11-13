@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use reproducible compiler and linker options when building with SOURCE_DATE_EPOCH.
+
 - Honor SOURCE_DATE_EPOCH when packaging app ZIPs so identical signed bundles produce identical archives.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
