@@ -69,6 +69,16 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(entry.scope, "Focused editor window")
     }
 
+    func testEscapeHelpDistinguishesCanvasInputAndGeometryExport() throws {
+        let entries = KeyboardShortcutHelp.matching("Escape")
+        XCTAssertTrue(entries.contains { $0.action == "Cancel Canvas Input" })
+        let export = try XCTUnwrap(entries.first { $0.action == "Cancel Geometry Export" })
+        XCTAssertTrue(export.scope.contains("active document"))
+        XCTAssertTrue(export.scope.contains("no active canvas input"))
+        XCTAssertTrue(export.scope.contains("outside text and animation controls"))
+        XCTAssertTrue(export.scope.contains("no modal dialog"))
+    }
+
     func testSearchFindsActionsKeysAndFocusScopeWithoutChangingOrder() {
         let entries = [
             KeyboardShortcutHelp.Entry(action: "Rotate Selection", keys: ", / .", scope: "Canvas selection"),
