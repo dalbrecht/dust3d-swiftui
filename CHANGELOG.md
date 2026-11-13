@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Offer sibling reordering when dropping components onto a group row.
+
 - Confirm a component drop into a group before changing the hierarchy.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
