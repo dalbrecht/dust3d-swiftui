@@ -565,7 +565,8 @@ struct EditorRootView: View {
     }
 
     private var modelPreview: some View {
-        VStack(spacing: 0) {
+        let rendererAttempt = store.previewRendererAttemptID
+        return VStack(spacing: 0) {
             HStack {
                 Text("Mesh preview").font(.headline)
                 Spacer()
@@ -577,7 +578,8 @@ struct EditorRootView: View {
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry Preview") { store.retryPreview() }.disabled(store.isGenerating)
+                    Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }
+                        .disabled(store.isGenerating)
                 }
             } else if let mesh = store.mesh {
                 let materialRevision = store.materialViewportRevision
@@ -586,9 +588,17 @@ struct EditorRootView: View {
                     meshRevision: store.materialViewportRevision, materials: store.materialContent,
                     cameraCommand: store.previewCameraCommand, showsColor: store.showsPreviewColor,
                     automaticallyOrbits: store.isPreviewAutomaticallyOrbiting,
-                    onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
-                    onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
-                ) { store.renderError = $0 }
+                    onMaterialError: {
+                        guard store.previewRendererAttemptID == rendererAttempt else { return }
+                        store.materialsFailed($0, revision: materialRevision)
+                    },
+                    onMaterialRendered: {
+                        guard store.previewRendererAttemptID == rendererAttempt else { return }
+                        store.materialsRendered(revision: materialRevision)
+                    }
+                ) { error in
+                    store.reportPreviewRendererError(error, attemptID: rendererAttempt, revision: materialRevision)
+                }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
                 .accessibilityLabel("3D mesh preview")
                 if store.isUpdatingMaterials {

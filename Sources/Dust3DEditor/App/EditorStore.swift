@@ -900,7 +900,8 @@ final class EditorStore {
     var materialViewportRevision: Int { previewState.revision + materialState.revision }
     var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
-    var renderError: String? {
+    private(set) var previewRendererAttemptID = UUID()
+    private(set) var renderError: String? {
         didSet { if renderError != nil { previewCameraCommand = nil } }
     }
     var bounds = CanvasBounds(nodes: []) {
@@ -3758,6 +3759,7 @@ final class EditorStore {
     }
 
     private func clearPreview() {
+        resetPreviewRenderer()
         clearMaterials()
         generation?.cancel()
         previewState.clear()
@@ -3779,7 +3781,7 @@ final class EditorStore {
     private func generate(_ snapshot: EditorSnapshot, preservingFailure: Bool = false) {
         clearMaterials()
         generation?.cancel()
-        renderError = nil
+        resetPreviewRenderer()
         guard snapshot.hasEnabledGeometry else {
             clearPreview()
             return
@@ -3853,8 +3855,27 @@ final class EditorStore {
         }
     }
 
-    func retryPreview() {
-        guard !stopped, !isGenerating, let snapshot else { return }
+    func reportPreviewRendererError(_ cause: String, attemptID: UUID, revision: Int) {
+        guard !stopped, mesh != nil, previewRendererAttemptID == attemptID,
+            materialViewportRevision == revision
+        else { return }
+        renderError = cause
+    }
+
+    private func resetPreviewRenderer() {
+        previewRendererAttemptID = UUID()
+        renderError = nil
+    }
+
+    func retryPreview(rendererAttemptID: UUID? = nil) {
+        guard !stopped, !isGenerating, let snapshot,
+            rendererAttemptID == nil || rendererAttemptID == previewRendererAttemptID
+        else { return }
+        if renderError != nil, mesh != nil {
+            resetPreviewRenderer()
+            renderedMaterialRevision = nil
+            return
+        }
         generate(snapshot)
     }
 
