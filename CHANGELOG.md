@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add keyboard-focusable Zoom In and Zoom Out buttons to Quick Look previews.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
