@@ -18,6 +18,15 @@ struct ComponentWrappingControls: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Wrapping").font(.headline).accessibilityAddTraits(.isHeader)
                 modePicker
+                if let snapshot = store.snapshot,
+                    snapshot.selectedComponent?.id.utf8.elementsEqual(component.id.utf8) == true
+                {
+                    let target = ComponentWrappingSelectionTarget(snapshot: snapshot)
+                    ClearWrappingSettingsButton(
+                        action: store.componentWrappingSelectionAction(.clearSettings, target: target)
+                    )
+                    .disabled(!store.canEditComponentWrappingSelection(target))
+                }
                 if component.wrapping.mode == nil {
                     Text("Unsupported source mode. Choose a replacement.").font(.caption).foregroundStyle(.primary)
                 }
@@ -136,4 +145,26 @@ private struct WrappingNumberControl: View {
     }
 
     private func reset() { draft = source ?? "" }
+}
+
+struct ClearWrappingSettingsButton: View {
+    let action: @MainActor () -> Void
+    @State private var pending: (@MainActor () -> Void)?
+
+    var body: some View {
+        Button("Turn Off and Clear Settings…") { pending = action }
+            .accessibilityIdentifier("clear-wrapping-settings")
+            .alert(
+                "Clear Wrapping Settings?",
+                isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
+                presenting: pending
+            ) { confirm in
+                Button("Clear Settings", role: .destructive) { confirm() }
+                Button("Cancel", role: .cancel) {}
+            } message: { _ in
+                Text(
+                    "This turns wrapping off and clears saved wrapping settings for the selected groups. You can undo this change."
+                )
+            }
+    }
 }

@@ -129,11 +129,11 @@ public struct EditorSnapshot: Sendable {
         !locks.contains(.radius) && transformNodes.contains(where: \.isEditable)
     }
 
-    /// Hovered radius input never changes selection and is available only while every selection context is empty.
+    /// Hovered radius input never changes selection and is available when there is no canvas graph selection.
     /// - Parameter id: Exact hovered node identity in the originating canvas.
     /// - Returns: Whether that node is editable and radius input is unlocked.
     public func canAdjustNodeRadius(id: String) -> Bool {
-        selectedIDs.isEmpty && selectedEdgeIDs.isEmpty && selectedPartID == nil && selectedComponentIDs.isEmpty
+        selectedIDs.isEmpty && selectedEdgeIDs.isEmpty
             && !locks.contains(.radius) && nodes.contains { $0.id == id && $0.isEditable }
     }
 
@@ -356,7 +356,7 @@ public struct EditorState: Sendable {
     }
 
     package mutating func revealOwningComponent(
-        _ target: PartGraphTarget, context: PartGraphSelectionContext
+        _ target: PartGraphTarget, context: PartGraphSelectionContext, selecting: Bool = false
     ) throws {
         let current = snapshot
         guard context.isCurrent(in: current) else { throw EditorError.stalePartGraphSelection }
@@ -364,6 +364,13 @@ public struct EditorState: Sendable {
             let hint = ComponentRevealHint.make(
                 componentID: id, tree: componentTree, revision: componentRevealRevision + 1)
         else { throw DocumentError.invalidComponent }
+        if selecting {
+            let alreadySelected =
+                selectedComponentIDs.count == 1
+                && selectedComponentIDs.first?.utf8.elementsEqual(id.utf8) == true
+            if !alreadySelected { selectionRevision += 1 }
+            selectedComponentIDs = [id]
+        }
         componentRevealRevision = hint.revision
         componentRevealHint = hint
     }
@@ -679,13 +686,13 @@ public struct EditorState: Sendable {
         try applyRadiusDelta(delta, nodes: snapshot.transformNodes)
     }
 
-    /// Add a radius delta to one hovered node without selecting it, only while all transient selection is empty.
+    /// Add a radius delta to one hovered node without selecting it, when there is no canvas graph selection.
     /// - Parameters: `id` is the hovered node; `delta` is finite document-space input; `target` captures its window epoch.
     /// - Throws: `missingNode`, `invalidNode`, or `staleCanvasAdjustment`; read-only and radius-locked nodes are no-ops.
     public mutating func adjustNodeRadius(id: String, by delta: Double, target: CanvasAdjustmentTarget? = nil) throws {
         guard delta.isFinite else { throw DocumentError.invalidNode }
         if let target, !target.isCurrent(in: snapshot) { throw EditorError.staleCanvasAdjustment }
-        guard selectedIDs.isEmpty, selectedEdgeIDs.isEmpty, selectedPartID == nil, selectedComponentIDs.isEmpty else {
+        guard selectedIDs.isEmpty, selectedEdgeIDs.isEmpty else {
             throw EditorError.staleCanvasAdjustment
         }
         guard let node = contents.nodes.first(where: { $0.id == id }) else { throw DocumentError.missingNode(id) }
@@ -778,18 +785,21 @@ public struct EditorState: Sendable {
 
     /// Apply a basic transform as one atomic undo step, retaining selection and radii.
     public mutating func transformSelection(_ transform: SelectionTransform) throws {
-        let nodes = (transform == .exchangeXZ ? snapshot.selectedNodes : snapshot.transformNodes).filter(\.isEditable)
+        let participants = transform == .exchangeXZ ? snapshot.selectedNodes : snapshot.transformNodes
+        let nodes = participants.filter(\.isEditable)
         guard !nodes.isEmpty else { return }
-        let count = Double(nodes.count)
         let center: NodePosition
         if transform.usesOrigin {
             guard let origin = contents.origin else { throw EditorError.unavailableOrigin }
             center = origin
         } else {
+            // Qt local alignment measures the retained selection before applying movement locks.
+            let centerNodes = transform.alignsToSelectionCenter ? participants.filter(\.isVisible) : nodes
+            let count = Double(centerNodes.count)
             center = NodePosition(
-                x: nodes.reduce(0) { $0 + $1.value.position.x } / count,
-                y: nodes.reduce(0) { $0 + $1.value.position.y } / count,
-                z: nodes.reduce(0) { $0 + $1.value.position.z } / count)
+                x: centerNodes.reduce(0) { $0 + $1.value.position.x } / count,
+                y: centerNodes.reduce(0) { $0 + $1.value.position.y } / count,
+                z: centerNodes.reduce(0) { $0 + $1.value.position.z } / count)
         }
         let updates = nodes.map { node in
             let original = node.value.position
