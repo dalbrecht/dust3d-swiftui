@@ -35,7 +35,7 @@ public struct NodeConnectionTarget: Sendable {
 
     private static func eligibleOwners(_ snapshot: EditorSnapshot) -> [NodeConnectionOwner] {
         guard snapshot.selectedIDs.count == 2, snapshot.selectedEdgeIDs.isEmpty,
-            snapshot.selectedComponentIDs.isEmpty, snapshot.selectedPartID == nil,
+            snapshot.selectedPartID == nil,
             snapshot.edges.count < 20_000
         else { return [] }
         let endpoints = snapshot.nodes.filter { node in
