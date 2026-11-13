@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
+
 - Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.
 
 - Select visible nodes when their circles intersect the marquee.

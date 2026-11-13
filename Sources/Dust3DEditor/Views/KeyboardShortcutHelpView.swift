@@ -70,6 +70,9 @@ enum KeyboardShortcutHelp {
         .init(
             action: "Go to Enclosing Component Group", keys: "⌘↑",
             scope: "Focused component sidebar while browsing a group"),
+        .init(
+            action: "Discard Inspector Draft", keys: "Escape",
+            scope: "Focused width, thickness, rotation or smoothing field"),
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
         .init(action: "Next Replay Step", keys: "⌥→", scope: "Replay Steps window, when a next step is available"),
         .init(
