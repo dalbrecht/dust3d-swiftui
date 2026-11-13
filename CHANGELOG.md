@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Suggest the Qt-style `_copy` name when duplicating a stored animation and include its type in the accessible list row.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
