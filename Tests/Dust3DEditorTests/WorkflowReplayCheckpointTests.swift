@@ -134,6 +134,49 @@ final class WorkflowReplayCheckpointTests: XCTestCase {
         }
     }
 
+    func testClosingOneReplayWindowDoesNotCancelTheOtherCheckpoint() async throws {
+        let source = try source()
+        let plan = try WorkflowReplayPlan(document: source)
+        let windows = WorkflowReplayWindows()
+        let firstID = try XCTUnwrap(windows.open(source, deliver: { _ in }))
+        let secondID = try XCTUnwrap(windows.open(source, deliver: { _ in }))
+        let firstOwner = UUID()
+        let secondOwner = UUID()
+        windows.attach(firstID, owner: firstOwner)
+        windows.attach(secondID, owner: secondOwner)
+        defer { windows.close(secondID, owner: secondOwner) }
+
+        let firstGate = HeldReplayCheckpointPreparation()
+        let secondGate = HeldReplayCheckpointPreparation()
+        let first = WorkflowReplayCheckpoint(prepare: { _, _, _ in await firstGate.prepare() })
+        let second = WorkflowReplayCheckpoint(prepare: { _, _, _ in await secondGate.prepare() })
+        let firstContext = WorkflowReplayCheckpoint.Context(sourceID: firstID, step: 1, isPlaying: false)
+        let secondContext = WorkflowReplayCheckpoint.Context(
+            sourceID: secondID, step: plan.steps.count, isPlaying: false)
+        var delivered: [EditorFileDocument] = []
+        let firstTask = try XCTUnwrap(
+            first.open(
+                plan: plan, source: source, context: firstContext,
+                current: { windows.request(firstID, owner: firstOwner) == nil ? nil : firstContext },
+                deliver: { _ in XCTFail("Closed replay delivered a checkpoint") }))
+        let secondTask = try XCTUnwrap(
+            second.open(
+                plan: plan, source: source, context: secondContext,
+                current: { windows.request(secondID, owner: secondOwner) == nil ? nil : secondContext },
+                deliver: { delivered.append($0) }))
+        await firstGate.waitUntilStarted()
+        await secondGate.waitUntilStarted()
+        windows.close(firstID, owner: firstOwner)
+        let firstBytes = try plan.previewDocument(after: 1, source: source).encoded()
+        let secondBytes = try plan.previewDocument(after: plan.steps.count, source: source).encoded()
+        XCTAssertNotEqual(firstBytes, secondBytes)
+        await firstGate.release(try EditorFileDocument(data: firstBytes))
+        await secondGate.release(try EditorFileDocument(data: secondBytes))
+        await firstTask.value
+        await secondTask.value
+        XCTAssertEqual(delivered.map(\.data), [secondBytes])
+    }
+
     func testPreparationErrorIsShownWithoutOpening() async throws {
         let original = try source()
         let plan = try WorkflowReplayPlan(document: original)

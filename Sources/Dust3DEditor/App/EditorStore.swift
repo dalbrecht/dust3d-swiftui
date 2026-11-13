@@ -1196,6 +1196,18 @@ final class EditorStore {
         return snapshot
     }
 
+    var workflowReplayCommand: WorkflowReplayCommand? {
+        guard !isWorking, let source = acceptedDocumentSource else { return nil }
+        let identity = source.documentIdentity
+        let revision = source.documentRevision
+        return WorkflowReplayCommand { [weak self] focusedStore in
+            guard let self, self === focusedStore, !self.isWorking, let current = self.acceptedDocumentSource,
+                current.documentIdentity == identity, current.documentRevision == revision
+            else { return nil }
+            return current.document
+        }
+    }
+
     var referenceCompositionTarget: ReferenceCompositionTarget? {
         guard canSave, let source = acceptedDocumentSource else { return nil }
         return ReferenceCompositionTarget(snapshot: source)

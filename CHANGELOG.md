@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open Replay Steps in independent windows so starting another replay keeps the current step and source of each existing replay.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.

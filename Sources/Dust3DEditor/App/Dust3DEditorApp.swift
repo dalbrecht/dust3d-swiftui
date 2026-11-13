@@ -25,7 +25,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
     @State private var pasteboard = EditorPasteboard()
     private let sessionDiagnostics = EditorSessionDiagnostics.shared
-    @State private var replayRequest: WorkflowReplayRequest?
+    @State private var replayWindows = WorkflowReplayWindows()
     @State private var nativeUndoCommands = NativeUndoCommandState()
 
     private var applicationName: String {
@@ -155,12 +155,13 @@ struct Dust3DEditorApp: App {
                 .disabled(window == nil || navigate == nil || rigAssignmentFocus.hasSheet)
                 Divider()
                 Button("Session Log") { openWindow(id: "session-log") }
+                let command = store?.workflowReplayCommand
                 Button("Replay Steps…") {
-                    guard let document = store?.snapshot?.document else { return }
-                    replayRequest = WorkflowReplayRequest(document: document)
-                    openWindow(id: "workflow-replay")
+                    command?.invoke(in: store, windows: replayWindows) { id in
+                        openWindow(id: "workflow-replay", value: id)
+                    }
                 }
-                .disabled(store?.snapshot == nil)
+                .disabled(command == nil || !replayWindows.hasCapacity)
             }
             CommandGroup(after: .toolbar) {
                 let browseWindow = NSApp.keyWindow
@@ -420,20 +421,12 @@ struct Dust3DEditorApp: App {
             KeyboardShortcutHelpView()
         }
         .defaultSize(width: 740, height: 620)
-        Window("Replay Steps", id: "workflow-replay") {
-            Group {
-                if let replayRequest {
-                    WorkflowReplayView(document: replayRequest.document, sourceID: replayRequest.id) {
-                        self.replayRequest?.id == replayRequest.id
-                    }
-                    .id(replayRequest.id)
-                } else {
-                    ContentUnavailableView("No Replay", systemImage: "play.rectangle")
-                }
-            }
-            .onDisappear { replayRequest = nil }
+        WindowGroup("Replay Steps", id: "workflow-replay", for: UUID.self) { request in
+            WorkflowReplayWindow(requestID: request.wrappedValue, windows: replayWindows)
+                .id(request.wrappedValue)
         }
         .defaultSize(width: 700, height: 540)
+        .commandsRemoved()
         Window("Session Log", id: "session-log") {
             EditorSessionDiagnosticsView(diagnostics: sessionDiagnostics)
         }
