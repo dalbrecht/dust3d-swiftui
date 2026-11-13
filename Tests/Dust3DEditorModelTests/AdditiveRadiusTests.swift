@@ -168,13 +168,41 @@ final class AdditiveRadiusTests: XCTestCase {
         XCTAssertFalse(state.snapshot.canUndo)
     }
 
-    func testHoverRequiresEmptyContextAndValidIdentityButLockedReadonlyInputsAreNoops() throws {
+    func testHoverRadiusIgnoresSidebarSelectionAndEditsOnlyTheHoveredNode() throws {
+        let source = String(decoding: try document().modelXML, as: UTF8.self)
+            .replacingOccurrences(of: "id='d' partId='p'", with: "id='d' partId='q'")
+            .replacingOccurrences(of: "</parts>", with: "<part id='q'/></parts>")
+        let original = try Dust3DDocument(snapshotXML: Data(source.utf8))
+        for selectsPart in [true, false] {
+            var state = try EditorState(document: original)
+            if selectsPart {
+                try state.selectPart("p")
+            } else {
+                try state.selectComponent("component")
+            }
+            let before = state.snapshot
+            XCTAssertTrue(before.canAdjustNodeRadius(id: "d"))
+            try state.adjustNodeRadius(id: "d", by: 0.1, target: CanvasAdjustmentTarget(snapshot: before))
+            let after = state.snapshot
+            for (node, previous) in zip(after.nodes, before.nodes) {
+                XCTAssertEqual(node.value.radius, previous.value.radius + (node.id == "d" ? 0.1 : 0), accuracy: 1e-12)
+            }
+            XCTAssertEqual(after.selectedPartID, before.selectedPartID)
+            XCTAssertEqual(after.selectedComponentIDs, before.selectedComponentIDs)
+            XCTAssertEqual(after.selectionRevision, before.selectionRevision)
+            try state.undo()
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            XCTAssertFalse(state.snapshot.canUndo)
+        }
+    }
+
+    func testHoverRejectsGraphSelectionAndInvalidIdentityButLockedReadonlyInputsAreNoops() throws {
         var state = try EditorState(document: document())
-        for context in ["edge", "part", "component"] {
-            switch context {
-            case "edge": try state.selectEdge("ab")
-            case "part": try state.selectPart("p")
-            default: try state.selectComponent("component")
+        for selectsNode in [true, false] {
+            if selectsNode {
+                try state.select("a")
+            } else {
+                try state.selectEdge("ab")
             }
             XCTAssertFalse(state.snapshot.canAdjustNodeRadius(id: "a"))
             let before = state.snapshot
