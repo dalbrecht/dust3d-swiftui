@@ -1,8 +1,14 @@
 import Dust3DDocument
 import Foundation
 
-/// Formats supported by the original-geometry export boundary; no imported/rigged paths implied.
-public enum DocumentExportFormat: String, Sendable { case obj, fbx }
+/// Export choices. Geometry and textured FBX share a file extension.
+public enum DocumentExportFormat: String, Sendable {
+    case obj, fbx, fbxTextured
+
+    public var fileExtension: String {
+        self == .fbxTextured ? "fbx" : rawValue
+    }
+}
 
 /// Owned output copied by the native adapter before releasing its C handle.
 public struct DocumentExportArtifact: Sendable, Equatable {
@@ -90,7 +96,7 @@ public actor DocumentExportFileService {
     }
 
     private static func validate(_ destination: URL, format: DocumentExportFormat, source: URL?) throws {
-        guard destination.isFileURL, destination.pathExtension.lowercased() == format.rawValue,
+        guard destination.isFileURL, destination.pathExtension.lowercased() == format.fileExtension,
             source == nil || source?.isFileURL == true
         else { throw DocumentExportError.invalidDestination }
         if let source,
