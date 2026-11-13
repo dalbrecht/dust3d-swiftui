@@ -171,6 +171,32 @@ final class EditorStore {
     func canSelectWholePart(_ target: PartGraphTarget) -> Bool {
         !isSelectingRigEdges && canPickGraph && snapshot?.canSelectWholePart(target) == true
     }
+    func canvasHoverWholePartAction(profileLease: UUID?) -> (@MainActor () -> Void)? {
+        guard ownsCanvasProfile(profileLease), canSave, !isAddingNodes, !isMovingOrigin,
+            let target = canvasGraphHover?.partTarget, canSelectWholePart(target)
+        else { return nil }
+        let select = wholePartSelectionAction(target)
+        let tool = addModeID
+        return { [weak self] in
+            guard let self, self.ownsCanvasProfile(profileLease), self.canSave,
+                self.addModeID == tool, !self.isAddingNodes, !self.isMovingOrigin
+            else { return }
+            select()
+        }
+    }
+
+    func canvasHoverRevealAction(profileLease: UUID?) -> (@MainActor () -> Void)? {
+        guard !isSelectingRigEdges, let target = canvasGraphHover?.partTarget, let snapshot,
+            let reveal = revealOwningComponentAction(
+                target, context: PartGraphSelectionContext(snapshot: snapshot), profileLease: profileLease)
+        else { return nil }
+        let epoch = rigEdgeSelectionEpoch
+        return { [weak self] in
+            guard self?.rigEdgeSelectionEpoch == epoch else { return }
+            reveal()
+        }
+    }
+
     var wholePartActionTarget: PartGraphTarget? {
         if !isAddingNodes, let hoveredNodeID { return .node(hoveredNodeID) }
         guard let snapshot else { return nil }
@@ -259,13 +285,8 @@ final class EditorStore {
         guard !isSelectingRigEdges, canPickGraph, !isAddingNodes, let snapshot,
             context?.isCurrent(in: snapshot) != false
         else { return }
-        if let node = snapshot.nodes.last(where: {
-            let center = projection.point(for: $0.value.position)
-            return $0.isVisible && hypot(center.x - point.x, center.y - point.y) <= 18
-        }) {
-            selectWholePart(.node(node.id), context: context)
-        } else if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: snapshot.edges) {
-            selectWholePart(.edge(edge), context: context)
+        if let hit = canvasGraphHoverCache.hit(at: point, projection: projection, snapshot: snapshot) {
+            selectWholePart(hit.partTarget, context: context)
         }
     }
     func partNodesSelectionAction(_ id: String) -> @MainActor () -> Void {
@@ -521,9 +542,8 @@ final class EditorStore {
             let center = projection.point(for: node.value.position)
             centers[Data(node.id.utf8)] = center
             let distance = hypot(center.x - point.x, center.y - point.y)
-            let marker = CanvasNodeMarkerGeometry(
-                projectedDiameter: node.value.radius * projection.scale * 2, selected: false, hovered: false)
-            let hitRadius = max(18, marker.outlineDiameter / 2)
+            let hitRadius = CanvasNodeMarkerGeometry.hitRadius(
+                projectedDiameter: node.value.radius * projection.scale * 2)
             // On an exact tie the later, topmost node keeps precedence.
             if distance <= hitRadius, distance <= nearestDistance {
                 nearestDistance = distance
@@ -531,22 +551,11 @@ final class EditorStore {
             }
         }
         guard let candidate else { return nil }
-        for edge in snapshot.edges {
-            guard let from = centers[Data(edge.fromID.utf8)], let to = centers[Data(edge.toID.utf8)] else { continue }
-            let dx = to.x - from.x
-            let dy = to.y - from.y
-            let length = hypot(dx, dy)
-            guard length > 0, length.isFinite else { continue }
-            let x = point.x - from.x
-            let y = point.y - from.y
-            let ux = dx / length
-            let uy = dy / length
-            let along = x * ux + y * uy
-            // Qt's directed edge triangle tapers from four points wide to zero.
-            guard along >= 0, along <= length,
-                abs(x * uy - y * ux) <= 2 * (1 - along / length)
-            else { continue }
-            if hypot(x - dx / 2, y - dy / 2) < nearestDistance { return nil }
+        if CanvasGraphHover.taperedEdge(
+            at: point, edges: snapshot.edges, position: { centers[Data($0.utf8)] }, closerThan: nearestDistance)
+            != nil
+        {
+            return nil
         }
         return candidate
     }
@@ -1832,16 +1841,37 @@ final class EditorStore {
         guard !isWorking, let snapshot else { return }
         let edges = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: mode) : snapshot.edges
         if let edge = projection.edgeID(near: point, nodes: snapshot.nodes, edges: edges) {
-            if mode == .replace, !isSelectingRigEdges,
-                snapshot.selectedEdgeIDs.contains(where: { $0.utf8.elementsEqual(edge.utf8) })
-            {
-                return
-            }
-            selectGraph(nodes: [], edges: [edge], mode: mode)
+            pickCanvasEdge(edge, mode: mode, snapshot: snapshot)
         } else if mode == .replace {
             selectGraph(nodes: [], edges: [])
         }
     }
+    func pickCanvasGraph(at point: CanvasPoint, projection: CanvasProjection, mode: GraphSelectionMode, lease: UUID?) {
+        guard ownsCanvasProfile(lease), !isWorking, !isAddingNodes, !isMovingOrigin, let snapshot else { return }
+        if isSelectingRigEdges {
+            pickEdge(at: point, projection: projection, mode: mode)
+            return
+        }
+        switch canvasGraphHoverCache.hit(at: point, projection: projection, snapshot: snapshot) {
+        case .node(let id):
+            activateCanvasNode(
+                id, action: mode == .replace ? .pointerReplace : .selection(mode),
+                target: canvasNodeSelectionTarget(profileLease: lease))
+        case .edge(let id):
+            pickCanvasEdge(id, mode: mode, snapshot: snapshot)
+        case nil:
+            if mode == .replace { selectGraph(nodes: [], edges: []) }
+        }
+    }
+    private func pickCanvasEdge(_ id: String, mode: GraphSelectionMode, snapshot: EditorSnapshot) {
+        if mode == .replace, !isSelectingRigEdges,
+            snapshot.selectedEdgeIDs.contains(where: { $0.utf8.elementsEqual(id.utf8) })
+        {
+            return
+        }
+        selectGraph(nodes: [], edges: [id], mode: mode)
+    }
+
     func selectMarquee(_ rectangle: CanvasSelectionRectangle, projection: CanvasProjection, mode: GraphSelectionMode) {
         guard !isWorking, let snapshot else { return }
         let edges = isSelectingRigEdges ? rigEdgePickCandidates(in: snapshot, mode: mode) : snapshot.edges

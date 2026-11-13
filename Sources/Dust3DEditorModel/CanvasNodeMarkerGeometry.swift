@@ -1,11 +1,17 @@
 /// Node marker dimensions shared by the editing and companion profiles.
 package struct CanvasNodeMarkerGeometry {
     package static let centerDiameter: Double = 12
+    package static let centerHitRadius: Double = 18
     package let outlineDiameter: Double
     package let outlineWidth: Double
 
     var marqueeRadius: Double {
         max(Self.centerDiameter, outlineDiameter) / 2
+    }
+
+    package static func hitRadius(projectedDiameter: Double) -> Double {
+        let marker = Self(projectedDiameter: projectedDiameter, selected: false, hovered: false)
+        return max(centerHitRadius, marker.outlineDiameter / 2)
     }
 
     package init(projectedDiameter: Double, selected: Bool, hovered: Bool) {
