@@ -52,6 +52,54 @@ final class ComponentColorImageSessionTests: XCTestCase {
             XCTFail("Document replaced")
         } catch { XCTAssertEqual(error as? EditorError, .staleColorImageTarget) }
     }
+    func testSingletonTextureRejectsImportedAndCutFaceOwnersAndPreservesExistingImage() async throws {
+        let session = EditorSession()
+        let imageID = "{11111111-1111-4111-8111-111111111111}"
+        for role in ["ImportedModel", "CutFace"] {
+            let source = try graphTextureDocument(extraPartAttributes: " target='\(role)'").applying(
+                .importComponentColorImage(id: "two", imageID: imageID, png: png))
+            _ = try await session.open(data: source.encoded())
+            let before = try await session.selectComponent("two")
+            let target = try XCTUnwrap(ComponentColorImageTarget(snapshot: before))
+            XCTAssertFalse(target.isCurrentColorImage(in: before))
+            do {
+                _ = try await session.setComponentColorImage(imageID: nil, target: target)
+                XCTFail("Cleared a retained image on \(role)")
+            } catch { XCTAssertEqual(error as? EditorError, .staleColorImageTarget) }
+            do {
+                _ = try await session.importComponentColorImage(png: png, target: target)
+                XCTFail("Imported an image on \(role)")
+            } catch { XCTAssertEqual(error as? EditorError, .staleColorImageTarget) }
+            let after = try await session.selectComponent("two")
+            XCTAssertEqual(after.document.encoded(), source.encoded())
+            XCTAssertEqual(after.selectedComponent?.colorImage, .reference(imageID))
+            XCTAssertFalse(after.canUndo)
+        }
+    }
+
+    func testSingletonTextureRejectsTargetAfterFailedReplacement() async throws {
+        let session = EditorSession()
+        _ = try await session.open(data: archive)
+        let selected = try await session.selectComponent("c")
+        let imported = try await session.importComponentColorImage(
+            png: png, target: XCTUnwrap(ComponentColorImageTarget(snapshot: selected)))
+        let target = try XCTUnwrap(ComponentColorImageTarget(snapshot: imported))
+        do {
+            _ = try await session.open(data: Data("invalid archive".utf8))
+            XCTFail("Invalid replacement opened")
+        } catch {}
+        do {
+            _ = try await session.setComponentColorImage(imageID: nil, target: target)
+            XCTFail("The retained image was cleared")
+        } catch { XCTAssertEqual(error as? EditorError, .staleColorImageTarget) }
+        do {
+            _ = try await session.importComponentColorImage(png: png, target: target)
+            XCTFail("The retained archive acquired an image")
+        } catch { XCTAssertEqual(error as? EditorError, .staleColorImageTarget) }
+        let retained = try await session.selectComponent("c")
+        XCTAssertEqual(retained.document.encoded(), imported.document.encoded())
+    }
+
     func testGraphTextureImportsOneSharedAssetClearsAndUndoesExactly() async throws {
         let source = try graphTextureDocument()
         let session = EditorSession()
