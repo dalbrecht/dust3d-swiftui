@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
+- Wrap long component breadcrumb labels in narrow sidebars.
 
 - Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.
 
@@ -12,6 +12,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
