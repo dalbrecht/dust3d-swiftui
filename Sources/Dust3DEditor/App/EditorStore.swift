@@ -2667,13 +2667,24 @@ final class EditorStore {
     func removeComponentColor(_ id: String) {
         perform { try await $0.apply([.setComponentColor(id: id, color: nil)]) }
     }
-    func setComponentSmoothCutoff(_ id: String, degrees: String) {
+    func setComponentSmoothCutoff(
+        _ id: String, degrees: String, target: CanvasAdjustmentTarget? = nil
+    ) {
         guard !isWorking, !stopped else { return }
-        guard let value = Double(degrees), value.isFinite, (0...180).contains(value) else {
+        if let target {
+            guard let source = acceptedDocumentSource, target.isCurrent(in: source),
+                let component = source.selectedComponent, component.id.utf8.elementsEqual(id.utf8),
+                source.showsComponentSmoothing(for: [component])
+            else { return }
+        }
+        guard let value = ComponentMeshSmoothingInput.value(degrees) else {
             errorMessage = Self.message(DocumentError.invalidComponentSmoothing)
             return
         }
-        perform { try await $0.apply([.setComponentSmoothCutoffDegrees(id: id, degrees: value)]) }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply(
+                [.setComponentSmoothCutoffDegrees(id: id, degrees: value)], selecting: nil, target: target)
+        }
     }
     func setComponentCombineMode(_ id: String, mode: ComponentCombineMode) {
         perform { try await $0.apply([.setComponentCombineMode(id: id, mode: mode)]) }

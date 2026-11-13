@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import XCTest
 import simd
 
@@ -31,6 +32,7 @@ final class ComponentSmoothingStoreTests: XCTestCase {
         try await settle(store)
         let flat = try XCTUnwrap(store.mesh)
         let camera = store.cameraReset
+        let retired = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(store.snapshot))
         store.setComponentSmoothCutoff(component, degrees: "180")
         try await settle(store)
         let smooth = try XCTUnwrap(store.mesh)
@@ -68,12 +70,19 @@ final class ComponentSmoothingStoreTests: XCTestCase {
         try await settle(store)
         XCTAssertEqual(store.snapshot?.document.encoded(), changed)
         XCTAssertEqual(store.mesh?.vertices.map(\.normal), smooth.vertices.map(\.normal))
-        store.setComponentSmoothCutoff(component, degrees: "0")
+        store.setComponentSmoothCutoff(component, degrees: "0", target: retired)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), changed)
+        let current = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(store.snapshot))
+        store.setComponentSmoothCutoff(component, degrees: "0", target: current)
         try await settle(store)
         XCTAssertEqual(store.snapshot?.selectedComponent?.smoothCutoffDegrees, 0)
         XCTAssertEqual(store.mesh?.vertices.map(\.normal), flat.vertices.map(\.normal))
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), changed)
         store.stop()
         store.setComponentSmoothCutoff(component, degrees: "90")
-        XCTAssertEqual(store.snapshot?.selectedComponent?.smoothCutoffDegrees, 0)
+        XCTAssertEqual(store.snapshot?.selectedComponent?.smoothCutoffDegrees, 180)
     }
 }
