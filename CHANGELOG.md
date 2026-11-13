@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Highlight affected edges and announce their count when Replay Steps shows a bone assignment.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
