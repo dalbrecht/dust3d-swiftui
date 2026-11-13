@@ -40,6 +40,19 @@ struct CanvasPrecisionKeyInput {
         modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty
     }
 
+    static func alternateRedo(_ event: NSEvent) -> Self? {
+        guard event.type == .keyDown else { return nil }
+        let input = Self(
+            keyCode: event.keyCode, characters: event.charactersIgnoringModifiers ?? "",
+            modifiers: event.modifierFlags, isRepeat: event.isARepeat)
+        return input.isAlternateRedo ? input : nil
+    }
+
+    var isAlternateRedo: Bool {
+        modifiers.intersection([.command, .control, .option, .shift, .function]) == .command
+            && characters.lowercased() == "y"
+    }
+
     var axisLockConstraint: EditingConstraint? {
         guard isBareEditingKey else { return nil }
         switch characters {
@@ -64,6 +77,7 @@ struct CanvasPrecisionKeyInput {
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
         guard
             axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
+                || isAlternateRedo
         else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil

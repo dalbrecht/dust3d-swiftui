@@ -12,7 +12,7 @@ struct OriginHandle: View {
 
     var body: some View {
         let point = projection.point(for: origin)
-        let precisionKey = store.canvasPrecisionKeyHandler()
+        let precisionKey = store.canvasPrecisionKeyHandler(profileLease: profileLease)
         Image(systemName: "scope")
             .font(.title3)
             .foregroundStyle(store.isMovingOrigin ? Color.accentColor : .secondary)

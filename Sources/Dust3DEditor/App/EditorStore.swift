@@ -2924,9 +2924,23 @@ final class EditorStore {
         let admitted = canPerformCanvasPrecision(action)
         return { if admitted { _ = handler(action) } }
     }
-    func canvasPrecisionKeyHandler() -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
+    func canvasPrecisionKeyHandler(profileLease: UUID? = nil) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
         let handler = canvasPrecisionHandler()
-        return { input in
+        let target = acceptedDocumentSource.map(CanvasAdjustmentTarget.init)
+        let tool = rotationInputContextID
+        let add = addModeID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] input in
+            if input.isAlternateRedo {
+                guard let self, let target, let current = self.acceptedDocumentSource,
+                    target.isCurrent(in: current), self.ownsCanvasProfile(profileLease),
+                    self.rotationInputContextID == tool, self.addModeID == add,
+                    self.referenceColorInteractionEpoch == interaction, !self.referenceColorInteractionActive,
+                    self.canRedo, !self.isSelectingRigEdges, self.canvasProfileMotion == nil, self.originDrag == nil
+                else { return false }
+                if !input.isRepeat { self.redo() }
+                return true
+            }
             guard let action = input.action else { return false }
             return handler(action)
         }

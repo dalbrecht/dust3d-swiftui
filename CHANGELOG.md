@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Redo with Command-Y from the focused canvas, alongside the standard Edit menu shortcut.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
