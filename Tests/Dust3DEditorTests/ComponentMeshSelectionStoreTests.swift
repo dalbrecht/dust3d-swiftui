@@ -42,6 +42,20 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         }
         XCTFail("Store did not settle")
     }
+    func testInspectedCutFaceCannotApplyCombineMode() async throws {
+        let source = try source()
+        let store = store()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectComponent("a")
+        try await settle(store)
+        let target = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(store.snapshot))
+        store.setComponentCombineMode("a", mode: .normal, target: target)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
     func testGraphSingletonCanEditWhileSidebarSingletonKeepsItsOwnRoute() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(
