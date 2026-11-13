@@ -98,6 +98,49 @@ private struct ClearNoNative: EditorPreviewServing, ArchiveTextureBaking, Archiv
         try await settle(value)
         XCTAssertEqual(value.snapshot?.document.encoded(), cleared.document.encoded())
     }
+    func testRowClearKeepsSelectedBoneAndGraphPicksAndCanClearChain() async throws {
+        let value = store()
+        defer { value.stop() }
+        let original = try source()
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectGraph(nodes: ["a"], edges: ["e3"])
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        let hierarchy = try XCTUnwrap(RigTemplateHierarchy.load(sourceType: "Biped"))
+        let context = RigTemplateBrowserContext(hierarchy: hierarchy, snapshot: before)
+        let browser = RigAssignmentBrowserSelection()
+        browser.setVisible(true)
+        browser.select("HairBack3")
+        let stale = try XCTUnwrap(
+            browser.clearCommand(
+                for: "Head", includeDescendants: false, store: value, context: context))
+        browser.setVisible(false)
+        browser.setVisible(true)
+        stale()
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.isWorking)
+
+        for includeDescendants in [false, true] {
+            let snapshot = try XCTUnwrap(value.snapshot)
+            let command = try XCTUnwrap(
+                browser.clearCommand(
+                    for: "Head", includeDescendants: includeDescendants, store: value,
+                    context: .init(hierarchy: hierarchy, snapshot: snapshot)))
+            command()
+            try await settle(value)
+            let cleared = try XCTUnwrap(value.snapshot)
+            XCTAssertEqual(cleared.edges.map(\.boneName), ["", includeDescendants ? "" : "HairBack3", "Other"])
+            XCTAssertEqual(browser.selectedName, "HairBack3")
+            XCTAssertEqual(cleared.selectedIDs, before.selectedIDs)
+            XCTAssertEqual(cleared.selectedEdgeIDs, before.selectedEdgeIDs)
+            value.undo()
+            try await settle(value)
+            XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+            XCTAssertFalse(value.canUndo)
+        }
+    }
+
     func testInitiallyUnavailableSelectionABAReplacementAndStopNeverRetarget() async throws {
         for change in 0..<4 {
             let value = store()
