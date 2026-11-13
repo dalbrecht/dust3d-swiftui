@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Mirror imported models from the inspector.
+
 - Reset imported model rotation to zero from its orientation controls.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.

@@ -24,7 +24,7 @@ final class PartMirrorTests: XCTestCase {
         }
     }
     func testEnablingCentersAbsentOriginAndUndoIsExactDespitePartFlags() throws {
-        for role in ["Model", ""] {
+        for role in ["Model", "", "ImportedModel"] {
             let doc = try source(role: role)
             var history = DocumentHistory(document: doc)
             let before = history.previewIdentity
@@ -89,7 +89,7 @@ final class PartMirrorTests: XCTestCase {
     }
 
     func testUnsupportedRolesRejectEditsAndRetainAuthoredMetadata() throws {
-        for role in ["ImportedModel", "CutFace", "StitchingLine", "StitchingLoop", "Future"] {
+        for role in ["CutFace", "StitchingLine", "StitchingLoop", "Future"] {
             let doc = try source("xMirrored='future'", role: role)
             XCTAssertThrowsError(try doc.applying(.setPartXMirrored(id: "p", value: true))) {
                 XCTAssertEqual($0 as? DocumentError, .invalidPartMirrorRole)

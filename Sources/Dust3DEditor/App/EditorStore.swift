@@ -3985,7 +3985,7 @@ final class EditorStore {
             case .invalidPartCutRotation:
                 return "Enter a cut rotation from -1 to 1 that the modeling engine can represent."
             case .invalidPartHollowThickness: return "Enter a hollow thickness from 0 to 1."
-            case .invalidPartMirrorRole: return "Mirrored copies can be authored only on Model parts."
+            case .invalidPartMirrorRole: return "Mirrored copies require a procedural or imported model part."
             case .invalidPartMirrorOrigin: return "Set all three canvas origin coordinates before enabling Mirrored."
             case .invalidPartMaterial: return "Enter a material value within its supported range."
             case .invalidPartDeformation: return "Enter a scale from 0 to 2 that the modeling engine can represent."

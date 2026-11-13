@@ -16,6 +16,7 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     public let target: PartTarget?
     /// Exact ImportedModel archive role, separate from the editable procedural role choices.
     package let isImportedModel: Bool
+    package var supportsMirroring: Bool { target == .model || isImportedModel }
     /// Known loop-interior fill flag, false when absent/empty, or nil for unsupported source text.
     /// Only stitching-loop geometry consumes this flag; it remains preserved for other roles.
     public let isLoopInteriorFilled: Bool?
