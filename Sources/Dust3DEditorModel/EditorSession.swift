@@ -1,6 +1,11 @@
 import Dust3DDocument
 import Foundation
 
+/// Explicit transient graph selection intent. Native input maps its own modifiers to these operations.
+package enum GraphSelectionMode: Sendable {
+    case replace, add, toggle, subtract
+}
+
 /// Serializes XML parsing and commands away from the UI actor. A window owns one session.
 public actor EditorSession {
     private var state: EditorState?
@@ -219,6 +224,31 @@ public actor EditorSession {
     public func selectGraph(nodes: Set<String>, edges: Set<String>) throws -> EditorSnapshot {
         try update { try $0.selectGraph(nodes: nodes, edges: edges) }
     }
+    package func applyGraphPicks(
+        nodes: Set<String>, edges: Set<String>, mode: GraphSelectionMode, target: CanvasAdjustmentTarget? = nil
+    ) throws -> EditorSnapshot {
+        try update { state in
+            if let target, !hasAcceptedSource || !target.isCurrent(in: state.snapshot) {
+                throw EditorError.staleCanvasAdjustment
+            }
+            switch mode {
+            case .replace: try state.selectGraph(nodes: nodes, edges: edges)
+            case .add: try state.addToSelection(nodes: nodes, edges: edges)
+            case .toggle: try state.toggleGraphSelection(nodes: nodes, edges: edges)
+            case .subtract: try state.removeFromSelection(nodes: nodes, edges: edges)
+            }
+        }
+    }
+
+    package func applyLasso(
+        plan: CanvasLassoPickPlan, path: CanvasLasso, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try Task.checkCancellation()
+        let hits = plan.hits(in: path)
+        try Task.checkCancellation()
+        return try applyGraphPicks(nodes: hits.nodes, edges: hits.edges, mode: plan.mode, target: target)
+    }
+
     /// Select a target part's complete owned graph and request an independent owning-component reveal.
     /// - Parameters: `target` is a part/node/edge; `context` captures the originating document epoch.
     /// - Returns: Unchanged archive/history with atomic explicit graph selection and reveal metadata.
@@ -229,9 +259,9 @@ public actor EditorSession {
         try update { try $0.selectWholePart(target, context: context) }
     }
     package func revealOwningComponent(
-        _ target: PartGraphTarget, context: PartGraphSelectionContext
+        _ target: PartGraphTarget, context: PartGraphSelectionContext, selecting: Bool = false
     ) throws -> EditorSnapshot {
-        try update { try $0.revealOwningComponent(target, context: context) }
+        try update { try $0.revealOwningComponent(target, context: context, selecting: selecting) }
     }
 
     /// Select only the captured existing part's nodes without edge inference, history or reveal side effects.
@@ -1016,7 +1046,7 @@ public actor EditorSession {
     /// Apply a selected XML file only to the source captured before presenting its picker.
     package func pasteQtXMLFile(
         _ snapshotXML: Data, target: CanvasAdjustmentTarget, parentID: String? = nil, selectsEditableGraph: Bool = true,
-        clearsMissingCutFaces: Bool = false
+        clearsMissingCutFaces: Bool = false, settlesNewDocumentOrigin: Bool = false
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
         guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
@@ -1027,12 +1057,12 @@ public actor EditorSession {
         }
         return try pasteQtSnapshot(
             snapshotXML, allowsEmptyGraph: true, parentID: parentID, selectsEditableGraph: selectsEditableGraph,
-            clearsMissingCutFaces: clearsMissingCutFaces)
+            clearsMissingCutFaces: clearsMissingCutFaces, settlesNewDocumentOrigin: settlesNewDocumentOrigin)
     }
 
     private func pasteQtSnapshot(
         _ snapshotXML: Data, allowsEmptyGraph: Bool, parentID: String?, selectsEditableGraph: Bool,
-        clearsMissingCutFaces: Bool
+        clearsMissingCutFaces: Bool, settlesNewDocumentOrigin: Bool = false
     ) throws -> EditorSnapshot {
         try Task.checkCancellation()
         guard let state else { throw EditorError.notLoaded }
@@ -1053,7 +1083,9 @@ public actor EditorSession {
                 fragment
             }
         let payload = try NodeClipboardPayload(fragment: prepared, identifier: identifier)
-        let next = try paste(payload: payload, parentID: parentID, selectsEditableGraph: selectsEditableGraph)
+        let next = try paste(
+            payload: payload, parentID: parentID, selectsEditableGraph: selectsEditableGraph,
+            settlesNewDocumentOrigin: settlesNewDocumentOrigin)
         lastQtTransfer = (Data(snapshotXML), identifier)
         return next
     }
@@ -1102,7 +1134,8 @@ public actor EditorSession {
     }
 
     private func paste(
-        payload: NodeClipboardPayload, parentID: String?, selectsEditableGraph: Bool = false
+        payload: NodeClipboardPayload, parentID: String?, selectsEditableGraph: Bool = false,
+        settlesNewDocumentOrigin: Bool = false
     ) throws -> EditorSnapshot {
         guard let state else { throw EditorError.notLoaded }
         let fragment = payload.fragment
@@ -1122,13 +1155,17 @@ public actor EditorSession {
             }
         }
         let selected = Set(fragment.selectedNodeIDs.compactMap { identities[$0] })
+        var commands: [DocumentCommand] = [
+            .pasteNodes(
+                clipboard: fragment, identities: identities,
+                offset: .init(x: 0, y: distance, z: distance), partitions: partitions)
+        ]
+        if settlesNewDocumentOrigin, state.snapshot.nodes.isEmpty, !contents.nodes.isEmpty {
+            let center = try OriginSettlement.center(of: contents.nodes.map(\.value))
+            commands.append(.setOrigin(.init(x: center.x, y: center.y + distance, z: center.z + distance)))
+        }
         let next = try updateWithResult(checkCancellationBeforePublication: true) { state in
-            try state.apply(
-                [
-                    .pasteNodes(
-                        clipboard: fragment, identities: identities,
-                        offset: .init(x: 0, y: distance, z: distance), partitions: partitions)
-                ], pasteParentID: parentID)
+            try state.apply(commands, pasteParentID: parentID)
             if selectsEditableGraph {
                 let snapshot = state.snapshot
                 let pastedEdges = Set(contents.edges.compactMap { identities[$0.id] })
