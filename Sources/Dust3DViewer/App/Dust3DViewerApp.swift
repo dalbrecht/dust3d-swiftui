@@ -32,7 +32,7 @@ struct Dust3DViewerApp: App {
                     Button(link.title) { link.open() }
                 }
             }
-            CommandGroup(replacing: .newItem) {
+            CommandGroup(after: .newItem) {
                 Button("Open…") {
                     openDocument?()
                 }

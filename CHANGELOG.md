@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open a separate Viewer window with File → New Window or Command-N.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
