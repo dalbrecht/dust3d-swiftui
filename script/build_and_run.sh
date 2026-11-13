@@ -21,6 +21,11 @@ fi
 MODE="${1:-run}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/script/build_paths.sh"
+BUILD_CONFIGURATION="${DUST3D_PACKAGE_CONFIGURATION:-debug}"
+case "$BUILD_CONFIGURATION" in
+    debug|release) ;;
+    *) echo "DUST3D_PACKAGE_CONFIGURATION must be debug or release." >&2; exit 2 ;;
+esac
 APP_OUTPUT_DEFAULT="$DUST3D_BUILD_ROOT/app"
 ARCHIVE_OUTPUT_DEFAULT="$ROOT_DIR/dist"
 if [ "$IS_QA" = true ]; then
@@ -39,13 +44,13 @@ case "$MODE" in
 esac
 
 python3 -B "$ROOT_DIR/script/check_running_app.py" "$APP_BINARY"
-./script/swift.sh build --product "$APP_NAME"
+./script/swift.sh build --product "$APP_NAME" --configuration "$BUILD_CONFIGURATION"
 if [ "$APP_NAME" = "Dust3DEditor" ] && [ "$IS_QA" = false ]; then
     for EXTENSION_NAME in Dust3DQuickLookExtension Dust3DThumbnailExtension; do
-        ./script/swift.sh build --product "$EXTENSION_NAME"
+        ./script/swift.sh build --product "$EXTENSION_NAME" --configuration "$BUILD_CONFIGURATION"
     done
 fi
-BUILD_DIR="$DUST3D_BINARY_DIR"
+BUILD_DIR="${DUST3D_BINARY_DIR%/*}/$BUILD_CONFIGURATION"
 # The target may have launched during compilation; check again before touching its bundle.
 python3 -B "$ROOT_DIR/script/check_running_app.py" "$APP_BINARY"
 mkdir -p "$APP_CONTENTS/MacOS" "$APP_CONTENTS/Resources" "$ARCHIVE_OUTPUT_DIR"
