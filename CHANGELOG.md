@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Drop selected sibling components at the end of a component listing.
+
 - Offer sibling reordering when dropping components onto a group row.
 
 - Confirm a component drop into a group before changing the hierarchy.
