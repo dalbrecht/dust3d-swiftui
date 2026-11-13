@@ -13,6 +13,16 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertTrue(entry.scope.contains("Focused"))
     }
 
+    func testAnimationsShortcutNamesTheWindowMenuAndScope() {
+        let entries = KeyboardShortcutHelp.matching("Show Animations Inspector")
+        XCTAssertEqual(entries.map(\.action), ["Show Animations Inspector"])
+        XCTAssertEqual(KeyboardShortcutHelp.matching("⌥⌘A"), entries)
+        XCTAssertEqual(
+            entries.first?.scope,
+            "Focused editor window with an accepted document and no open sheet. Choose Show Animations Inspector from the Window menu."
+        )
+    }
+
     func testProfileSwitchShortcutDescribesItsFocusedSideBySideScope() throws {
         let entry = try XCTUnwrap(KeyboardShortcutHelp.matching("E").first)
         XCTAssertEqual(entry.action, "Switch Editing Profile")

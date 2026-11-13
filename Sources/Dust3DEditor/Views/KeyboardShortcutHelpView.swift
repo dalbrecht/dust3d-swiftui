@@ -57,7 +57,11 @@ enum KeyboardShortcutHelp {
         .init(action: "Lock X / Y / Z / Radius", keys: "⌥⌘X / ⌥⌘Y / ⌥⌘Z / ⌥⌘R", scope: "Active document"),
         .init(action: "Show / Hide Sidebar", keys: "⌃⌘S", scope: "Focused editor window"),
         .init(action: "Show / Hide Inspector", keys: "⌃⌘I", scope: "Focused editor window"),
-        .init(action: "Show Animations Inspector", keys: "⌥⌘A", scope: "Editor window"),
+        .init(
+            action: "Show Animations Inspector", keys: "⌥⌘A",
+            scope:
+                "Focused editor window with an accepted document and no open sheet. Choose Show Animations Inspector from the Window menu."
+        ),
         .init(
             action: "Switch Editing Profile", keys: "E",
             scope: "Focused Side by Side canvas or node with a graph selection and no active drag"),
