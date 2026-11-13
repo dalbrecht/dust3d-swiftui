@@ -187,6 +187,43 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertEqual(view.orbitCamera.transform(aspect: 1), initial)
     }
 
+    func testMiddleMouseOrbitsAndShiftPansWithoutPicking() throws {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        var picks = 0
+        view.updatePicking(revision: UUID()) { _ in picks += 1 }
+        func event(_ type: CGEventType, x: CGFloat, shift: Bool = false, button: CGMouseButton = .center) throws
+            -> NSEvent
+        {
+            let event = try XCTUnwrap(
+                CGEvent(
+                    mouseEventSource: nil, mouseType: type, mouseCursorPosition: CGPoint(x: x, y: 100),
+                    mouseButton: button))
+            event.flags = shift ? .maskShift : []
+            return try XCTUnwrap(NSEvent(cgEvent: event))
+        }
+
+        let initial = view.orbitCamera
+        view.otherMouseDown(with: try event(.otherMouseDown, x: 100))
+        XCTAssertTrue(view.isDraggingCamera)
+        view.mouseDown(with: try event(.leftMouseDown, x: 100, button: .left))
+        view.otherMouseDragged(with: try event(.otherMouseDragged, x: 120))
+        let orbited = view.orbitCamera
+        XCTAssertNotEqual(orbited.yaw, initial.yaw)
+        view.otherMouseDragged(with: try event(.otherMouseDragged, x: 140, shift: true))
+        XCTAssertEqual(view.orbitCamera.yaw, orbited.yaw)
+        XCTAssertNotEqual(view.orbitCamera.transform(aspect: 1), orbited.transform(aspect: 1))
+        view.otherMouseUp(with: try event(.otherMouseUp, x: 140))
+        XCTAssertFalse(view.isDraggingCamera)
+        XCTAssertEqual(picks, 0)
+
+        let finished = view.orbitCamera.transform(aspect: 1)
+        view.otherMouseDragged(with: try event(.otherMouseDragged, x: 160))
+        view.mouseDragged(with: try event(.leftMouseDragged, x: 160, button: .left))
+        view.mouseDragged(with: try event(.leftMouseDragged, x: 180, button: .left))
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), finished)
+        XCTAssertFalse(view.isDraggingCamera)
+    }
+
     func testDefaultExpandedAndIndexedViewportValuesHaveNoOwner() {
         let mesh = Mesh(vertices: [], nodeCount: 0, partCount: 0, warning: "")
         let ordinary = MeshViewport(mesh: mesh, isWireframe: false, cameraReset: 0, onError: { _ in })
