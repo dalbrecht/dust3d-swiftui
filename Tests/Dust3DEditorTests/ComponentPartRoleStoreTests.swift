@@ -133,7 +133,9 @@ final class ComponentPartRoleStoreTests: XCTestCase {
         defer { store.stop() }
         await store.load(data: source.encoded())
         try await settle(store)
-        let disclosure = ComponentSidebarDisclosure(collapsedIDs: ["outer", StitchingFixture.groupID])
+        let disclosure = ComponentSidebarDisclosure()
+        disclosure.restore(from: store.snapshot)
+        disclosure.collapsedIDs = ["outer", StitchingFixture.groupID]
         let host = NSHostingView(
             rootView: VStack(alignment: .leading, spacing: 0) {
                 ComponentSidebar(store: store, disclosure: disclosure)

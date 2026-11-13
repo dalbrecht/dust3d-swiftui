@@ -79,6 +79,18 @@ final class GeometryExportRenderingTests: XCTestCase {
         XCTAssertEqual(actions, 0)
     }
 
+    func testTexturedExportControlLabelsIdentifyTheSelectedFormat() {
+        let view = EditorGeometryExportStatusView(
+            phase: .encoding, format: .fbxTextured, onCancel: {}, onDismiss: {}, onReveal: { _ in })
+        XCTAssertEqual(view.cancelAccessibilityLabel, "Cancel Textured FBX export")
+        XCTAssertEqual(
+            EditorGeometryExportStatusView.dismissAccessibilityLabel(for: .fbxTextured),
+            "Dismiss Textured FBX export result")
+        XCTAssertEqual(
+            EditorGeometryExportStatusView.dismissAccessibilityLabel(for: .fbx),
+            "Dismiss FBX Geometry export result")
+    }
+
     func testAccessibilityReplacesSelectableExportWarning() async throws {
         _ = NSApplication.shared
         let receipt = EditorExportReceipt(
