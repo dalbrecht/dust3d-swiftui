@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Switch Viewer windows between Model Colors and neutral shading from the toolbar or View menu. The Viewer retains the current mesh and its materials while a replacement loads or if that open fails.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
