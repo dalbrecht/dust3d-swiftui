@@ -4,6 +4,10 @@
 
 This repository now includes a native SwiftUI/Metal viewer backed by the existing C++17 engine. Build and launch with `./script/build_and_run.sh`; use `make ci` for native verification. See [native/README.md](native/README.md) for document support, architecture, and coding standards. The separate editor runs with `./script/build_and_run.sh --editor` (or `make run-editor`). It opens/saves `.ds3` documents and supports node selection, front/side dragging, coordinate/radius edits, and undo/redo. See [editor usage](Sources/Dust3DEditor/README.md). The Qt application remains available below as the original implementation.
 
+For a local optimized archive, set `DUST3D_PACKAGE_CONFIGURATION=release`
+when running `./script/build_and_run.sh --editor --build-only`. The same setting
+applies to the Viewer and to the Editor's Finder preview extensions.
+
 The viewer, editor and macOS file-preview providers render supported embedded GLB
 base-color textures, vertex colors, material factors/scalars, sampler wrapping/
 filtering and alpha policy. Ordinary geometry remains available on optional
