@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep rig template and eyelid edits tied to the document displayed when the control was drawn.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
