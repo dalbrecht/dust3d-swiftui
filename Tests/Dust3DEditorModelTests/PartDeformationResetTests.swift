@@ -9,6 +9,7 @@ final class PartDeformationResetTests: XCTestCase {
             <canvas><parts>
             <part id='model' deformWidth='1.5' deformThickness='0.5' deformUnified='true' locked='true' visible='false'/>
             <part id='profile' target='CutFace' deformWidth='1.5'/>
+            <part id='imported' target='ImportedModel' deformWidth='1.5' deformThickness='.25' deformUnified='true'/>
             </parts><components>
             <component id='first-link' linkDataType='partId' linkData='model'/>
             <component id='second-link' linkDataType='partId' linkData='model'/>
@@ -66,7 +67,28 @@ final class PartDeformationResetTests: XCTestCase {
         XCTAssertEqual(edited.selectedComponentIDs, shared.selectedComponentIDs)
     }
 
-    func testResetRejectsStaleAndNonModelTargets() async throws {
+    func testImportedModelResetsWidthAndThicknessIndependently() async throws {
+        let source = try makeDocument()
+        let session = EditorSession()
+        _ = try await session.open(data: source.encoded())
+        let original = try await session.selectPart("imported")
+        let width = try await session.resetPartDeformationScale(
+            .width, partID: "imported", target: CanvasAdjustmentTarget(snapshot: original))
+        XCTAssertEqual(width.inspectedPart?.deformationScale(.width), 1)
+        XCTAssertEqual(width.inspectedPart?.deformationScale(.thickness), 0.25)
+        let thickness = try await session.resetPartDeformationScale(
+            .thickness, partID: "imported", target: CanvasAdjustmentTarget(snapshot: width))
+        XCTAssertEqual(thickness.inspectedPart?.deformationScale(.width), 1)
+        XCTAssertEqual(thickness.inspectedPart?.deformationScale(.thickness), 1)
+        XCTAssertEqual(thickness.inspectedPart?.isDeformationUnified, true)
+
+        let undoThickness = try await session.undo()
+        let undoWidth = try await session.undo()
+        XCTAssertEqual(undoThickness.document.encoded(), width.document.encoded())
+        XCTAssertEqual(undoWidth.document.encoded(), source.encoded())
+    }
+
+    func testResetRejectsStaleAndCutFaceTargets() async throws {
         let source = try makeDocument()
         let session = EditorSession()
         _ = try await session.open(data: source.encoded())
@@ -85,7 +107,7 @@ final class PartDeformationResetTests: XCTestCase {
         do {
             _ = try await session.resetPartDeformationScale(
                 .width, partID: "profile", target: CanvasAdjustmentTarget(snapshot: nonModel))
-            XCTFail("Only Model parts support this reset")
+            XCTFail("Cut Face parts do not support this reset")
         } catch {
             // The current role does not authorize this reset.
         }

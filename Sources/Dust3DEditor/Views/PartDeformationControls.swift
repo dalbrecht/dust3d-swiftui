@@ -13,31 +13,33 @@ struct PartDeformationControls: View {
             ForEach(PartDeformationProperty.allCases, id: \.self) { property in
                 PartDeformationScaleControl(store: store, part: part, property: property, graphTarget: graphTarget)
             }
-            if let value = part.isDeformationUnified {
-                Toggle(
-                    "Unified deformation",
-                    isOn: Binding(get: { value }, set: { setUnified($0) })
-                )
-                .accessibilityIdentifier("part-deformation-unified")
-            } else {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Unified deformation").font(.callout)
-                    Picker(
+            if !part.isImportedModel {
+                if let value = part.isDeformationUnified {
+                    Toggle(
                         "Unified deformation",
-                        selection: Binding<Bool?>(
-                            get: { nil },
-                            set: {
-                                if let value = $0 { setUnified(value) }
-                            })
-                    ) {
-                        Text("Unsupported source value").tag(nil as Bool?)
-                        Text("On").tag(Optional(true))
-                        Text("Off").tag(Optional(false))
-                    }
-                    .labelsHidden().pickerStyle(.menu)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel("Unified deformation")
+                        isOn: Binding(get: { value }, set: { setUnified($0) })
+                    )
                     .accessibilityIdentifier("part-deformation-unified")
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Unified deformation").font(.callout)
+                        Picker(
+                            "Unified deformation",
+                            selection: Binding<Bool?>(
+                                get: { nil },
+                                set: {
+                                    if let value = $0 { setUnified(value) }
+                                })
+                        ) {
+                            Text("Unsupported source value").tag(nil as Bool?)
+                            Text("On").tag(Optional(true))
+                            Text("Off").tag(Optional(false))
+                        }
+                        .labelsHidden().pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel("Unified deformation")
+                        .accessibilityIdentifier("part-deformation-unified")
+                    }
                 }
             }
             Text(

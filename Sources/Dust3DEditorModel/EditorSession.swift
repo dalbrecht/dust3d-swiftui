@@ -385,13 +385,14 @@ public actor EditorSession {
         }
     }
 
-    /// Restore just one saved deformation scale on the originally inspected Model part.
+    /// Restore one saved scale on the originally inspected procedural or imported model.
     package func resetPartDeformationScale(
         _ property: PartDeformationProperty, partID: String, target: CanvasAdjustmentTarget
     ) throws -> EditorSnapshot {
         try update { state in
             let snapshot = state.snapshot
-            guard target.isCurrent(in: snapshot), let part = snapshot.inspectedPart, part.target == .model,
+            guard hasAcceptedSource, target.isCurrent(in: snapshot),
+                let part = snapshot.inspectedPart, part.supportsDeformationScales,
                 part.id.utf8.elementsEqual(partID.utf8)
             else { throw EditorError.staleCanvasAdjustment }
             try state.apply([.setPartDeformationScale(id: partID, property: property, value: 1)])
