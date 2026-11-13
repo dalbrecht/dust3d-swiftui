@@ -238,6 +238,36 @@ final class AddPlacementTests: XCTestCase {
         XCTAssertEqual(fallback.snapshot.nodes.count, 4)
     }
 
+    func testIneligibleSelectedEndpointStartsNewPartInTheChosenGroup() throws {
+        for flag in ["locked='true'", "visible='false'", "disabled='true'"] {
+            let original = try document(state: flag)
+            var state = try EditorState(document: original)
+            try state.select("a")
+            let selected = state.snapshot
+            var ghost = AddPlacementState()
+            let projected = projection(selected)
+            try ghost.begin(snapshot: selected, projection: projected, canvasHeight: 400, destination: .group("group"))
+            XCTAssertNil(ghost.anchorID, flag)
+            XCTAssertEqual(state.snapshot.selectedIDs, ["a"])
+            XCTAssertFalse(state.snapshot.canUndo)
+            try ghost.updatePointer(projected.point(for: .init(x: 3, y: 4, z: 0.4)))
+            let request = try XCTUnwrap(ghost.request())
+            XCTAssertEqual(request.parentID, "group")
+            XCTAssertEqual(request.position.z, 0.4, accuracy: 1e-12)
+            let identities = ids("fallback")
+            _ = try state.placeAddNode(request, identities: identities)
+            let placed = state.snapshot
+            XCTAssertEqual(placed.nodes.first { $0.id == identities.nodeID }?.partID, identities.partID)
+            XCTAssertEqual(
+                placed.componentTree.rows.first { $0.id == identities.componentID }?.component.parentID, "group")
+            XCTAssertEqual(placed.nodes.first { $0.id == "a" }, selected.nodes.first { $0.id == "a" })
+            XCTAssertEqual(placed.edges, selected.edges)
+            try state.undo()
+            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+            XCTAssertFalse(state.snapshot.canUndo)
+        }
+    }
+
     func testReadonlyAndStaleContextsRejectWithoutPublishingPartialPlacement() throws {
         for locked in [false, true] {
             var state = try EditorState(document: document(state: locked ? "locked='true'" : ""))
@@ -246,10 +276,18 @@ final class AddPlacementTests: XCTestCase {
             let projected = projection(state.snapshot)
             try ghost.begin(snapshot: state.snapshot, projection: projected, canvasHeight: 400)
             try ghost.updatePointer(projected.point(for: .init(x: 3, y: 4, z: 0)))
-            let request = try XCTUnwrap(ghost.request())
+            let captured = try XCTUnwrap(ghost.request())
+            let request =
+                locked
+                ? AddPlacementRequest(
+                    target: captured.target, position: captured.position, radius: captured.radius, anchorID: "a",
+                    parentID: nil, connectingTo: nil, lastAddedPosition: nil)
+                : captured
             let before = state.snapshot
             if !locked { try state.select("b") }
-            XCTAssertThrowsError(try state.placeAddNode(request, identities: ids("x")))
+            XCTAssertThrowsError(try state.placeAddNode(request, identities: ids("x"))) {
+                XCTAssertEqual($0 as? EditorError, locked ? .readOnlyNode : .staleAddPlacement)
+            }
             XCTAssertEqual(state.snapshot.document.encoded(), before.document.encoded())
             XCTAssertFalse(state.snapshot.canUndo)
         }
