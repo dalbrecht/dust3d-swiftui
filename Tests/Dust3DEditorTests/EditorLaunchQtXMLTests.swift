@@ -65,18 +65,46 @@ final class EditorLaunchQtXMLTests: XCTestCase {
         XCTAssertNil(opener.claimStartupPaste(for: url, document: document, isEdited: false))
     }
 
-    func testMalformedPreflightNeverOpensOrDisplaysAnyDocument() async {
-        let opener = EditorLaunchDocumentOpener(
-            arguments: ["Editor", "/tmp/a.ds3", "/tmp/b.ds3", "-paste-xml", "/tmp/edits.xml"])
-        var errors = 0
-        await opener.openRequestedDocument(
-            readPaste: { _ in Data("not XML".utf8) },
-            open: { _ in
-                XCTFail("Malformed preflight opened a document")
-                return nil
-            },
-            displayNew: { _ in XCTFail("Malformed preflight displayed a document") },
-            reportError: { _ in errors += 1 })
-        XCTAssertEqual(errors, 1)
+    func testFailedStartupPasteStillOpensAndDisplaysEveryRequestedDocument() async {
+        enum FragmentFailure: Error { case unreadable }
+        let paths = ["/tmp/first.ds3", "/tmp/second.ds3"]
+        let urls = paths.map { URL(fileURLWithPath: $0) }
+        let fragment = "/tmp/fragment.xml"
+
+        for canRead in [false, true] {
+            let opener = EditorLaunchDocumentOpener(arguments: ["Editor"] + paths + ["-paste-xml", fragment])
+            XCTAssertTrue(opener.hasPasteRequest)
+            let documents = [NSObject(), NSObject()]
+            var opened: [URL] = []
+            var displayed: [ObjectIdentifier] = []
+            var failures: [Error] = []
+            var readCount = 0
+            await opener.openRequestedDocument(
+                readPaste: { url in
+                    XCTAssertEqual(url.path, fragment)
+                    readCount += 1
+                    if !canRead { throw FragmentFailure.unreadable }
+                    return Data("invalid snapshot XML".utf8)
+                },
+                open: { url in
+                    opened.append(url)
+                    return urls.firstIndex(of: url).map { documents[$0] }
+                },
+                displayNew: { displayed.append(ObjectIdentifier($0)) },
+                reportError: {
+                    XCTAssertEqual(displayed.count, documents.count)
+                    failures.append($0)
+                })
+
+            XCTAssertEqual(readCount, 1)
+            XCTAssertEqual(opened, urls)
+            XCTAssertEqual(displayed, documents.map(ObjectIdentifier.init))
+            XCTAssertEqual(failures.count, 1)
+            if !canRead { XCTAssertEqual(failures.first as? FragmentFailure, .unreadable) }
+            for (url, document) in zip(urls, documents) {
+                XCTAssertFalse(opener.hasStartupPaste(for: url))
+                XCTAssertNil(opener.claimStartupPaste(for: url, document: document, isEdited: false))
+            }
+        }
     }
 }
