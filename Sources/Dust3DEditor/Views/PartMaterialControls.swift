@@ -6,12 +6,16 @@ struct PartMaterialControls: View {
     let store: EditorStore
     let part: DocumentPart
     var graphTarget: GraphModelPartTarget? = nil
+    var inspectorTarget: CanvasAdjustmentTarget? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Material").font(.headline)
             ForEach(PartMaterialProperty.allCases, id: \.self) { property in
-                PartMaterialScalarControl(store: store, part: part, property: property, graphTarget: graphTarget)
+                PartMaterialScalarControl(
+                    store: store, part: part, property: property, graphTarget: graphTarget,
+                    inspectorTarget: inspectorTarget
+                )
             }
             Text(
                 "Apply saves one undo step and updates the material preview. Materials update in the background."
@@ -26,6 +30,7 @@ private struct PartMaterialScalarControl: View {
     let part: DocumentPart
     let property: PartMaterialProperty
     let graphTarget: GraphModelPartTarget?
+    let inspectorTarget: CanvasAdjustmentTarget?
     @State private var draft = ""
 
     private var title: String {
@@ -59,8 +64,8 @@ private struct PartMaterialScalarControl: View {
                 Button(action: apply) { Text("Apply").frame(minHeight: 32) }
                     .accessibilityLabel("Apply \(title.lowercased())")
             }
-            if let graphTarget {
-                Button("Restore Default") { store.resetGraphPartMaterial(property, target: graphTarget) }
+            if graphTarget != nil || inspectorTarget != nil {
+                Button("Restore Default", action: restoreDefault)
                     .accessibilityLabel("Restore \(title.lowercased()) default")
                     .disabled(part.materialValue(property) == property.defaultValue)
             }
@@ -70,11 +75,18 @@ private struct PartMaterialScalarControl: View {
     }
 
     private func reset() { draft = part.materialValue(property).map { String($0) } ?? "" }
+    private func restoreDefault() {
+        if let graphTarget {
+            store.resetGraphPartMaterial(property, target: graphTarget)
+        } else if let inspectorTarget {
+            store.resetInspectedPartMaterial(part.id, property: property, target: inspectorTarget)
+        }
+    }
     private func apply() {
         if let graphTarget {
             store.setGraphPartMaterial(property, value: draft, target: graphTarget)
-        } else {
-            store.setPartMaterial(part.id, property: property, value: draft)
+        } else if let inspectorTarget {
+            store.setPartMaterial(part.id, property: property, value: draft, target: inspectorTarget)
         }
     }
 }
