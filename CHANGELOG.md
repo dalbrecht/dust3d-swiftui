@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Edit the stored animation surface material when the archive uses an unknown animation type.
+
 - Edit duration and sample count for named stored animations whose type is unknown.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.

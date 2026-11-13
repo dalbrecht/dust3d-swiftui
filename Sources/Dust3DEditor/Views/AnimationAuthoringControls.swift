@@ -98,7 +98,7 @@ struct AnimationAuthoringControls: View {
                 Text("Unchanged settings and unsupported values are kept. Default removes a stored override.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 timingFields(draft.timing, seconds: draft.clip.seconds, frames: draft.clip.samples)
-                surfacePicker(draft)
+                surfacePicker(draft.surfaceMaterials)
                 ForEach(draft.clip.controls.indices, id: \.self) { index in
                     let control = draft.clip.controls[index]
                     Divider()
@@ -120,11 +120,12 @@ struct AnimationAuthoringControls: View {
                         .disabled(sliderPosition(control) == nil)
                     }
                 }
-            } else if let draft = workflow.unknownTimingDraft {
+            } else if let draft = workflow.unknownParameterDraft {
                 Text(workflow.sourceType ?? "").font(.caption).textSelection(.enabled)
-                Text("Only stored timing is editable for this type. Other parameters are kept.")
+                Text("Timing and surface material are editable for this type. Other parameters are kept.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 timingFields(draft.timing, seconds: draft.defaultSeconds, frames: draft.defaultFrames)
+                surfacePicker(draft.surfaceMaterials)
             }
         }
     }
@@ -200,29 +201,29 @@ struct AnimationAuthoringControls: View {
         guard let number = Double(text), let index = try? control.slider(for: number) else { return nil }
         return Double(index)
     }
-    private func surfacePicker(_ draft: AnimationParameterDraft) -> some View {
-        let raw = draft.value(for: "surfaceMaterial")
+    private func surfacePicker(_ materials: [String]) -> some View {
+        let raw = workflow.parameterValue(for: "surfaceMaterial")
         return Picker(
             "Surface material",
             selection: Binding<[UInt8]?>(
-                get: { workflow.parameterDraft?.value(for: "surfaceMaterial").map { Array($0.utf8) } },
+                get: { workflow.parameterValue(for: "surfaceMaterial").map { Array($0.utf8) } },
                 set: { value in
                     guard let value else {
                         workflow.useDefault(name: "surfaceMaterial")
                         return
                     }
-                    guard let selected = draft.surfaceMaterials.first(where: { $0.utf8.elementsEqual(value) }) else {
+                    guard let selected = materials.first(where: { $0.utf8.elementsEqual(value) }) else {
                         return
                     }
                     workflow.setText(name: "surfaceMaterial", value: selected)
                 })
         ) {
             Text("Default").tag(Optional<[UInt8]>.none)
-            if let raw, !draft.surfaceMaterials.contains(where: { $0.utf8.elementsEqual(raw.utf8) }) {
+            if let raw, !materials.contains(where: { $0.utf8.elementsEqual(raw.utf8) }) {
                 Text("Unsupported: \(raw)").tag(Optional(Array(raw.utf8))).disabled(true)
             }
-            ForEach(draft.surfaceMaterials.indices, id: \.self) { index in
-                let name = draft.surfaceMaterials[index]
+            ForEach(materials.indices, id: \.self) { index in
+                let name = materials[index]
                 Text(name).tag(Optional(Array(name.utf8)))
             }
         }

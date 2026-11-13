@@ -253,7 +253,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.document.encoded(), typed)
     }
 
-    func testUnknownStoredTypeEditsOnlyCommonTimingWithQtDefaultsAndExactUndo() async throws {
+    func testUnknownStoredTypeEditsCommonTimingWithQtDefaultsAndExactUndo() async throws {
         let store = try await store(type: "Future")
         defer { store.stop() }
         let original = try XCTUnwrap(store.snapshot?.document.encoded())
@@ -261,7 +261,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         let workflow = EditorAnimationAuthoringWorkflow(store: store)
         XCTAssertTrue(workflow.canBeginParameters)
         workflow.beginParameters()
-        let timing = try XCTUnwrap(workflow.unknownTimingDraft)
+        let timing = try XCTUnwrap(workflow.unknownParameterDraft)
         XCTAssertEqual(timing.defaultSeconds, 3)
         XCTAssertEqual(timing.defaultFrames, 90)
         XCTAssertNil(workflow.parameterDraft)
@@ -287,6 +287,39 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         XCTAssertEqual(record.parameter(named: "speed"), "1.000")
         XCTAssertEqual(record.parameter(named: "opaque"), "keep")
         XCTAssertEqual(store.previewRevision, preview)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testUnknownStoredTypeCanRepairSurfaceWithoutRewritingOtherParameters() async throws {
+        let store = try await store(
+            extraAnimations:
+                "<animation id='future' name='Future' type='Unknown' surfaceMaterial='Legacy' opaque='keep'/>")
+        defer { store.stop() }
+        store.selectAnimation("future")
+        await store.animationQuery?.value
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        workflow.beginParameters()
+        XCTAssertEqual(workflow.parameterValue(for: "surfaceMaterial"), "Legacy")
+        workflow.setText(name: "surfaceMaterial", value: "Unsupported")
+        XCTAssertEqual(workflow.validationIssue as? AnimationCatalogError, .invalidValue)
+        workflow.setText(name: "surfaceMaterial", value: "Wood")
+        XCTAssertTrue(workflow.canApply)
+        workflow.submit()
+        try await settle(store)
+
+        let changed = try XCTUnwrap(store.snapshot?.document.encoded())
+        let reopened = try Dust3DDocument(data: changed)
+        let record = try XCTUnwrap(try reopened.animations().first { $0.id == "future" })
+        XCTAssertEqual(record.type, "Unknown")
+        XCTAssertEqual(record.parameter(named: "surfaceMaterial"), "Wood")
+        XCTAssertEqual(record.parameter(named: "opaque"), "keep")
+        XCTAssertNil(record.parameter(named: "durationSeconds"))
+        XCTAssertNil(record.parameter(named: "frameCount"))
+
         store.undo()
         try await settle(store)
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
@@ -346,9 +379,11 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
     }
     func testActualAuthoringControlsRenderOffscreenWithoutPublishingOrNormalizingSource() async throws {
         for state in [
-            "ready", "create", "create-long", "unsupported-type", "parameters", "parameters-unsupported", "stale",
+            "ready", "create", "create-long", "unsupported-type", "parameters", "parameters-unsupported",
+            "parameters-unknown", "stale",
         ] {
-            let store = try await store(type: state == "unsupported-type" ? "Future" : "Known")
+            let unknown = state == "unsupported-type" || state == "parameters-unknown"
+            let store = try await store(type: unknown ? "Future" : "Known")
             defer { store.stop() }
             if state == "parameters-unsupported" {
                 let target = try AnimationEditTarget(snapshot: XCTUnwrap(store.animationSnapshot), animationID: "a")
@@ -359,7 +394,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
             switch state {
             case "create", "create-long", "stale": workflow.creationAction()()
             case "unsupported-type": workflow.beginType()
-            case "parameters", "parameters-unsupported": workflow.beginParameters()
+            case "parameters", "parameters-unsupported", "parameters-unknown": workflow.beginParameters()
             default: break
             }
             if state == "create-long" {
