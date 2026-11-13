@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Explain when Qt treats a near-default part deformation scale as 1.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
