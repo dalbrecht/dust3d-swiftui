@@ -78,6 +78,16 @@ struct NodeInspector: View {
                     }
                     .help("Edit shape settings for \(part.title). Each edit is one Undo step.")
                 }
+                let loopTarget = GraphLoopInteriorTarget(snapshot: snapshot)
+                if let part = loopTarget.part {
+                    DisclosureGroup("Owning Stitching Loop") {
+                        Text(part.title).font(.caption).foregroundStyle(.secondary)
+                        PartLoopInteriorControls(part: part) { value in
+                            store.setGraphLoopInterior(value, target: loopTarget)
+                        }
+                        .disabled(!store.canEditGraphLoopInterior(loopTarget))
+                    }
+                }
                 let crossSectionTarget = GraphPartCrossSectionTarget(owner: roleTarget)
                 if let component = crossSectionTarget.component,
                     let equipmentTarget = crossSectionTarget.equipmentSlotTarget
