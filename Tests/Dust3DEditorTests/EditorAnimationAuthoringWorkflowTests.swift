@@ -224,7 +224,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         let store = try await store(type: "Future")
         defer { store.stop() }
         let workflow = EditorAnimationAuthoringWorkflow(store: store)
-        XCTAssertFalse(workflow.canBeginParameters)
+        XCTAssertTrue(workflow.canBeginParameters)
         workflow.beginType()
         XCTAssertFalse(workflow.canApply)
         workflow.selectedType = Array("Known".utf8)
@@ -251,6 +251,70 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         store.undo()
         try await settle(store)
         XCTAssertEqual(store.snapshot?.document.encoded(), typed)
+    }
+
+    func testUnknownStoredTypeEditsOnlyCommonTimingWithQtDefaultsAndExactUndo() async throws {
+        let store = try await store(type: "Future")
+        defer { store.stop() }
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        let preview = store.previewRevision
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        XCTAssertTrue(workflow.canBeginParameters)
+        workflow.beginParameters()
+        let timing = try XCTUnwrap(workflow.unknownTimingDraft)
+        XCTAssertEqual(timing.defaultSeconds, 3)
+        XCTAssertEqual(timing.defaultFrames, 90)
+        XCTAssertNil(workflow.parameterDraft)
+        XCTAssertFalse(workflow.canApply)
+        workflow.setText(name: "opaque", value: "changed")
+        XCTAssertFalse(workflow.canApply)
+        workflow.setText(name: "durationSeconds", value: "1.125")
+        XCTAssertTrue(workflow.canApply, "Untouched malformed frame count remains preserved")
+        workflow.setText(name: "frameCount", value: "2.5")
+        XCTAssertFalse(workflow.canApply)
+        workflow.useDefault(name: "frameCount")
+        XCTAssertTrue(workflow.canApply)
+        workflow.submit()
+        try await settle(store)
+
+        let encoded = try XCTUnwrap(store.snapshot?.document.encoded())
+        let reopened = try Dust3DDocument(data: encoded)
+        let record = try XCTUnwrap(try reopened.animations().first)
+        XCTAssertEqual(record.type, "Future")
+        XCTAssertEqual(record.name, "Original")
+        XCTAssertEqual(record.parameter(named: "durationSeconds"), "1.125")
+        XCTAssertNil(record.parameter(named: "frameCount"))
+        XCTAssertEqual(record.parameter(named: "speed"), "1.000")
+        XCTAssertEqual(record.parameter(named: "opaque"), "keep")
+        XCTAssertEqual(store.previewRevision, preview)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testUnknownTimingRequiresNamedTypedSourceAndRejectsReplacedArchive() async throws {
+        let store = try await store(
+            type: "Future",
+            extraAnimations: "<animation id='unset' name='Unset'/><animation id='unnamed' type='Future'/>")
+        defer { store.stop() }
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        for id in ["unset", "unnamed"] {
+            store.selectAnimation(id)
+            await store.animationQuery?.value
+            XCTAssertFalse(workflow.canBeginParameters)
+        }
+        store.selectAnimation("a")
+        await store.animationQuery?.value
+        workflow.beginParameters()
+        workflow.setText(name: "frameCount", value: "200")
+        XCTAssertTrue(workflow.canApply)
+        let original = try XCTUnwrap(store.snapshot?.document.encoded())
+        await store.load(data: original)
+        workflow.submit()
+        XCTAssertFalse(workflow.canApply)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
     }
 
     func testStaleAndStoppedDraftsCannotRetargetOrPublishAndInvalidSliderKeepsOriginalCause() async throws {
