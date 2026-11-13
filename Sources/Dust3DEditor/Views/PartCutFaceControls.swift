@@ -10,58 +10,24 @@ struct PartCutFaceControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Cross-section profile").font(.headline)
-            Picker(
-                "Cut-face preset",
-                selection: Binding<CutFaceSelection?>(
-                    get: { part.cutFace },
-                    set: { if let value = $0 { applyProfile(value) } }
-                )
-            ) {
-                ForEach(PartCutFaceOptions.selections(current: part.cutFace), id: \.self) { selection in
-                    Group {
-                        if case .preset(let preset) = selection {
-                            Label {
-                                Text(title(selection))
-                            } icon: {
-                                CutFacePresetIcon(preset: preset)
-                            }
-                        } else {
-                            Text(title(selection))
-                        }
-                    }
-                    .tag(selection)
-                    .disabled(selection == nil)
-                }
+            if part.isImportedModel {
+                Text("Imported model orientation").font(.headline)
+            } else {
+                profileControls
             }
-            .labelsHidden().pickerStyle(.menu)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel("Cut-face preset")
-            .accessibilityIdentifier("part-cut-face")
-            if case .linkedPart(let id) = part.cutFace {
-                if let snapshot = store.snapshot,
-                    let profile = snapshot.parts.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
-                {
-                    Text(profile.title).font(.callout)
-                    LinkedCutFacePreviewView(snapshot: snapshot, partID: profile.id, title: profile.title)
-                } else {
-                    Text("Unresolved profile").font(.callout)
-                }
-                Text(id).font(.caption).textSelection(.enabled)
-                    .focusedValue(\.editorTextEditing, true)
-            }
-            DisclosureGroup("Link profile…") {
-                PartProfileChooser(store: store, part: part, choose: { applyProfile($0) })
-            }
-            if graphTarget != nil || store.snapshot?.allowsCutRotationPreset(for: part.id) == true {
+            if !presets.isEmpty {
                 LabeledContent("Quick rotation") {
                     HStack {
-                        ForEach(PartCutRotationPreset.allCases, id: \.self) { preset in
+                        ForEach(presets, id: \.self) { preset in
                             let applyPreset = presetAction(preset)
                             Button(action: { applyPreset() }) {
                                 Text("\(preset.rawValue)°").monospacedDigit()
                             }
-                            .accessibilityLabel("Set cross-section rotation to \(preset.rawValue) degrees")
+                            .accessibilityLabel(
+                                part.isImportedModel
+                                    ? "Reset imported model rotation"
+                                    : "Set cross-section rotation to \(preset.rawValue) degrees"
+                            )
                             .disabled(part.cutRotation == preset.halfTurns)
                         }
                     }
@@ -78,16 +44,71 @@ struct PartCutFaceControls: View {
             }
             HStack {
                 Button("Reset Draft") { resetRotation() }
-                    .accessibilityLabel("Reset cut-face rotation draft")
+                    .accessibilityLabel("Reset rotation draft")
                 Spacer()
                 Button("Apply") { applyRotation() }
-                    .accessibilityLabel("Apply cut-face rotation")
+                    .accessibilityLabel("Apply rotation")
             }
-            Text("Rotation ranges from −1 to 1; 1 is 180°. Each profile choice or applied rotation is one undo step.")
-                .font(.caption).foregroundStyle(.primary)
+            Text(
+                part.isImportedModel
+                    ? "Rotation ranges from −1 to 1; 1 is 180°. Each applied rotation is one undo step."
+                    : "Rotation ranges from −1 to 1; 1 is 180°. Each profile choice or applied rotation is one undo step."
+            )
+            .font(.caption).foregroundStyle(.primary)
         }
         .onChange(of: part.id, initial: true) { _, _ in resetRotation() }
         .onChange(of: part.cutRotation) { _, _ in resetRotation() }
+    }
+
+    private var presets: [PartCutRotationPreset] {
+        if graphTarget != nil { return PartCutRotationPreset.allCases }
+        return store.snapshot?.cutRotationPresets(for: part.id) ?? []
+    }
+
+    @ViewBuilder private var profileControls: some View {
+        Text("Cross-section profile").font(.headline)
+        Picker(
+            "Cut-face preset",
+            selection: Binding<CutFaceSelection?>(
+                get: { part.cutFace },
+                set: { if let value = $0 { applyProfile(value) } }
+            )
+        ) {
+            ForEach(PartCutFaceOptions.selections(current: part.cutFace), id: \.self) { selection in
+                Group {
+                    if case .preset(let preset) = selection {
+                        Label {
+                            Text(title(selection))
+                        } icon: {
+                            CutFacePresetIcon(preset: preset)
+                        }
+                    } else {
+                        Text(title(selection))
+                    }
+                }
+                .tag(selection)
+                .disabled(selection == nil)
+            }
+        }
+        .labelsHidden().pickerStyle(.menu)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("Cut-face preset")
+        .accessibilityIdentifier("part-cut-face")
+        if case .linkedPart(let id) = part.cutFace {
+            if let snapshot = store.snapshot,
+                let profile = snapshot.parts.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
+            {
+                Text(profile.title).font(.callout)
+                LinkedCutFacePreviewView(snapshot: snapshot, partID: profile.id, title: profile.title)
+            } else {
+                Text("Unresolved profile").font(.callout)
+            }
+            Text(id).font(.caption).textSelection(.enabled)
+                .focusedValue(\.editorTextEditing, true)
+        }
+        DisclosureGroup("Link profile…") {
+            PartProfileChooser(store: store, part: part, choose: { applyProfile($0) })
+        }
     }
 
     private func title(_ selection: CutFaceSelection?) -> String {

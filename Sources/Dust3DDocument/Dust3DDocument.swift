@@ -1774,6 +1774,7 @@ public struct Dust3DDocument: Sendable {
                 modifiers: PartModifiers.values(part), deformationScales: PartDeformation.scales(part),
                 isDeformationUnified: PartDeformation.unified(part), cutFace: PartCutFace.selection(part),
                 cutRotation: PartCutFace.rotation(part), target: PartTargetMetadata.value(part),
+                isImportedModel: part.attribute(forName: "target")?.stringValue == "ImportedModel",
                 isLoopInteriorFilled: PartLoopInterior.value(part), materials: PartMaterial.values(part),
                 cutFaceReferenceCount: cutFaceReferenceCounts[id, default: 0],
                 xMirrored: PartMirrorMetadata.value(part))

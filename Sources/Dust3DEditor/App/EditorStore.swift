@@ -2390,10 +2390,11 @@ final class EditorStore {
         perform { try await $0.apply([.setPartCutRotation(id: id, rotation: value)]) }
     }
     func partCutRotationPresetAction(_ preset: PartCutRotationPreset, partID: String) -> @MainActor () -> Void {
-        guard let snapshot, snapshot.allowsCutRotationPreset(for: partID) else { return {} }
+        guard let snapshot = acceptedDocumentSource, snapshot.cutRotationPresets(for: partID).contains(preset)
+        else { return {} }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         return { [weak self] in
-            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+            guard let self, !self.stopped, !self.isWorking, let current = self.acceptedDocumentSource,
                 target.isCurrent(in: current)
             else { return }
             self.perform { try await $0.setPartCutRotationPreset(preset, partID: partID, target: target) }

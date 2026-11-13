@@ -14,6 +14,8 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
     public let title: String
     /// Supported procedural role, Model when absent/empty, or nil for unsupported source metadata.
     public let target: PartTarget?
+    /// Exact ImportedModel archive role, separate from the editable procedural role choices.
+    package let isImportedModel: Bool
     /// Known loop-interior fill flag, false when absent/empty, or nil for unsupported source text.
     /// Only stitching-loop geometry consumes this flag; it remains preserved for other roles.
     public let isLoopInteriorFilled: Bool?
@@ -77,6 +79,7 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
         id: String, name: String, index: Int, isVisible: Bool, isLocked: Bool, isDisabled: Bool,
         modifiers: [PartModifierProperty: Bool], deformationScales: [PartDeformationProperty: Double],
         isDeformationUnified: Bool?, cutFace: CutFaceSelection?, cutRotation: Double?, target: PartTarget?,
+        isImportedModel: Bool,
         isLoopInteriorFilled: Bool?, materials: [PartMaterialProperty: Double], cutFaceReferenceCount: Int,
         xMirrored: Bool?
     ) {
@@ -84,6 +87,7 @@ public struct DocumentPart: Identifiable, Equatable, Sendable {
         self.isLoopInteriorFilled = isLoopInteriorFilled
         self.xMirrored = xMirrored
         self.target = target
+        self.isImportedModel = isImportedModel
         self.cutFace = cutFace
         self.cutFaceReferenceCount = cutFaceReferenceCount
         self.cutRotation = cutRotation

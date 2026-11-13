@@ -399,13 +399,14 @@ public actor EditorSession {
         }
     }
 
-    /// Set an absolute cross-section rotation on the originally inspected Model part.
+    /// Set an available rotation preset on the originally inspected part.
     package func setPartCutRotationPreset(
         _ preset: PartCutRotationPreset, partID: String, target: CanvasAdjustmentTarget
     ) throws -> EditorSnapshot {
         try update { state in
             let snapshot = state.snapshot
-            guard target.isCurrent(in: snapshot), snapshot.allowsCutRotationPreset(for: partID)
+            guard hasAcceptedSource, target.isCurrent(in: snapshot),
+                snapshot.cutRotationPresets(for: partID).contains(preset)
             else { throw EditorError.staleCanvasAdjustment }
             try state.apply([.setPartCutRotation(id: partID, rotation: preset.halfTurns)])
             try Task.checkCancellation()
