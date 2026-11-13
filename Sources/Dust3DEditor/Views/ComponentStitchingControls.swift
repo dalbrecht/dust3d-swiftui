@@ -88,16 +88,18 @@ struct ComponentStitchingBatchControls: View {
                 closure(.side)
                 number(
                     "Target segments (0–100; 0 = automatic)", identifier: "batch-stitching-segments",
-                    value: target.targetSegments
+                    value: target.targetSegments, sourceValues: target.segmentDraftValues
                 ) { store.setBatchStitchingSegments($0, target: target) }
             }
             if target.supportsLoop {
                 number(
-                    "Loop cap depth (0–2)", identifier: "batch-stitching-depth", value: target.scalar(.depthRatio)
+                    "Loop cap depth (0–2)", identifier: "batch-stitching-depth", value: target.scalar(.depthRatio),
+                    sourceValues: target.scalarDraftValues(.depthRatio)
                 ) { store.setBatchStitchingScalar(.depthRatio, draft: $0, target: target) }
                 number(
                     "Loop cap sharpness (0–1)", identifier: "batch-stitching-sharpness",
-                    value: target.scalar(.sharpness)
+                    value: target.scalar(.sharpness),
+                    sourceValues: target.scalarDraftValues(.sharpness)
                 ) { store.setBatchStitchingScalar(.sharpness, draft: $0, target: target) }
             }
             Text("Each edit applies to all selected groups and can be undone in one step.")
@@ -127,7 +129,7 @@ struct ComponentStitchingBatchControls: View {
     }
 
     private func number<Value: Equatable & Sendable>(
-        _ title: String, identifier: String, value: ComponentMeshSelectionValue<Value>,
+        _ title: String, identifier: String, value: ComponentMeshSelectionValue<Value>, sourceValues: [Value?],
         apply: @escaping (String) -> Void
     ) -> some View {
         let source: String?
@@ -138,6 +140,7 @@ struct ComponentStitchingBatchControls: View {
         }
         return StitchingNumberControl(
             title: title, identifier: identifier, identity: identity, source: source,
+            sourceValues: sourceValues.map { $0.map { String(describing: $0) } },
             nilNotice: value == .mixed
                 ? "Mixed values. Enter a replacement." : "Unsupported source value. Enter a replacement.",
             apply: apply)
@@ -157,6 +160,7 @@ private struct StitchingNumberControl: View {
     let identifier: String
     let identity: String
     let source: String?
+    var sourceValues: [String?]? = nil
     var nilNotice = "Unsupported source value. Enter a replacement."
     let apply: (String) -> Void
     @State private var draft = ""
@@ -178,7 +182,7 @@ private struct StitchingNumberControl: View {
             }
         }
         .onChange(of: identity, initial: true) { _, _ in reset() }
-        .onChange(of: source) { _, _ in reset() }
+        .onChange(of: sourceValues ?? [source]) { _, _ in reset() }
     }
 
     private func reset() { draft = source ?? "" }

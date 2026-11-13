@@ -61,6 +61,25 @@ final class ComponentStitchingBatchTests: XCTestCase {
         XCTAssertFalse(undone.canUndo)
     }
 
+    func testNumericDraftSourcesDistinguishEditsBehindTheSameAggregateStatus() async throws {
+        let session = EditorSession()
+        _ = try await session.open(data: source())
+        let selected = try await session.selectComponents(lines)
+        let before = ComponentStitchingBatchTarget(snapshot: selected)
+        let changed = try await session.apply([.setComponentTargetSegments(id: "line-b", segments: 3)])
+        let after = ComponentStitchingBatchTarget(snapshot: changed)
+        XCTAssertEqual(before.targetSegments, .unsupported)
+        XCTAssertEqual(after.targetSegments, .unsupported)
+        XCTAssertEqual(before.segmentDraftValues, [nil, 2])
+        XCTAssertEqual(after.segmentDraftValues, [nil, 3])
+
+        let closureChanged = try await session.editComponentStitchingBatch(
+            .closure(.front, true), target: after)
+        XCTAssertEqual(
+            ComponentStitchingBatchTarget(snapshot: closureChanged).segmentDraftValues,
+            after.segmentDraftValues)
+    }
+
     func testFrontAndSideClosuresCanBeAuthoredIndependently() async throws {
         let original = try source()
         let session = EditorSession()
