@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.
+
 - Select visible nodes when their circles intersect the marquee.
 - Announce reference-image composition errors with VoiceOver in the active sheet.
 - Identify the composed reference preview and profile-specific crop actions in VoiceOver.
