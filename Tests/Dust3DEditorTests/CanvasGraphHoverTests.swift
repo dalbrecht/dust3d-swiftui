@@ -6,10 +6,10 @@ import XCTest
 @testable import Dust3DEditor
 
 final class CanvasGraphHoverTests: XCTestCase {
-    private func makeState(partAttributes: String = "") throws -> EditorState {
+    private func makeState(partAttributes: String = "", firstRadius: Double = 0.1) throws -> EditorState {
         let xml = """
             <canvas><nodes>
-            <node id='a' partId='p' x='1' y='2' z='4' radius='0.1'/>
+            <node id='a' partId='p' x='1' y='2' z='4' radius='\(firstRadius)'/>
             <node id='b' partId='p' x='5' y='4' z='6' radius='0.1'/>
             </nodes><edges><edge id='ab' partId='p' from='a' to='b'/></edges>
             <parts><part id='p' \(partAttributes)/></parts></canvas>
@@ -33,6 +33,43 @@ final class CanvasGraphHoverTests: XCTestCase {
                 cache.hit(at: midpoint, projection: projection, snapshot: snapshot), .edge("ab"))
             XCTAssertNil(cache.hit(at: .init(x: 1, y: 1), projection: projection, snapshot: snapshot))
         }
+    }
+
+    func testVisibleOutlineOutsideCenterAffordanceHoversInBothProfiles() throws {
+        let snapshot = try makeState(firstRadius: 0.6).snapshot
+        let bounds = CanvasBounds(nodes: snapshot.nodes)
+        var cache = CanvasGraphHover.Cache()
+        for plane in EditingPlane.allCases {
+            let projection = CanvasProjection(bounds: bounds, plane: plane, width: 480, height: 360)
+            let center = projection.point(for: .init(x: 1, y: 2, z: 4))
+            let radius = 0.6 * projection.scale
+            XCTAssertGreaterThan(radius, 25)
+            let inside = CanvasPoint(x: center.x, y: center.y - 25)
+            let outside = CanvasPoint(x: center.x, y: center.y - radius - 4)
+            XCTAssertEqual(cache.hit(at: inside, projection: projection, snapshot: snapshot), .node("a"))
+            XCTAssertNil(cache.hit(at: inside, projection: projection, snapshot: snapshot, rigEdgesOnly: true))
+            XCTAssertNil(cache.hit(at: outside, projection: projection, snapshot: snapshot))
+        }
+    }
+
+    func testOverlappingOutlinesRankNodeCentersAndCloserTaperedEdge() throws {
+        var state = try makeState(firstRadius: 0.6)
+        let bounds = CanvasBounds(nodes: state.snapshot.nodes)
+        let projection = CanvasProjection(bounds: bounds, plane: .front, width: 480, height: 360)
+        try state.edit(id: "b", position: .init(x: 1.5, y: 2, z: 4), radius: 0.6)
+        let a = projection.point(for: .init(x: 1, y: 2, z: 4))
+        let b = projection.point(for: .init(x: 1.5, y: 2, z: 4))
+        let nearA = CanvasPoint(x: a.x, y: a.y - 10)
+        XCTAssertLessThan(hypot(b.x - nearA.x, b.y - nearA.y), 0.6 * projection.scale)
+        var cache = CanvasGraphHover.Cache()
+        XCTAssertEqual(cache.hit(at: nearA, projection: projection, snapshot: state.snapshot), .node("a"))
+        let midpoint = CanvasPoint(x: (a.x + b.x) / 2, y: a.y)
+        XCTAssertEqual(cache.hit(at: midpoint, projection: projection, snapshot: state.snapshot), .edge("ab"))
+
+        let nearbyEndpoint = NodePosition(x: 1 + 32 / projection.scale, y: 2, z: 4)
+        try state.edit(id: "b", position: nearbyEndpoint, radius: 0.6)
+        let closeMidpoint = CanvasPoint(x: a.x + 16, y: a.y)
+        XCTAssertEqual(cache.hit(at: closeMidpoint, projection: projection, snapshot: state.snapshot), .node("b"))
     }
 
     func testHiddenNodesAndTheirEdgesDoNotHover() throws {
