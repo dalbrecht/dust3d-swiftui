@@ -116,12 +116,13 @@ struct EditorRootView: View {
                         Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
                     }
                     EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
+                    let navigateInspector = inspectorNavigation
                     Button {
-                        isInspectorPresented = true
-                        inspectorSection = .animations
+                        navigateInspector?(.animations)
                     } label: {
                         Label("Animations", systemImage: "film")
                     }
+                    .disabled(navigateInspector == nil)
                     .accessibilityLabel("Show animations inspector")
                     Toggle(isOn: previewWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
                 }
