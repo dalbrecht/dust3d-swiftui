@@ -246,6 +246,7 @@ struct EditorRootView: View {
             Divider()
             CanvasNodeSidebar(store: store, query: $sidebarNodeQuery)
             ComponentSidebar(store: store, disclosure: sidebarDisclosure)
+            ComponentGroupDropConfirmation(store: store)
             PartSidebar(store: store)
             EdgeSidebar(store: store)
         }
