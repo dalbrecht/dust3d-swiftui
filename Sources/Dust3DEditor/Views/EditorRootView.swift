@@ -64,7 +64,6 @@ struct EditorRootView: View {
     var body: some View {
         let fitAction = toolbarFitAction
         editorLayout
-            .background { ComponentGroupDropConfirmation(store: store) }
             .frame(minWidth: 800, minHeight: 600)
             .inspector(isPresented: $isInspectorPresented) {
                 inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
@@ -246,6 +245,7 @@ struct EditorRootView: View {
             Divider()
             CanvasNodeSidebar(store: store, query: $sidebarNodeQuery)
             ComponentSidebar(store: store, disclosure: sidebarDisclosure)
+            ComponentGroupDropConfirmation(store: store)
             PartSidebar(store: store)
             EdgeSidebar(store: store)
         }
