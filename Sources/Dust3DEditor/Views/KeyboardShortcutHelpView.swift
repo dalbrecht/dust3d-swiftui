@@ -49,7 +49,7 @@ enum KeyboardShortcutHelp {
         .init(
             action: "Nudge Selection or Origin", keys: "← / → / ↑ / ↓",
             scope:
-                "Focused canvas, node or origin marker. Nudges the stored origin in Move Origin mode; otherwise the editable selection. No active drag"
+                "Focused canvas, node or origin marker. Nudges the stored origin in Move Origin mode; otherwise the editable selection. No active drag. Choose Focus Canvas from the Canvas menu."
         ),
         .init(
             action: "Decrease / Increase Selection Spacing", keys: "[ / ]",

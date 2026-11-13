@@ -6,6 +6,7 @@
 - Identify the composed reference preview and profile-specific crop actions in VoiceOver.
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
+- Focus the drawing canvas from the Canvas menu.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.

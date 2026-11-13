@@ -1,3 +1,4 @@
+import AppKit
 import Dust3DDocument
 import Dust3DEditorModel
 import Dust3DKit
@@ -24,6 +25,31 @@ private struct ProfileKeyboardNoNative: EditorPreviewServing, ArchiveTextureBaki
 
 @MainActor
 final class CanvasProfileKeyboardStoreTests: XCTestCase {
+    func testCanvasMenuFocusRejectsOtherWindowsAndSheets() {
+        let first = NSWindow(contentRect: .zero, styleMask: [], backing: .buffered, defer: false)
+        let other = NSWindow(contentRect: .zero, styleMask: [], backing: .buffered, defer: false)
+        first.isReleasedWhenClosed = false
+        other.isReleasedWhenClosed = false
+        defer {
+            first.close()
+            other.close()
+        }
+        XCTAssertFalse(EditorCanvasFocusCommand(window: first, focus: nil).isAvailable(in: first, hasSheet: false))
+        var calls = 0
+        let command = EditorCanvasFocusCommand(window: first) {
+            calls += 1
+            return true
+        }
+        XCTAssertFalse(command.isAvailable(in: other, hasSheet: false))
+        XCTAssertFalse(command.perform(in: other, hasSheet: false))
+        XCTAssertFalse(command.perform(in: nil, hasSheet: false))
+        XCTAssertFalse(command.perform(in: first, hasSheet: true))
+        XCTAssertEqual(calls, 0)
+        XCTAssertTrue(command.isAvailable(in: first, hasSheet: false))
+        XCTAssertTrue(command.perform(in: first, hasSheet: false))
+        XCTAssertEqual(calls, 1)
+    }
+
     func testFocusCanvasUsesActiveLeaseWithoutChangingProfileSelectionOrSource() async throws {
         let store = makeStore()
         defer { store.stop() }
