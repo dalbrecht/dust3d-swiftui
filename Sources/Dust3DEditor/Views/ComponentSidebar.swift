@@ -166,6 +166,9 @@ struct ComponentSidebar: View {
                         let admitsRows: @MainActor () -> Bool = {
                             store.admitsComponentSidebarInput(context: context, scopeEpoch: scopeEpoch)
                         }
+                        let activateRow = store.componentSidebarPrimaryAction(
+                            snapshot: sidebarSnapshot, rows: visibleRows, scopeEpoch: scopeEpoch, disclosure: disclosure
+                        )
                         List(
                             selection: Binding(
                                 get: { store.snapshot?.selectedComponentIDs ?? [] },
@@ -208,17 +211,7 @@ struct ComponentSidebar: View {
                                     admitsInput: admitsRows)
                             }
                         } primaryAction: { ids in
-                            guard admitsRows(), ids.count == 1, let id = ids.first,
-                                let row = visibleRows.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
-                            else { return }
-                            if browse != nil, row.component.isGroup {
-                                store.componentBrowseAction(id, snapshot: sidebarSnapshot)()
-                            } else if row.hasChildren {
-                                disclosure.collapsedIDs.remove(id)
-                            } else {
-                                store.selectComponentGraph(
-                                    ComponentGraphSelectionTarget(snapshot: sidebarSnapshot, componentIDs: ids))
-                            }
+                            activateRow(ids)
                         }
                         .focusedValue(\.editorComponentSidebarFocus, true)
                         .focusedValue(

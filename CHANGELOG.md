@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open a component group directly by double-clicking its row in the full tree.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
