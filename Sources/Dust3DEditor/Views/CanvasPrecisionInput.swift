@@ -65,8 +65,15 @@ struct CanvasPrecisionKeyInput {
         default: return nil
         }
     }
+    var opensComponentProperties: Bool { isBareEditingKey && characters == " " }
+
+    var selectsOwningComponent: Bool { isBareEditingKey && (characters == "f" || characters == "F") }
+
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
-        guard isAlternateDelete || axisLockConstraint != nil || partStateProperty != nil else { return true }
+        guard
+            axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
+                || isAlternateDelete
+        else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil
     }
