@@ -31,6 +31,7 @@ public struct MeshViewport: NSViewRepresentable {
     let automaticallyOrbits: Bool
     let cameraReset: Int
     let cameraCommand: MeshCameraCommand?
+    private var canvasWheelZoom: MeshCameraWheelZoom?
     let pickingRevision: UUID?
     let onPick: (@MainActor (MeshPickInput) -> Void)?
     let cameraState: MeshCameraState?
@@ -147,6 +148,12 @@ public struct MeshViewport: NSViewRepresentable {
         self.onError = onError
     }
 
+    package func withCanvasWheelZoom(_ input: MeshCameraWheelZoom) -> Self {
+        var next = self
+        next.canvasWheelZoom = input
+        return next
+    }
+
     public func makeNSView(context: Context) -> InteractiveMeshView {
         let view = InteractiveMeshView()
         view.device = MTLCreateSystemDefaultDevice()
@@ -230,6 +237,7 @@ public struct MeshViewport: NSViewRepresentable {
                 view.automaticOrbitBinding.cameraInputChanged()
             }
             if let cameraCommand { view.applyCameraCommand(cameraCommand) }
+            view.applyCanvasWheelZoom(canvasWheelZoom)
         }
         view.renderer?.showsColor = showsColor
         view.materialRenderer?.showsColor = showsColor
@@ -322,6 +330,17 @@ public class InteractiveMeshView: MTKView {
         case .zoomIn: orbitCamera.zoom(delta: 6)
         case .zoomOut: orbitCamera.zoom(delta: -6)
         }
+        needsDisplay = true
+    }
+
+    private var lastCanvasWheelZoom: MeshCameraWheelZoom?
+
+    func applyCanvasWheelZoom(_ input: MeshCameraWheelZoom?) {
+        let steps = input?.steps(since: lastCanvasWheelZoom) ?? 0
+        lastCanvasWheelZoom = input
+        guard steps != 0 else { return }
+        automaticOrbitBinding.cameraInputChanged()
+        orbitCamera.zoom(delta: Float(max(-128, min(128, steps))) * 6)
         needsDisplay = true
     }
 
@@ -670,16 +689,28 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func keyDown(with event: NSEvent) {
+        guard cameraInteractionAllowed(),
+            event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty
+        else {
+            super.keyDown(with: event)
+            return
+        }
+
+        var camera = orbitCamera
+        switch event.keyCode {
+        case 123: camera.orbit(horizontal: -10, vertical: 0)
+        case 124: camera.orbit(horizontal: 10, vertical: 0)
+        case 125: camera.orbit(horizontal: 0, vertical: 10)
+        case 126: camera.orbit(horizontal: 0, vertical: -10)
+        case 3: camera = OrbitCamera()  // F: fit model.
+        default:
+            super.keyDown(with: event)
+            return
+        }
+
         cancelPicking()
         automaticOrbitBinding.cameraInputChanged()
-        switch event.keyCode {
-        case 123: orbitCamera.orbit(horizontal: -10, vertical: 0)
-        case 124: orbitCamera.orbit(horizontal: 10, vertical: 0)
-        case 125: orbitCamera.orbit(horizontal: 0, vertical: 10)
-        case 126: orbitCamera.orbit(horizontal: 0, vertical: -10)
-        case 3: orbitCamera = OrbitCamera()  // F: fit model.
-        default: super.keyDown(with: event)
-        }
+        orbitCamera = camera
         needsDisplay = true
     }
 }
