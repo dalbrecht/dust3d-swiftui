@@ -13,6 +13,7 @@ extension GraphSelectionMode {
 
 /// A rendered node can select itself or expand selection to its owning part.
 enum CanvasNodeSelectionAction {
+    case pointerReplace
     case selection(GraphSelectionMode)
     case wholePart
 }

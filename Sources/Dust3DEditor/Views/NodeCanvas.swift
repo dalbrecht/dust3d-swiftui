@@ -253,6 +253,7 @@ struct NodeCanvas: View {
                         precisionActions: precisionActions, quarterTurns: quarterTurns,
                         revealOwningComponent: revealOwningComponent,
                         doubleClick: { activate(.wholePart) },
+                        selectFromPointer: { activate(.pointerReplace) },
                         select: { activate(.selection(.replace)) },
                         toggle: { activate(.selection(.toggle)) },
                         add: { activate(.selection(.add)) },
@@ -520,6 +521,7 @@ private struct NodeHandle: View {
     let quarterTurns: OrthogonalQuarterTurnActions
     let revealOwningComponent: (@MainActor () -> Void)?
     let doubleClick: () -> Void
+    let selectFromPointer: () -> Void
     let select: () -> Void
     let toggle: () -> Void
     let add: () -> Void
@@ -552,7 +554,8 @@ private struct NodeHandle: View {
             NodePointerSurface(
                 enabled: enabled, canDrag: canDrag, begin: begin, update: update, finish: finish,
                 cancel: cancel,
-                select: select, toggle: toggle, add: add, subtract: subtract, wheel: wheel, radiusKey: radiusKey,
+                select: selectFromPointer, toggle: toggle, add: add, subtract: subtract, wheel: wheel,
+                radiusKey: radiusKey,
                 doubleClick: doubleClick,
                 precisionKey: precisionKey,
                 beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress,
