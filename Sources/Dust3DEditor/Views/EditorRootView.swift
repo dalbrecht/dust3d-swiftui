@@ -321,8 +321,7 @@ struct EditorRootView: View {
                         EditorDocumentDropControl()
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
-                        CanvasProfilePanes(store: store, focusControl: canvasFocus, previewCamera: previewCameraActions)
-                            .overlay(alignment: .bottom) { getStartedCard }
+                        canvasWithGetStarted
                     }
                     .frame(minWidth: 300)
                     preview.frame(minWidth: 240, idealWidth: 320)
@@ -380,18 +379,26 @@ struct EditorRootView: View {
         }
     }
 
-    @ViewBuilder private var getStartedCard: some View {
+    private var canvasWithGetStarted: some View {
         let identity = file.identity
         let source = $file
-        if let actions = EditorGetStartedActions(
+        let actions = EditorGetStartedActions(
             store: store, fileIdentity: identity, ownsWindow: { source.wrappedValue.identity == identity })
-        {
-            EditorGetStartedCard(actions: actions, openDocument: openDocument) { target in
-                guard referenceComposition == nil else { return }
-                referenceComposition = ReferenceCompositionPresentation(target: target)
+        return CanvasProfilePanes(store: store, focusControl: canvasFocus, previewCamera: previewCameraActions)
+            .overlay(alignment: .bottom) {
+                if let actions {
+                    EditorGetStartedCard(actions: actions, openDocument: openDocument) { target in
+                        guard referenceComposition == nil else { return }
+                        referenceComposition = ReferenceCompositionPresentation(target: target)
+                    }
+                    .padding(12)
+                }
             }
-            .padding(12)
-        }
+            .dropDestination(for: URL.self) { urls, _ in
+                guard referenceComposition == nil, let presentation = actions?.referenceDrop(urls) else { return false }
+                referenceComposition = presentation
+                return true
+            }
     }
 
     private func openDocument() { NSDocumentController.shared.openDocument(nil) }
