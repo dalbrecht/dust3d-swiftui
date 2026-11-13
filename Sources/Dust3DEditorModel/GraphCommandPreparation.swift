@@ -57,13 +57,16 @@ enum GraphCommandPreparation {
         let emptied = contents.parts.filter { affected.contains($0.id) && !occupied.contains($0.id) }.map(\.id)
         let requirements = try preview.partSplitRequirements(for: affected)
         let splits: [DocumentCommand] = requirements.map { requirement in
-            let identities = (0..<requirement.additionalPartCount).map { _ in
-                PartSplitIdentity(
-                    partID: identifier(), componentIDs: (0..<requirement.componentsPerPart).map { _ in identifier() })
-            }
-            return .splitPart(id: requirement.partID, identities: identities)
+            .splitPart(id: requirement.partID, identities: splitIdentities(for: requirement))
         }
         return commands + splits + (emptied.isEmpty ? [] : [.pruneEmptyParts(emptied)])
+    }
+
+    static func splitIdentities(for requirement: PartSplitRequirement) -> [PartSplitIdentity] {
+        (0..<requirement.additionalPartCount).map { _ in
+            PartSplitIdentity(
+                partID: identifier(), componentIDs: (0..<requirement.componentsPerPart).map { _ in identifier() })
+        }
     }
 
     private static func identifier() -> String { "{\(UUID().uuidString.lowercased())}" }

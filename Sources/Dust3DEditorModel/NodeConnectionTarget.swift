@@ -34,8 +34,8 @@ public struct NodeConnectionTarget: Sendable {
     }
 
     private static func eligibleOwners(_ snapshot: EditorSnapshot) -> [NodeConnectionOwner] {
-        guard snapshot.selectedIDs.count == 2,
-            snapshot.selectedComponentIDs.isEmpty, snapshot.selectedPartID == nil,
+        guard snapshot.selectedIDs.count == 2, snapshot.selectedComponentIDs.isEmpty,
+            snapshot.selectedPartID == nil,
             snapshot.edges.count < 20_000
         else { return [] }
         let endpoints = snapshot.nodes.filter { node in
@@ -77,14 +77,31 @@ extension EditorState {
     ///   `edgeID` is a fresh caller-supplied edge identity for deterministic state commands.
     /// - Throws: Stale intent, cancellation or the original document validation error, without publication.
     public mutating func connectSelectedNodes(target: NodeConnectionTarget, ownerID: String, edgeID: String) throws {
+        try connectSelectedNodes(target: target, ownerID: ownerID, edgeID: edgeID, splitIdentities: nil)
+    }
+
+    mutating func connectSelectedNodes(
+        target: NodeConnectionTarget, ownerID: String, edgeID: String,
+        splitIdentities: ((PartSplitRequirement) -> [PartSplitIdentity])?
+    ) throws {
         try Task.checkCancellation()
-        guard target.isCurrent(in: snapshot),
+        let current = snapshot
+        guard target.isCurrent(in: current),
             let owner = target.owners.firstIndex(where: { $0.nodeID.utf8.elementsEqual(ownerID.utf8) })
         else { throw NodeConnectionSelectionError.staleTarget }
         var next = self
-        try next.apply([
-            .joinNodes(id: edgeID, from: target.owners[owner].nodeID, to: target.owners[1 - owner].nodeID)
-        ])
+        let from = target.owners[owner].nodeID
+        let to = target.owners[1 - owner].nodeID
+        do {
+            try next.apply([.joinNodes(id: edgeID, from: from, to: to)])
+        } catch DocumentError.invalidNode {
+            guard let splitIdentities, !target.requiresOwnershipChoice,
+                let repair = try current.document.legacyIslandConnectionRepair(id: edgeID, from: from, to: to)
+            else { throw DocumentError.invalidNode }
+            try next.apply([
+                repair.edge, .splitPart(id: repair.split.partID, identities: splitIdentities(repair.split)),
+            ])
+        }
         try Task.checkCancellation()
         self = next
     }

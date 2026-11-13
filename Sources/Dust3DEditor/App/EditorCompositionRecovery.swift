@@ -1,3 +1,4 @@
+import Dust3DKit
 import Foundation
 
 /// Recovery accepts only explicit bounded commands; ordinary macOS launch arguments pass through.
@@ -48,12 +49,19 @@ enum EditorCompositionRecoveryChannel {
     }
 }
 
-/// Posts bounded recovery requests requiring an exact process identity.
-/// No document data or destination paths are accepted through these channels.
+/// Handles headless requests before handing ordinary launches to SwiftUI.
 @main enum Dust3DEditorEntryPoint {
     @MainActor static func main() async {
-        if let status = await EditorHeadlessDS3SaveCommand.run(
+        if let status = EditorRigListCommand.run(
             arguments: CommandLine.arguments,
+            stdout: { try FileHandle.standardOutput.write(contentsOf: $0) },
+            stderr: { FileHandle.standardError.write(Data($0.utf8)) })
+        {
+            exit(status)
+        }
+
+        if let status = await EditorHeadlessDS3SaveCommand.run(
+            arguments: CommandLine.arguments, geometryEncoder: NativeGeometryExportEncoder(),
             stdout: { FileHandle.standardOutput.write(Data($0.utf8)) },
             stderr: { FileHandle.standardError.write(Data($0.utf8)) })
         {

@@ -1,3 +1,4 @@
+import CoreGraphics
 import Dust3DDocument
 import Dust3DEditorModel
 import Dust3DKit
@@ -43,6 +44,27 @@ private struct GraphTextureNoNative: EditorPreviewServing, ArchiveTextureBaking,
     }
 }
 
+private actor HeldColorImageInspection {
+    private var pending: CheckedContinuation<CGImage, Never>?
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func load() async -> CGImage {
+        await withCheckedContinuation { continuation in
+            pending = continuation
+            waiter?.resume()
+            waiter = nil
+        }
+    }
+    func waitUntilStarted() async {
+        if pending != nil { return }
+        await withCheckedContinuation { waiter = $0 }
+    }
+    func release(_ image: CGImage) {
+        pending?.resume(returning: image)
+        pending = nil
+    }
+}
+
 @MainActor
 final class ComponentColorImageStoreTests: XCTestCase {
     private let component = "{cccccccc-cccc-4ccc-8ccc-cccccccccccc}"
@@ -81,6 +103,87 @@ final class ComponentColorImageStoreTests: XCTestCase {
         }
         XCTFail("Import did not start")
         return request
+    }
+
+    func testAppliedAndRetainedTextureInspectionDoesNotAssignOrWrite() async throws {
+        let original = try document().applying(
+            .importComponentColorImage(id: component, imageID: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", png: png))
+        let retainedOnly = try original.applying(.setComponentColorImage(id: component, imageID: nil))
+        let stub = GraphTextureNoNative()
+        let store = EditorStore(
+            preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        defer { store.stop() }
+        for useApplied in [true, false] {
+            let source = useApplied ? original : retainedOnly
+            await store.load(data: source.encoded())
+            store.select(try XCTUnwrap(store.snapshot?.nodes.first?.id))
+            try await ready(store)
+            let before = try XCTUnwrap(store.snapshot)
+            let destination = EditorStore.ComponentColorImageDestination.graph(
+                ComponentMeshSelectionTarget(graphSelection: before))
+            let asset = try XCTUnwrap(before.colorImageAssets.first)
+            if !useApplied {
+                XCTAssertNil(store.componentColorImageInspectionRequest(asset: nil, destination: destination))
+            }
+            let request = try XCTUnwrap(
+                store.componentColorImageInspectionRequest(asset: useApplied ? nil : asset, destination: destination))
+            XCTAssertEqual(request.asset, asset)
+            let inspection = ComponentColorImageInspection()
+            var writes = 0
+            store.onDocumentChanged = { _ in writes += 1 }
+            let task = try XCTUnwrap(
+                inspection.inspect(request, isCurrent: { store.canInspectComponentColorImage(request) }))
+            await task.value
+            XCTAssertEqual(inspection.image?.width, 2)
+            XCTAssertEqual(inspection.image?.height, 1)
+            XCTAssertNil(inspection.errorMessage)
+            XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+            XCTAssertEqual(store.snapshot?.previewIdentity, before.previewIdentity)
+            XCTAssertEqual(store.snapshot?.selectedIDs, before.selectedIDs)
+            XCTAssertFalse(store.canUndo)
+            XCTAssertEqual(writes, 0)
+        }
+    }
+
+    func testHeldTextureInspectionRejectsSelectionABAAndFailedSource() async throws {
+        let source = try document().applying(
+            .importComponentColorImage(id: component, imageID: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", png: png))
+        let stub = GraphTextureNoNative()
+        let store = EditorStore(
+            preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        defer { store.stop() }
+        for replaceSource in [false, true] {
+            await store.load(data: source.encoded())
+            store.selectComponent(component)
+            try await ready(store)
+            let destination = EditorStore.ComponentColorImageDestination.component(
+                try XCTUnwrap(store.snapshot.flatMap(ComponentColorImageTarget.init(snapshot:))))
+            let request = try XCTUnwrap(
+                store.componentColorImageInspectionRequest(asset: nil, destination: destination))
+            let gate = HeldColorImageInspection()
+            let inspection = ComponentColorImageInspection(load: { _ in await gate.load() })
+            let task = try XCTUnwrap(
+                inspection.inspect(request, isCurrent: { store.canInspectComponentColorImage(request) }))
+            await gate.waitUntilStarted()
+            if replaceSource {
+                await store.load(data: Data("bad archive".utf8))
+            } else {
+                store.selectComponent(nil)
+                try await ready(store)
+                store.selectComponent(component)
+                try await ready(store)
+            }
+            XCTAssertFalse(store.canInspectComponentColorImage(request))
+            await gate.release(try ColorImageCodec.previewPNG(png))
+            await task.value
+            XCTAssertNil(inspection.image)
+            XCTAssertNil(inspection.errorMessage)
+            XCTAssertFalse(inspection.isLoading)
+            XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+            XCTAssertFalse(store.canUndo)
+        }
     }
 
     func testGraphTextureRejectsPreparedResultAfterFailedReplacement() async throws {

@@ -45,6 +45,25 @@ final class NodeConnectionTests: XCTestCase {
         }
     }
 
+    func testRevealedComponentKeepsSelectedEndpointsConnectable() throws {
+        let original = try source()
+        var state = try EditorState(document: original)
+        try state.select(["a", "c"])
+        let beforeReveal = NodeConnectionTarget(snapshot: state.snapshot)
+        try state.revealOwningComponent(
+            .node("d"), context: PartGraphSelectionContext(snapshot: state.snapshot), selecting: true)
+        let revealed = state.snapshot
+        XCTAssertEqual(revealed.selectedComponentIDs, ["cq"])
+        XCTAssertFalse(beforeReveal.isCurrent(in: revealed))
+        let target = NodeConnectionTarget(snapshot: revealed)
+        XCTAssertEqual(target.owners.map(\.nodeID), ["a", "c"])
+        try state.connectSelectedNodes(target: target, ownerID: "a", edgeID: "join")
+        XCTAssertEqual(state.snapshot.selectedIDs, ["a", "c"])
+        XCTAssertEqual(state.snapshot.edges.count, 3)
+        try state.undo()
+        XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
+    }
+
     func testSamePartUsesOneChoiceAndExistingJoinSemanticsCanCloseItsChain() throws {
         let original = try source().applying(.joinNodes(id: "first", from: "a", to: "c"))
         var state = try EditorState(document: original)

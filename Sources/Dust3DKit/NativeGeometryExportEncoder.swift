@@ -25,7 +25,7 @@ public struct NativeGeometryExportEncoder: DocumentExportEncoding {
     public func encode(archive: Data, format: DocumentExportFormat) async throws -> DocumentExportArtifact {
         switch format {
         case .obj: try await obj.encode(archive: archive, format: format)
-        case .fbx: try await fbx.encode(archive: archive, format: format)
+        case .fbx, .fbxTextured: try await fbx.encode(archive: archive, format: format)
         }
     }
 }
