@@ -502,7 +502,7 @@ public struct EditorState: Sendable {
     /// - Parameters: command is the image mutation; target captures the intended singleton selection.
     /// - Throws: `staleColorImageTarget` or original document/resource errors atomically.
     mutating func applyColorImage(_ command: DocumentCommand, target: ComponentColorImageTarget) throws {
-        guard target.isCurrent(in: snapshot) else { throw EditorError.staleColorImageTarget }
+        guard target.isCurrentColorImage(in: snapshot) else { throw EditorError.staleColorImageTarget }
         try apply([command])
     }
 

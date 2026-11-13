@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep component texture actions and image picker results tied to the original selection.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
