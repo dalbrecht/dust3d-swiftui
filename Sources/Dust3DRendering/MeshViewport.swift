@@ -690,7 +690,7 @@ public class InteractiveMeshView: MTKView {
 
     public override func keyDown(with event: NSEvent) {
         guard cameraInteractionAllowed(),
-            event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty
+            event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty
         else {
             super.keyDown(with: event)
             return
