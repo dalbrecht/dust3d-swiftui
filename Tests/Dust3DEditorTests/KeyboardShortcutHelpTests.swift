@@ -90,6 +90,19 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(KeyboardShortcutHelp.matching(" \n ", in: entries), entries)
         XCTAssertTrue(KeyboardShortcutHelp.matching("unimplemented", in: entries).isEmpty)
     }
+    func testAddToolRadiusKeysFindPlacementPreviewAndSelectionActions() throws {
+        for query in ["-", "="] {
+            let entries = KeyboardShortcutHelp.matching(query)
+            XCTAssertEqual(
+                entries.map(\.action), ["Decrease / Increase Radius", "Adjust Add Tool Preview Radius"], query)
+            let preview = try XCTUnwrap(entries.last)
+            XCTAssertEqual(
+                preview.scope, "Focused canvas in the Add tool with a visible placement preview and no active drag")
+        }
+        XCTAssertTrue(
+            KeyboardShortcutHelp.matching("Add tool").contains { $0.action == "Adjust Add Tool Preview Radius" })
+    }
+
     func testActualCatalogMakesFocusedRadiusAndOriginNudgingDiscoverable() {
         let focused = KeyboardShortcutHelp.matching("Focused canvas")
         XCTAssertTrue(focused.contains { $0.action == "Decrease / Increase Radius" })
