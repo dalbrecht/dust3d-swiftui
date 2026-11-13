@@ -2484,9 +2484,17 @@ final class EditorStore {
         return { [weak self] in
             guard let self, self.canSelectBoneEdges(target) else { return }
             self.boneEdgeHover = nil
-            self.perform(commits: false, acceptCommittedCancellation: true, selectionOnly: true) {
-                try await $0.selectBoneEdges(target: target)
-            }
+            let profileContext = self.rotationInputContextID
+            self.perform(
+                commits: false, acceptCommittedCancellation: true, selectionOnly: true,
+                completion: { [weak self] succeeded in
+                    guard succeeded, let self, self.rotationInputContextID == profileContext,
+                        self.snapshot?.selectedEdgeIDs.isEmpty == false
+                    else { return }
+                    self.plane = .side
+                },
+                { try await $0.selectBoneEdges(target: target) }
+            )
         }
     }
     func boneEdgeHoverAction(_ target: BoneEdgeSelectionTarget, owner: BoneEdgeHoverOwner) -> @MainActor (Bool) -> Void
