@@ -51,10 +51,13 @@ struct ContentView: View {
                             .buttonStyle(.borderedProminent)
                     }
                 }
-                if store.isLoading {
-                    ProgressView("Generating mesh…")
-                        .padding(24)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                if let revision = store.pendingOpenRevision {
+                    VStack(spacing: 12) {
+                        ProgressView("Generating mesh…")
+                        Button("Cancel Opening") { store.cancelOpen(revision: revision) }
+                    }
+                    .padding(24)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
             if store.isUpdatingMaterials {

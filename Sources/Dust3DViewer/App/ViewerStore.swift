@@ -46,6 +46,7 @@ final class ViewerStore {
 
     private(set) var documentName = "Dust3D Viewer"
     private(set) var isLoading = false
+    var pendingOpenRevision: Int? { isLoading ? revision : nil }
     private(set) var isBakingMaterials = false
     var isUpdatingMaterials: Bool {
         isBakingMaterials
@@ -77,7 +78,6 @@ final class ViewerStore {
 
     func open(_ url: URL) {
         loadTask?.cancel()
-        clearMaterials()
         revision += 1
         let requestedRevision = revision
         isLoading = true
@@ -102,23 +102,33 @@ final class ViewerStore {
         }
     }
 
+    func cancelOpen(revision: Int) {
+        guard pendingOpenRevision == revision else { return }
+        self.revision += 1
+        loadTask?.cancel()
+        loadTask = nil
+        isLoading = false
+    }
+
     func retryMaterials() {
         guard !isLoading, mesh != nil, let data = archiveData else { return }
         clearMaterials()
         let requestID = materialRequestID
-        let documentRevision = revision
+        let acceptedMeshRevision = meshRevision
         isBakingMaterials = true
         materialTask = Task { [weak self, materialPreparation] in
             do {
                 let prepared = try await materialPreparation.load(data: data, options: .init())
                 try Task.checkCancellation()
-                guard let self, self.revision == documentRevision, self.materialRequestID == requestID else { return }
+                guard let self, self.meshRevision == acceptedMeshRevision, self.materialRequestID == requestID else {
+                    return
+                }
                 self.materials = prepared
                 self.acceptedMaterialWarning = prepared.preparationWarning
                 self.materialRevision += 1
                 self.isBakingMaterials = false
             } catch {
-                guard !Task.isCancelled, let self, self.revision == documentRevision,
+                guard !Task.isCancelled, let self, self.meshRevision == acceptedMeshRevision,
                     self.materialRequestID == requestID
                 else { return }
                 self.materialFailed(error.localizedDescription)

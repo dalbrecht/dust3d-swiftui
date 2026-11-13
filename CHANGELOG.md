@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Let Viewer users cancel an open in progress while keeping the current model.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
