@@ -41,6 +41,20 @@ final class ComponentStructureTests: XCTestCase {
         XCTAssertEqual(try nested.components().first { $0.id == "a" }?.childIDs, ["nested"])
         XCTAssertEqual(try nested.components().first { $0.id == "nested" }?.childIDs, ["leaf"])
     }
+    func testGroupNumberCountsOnlySupportedGroupsWithExtraOrMissingPartOwners() throws {
+        let source = try document(
+            "<component id='kept' name='Custom'/><component id='a' linkData='p' linkDataType='partId'/><component id='alias' linkData='p' linkDataType='partId'/><component id='future' linkData='opaque' linkDataType='future'/><component id='dangling' linkData='missing' linkDataType='partId'/>"
+        )
+        let grouped = try source.applying(.groupComponents(ids: ["a"], groupID: "new"))
+        XCTAssertEqual(try grouped.components().first { $0.id == "new" }?.name, "Group 2")
+        XCTAssertEqual(try grouped.components().first { $0.id == "kept" }?.name, "Custom")
+        XCTAssertEqual(grouped.asset(named: "opaque.bin"), source.asset(named: "opaque.bin"))
+
+        let orphan = try document("<component id='only'/>")
+        let wrapped = try orphan.applying(.groupComponents(ids: ["only"], groupID: "new"))
+        XCTAssertEqual(try wrapped.components().first?.name, "Group 2")
+    }
+
     func testUngroupPromotesChildrenAtGroupPositionAndHistoryRestoresRemovedSettings() throws {
         let original = try document()
         let changed = try original.applying(.ungroupComponent(id: "a"))
