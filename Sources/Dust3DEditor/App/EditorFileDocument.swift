@@ -32,8 +32,19 @@ struct EditorFileDocument: FileDocument {
     }
 
     init(configuration: ReadConfiguration) throws {
-        guard let data = configuration.file.regularFileContents else { throw CocoaError(.fileReadCorruptFile) }
-        try self.init(data: data)
+        try self.init(reading: configuration.file, onFailure: EditorSessionDiagnostics.recordDocumentReadFailure)
+    }
+
+    init(reading file: FileWrapper, onFailure: () -> Void) throws {
+        do {
+            guard file.isRegularFile, let data = file.regularFileContents else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            try self.init(data: data)
+        } catch {
+            onFailure()
+            throw error
+        }
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {

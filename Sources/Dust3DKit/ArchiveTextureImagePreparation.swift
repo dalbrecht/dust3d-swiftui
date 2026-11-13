@@ -3,6 +3,21 @@ import Foundation
 
 /// Shared admission/decoding for retained procedural PNGs. No document writes occur here.
 enum ArchiveTextureImagePreparation {
+    static func load(data: Data, limits: ArchiveTextureLimits) throws -> [MeshBakeImage] {
+        try ArchiveTextureImagePreparation.validate(limits)
+        let document = try Dust3DDocument(data: data)
+        let references = try document.textureImageReferences()
+        var remainingEncoded = limits.maximumEncodedTotalBytes
+        try ArchiveTextureImagePreparation.preflight(
+            references, maximumImageBytes: limits.maximumEncodedImageBytes,
+            remainingEncoded: &remainingEncoded)
+        var remainingDecoded = limits.maximumDecodedTotalBytes
+        let images = try ArchiveTextureImagePreparation.decode(
+            references, document: document,
+            maximumImageBytes: limits.maximumEncodedImageBytes, remainingDecoded: &remainingDecoded)
+        return images
+    }
+
     static func validate(_ limits: ArchiveTextureLimits) throws {
         let ceiling = 256 * 1024 * 1024
         guard

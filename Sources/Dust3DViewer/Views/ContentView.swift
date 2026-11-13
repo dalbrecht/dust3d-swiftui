@@ -11,11 +11,13 @@ struct ContentView: View {
     @State private var rendererError: String?
 
     var body: some View {
+        let visibleError = store.errorMessage ?? rendererError
         VStack(spacing: 0) {
-            if let message = store.errorMessage ?? rendererError {
+            if let message = visibleError {
                 HStack(alignment: .top) {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     Text(message).textSelection(.enabled)
                     Spacer()
                     Button("Dismiss") {
@@ -103,6 +105,7 @@ struct ContentView: View {
                 .accessibilityIdentifier("material-source-notice")
             }
         }
+        .background(ViewerErrorAnnouncement(message: visibleError).frame(width: 0, height: 0))
         .frame(minWidth: 650, minHeight: 450)
         .navigationTitle(store.documentName)
         .toolbar {
