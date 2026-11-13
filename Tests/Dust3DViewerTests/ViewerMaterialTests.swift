@@ -201,6 +201,59 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertFalse(store.isUpdatingMaterials)
     }
 
+    func testCancelMaterialUpdateKeepsGeometryAndPermitsRetry() async throws {
+        let frame = try snapshot()
+        let baked = try await MeshBakingService().load(
+            data: frame.data,
+            options: MeshBakeOptions(colorSize: 32, normalSize: 16, materialSize: 8, atlasTextureSize: 32))
+        let baker = SuspendedViewerBaker()
+        let store = ViewerStore(service: SnapshotLoader(snapshot: frame), materialBaker: baker)
+        defer { store.stop() }
+
+        store.open(URL(fileURLWithPath: "/test/model.ds3"))
+        await store.loadTask?.value
+        try await waitForRequests(1, baker)
+        let initialRequest = try XCTUnwrap(store.pendingMaterialUpdateID)
+        let initialTask = try XCTUnwrap(store.materialTask)
+        let acceptedIndices = try XCTUnwrap(store.mesh).indices
+        let meshRevision = store.meshRevision
+        store.cancelMaterialUpdate(requestID: initialRequest)
+        XCTAssertTrue(initialTask.isCancelled)
+        XCTAssertFalse(store.isUpdatingMaterials)
+        XCTAssertNil(store.pendingMaterialUpdateID)
+        XCTAssertNotNil(store.materialIssue)
+        await baker.finish(0, baked)
+        await initialTask.value
+        XCTAssertNil(store.materials)
+
+        store.retryMaterials()
+        try await waitForRequests(2, baker)
+        let uploadRequest = try XCTUnwrap(store.pendingMaterialUpdateID)
+        store.cancelMaterialUpdate(requestID: initialRequest)
+        XCTAssertEqual(store.pendingMaterialUpdateID, uploadRequest)
+        await baker.finish(1, baked)
+        await store.materialTask?.value
+        let uploadRevision = store.meshRevision + store.materialRevision
+        XCTAssertEqual(store.pendingMaterialUpdateID, uploadRequest)
+        store.cancelMaterialUpdate(requestID: uploadRequest)
+        store.materialsRendered(revision: uploadRevision)
+        XCTAssertNil(store.materials)
+        XCTAssertFalse(store.isUpdatingMaterials)
+
+        store.retryMaterials()
+        try await waitForRequests(3, baker)
+        await baker.finish(2, baked)
+        await store.materialTask?.value
+        store.materialsRendered(revision: store.meshRevision + store.materialRevision)
+        XCTAssertFalse(store.isUpdatingMaterials)
+        XCTAssertNil(store.pendingMaterialUpdateID)
+        XCTAssertNil(store.materialIssue)
+        XCTAssertEqual(store.bakedMesh?.textures.color, baked.textures.color)
+        XCTAssertEqual(store.meshRevision, meshRevision)
+        XCTAssertEqual(store.mesh?.indices, acceptedIndices)
+        XCTAssertEqual(store.documentName, "model.ds3")
+    }
+
     func testMaterialNoticeTracksCurrentRenderingAndKeepsSourceFailureCause() async throws {
         let original = try snapshot()
         let warning = "Untextured preview: image textures and procedural surface details are not yet displayed."

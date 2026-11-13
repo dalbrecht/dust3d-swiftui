@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Let Viewer users cancel a material update and retry it while keeping the model visible.
+
 - Let Viewer users cancel an open in progress while keeping the current model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
