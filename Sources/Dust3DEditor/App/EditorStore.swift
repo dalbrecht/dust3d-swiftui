@@ -3309,17 +3309,27 @@ final class EditorStore {
     }
 
     func canPerformGraphSelectionAction(_ target: GraphSelectionActionTarget) -> Bool {
-        guard !stopped, !isWorking, !isAddingNodes, !isMovingOrigin, !referenceColorInteractionActive,
+        guard canSave, !isAddingNodes, !isMovingOrigin, !isSelectingRigEdges, !referenceColorInteractionActive,
             let snapshot
         else { return false }
         return target.isAvailable && target.isCurrent(in: snapshot)
     }
 
+    func canvasGraphEditAction(_ action: GraphSelectionAction) -> (@MainActor () -> Void)? {
+        guard canSave, let snapshot else { return nil }
+        let target = GraphSelectionActionTarget(snapshot: snapshot, action: action)
+        guard canPerformGraphSelectionAction(target) else { return nil }
+        return graphSelectionAction(target)
+    }
+
     func graphSelectionAction(_ target: GraphSelectionActionTarget) -> @MainActor () -> Void {
         guard canPerformGraphSelectionAction(target) else { return {} }
         let modeID = addModeID
+        let rigEpoch = rigEdgeSelectionEpoch
         return { [weak self] in
-            guard let self, self.addModeID == modeID, self.canPerformGraphSelectionAction(target) else { return }
+            guard let self, self.addModeID == modeID, self.rigEdgeSelectionEpoch == rigEpoch,
+                self.canPerformGraphSelectionAction(target)
+            else { return }
             self.perform(acceptCommittedCancellation: true) { try await $0.performGraphSelectionAction(target: target) }
         }
     }
