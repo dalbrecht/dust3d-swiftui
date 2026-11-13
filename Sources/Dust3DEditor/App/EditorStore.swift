@@ -3294,14 +3294,22 @@ final class EditorStore {
     }
 
     func canConnectSelectedNodes(_ target: NodeConnectionTarget, ownerID: String? = nil) -> Bool {
-        guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot) else { return false }
+        guard !isWorking, !isAddingNodes, !isMovingOrigin, !isSelectingRigEdges, !referenceColorInteractionActive,
+            let source = acceptedDocumentSource, target.isCurrent(in: source)
+        else { return false }
         guard let ownerID else { return true }
         return target.owners.contains { $0.nodeID.utf8.elementsEqual(ownerID.utf8) }
     }
     func nodeConnectionAction(_ target: NodeConnectionTarget, ownerID: String) -> @MainActor () -> Void {
         guard canConnectSelectedNodes(target, ownerID: ownerID) else { return {} }
+        let tool = rotationInputContextID
+        let add = addModeID
+        let interaction = referenceColorInteractionEpoch
         return { [weak self] in
-            guard let self, self.canConnectSelectedNodes(target, ownerID: ownerID) else { return }
+            guard let self, self.rotationInputContextID == tool, self.addModeID == add,
+                self.referenceColorInteractionEpoch == interaction,
+                self.canConnectSelectedNodes(target, ownerID: ownerID)
+            else { return }
             self.perform(acceptCommittedCancellation: true) {
                 try await $0.connectSelectedNodes(target: target, ownerID: ownerID)
             }
