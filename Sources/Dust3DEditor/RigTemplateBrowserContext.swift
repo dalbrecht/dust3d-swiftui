@@ -29,19 +29,29 @@ struct RigTemplateBrowserContext {
         guard matchesTemplate, contains(name) else { return nil }
         return overview.target(for: .named(name))
     }
+    func hasAssignments(name: String, includeDescendants: Bool) -> Bool {
+        guard let bone = bone(named: name) else { return false }
+        var pending = [bone]
+        while let current = pending.popLast() {
+            if assignmentCount(current.name) > 0 { return true }
+            if includeDescendants { pending.append(contentsOf: current.children ?? []) }
+        }
+        return false
+    }
+
+    private func bone(named name: String) -> RigTemplateBone? {
+        guard matchesTemplate, contains(name) else { return nil }
+        var pending = hierarchy.roots
+        while let bone = pending.popLast() {
+            if bone.name.utf8.elementsEqual(name.utf8) { return bone }
+            pending.append(contentsOf: bone.children ?? [])
+        }
+        return nil
+    }
+
     /// Freeze all stored matches for this bone or its verified template descendants.
     func clearTarget(name: String, includeDescendants: Bool) -> BoneAssignmentClearTarget? {
-        guard matchesTemplate, contains(name) else { return nil }
-        var search = hierarchy.roots
-        var chosen: RigTemplateBone?
-        while let bone = search.popLast() {
-            if bone.name.utf8.elementsEqual(name.utf8) {
-                chosen = bone
-                break
-            }
-            search.append(contentsOf: bone.children ?? [])
-        }
-        guard let chosen else { return nil }
+        guard let chosen = bone(named: name) else { return nil }
         var names = [chosen.name]
         if includeDescendants {
             var pending = chosen.children ?? []
