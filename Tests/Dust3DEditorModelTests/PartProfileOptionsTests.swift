@@ -31,6 +31,18 @@ final class PartProfileOptionsTests: XCTestCase {
             try Dust3DDocument(data: before).editorContents().parts.map(\.id), [owner, "legacy", first, second])
     }
 
+    func testSpokenTitlesUseIdentityOnlyToDisambiguateVisibleDuplicateNames() throws {
+        let parts = try document().editorContents().parts
+        let all = PartProfileOptions.candidates(in: parts, excluding: owner, matching: "")
+        XCTAssertEqual(
+            PartProfileOptions.spokenTitles(for: all),
+            [first: "Duplicate Curve 曲線, \(first)", second: "Duplicate Curve 曲線, \(second)"])
+
+        let one = PartProfileOptions.candidates(in: parts, excluding: owner, matching: first)
+        XCTAssertEqual(PartProfileOptions.spokenTitles(for: one), [first: "Duplicate Curve 曲線"])
+        XCTAssertEqual(PartProfileOptions.spokenTitles(for: []), [:])
+    }
+
     func testSearchMatchesTitlesAndExactSourceIdentityCaseInsensitivelyInSourceOrder() throws {
         let parts = try document().editorContents().parts
         for query in ["CURVE", "曲線", "duplicate"] {

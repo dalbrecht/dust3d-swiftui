@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- VoiceOver includes a linked profile’s ID in action labels when visible profile names are duplicated.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
