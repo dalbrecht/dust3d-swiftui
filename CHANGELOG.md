@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep rapid canvas nudge and spacing keystrokes in order, with one Undo step for each edit.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
