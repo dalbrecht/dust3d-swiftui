@@ -34,7 +34,7 @@ enum KeyboardShortcutHelp {
             action: "Toggle Add / Return to Selection", keys: "A / S",
             scope: "Focused canvas or node, outside Move Origin and bone edge selection"),
         .init(
-            action: "Remove Graph Picks", keys: "⌥⌘ click / drag",
+            action: "Remove Graph Picks", keys: "⌥⌘ click / ⌥⌘ drag",
             scope: "Canvas nodes, edges or marquee; removes hits while preserving the other picks"),
         .init(action: "Export OBJ Geometry", keys: "⇧⌘E", scope: "Active document with available export geometry"),
         .init(

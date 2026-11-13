@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show the Option and Command modifiers for both click and drag when removing graph selections.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
