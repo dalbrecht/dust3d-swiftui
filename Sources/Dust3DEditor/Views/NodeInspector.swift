@@ -6,17 +6,33 @@ struct NodeInspector: View {
     let store: EditorStore
     private let isRigAssignmentPresented: @MainActor () -> Bool
     @State private var draft: InspectorNodeDraft
+    @Binding private var rigInspectorDocumentID: UUID?
+    @State private var isRigExpanded = false
+    private enum Section { case rig }
 
     init(
         store: EditorStore, draft: InspectorNodeDraft = InspectorNodeDraft(),
+        rigInspectorDocumentID: Binding<UUID?> = .constant(nil),
         isRigAssignmentPresented: @escaping @MainActor () -> Bool = { true }
     ) {
         self.store = store
         self.isRigAssignmentPresented = isRigAssignmentPresented
         _draft = State(initialValue: draft)
+        _rigInspectorDocumentID = rigInspectorDocumentID
     }
 
-    var body: some View { ScrollView { content } }
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView { content }
+                .onChange(of: rigInspectorDocumentID, initial: true) { _, documentID in
+                    guard let documentID else { return }
+                    rigInspectorDocumentID = nil
+                    guard store.snapshot?.documentIdentity == documentID else { return }
+                    isRigExpanded = true
+                    proxy.scrollTo(Section.rig, anchor: .top)
+                }
+        }
+    }
 
     private var content: some View {
         let actionContext = store.snapshot.map { GraphInspectorActionContext(snapshot: $0) }
@@ -24,7 +40,10 @@ struct NodeInspector: View {
             Text("Selection inspector").font(.headline)
             AddModeControls(store: store)
             OriginControls(store: store)
-            RigSettingsControls(store: store, isAssignmentPresented: isRigAssignmentPresented)
+            RigSettingsControls(
+                store: store, expansion: $isRigExpanded, isAssignmentPresented: isRigAssignmentPresented
+            )
+            .id(Section.rig)
             NodeClipboardMenu(store: store)
             if let snapshot = store.snapshot, !snapshot.selectedComponentIDs.isEmpty {
                 ComponentDeletionButton(store: store, target: ComponentDeletionTarget(snapshot: snapshot))
@@ -107,7 +126,8 @@ struct NodeInspector: View {
             }
             if let component = store.snapshot?.selectedComponent {
                 ComponentInspector(store: store, component: component)
-            } else if let part = store.snapshot?.inspectedPart {
+            }
+            if let part = store.snapshot?.inspectedPart {
                 PartInspector(store: store, part: part)
             } else if store.snapshot?.selectedEdgeIDs.isEmpty == false
                 && (store.snapshot?.selectedIDs.isEmpty == false || (store.snapshot?.selectedEdgeIDs.count ?? 0) > 1)
@@ -165,7 +185,7 @@ struct NodeInspector: View {
                     .disabled(!store.canPerformInspectorAction(delete))
                 Text("Coordinates use document units. Dragging moves in the selected canvas plane.")
                     .font(.caption).foregroundStyle(.secondary)
-            } else {
+            } else if store.snapshot?.selectedComponent == nil {
                 Text("Select a node, edge, part or component.").foregroundStyle(.secondary)
             }
             Spacer()
