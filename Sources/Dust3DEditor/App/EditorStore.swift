@@ -2363,6 +2363,35 @@ final class EditorStore {
         }
         perform { try await $0.apply([.setComponentTargetSegments(id: id, segments: number)]) }
     }
+    func canEditComponentStitchingBatch(_ target: ComponentStitchingBatchTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func editComponentStitchingBatch(_ edit: ComponentStitchingEdit, target: ComponentStitchingBatchTarget) {
+        guard canEditComponentStitchingBatch(target), target.permits(edit) else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.editComponentStitchingBatch(edit, target: target) }
+    }
+
+    func setBatchStitchingSegments(_ draft: String, target: ComponentStitchingBatchTarget) {
+        guard canEditComponentStitchingBatch(target), target.supportsLine else { return }
+        guard let segments = Int(draft), (0...100).contains(segments) else {
+            errorMessage = Self.message(DocumentError.invalidComponentTargetSegments)
+            return
+        }
+        editComponentStitchingBatch(.segments(segments), target: target)
+    }
+
+    func setBatchStitchingScalar(
+        _ property: ComponentStitchingScalarProperty, draft: String, target: ComponentStitchingBatchTarget
+    ) {
+        guard canEditComponentStitchingBatch(target), target.supportsLoop else { return }
+        guard let value = EngineScalar.parse(draft, in: property.bounds) else {
+            errorMessage = Self.message(DocumentError.invalidComponentStitchingScalar)
+            return
+        }
+        editComponentStitchingBatch(.scalar(property, value), target: target)
+    }
+
     func setPartFillLoopInterior(_ id: String, value: Bool) {
         perform { try await $0.apply([.setPartFillLoopInterior(id: id, value: value)]) }
     }

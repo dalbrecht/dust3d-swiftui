@@ -526,6 +526,18 @@ public actor EditorSession {
         }.snapshot
     }
 
+    package func editComponentStitchingBatch(
+        _ edit: ComponentStitchingEdit, target: ComponentStitchingBatchTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            guard target.permits(edit) else { throw DocumentError.invalidComponentStructure }
+            try state.apply([.editComponentStitchingBatch(ids: target.ids, edit: edit)])
+        }.snapshot
+    }
+
     package func setGraphPartShape(
         _ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget
     ) throws -> EditorSnapshot {
