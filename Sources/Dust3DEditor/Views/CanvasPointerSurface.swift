@@ -170,6 +170,10 @@ final class CanvasPointerView: NSView {
             cancelInput()
             return
         }
+        if enabled {
+            activity.hasHover = true
+            hover(point(event))
+        }
         super.rightMouseDown(with: event)
     }
     override func menu(for event: NSEvent) -> NSMenu? {

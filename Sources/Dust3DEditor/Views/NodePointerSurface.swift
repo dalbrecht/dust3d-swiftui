@@ -98,7 +98,8 @@ final class NodePointerView: NSView {
         if isRectangular { return self }
         let dx = local.x - bounds.midX
         let dy = local.y - bounds.midY
-        return dx * dx + dy * dy <= 18 * 18 ? self : nil
+        let radius = CanvasNodeMarkerGeometry.centerHitRadius
+        return dx * dx + dy * dy <= radius * radius ? self : nil
     }
 
     override func rightMouseDown(with event: NSEvent) {
