@@ -103,18 +103,78 @@ import XCTest
             XCTAssertEqual(store.snapshot?.selectedIDs, [c, d])
             XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [otherEdge])
         }
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 1000, height: 500)
+        let target = try XCTUnwrap(store.snapshot?.nodes.first { $0.id == b })
+        let center = projection.point(for: target.value.position)
+        XCTAssertGreaterThan(target.value.radius * projection.scale, 25)
+        let insideOutline = CanvasPoint(x: center.x, y: center.y + 25)
+        store.select(nil)
+        try await settle(store)
+        store.pickCanvasGraph(at: insideOutline, projection: projection, mode: .replace, lease: nil)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [b])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        store.updateCanvasHover(at: insideOutline, projection: projection)
+        let selectOwner = try XCTUnwrap(store.canvasHoverWholePartAction(profileLease: nil))
+        selectOwner()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [a, b])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [edge])
+
+        store.select(nil)
+        try await settle(store)
+        var openCount = 0
+        store.selectWholePart(at: insideOutline, projection: projection, onBlank: { openCount += 1 })
+        XCTAssertEqual(openCount, 0)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, [a, b])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [edge])
+
         let beforeBlank = store.snapshot?.selectionRevision
-        store.selectWholePart(
-            at: .init(x: -5000, y: -5000),
-            projection: .init(bounds: store.bounds, plane: .front, width: 500, height: 300))
+        store.selectWholePart(at: .init(x: -5000, y: -5000), projection: projection, onBlank: { openCount += 1 })
+        XCTAssertEqual(openCount, 1)
         XCTAssertEqual(store.snapshot?.selectionRevision, beforeBlank)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
     }
+    func testSidebarRemountDoesNotReplayAnAlreadyHandledReveal() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: try document().encoded())
+        try await settle(store)
+        let disclosure = ComponentSidebarDisclosure()
+        disclosure.restore(from: store.snapshot)
+        disclosure.collapsedIDs = [group, "unrelated"]
+        store.selectWholePart(.edge(edge))
+        try await settle(store)
+        let snapshot = try XCTUnwrap(store.snapshot)
+        let hint = try XCTUnwrap(snapshot.componentRevealHint)
+
+        disclosure.restore(from: snapshot)
+        disclosure.reveal(hint, documentIdentity: snapshot.documentIdentity)
+        XCTAssertEqual(disclosure.collapsedIDs, ["unrelated"])
+        disclosure.collapsedIDs.insert(group)
+        let manualEpoch = disclosure.epoch
+        disclosure.restore(from: snapshot)
+        disclosure.reveal(hint, documentIdentity: snapshot.documentIdentity)
+        XCTAssertEqual(disclosure.collapsedIDs, [group, "unrelated"])
+        XCTAssertEqual(disclosure.epoch, manualEpoch)
+
+        store.selectWholePart(.edge(edge))
+        try await settle(store)
+        let newHint = try XCTUnwrap(store.snapshot?.componentRevealHint)
+        disclosure.reveal(newHint, documentIdentity: snapshot.documentIdentity)
+        XCTAssertEqual(disclosure.collapsedIDs, ["unrelated"])
+    }
+
     func testRevealExpandsAncestorsWithoutComponentSelectionOrGraphReplacement() async throws {
         let store = EditorStore()
         defer { store.stop() }
         await store.load(data: try document().encoded())
         try await settle(store)
-        let disclosure = ComponentSidebarDisclosure(collapsedIDs: [group, "unrelated"])
+        let disclosure = ComponentSidebarDisclosure()
+        disclosure.restore(from: store.snapshot)
+        disclosure.collapsedIDs = [group, "unrelated"]
         let host = NSHostingView(
             rootView: VStack(alignment: .leading, spacing: 0) { ComponentSidebar(store: store, disclosure: disclosure) }
                 .frame(width: 300, height: 240))
@@ -152,7 +212,9 @@ import XCTest
             fileURLWithPath: ProcessInfo.processInfo.environment["DUST3D_BUILD_ROOT"] ?? NSTemporaryDirectory()
         ).appendingPathComponent("ui-qa/whole-part")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let freshDisclosure = ComponentSidebarDisclosure(collapsedIDs: [group])
+        let freshDisclosure = ComponentSidebarDisclosure()
+        freshDisclosure.restore(from: store.snapshot)
+        freshDisclosure.collapsedIDs = [group]
         let freshHost = NSHostingView(
             rootView: VStack(alignment: .leading, spacing: 0) {
                 ComponentSidebar(store: store, disclosure: freshDisclosure)
@@ -172,6 +234,7 @@ import XCTest
         freshHost.layoutSubtreeIfNeeded()
         try await Task.sleep(for: .milliseconds(100))
         freshHost.layoutSubtreeIfNeeded()
+        XCTAssertFalse(freshDisclosure.collapsedIDs.contains(group))
         let freshTable = try XCTUnwrap(findTable(in: freshHost))
         XCTAssertTrue(
             NSLocationInRange(ownerIndex, freshTable.rows(in: freshTable.visibleRect)),
@@ -204,7 +267,7 @@ import XCTest
         var doubles = 0
         var placements = 0
         canvas.tap = { _, _ in canvasSingles += 1 }
-        canvas.doubleClick = { _ in doubles += 1 }
+        canvas.doubleClick = { _, _ in doubles += 1 }
         canvas.addPress = { _ in placements += 1 }
         for count in [1, 2] {
             canvas.mouseDown(with: try event(.leftMouseDown, count: count))
@@ -226,7 +289,8 @@ import XCTest
         defer { store.stop() }
         await store.load(data: source.encoded())
         try await settle(store)
-        let host = NSHostingView(rootView: NodeCanvas(store: store))
+        var opens = 0
+        let host = NSHostingView(rootView: NodeCanvas(store: store, openDocument: { opens += 1 }))
         let window = NSWindow(
             contentRect: .init(x: 0, y: 0, width: 500, height: 300), styleMask: [], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -244,6 +308,18 @@ import XCTest
         let nodeDouble = try XCTUnwrap(hit.doubleClick)
         let canvas = try XCTUnwrap(findCanvas(in: host))
         let backgroundDouble = try XCTUnwrap(canvas.doubleClick)
+        for modifiers: NSEvent.ModifierFlags in [[], .command] {
+            canvas.mouseDown(
+                with: try XCTUnwrap(
+                    NSEvent.mouseEvent(
+                        with: .leftMouseDown, location: .init(x: 2, y: 2), modifierFlags: modifiers,
+                        timestamp: 0, windowNumber: window.windowNumber, context: nil, eventNumber: 1,
+                        clickCount: 2, pressure: 1)))
+            XCTAssertEqual(opens, modifiers.contains(.command) ? 1 : 0)
+        }
+        backgroundDouble(point, .toggle)
+        try await settle(store)
+        XCTAssertEqual(opens, 1, "Geometry takes precedence over the blank canvas Open gesture")
         for count in [1, 2] {
             let down = try XCTUnwrap(
                 NSEvent.mouseEvent(
@@ -264,7 +340,8 @@ import XCTest
         await store.load(data: changed.encoded())
         try await settle(store)
         nodeDouble()
-        backgroundDouble(point)
+        backgroundDouble(.init(x: 2, y: 2), .toggle)
+        XCTAssertEqual(opens, 1, "A retired canvas cannot open the picker")
         XCTAssertEqual(store.snapshot?.selectedIDs, [])
         XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
         XCTAssertNil(store.snapshot?.componentRevealHint)
@@ -277,7 +354,7 @@ import XCTest
         try await settle(store)
         let before = store.snapshot?.selectionRevision
         store.selectWholePart(.node(a), context: freshContext)
-        freshBackgroundDouble(point)
+        freshBackgroundDouble(point, .replace)
         XCTAssertEqual(store.snapshot?.selectionRevision, before)
         XCTAssertEqual(store.snapshot?.selectedIDs, [a])
         XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])

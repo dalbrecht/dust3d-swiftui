@@ -16,8 +16,8 @@ final class GraphTransformTests: XCTestCase {
                 + model + Data([0, 255]))
     }
 
-    func testEveryTransformUsesEditableCentroidAndExactUndo() throws {
-        let original = try document()
+    func testTransformCentersAndExactUndo() throws {
+        let original = try document(locked: false)
         let expected: [SelectionTransform: NodePosition] = [
             .frontClockwise: .init(x: 3, y: 1, z: 0),
             .frontCounterclockwise: .init(x: -1, y: 3, z: 0),
@@ -27,12 +27,13 @@ final class GraphTransformTests: XCTestCase {
             .flipY: .init(x: 0, y: 4, z: 0),
             .flipZ: .init(x: 0, y: 0, z: 6),
             .exchangeXZ: .init(x: 0, y: 0, z: 0),
-            .frontAlignX: .init(x: 1, y: 0, z: 0),
-            .frontAlignY: .init(x: 0, y: 2, z: 0),
-            .frontAlignCenter: .init(x: 1, y: 2, z: 0),
-            .sideAlignZ: .init(x: 0, y: 0, z: 3),
-            .sideAlignY: .init(x: 0, y: 2, z: 0),
-            .sideAlignCenter: .init(x: 0, y: 2, z: 3),
+            // Qt measures the whole selection, then applies movement locks.
+            .frontAlignX: .init(x: 2, y: 0, z: 0),
+            .frontAlignY: .init(x: 0, y: 10.0 / 3, z: 0),
+            .frontAlignCenter: .init(x: 2, y: 10.0 / 3, z: 0),
+            .sideAlignZ: .init(x: 0, y: 0, z: 14.0 / 3),
+            .sideAlignY: .init(x: 0, y: 10.0 / 3, z: 0),
+            .sideAlignCenter: .init(x: 0, y: 10.0 / 3, z: 14.0 / 3),
             .originFrontX: .init(x: 1, y: 0, z: 0),
             .originFrontY: .init(x: 0, y: 2, z: 0),
             .originFrontCenter: .init(x: 1, y: 2, z: 0),
@@ -45,15 +46,18 @@ final class GraphTransformTests: XCTestCase {
             XCTAssertFalse(transform.rawValue.isEmpty)
             var state = try EditorState(document: original)
             state.selectAll()
+            try state.apply([.setPartState(id: "q", property: .locked, value: true)])
+            XCTAssertEqual(state.snapshot.selectedIDs, ["a", "b", "c"])
+            let before = state.snapshot.document
             try state.transformSelection(transform)
             XCTAssertEqual(try state.snapshot.document.node(id: "a").position, expected[transform])
             XCTAssertEqual(try state.snapshot.document.node(id: "a").radius, 0.1)
-            XCTAssertEqual(try state.snapshot.document.node(id: "c"), try original.node(id: "c"))
+            XCTAssertEqual(try state.snapshot.document.node(id: "c"), try before.node(id: "c"))
             XCTAssertEqual(state.snapshot.document.asset(named: "opaque"), Data([0, 255]))
             let edited = state.snapshot.document.encoded()
             try state.undo()
-            XCTAssertEqual(state.snapshot.document.encoded(), original.encoded())
-            XCTAssertFalse(state.snapshot.canUndo)
+            XCTAssertEqual(state.snapshot.document.encoded(), before.encoded())
+            XCTAssertTrue(state.snapshot.canUndo)
             try state.redo()
             XCTAssertEqual(state.snapshot.document.encoded(), edited)
             XCTAssertEqual(state.snapshot.selectedIDs, ["a", "b", "c"])
@@ -161,7 +165,7 @@ final class GraphTransformTests: XCTestCase {
         XCTAssertEqual(reversed.edges[0].fromID, "b")
     }
     @MainActor
-    func testLocalAlignmentUsesEditableMeanLocksAndOneUndoAcrossActor() async throws {
+    func testLocalAlignmentUsesVisibleMeanLocksAndOneUndoAcrossActor() async throws {
         for (locked, visible, disabled) in [(true, true, false), (false, false, false), (false, true, true)] {
             var original = try document(locked: locked, visible: visible)
             if disabled { original = try original.applying(.setPartState(id: "q", property: .disabled, value: true)) }
@@ -170,8 +174,9 @@ final class GraphTransformTests: XCTestCase {
             _ = try await session.selectAll()
             _ = try await session.setLock(.x, isLocked: true)
             let aligned = try await session.transformSelection(.frontAlignCenter)
-            XCTAssertEqual(try aligned.document.node(id: "a").position, .init(x: 0, y: 2, z: 0))
-            XCTAssertEqual(try aligned.document.node(id: "b").position, .init(x: 2, y: 2, z: 6))
+            let expectedY = locked ? 10.0 / 3 : 2
+            XCTAssertEqual(try aligned.document.node(id: "a").position, .init(x: 0, y: expectedY, z: 0))
+            XCTAssertEqual(try aligned.document.node(id: "b").position, .init(x: 2, y: expectedY, z: 6))
             XCTAssertEqual(try aligned.document.node(id: "c"), try original.node(id: "c"))
             let restored = try await session.undo()
             XCTAssertEqual(restored.document.encoded(), original.encoded())
