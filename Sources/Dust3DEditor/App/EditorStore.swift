@@ -351,21 +351,30 @@ final class EditorStore {
     ) {
         guard ownsCanvasProfile(lease), lease == nil || projection.plane == plane else { return }
         canvasGeometryUsesProfileLease = lease != nil
+        var currentProjection = projection
+        if frozenAddProjection != nil, canvasWidth != width || canvasHeight != height {
+            if isWorking || addPlacementRequestID != nil {
+                cancelAddMode()
+            } else {
+                addPlacement.suspendProjectionForProfileChange()
+                addModeID = UUID()
+                // The mounted canvas still renders its frozen Add projection during the size callback.
+                currentProjection = CanvasProjection(bounds: bounds, plane: plane, width: width, height: height)
+            }
+        }
         if isAddingNodes, frozenAddProjection == nil {
-            guard projection.plane == plane, width.isFinite, width > 0, height.isFinite, height > 0,
+            guard currentProjection.plane == plane, width.isFinite, width > 0, height.isFinite, height > 0,
                 let snapshot
             else { return }
             do {
-                try addPlacement.reproject(snapshot: snapshot, projection: projection, canvasHeight: height)
+                try addPlacement.reproject(snapshot: snapshot, projection: currentProjection, canvasHeight: height)
             } catch {
                 cancelAddMode()
                 errorMessage = Self.message(error)
                 return
             }
-        } else if isAddingNodes && (canvasWidth != width || canvasHeight != height) {
-            cancelAddMode()
         }
-        updatePrecisionCanvasIdentity(projection: projection, width: width, height: height)
+        updatePrecisionCanvasIdentity(projection: currentProjection, width: width, height: height)
         canvasWidth = width
         setCanvasHeight(height)
         // Mode entry rebuilds against current bounds/plane, which may change before SwiftUI renders again.
