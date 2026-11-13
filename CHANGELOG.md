@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Describe keyboard orbit and camera reset in the Editor and Viewer preview accessibility hints.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.

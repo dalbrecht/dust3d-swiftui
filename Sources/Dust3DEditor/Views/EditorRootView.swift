@@ -591,6 +591,7 @@ struct EditorRootView: View {
                 ) { store.renderError = $0 }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
                 .accessibilityLabel("3D mesh preview")
+                .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 if store.isUpdatingMaterials {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)
                 }
