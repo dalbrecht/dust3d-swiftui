@@ -2681,6 +2681,29 @@ final class EditorStore {
     func renameComponent(_ id: String, name: String) {
         perform { try await $0.apply([.setComponentName(id: id, name: name)]) }
     }
+    func inspectedComponentNameAction(
+        _ component: DocumentComponent, equipment: ComponentEquipmentSlotTarget?
+    ) -> (@MainActor (String) -> Void)? {
+        guard canSave, let snapshot, let selected = snapshot.selectedComponent,
+            selected.id.utf8.elementsEqual(component.id.utf8), selected.name.utf8.elementsEqual(component.name.utf8)
+        else { return nil }
+        let context = CanvasAdjustmentTarget(snapshot: snapshot)
+        return { [weak self] name in
+            guard let self, self.canSave, let current = self.acceptedDocumentSource, context.isCurrent(in: current)
+            else { return }
+            if let equipment {
+                self.perform(acceptCommittedCancellation: true) {
+                    try await $0.renameEquipmentComponentBase(name, target: equipment)
+                }
+            } else {
+                self.perform(acceptCommittedCancellation: true) {
+                    try await $0.apply(
+                        [.setComponentName(id: component.id, name: name)], selecting: nil, target: context)
+                }
+            }
+        }
+    }
+
     func canEditComponentEquipmentSlot(_ target: ComponentEquipmentSlotTarget) -> Bool {
         !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
     }

@@ -4,27 +4,28 @@ import SwiftUI
 struct ComponentInspector: View {
     let store: EditorStore
     let component: DocumentComponent
-    @State private var name = ""
-
     var body: some View {
+        let snapshot = store.snapshot
+        let equipment = snapshot?.equipmentSlotTarget.flatMap { target in
+            target.componentID.utf8.elementsEqual(component.id.utf8) ? target : nil
+        }
+        let base = equipment.flatMap { _ in component.equipmentRenameBaseName }
+        let apply = store.inspectedComponentNameAction(component, equipment: base == nil ? nil : equipment)
         VStack(alignment: .leading, spacing: 16) {
             Text("Component inspector").font(.title3)
             Text(component.id).font(.caption).textSelection(.enabled)
                 .id(component.id)
                 .focusedValue(\.editorTextEditing, true)
-            TextField("Component name", text: $name)
-                .accessibilityIdentifier("component-name")
-                .focusedValue(\.editorTextEditing, true)
-                .onSubmit { store.renameComponent(component.id, name: name) }
-            HStack {
-                Button("Reset Name") { name = component.name }
-                Spacer()
-                Button("Apply Name") { store.renameComponent(component.id, name: name) }
-            }
-            if let snapshot = store.snapshot, let target = snapshot.equipmentSlotTarget,
-                target.componentID == component.id
-            {
-                ComponentEquipmentSlotControls(store: store, component: component, target: target)
+            ComponentNameFields(
+                name: base ?? component.name, title: base == nil ? "Component name" : "Component base name",
+                apply: apply
+            )
+            .id([
+                Data((snapshot?.documentIdentity.uuidString ?? "").utf8), Data(component.id.utf8),
+                Data(component.name.utf8), Data([base == nil ? 0 : 1]),
+            ])
+            if let snapshot, let equipment {
+                ComponentEquipmentSlotControls(store: store, component: component, target: equipment)
                     .id(snapshot.documentIdentity)
             }
             Picker(
@@ -80,7 +81,25 @@ struct ComponentInspector: View {
             .font(.caption).foregroundStyle(.secondary)
         }
         .disabled(store.isWorking)
-        .onChange(of: component.id, initial: true) { _, _ in name = component.name }
-        .onChange(of: component.name) { _, value in name = value }
+    }
+}
+
+private struct ComponentNameFields: View {
+    let name: String
+    let title: LocalizedStringKey
+    let apply: (@MainActor (String) -> Void)?
+    @State private var draft = ""
+
+    var body: some View {
+        TextField(title, text: $draft)
+            .accessibilityIdentifier("component-name")
+            .focusedValue(\.editorTextEditing, true)
+            .onSubmit { apply?(draft) }
+            .onChange(of: name, initial: true) { _, value in draft = value }
+        HStack {
+            Button("Reset Name") { draft = name }
+            Spacer()
+            Button("Apply Name") { apply?(draft) }.disabled(apply == nil)
+        }
     }
 }

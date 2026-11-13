@@ -465,6 +465,20 @@ public actor EditorSession {
         }.snapshot
     }
 
+    /// Rename the selected Model component while retaining its captured equipment assignment.
+    package func renameEquipmentComponentBase(_ name: String, target: ComponentEquipmentSlotTarget) throws
+        -> EditorSnapshot
+    {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            let current = state.snapshot
+            guard hasAcceptedSource, target.isCurrent(in: current),
+                let component = current.selectedComponent, component.id.utf8.elementsEqual(target.componentID.utf8),
+                component.equipmentRenameBaseName != nil
+            else { throw ComponentEquipmentSlotError.staleTarget }
+            try state.apply([.setComponentBaseNamePreservingEquipmentSlot(id: target.componentID, name: name)])
+        }.snapshot
+    }
+
     /// Apply one equipment assignment to the captured Model component.
     package func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) throws
         -> EditorSnapshot
