@@ -55,6 +55,8 @@ enum KeyboardShortcutHelp {
             action: "Decrease / Increase Selection Spacing", keys: "[ / ]",
             scope: "Focused canvas, node or origin marker, with editable selection and no active drag"),
         .init(action: "Lock X / Y / Z / Radius", keys: "⌥⌘X / ⌥⌘Y / ⌥⌘Z / ⌥⌘R", scope: "Active document"),
+        .init(action: "Orbit 3D Preview", keys: "← / → / ↑ / ↓", scope: "Focused 3D preview"),
+        .init(action: "Reset Preview Camera", keys: "F", scope: "Focused 3D preview"),
         .init(action: "Show / Hide Sidebar", keys: "⌃⌘S", scope: "Focused editor window"),
         .init(action: "Show / Hide Inspector", keys: "⌃⌘I", scope: "Focused editor window"),
         .init(
