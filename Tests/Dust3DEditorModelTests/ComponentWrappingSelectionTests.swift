@@ -24,6 +24,15 @@ final class ComponentWrappingSelectionTests: XCTestCase {
         XCTAssertEqual(undone.document.encoded(), source.encoded())
         XCTAssertFalse(undone.canUndo)
         XCTAssertFalse(target.isCurrent(in: undone))
+
+        let refreshed = try await session.selectComponents(["a", "b", "c", "d"])
+        let clearTarget = ComponentWrappingSelectionTarget(snapshot: refreshed)
+        let cleared = try await session.editSelectedComponentWrapping(.clearSettings, target: clearTarget)
+        XCTAssertTrue(cleared.componentTree.rows.allSatisfy { $0.component.wrapping.mode == ComponentWrapMode.none })
+        XCTAssertNotEqual(cleared.previewIdentity.geometry, refreshed.previewIdentity.geometry)
+        let restored = try await session.undo()
+        XCTAssertEqual(restored.document.encoded(), source.encoded())
+        XCTAssertFalse(restored.canUndo)
     }
     func testSelectionAndConstraintAwayAndBackRejectRetainedTarget() throws {
         let source = try Dust3DDocument(

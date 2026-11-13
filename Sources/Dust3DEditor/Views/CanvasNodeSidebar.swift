@@ -8,7 +8,7 @@ struct NodesSidebarSelectAll {
 /// Search stays separate from the native list's transient selection.
 struct CanvasNodeSidebar: View {
     let store: EditorStore
-    @State private var query = ""
+    @Binding var query: String
 
     var body: some View {
         let renderedQuery = query

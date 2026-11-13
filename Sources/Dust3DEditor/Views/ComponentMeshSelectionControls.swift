@@ -39,21 +39,25 @@ struct ComponentMeshSelectionControls: View {
                 editor(snapshot: snapshot, target: ComponentMeshSelectionTarget(snapshot: snapshot))
             } else if !snapshot.selectedIDs.isEmpty || !snapshot.selectedEdgeIDs.isEmpty {
                 let target = ComponentMeshSelectionTarget(graphSelection: snapshot)
-                if target.isCurrent(in: snapshot) {
-                    DisclosureGroup("Owning Component Mesh Settings") {
-                        editor(snapshot: snapshot, target: target)
-                    }
-                    if !target.graphColorImageComponents(in: snapshot).isEmpty {
-                        DisclosureGroup("Owning Component Texture Image") {
-                            ComponentColorImageControls(store: store, graphTarget: target)
-                                .id(target)
-                        }
-                    }
-                    DisclosureGroup("Owning Component Colors") {
-                        ComponentBatchColorControls(store: store, target: target)
-                            .id(target)
-                    }
+                graphEditor(snapshot: snapshot, target: target)
+            }
+        }
+    }
+
+    @ViewBuilder func graphEditor(snapshot: EditorSnapshot, target: ComponentMeshSelectionTarget) -> some View {
+        if target.isCurrent(in: snapshot) {
+            DisclosureGroup("Owning Component Mesh Settings") {
+                editor(snapshot: snapshot, target: target)
+            }
+            if !target.graphColorImageComponents(in: snapshot).isEmpty {
+                DisclosureGroup("Owning Component Texture Image") {
+                    ComponentColorImageControls(store: store, graphTarget: target)
+                        .id(target)
                 }
+            }
+            DisclosureGroup("Owning Component Colors") {
+                ComponentBatchColorControls(store: store, target: target)
+                    .id(target)
             }
         }
     }
