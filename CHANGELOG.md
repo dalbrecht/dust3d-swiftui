@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select Whole Part uses exact stored ownership for graph picks and the revealed component.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
