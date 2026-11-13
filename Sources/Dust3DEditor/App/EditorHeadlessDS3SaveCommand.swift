@@ -1,25 +1,54 @@
 import Darwin
 import Dust3DDocument
 import Dust3DEditorModel
+import Dust3DKit
 import Foundation
 
-/// Saves an owned source archive before the editor creates any windows.
+/// Processes ordered outputs from one owned source archive before the editor creates any windows.
 enum EditorHeadlessDS3SaveCommand {
-    private static let outputOptions = ["-o", "-output"]
+    private static let geometryFBXOption = "--geometry-fbx"
+    private static let texturedFBXOption = "--textured-fbx"
+    private static let outputOptions = ["-o", "-output", geometryFBXOption, texturedFBXOption]
+
+    private enum OutputKind: Equatable {
+        case ds3
+        case geometry(DocumentExportFormat)
+        case glb
+
+        init?(suffix: String) {
+            switch suffix {
+            case "ds3": self = .ds3
+            case "obj": self = .geometry(.obj)
+            case "fbx": self = .geometry(.fbxTextured)
+            case "glb": self = .glb
+            default: return nil
+            }
+        }
+    }
 
     private enum Failure: LocalizedError {
         case usage
         case unsafeOutput(URL)
+        case directoryOutput
+        case geometryUnavailable(String)
+        case unsupportedOutputFormat
         case input(URL, cause: String)
         case fileInspection(URL, code: Int)
 
         var errorDescription: String? {
             switch self {
             case .usage:
-                "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment.xml] -o output.ds3 [-output another.ds3 ...]. "
-                    + "Supply one input archive or XML fragment and up to 64 distinct .ds3 destinations."
+                "Usage: Dust3DEditor [input.ds3] [-paste-xml fragment] -o output.ds3 [-output another ...]. "
+                    + "Supply one input archive or XML fragment and up to 64 distinct .ds3, .obj, or .fbx destinations. "
+                    + "FBX includes procedural textures. Use --geometry-fbx output.fbx for geometry only. "
+                    + "GLB export is unavailable."
             case .unsafeOutput(let url):
                 "Destination must be a regular file distinct from all inputs and other outputs: \(url.path)"
+            case .directoryOutput: "Destination is a directory."
+            case .geometryUnavailable(let kind):
+                "Headless .\(kind) export is unavailable."
+            case .unsupportedOutputFormat:
+                "Unsupported output format. Use .ds3, .obj, or .fbx."
             case .input(let url, let cause):
                 "Could not read or apply \(url.path): \(cause)"
             case .fileInspection(let url, let code):
@@ -30,8 +59,9 @@ enum EditorHeadlessDS3SaveCommand {
 
     private struct Invocation {
         var source: URL?
-        var xml: URL?
-        var destinations: [URL] = []
+        var xmlInputs: [URL] = []
+        var xml: URL? { xmlInputs.last }
+        var destinations: [(url: URL, kind: OutputKind?)] = []
 
         init(options: ArraySlice<String>) throws {
             var options = options
@@ -41,10 +71,14 @@ enum EditorHeadlessDS3SaveCommand {
                     parsesOptions = false
                 } else if parsesOptions, EditorHeadlessDS3SaveCommand.outputOptions.contains(argument) {
                     guard destinations.count < 64 else { throw Failure.usage }
-                    destinations.append(try Self.path(options.popFirst(), extension: "ds3"))
+                    let geometryOnly = argument == EditorHeadlessDS3SaveCommand.geometryFBXOption
+                    let explicitFBX = geometryOnly || argument == EditorHeadlessDS3SaveCommand.texturedFBXOption
+                    let url = try Self.path(options.popFirst(), extension: explicitFBX ? "fbx" : nil)
+                    let kind: OutputKind? =
+                        geometryOnly ? .geometry(.fbx) : OutputKind(suffix: url.pathExtension.lowercased())
+                    destinations.append((url, kind))
                 } else if parsesOptions, argument == "-paste-xml" {
-                    guard xml == nil else { throw Failure.usage }
-                    xml = try Self.path(options.popFirst(), extension: "xml")
+                    xmlInputs.append(try Self.path(options.popFirst()))
                 } else if parsesOptions, argument == "-toggle-color" {
                     // Qt accepts this display option alongside output. It does not change the source snapshot.
                     guard let operand = options.popFirst(), !operand.hasPrefix("-") else { throw Failure.usage }
@@ -61,7 +95,8 @@ enum EditorHeadlessDS3SaveCommand {
             guard !destinations.isEmpty, source != nil || xml != nil else { throw Failure.usage }
         }
 
-        private static func path(_ argument: String?, extension suffix: String, allowsLeadingDash: Bool = false) throws
+        private static func path(_ argument: String?, extension suffix: String? = nil, allowsLeadingDash: Bool = false)
+            throws
             -> URL
         {
             guard let argument, !argument.isEmpty, allowsLeadingDash || !argument.hasPrefix("-"),
@@ -69,7 +104,7 @@ enum EditorHeadlessDS3SaveCommand {
                 argument.hasPrefix("/") || URLComponents(string: argument)?.scheme == nil
             else { throw Failure.usage }
             let url = URL(fileURLWithPath: argument).standardizedFileURL
-            guard url.pathExtension.lowercased() == suffix else { throw Failure.usage }
+            if let suffix, url.pathExtension.lowercased() != suffix { throw Failure.usage }
             return url
         }
     }
@@ -81,7 +116,8 @@ enum EditorHeadlessDS3SaveCommand {
 
     /// A nil status leaves the ordinary application and other startup commands in charge.
     @MainActor static func run(
-        arguments: [String], stdout: (String) -> Void, stderr: (String) -> Void
+        arguments: [String], geometryEncoder: (any DocumentExportEncoding)? = nil,
+        stdout: (String) -> Void, stderr: (String) -> Void
     ) async -> Int32? {
         let options = arguments.dropFirst()
         let switches = options.prefix(while: { $0 != "--" })
@@ -90,9 +126,10 @@ enum EditorHeadlessDS3SaveCommand {
         else { return nil }
 
         let invocation: Invocation
+        let directoryOutputs: Set<URL>
         do {
             invocation = try Invocation(options: options)
-            try validateDestinations(invocation)
+            directoryOutputs = try validateDestinations(invocation)
         } catch {
             stderr(error.localizedDescription + "\n")
             return 2
@@ -107,14 +144,31 @@ enum EditorHeadlessDS3SaveCommand {
             return 1
         }
 
+        let exports = geometryEncoder.map { DocumentExportFileService(encoder: $0) }
         var status: Int32 = 0
-        for destination in invocation.destinations {
+        for (destination, kind) in invocation.destinations {
             do {
-                try await files.save(document, to: destination)
-                stdout("Saved \(destination.path)\n")
+                if directoryOutputs.contains(destination) { throw Failure.directoryOutput }
+                guard let kind else { throw Failure.unsupportedOutputFormat }
+                switch kind {
+                case .ds3:
+                    try await files.save(document, to: destination)
+                    stdout("Saved \(destination.path)\n")
+                case .geometry(let format):
+                    guard let exports else { throw Failure.geometryUnavailable(format.fileExtension) }
+                    let artifact = try await exports.export(
+                        document, format: format, to: destination, sourceURL: invocation.source)
+                    stdout("Exported \(destination.path)\n")
+                    if !artifact.warning.isEmpty {
+                        stderr("Export note for \(destination.path): \(artifact.warning)\n")
+                    }
+                case .glb:
+                    throw Failure.geometryUnavailable("glb")
+                }
             } catch {
                 status = 1
-                stderr("Could not save \(destination.path): \(error.localizedDescription)\n")
+                let operation = kind == .ds3 ? "save" : "export"
+                stderr("Could not \(operation) \(destination.path): \(error.localizedDescription)\n")
             }
         }
         return status
@@ -127,7 +181,7 @@ enum EditorHeadlessDS3SaveCommand {
         if let source = invocation.source {
             do {
                 original = try await files.load(from: source)
-            } catch { throw Failure.input(source, cause: error.localizedDescription) }
+            } catch { throw Failure.input(source, cause: await EditorStore.message(error)) }
         } else {
             original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
         }
@@ -136,21 +190,34 @@ enum EditorHeadlessDS3SaveCommand {
             let fragment = try await QtXMLFileReader().read(xml)
             let session = EditorSession()
             let before = try await session.open(data: original.encoded())
-            return try await session.pasteQtXMLFile(fragment, target: .init(snapshot: before)).document
-        } catch { throw Failure.input(xml, cause: error.localizedDescription) }
+            return try await session.pasteQtXMLFile(
+                fragment, target: .init(snapshot: before), clearsMissingCutFaces: true,
+                settlesNewDocumentOrigin: invocation.source == nil
+            ).document
+        } catch { throw Failure.input(xml, cause: await EditorStore.message(error)) }
     }
 
-    private static func validateDestinations(_ invocation: Invocation) throws {
-        let inputs = [invocation.source, invocation.xml].compactMap { $0 }.map { $0.resolvingSymlinksInPath() }
-        var paths = Set(inputs.map(pathKey))
-        var identities = Set(try inputs.compactMap { try fileIdentity($0, isDestination: false) })
-        for destination in invocation.destinations {
+    private static func validateDestinations(_ invocation: Invocation) throws -> Set<URL> {
+        let activeInputs = [invocation.source, invocation.xml].compactMap { $0?.resolvingSymlinksInPath() }
+        let supersededInputs = invocation.xmlInputs.dropLast().map { $0.resolvingSymlinksInPath() }
+        var paths = Set((activeInputs + supersededInputs).map(pathKey))
+        var identities = Set(try activeInputs.compactMap { try fileIdentity($0, purpose: .input) })
+        // Still protect earlier operands and their hard links from output replacement.
+        identities.formUnion(try supersededInputs.compactMap { try fileIdentity($0, purpose: .supersededInput) })
+        var directories: Set<URL> = []
+        for (destination, _) in invocation.destinations {
             guard paths.insert(pathKey(destination)).inserted else { throw Failure.unsafeOutput(destination) }
-            if let identity = try fileIdentity(destination, isDestination: true), !identities.insert(identity).inserted
-            {
-                throw Failure.unsafeOutput(destination)
+            do {
+                if let identity = try fileIdentity(destination, purpose: .destination),
+                    !identities.insert(identity).inserted
+                {
+                    throw Failure.unsafeOutput(destination)
+                }
+            } catch Failure.directoryOutput {
+                directories.insert(destination)
             }
         }
+        return directories
     }
 
     private static func pathKey(_ url: URL) -> String {
@@ -161,7 +228,13 @@ enum EditorHeadlessDS3SaveCommand {
         return caseSensitive == false ? path.lowercased() : path
     }
 
-    private static func fileIdentity(_ url: URL, isDestination: Bool) throws -> FileIdentity? {
+    private enum PathPurpose {
+        case input
+        case supersededInput
+        case destination
+    }
+
+    private static func fileIdentity(_ url: URL, purpose: PathPurpose) throws -> FileIdentity? {
         var metadata = stat()
         let code = url.withUnsafeFileSystemRepresentation { path in
             guard let path else { return EINVAL }
@@ -169,8 +242,11 @@ enum EditorHeadlessDS3SaveCommand {
         }
         if code == ENOENT || code == ENOTDIR { return nil }
         guard code == 0 else { throw Failure.fileInspection(url, code: Int(code)) }
-        guard metadata.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else {
-            if isDestination { throw Failure.unsafeOutput(url) }
+        let type = metadata.st_mode & mode_t(S_IFMT)
+        if purpose == .destination, type == mode_t(S_IFDIR) { throw Failure.directoryOutput }
+        guard type == mode_t(S_IFREG) else {
+            if purpose == .supersededInput { return nil }
+            if purpose == .destination { throw Failure.unsafeOutput(url) }
             throw Failure.input(url, cause: "Expected a regular file.")
         }
         return FileIdentity(device: metadata.st_dev, inode: metadata.st_ino)
