@@ -37,8 +37,14 @@ struct CanvasPointerSurface: NSViewRepresentable {
     let rectangle: (CanvasSelectionRectangle?) -> Void
     let hover: (CanvasPoint?) -> Void
     let wheel: (CanvasWheelInput) -> Bool
+    var wheelWhileDisabled: () -> Bool = { false }
+    var unhandledWheel: ((CanvasWheelInput) -> Bool)? = nil
     var radiusKey: (Int) -> Bool = { _ in false }
-    var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var doubleClick: ((CanvasPoint, GraphSelectionMode) -> Void)? = nil
+    var lassoCanvas: ReferenceColorCanvasIdentity? = nil
+    var lassoSelection: ((GraphSelectionMode) -> CanvasLassoInteraction?)? = nil
+    var lassoPreview: (CanvasLassoSample?) -> Void = { _ in }
+    var lassoFinish: (CanvasLassoSample) -> Void = { _ in }
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var tracksHoverWhileDisabled = false
     var isAddingNodes = false
@@ -50,16 +56,19 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
     var focusControl: CanvasProfileFocusControl? = nil
     var focusTarget: CanvasProfileFocusTarget? = nil
+    var addModeKey: CanvasAddModeKey.Handler? = nil
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
         view.cancelActivation()
         view.enabled = false
+        view.wheelWhileDisabled = { false }
         view.precisionKey = nil
         view.profileFocusRequest = nil
         view.switchProfile = nil
         view.focusControl?.detach(view)
         view.focusControl = nil
+        view.addModeKey = nil
     }
     func updateNSView(_ view: CanvasPointerView, context: Context) {
         view.tracksHoverWhileDisabled = tracksHoverWhileDisabled
@@ -70,8 +79,15 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.rectangle = rectangle
         view.hover = hover
         view.wheel = wheel
+        view.wheelWhileDisabled = wheelWhileDisabled
+        view.unhandledWheel = unhandledWheel
         view.radiusKey = radiusKey
         view.doubleClick = doubleClick
+        if view.lassoCanvas != lassoCanvas { view.cancelActivation() }
+        view.lassoCanvas = lassoCanvas
+        view.lassoSelection = lassoSelection
+        view.lassoPreview = lassoPreview
+        view.lassoFinish = lassoFinish
         view.precisionKey = precisionKey
         if view.isAddingNodes != isAddingNodes { view.cancelActivation() }
         view.isAddingNodes = isAddingNodes
@@ -83,6 +99,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.switchProfile = switchProfile
         view.focusControl = focusControl
         if let focusTarget, ownsProfile() { focusControl?.attach(view, target: focusTarget) }
+        view.addModeKey = addModeKey
         view.scheduleProfileFocus()
     }
 }
@@ -97,8 +114,14 @@ final class CanvasPointerView: NSView {
     var rectangle: (CanvasSelectionRectangle?) -> Void = { _ in }
     var hover: (CanvasPoint?) -> Void = { _ in }
     var wheel: (CanvasWheelInput) -> Bool = { _ in false }
+    var wheelWhileDisabled: () -> Bool = { false }
+    var unhandledWheel: ((CanvasWheelInput) -> Bool)?
     var radiusKey: (Int) -> Bool = { _ in false }
-    var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var doubleClick: ((CanvasPoint, GraphSelectionMode) -> Void)? = nil
+    var lassoCanvas: ReferenceColorCanvasIdentity? = nil
+    var lassoSelection: ((GraphSelectionMode) -> CanvasLassoInteraction?)? = nil
+    var lassoPreview: (CanvasLassoSample?) -> Void = { _ in }
+    var lassoFinish: (CanvasLassoSample) -> Void = { _ in }
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
@@ -108,7 +131,10 @@ final class CanvasPointerView: NSView {
     var ownsProfile: () -> Bool = { true }
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
     weak var focusControl: CanvasProfileFocusControl?
+    var addModeKey: CanvasAddModeKey.Handler? = nil
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
+    private var lassoPreviewGeneration = UUID()
+    private var lasso: (path: CanvasLasso, interaction: CanvasLassoInteraction)?
     private var tracking: NSTrackingArea?
     private var activity = CanvasPointerActivity()
     override var isFlipped: Bool { true }
@@ -143,6 +169,10 @@ final class CanvasPointerView: NSView {
         if isAddingNodes {
             cancelInput()
             return
+        }
+        if enabled {
+            activity.hasHover = true
+            hover(point(event))
         }
         super.rightMouseDown(with: event)
     }
@@ -182,10 +212,18 @@ final class CanvasPointerView: NSView {
         let mode = GraphSelectionMode.pointerMode(modifiers: event.modifierFlags)
         if mode != .subtract, event.clickCount == 2, let doubleClick {
             invalidate()
-            doubleClick(point(event))
+            doubleClick(point(event), mode)
             return
         }
-        start = (point(event), mode)
+        let origin = point(event)
+        lasso = nil
+        if lassoCanvas != nil {
+            guard let interaction = lassoSelection?(mode) else { return }
+            var path = CanvasLasso()
+            path.append(origin)
+            lasso = (path, interaction)
+        }
+        start = (origin, mode)
     }
     override func mouseDragged(with event: NSEvent) {
         if enabled && isAddingNodes {
@@ -195,7 +233,19 @@ final class CanvasPointerView: NSView {
         }
         guard enabled, let start else { return }
         let end = point(event)
-        if hypot(end.x - start.point.x, end.y - start.point.y) >= 3 {
+        let beyondThreshold = hypot(end.x - start.point.x, end.y - start.point.y) >= 3
+        if lasso != nil {
+            lasso?.path.append(end)
+            if activity.hasMarquee || beyondThreshold {
+                if !activity.hasMarquee { lassoPreviewGeneration = UUID() }
+                activity.hasMarquee = true
+                guard let lasso, lasso.interaction.isCurrent() else {
+                    invalidate()
+                    return
+                }
+                lassoPreview(.init(path: lasso.path, interaction: lasso.interaction))
+            }
+        } else if beyondThreshold {
             activity.hasMarquee = true
             rectangle(.init(from: start.point, to: end))
         }
@@ -203,16 +253,45 @@ final class CanvasPointerView: NSView {
     override func mouseUp(with event: NSEvent) {
         guard let start else { return }
         self.start = nil
+        let lasso = self.lasso
+        self.lasso = nil
         let release = activity.finishMarquee()
-        release.notify(rectangle: rectangle, hover: hover)
-        guard enabled else { return }
+        guard enabled else {
+            release.notify(rectangle: rectangle, hover: hover)
+            return
+        }
         let end = point(event)
-        if hypot(end.x - start.point.x, end.y - start.point.y) >= 3 {
+        let beyondThreshold = hypot(end.x - start.point.x, end.y - start.point.y) >= 3
+        if var active = lasso, release.clearsMarquee || beyondThreshold {
+            active.path.append(end)
+            lassoFinish(.init(path: active.path, interaction: active.interaction))
+            return
+        }
+        release.notify(rectangle: rectangle, hover: hover)
+        if beyondThreshold {
             select(.init(from: start.point, to: end), start.mode)
         } else {
             tap(end, start.mode)
         }
     }
+
+    override func resignFirstResponder() -> Bool {
+        let accepted = super.resignFirstResponder()
+        if accepted, lasso != nil {
+            start = nil
+            lasso = nil
+            let release = activity.finishMarquee()
+            if release.clearsMarquee {
+                let generation = lassoPreviewGeneration
+                Task { @MainActor [weak self] in
+                    guard let self, self.lassoPreviewGeneration == generation else { return }
+                    self.lassoPreview(nil)
+                }
+            }
+        }
+        return accepted
+    }
+
     override func mouseEntered(with event: NSEvent) {
         if enabled || tracksHoverWhileDisabled {
             activity.hasHover = true
@@ -235,11 +314,13 @@ final class CanvasPointerView: NSView {
     func cancelActivation(preservingHover: Bool = false) {
         start = nil
         let hadHover = activity.hasHover
+        lasso = nil
         activity = CanvasPointerActivity()
         activity.hasHover = preservingHover && hadHover
     }
     func invalidate() {
         start = nil
+        lasso = nil
         let cancellation = activity.clear()
         cancellation.notify(rectangle: rectangle, hover: hover)
     }
@@ -258,6 +339,7 @@ final class CanvasPointerView: NSView {
         if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self {
             let input = CanvasPrecisionKeyInput(event)
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
+                || CanvasAddModeKey.route(event, in: window, handle: addModeKey)
                 || (input.permitsDispatch(in: window) && precisionKey?(input) == true)
             {
                 return
@@ -295,8 +377,18 @@ final class CanvasPointerView: NSView {
         }
     }
 
-    func routeWheel(_ input: CanvasWheelInput) -> Bool { enabled && input.isSupported && wheel(input) }
+    func routeWheel(_ input: CanvasWheelInput, at point: CanvasPoint? = nil) -> Bool {
+        guard input.isSupported, enabled || wheelWhileDisabled() else { return false }
+        if enabled || tracksHoverWhileDisabled, !isAddingNodes, start == nil, let point {
+            hover(point)
+        }
+        if wheel(input) { return true }
+        return enabled && start == nil && unhandledWheel?(input) == true
+    }
+
     override func scrollWheel(with event: NSEvent) {
-        if !routeWheel(CanvasWheelInput(event)) { super.scrollWheel(with: event) }
+        if !routeWheel(CanvasWheelInput(event), at: point(event)) {
+            super.scrollWheel(with: event)
+        }
     }
 }
