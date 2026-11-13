@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep numeric node inspector drafts and actions tied to their original node and document.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.

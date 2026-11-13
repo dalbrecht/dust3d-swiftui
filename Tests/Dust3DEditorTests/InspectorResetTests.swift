@@ -22,10 +22,13 @@ final class InspectorResetTests: XCTestCase {
         let selected = try XCTUnwrap(store.snapshot?.selectedNode)
         let node = selected.value
         let draft = InspectorNodeDraft()
-        draft.reset(node)
+        let source = try XCTUnwrap(store.inspectorNodeDraftSource)
+        draft.synchronize(to: source)
+        let actions = try XCTUnwrap(store.nodeInspectorActions(source: source, draft: draft))
         // Scope the real native formatter test to the production numeric editor. Other
         // inspector commands have independent text drafts and must not participate in Reset.
-        let host = NSHostingView(rootView: NodePropertyEditor(store: store, node: selected, draft: draft))
+        let host = NSHostingView(
+            rootView: NodePropertyEditor(store: store, node: selected, source: source, draft: draft))
         let window = NSWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: 300, height: 800), styleMask: [.titled],
             backing: .buffered, defer: false)
@@ -53,7 +56,7 @@ final class InspectorResetTests: XCTestCase {
             XCTAssertEqual(editor.string, invalidText)
             XCTAssertEqual(draft.x, 0.5)
             // Invoke the same Reset action as the button while a real native field holds invalid text.
-            draft.reset(node)
+            actions.reset()
             for _ in 0..<100 where displayedText(in: host, matching: expected) != expected {
                 try await Task.sleep(for: .milliseconds(10))
                 host.layoutSubtreeIfNeeded()
