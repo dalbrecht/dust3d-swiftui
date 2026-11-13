@@ -332,4 +332,186 @@ private actor SubtractionPreviewCounter: EditorPreviewServing {
         XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
     }
 
+    func testCanvasAccessibilityLabelReflectsTheActiveSelectionTool() {
+        XCTAssertEqual(
+            NodeCanvas.selectionAccessibilityLabel(usesLasso: false, selectsRigEdges: false),
+            "Marquee selection canvas")
+        XCTAssertEqual(
+            NodeCanvas.selectionAccessibilityLabel(usesLasso: true, selectsRigEdges: false),
+            "Lasso selection canvas")
+        XCTAssertEqual(
+            NodeCanvas.selectionAccessibilityLabel(usesLasso: false, selectsRigEdges: true),
+            "Bone assignment edge selection canvas")
+        XCTAssertEqual(
+            NodeCanvas.selectionAccessibilityLabel(usesLasso: true, selectsRigEdges: true),
+            "Bone assignment lasso selection canvas")
+    }
+
+    func testNativeLassoUsesPressModifiersAndInvalidationRetiresThePath() async throws {
+        let view = CanvasPointerView(frame: .init(x: 0, y: 0, width: 400, height: 300))
+        view.enabled = true
+        let projection = CanvasProjection(bounds: .init(nodes: []), plane: .front, width: 400, height: 300)
+        view.lassoCanvas = .init(projection: projection, width: 400, height: 300)
+
+        var preview: CanvasLasso?
+        var paths: [CanvasLasso] = []
+        var subtracts: [Bool] = []
+        var taps = 0
+        var rectangleCommits = 0
+        view.lassoPreview = { preview = $0?.path }
+        view.lassoFinish = { sample in
+            preview = nil
+            sample.interaction.commit(sample.path) { _ in }
+        }
+        view.rectangle = { if $0 == nil { preview = nil } }
+        view.select = { _, _ in rectangleCommits += 1 }
+        view.tap = { _, _ in taps += 1 }
+        view.lassoSelection = { mode in
+            let plan = CanvasLassoPickPlan(
+                projection: projection, nodes: [], edges: [], selected: ([], []), mode: mode, includesNodes: true)
+            return CanvasLassoInteraction(
+                plan: plan, isCurrent: { true },
+                commit: { path, completion in
+                    paths.append(path)
+                    subtracts.append(mode == .subtract)
+                    completion(true)
+                })
+        }
+
+        func event(
+            _ type: NSEvent.EventType, _ x: Double, _ y: Double, modifiers: NSEvent.ModifierFlags = []
+        ) throws -> NSEvent {
+            try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: type, location: .init(x: x, y: y), modifierFlags: modifiers,
+                    timestamp: 0, windowNumber: 0, context: nil, eventNumber: 1, clickCount: 1, pressure: 1))
+        }
+
+        view.mouseDown(with: try event(.leftMouseDown, 20, 30, modifiers: [.command, .option]))
+        view.mouseDragged(with: try event(.leftMouseDragged, 60, 30))
+        view.mouseDragged(with: try event(.leftMouseDragged, 60, 60))
+        XCTAssertEqual(preview?.points.count, 3)
+        view.mouseUp(with: try event(.leftMouseUp, 20, 60))
+        XCTAssertNil(preview)
+        XCTAssertEqual(paths.map { $0.points.count }, [4])
+        XCTAssertEqual(subtracts, [true])
+
+        view.mouseDown(with: try event(.leftMouseDown, 20, 30))
+        view.mouseDragged(with: try event(.leftMouseDragged, 60, 30))
+        XCTAssertNotNil(preview)
+        view.invalidate()
+        view.mouseUp(with: try event(.leftMouseUp, 20, 60))
+        XCTAssertNil(preview)
+        XCTAssertEqual(paths.count, 1)
+        XCTAssertEqual(taps, 0)
+        XCTAssertEqual(rectangleCommits, 0)
+
+        view.mouseDown(with: try event(.leftMouseDown, 20, 30))
+        view.mouseDragged(with: try event(.leftMouseDragged, 60, 30))
+        XCTAssertNotNil(preview)
+        XCTAssertTrue(view.resignFirstResponder())
+        view.mouseDown(with: try event(.leftMouseDown, 20, 30))
+        view.mouseUp(with: try event(.leftMouseUp, 20, 30))
+        for _ in 0..<20 where preview != nil { await Task.yield() }
+        XCTAssertNil(preview)
+        XCTAssertEqual(paths.count, 1)
+        XCTAssertEqual(taps, 1)
+    }
+
+    func testLassoSubtractsCrossingEdgeAndRejectsRetainedModeABA() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                <node id='a' partId='p' x='0' y='0' z='0' radius='.1'/>
+                <node id='b' partId='p' x='1' y='0' z='1' radius='.1'/>
+                </nodes><edges><edge id='ab' partId='p' from='a' to='b'/></edges><parts><part id='p'/></parts></canvas>
+                """.utf8)
+        ).encoded()
+        let stub = SubtractionNoNative()
+        let counter = SubtractionPreviewCounter()
+        let store = EditorStore(
+            preview: counter, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        defer { store.stop() }
+        await store.load(data: original)
+        try await settle(store)
+        store.selectGraph(nodes: ["a", "b"], edges: ["ab"])
+        try await settle(store)
+        let before = try XCTUnwrap(store.snapshot)
+        let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 400, height: 300)
+        let canvas = ReferenceColorCanvasIdentity(projection: projection, width: 400, height: 300)
+        store.setCanvasContext(projection: projection, width: 400, height: 300)
+        store.setReferenceColorCanvasContext(projection: projection, width: 400, height: 300)
+        XCTAssertNil(store.lassoInteraction(projection: projection, canvas: canvas, lease: nil, mode: .subtract))
+        store.setCanvasUsesLasso(true)
+        let stale = try XCTUnwrap(
+            store.lassoInteraction(projection: projection, canvas: canvas, lease: nil, mode: .subtract))
+        let center = projection.point(for: .init(x: 0.5, y: 0, z: 0))
+        var lasso = CanvasLasso()
+        for (x, y) in [(-5.0, -5.0), (5, -5), (5, 5), (-5, 5)] {
+            lasso.append(.init(x: center.x + x, y: center.y + y))
+        }
+        store.setCanvasUsesLasso(false)
+        store.setCanvasUsesLasso(true)
+        stale.commit(lasso) { XCTAssertFalse($0) }
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+
+        let select = try XCTUnwrap(
+            store.lassoInteraction(projection: projection, canvas: canvas, lease: nil, mode: .subtract))
+        let calls = await counter.calls
+        let feedback = CanvasLassoFeedback()
+        feedback.update(.init(path: CanvasLasso(), interaction: select))
+        feedback.clear()
+        feedback.update(.init(path: lasso, interaction: select))
+        for _ in 0..<40 where feedback.picks == nil { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(feedback.picks?.nodes, ["a", "b"])
+        XCTAssertEqual(feedback.picks?.edges, [])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(store.snapshot?.selectionRevision, before.selectionRevision)
+        feedback.update(.init(path: CanvasLasso(), interaction: select))
+        XCTAssertNil(feedback.picks, "The prior outline's picks must not describe the replacement outline")
+        for _ in 0..<40 where feedback.picks == nil { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(feedback.picks?.edges, ["ab"])
+        feedback.clear()
+        XCTAssertNil(feedback.path)
+        XCTAssertNil(feedback.picks)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        feedback.update(.init(path: lasso, interaction: select))
+        for _ in 0..<40 where feedback.picks == nil { try await Task.sleep(for: .milliseconds(5)) }
+        feedback.finish(.init(path: lasso, interaction: select))
+        XCTAssertNil(feedback.path)
+        XCTAssertTrue(feedback.isCommitting)
+        XCTAssertEqual(feedback.picks?.edges, [])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        try await settle(store)
+        XCTAssertFalse(feedback.isCommitting)
+        XCTAssertNil(feedback.picks)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a", "b"])
+        XCTAssertEqual(store.snapshot?.selectionRevision, before.selectionRevision + 1)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertEqual(store.snapshot?.previewIdentity, before.previewIdentity)
+        XCTAssertFalse(store.canUndo)
+        let nodeCenter = projection.point(for: .init(x: 0, y: 0, z: 0))
+        let nodeRadius = 0.1 * projection.scale
+        let x = nodeCenter.x - nodeRadius + 2
+        var nodeLasso = CanvasLasso()
+        for (dx, dy) in [(-4.0, -4.0), (0, -4), (0, 4), (-4, 4)] {
+            nodeLasso.append(.init(x: x + dx, y: nodeCenter.y + dy))
+        }
+        let subtractNode = try XCTUnwrap(
+            store.lassoInteraction(projection: projection, canvas: canvas, lease: nil, mode: .subtract))
+        subtractNode.commit(nodeLasso) { XCTAssertTrue($0) }
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["b"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [])
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertEqual(store.snapshot?.previewIdentity, before.previewIdentity)
+        XCTAssertFalse(store.canUndo)
+        let afterCalls = await counter.calls
+        XCTAssertEqual(afterCalls, calls)
+    }
+
 }
