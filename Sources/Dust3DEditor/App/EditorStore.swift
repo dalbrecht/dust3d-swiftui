@@ -512,14 +512,17 @@ final class EditorStore {
         at point: CanvasPoint, projection: CanvasProjection, snapshot: EditorSnapshot
     ) -> String? {
         var candidate: String?
-        var nearestDistance = 18.0
+        var nearestDistance = Double.infinity
         var centers: [Data: CanvasPoint] = [:]
         for node in snapshot.nodes where node.isVisible {
             let center = projection.point(for: node.value.position)
             centers[Data(node.id.utf8)] = center
             let distance = hypot(center.x - point.x, center.y - point.y)
+            let marker = CanvasNodeMarkerGeometry(
+                projectedDiameter: node.value.radius * projection.scale * 2, selected: false, hovered: false)
+            let hitRadius = max(18, marker.outlineDiameter / 2)
             // On an exact tie the later, topmost node keeps precedence.
-            if distance <= nearestDistance {
+            if distance <= hitRadius, distance <= nearestDistance {
                 nearestDistance = distance
                 candidate = node.id
             }
