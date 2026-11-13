@@ -316,6 +316,7 @@ public struct DocumentNode: Identifiable, Equatable, Sendable {
     public let isVisible: Bool
     public let isEditable: Bool
 
+    package let cutFace: CutFaceSelection?
     fileprivate let deformation: NodeDeformation
 
     /// The saved taper scale, 1 when absent or nil when the stored value is unsupported.
@@ -1789,7 +1790,8 @@ public struct Dust3DDocument: Sendable {
             return DocumentNode(
                 id: id, title: name.isEmpty ? "Node \(index + 1)" : name, partID: partID,
                 value: try Self.decodeNode(node), isVisible: part?.isEditVisible ?? true,
-                isEditable: part?.isEditable ?? true, deformation: NodeDeformation(node))
+                isEditable: part?.isEditable ?? true, cutFace: PartCutFace.selection(node),
+                deformation: NodeDeformation(node))
         }
         let ids = Set(nodes.map(\.id))
         var edgeIDs = Set<String>()

@@ -321,6 +321,18 @@ struct Dust3DEditorApp: App {
                 Button("Select All Nodes") { store?.selectAllNodes() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
                     .disabled(store?.snapshot == nil || store?.isWorking != false || store?.isSelectingRigEdges == true)
+                let selectEditableGeometry = canvasOwner?.selectEditableGeometryAction()
+                Button("Select Editable Geometry") {
+                    guard let canvasWindow, NSApp.keyWindow === canvasWindow, store === canvasOwner,
+                        rigAssignmentFocus.allowsAssignment, isComponentSidebarFocused != true
+                    else { return }
+                    selectEditableGeometry?()
+                }
+                .disabled(
+                    canvasWindow == nil || selectEditableGeometry == nil || !rigAssignmentFocus.allowsAssignment
+                        || isComponentSidebarFocused == true
+                )
+                .help("Select visible editable nodes and edges while keeping locked geometry out of the selection.")
                 Button("Select Owning Component") {
                     guard let canvasWindow, NSApp.keyWindow === canvasWindow, store === canvasOwner,
                         rigAssignmentFocus.allowsAssignment

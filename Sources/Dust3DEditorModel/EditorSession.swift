@@ -690,6 +690,17 @@ public actor EditorSession {
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
+
+    /// Replace inspection selection with only editable owned canvas geometry.
+    package func selectEditableGeometry(target: CanvasAdjustmentTarget) throws -> EditorSnapshot {
+        try update { state in
+            let current = state.snapshot
+            guard hasAcceptedSource, target.isCurrent(in: current) else { throw EditorError.staleCanvasAdjustment }
+            let selection = current.editableGeometrySelection
+            guard !selection.nodes.isEmpty else { return }
+            try state.selectGraph(nodes: selection.nodes, edges: selection.edges)
+        }
+    }
     /// Replace selection with all explicit nodes and no explicit edges.
     public func selectAllNodes() throws -> EditorSnapshot { try update { $0.selectAllNodes() } }
     /// Explicitly center origin on all node radius bounds, honoring axis locks in one history transaction.

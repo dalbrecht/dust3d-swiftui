@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Select editable geometry from the Canvas menu without including hidden or locked parts.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
