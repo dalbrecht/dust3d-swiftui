@@ -1777,13 +1777,8 @@ final class EditorStore {
     func selectEdge(_ id: String?) { perform(commits: false, selectionOnly: true) { try await $0.selectEdge(id) } }
     func selectGraph(nodes: Set<String>, edges: Set<String>, mode: GraphSelectionMode = .replace) {
         guard !isSelectingRigEdges || nodes.isEmpty else { return }
-        perform(commits: false, selectionOnly: true) { session in
-            switch mode {
-            case .replace: try await session.selectGraph(nodes: nodes, edges: edges)
-            case .add: try await session.addToSelection(nodes: nodes, edges: edges)
-            case .toggle: try await session.toggleGraphSelection(nodes: nodes, edges: edges)
-            case .subtract: try await session.removeFromSelection(nodes: nodes, edges: edges)
-            }
+        perform(commits: false, selectionOnly: true) {
+            try await $0.applyGraphPicks(nodes: nodes, edges: edges, mode: mode)
         }
     }
     func edgeSidebarSelectionAction(
@@ -1844,6 +1839,52 @@ final class EditorStore {
             edges: projection.edgeIDs(
                 in: rectangle, nodes: snapshot.nodes, edges: edges, selectedEdgeIDs: snapshot.selectedEdgeIDs),
             mode: mode)
+    }
+
+    private(set) var canvasUsesLasso = false
+    private var canvasLassoModeEpoch = UUID()
+
+    func setCanvasUsesLasso(_ enabled: Bool) {
+        guard canvasUsesLasso != enabled, canPickGraph, !isAddingNodes, !isMovingOrigin else { return }
+        canvasUsesLasso = enabled
+        canvasLassoModeEpoch = UUID()
+    }
+
+    func lassoInteraction(
+        projection: CanvasProjection, canvas: ReferenceColorCanvasIdentity, lease: UUID?, mode: GraphSelectionMode
+    ) -> CanvasLassoInteraction? {
+        guard canvasUsesLasso, ownsCanvasProfile(lease), !isWorking, !isAddingNodes, !isMovingOrigin,
+            referenceColorCanvas?.identity == canvas, let source = acceptedDocumentSource
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: source)
+        let layout = precisionLayoutEpoch
+        let tool = rotationInputContextID
+        let modeEpoch = canvasLassoModeEpoch
+        let selectionEpoch = rigEdgeSelectionEpoch
+        let plan = CanvasLassoPickPlan(
+            projection: projection, nodes: source.nodes,
+            edges: isSelectingRigEdges ? rigEdgePickCandidates(in: source, mode: mode) : source.edges,
+            selected: (source.selectedIDs, source.selectedEdgeIDs), mode: mode, includesNodes: !isSelectingRigEdges)
+        let isCurrent: @MainActor () -> Bool = { [weak self] in
+            guard let self, !self.isWorking, !self.isAddingNodes, !self.isMovingOrigin,
+                self.admitsCanvasSelectionInput(epoch: selectionEpoch, lease: lease),
+                self.precisionLayoutEpoch == layout, self.rotationInputContextID == tool,
+                self.canvasLassoModeEpoch == modeEpoch, self.referenceColorCanvas?.identity == canvas,
+                let current = self.acceptedDocumentSource
+            else { return false }
+            return target.isCurrent(in: current)
+        }
+        return CanvasLassoInteraction(
+            plan: plan, isCurrent: isCurrent,
+            commit: { [weak self] path, completion in
+                guard let self, isCurrent() else {
+                    completion(false)
+                    return
+                }
+                self.perform(commits: false, selectionOnly: true, completion: completion) {
+                    try await $0.applyLasso(plan: plan, path: path, target: target)
+                }
+            })
     }
 
     private func rigEdgePickCandidates(in snapshot: EditorSnapshot, mode: GraphSelectionMode) -> [DocumentEdge] {

@@ -118,12 +118,16 @@ public struct CanvasProjection: Equatable, Sendable {
                 guard node.isVisible else { return false }
                 let point = point(for: node.value.position)
                 guard point.x.isFinite, point.y.isFinite else { return false }
-                let marker = CanvasNodeMarkerGeometry(
-                    projectedDiameter: node.value.radius * scale * 2, selected: false, hovered: false)
                 let x = max(rectangle.minimum.x - point.x, 0, point.x - rectangle.maximum.x)
                 let y = max(rectangle.minimum.y - point.y, 0, point.y - rectangle.maximum.y)
-                return hypot(x, y) < marker.marqueeRadius
+                return hypot(x, y) < nodeSelectionRadius(node)
             }.map(\.id))
+    }
+
+    func nodeSelectionRadius(_ node: DocumentNode) -> Double {
+        CanvasNodeMarkerGeometry(
+            projectedDiameter: node.value.radius * scale * 2, selected: false, hovered: false
+        ).marqueeRadius
     }
 
     /// Select visible native edge strokes intersecting the marquee, including boundary touches and collapsed projections.

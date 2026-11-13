@@ -41,6 +41,10 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var unhandledWheel: ((CanvasWheelInput) -> Bool)? = nil
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var lassoCanvas: ReferenceColorCanvasIdentity? = nil
+    var lassoSelection: ((GraphSelectionMode) -> CanvasLassoInteraction?)? = nil
+    var lassoPreview: (CanvasLassoSample?) -> Void = { _ in }
+    var lassoFinish: (CanvasLassoSample) -> Void = { _ in }
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var tracksHoverWhileDisabled = false
     var isAddingNodes = false
@@ -79,6 +83,11 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.unhandledWheel = unhandledWheel
         view.radiusKey = radiusKey
         view.doubleClick = doubleClick
+        if view.lassoCanvas != lassoCanvas { view.cancelActivation() }
+        view.lassoCanvas = lassoCanvas
+        view.lassoSelection = lassoSelection
+        view.lassoPreview = lassoPreview
+        view.lassoFinish = lassoFinish
         view.precisionKey = precisionKey
         if view.isAddingNodes != isAddingNodes { view.cancelActivation() }
         view.isAddingNodes = isAddingNodes
@@ -109,6 +118,10 @@ final class CanvasPointerView: NSView {
     var unhandledWheel: ((CanvasWheelInput) -> Bool)?
     var radiusKey: (Int) -> Bool = { _ in false }
     var doubleClick: ((CanvasPoint) -> Void)? = nil
+    var lassoCanvas: ReferenceColorCanvasIdentity? = nil
+    var lassoSelection: ((GraphSelectionMode) -> CanvasLassoInteraction?)? = nil
+    var lassoPreview: (CanvasLassoSample?) -> Void = { _ in }
+    var lassoFinish: (CanvasLassoSample) -> Void = { _ in }
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
@@ -120,6 +133,8 @@ final class CanvasPointerView: NSView {
     weak var focusControl: CanvasProfileFocusControl?
     var addModeKey: CanvasAddModeKey.Handler? = nil
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
+    private var lassoPreviewGeneration = UUID()
+    private var lasso: (path: CanvasLasso, interaction: CanvasLassoInteraction)?
     private var tracking: NSTrackingArea?
     private var activity = CanvasPointerActivity()
     override var isFlipped: Bool { true }
@@ -196,7 +211,15 @@ final class CanvasPointerView: NSView {
             doubleClick(point(event))
             return
         }
-        start = (point(event), mode)
+        let origin = point(event)
+        lasso = nil
+        if lassoCanvas != nil {
+            guard let interaction = lassoSelection?(mode) else { return }
+            var path = CanvasLasso()
+            path.append(origin)
+            lasso = (path, interaction)
+        }
+        start = (origin, mode)
     }
     override func mouseDragged(with event: NSEvent) {
         if enabled && isAddingNodes {
@@ -206,7 +229,19 @@ final class CanvasPointerView: NSView {
         }
         guard enabled, let start else { return }
         let end = point(event)
-        if hypot(end.x - start.point.x, end.y - start.point.y) >= 3 {
+        let beyondThreshold = hypot(end.x - start.point.x, end.y - start.point.y) >= 3
+        if lasso != nil {
+            lasso?.path.append(end)
+            if activity.hasMarquee || beyondThreshold {
+                if !activity.hasMarquee { lassoPreviewGeneration = UUID() }
+                activity.hasMarquee = true
+                guard let lasso, lasso.interaction.isCurrent() else {
+                    invalidate()
+                    return
+                }
+                lassoPreview(.init(path: lasso.path, interaction: lasso.interaction))
+            }
+        } else if beyondThreshold {
             activity.hasMarquee = true
             rectangle(.init(from: start.point, to: end))
         }
@@ -214,16 +249,45 @@ final class CanvasPointerView: NSView {
     override func mouseUp(with event: NSEvent) {
         guard let start else { return }
         self.start = nil
+        let lasso = self.lasso
+        self.lasso = nil
         let release = activity.finishMarquee()
-        release.notify(rectangle: rectangle, hover: hover)
-        guard enabled else { return }
+        guard enabled else {
+            release.notify(rectangle: rectangle, hover: hover)
+            return
+        }
         let end = point(event)
-        if hypot(end.x - start.point.x, end.y - start.point.y) >= 3 {
+        let beyondThreshold = hypot(end.x - start.point.x, end.y - start.point.y) >= 3
+        if var active = lasso, release.clearsMarquee || beyondThreshold {
+            active.path.append(end)
+            lassoFinish(.init(path: active.path, interaction: active.interaction))
+            return
+        }
+        release.notify(rectangle: rectangle, hover: hover)
+        if beyondThreshold {
             select(.init(from: start.point, to: end), start.mode)
         } else {
             tap(end, start.mode)
         }
     }
+
+    override func resignFirstResponder() -> Bool {
+        let accepted = super.resignFirstResponder()
+        if accepted, lasso != nil {
+            start = nil
+            lasso = nil
+            let release = activity.finishMarquee()
+            if release.clearsMarquee {
+                let generation = lassoPreviewGeneration
+                Task { @MainActor [weak self] in
+                    guard let self, self.lassoPreviewGeneration == generation else { return }
+                    self.lassoPreview(nil)
+                }
+            }
+        }
+        return accepted
+    }
+
     override func mouseEntered(with event: NSEvent) {
         if enabled || tracksHoverWhileDisabled {
             activity.hasHover = true
@@ -246,11 +310,13 @@ final class CanvasPointerView: NSView {
     func cancelActivation(preservingHover: Bool = false) {
         start = nil
         let hadHover = activity.hasHover
+        lasso = nil
         activity = CanvasPointerActivity()
         activity.hasHover = preservingHover && hadHover
     }
     func invalidate() {
         start = nil
+        lasso = nil
         let cancellation = activity.clear()
         cancellation.notify(rectangle: rectangle, hover: hover)
     }

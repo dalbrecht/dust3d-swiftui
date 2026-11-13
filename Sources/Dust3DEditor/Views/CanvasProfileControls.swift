@@ -53,6 +53,17 @@ struct CanvasProfileHeader: View {
             )
             .disabled(!store.canChangeRigEdgeSelection)
             .help("Pick edges in the canvas, then choose a template bone and assign the selected edges.")
+            Picker(
+                "Drag Selection",
+                selection: Binding(
+                    get: { store.canvasUsesLasso }, set: { store.setCanvasUsesLasso($0) })
+            ) {
+                Text("Rectangle").tag(false)
+                Text("Lasso").tag(true)
+            }
+            .pickerStyle(.menu)
+            .disabled(!store.canPickGraph || store.isAddingNodes || store.isMovingOrigin)
+            .help("Drag in the active canvas to draw the selection shape. Keyboard selection remains available.")
         }
         .focusedSceneValue(\.editorCanvasFocus, focusCanvas)
     }
