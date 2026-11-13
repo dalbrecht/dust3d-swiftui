@@ -28,7 +28,10 @@ import os,pathlib,sys
 if not pathlib.Path(os.environ['LOG_SCOPE_TEST_RECORDING']).exists():
     print('Consumer was not attached before app launch', file=sys.stderr)
     sys.exit(25)
-pathlib.Path(os.environ['LOG_SCOPE_TEST_LAUNCHED']).write_text('appStartup fixture')
+launch = pathlib.Path(os.environ['LOG_SCOPE_TEST_LAUNCHED'])
+pending = launch.with_suffix('.pending')
+pending.write_text('appStartup fixture')
+pending.replace(launch)
 ''')
             log_stub = tools / 'stream-log'
             log_stub.write_text('''#!/usr/bin/env python3
