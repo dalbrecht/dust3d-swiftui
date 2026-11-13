@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Drop a local .ds3 file from Finder onto a Viewer window to open it.
+
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.

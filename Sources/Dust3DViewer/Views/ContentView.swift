@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @State private var store = ViewerStore()
     @State private var isImporterPresented = false
+    @State private var isFileDropTargeted = false
     @State private var isWireframe = false
     @State private var cameraReset = 0
     @State private var rendererError: String?
@@ -45,7 +46,7 @@ struct ContentView: View {
                     ContentUnavailableView {
                         Label("Open a Dust3D model", systemImage: "cube.transparent")
                     } description: {
-                        Text("Choose a .ds3 document to generate and inspect its mesh.")
+                        Text("Choose or drop a .ds3 document to generate and inspect its mesh.")
                     } actions: {
                         Button("Open .ds3…") { isImporterPresented = true }
                             .buttonStyle(.borderedProminent)
@@ -56,6 +57,20 @@ struct ContentView: View {
                         .padding(24)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
+            }
+            .contentShape(Rectangle())
+            .overlay {
+                if isFileDropTargeted {
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.accentColor, lineWidth: 2)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .dropDestination(for: URL.self) { urls, _ in
+                store.openDroppedDocuments(urls)
+            } isTargeted: {
+                isFileDropTargeted = $0
             }
             if store.isUpdatingMaterials {
                 ProgressView("Updating materials…").controlSize(.small).padding(8)

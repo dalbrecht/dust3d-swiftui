@@ -6,6 +6,47 @@ import XCTest
 
 @MainActor
 final class ViewerMaterialTests: XCTestCase {
+    func testFinderDropOpensTheLastLocalDust3DFileInTheReceivingViewer() async throws {
+        let snapshot = try snapshot()
+        let loader = SuspendedSnapshotLoader()
+        let store = ViewerStore(service: loader)
+        let other = ViewerStore(service: loader)
+        defer {
+            store.stop()
+            other.stop()
+        }
+        let remote = try XCTUnwrap(URL(string: "https://example.com/remote.ds3"))
+        let networkFile = try XCTUnwrap(URL(string: "file://example.com/remote.ds3"))
+        let invalid = [
+            remote, networkFile, URL(fileURLWithPath: "/test/notes.txt"),
+            URL(fileURLWithPath: "/test/folder.ds3", isDirectory: true),
+        ]
+        XCTAssertFalse(store.openDroppedDocuments(invalid))
+        XCTAssertFalse(store.isLoading)
+        XCTAssertNil(store.loadTask)
+
+        let first = URL(fileURLWithPath: "/test/first.ds3")
+        let chosen = URL(fileURLWithPath: "/test/chosen.DS3")
+        XCTAssertTrue(store.openDroppedDocuments([first, chosen] + invalid))
+        try await waitForFileRequests(1, loader)
+        let initial = await loader.requests
+        XCTAssertEqual(initial, [chosen])
+        XCTAssertFalse(other.isLoading)
+        XCTAssertNil(other.mesh)
+        await loader.finish(0, snapshot)
+        await store.loadTask?.value
+        XCTAssertEqual(store.documentName, chosen.lastPathComponent)
+        let acceptedRevision = store.meshRevision
+
+        XCTAssertTrue(store.openDroppedDocuments([first]))
+        try await waitForFileRequests(2, loader)
+        await loader.fail(1)
+        await store.loadTask?.value
+        XCTAssertEqual(store.documentName, chosen.lastPathComponent)
+        XCTAssertEqual(store.meshRevision, acceptedRevision)
+        XCTAssertEqual(store.errorMessage, "Original file access cause")
+    }
+
     func testShouldKeepGeometryOnMaterialFailureAndRetryTheExactSnapshot() async throws {
         let snapshot = try snapshot()
         let baker = SuspendedViewerBaker()
@@ -214,6 +255,7 @@ private actor SuspendedViewerBaker: ArchiveTextureBaking {
 }
 
 private actor SuspendedSnapshotLoader: MeshFileSnapshotLoading {
+    private(set) var requests: [URL] = []
     private var pending: [CheckedContinuation<MeshFileSnapshot, any Error>?] = []
     var count: Int { pending.count }
     private enum Failure: LocalizedError {
@@ -221,7 +263,8 @@ private actor SuspendedSnapshotLoader: MeshFileSnapshotLoading {
         var errorDescription: String? { "Original file access cause" }
     }
     func loadIndexedSnapshot(url: URL) async throws -> MeshFileSnapshot {
-        try await withCheckedThrowingContinuation { pending.append($0) }
+        requests.append(url)
+        return try await withCheckedThrowingContinuation { pending.append($0) }
     }
     func finish(_ index: Int, _ snapshot: MeshFileSnapshot) {
         pending[index]?.resume(returning: snapshot)
