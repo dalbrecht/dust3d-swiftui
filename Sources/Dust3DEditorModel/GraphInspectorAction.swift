@@ -93,7 +93,7 @@ public struct GraphInspectorActionContext: Sendable {
 
     private static func index(_ snapshot: EditorSnapshot) -> Availability {
         var result = Availability()
-        guard snapshot.selectedComponentIDs.isEmpty, snapshot.selectedPartID == nil else { return result }
+        guard snapshot.selectedPartID == nil else { return result }
         let nodeScope = snapshot.selectedIDs.count == 1 && snapshot.selectedEdgeIDs.isEmpty
         let edgeScope = snapshot.selectedIDs.isEmpty && snapshot.selectedEdgeIDs.count == 1
         guard nodeScope || edgeScope else { return result }
