@@ -8,6 +8,9 @@ struct ContentView: View {
     @State private var isImporterPresented = false
     @State private var isWireframe = false
     var body: some View {
+        let cancelOperation: (() -> Void)? =
+            !isImporterPresented && store.hasPendingCancellation
+            ? { store.cancelPendingOperation() } : nil
         let rendererAttempt = store.rendererAttemptID
         let visibleError = store.errorMessage ?? store.rendererError
         VStack(spacing: 0) {
@@ -148,6 +151,7 @@ struct ContentView: View {
             case .failure(let error): store.errorMessage = error.localizedDescription
             }
         }
+        .onExitCommand(perform: cancelOperation)
         .onOpenURL { store.open($0) }
         .onDisappear { store.stop() }
         .focusedSceneValue(\.openDocument, { isImporterPresented = true })
