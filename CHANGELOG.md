@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
