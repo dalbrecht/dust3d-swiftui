@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- Use procedural vertex opacity alongside imported alpha when Model Colors is off for mixed previews.
-
-- Use vertex opacity when Model Colors is off for textured procedural previews.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -191,6 +189,10 @@
 - Press E with a graph selection and canvas focus, or choose Switch Editing Profile in the Canvas menu, to edit the selection in the opposite profile.
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
+
+- Use procedural vertex opacity alongside imported alpha when Model Colors is off for mixed previews.
+
+- Use vertex opacity when Model Colors is off for textured procedural previews.
 
 - Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
 
