@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Keep numeric node inspector drafts and actions tied to their original node and document.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -117,6 +117,8 @@
 - Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
 
 - Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
+
+- Keep numeric node inspector drafts and actions tied to their original node and document.
 
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
