@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Retry a failed Editor renderer using the accepted mesh and prepared materials.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -341,6 +344,8 @@
 - Refresh native text Undo/Redo command availability after editing and undo-manager changes (#145).
 
 - Clear removed animation selections when publishing edits and history transitions, independently of list reads (#145).
+
+- Retry a failed Editor renderer using the accepted mesh and prepared materials.
 
 - Add a native stored-animation inspector with selection, source-bound rename/duplicate/delete, inline exact-text drafts and scoped graph shortcuts; playback remains unavailable (#145).
 
