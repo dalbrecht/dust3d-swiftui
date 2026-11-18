@@ -2458,11 +2458,10 @@ final class EditorStore {
         }
     }
     #if MOTE3D_EXPERIMENTAL_HOLLOW
-        func setExperimentalHollowThickness(_ id: String, value: String) {
-            guard !stopped, !isWorking, let snapshot, snapshot.selectedPart?.id == id,
-                snapshot.selectedPart?.target == .model
+        func setExperimentalHollowThickness(_ id: String, value: String, target: CanvasAdjustmentTarget) {
+            guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot),
+                let part = snapshot.selectedPart, part.target == .model, part.id.utf8.elementsEqual(id.utf8)
             else { return }
-            let target = CanvasAdjustmentTarget(snapshot: snapshot)
             perform {
                 guard let thickness = Double(value.trimmingCharacters(in: .whitespacesAndNewlines)) else {
                     throw DocumentError.invalidPartHollowThickness
