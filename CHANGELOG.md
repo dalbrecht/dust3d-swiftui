@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Keep component texture actions and image picker results tied to the original selection.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -105,6 +105,8 @@
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
+
+- Keep component texture actions and image picker results tied to the original selection.
 
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
 
