@@ -3,9 +3,25 @@ import XCTest
 
 @testable import Dust3DKit
 
-/// Fresh GEOMETRY-only ordinary licensed Capsule. No foreign rejection, baking, import or cancellation probe.
+/// Ordinary licensed Capsule through both static FBX modes.
 @MainActor
 final class NativeFBXExportIntegrationTests: XCTestCase {
+    func testLicensedCapsuleExportsProceduralAtlasThroughOwnedFBXRoute() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))
+        let archive = try Data(contentsOf: url)
+        let artifact = try await NativeGeometryExportEncoder().encode(archive: archive, format: .fbxTextured)
+        XCTAssertTrue(artifact.bytes.starts(with: "Kaydara FBX Binary".utf8))
+        XCTAssertNotNil(artifact.bytes.range(of: Data("LayerElementUV".utf8)))
+        XCTAssertNotNil(artifact.bytes.range(of: Data([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
+        XCTAssertEqual(try Data(contentsOf: url), archive)
+        if let directory = ProcessInfo.processInfo.environment["DUST3D_FBX_QA_OUTPUT_DIR"] {
+            let target = URL(fileURLWithPath: directory, isDirectory: true).appendingPathComponent(
+                "CapsuleTextured.fbx")
+            try artifact.bytes.write(to: target, options: .atomic)
+        }
+    }
+
     func testLicensedCapsuleProducesOwnedStaticBinaryFBXAcrossOwnerLifetimes() async throws {
         let url = try XCTUnwrap(
             Bundle.module.url(forResource: "Capsule", withExtension: "ds3", subdirectory: "Fixtures"))

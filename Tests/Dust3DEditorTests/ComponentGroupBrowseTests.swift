@@ -63,6 +63,76 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertNil(ComponentGroupBrowse(tree: tree, groupID: "missing"))
     }
 
+    func testSidebarDistinguishesEmptyGroupsFromParts() throws {
+        let rows = try EditorState(document: source()).snapshot.componentTree.rows
+        let emptyGroup = try XCTUnwrap(rows.first { $0.id == "one" })
+        let part = try XCTUnwrap(rows.first { $0.id == "owner" })
+        XCTAssertFalse(emptyGroup.hasChildren)
+        XCTAssertEqual(emptyGroup.sidebarSymbolName, "folder")
+        XCTAssertEqual(emptyGroup.sidebarAccessibilityLabel, "Group \(emptyGroup.title)")
+        XCTAssertEqual(part.sidebarSymbolName, "square.stack.3d.up")
+        XCTAssertEqual(part.sidebarAccessibilityLabel, "Component \(part.title)")
+    }
+
+    func testEnclosingGroupCommandRetiresOnNavigationAndPreservesDocument() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        XCTAssertNil(value.componentBrowseParentAction())
+        value.componentBrowseAction("sub", snapshot: try XCTUnwrap(value.snapshot))()
+        let up = try XCTUnwrap(value.componentBrowseParentAction())
+        up()
+        try await settle(value)
+        XCTAssertEqual(value.componentGroupBrowse?.path.last?.id, "g")
+        value.componentBrowseAction("sub", snapshot: try XCTUnwrap(value.snapshot))()
+        up()
+        XCTAssertEqual(value.componentGroupBrowse?.path.last?.id, "sub")
+        try XCTUnwrap(value.componentBrowseParentAction())()
+        try await settle(value)
+        try XCTUnwrap(value.componentBrowseParentAction())()
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testBrowseSelectedGroupRequiresVisibleSingleSelectionAndCurrentDisclosure() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        let disclosure = ComponentSidebarDisclosure()
+
+        value.selectComponents(["g", "other"])
+        try await settle(value)
+        XCTAssertNil(
+            value.componentSidebarBrowseSelectionAction(
+                snapshot: try XCTUnwrap(value.snapshot), disclosure: disclosure))
+
+        value.selectComponents(["sub"])
+        try await settle(value)
+        let selected = try XCTUnwrap(value.snapshot)
+        let stale = try XCTUnwrap(
+            value.componentSidebarBrowseSelectionAction(
+                snapshot: selected, disclosure: disclosure))
+        disclosure.collapsedIDs = ["g"]
+        stale()
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertNil(value.componentSidebarBrowseSelectionAction(snapshot: selected, disclosure: disclosure))
+        disclosure.collapsedIDs = []
+
+        let browse = try XCTUnwrap(
+            value.componentSidebarBrowseSelectionAction(
+                snapshot: selected, disclosure: disclosure))
+        browse()
+        try await settle(value)
+        XCTAssertEqual(value.componentGroupBrowse?.path.map(\.id), ["g", "sub"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testBrowseAutomaticallyPlacesToolbarAndPointerPartsWithExactUndo() async throws {
         let original = try source().encoded()
         let value = store()
@@ -209,6 +279,56 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         let pasted = try XCTUnwrap(
             value.snapshot?.componentTree.rows.first { $0.component.partID != nil && $0.id != "owner" })
         XCTAssertNil(pasted.component.parentID)
+    }
+
+    func testDisclosureStartsFromAuthoredCollapseForEachDocumentAndWindow() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='z' partId='p' x='.2' y='.5' z='.5' radius='.1'/></nodes>
+                <edges/><parts><part id='p'/></parts><components>
+                <component id='closed' expanded='false'>
+                  <component id='child' linkDataType='partId' linkData='p'/>
+                </component>
+                <component id='open' expanded='true'><component id='open-child'/></component>
+                <component id='default'><component id='default-child'/></component>
+                <component id='future' expanded='opaque'><component id='future-child'/></component>
+                </components></canvas>
+                """.utf8)
+        ).encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        let snapshot = try XCTUnwrap(value.snapshot)
+        let disclosure = ComponentSidebarDisclosure()
+        disclosure.restore(from: snapshot)
+        XCTAssertEqual(disclosure.collapsedIDs, ["closed"])
+        XCTAssertEqual(
+            snapshot.componentTree.visibleRows(collapsing: disclosure.collapsedIDs).map(\.id),
+            ["closed", "open", "open-child", "default", "default-child", "future", "future-child"])
+
+        disclosure.collapsedIDs.remove("closed")
+        disclosure.restore(from: snapshot)
+        XCTAssertTrue(disclosure.collapsedIDs.isEmpty)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+
+        let otherWindow = ComponentSidebarDisclosure()
+        otherWindow.restore(from: snapshot)
+        XCTAssertEqual(otherWindow.collapsedIDs, ["closed"])
+
+        value.selectWholePart(.node("z"))
+        try await settle(value)
+        let revealed = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(revealed.componentRevealHint?.ancestorIDs, ["closed"])
+        let revealedWindow = ComponentSidebarDisclosure()
+        revealedWindow.restore(from: revealed)
+        XCTAssertTrue(revealedWindow.collapsedIDs.isEmpty)
+
+        await value.load(data: try source().encoded())
+        try await settle(value)
+        otherWindow.restore(from: try XCTUnwrap(value.snapshot))
+        XCTAssertTrue(otherWindow.collapsedIDs.isEmpty)
     }
 
     func testBrowsingPreservesGraphAndWorkingGroupAndRejectsRetainedScope() async throws {
