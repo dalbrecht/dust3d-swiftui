@@ -1,3 +1,4 @@
+import Accessibility
 import AppKit
 import Dust3DDocument
 import Dust3DEditorModel
@@ -8,6 +9,27 @@ import SwiftUI
 private enum EditorInspectorSection: String, CaseIterable, Hashable {
     case selection = "Selection"
     case animations = "Animations"
+}
+
+struct EditorPreviewFailureNotice: Equatable {
+    static let unavailableTitle = String(localized: "Preview unavailable")
+    let issue: String
+    let isUnavailable: Bool
+
+    init?(rendererError: String?, generationError: String?, hasMesh: Bool) {
+        guard let issue = rendererError ?? generationError else { return nil }
+        self.issue = issue
+        isUnavailable = rendererError != nil || !hasMesh
+    }
+
+    var staleMessage: String {
+        String(localized: "Preview out of date: \(issue)")
+    }
+
+    func announcement(isKeyWindow: Bool) -> String? {
+        guard isKeyWindow else { return nil }
+        return isUnavailable ? String(localized: "\(Self.unavailableTitle). \(issue)") : staleMessage
+    }
 }
 
 struct EditorRootView: View {
@@ -445,17 +467,20 @@ struct EditorRootView: View {
     private var modelPreview: some View {
         let rendererAttempt = store.previewRendererAttemptID
         let retryPreview = store.previewRetryAction()
+        let failureNotice = EditorPreviewFailureNotice(
+            rendererError: store.renderError, generationError: store.previewState.errorMessage,
+            hasMesh: store.mesh != nil)
         return VStack(spacing: 0) {
             HStack {
                 Text("Mesh preview").font(.headline)
                 Spacer()
             }.padding(12)
             Divider()
-            if let error = store.renderError ?? (store.mesh == nil ? store.previewState.errorMessage : nil) {
+            if let failureNotice, failureNotice.isUnavailable {
                 ContentUnavailableView {
-                    Label("Preview unavailable", systemImage: "cube.transparent")
+                    Label(EditorPreviewFailureNotice.unavailableTitle, systemImage: "cube.transparent")
                 } description: {
-                    Text(error)
+                    Text(failureNotice.issue)
                 } actions: {
                     Button("Retry Preview") { retryPreview?() }
                         .disabled(retryPreview == nil)
@@ -496,8 +521,8 @@ struct EditorRootView: View {
                     Label("Showing last valid mesh", systemImage: "exclamationmark.triangle")
                         .font(.caption).padding(8)
                 }
-                if let error = store.previewState.errorMessage {
-                    Text("Preview out of date: \(error)").font(.caption).padding(8)
+                if let failureNotice {
+                    Text(failureNotice.staleMessage).font(.caption).padding(8)
                     Button("Retry Preview") { retryPreview?() }
                         .disabled(retryPreview == nil).padding(.bottom, 8)
                 }
@@ -519,6 +544,11 @@ struct EditorRootView: View {
             if let issue = store.previewCacheStatistics?.cacheIssue {
                 Divider()
                 PreviewDiagnosticNotice(kind: .cache, message: issue.message)
+            }
+        }
+        .onChange(of: failureNotice) { _, notice in
+            if let announcement = notice?.announcement(isKeyWindow: exportDestinations.hasActiveDocumentWindow) {
+                AccessibilityNotification.Announcement(announcement).post()
             }
         }
     }
