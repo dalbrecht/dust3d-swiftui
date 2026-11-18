@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Keep rapid canvas nudge and spacing keystrokes in order, with one Undo step for each edit.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -75,6 +75,8 @@
 - Identify empty and populated groups in the component sidebar and enlarge disclosure controls.
 
 - Honor saved component collapse flags when opening older Dust3D documents.
+
+- Keep rapid canvas nudge and spacing keystrokes in order, with one Undo step for each edit.
 
 - Open the document picker with Command-double-click on blank canvas.
 
