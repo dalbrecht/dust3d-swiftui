@@ -2,23 +2,18 @@ import Dust3DDocument
 
 /// Captures the sole exact linked Model part behind explicit node and edge picks.
 package struct GraphModelPartTarget: Sendable {
-    private let owner: ComponentMeshSelectionTarget
+    private let owner: GraphPartRoleTarget
     package let part: DocumentPart?
     package let component: DocumentComponent?
 
     package init(snapshot: EditorSnapshot) {
-        owner = ComponentMeshSelectionTarget(graphSelection: snapshot)
-        guard owner.ids.count == 1, let componentID = owner.ids.first,
-            let row = snapshot.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(componentID.utf8) }),
-            let partID = row.component.partID,
-            let part = snapshot.parts.first(where: { $0.target == .model && $0.id.utf8.elementsEqual(partID.utf8) })
-        else {
-            part = nil
-            component = nil
-            return
-        }
-        self.part = part
-        component = row.component
+        self.init(owner: GraphPartRoleTarget(snapshot: snapshot))
+    }
+
+    package init(owner: GraphPartRoleTarget) {
+        self.owner = owner
+        part = owner.part?.target == .model ? owner.part : nil
+        component = part == nil ? nil : owner.component
     }
 
     package func isCurrent(in snapshot: EditorSnapshot) -> Bool {

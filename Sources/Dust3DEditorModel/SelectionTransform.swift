@@ -33,6 +33,13 @@ public enum SelectionTransform: String, CaseIterable, Sendable {
         }
     }
 
+    var alignsToSelectionCenter: Bool {
+        switch self {
+        case .frontAlignX, .frontAlignY, .frontAlignCenter, .sideAlignZ, .sideAlignY, .sideAlignCenter: true
+        default: false
+        }
+    }
+
     package func canApply(in snapshot: EditorSnapshot) -> Bool {
         if self == .exchangeXZ {
             return snapshot.selectedNodes.contains(where: \.isEditable)
