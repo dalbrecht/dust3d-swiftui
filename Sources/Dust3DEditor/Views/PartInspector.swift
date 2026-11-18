@@ -48,7 +48,12 @@ struct PartInspector: View {
             #if MOTE3D_EXPERIMENTAL_HOLLOW
                 if part.target == .model { PartHollowControls(store: store, partID: part.id).id(part.id) }
             #endif
-            PartCutFaceControls(store: store, part: part)
+            if part.supportsDeformationScales, let snapshot = store.snapshot {
+                PartCutFaceControls(
+                    store: store, part: part, inspectorTarget: CanvasAdjustmentTarget(snapshot: snapshot)
+                )
+                .id(snapshot.documentIdentity)
+            }
             if part.target == .model { PartMaterialControls(store: store, part: part) }
             Text("Part names are independent of component names.").font(.caption).foregroundStyle(.secondary)
         }

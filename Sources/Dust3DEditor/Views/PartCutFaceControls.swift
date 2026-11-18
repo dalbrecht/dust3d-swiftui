@@ -6,6 +6,7 @@ struct PartCutFaceControls: View {
     let store: EditorStore
     let part: DocumentPart
     var graphTarget: GraphPartCrossSectionTarget? = nil
+    var inspectorTarget: CanvasAdjustmentTarget? = nil
     @State private var rotation = ""
 
     var body: some View {
@@ -123,16 +124,16 @@ struct PartCutFaceControls: View {
     private func applyProfile(_ selection: CutFaceSelection) {
         if let graphTarget {
             store.editGraphPartCrossSection(.profile(selection), target: graphTarget)
-        } else {
-            store.setPartCutFace(part.id, selection: selection)
+        } else if let inspectorTarget {
+            store.setPartCutFace(part.id, selection: selection, target: inspectorTarget)
         }
     }
 
     private func applyRotation() {
         if let graphTarget {
             store.setGraphPartCutRotation(rotation, target: graphTarget)
-        } else {
-            store.setPartCutRotation(part.id, rotation: rotation)
+        } else if let inspectorTarget {
+            store.setPartCutRotation(part.id, rotation: rotation, target: inspectorTarget)
         }
     }
 

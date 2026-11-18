@@ -224,6 +224,65 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
     }
 
+    func testInspectedProfileAndRotationRequireTheirOriginalOwner() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><parts><part id='p'/><part id='i' target='ImportedModel' cutRotation='.5'/></parts>
+                <components><component id='a' linkDataType='partId' linkData='p'/>
+                <component id='b' linkDataType='partId' linkData='p'/></components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        try await settle(value)
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        let retired = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.selectPart("i")
+        try await settle(value)
+        let imported = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.setPartCutFace("i", selection: .preset(.hexagon), target: imported)
+        try await settle(value)
+
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        value.setPartCutFace("p", selection: .preset(.hexagon), target: retired)
+        try await settle(value)
+        value.setPartCutRotation("p", rotation: "0.25", target: retired)
+        try await settle(value)
+        value.setPartCutRotation("p", rotation: "invalid", target: retired)
+        XCTAssertNil(value.errorMessage)
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(value.canUndo)
+
+        let selected = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.setPartCutFace("p", selection: .preset(.hexagon), target: selected)
+        try await settle(value)
+        let profiled = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(profiled.inspectedPart?.cutFace, .preset(.hexagon))
+        value.setPartCutRotation("p", rotation: "0.25", target: .init(snapshot: profiled))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.inspectedPart?.cutRotation, 0.25)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["a", "b"])
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), profiled.document.encoded())
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+
+        value.selectPart("i")
+        try await settle(value)
+        let current = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(value.snapshot))
+        value.setPartCutRotation("i", rotation: "0.25", target: current)
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.inspectedPart?.cutRotation, 0.25)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+    }
+
     func testGraphOwnerMaterialApplyAndResetRejectRetiredAndFailedSourceTargets() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(
