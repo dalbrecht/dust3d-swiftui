@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
     @Environment(\.dismiss) private var dismiss
     @State private var recoveryIdentity = UUID()
     @State private var draft = ReferenceCompositionDraft()
+    @FocusState private var focusedCropField: ReferenceCropField?
     @State private var importingProfile = ReferenceProfile.front
     @State private var isImporting = false
     @State private var didSeedDrop = false
@@ -29,7 +30,9 @@ import UniformTypeIdentifiers
                     .foregroundStyle(.secondary)
                     HStack(alignment: .top, spacing: 16) {
                         ForEach(ReferenceProfile.allCases, id: \.self) { profile in
-                            ReferenceCompositionPanel(profile: profile, draft: draft) {
+                            ReferenceCompositionPanel(
+                                profile: profile, draft: draft, focusedCropField: $focusedCropField
+                            ) {
                                 importingProfile = profile
                                 isImporting = true
                             }
@@ -51,8 +54,9 @@ import UniformTypeIdentifiers
                     }
                     GroupBox("Composed preview") {
                         if let result = draft.result {
-                            Image(decorative: result.image, scale: 1).resizable().scaledToFit()
-                                .accessibilityLabel("Composed turnaround image")
+                            Image(result.image, scale: 1, label: Text("Composed turnaround image"))
+                                .resizable().scaledToFit()
+                                .accessibilityValue("\(result.image.width) by \(result.image.height) pixels")
                         } else {
                             ContentUnavailableView(
                                 draft.isWorking ? "Preparing preview…" : "Import a profile to begin",
@@ -79,6 +83,11 @@ import UniformTypeIdentifiers
         }
         .padding(20)
         .frame(width: 920, height: 760)
+        .background(
+            ReferenceCompositionErrorAnnouncement(
+                message: draft.announcementMessage(editingCrop: focusedCropField?.profile))
+        )
+        .background(ReferenceCompositionErrorAnnouncement(message: applyError))
         .disabled(isApplying)
         .interactiveDismissDisabled(isApplying)
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.png, .jpeg, .bmp, .gif, .tiff]) { result in
@@ -124,12 +133,19 @@ import UniformTypeIdentifiers
     }
 }
 
+private struct ReferenceCropField: Hashable {
+    let profile: ReferenceProfile
+    let index: Int
+}
+
 @MainActor private struct ReferenceCompositionPanel: View {
     let profile: ReferenceProfile
     let draft: ReferenceCompositionDraft
+    @FocusState.Binding var focusedCropField: ReferenceCropField?
     let importImage: () -> Void
     @State private var values = ["", "", "", ""]
     @State private var isAdjustingCrop = false
+    @State private var isDropTargeted = false
     private var source: ReferenceCompositionSource? { draft.source(profile) }
 
     var body: some View {
@@ -137,7 +153,9 @@ import UniformTypeIdentifiers
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Button("Import \(profile.rawValue)…", action: importImage)
-                    Button("Remove") { draft.remove(profile) }.disabled(source == nil)
+                    Button("Remove") { draft.remove(profile) }
+                        .accessibilityLabel("Remove \(profile.rawValue) reference image")
+                        .disabled(source == nil)
                     if profile == .side {
                         Button(source?.isMirrored == true ? "Unmirror Side" : "Mirror Side") {
                             draft.toggleSideMirror()
@@ -167,7 +185,12 @@ import UniformTypeIdentifiers
                                 source.displayedCrop.x, source.displayedCrop.y, source.displayedCrop.width,
                                 source.displayedCrop.height,
                             ],
-                            isAdjusting: isAdjustingCrop))
+                            isAdjusting: isAdjustingCrop)
+                    )
+                    .accessibilityLabel("\(profile.rawValue) crop preview")
+                    .accessibilityValue(
+                        "\(source.displayedCrop.width) by \(source.displayedCrop.height) pixels, X \(source.displayedCrop.x), Y \(source.displayedCrop.y)"
+                    )
                     Text("\(source.image.width) × \(source.image.height) pixels")
                         .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                     Text(
@@ -181,6 +204,9 @@ import UniformTypeIdentifiers
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(["X", "Y", "Width", "Height"][index]).font(.caption)
                                 TextField("", text: $values[index])
+                                    .focused(
+                                        $focusedCropField, equals: ReferenceCropField(profile: profile, index: index)
+                                    )
                                     .accessibilityLabel(
                                         "\(profile.rawValue) crop \(["X", "Y", "Width", "Height"][index])")
                             }
@@ -188,16 +214,31 @@ import UniformTypeIdentifiers
                         }
                     }
                     Button("Use Full Image") { draft.useFullImage(profile) }
+                        .accessibilityLabel("Use full \(profile.rawValue) reference image")
                 } else {
                     ContentUnavailableView("No \(profile.rawValue) source", systemImage: "photo").frame(height: 180)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .contentShape(Rectangle())
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(Color.accentColor, lineWidth: 2)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            draft.importDroppedSource(urls: urls, profile: profile)
+        } isTargeted: {
+            isDropTargeted = $0
+        }
         .onChange(of: source?.displayedCrop, initial: true) { _, crop in
             values = crop.map { [$0.x, $0.y, $0.width, $0.height].map(String.init) } ?? ["", "", "", ""]
         }
-        .onChange(of: draft.sourceEpoch) { _, _ in
+        .onChange(of: draft.cropFieldRevision(profile)) { _, _ in
             values =
                 source.map {
                     [$0.displayedCrop.x, $0.displayedCrop.y, $0.displayedCrop.width, $0.displayedCrop.height].map(
@@ -274,7 +315,8 @@ struct ReferenceCropPreview: View {
             }
         }
         .frame(height: 180)
-        .accessibilityLabel("Profile crop preview")
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isImage)
         .accessibilityHint(
             "Draw a crop, or use Adjust to move its interior and resize its handles. Use crop fields for keyboard editing."
         )

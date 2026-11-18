@@ -139,6 +139,50 @@ final class SelectionToolsTests: XCTestCase {
         }
     }
 
+    func testMarqueeExcludesExactCircleTangency() throws {
+        let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.25))
+        let nodes = try source.editorContents().nodes
+        let bounds = CanvasBounds(nodes: nodes)
+        for plane in EditingPlane.allCases {
+            let projection = CanvasProjection(bounds: bounds, plane: plane, width: 132, height: 132)
+            XCTAssertEqual(projection.scale, 120)
+            let tangent = CanvasSelectionRectangle(from: .init(x: 96, y: 65), to: .init(x: 97, y: 67))
+            XCTAssertTrue(projection.nodeIDs(in: tangent, nodes: nodes).isEmpty)
+            let crossing = CanvasSelectionRectangle(from: .init(x: 95.99, y: 65), to: .init(x: 97, y: 67))
+            XCTAssertEqual(projection.nodeIDs(in: crossing, nodes: nodes), ["a"])
+        }
+    }
+
+    func testMarqueeIntersectsDisplayedNodeCircleInBothPlanes() throws {
+        let nodes = try document().editorContents().nodes
+        for plane in EditingPlane.allCases {
+            let projection = CanvasProjection(bounds: CanvasBounds(nodes: nodes), plane: plane, width: 800, height: 600)
+            let node = try XCTUnwrap(nodes.first { $0.id == "b" })
+            let center = projection.point(for: node.value.position)
+            let radius = node.value.radius * projection.scale
+            XCTAssertGreaterThan(radius, 6)
+            XCTAssertLessThan(radius, 300)
+            let overlap = CanvasSelectionRectangle(
+                from: .init(x: center.x + radius * 0.8, y: center.y - 1),
+                to: .init(x: center.x + radius + 2, y: center.y + 1))
+            XCTAssertEqual(projection.nodeIDs(in: overlap, nodes: [node]), ["b"])
+
+            let tangent = CanvasPoint(x: (center.x + radius).nextDown, y: center.y)
+            XCTAssertEqual(projection.nodeIDs(in: .init(from: tangent, to: tangent), nodes: [node]), ["b"])
+
+            let outside = CanvasSelectionRectangle(
+                from: .init(x: center.x + radius * 0.8, y: center.y + radius * 0.8),
+                to: .init(x: center.x + radius, y: center.y + radius))
+            XCTAssertTrue(projection.nodeIDs(in: outside, nodes: [node]).isEmpty)
+
+            let hidden = try XCTUnwrap(nodes.first { $0.id == "d" })
+            let hiddenCenter = projection.point(for: hidden.value.position)
+            XCTAssertTrue(
+                projection.nodeIDs(in: .init(from: hiddenCenter, to: hiddenCenter), nodes: [hidden]).isEmpty)
+        }
+    }
+
     @MainActor func testActorScaling() async throws {
         let session = EditorSession()
         _ = try await session.open(data: document().encoded())
