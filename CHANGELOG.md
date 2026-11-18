@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Restore Metallic, Roughness, and Glow defaults from the Part inspector.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -383,6 +386,8 @@
 - Add lossless, undoable stored rig-template and eyelid parameters with actor-prepared snapshots; skeleton generation and pose preview remain unavailable (#246).
 
 - Route selectable node-ID copying through the native read-only field editor instead of copying a graph fragment (#235).
+
+- Restore Metallic, Roughness, and Glow defaults from the Part inspector.
 
 - Refresh the selectable node ID accessibility value when inspector selection changes while retaining copyability (#235).
 
