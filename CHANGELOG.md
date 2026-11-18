@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Open the Selection inspector for one owning component with Space on the canvas or Show Selection Properties in the Canvas menu.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -93,6 +93,8 @@
 - Connect selected endpoints on separate islands of a legacy part, preserving any remaining islands as separate parts in the same Undo step.
 
 - Scope Edit → Select All to edges when the Edges sidebar has keyboard focus.
+
+- Open the Selection inspector for one owning component with Space on the canvas or Show Selection Properties in the Canvas menu.
 
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
