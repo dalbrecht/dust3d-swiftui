@@ -20,6 +20,37 @@ final class ReferenceImageStoreTests: XCTestCase {
         XCTFail("Reference-image operation did not settle")
     }
     @MainActor
+    func testReferenceImageMenuAdmissionRejectsReplacedAndRetiredWindows() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let file = UUID()
+        let document = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(.setReferenceImagePNG(png()))
+        let data = document.encoded()
+        await store.load(data: data, fileIdentity: file)
+        try await waitForImage(store)
+
+        var ownsWindow = true
+        XCTAssertNil(store.referenceImageActionAdmission(fileIdentity: UUID(), ownsWindow: { true }))
+        let admit = try XCTUnwrap(
+            store.referenceImageActionAdmission(fileIdentity: file, ownsWindow: { ownsWindow }))
+        XCTAssertTrue(admit())
+        ownsWindow = false
+        XCTAssertFalse(admit())
+        ownsWindow = true
+        store.removeReferenceImage()
+        try await waitForImage(store)
+        XCTAssertFalse(admit())
+
+        await store.load(data: data, fileIdentity: file)
+        try await waitForImage(store)
+        XCTAssertFalse(admit())
+        let current = try XCTUnwrap(store.referenceImageActionAdmission(fileIdentity: file, ownsWindow: { true }))
+        XCTAssertTrue(current())
+        store.stop()
+        XCTAssertFalse(current())
+    }
+
+    @MainActor
     func testImportDisplaySettingsRemovalAndUndoRemainIndependentOfGeometry() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

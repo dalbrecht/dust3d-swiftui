@@ -48,6 +48,10 @@ enum EditorCommandScope {
         case unavailable
     }
 
+    static func canOfferExportCancellation(hasKeyWindow: Bool, hasSheet: Bool, canCancelExport: Bool) -> Bool {
+        hasKeyWindow && !hasSheet && canCancelExport
+    }
+
     static func escapeDestination(
         hasKeyWindow: Bool, hasSheet: Bool, nativeTextFocus: Bool, animationFocus: Bool,
         hasCanvasInput: Bool, canCancelExport: Bool
@@ -64,6 +68,7 @@ struct EdgeSidebarSelectAllTarget {
     let ids: Set<String>
     let context: CanvasAdjustmentTarget
     let rigModeEpoch: UUID
+    let admitsFilter: @MainActor () -> Bool
 }
 
 /// Selection intent from the rendered component sidebar, excluding collapsed rows.
