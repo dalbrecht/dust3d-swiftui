@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use the View menu to orbit, pan, zoom, and fit the model in the active Viewer window.
+
 - Toggle Viewer wireframe from the View menu or with W.
 
 - Toggle automatic model rotation from the Viewer’s View menu or with R.

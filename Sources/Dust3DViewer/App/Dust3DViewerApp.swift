@@ -28,6 +28,24 @@ struct Dust3DViewerApp: App {
                 Toggle("Automatic Rotation", isOn: store?.automaticRotationBinding ?? .constant(false))
                     .keyboardShortcut("r", modifiers: [])
                     .disabled(store?.mesh == nil)
+                Divider()
+                Button("Fit Model") { store?.fitModel() }
+                    .keyboardShortcut("0")
+                    .disabled(store?.mesh == nil)
+                cameraItem("Zoom In", .zoomIn).keyboardShortcut("=")
+                cameraItem("Zoom Out", .zoomOut).keyboardShortcut("-")
+                Menu("Orbit") {
+                    cameraItem("Orbit Left", .orbitLeft)
+                    cameraItem("Orbit Right", .orbitRight)
+                    cameraItem("Orbit Up", .orbitUp)
+                    cameraItem("Orbit Down", .orbitDown)
+                }
+                Menu("Pan") {
+                    cameraItem("Pan Left", .panLeft)
+                    cameraItem("Pan Right", .panRight)
+                    cameraItem("Pan Up", .panUp)
+                    cameraItem("Pan Down", .panDown)
+                }
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)") {
@@ -53,6 +71,11 @@ struct Dust3DViewerApp: App {
             BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
         }
         .defaultSize(width: 660, height: 520)
+    }
+
+    private func cameraItem(_ title: LocalizedStringKey, _ action: MeshCameraCommand.Action) -> some View {
+        Button(title) { store?.moveCamera(action) }
+            .disabled(store?.mesh == nil)
     }
 }
 
