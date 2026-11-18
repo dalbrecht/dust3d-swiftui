@@ -32,9 +32,11 @@ struct AnimationAuthoringControls: View {
                     Label("New Animation", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 40)
                 }.disabled(!workflow.canBeginCreation).accessibilityLabel("Create stored animation")
                 HStack(spacing: 8) {
-                    Button(action: workflow.beginType) { Text("Change Type").frame(maxWidth: .infinity, minHeight: 40) }
-                        .disabled(!workflow.canBeginType).accessibilityLabel("Change stored animation type")
-                    Button(action: workflow.beginParameters) {
+                    Button(action: workflow.editAction(.type)) {
+                        Text("Change Type").frame(maxWidth: .infinity, minHeight: 40)
+                    }
+                    .disabled(!workflow.canBeginType).accessibilityLabel("Change stored animation type")
+                    Button(action: workflow.editAction(.parameters)) {
                         Text("Parameters").frame(maxWidth: .infinity, minHeight: 40)
                     }
                     .disabled(!workflow.canBeginParameters).accessibilityLabel("Edit stored animation parameters")

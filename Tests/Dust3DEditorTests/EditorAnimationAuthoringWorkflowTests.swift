@@ -191,7 +191,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
             XCTAssertFalse(workflow.isActive)
             XCTAssertTrue(workflow.canBeginParameters)
             XCTAssertTrue(workflow.canBeginType)
-            workflow.beginType()
+            workflow.editAction(.type)()
             workflow.selectedType = Array("BirdFly".utf8)
             XCTAssertTrue(workflow.canApply)
         }
@@ -225,7 +225,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         defer { store.stop() }
         let workflow = EditorAnimationAuthoringWorkflow(store: store)
         XCTAssertTrue(workflow.canBeginParameters)
-        workflow.beginType()
+        workflow.editAction(.type)()
         XCTAssertFalse(workflow.canApply)
         workflow.selectedType = Array("Known".utf8)
         XCTAssertTrue(workflow.canApply)
@@ -233,7 +233,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         try await settle(store)
         let typed = try XCTUnwrap(store.snapshot?.document.encoded())
         XCTAssertEqual(store.animationSnapshot?.list.selectedRow?.source.parameter(named: "opaque"), "keep")
-        workflow.beginParameters()
+        workflow.editAction(.parameters)()
         XCTAssertFalse(workflow.canApply)
         workflow.setText(name: "durationSeconds", value: "1.125")
         XCTAssertTrue(workflow.canApply, "An unchanged legacy frame count must not block repairing duration")
@@ -260,7 +260,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         let preview = store.previewRevision
         let workflow = EditorAnimationAuthoringWorkflow(store: store)
         XCTAssertTrue(workflow.canBeginParameters)
-        workflow.beginParameters()
+        workflow.editAction(.parameters)()
         let timing = try XCTUnwrap(workflow.unknownParameterDraft)
         XCTAssertEqual(timing.defaultSeconds, 3)
         XCTAssertEqual(timing.defaultFrames, 90)
@@ -302,7 +302,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         await store.animationQuery?.value
         let original = try XCTUnwrap(store.snapshot?.document.encoded())
         let workflow = EditorAnimationAuthoringWorkflow(store: store)
-        workflow.beginParameters()
+        workflow.editAction(.parameters)()
         XCTAssertEqual(workflow.parameterValue(for: "surfaceMaterial"), "Legacy")
         workflow.setText(name: "surfaceMaterial", value: "Unsupported")
         XCTAssertEqual(workflow.validationIssue as? AnimationCatalogError, .invalidValue)
@@ -326,6 +326,34 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
     }
 
+    func testRetainedDraftButtonsCannotRetargetAfterSelectionChanges() async throws {
+        let store = try await store(extraAnimations: "<animation id='b' name='Second' type='Known'/>")
+        defer { store.stop() }
+        let workflow = EditorAnimationAuthoringWorkflow(store: store)
+        let source = try XCTUnwrap(store.snapshot?.document.encoded())
+        let parameters = workflow.editAction(.parameters)
+        let type = workflow.editAction(.type)
+
+        store.selectAnimation("b")
+        await store.animationQuery?.value
+        parameters()
+        XCTAssertFalse(workflow.isActive)
+        store.selectAnimation("a")
+        await store.animationQuery?.value
+        type()
+        XCTAssertFalse(workflow.isActive, "Returning to a row does not revive its old buttons")
+
+        workflow.editAction(.parameters)()
+        XCTAssertTrue(workflow.isActive)
+        XCTAssertEqual(workflow.sourceTitle, "Original")
+        workflow.cancel()
+        workflow.editAction(.type)()
+        XCTAssertTrue(workflow.isActive)
+        XCTAssertEqual(workflow.sourceTitle, "Original")
+        XCTAssertEqual(store.snapshot?.document.encoded(), source)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testUnknownTimingRequiresNamedTypedSourceAndRejectsReplacedArchive() async throws {
         let store = try await store(
             type: "Future",
@@ -339,7 +367,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         }
         store.selectAnimation("a")
         await store.animationQuery?.value
-        workflow.beginParameters()
+        workflow.editAction(.parameters)()
         workflow.setText(name: "frameCount", value: "200")
         XCTAssertTrue(workflow.canApply)
         let original = try XCTUnwrap(store.snapshot?.document.encoded())
@@ -365,7 +393,7 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
         workflow.submit()
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
         workflow.cancel()
-        workflow.beginParameters()
+        workflow.editAction(.parameters)()
         workflow.setSlider(name: "speed", index: .nan)
         XCTAssertEqual(workflow.validationIssue as? AnimationCatalogError, .invalidValue)
         XCTAssertEqual(workflow.parameterDraft?.value(for: "speed"), "1.000")
@@ -393,8 +421,8 @@ final class EditorAnimationAuthoringWorkflowTests: XCTestCase {
             let workflow = EditorAnimationAuthoringWorkflow(store: store)
             switch state {
             case "create", "create-long", "stale": workflow.creationAction()()
-            case "unsupported-type": workflow.beginType()
-            case "parameters", "parameters-unsupported", "parameters-unknown": workflow.beginParameters()
+            case "unsupported-type": workflow.editAction(.type)()
+            case "parameters", "parameters-unsupported", "parameters-unknown": workflow.editAction(.parameters)()
             default: break
             }
             if state == "create-long" {
