@@ -2458,11 +2458,10 @@ final class EditorStore {
         }
     }
     #if MOTE3D_EXPERIMENTAL_HOLLOW
-        func setExperimentalHollowThickness(_ id: String, value: String) {
-            guard !stopped, !isWorking, let snapshot, snapshot.selectedPart?.id == id,
-                snapshot.selectedPart?.target == .model
+        func setExperimentalHollowThickness(_ id: String, value: String, target: CanvasAdjustmentTarget) {
+            guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot),
+                let part = snapshot.selectedPart, part.target == .model, part.id.utf8.elementsEqual(id.utf8)
             else { return }
-            let target = CanvasAdjustmentTarget(snapshot: snapshot)
             perform {
                 guard let thickness = Double(value.trimmingCharacters(in: .whitespacesAndNewlines)) else {
                     throw DocumentError.invalidPartHollowThickness
@@ -2945,7 +2944,23 @@ final class EditorStore {
     }
     func canvasPrecisionKeyHandler() -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
         let handler = canvasPrecisionHandler()
-        return { input in
+        let deleteTarget = acceptedDocumentSource.map {
+            GraphSelectionActionTarget(snapshot: $0, action: .deleteSelection)
+        }
+        let tool = rotationInputContextID
+        let mode = addModeID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] input in
+            if input.isAlternateDelete {
+                guard let self, let deleteTarget, self.canSave, !self.isSelectingRigEdges,
+                    self.rotationInputContextID == tool, self.addModeID == mode,
+                    self.referenceColorInteractionEpoch == interaction,
+                    self.canvasProfileMotion == nil, self.originDrag == nil,
+                    self.canPerformGraphSelectionAction(deleteTarget)
+                else { return false }
+                if !input.isRepeat { self.graphSelectionAction(deleteTarget)() }
+                return true
+            }
             guard let action = input.action else { return false }
             return handler(action)
         }
@@ -3103,7 +3118,7 @@ final class EditorStore {
     func reverseEdge(_ id: String) { perform { try await $0.apply([.reverseEdges([id])]) } }
 
     var canCopyNodes: Bool { !isWorking && snapshot?.canCopyNodes == true }
-    var canCutNodes: Bool { canSave && snapshot?.canCutNodes == true }
+    var canCutNodes: Bool { canSave && !isSelectingRigEdges && snapshot?.canCutNodes == true }
 
     /// Clipboard promise registration succeeds before a Cut can mutate the document.
     func copyNodes(cut: Bool = false, to pasteboard: any EditorClipboardWriting) {
@@ -3143,11 +3158,12 @@ final class EditorStore {
     struct ClipboardPasteRequest: Hashable, Sendable {
         fileprivate let context: CanvasAdjustmentTarget
         fileprivate let workingGroupRevision: UUID
+        fileprivate let rigSelectionEpoch: UUID
         fileprivate let parentID: String?
     }
 
     func clipboardPasteRequest() -> ClipboardPasteRequest? {
-        guard canSave, let snapshot, case .success(let accepted) = recoveryLoadResult,
+        guard canSave, !isSelectingRigEdges, let snapshot, case .success(let accepted) = recoveryLoadResult,
             accepted.documentIdentity == snapshot.documentIdentity
         else { return nil }
         let parentID: String?
@@ -3159,7 +3175,7 @@ final class EditorStore {
         }
         return ClipboardPasteRequest(
             context: CanvasAdjustmentTarget(snapshot: snapshot), workingGroupRevision: workingGroupRevision,
-            parentID: parentID)
+            rigSelectionEpoch: rigEdgeSelectionEpoch, parentID: parentID)
     }
 
     func pasteNodes(data: Data) {
@@ -3194,9 +3210,10 @@ final class EditorStore {
     }
 
     private func isCurrentQtXMLFileSource(_ request: QtXMLFilePasteRequest) -> Bool {
-        guard !stopped, let snapshot, case .success(let accepted) = recoveryLoadResult,
+        guard !stopped, !isSelectingRigEdges, let snapshot, case .success(let accepted) = recoveryLoadResult,
             accepted.fileIdentity == request.fileIdentity, accepted.documentIdentity == snapshot.documentIdentity,
             request.clipboard.workingGroupRevision == workingGroupRevision,
+            request.clipboard.rigSelectionEpoch == rigEdgeSelectionEpoch,
             request.clipboard.context.isCurrent(in: snapshot)
         else { return false }
         if let parentID = request.clipboard.parentID { return snapshot.addPlacementGroup(parentID) != nil }
@@ -3246,7 +3263,8 @@ final class EditorStore {
     func applyStartupQtXML(
         _ data: Data, fileIdentity: UUID, settlesNewDocumentOrigin: Bool = false
     ) -> Task<Void, Never>? {
-        guard !Task.isCancelled, !isWorking, qtXMLFilePasteRequest == nil, let snapshot = acceptedDocumentSource,
+        guard !Task.isCancelled, !isWorking, !isSelectingRigEdges, qtXMLFilePasteRequest == nil,
+            let snapshot = acceptedDocumentSource,
             snapshot.documentRevision == 0, case .success(let accepted) = recoveryLoadResult,
             accepted.fileIdentity == fileIdentity
         else { return nil }
