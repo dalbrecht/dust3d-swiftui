@@ -27,6 +27,13 @@ import SwiftUI
         action(target)
     }
 
+    func referenceDrop(_ urls: [URL]) -> ReferenceCompositionPresentation? {
+        guard admitsInput(), let target = store?.referenceCompositionTarget,
+            let drop = ReferenceCompositionDrop(urls: urls)
+        else { return nil }
+        return ReferenceCompositionPresentation(target: target, droppedSources: drop)
+    }
+
     func drawFirstNode() {
         if canDrawFirstNode { setAddMode(true) }
     }
@@ -44,6 +51,8 @@ struct EditorGetStartedCard: View {
                 .disabled(!actions.canDrawFirstNode)
             Button("Compose Reference Image…") { actions.compose(composeReference) }
             Button("Open Document…") { actions.open(openDocument) }
+            Text("Drop one or two reference images on the canvas.")
+                .font(.caption).foregroundStyle(.secondary)
         }
         .padding(12)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))

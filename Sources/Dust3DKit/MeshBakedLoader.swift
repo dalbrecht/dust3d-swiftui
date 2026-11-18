@@ -24,6 +24,25 @@ extension MeshLoader {
     ) throws -> MeshWithBakedTextures {
         try Task.checkCancellation()
         try MeshBakedInput.validate(dataCount: data.count, options: options)
+        var error = Dust3DError()
+        let owner = try MeshBakedInput.withOptions(images: images, options: options, cancellation: cancellation) {
+            native in
+            data.withUnsafeBytes {
+                dust3d_baked_mesh_load($0.bindMemory(to: UInt8.self).baseAddress, $0.count, &native, &error)
+            }
+        }
+        guard let owner else { throw loadingError(error) }
+        defer { dust3d_baked_mesh_destroy(owner) }
+        try Task.checkCancellation()
+        return try MeshBakedCopy.copy(owner, options: options)
+    }
+}
+
+enum MeshBakedInput {
+    static func withOptions<Result>(
+        images: [MeshBakeImage], options: MeshBakeOptions, cancellation: OpaquePointer?,
+        _ body: (inout Dust3DBakeOptions) throws -> Result
+    ) throws -> Result {
         // NSData's immutable bytes stay pinned for the synchronous native call.
         // Avoid retaining pointers obtained from a completed Data.withUnsafeBytes scope.
         var inputs = try MeshBakedInput.descriptors(images)
@@ -31,9 +50,8 @@ extension MeshLoader {
         for index in inputs.indices {
             inputs[index].pixels = storage[index].bytes.assumingMemoryBound(to: UInt8.self)
         }
-        var error = Dust3DError()
-        let owner = withExtendedLifetime(storage) {
-            inputs.withUnsafeBufferPointer { descriptors in
+        return try withExtendedLifetime(storage) {
+            try inputs.withUnsafeBufferPointer { descriptors in
                 var native = Dust3DBakeOptions()
                 native.struct_size = MemoryLayout<Dust3DBakeOptions>.size
                 native.color_size = options.colorSize
@@ -46,19 +64,11 @@ extension MeshLoader {
                 native.images = descriptors.baseAddress
                 native.image_count = descriptors.count
                 native.cancellation = cancellation
-                return data.withUnsafeBytes {
-                    dust3d_baked_mesh_load($0.bindMemory(to: UInt8.self).baseAddress, $0.count, &native, &error)
-                }
+                return try body(&native)
             }
         }
-        guard let owner else { throw loadingError(error) }
-        defer { dust3d_baked_mesh_destroy(owner) }
-        try Task.checkCancellation()
-        return try MeshBakedCopy.copy(owner, options: options)
     }
-}
 
-enum MeshBakedInput {
     static func validate(dataCount: Int, options: MeshBakeOptions) throws {
         guard dataCount <= MeshLoader.maximumFileSize else {
             throw MeshLoadingError(status: 4, message: "The baked mesh archive exceeds 256 MiB.")

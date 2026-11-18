@@ -21,6 +21,8 @@ public struct DocumentComponent: Identifiable, Equatable, Sendable {
     public let stitching: ComponentStitchingSettings
     public let parentID: String?
     public let childIDs: [String]
+    /// Explicit collapse preference imported from Qt for initial sidebar disclosure.
+    public let isInitiallyCollapsed: Bool
     /// Actual child XML, including opaque elements, comments and text rather than only component identities.
     public let hasChildXML: Bool
     public let linkDataType: String?
@@ -86,6 +88,8 @@ enum ComponentHierarchy {
                     childIDs: DocumentXML.childElements(element, named: "component").compactMap {
                         $0.attribute(forName: "id")?.stringValue
                     },
+                    isInitiallyCollapsed: ["false", "False", "0"].contains(
+                        element.attribute(forName: "expanded")?.stringValue ?? ""),
                     hasChildXML: !(element.children ?? []).isEmpty,
                     linkDataType: element.attribute(forName: "linkDataType")?.stringValue,
                     linkData: element.attribute(forName: "linkData")?.stringValue))

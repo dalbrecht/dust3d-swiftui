@@ -154,6 +154,37 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(plan.steps.last, .node(id: "nextNode", incomingEdgeID: nil))
     }
 
+    func testReplayPropertyDetailsExposeOnlyTheCurrentAppliedAuthoredValue() throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes>
+                <parts><part id='p' name='Tube' roughness='  .6250  ' metallic='future'/></parts>
+                <animations><animation id='walk' name='Walk' type='Walk' speed=' .750 '/></animations></canvas>
+                """.utf8))
+        let bytes = source.encoded()
+        let plan = try WorkflowReplayPlan(document: source)
+        XCTAssertNil(plan.appliedProperty(after: -1))
+        XCTAssertNil(plan.appliedProperty(after: 0))
+        XCTAssertNil(plan.appliedProperty(after: 1))
+        let steps = plan.steps.enumerated().compactMap { index, step -> Int? in
+            guard case .property = step else { return nil }
+            return index + 1
+        }
+        let details = steps.compactMap { plan.appliedProperty(after: $0) }
+        let metallic = try XCTUnwrap(details.first { $0.fields.first?.name == "metallic" })
+        XCTAssertEqual(metallic.title, "Tube — Metallic")
+        XCTAssertEqual(metallic.id, "p")
+        XCTAssertEqual(metallic.fields.map(\.value), ["future"])
+        let roughness = try XCTUnwrap(details.first { $0.fields.first?.name == "roughness" })
+        XCTAssertEqual(roughness.fields.map(\.value), ["  .6250  "])
+        let animation = try XCTUnwrap(details.first { $0.owner == .animation })
+        XCTAssertEqual(animation.fields.map(\.name), ["speed"])
+        XCTAssertEqual(animation.fields.map(\.value), [" .750 "])
+        XCTAssertNil(plan.appliedProperty(after: plan.steps.count + 1))
+        XCTAssertEqual(source.encoded(), bytes)
+    }
+
     func testReplayStagesNodeCutFacesAndWaitsForLinkedProfiles() throws {
         let profile = "{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}"
         let source = try Dust3DDocument(
@@ -181,6 +212,11 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertTrue(try xml(after: 4).contains("cutRotation=\".25\""))
         XCTAssertFalse(try xml(after: 5).contains("cutFace=\"\(profile)\""))
         XCTAssertTrue(try xml(after: 7).contains("cutFace=\"\(profile)\""))
+        XCTAssertNil(plan.appliedProperty(after: 5))
+        let linked = try XCTUnwrap(plan.appliedProperty(after: 7))
+        XCTAssertEqual(linked.id, "b")
+        XCTAssertEqual(linked.fields.map(\.name), ["cutFace"])
+        XCTAssertEqual(linked.fields.map(\.value), [profile])
         XCTAssertEqual(plan.frame(after: 7).nodes.map(\.id), ["a", "b", "p"])
         XCTAssertEqual(try plan.previewDocument(after: 8, source: source).encoded(), source.encoded())
     }
@@ -233,6 +269,13 @@ final class WorkflowReplayPlanTests: XCTestCase {
         XCTAssertEqual(cloth.wrapping.scalarValue(.offset), 0.025)
         XCTAssertEqual(cloth.wrapping.binding, .stored("body"))
         XCTAssertTrue(String(decoding: after.modelXML, as: UTF8.self).contains("wrapFuture=\"retained\""))
+        XCTAssertNil(plan.appliedProperty(after: 2))
+        let wrap = try XCTUnwrap(plan.appliedProperty(after: 3))
+        XCTAssertEqual(wrap.id, "cloth")
+        XCTAssertEqual(
+            Dictionary(uniqueKeysWithValues: wrap.fields.map { ($0.name, $0.value) }),
+            ["wrap": "Cloth", "wrapOffset": ".025", "wrapBindTo": "body", "wrapFuture": "retained"])
+        XCTAssertNil(plan.appliedProperty(after: 4))
         XCTAssertEqual(try plan.previewDocument(after: 4, source: source).encoded(), source.encoded())
     }
 
