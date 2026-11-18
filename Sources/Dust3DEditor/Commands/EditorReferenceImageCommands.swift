@@ -1,20 +1,46 @@
 import AppKit
 import SwiftUI
 
-struct ReferenceImageMenuActions {
-    let compose: @MainActor () -> Void
-    let clearArtwork: (@MainActor () -> Void)?
-    let remove: (@MainActor () -> Void)?
+struct EditorReferenceImageActions {
+    enum Action {
+        case compose
+        case importImage
+        case clearArtwork
+        case remove
+    }
+
+    var canClearArtwork: Bool = false
+    let canRemove: Bool
+    let perform: @MainActor (Action) -> Void
 }
 
 private struct EditorReferenceImageActionsKey: FocusedValueKey {
-    typealias Value = ReferenceImageMenuActions
+    typealias Value = EditorReferenceImageActions
 }
 
 extension FocusedValues {
-    var editorReferenceImageActions: ReferenceImageMenuActions? {
+    var editorReferenceImageActions: EditorReferenceImageActions? {
         get { self[EditorReferenceImageActionsKey.self] }
         set { self[EditorReferenceImageActionsKey.self] = newValue }
+    }
+}
+
+struct EditorReferenceImageButtons: View {
+    let canBegin: Bool
+    let canRemove: Bool
+    var canClearArtwork: Bool = false
+    let perform: @MainActor (EditorReferenceImageActions.Action) -> Void
+
+    var body: some View {
+        Button("Compose Reference Image…") { perform(.compose) }
+            .disabled(!canBegin)
+        Button("Import Reference Image…") { perform(.importImage) }
+            .disabled(!canBegin)
+        Button("Clear Reference Artwork") { perform(.clearArtwork) }
+            .disabled(!canBegin || !canClearArtwork)
+            .help("Clear the image while keeping its dimensions and canvas alignment. You can undo this.")
+        Button("Remove Reference Image", role: .destructive) { perform(.remove) }
+            .disabled(!canRemove)
     }
 }
 
@@ -24,26 +50,23 @@ struct EditorReferenceImageCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .saveItem) {
             let window = NSApp.keyWindow
-            let capturedActions = actions
-            let admitsWindow: @MainActor () -> Bool = {
-                guard let window, NSApp.keyWindow === window else { return false }
-                return window.attachedSheet == nil && window.sheetParent == nil && NSApp.modalWindow == nil
+            let actions = actions
+            let canBegin = actions != nil && admits(window)
+            Menu("Reference Image") {
+                EditorReferenceImageButtons(
+                    canBegin: canBegin, canRemove: canBegin && actions?.canRemove == true,
+                    canClearArtwork: canBegin && actions?.canClearArtwork == true
+                ) {
+                    guard admits(window) else { return }
+                    actions?.perform($0)
+                }
             }
-            Button("Compose Reference Image…") {
-                guard admitsWindow() else { return }
-                capturedActions?.compose()
-            }
-            .disabled(capturedActions == nil || !admitsWindow())
-            Button("Clear Reference Artwork") {
-                guard admitsWindow() else { return }
-                capturedActions?.clearArtwork?()
-            }
-            .disabled(capturedActions?.clearArtwork == nil || !admitsWindow())
-            Button("Remove Reference Image", role: .destructive) {
-                guard admitsWindow() else { return }
-                capturedActions?.remove?()
-            }
-            .disabled(capturedActions?.remove == nil || !admitsWindow())
+            .disabled(!canBegin)
         }
+    }
+
+    private func admits(_ window: NSWindow?) -> Bool {
+        guard let window, NSApp.keyWindow === window else { return false }
+        return window.attachedSheet == nil && window.sheetParent == nil && NSApp.modalWindow == nil
     }
 }

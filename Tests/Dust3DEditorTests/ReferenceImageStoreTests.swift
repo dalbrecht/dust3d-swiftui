@@ -12,66 +12,6 @@ final class ReferenceImageStoreTests: XCTestCase {
                     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
     }
     @MainActor
-    private func waitForImage(_ store: EditorStore) async throws {
-        for _ in 0..<300 {
-            if !store.isWorking && !store.isLoadingReferenceImage { return }
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        XCTFail("Reference-image operation did not settle")
-    }
-    @MainActor
-    func testFileMenuReferenceActionsStayWithTheirAcceptedDocumentAndRemovalUndoes() async throws {
-        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(.setReferenceImagePNG(png()))
-        let data = original.encoded()
-        let store = EditorStore()
-        defer { store.stop() }
-        let fileID = UUID()
-        var ownsWindow = true
-        var opened = 0
-        await store.load(data: data, fileIdentity: fileID)
-        try await waitForImage(store)
-        XCTAssertNil(store.referenceImageMenuActions(fileIdentity: UUID(), ownsWindow: { true }) { _ in })
-        let first = try XCTUnwrap(
-            store.referenceImageMenuActions(fileIdentity: fileID, ownsWindow: { ownsWindow }) { _ in opened += 1 })
-        let removeFirst = try XCTUnwrap(first.remove)
-        let clearFirst = try XCTUnwrap(first.clearArtwork)
-        first.compose()
-        XCTAssertEqual(opened, 1)
-
-        ownsWindow = false
-        first.compose()
-        clearFirst()
-        removeFirst()
-        XCTAssertEqual(opened, 1)
-        XCTAssertTrue(store.hasReferenceImage)
-
-        ownsWindow = true
-        await store.load(data: data, fileIdentity: fileID)
-        try await waitForImage(store)
-        first.compose()
-        clearFirst()
-        removeFirst()
-        XCTAssertEqual(opened, 1)
-        XCTAssertTrue(store.hasReferenceImage)
-        XCTAssertFalse(store.canUndo)
-
-        let current = try XCTUnwrap(
-            store.referenceImageMenuActions(fileIdentity: fileID, ownsWindow: { ownsWindow }) { _ in opened += 1 })
-        let removeCurrent = try XCTUnwrap(current.remove)
-        removeCurrent()
-        try await waitForImage(store)
-        XCTAssertFalse(store.hasReferenceImage)
-        XCTAssertTrue(store.canUndo)
-        let empty = store.referenceImageMenuActions(fileIdentity: fileID, ownsWindow: { true }, compose: { _ in })
-        XCTAssertNil(empty?.clearArtwork)
-        XCTAssertNil(empty?.remove)
-        store.undo()
-        try await waitForImage(store)
-        XCTAssertEqual(store.snapshot?.document.encoded(), data)
-        XCTAssertFalse(store.canUndo)
-    }
-
-    @MainActor
     func testClearingReferenceArtworkKeepsEmbeddedAlignmentAndOneUndo() async throws {
         let origin = NodePosition(x: 3, y: 4, z: 5)
         let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
@@ -101,6 +41,45 @@ final class ReferenceImageStoreTests: XCTestCase {
         try await waitForImage(store)
         XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
         XCTAssertFalse(store.canUndo)
+    }
+
+    @MainActor
+    private func waitForImage(_ store: EditorStore) async throws {
+        for _ in 0..<300 {
+            if !store.isWorking && !store.isLoadingReferenceImage { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("Reference-image operation did not settle")
+    }
+    @MainActor
+    func testReferenceImageMenuAdmissionRejectsReplacedAndRetiredWindows() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let file = UUID()
+        let document = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(.setReferenceImagePNG(png()))
+        let data = document.encoded()
+        await store.load(data: data, fileIdentity: file)
+        try await waitForImage(store)
+
+        var ownsWindow = true
+        XCTAssertNil(store.referenceImageActionAdmission(fileIdentity: UUID(), ownsWindow: { true }))
+        let admit = try XCTUnwrap(
+            store.referenceImageActionAdmission(fileIdentity: file, ownsWindow: { ownsWindow }))
+        XCTAssertTrue(admit())
+        ownsWindow = false
+        XCTAssertFalse(admit())
+        ownsWindow = true
+        store.removeReferenceImage()
+        try await waitForImage(store)
+        XCTAssertFalse(admit())
+
+        await store.load(data: data, fileIdentity: file)
+        try await waitForImage(store)
+        XCTAssertFalse(admit())
+        let current = try XCTUnwrap(store.referenceImageActionAdmission(fileIdentity: file, ownsWindow: { true }))
+        XCTAssertTrue(current())
+        store.stop()
+        XCTAssertFalse(current())
     }
 
     @MainActor
