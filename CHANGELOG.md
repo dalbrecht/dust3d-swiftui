@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Keep rig template and eyelid edits tied to the document displayed when the control was drawn.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -135,6 +135,8 @@
 - Browse a component group’s direct children and navigate back through its breadcrumb.
 
 - Add new parts and paste components into the browsed group when placement is automatic.
+
+- Keep rig template and eyelid edits tied to the document displayed when the control was drawn.
 
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
 
