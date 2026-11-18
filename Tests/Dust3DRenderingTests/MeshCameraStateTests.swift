@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 import simd
 
@@ -154,6 +155,36 @@ final class MeshCameraStateTests: XCTestCase {
         readiness.allowed = true
         XCTAssertTrue(owner.replaceFromInteraction(moved, interactionAllowed: currentViewport.cameraInteractionAllowed))
         XCTAssertEqual(owner.camera.transform(aspect: 1), moved.transform(aspect: 1))
+    }
+
+    func testViewportCameraKeysRespectModifiersAdmissionAndKeyboardLayout() throws {
+        let view = InteractiveMeshView()
+        let initial = view.orbitCamera.transform(aspect: 1)
+        func key(_ code: UInt16, characters: String, modifiers: NSEvent.ModifierFlags = []) throws -> NSEvent {
+            try XCTUnwrap(
+                NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: 0, windowNumber: 0,
+                    context: nil, characters: characters, charactersIgnoringModifiers: characters,
+                    isARepeat: false, keyCode: code))
+        }
+
+        let rightArrow = String(UnicodeScalar(NSRightArrowFunctionKey)!)
+        view.keyDown(with: try key(124, characters: rightArrow, modifiers: [.control, .option, .function]))
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), initial)
+
+        view.cameraInteractionAllowed = { false }
+        view.keyDown(with: try key(124, characters: rightArrow, modifiers: [.function]))
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), initial)
+
+        view.cameraInteractionAllowed = { true }
+        view.keyDown(with: try key(124, characters: rightArrow, modifiers: [.function]))
+        let orbited = view.orbitCamera.transform(aspect: 1)
+        XCTAssertNotEqual(orbited, initial)
+
+        view.keyDown(with: try key(3, characters: "u"))
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), orbited)
+        view.keyDown(with: try key(32, characters: "f"))
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), initial)
     }
 
     func testDefaultExpandedAndIndexedViewportValuesHaveNoOwner() {

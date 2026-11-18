@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Suggest the Qt-style `_copy` name when duplicating a stored animation and include its type in the accessible list row.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -311,6 +314,8 @@
 
 - Highlight the hovered node or edge in both canvas profiles, with node hits taking precedence over edges.
 - Preserve numeric move and scale controls for mixed and edge-only selections, expose additive node accessibility actions, and batch graph edge deletion into one validated XML mutation.
+
+- Suggest the Qt-style `_copy` name when duplicating a stored animation and include its type in the accessible list row.
 
 - Select nodes and edges together, with explicit graph editing modes and one-step batch midpoint insertion.
 
