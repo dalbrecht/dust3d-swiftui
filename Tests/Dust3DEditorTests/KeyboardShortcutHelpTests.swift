@@ -3,6 +3,16 @@ import XCTest
 @testable import Dust3DEditor
 
 final class KeyboardShortcutHelpTests: XCTestCase {
+    func testInspectorDraftEscapeNamesItsFocusedFields() throws {
+        let entry = try XCTUnwrap(
+            KeyboardShortcutHelp.matching("Escape").first { $0.action == "Discard Inspector Draft" })
+        XCTAssertEqual(entry.keys, "Escape")
+        for field in ["width", "thickness", "rotation", "smoothing"] {
+            XCTAssertTrue(entry.scope.contains(field), field)
+        }
+        XCTAssertTrue(entry.scope.contains("Focused"))
+    }
+
     func testAnimationsShortcutNamesTheWindowMenuAndScope() {
         let entries = KeyboardShortcutHelp.matching("Show Animations Inspector")
         XCTAssertEqual(entries.map(\.action), ["Show Animations Inspector"])
