@@ -2360,7 +2360,9 @@ final class EditorStore {
     func partMirrorAction(_ value: Bool, target: PartMirrorTarget) -> @MainActor () -> Void {
         { [weak self] in
             guard let self, self.canEditPartMirror(target) else { return }
-            self.perform(acceptCommittedCancellation: true) { try await $0.setPartXMirrored(value, target: target) }
+            self.perform(acceptCommittedCancellation: true, preservePartStateHover: true) {
+                try await $0.setPartXMirrored(value, target: target)
+            }
         }
     }
 
