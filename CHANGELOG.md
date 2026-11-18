@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Press H to toggle canvas visibility and Shift-H to isolate the owning part.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -272,6 +272,8 @@
 - Mark the common role of selected parts in the Part Role menu.
 
 - Enter a target in the node inspector to bend a chain from the keyboard.
+
+- Press H to toggle canvas visibility and Shift-H to isolate the owning part.
 
 - Shift-drag a graph selection to rotate it or bend a single endpoint chain.
 
