@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Drag the document origin marker directly in Select mode.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -36,6 +36,8 @@
 - Keep modified keyboard shortcuts available when the model preview has focus.
 
 - Accept Qt XML fragments by content regardless of filename suffix when using `-paste-xml`.
+- Drag the document origin marker directly in Select mode.
+
 - Show the authored order of stitching lines in each component listing.
 - Announce new Viewer errors in the active window with VoiceOver.
 
