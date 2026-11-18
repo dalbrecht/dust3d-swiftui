@@ -185,8 +185,7 @@ enum PartSplitting {
         }
     }
 
-    private static func connectedGroups(contents: DocumentContents, partIDs: Set<String>) throws -> [String: [[String]]]
-    {
+    static func connectedGroups(contents: DocumentContents, partIDs: Set<String>) throws -> [String: [[String]]] {
         let partByNode = Dictionary(
             uniqueKeysWithValues: contents.nodes.compactMap { node -> (String, String)? in
                 node.partID.map { (node.id, $0) }

@@ -1,9 +1,11 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct PartTargetControls: View {
     let store: EditorStore
     let part: DocumentPart
+    var graphTarget: GraphPartRoleTarget? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -11,7 +13,7 @@ struct PartTargetControls: View {
             Picker(
                 "Part role",
                 selection: Binding<PartTarget?>(
-                    get: { part.target }, set: { if let target = $0 { store.setPartTarget(part.id, target: target) } }
+                    get: { part.target }, set: { apply($0) }
                 )
             ) {
                 if part.target == nil {
@@ -32,6 +34,15 @@ struct PartTargetControls: View {
                 "Profiles supply cross-sections without joining the mesh. Stitching roles supply component boundaries; stitching settings are separate. Each choice is one undo step."
             )
             .font(.caption).foregroundStyle(.primary)
+        }
+    }
+
+    private func apply(_ role: PartTarget?) {
+        guard let role else { return }
+        if let graphTarget {
+            store.setGraphPartRole(role, target: graphTarget)
+        } else {
+            store.setPartTarget(part.id, target: role)
         }
     }
 
