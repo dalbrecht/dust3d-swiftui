@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Copy selected nodes and inherited junctions as Qt XML.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -400,6 +403,8 @@
 - Add bounded explicit Metal mip uploads and trilinear sampling with conservative Float caps and minified-alpha routing; native/app mip adoption remains pending.
 
 - Validate owned texture mip chains and cumulative copies; reject unavailable sampling levels in the base-only source-bake loader. Native mip and GPU adoption remain pending.
+
+- Copy selected nodes and inherited junctions as Qt XML.
 
 - Render mixed imported/procedural materials in macOS Quick Look and thumbnails, retaining ordinary geometry on optional material failure and reporting original causes.
 

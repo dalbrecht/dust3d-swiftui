@@ -48,6 +48,10 @@ enum EditorCommandScope {
         case unavailable
     }
 
+    static func canOfferExportCancellation(hasKeyWindow: Bool, hasSheet: Bool, canCancelExport: Bool) -> Bool {
+        hasKeyWindow && !hasSheet && canCancelExport
+    }
+
     static func escapeDestination(
         hasKeyWindow: Bool, hasSheet: Bool, nativeTextFocus: Bool, animationFocus: Bool,
         hasCanvasInput: Bool, canCancelExport: Bool
