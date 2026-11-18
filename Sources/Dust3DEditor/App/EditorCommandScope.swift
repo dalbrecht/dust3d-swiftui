@@ -64,6 +64,7 @@ struct EdgeSidebarSelectAllTarget {
     let ids: Set<String>
     let context: CanvasAdjustmentTarget
     let rigModeEpoch: UUID
+    let admitsFilter: @MainActor () -> Bool
 }
 
 /// Selection intent from the rendered component sidebar, excluding collapsed rows.

@@ -32,7 +32,7 @@ public struct EdgeBoneAssignmentTarget: Hashable, Sendable {
         isAvailable =
             !requested.isEmpty && requested == Set(snapshot.selectedEdgeIDs.map { Data($0.utf8) })
             && rows.count == requested.count && requested.isSubset(of: eligible)
-            && snapshot.selectedPartID == nil && snapshot.selectedComponentIDs.isEmpty
+            && snapshot.selectedPartID == nil
     }
 
     /// Require the original window, source, selection and constraints, even after ABA or Undo.
