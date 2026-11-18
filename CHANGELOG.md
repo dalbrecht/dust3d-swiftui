@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- Enable Replay Steps when the document has model parts or a loaded reference image.
-
-- Open Replay Steps in independent windows so starting another replay keeps the current step and source of each existing replay.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -143,6 +141,10 @@
 - Select edges without moving or selecting nodes while preparing a bone assignment.
 
 - Open a local .ds3 document by dropping it into the editor without replacing the current document.
+
+- Enable Replay Steps when the document has model parts or a loaded reference image.
+
+- Open Replay Steps in independent windows so starting another replay keeps the current step and source of each existing replay.
 
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 

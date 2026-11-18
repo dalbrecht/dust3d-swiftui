@@ -72,6 +72,13 @@ struct Dust3DEditorApp: App {
             animationFocused: isAnimationFocused == true)
     }
 
+    private var canOfferExportCancellation: Bool {
+        let focus = rigAssignmentFocus
+        return EditorCommandScope.canOfferExportCancellation(
+            hasKeyWindow: focus.hasKeyWindow, hasSheet: focus.hasSheet,
+            canCancelExport: geometryExportAction?.owner === store && geometryExportAction?.cancel != nil)
+    }
+
     private var escapeDestination: EditorCommandScope.EscapeDestination {
         let focus = rigAssignmentFocus
         return EditorCommandScope.escapeDestination(
@@ -125,16 +132,17 @@ struct Dust3DEditorApp: App {
             EditorClipboardCommands(pasteboard: pasteboard)
             CommandGroup(after: .saveItem) {
                 Button("Save All") { EditorSaveAllCommand.perform(in: NSDocumentController.shared) }
-                if let action = geometryExportAction, action.owner === store, let cancel = action.cancel {
-                    let window = NSApp.keyWindow
-                    if escapeDestination == .export {
-                        Button("Cancel Geometry Export") {
-                            guard NSApp.keyWindow === window, store === action.owner, escapeDestination == .export
-                            else { return }
-                            cancel()
-                        }
-                        .keyboardShortcut(.escape, modifiers: [])
+                if canOfferExportCancellation, let window = NSApp.keyWindow,
+                    let action = geometryExportAction, let cancel = action.cancel
+                {
+                    let offersEscape = escapeDestination == .export
+                    Button("Cancel Geometry Export") {
+                        guard NSApp.keyWindow === window, store === action.owner, canOfferExportCancellation,
+                            !offersEscape || escapeDestination == .export
+                        else { return }
+                        cancel()
                     }
+                    .keyboardShortcut(offersEscape ? .cancelAction : nil)
                 }
             }
             EditorGeometryExportCommands()
