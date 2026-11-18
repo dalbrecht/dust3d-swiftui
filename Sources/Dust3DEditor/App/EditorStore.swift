@@ -2781,12 +2781,7 @@ final class EditorStore {
         guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
             let context = canvasRotationContext
         else { return nil }
-        let hovered: PartGraphTarget? =
-            switch canvasPartStateHover {
-            case .node(let id): .node(id)
-            case .edge(let id): .edge(id)
-            case nil: nil
-            }
+        let hovered = canvasPartStateHover?.graphTarget
         guard let properties = CanvasComponentProperties(snapshot: snapshot, hovered: hovered) else { return nil }
         let hoverEpoch = canvasPartStateHoverEpoch
         let layoutEpoch = precisionLayoutEpoch
@@ -2805,11 +2800,7 @@ final class EditorStore {
         guard canToggleCanvasPartState, let snapshot = acceptedDocumentSource, let context = canvasRotationContext,
             let hover = canvasPartStateHover
         else { return nil }
-        let target: PartGraphTarget =
-            switch hover {
-            case .node(let id): .node(id)
-            case .edge(let id): .edge(id)
-            }
+        guard let target = hover.graphTarget else { return nil }
         guard
             let select = revealOwningComponentAction(
                 target, context: PartGraphSelectionContext(snapshot: snapshot), profileLease: profileLease,
