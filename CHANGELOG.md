@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- VoiceOver includes a linked profile’s ID in action labels when visible profile names are duplicated.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -171,6 +171,8 @@
 - Add captured graph-edit actions to canvas context menus and route secondary/Control clicks safely, cancelling Add mode before placement and clearing interrupted marquee presentation (#343).
 
 - Keep a working component group as the destination for new parts while graph selection changes.
+
+- VoiceOver includes a linked profile’s ID in action labels when visible profile names are duplicated.
 
 - Paste native or Qt clipboard nodes and Qt XML files into an explicitly chosen working group.
 
