@@ -1,9 +1,14 @@
 import SwiftUI
 
+struct NodesSidebarSelectAll {
+    let isEnabled: Bool
+    let perform: @MainActor () -> Void
+}
+
 /// Search stays separate from the native list's transient selection.
 struct CanvasNodeSidebar: View {
     let store: EditorStore
-    @State private var query = ""
+    @Binding var query: String
 
     var body: some View {
         let renderedQuery = query
@@ -46,6 +51,13 @@ struct CanvasNodeSidebar: View {
                     .help(row.id)
                 }
             }
+            .focusedValue(
+                \.editorNodesSidebarSelectAll,
+                NodesSidebarSelectAll(isEnabled: presentation != nil && !displayed.isEmpty) {
+                    guard query == renderedQuery, let presentation else { return }
+                    store.selectAllCanvasSidebarNodes(matching: renderedQuery, in: presentation)
+                }
+            )
             .listStyle(.sidebar)
             .disabled(presentation == nil)
             .accessibilityLabel("Nodes")
