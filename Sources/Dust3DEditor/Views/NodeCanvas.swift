@@ -356,8 +356,11 @@ struct NodeCanvas: View {
                     .accessibilityHidden(store.isSelectingRigEdges)
                 }
                 if let origin = store.originDragPosition ?? store.snapshot?.origin {
-                    OriginHandle(store: store, origin: origin, projection: projection, profileLease: profileLease)
-                        .allowsHitTesting(!store.isAddingNodes && !store.isSelectingRigEdges)
+                    OriginHandle(
+                        store: store, origin: origin, projection: projection, profileLease: profileLease,
+                        precisionKey: precisionKey, switchProfile: switchProfile
+                    )
+                    .allowsHitTesting(!store.isAddingNodes && !store.isSelectingRigEdges)
                 }
             }
             .onChange(of: referenceCanvas, initial: true) { _, _ in

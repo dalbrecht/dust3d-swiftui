@@ -7,12 +7,14 @@ struct OriginHandle: View {
     let origin: NodePosition
     let projection: CanvasProjection
     var profileLease: UUID? = nil
+    var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
+    var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
 
     var body: some View {
         let point = projection.point(for: origin)
-        let precisionKey = store.canvasPrecisionKeyHandler()
+        let handlePrecisionKey = precisionKey ?? store.canvasPrecisionKeyHandler()
         let direct = store.directOriginDragAction(projection: projection, lease: profileLease)
         let explicit = store.isMovingOrigin && !store.isWorking
         let enabled = explicit || direct != nil
@@ -40,9 +42,10 @@ struct OriginHandle: View {
                     update: { if ownsProfile { store.updateOriginDrag(token: $0, translation: $1) } },
                     finish: { if ownsProfile { store.finishOriginDrag(token: $0, translation: $1) } },
                     cancel: { store.cancelOriginDrag(token: $0) }, select: {}, toggle: {},
-                    precisionKey: { ownsProfile && precisionKey($0) }, isRectangular: true,
+                    precisionKey: { ownsProfile && handlePrecisionKey($0) }, isRectangular: true,
                     clickCancel: { store.endOriginClick(token: $0) },
-                    admitsPrimaryPress: { store.admitsCanvasPrimaryPress(clickCount: $0, lease: profileLease) }
+                    admitsPrimaryPress: { store.admitsCanvasPrimaryPress(clickCount: $0, lease: profileLease) },
+                    switchProfile: switchProfile
                 )
             }
             .position(x: point.x, y: point.y)
