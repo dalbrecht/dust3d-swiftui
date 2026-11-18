@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Give newly created component groups a saved default name that stays the same when the group is reordered.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -63,6 +63,8 @@
 - Continue a headless batch when an output destination is an existing directory.
 
 - Continue headless export batches after an unsupported output format and report the failed destination.
+
+- Give newly created component groups a saved default name that stays the same when the group is reordered.
 
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
