@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Preserve a Model component’s equipment slot when editing its name in the inspector.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -87,6 +87,8 @@
 - Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
 
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
+
+- Preserve a Model component’s equipment slot when editing its name in the inspector.
 
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
