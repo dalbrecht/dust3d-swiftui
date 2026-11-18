@@ -3,6 +3,39 @@ import XCTest
 @testable import Dust3DEditor
 
 final class KeyboardShortcutHelpTests: XCTestCase {
+    func testInspectorDraftEscapeNamesItsFocusedFields() throws {
+        let entry = try XCTUnwrap(
+            KeyboardShortcutHelp.matching("Escape").first { $0.action == "Discard Inspector Draft" })
+        XCTAssertEqual(entry.keys, "Escape")
+        for field in ["width", "thickness", "rotation", "smoothing"] {
+            XCTAssertTrue(entry.scope.contains(field), field)
+        }
+        XCTAssertTrue(entry.scope.contains("Focused"))
+    }
+
+    func testAnimationsShortcutNamesTheWindowMenuAndScope() {
+        let entries = KeyboardShortcutHelp.matching("Show Animations Inspector")
+        XCTAssertEqual(entries.map(\.action), ["Show Animations Inspector"])
+        XCTAssertEqual(KeyboardShortcutHelp.matching("⌥⌘A"), entries)
+        XCTAssertEqual(
+            entries.first?.scope,
+            "Focused editor window with an accepted document and no open sheet. Choose Show Animations Inspector from the Window menu."
+        )
+    }
+
+    func testProfileSwitchShortcutDescribesItsFocusedSideBySideScope() throws {
+        let entry = try XCTUnwrap(KeyboardShortcutHelp.matching("E").first)
+        XCTAssertEqual(entry.action, "Switch Editing Profile")
+        XCTAssertEqual(entry.spokenKeys, "E")
+        XCTAssertEqual(entry.scope, "Focused Side by Side canvas or node with a graph selection and no active drag")
+    }
+
+    func testCanvasFocusMenuIsDiscoverableFromKeyboardHelp() throws {
+        let entry = try XCTUnwrap(KeyboardShortcutHelp.matching("Focus Canvas").first)
+        XCTAssertEqual(entry.action, "Nudge Selection or Origin")
+        XCTAssertTrue(entry.scope.contains("Choose Focus Canvas from the Canvas menu."))
+    }
+
     func testGroupNavigationShortcutsDescribeSidebarFocus() throws {
         let browse = try XCTUnwrap(KeyboardShortcutHelp.matching("⌘↓").first)
         XCTAssertEqual(browse.action, "Browse Selected Component Group")
@@ -12,10 +45,48 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(parent.scope, "Focused component sidebar while browsing a group")
     }
 
+    func testSymbolicShortcutKeysHaveSpokenNamesAndCanBeSearchedByName() {
+        let zoom = KeyboardShortcutHelp.Entry(action: "Zoom", keys: "⌥- / ⌥=", scope: "Focused editor window")
+        let orbit = KeyboardShortcutHelp.Entry(action: "Orbit", keys: "← / → / ↑ / ↓", scope: "Focused preview")
+        let gesture = KeyboardShortcutHelp.Entry(action: "Remove", keys: "⌥⌘ click / drag", scope: "Focused canvas")
+        XCTAssertEqual(zoom.spokenKeys, "Option Minus or Option Equals")
+        XCTAssertEqual(orbit.spokenKeys, "Left Arrow or Right Arrow or Up Arrow or Down Arrow")
+        XCTAssertEqual(gesture.spokenKeys, "Option Command click or drag")
+        XCTAssertEqual(KeyboardShortcutHelp.matching("Option Equals", in: [zoom, orbit, gesture]), [zoom])
+        XCTAssertEqual(KeyboardShortcutHelp.matching("left arrow", in: [zoom, orbit, gesture]), [orbit])
+    }
+
+    func testExactKeySearchReturnsEveryBindingWithoutScopeSubstringMatches() {
+        let entries = [
+            KeyboardShortcutHelp.Entry(action: "Wireframe", keys: "W", scope: "Focused editor window"),
+            KeyboardShortcutHelp.Entry(action: "Other W action", keys: "Q / W", scope: "Focused canvas"),
+            KeyboardShortcutHelp.Entry(action: "Zoom Preview", keys: "⌥- / ⌥=", scope: "Focused editor window"),
+        ]
+        XCTAssertEqual(KeyboardShortcutHelp.matching(" w ", in: entries), Array(entries.prefix(2)))
+        XCTAssertEqual(KeyboardShortcutHelp.matching("⌥=", in: entries), [entries[2]])
+        XCTAssertEqual(KeyboardShortcutHelp.matching("window", in: entries), [entries[0], entries[2]])
+    }
+
+    func testSidebarVisibilityShortcutIsSearchableInTheFocusedWindow() throws {
+        let entries = KeyboardShortcutHelp.matching("⌃⌘S")
+        XCTAssertEqual(entries.map(\.action), ["Show / Hide Sidebar"])
+        XCTAssertEqual(try XCTUnwrap(entries.first).scope, "Focused editor window")
+    }
+
     func testInspectorVisibilityShortcutMatchesNativeWindowCommand() throws {
         let entry = try XCTUnwrap(KeyboardShortcutHelp.entries.first { $0.action == "Show / Hide Inspector" })
         XCTAssertEqual(entry.keys, "⌃⌘I")
         XCTAssertEqual(entry.scope, "Focused editor window")
+    }
+
+    func testEscapeHelpDistinguishesCanvasInputAndGeometryExport() throws {
+        let entries = KeyboardShortcutHelp.matching("Escape")
+        XCTAssertTrue(entries.contains { $0.action == "Cancel Canvas Input" })
+        let export = try XCTUnwrap(entries.first { $0.action == "Cancel Geometry Export" })
+        XCTAssertTrue(export.scope.contains("active document"))
+        XCTAssertTrue(export.scope.contains("no active canvas input"))
+        XCTAssertTrue(export.scope.contains("outside text and animation controls"))
+        XCTAssertTrue(export.scope.contains("no modal dialog"))
     }
 
     func testSearchFindsActionsKeysAndFocusScopeWithoutChangingOrder() {

@@ -182,7 +182,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
     func testPasteIntoSourceOrEmptyDocumentBeforeSaving() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
-        let xml = directory.appendingPathComponent("fragment.xml")
+        let xml = directory.appendingPathComponent("Modèle fragment.dust3d-fragment")
         let first = directory.appendingPathComponent("first.ds3")
         let second = directory.appendingPathComponent("second.ds3")
         let original = try archive()
@@ -212,10 +212,57 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertEqual(try created.editorContents().nodes.count, 1)
     }
 
+    func testRepeatedPasteUsesLastFragmentAndProtectsSupersededInput() async throws {
+        let directory = try temporaryDirectory()
+        let ignored = directory.appendingPathComponent("ignored.ds3")
+        let final = directory.appendingPathComponent("final.xml")
+        let output = directory.appendingPathComponent("output.ds3")
+        let original = try archive()
+        try original.encoded().write(to: ignored)
+        try original.modelXML.write(to: final)
+        let arguments = ["Editor", "-paste-xml", ignored.path, "-paste-xml", final.path]
+        let saved = await run(arguments + ["-o", output.path])
+        XCTAssertEqual(saved.status, 0)
+        let document = try Dust3DDocument(data: Data(contentsOf: output))
+        XCTAssertEqual(try document.editorContents().nodes.count, 1)
+        let refused = await run(arguments + ["-o", ignored.path])
+        XCTAssertEqual(refused.status, 2)
+        XCTAssertEqual(try Data(contentsOf: ignored), original.encoded())
+    }
+
+    func testRepeatedPasteIgnoresAnEarlierDirectoryButRejectsItAsTheLastOperand() async throws {
+        let directory = try temporaryDirectory()
+        let unused = directory.appendingPathComponent("unused.xml")
+        try FileManager.default.createDirectory(at: unused, withIntermediateDirectories: false)
+        let sentinel = unused.appendingPathComponent("sentinel")
+        let sentinelBytes = Data("preserve me".utf8)
+        try sentinelBytes.write(to: sentinel)
+        let chosen = directory.appendingPathComponent("chosen.xml")
+        let fragment = try archive().modelXML
+        try fragment.write(to: chosen)
+        let output = directory.appendingPathComponent("result.ds3")
+
+        let result = await run([
+            "Editor", "-paste-xml", unused.path, "-paste-xml", chosen.path, "-o", output.path,
+        ])
+        XCTAssertEqual(result.status, 0, result.errors.joined())
+        let savedBytes = try Data(contentsOf: output)
+        let saved = try Dust3DDocument(data: savedBytes)
+        XCTAssertEqual(try saved.editorContents().nodes.count, 1)
+
+        let rejected = await run([
+            "Editor", "-paste-xml", chosen.path, "-paste-xml", unused.path, "-o", output.path,
+        ])
+        XCTAssertNotEqual(rejected.status, 0)
+        XCTAssertEqual(try Data(contentsOf: output), savedBytes)
+        XCTAssertEqual(try Data(contentsOf: sentinel), sentinelBytes)
+        XCTAssertEqual(try Data(contentsOf: chosen), fragment)
+    }
+
     func testInvalidInputLeavesEveryDestinationUntouched() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
-        let xml = directory.appendingPathComponent("fragment.xml")
+        let xml = directory.appendingPathComponent("invalid-fragment")
         let existing = directory.appendingPathComponent("existing.ds3")
         let absent = directory.appendingPathComponent("absent.ds3")
         let original = Data("previous destination".utf8)
@@ -224,6 +271,8 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let invalidArchive = await run(["Editor", source.path, "-o", existing.path, "-o", absent.path])
         XCTAssertEqual(invalidArchive.status, 1)
         XCTAssertTrue(invalidArchive.errors.first?.contains(source.path) == true)
+        XCTAssertTrue(
+            invalidArchive.errors.first?.contains("This file is not a supported Dust3D 1.0 archive.") == true)
 
         try archive().encoded().write(to: source)
         try Data("<canvas><nodes>".utf8).write(to: xml)
@@ -232,6 +281,17 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         ])
         XCTAssertEqual(invalidXML.status, 1)
         XCTAssertTrue(invalidXML.errors.first?.contains(xml.path) == true)
+        XCTAssertTrue(invalidXML.errors.first?.contains("The document contains invalid or unsupported XML.") == true)
+
+        try Data("<canvas><nodes><node id='a' partId='p'/></nodes></canvas>".utf8).write(to: xml)
+        let invalidGraph = await run([
+            "Editor", source.path, "-o", existing.path, "-paste-xml", xml.path, "-o", absent.path,
+        ])
+        XCTAssertEqual(invalidGraph.status, 1)
+        XCTAssertTrue(invalidGraph.errors.first?.contains(xml.path) == true)
+        XCTAssertTrue(
+            invalidGraph.errors.first?.contains("The document contains invalid node, part, or edge data.") == true)
+        XCTAssertTrue(invalidGraph.output.isEmpty)
         XCTAssertTrue(invalidArchive.output.isEmpty && invalidXML.output.isEmpty)
         XCTAssertEqual(try Data(contentsOf: existing), original)
         XCTAssertFalse(FileManager.default.fileExists(atPath: absent.path))
@@ -249,7 +309,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
             ["Editor", "-o", output.path], arguments + ["-o"], arguments + ["another.ds3"],
             arguments + ["-output", "-"], arguments + ["-o", output.path],
             arguments + ["-o", source.path], arguments + tooMany,
-            arguments + ["-paste-xml", "one.xml", "-paste-xml", "two.xml"],
+            arguments + ["-paste-xml", "one.xml", "-paste-xml"],
         ] {
             let result = await run(invalid)
             XCTAssertEqual(result.status, 2, invalid.joined(separator: " "))
