@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep preview camera commands in the editor window that supplied them.
+
 - Add Editor menu shortcuts for Wireframe, Automatic Rotation, and preview zoom.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
