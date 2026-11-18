@@ -128,6 +128,40 @@ import XCTest
         store.rotateCanvasSelection(degrees: 1)
         XCTAssertFalse(store.canUndo)
     }
+    func testMenuShortcutRetainsItsTargetAndRechecksWindowAndModifiers() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: try document().encoded())
+        try await settle(store)
+        store.selectEdges([edge])
+        try await settle(store)
+
+        var isInScope = true
+        let retained = try XCTUnwrap(store.canvasRotationShortcutAction(characters: ".") { isInScope })
+        isInScope = false
+        retained([])
+        try await settle(store)
+        XCTAssertFalse(store.canUndo)
+
+        isInScope = true
+        retained(.shift)
+        try await settle(store)
+        XCTAssertFalse(store.canUndo)
+
+        store.select(a)
+        try await settle(store)
+        store.selectEdges([edge])
+        try await settle(store)
+        retained([])
+        try await settle(store)
+        XCTAssertFalse(store.canUndo)
+
+        let fresh = try XCTUnwrap(store.canvasRotationShortcutAction(characters: ".") { isInScope })
+        fresh([])
+        try await settle(store)
+        XCTAssertTrue(store.canUndo)
+    }
+
     func testBarePunctuationPolicyExcludesModifiersTextAndAnimation() {
         XCTAssertEqual(
             CanvasRotationInput.degrees(characters: ",", modifiers: [], animationFocus: false, nativeTextFocus: false),
