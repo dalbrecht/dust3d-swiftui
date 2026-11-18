@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- List the Add tool’s preview radius keys in Keyboard Shortcuts Help.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -275,6 +278,8 @@
 - Add graph auto-color from displayed reference pixels and default-color reset, with source-bound atomic Undo and stale-raster rejection (#45).
 
 - Add canvas one-degree keyboard rotation and explicit angle controls, with automatic pivot/descendant selection, native lock protection and stale-input rejection (#45).
+
+- List the Add tool’s preview radius keys in Keyboard Shortcuts Help.
 
 - Open the Part inspector when multiple component rows link directly to one shared part.
 
