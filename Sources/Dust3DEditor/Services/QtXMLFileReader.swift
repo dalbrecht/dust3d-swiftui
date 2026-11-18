@@ -18,7 +18,7 @@ actor QtXMLFileReader {
 
     func read(_ url: URL) async throws -> Data {
         try Task.checkCancellation()
-        guard url.isFileURL, url.pathExtension.lowercased() == "xml" else { throw Failure.invalidFile }
+        guard url.isFileURL else { throw Failure.invalidFile }
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         let descriptor = try url.withUnsafeFileSystemRepresentation { path in
