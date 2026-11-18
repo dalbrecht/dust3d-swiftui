@@ -58,7 +58,14 @@ final class ViewerStore {
     private(set) var meshRevision = 0
     private(set) var materialRevision = 0
     var errorMessage: String?
-    private(set) var rendererError: String?
+    private var rendererFailure: String?
+    private var isRendererFailureDismissed = false
+    var rendererError: String? { isRendererFailureDismissed ? nil : rendererFailure }
+    var rendererRetryAction: (@MainActor () -> Void)? {
+        guard rendererFailure != nil else { return nil }
+        let attemptID = rendererAttemptID
+        return { [weak self] in self?.retryRenderer(attemptID: attemptID) }
+    }
     private(set) var rendererAttemptID = UUID()
     private(set) var cameraState = MeshCameraState()
     private let service: any MeshFileSnapshotLoading
@@ -131,23 +138,25 @@ final class ViewerStore {
 
     func reportRendererError(_ cause: String, attemptID: UUID) {
         guard mesh != nil, rendererAttemptID == attemptID else { return }
-        rendererError = cause
+        rendererFailure = cause
+        isRendererFailureDismissed = false
     }
 
     func dismissRendererError(attemptID: UUID) {
         guard rendererAttemptID == attemptID else { return }
-        rendererError = nil
+        isRendererFailureDismissed = true
     }
 
-    func retryRenderer(attemptID: UUID) {
-        guard rendererAttemptID == attemptID, rendererError != nil else { return }
+    private func retryRenderer(attemptID: UUID) {
+        guard rendererAttemptID == attemptID, rendererFailure != nil else { return }
         resetRendererAttempt()
         renderedMaterialRevision = nil
     }
 
     private func resetRendererAttempt() {
         rendererAttemptID = UUID()
-        rendererError = nil
+        rendererFailure = nil
+        isRendererFailureDismissed = false
     }
 
     func retryMaterials() {
