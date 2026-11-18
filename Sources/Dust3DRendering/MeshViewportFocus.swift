@@ -15,7 +15,9 @@ package final class MeshViewportFocus {
 
     @discardableResult
     package func moveFocus(in window: NSWindow?) -> Bool {
-        guard let view, let window, view.window === window, !view.isHiddenOrHasHiddenAncestor else { return false }
+        guard let view, let window, view.window === window, !view.isHiddenOrHasHiddenAncestor,
+            view.acceptsFirstResponder
+        else { return false }
         return window.makeFirstResponder(view)
     }
 }
