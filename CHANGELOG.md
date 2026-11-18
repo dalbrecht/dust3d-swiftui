@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Press Escape to cancel an active preview drag or pending pick.
+
+- Orbit the preview through the top and underside of the model.
+
 - Keep an active preview drag in progress when the scroll wheel moves.
 
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
