@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- Explain why saving an Editor Session Log failed and release the report when the save panel is cancelled.
-
-- Record explicit geometry export cancellation requests in the Editor Session Log.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -221,6 +219,10 @@
 - Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
 
 - Resolve About attribution from installed app resources without requiring the original SwiftPM build directory, and report missing packaged attribution safely (#344).
+
+- Explain why saving an Editor Session Log failed and release the report when the save panel is cancelled.
+
+- Record explicit geometry export cancellation requests in the Editor Session Log.
 
 - Allow opt-in owned source-bake mip copying through the existing pinned core, validating level counts and aggregate payload quotas; default loading remains base-only (#288).
 
