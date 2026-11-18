@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Let Viewer users cancel an open in progress while keeping the current model.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -213,6 +213,8 @@
 - Browse the pinned rig template bone hierarchy and stored assignment counts, then assign the chosen exact name to selected edges in one Undo step (#359).
 
 - View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
+
+- Let Viewer users cancel an open in progress while keeping the current model.
 
 - Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
 
