@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Toggle automatic model rotation from the Viewer’s View menu or with R.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -183,6 +183,8 @@
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
 
 - Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
+
+- Toggle automatic model rotation from the Viewer’s View menu or with R.
 
 - Click a companion profile to make it the editing pane without placing or selecting a graph element.
 
