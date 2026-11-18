@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Explain when Qt treats a near-default part deformation scale as 1.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -329,6 +332,8 @@
 - Add catalog-backed stored animation creation, type changes, timing/dynamic/surface parameter drafts and explicit defaults, with source-bound atomic Undo/Redo and lossless Save (#283).
 
 - Add original procedural OBJ export to the editor toolbar and File menu, with captured-revision publication, source protection, cancellation/drain feedback and preserved export warnings (#281).
+
+- Explain when Qt treats a near-default part deformation scale as 1.
 
 - Add owned Swift base/UV worker-request packets backed by the existing core codec, with bounded input and preserved error receipts; worker execution remains separate (#277).
 
