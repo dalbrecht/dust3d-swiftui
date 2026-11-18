@@ -41,3 +41,22 @@ Flattened-image reuse now reads a guarded `referenceImageForComposition`: it is 
 The separate file-picker failure callback now reports its diagnostic without invalidating an intact composition. A regression verifies valid preview/Apply preservation, continued rejection of invalid crop drafts and ignored errors after Stop. This callback is distinct from selected-file decoding; provider failure timing is not claimed as native-tested.
 
 Rejected picker input and rejected pointer rectangles now share a non-invalidating diagnostic path; invalid numeric crop drafts still invalidate Apply. A regression uses a greater-than-three-point drag on a magnified 4×2 source whose endpoints round to the same pixel boundary, confirms projection rejection, and verifies that the original crop/PNG survive and Apply resumes after the active gesture ends.
+
+### Reference preview and profile actions
+
+Physical VoiceOver verification is pending. Import both profiles and move
+through the composer with VoiceOver. Check that the composed turnaround image
+is a reachable image element and reports the canvas dimensions. Verify that
+the two Remove actions identify Front and Side independently, and that each
+Use Full Image action identifies the profile it resets. Confirm that resetting
+Side leaves Front's crop intact and that keyboard focus can still reach the
+numeric crop fields and Apply.
+
+While editing a crop number, clear the field and enter a valid value.
+Verify that the temporary empty value stays quiet. Then leave an invalid
+value and move focus out of that profile’s numeric fields. Verify that the
+error is announced once and Apply stays disabled until the crop is valid.
+With both profiles imported, correct Side while Front remains invalid.
+Check that Apply stays disabled and the remaining error identifies Front.
+An import or preview error should still announce while a numeric field has
+focus. This VoiceOver interaction remains pending on hardware.

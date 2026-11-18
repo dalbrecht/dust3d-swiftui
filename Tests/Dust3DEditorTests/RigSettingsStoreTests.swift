@@ -30,6 +30,42 @@ final class RigSettingsStoreTests: XCTestCase {
         XCTFail("Stored rig edit or ordinary preview did not settle")
     }
 
+    @MainActor func testInspectorMenuStaysWithItsAcceptedDocumentWindow() async throws {
+        let source = try document().encoded()
+        let store = EditorStore(preview: CountingRigPreview())
+        defer { store.stop() }
+        let identity = UUID()
+        await store.load(data: source, fileIdentity: identity)
+        try await settle(store)
+        store.select(nodeID)
+        try await settle(store)
+
+        var bindingIdentity = identity
+        var destinations: [EditorInspectorDestination] = []
+        XCTAssertNil(store.inspectorNavigationAction(fileIdentity: UUID()) { _ in })
+        let navigate = try XCTUnwrap(
+            store.inspectorNavigationAction(fileIdentity: identity, ownsWindow: { bindingIdentity == identity }) {
+                destinations.append($0)
+            })
+        navigate(.rig)
+        navigate(.animations)
+        navigate(.sidebar(false))
+        navigate(.sidebar(true))
+        XCTAssertEqual(destinations, [.rig, .animations, .sidebar(false), .sidebar(true)])
+        XCTAssertEqual(store.snapshot?.selectedIDs, [nodeID])
+        XCTAssertEqual(store.snapshot?.document.encoded(), source)
+        XCTAssertFalse(store.canUndo)
+
+        bindingIdentity = UUID()
+        navigate(.sidebar(false))
+        XCTAssertEqual(destinations.count, 4)
+        bindingIdentity = identity
+        await store.load(data: source, fileIdentity: identity)
+        try await settle(store)
+        navigate(.sidebar(false))
+        XCTAssertEqual(destinations.count, 4)
+    }
+
     @MainActor func testStoredRigEditsRetainExactHistorySelectionAssetsAndPreviewWithoutEvaluatingRig() async throws {
         let source = try document()
         let preview = CountingRigPreview()
