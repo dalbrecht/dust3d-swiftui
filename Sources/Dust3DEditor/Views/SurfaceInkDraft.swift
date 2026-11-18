@@ -10,6 +10,18 @@ import Observation
     var canApply: Bool { color.conversionIssue == nil && color.parsedColor?.alpha == 255 }
 
     init(source: ComponentColorValue) { color = ComponentColorDraft(source: source) }
+    convenience init(selection: ComponentWrappingSelectionValue<ComponentColorValue>) {
+        self.init(source: Self.draftSource(selection))
+    }
+    func cancel(selection: ComponentWrappingSelectionValue<ComponentColorValue>) {
+        cancel(source: Self.draftSource(selection))
+    }
+    private static func draftSource(
+        _ selection: ComponentWrappingSelectionValue<ComponentColorValue>
+    ) -> ComponentColorValue {
+        if case .uniform(let value) = selection { return value }
+        return .unset
+    }
     func cancel(source: ComponentColorValue) {
         generation = UUID()
         color = ComponentColorDraft(source: source)
