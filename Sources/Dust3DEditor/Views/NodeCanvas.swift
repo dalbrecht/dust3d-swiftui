@@ -1,3 +1,4 @@
+import AppKit
 import Dust3DDocument
 import Dust3DEditorModel
 import SwiftUI
@@ -9,6 +10,7 @@ struct NodeCanvas: View {
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
     var focusControl: CanvasProfileFocusControl? = nil
     var previewCamera: EditorPreviewCameraActions? = nil
+    var openDocument: @MainActor () -> Void = { NSDocumentController.shared.openDocument(nil) }
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
     @State private var nodeDrag = NodeDragLifecycle()
@@ -129,11 +131,13 @@ struct NodeCanvas: View {
                             return zoomPreview(input)
                         } : nil,
                     radiusKey: { admitsInput() && adjustRadius($0) },
-                    doubleClick: { point in
+                    doubleClick: { point, mode in
                         guard admitsInput(), store.addModeID == addModeID, !store.isAddingNodes, !store.isMovingOrigin,
                             let partContext
                         else { return }
-                        store.selectWholePart(at: point, projection: projection, context: partContext)
+                        store.selectWholePart(
+                            at: point, projection: projection, context: partContext,
+                            onBlank: mode == .toggle ? openDocument : nil)
                     },
                     lassoCanvas: store.canvasUsesLasso ? referenceCanvas : nil,
                     lassoSelection: { mode in

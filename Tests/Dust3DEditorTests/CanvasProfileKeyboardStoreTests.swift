@@ -378,6 +378,102 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
     }
 
+    func testEdgeSidebarSearchSelectsOnlyCurrentEligibleResults() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let xml = """
+            <canvas><nodes>
+              <node id='root' name='Root Joint' partId='p' x='0' y='0' z='0' radius='.1'/>
+              <node id='tip' name='Depth Tip' partId='p' x='0' y='0' z='1' radius='.1'/>
+              <node id='other' name='Side Tip' partId='p' x='1' y='0' z='0' radius='.1'/>
+              <node id='locked-a' name='Depth Locked' partId='locked' x='0' y='1' z='0' radius='.1'/>
+              <node id='locked-b' name='Lock End' partId='locked' x='1' y='1' z='0' radius='.1'/>
+            </nodes><edges>
+              <edge id='depth-edge' from='root' to='tip' partId='p'/>
+              <edge id='side-edge' from='root' to='other' partId='p'/>
+              <edge id='locked-edge' from='locked-a' to='locked-b' partId='locked'/>
+            </edges><parts><part id='p'/><part id='locked' locked='true'/></parts></canvas>
+            """
+        let document = try Dust3DDocument(snapshotXML: Data(xml.utf8))
+        await store.load(data: document.encoded())
+        try await settle(store)
+        let snapshot = try XCTUnwrap(store.snapshot)
+        let rows = EdgeSidebarRow.rows(in: snapshot)
+        let byName = EdgeSidebarRow.filter(rows, matching: "tip depth")
+        XCTAssertEqual(byName.map(\.id), ["depth-edge"])
+        XCTAssertEqual(EdgeSidebarRow.filter(rows, matching: "depth-edge").map(\.id), ["depth-edge"])
+        XCTAssertEqual(EdgeSidebarRow.filter(rows, matching: "depth").map(\.id), ["depth-edge", "locked-edge"])
+
+        store.setRigEdgeSelection(true)
+        var currentFilter = true
+        let filtered = try XCTUnwrap(
+            store.edgeSidebarSelectAllTarget(
+                displayedIDs: Set(EdgeSidebarRow.filter(rows, matching: "depth").map(\.id)),
+                admitsFilter: { currentFilter }))
+        XCTAssertEqual(filtered.ids, ["depth-edge"])
+        currentFilter = false
+        store.selectAllSidebarEdges(filtered)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertTrue(store.snapshot?.selectedEdgeIDs.isEmpty == true)
+
+        let empty = try XCTUnwrap(store.edgeSidebarSelectAllTarget(displayedIDs: []))
+        XCTAssertFalse(store.canSelectAllSidebarEdges(empty))
+        let current = try XCTUnwrap(store.edgeSidebarSelectAllTarget(displayedIDs: ["depth-edge", "locked-edge"]))
+        store.selectAllSidebarEdges(current)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["depth-edge"])
+        XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testEdgeSidebarRowActionsRejectAReplacedSearch() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                  <node id='a' partId='p' x='0' y='0' z='0' radius='.1'/>
+                  <node id='b' partId='p' x='0' y='0' z='1' radius='.1'/>
+                </nodes><edges><edge id='ab' from='a' to='b' partId='p'/></edges>
+                <parts><part id='p'/></parts>
+                <components><component id='owner' linkDataType='partId' linkData='p'/></components></canvas>
+                """.utf8))
+        await store.load(data: document.encoded())
+        try await settle(store)
+        let snapshot = try XCTUnwrap(store.snapshot)
+        let target = PartGraphTarget.edge("ab")
+        var searchIsCurrent = true
+        let reveal = try XCTUnwrap(
+            store.revealOwningComponentAction(
+                target, context: PartGraphSelectionContext(snapshot: snapshot),
+                admitsInput: { searchIsCurrent }))
+        let select = store.wholePartSelectionAction(target, admitsInput: { searchIsCurrent })
+
+        searchIsCurrent = false
+        reveal()
+        XCTAssertFalse(store.isWorking)
+        try await settle(store)
+        XCTAssertNil(store.snapshot?.componentRevealHint)
+        select()
+        XCTAssertFalse(store.isWorking)
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.selectedIDs.isEmpty == true)
+        XCTAssertTrue(store.snapshot?.selectedEdgeIDs.isEmpty == true)
+
+        let currentReveal = try XCTUnwrap(
+            store.revealOwningComponentAction(target, context: PartGraphSelectionContext(snapshot: snapshot)))
+        currentReveal()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentRevealHint?.componentID, "owner")
+        store.wholePartSelectionAction(target)()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["a", "b"])
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab"])
+        XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testEdgeSidebarSelectAllKeepsReadonlyInspectionAndUsesRigEligibility() async throws {
         let store = makeStore()
         defer { store.stop() }
@@ -394,7 +490,7 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         try await settle(store)
         store.select("a")
         try await settle(store)
-        let ordinary = try XCTUnwrap(store.edgeSidebarSelectAllTarget)
+        let ordinary = try XCTUnwrap(store.edgeSidebarSelectAllTarget())
         XCTAssertTrue(store.canSelectAllSidebarEdges(ordinary))
         store.selectAllSidebarEdges(ordinary)
         try await settle(store)
@@ -402,7 +498,7 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.selectedEdgeIDs, ["ab", "cd"])
 
         store.setRigEdgeSelection(true)
-        let rig = try XCTUnwrap(store.edgeSidebarSelectAllTarget)
+        let rig = try XCTUnwrap(store.edgeSidebarSelectAllTarget())
         XCTAssertTrue(store.canSelectAllSidebarEdges(rig))
         store.selectAllSidebarEdges(rig)
         try await settle(store)
@@ -418,17 +514,17 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         let document = try makeDocument()
         await store.load(data: document.encoded())
         try await settle(store)
-        let beforeMode = try XCTUnwrap(store.edgeSidebarSelectAllTarget)
+        let beforeMode = try XCTUnwrap(store.edgeSidebarSelectAllTarget())
         store.setRigEdgeSelection(true)
         store.setRigEdgeSelection(false)
         XCTAssertFalse(store.canSelectAllSidebarEdges(beforeMode))
 
-        let beforeSelection = try XCTUnwrap(store.edgeSidebarSelectAllTarget)
+        let beforeSelection = try XCTUnwrap(store.edgeSidebarSelectAllTarget())
         store.select("a")
         try await settle(store)
         XCTAssertFalse(store.canSelectAllSidebarEdges(beforeSelection))
 
-        let beforeSource = try XCTUnwrap(store.edgeSidebarSelectAllTarget)
+        let beforeSource = try XCTUnwrap(store.edgeSidebarSelectAllTarget())
         await store.load(data: document.encoded())
         try await settle(store)
         XCTAssertFalse(store.canSelectAllSidebarEdges(beforeSource))
@@ -447,7 +543,7 @@ final class CanvasProfileKeyboardStoreTests: XCTestCase {
         try await settle(store)
         store.setRigEdgeSelection(true)
 
-        let target = try XCTUnwrap(store.edgeSidebarSelectAllTarget)
+        let target = try XCTUnwrap(store.edgeSidebarSelectAllTarget())
         XCTAssertFalse(store.canSelectAllSidebarEdges(target))
         store.selectAllSidebarEdges(target)
         XCTAssertFalse(store.isWorking)

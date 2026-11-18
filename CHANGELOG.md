@@ -6,7 +6,11 @@
 
 - Offer sibling reordering when dropping components onto a group row.
 
-- Confirm a component drop into a group before changing the hierarchy.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
+
+- Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
 
@@ -18,6 +22,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -74,6 +79,8 @@
 - Identify empty and populated groups in the component sidebar and enlarge disclosure controls.
 
 - Honor saved component collapse flags when opening older Dust3D documents.
+
+- Open the document picker with Command-double-click on blank canvas.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
@@ -424,6 +431,8 @@
 - Render supported imported GLB materials in the standalone viewer with authored UV/sampler policy, linear color/factors, PBR scalars, alpha modes and double-sided handling; preserve geometry fallback and remaining editor/file-preview/atlas/export limits.
 
 - Adopt owned imported surface UV/RGBA metadata with explicit RGB encoding, aligned geometry and independently bounded background Swift copies; texture rendering remains pending.
+
+- Confirm a component drop into a group before changing the hierarchy.
 
 - Adopt reviewed core `4db1bb7` for embedded imported geometry, lifetime-safe material/image metadata copies, and bounded background PNG/JPEG decoding. Imported material rendering, UV/baking and textured export remain pending; archives and original assets survive native edits and undo.
 
