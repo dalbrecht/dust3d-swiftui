@@ -1,6 +1,14 @@
 import Dust3DEditorModel
 import SwiftUI
 
+extension ComponentTreeRow {
+    var sidebarSymbolName: String { component.isGroup ? "folder" : "square.stack.3d.up" }
+
+    var sidebarAccessibilityLabel: String {
+        component.isGroup ? "Group \(title)" : "Component \(title)"
+    }
+}
+
 struct ComponentSidebar: View {
     let store: EditorStore
     @State private var disclosure: ComponentSidebarDisclosure
@@ -18,6 +26,9 @@ struct ComponentSidebar: View {
             {
                 let tree = sidebarSnapshot.componentTree
                 let browse = store.componentGroupBrowse
+                let visibleRows = browse?.children ?? tree.visibleRows(collapsing: disclosure.collapsedIDs)
+                let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
+                let stitching = ComponentStitchingOrder(snapshot: sidebarSnapshot)
                 let scopeEpoch = store.componentBrowseEpoch
                 let admitsScope: @MainActor () -> Bool = { store.componentBrowseEpoch == scopeEpoch }
                 Divider()
@@ -51,8 +62,8 @@ struct ComponentSidebar: View {
                         if let group = sidebarSnapshot.selectedComponent, group.isGroup {
                             browseButton(group.id, snapshot: sidebarSnapshot)
                         }
-                        if let id = sidebarSnapshot.selectedComponentID,
-                            let target = ComponentPlacementTarget(snapshot: sidebarSnapshot, singleComponentID: id)
+                        if sidebarSnapshot.selectedComponentIDs.allSatisfy({ visibleKeys.contains(Data($0.utf8)) }),
+                            let target = ComponentPlacementTarget(snapshot: sidebarSnapshot)
                         {
                             ComponentSidebarOrderMenu(store: store, target: target, scopeEpoch: scopeEpoch)
                         }
@@ -133,6 +144,14 @@ struct ComponentSidebar: View {
                             .padding(.horizontal, 12)
                     }
                 }
+                if stitching.hasLineOrder(in: browse?.path.last?.id) {
+                    Text("Stitching follows line order. Drag the lines or use the Move commands to reorder.")
+                        .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
+                }
+                if browse == nil, stitching.hasUngroupedStitching {
+                    Text("Group stitching lines and loops to configure stitching parameters.")
+                        .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
+                }
                 if let failure = tree.failureDescription {
                     Label(
                         "Hierarchy unavailable: \(failure). Source data is preserved.",
@@ -141,7 +160,6 @@ struct ComponentSidebar: View {
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12).padding(.bottom, 12)
                 } else {
                     ScrollViewReader { proxy in
-                        let visibleRows = browse?.children ?? tree.visibleRows(collapsing: disclosure.collapsedIDs)
                         let revealKey = revealScrollKey(visibleRows: visibleRows)
                         let documentIdentity = sidebarSnapshot.documentIdentity
                         let context = PartGraphSelectionContext(snapshot: sidebarSnapshot)
@@ -159,11 +177,12 @@ struct ComponentSidebar: View {
                             )
                         ) {
                             ForEach(visibleRows) { row in
-                                componentRow(row, scoped: browse != nil, scopeEpoch: scopeEpoch)
+                                componentRow(
+                                    row, scoped: browse != nil, scopeEpoch: scopeEpoch,
+                                    stitchingOrdinal: stitching.ordinal(for: row.id))
                             }
                         }
                         .contextMenu(forSelectionType: String.self) { ids in
-                            let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
                             if admitsRows(), !ids.isEmpty, ids.allSatisfy({ visibleKeys.contains(Data($0.utf8)) }) {
                                 if ids.count == 1, let id = ids.first,
                                     visibleRows.contains(where: {
@@ -172,9 +191,8 @@ struct ComponentSidebar: View {
                                 {
                                     browseButton(id, snapshot: sidebarSnapshot)
                                 }
-                                if ids.count == 1, let id = ids.first,
-                                    let target = ComponentPlacementTarget(
-                                        snapshot: sidebarSnapshot, singleComponentID: id)
+                                if let target = ComponentPlacementTarget(
+                                    snapshot: sidebarSnapshot, componentIDs: ids)
                                 {
                                     ComponentSidebarOrderMenu(store: store, target: target, scopeEpoch: scopeEpoch)
                                 }
@@ -204,6 +222,11 @@ struct ComponentSidebar: View {
                         }
                         .focusedValue(\.editorComponentSidebarFocus, true)
                         .focusedValue(
+                            \.editorComponentSidebarBrowseSelection,
+                            store.componentSidebarBrowseSelectionAction(
+                                snapshot: sidebarSnapshot, disclosure: disclosure)
+                        )
+                        .focusedValue(
                             \.editorComponentSidebarSelectAll,
                             ComponentSidebarSelectAllTarget(
                                 snapshot: sidebarSnapshot, visibleIDs: Set(visibleRows.map(\.id)),
@@ -218,7 +241,7 @@ struct ComponentSidebar: View {
                         .disabled(store.isWorking)
                         .onChange(of: store.snapshot?.componentRevealHint?.revision, initial: true) { _, _ in
                             guard let snapshot = store.snapshot, let hint = snapshot.componentRevealHint else { return }
-                            disclosure.reveal(hint)
+                            disclosure.reveal(hint, documentIdentity: snapshot.documentIdentity)
                         }
                         .task(id: revealKey) { @MainActor in
                             guard revealKey != nil, let hint = store.snapshot?.componentRevealHint else { return }
@@ -233,9 +256,14 @@ struct ComponentSidebar: View {
                 }
             }
         }
-        .onChange(of: store.snapshot?.documentIdentity) { _, _ in disclosure.collapsedIDs = [] }
+        .onChange(of: store.snapshot?.documentIdentity, initial: true) { _, _ in
+            disclosure.restore(from: store.snapshot)
+        }
     }
-    private func componentRow(_ row: ComponentTreeRow, scoped: Bool, scopeEpoch: UUID) -> some View {
+    private func componentRow(
+        _ row: ComponentTreeRow, scoped: Bool, scopeEpoch: UUID,
+        stitchingOrdinal: ComponentStitchingOrder.Ordinal?
+    ) -> some View {
         HStack(spacing: 4) {
             if !scoped && row.hasChildren {
                 Button {
@@ -249,17 +277,31 @@ struct ComponentSidebar: View {
                         systemName: disclosure.collapsedIDs.contains(row.id)
                             ? "chevron.right" : "chevron.down"
                     )
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
                 }
-                .frame(width: 12)
                 .buttonStyle(.plain)
                 .accessibilityLabel(
                     "\(disclosure.collapsedIDs.contains(row.id) ? "Expand" : "Collapse") \(row.title)"
                 )
             } else {
-                Color.clear.frame(width: 12, height: 1).accessibilityHidden(true)
+                Color.clear.frame(width: 20, height: 1).accessibilityHidden(true)
             }
-            Label(row.title, systemImage: row.hasChildren ? "folder" : "square.stack.3d.up")
-                .lineLimit(1)
+            Label {
+                Text(row.title).lineLimit(1)
+            } icon: {
+                Image(systemName: row.sidebarSymbolName)
+                    .foregroundStyle(Color.primary)
+                    .accessibilityHidden(true)
+            }
+            if let stitchingOrdinal {
+                Spacer(minLength: 4)
+                Text("Line \(stitchingOrdinal.position)/\(stitchingOrdinal.count)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.leading, !scoped ? CGFloat(min(row.depth, 6) * 10) : 0)
         .modifier(
@@ -270,7 +312,10 @@ struct ComponentSidebar: View {
         .tag(row.id)
         .id(row.id)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Component \(row.title)")
+        .accessibilityLabel(row.sidebarAccessibilityLabel)
+        .accessibilityValue(
+            stitchingOrdinal.map { Text("Stitching line \($0.position) of \($0.count)") } ?? Text("")
+        )
         .help("\(row.title) · \(row.id)")
     }
 
@@ -280,21 +325,42 @@ struct ComponentSidebar: View {
     }
 
     private func browsePath(_ browse: ComponentGroupBrowse, snapshot: EditorSnapshot) -> some View {
-        HStack {
-            Button(
-                "Up", systemImage: "chevron.up",
-                action: store.componentBrowseAction(
-                    browse.path.dropLast().last?.id, snapshot: snapshot)
-            )
-            .help("Browse the parent group or return to the full tree.")
-            Menu(browse.path.last?.title ?? "Group") {
-                Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
-                ForEach(browse.path.dropLast()) { row in
-                    Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+        let parent = browse.path.dropLast().last
+        let destination = parent?.title ?? "Full Component Tree"
+        return VStack(alignment: .leading, spacing: 4) {
+            Button(action: store.componentBrowseAction(parent?.id, snapshot: snapshot)) {
+                Label {
+                    Text(destination)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "chevron.up")
+                        .accessibilityHidden(true)
                 }
+                .frame(minHeight: 20)
+                .contentShape(Rectangle())
             }
-            .accessibilityLabel("Group breadcrumb")
-            .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
+            .accessibilityLabel("Go to \(destination)")
+            .help("Go to \(destination).")
+            HStack(alignment: .top, spacing: 4) {
+                Text(browse.path.last?.title ?? "Group")
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                Menu {
+                    Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
+                    ForEach(browse.path.dropLast()) { row in
+                        Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .frame(minWidth: 20, minHeight: 20)
+                }
+                .accessibilityLabel("Go to Ancestor Group")
+                .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
+                .help("Go to an ancestor group or the full component tree.")
+            }
         }
         .focusedValue(\.editorComponentSidebarFocus, true)
         .focusedValue(
