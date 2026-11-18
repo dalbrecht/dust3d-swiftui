@@ -169,6 +169,8 @@ public struct MeshViewport: NSViewRepresentable {
     public static func dismantleNSView(_ view: InteractiveMeshView, coordinator: ()) {
         view.automaticOrbitBinding.dismantle()
         view.cancelMaterialUpload()
+        // A queued geometry diagnostic belongs to the retired view.
+        view.failedMeshRevision = nil
         view.delegate = nil
     }
 
