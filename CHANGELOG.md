@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Redo with Command-Y from the focused canvas, alongside the standard Edit menu shortcut.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -165,6 +165,8 @@
 - Make canvas node selection actions available to VoiceOver only when the current canvas tool accepts node selection.
 
 - Reveal a node or edge’s owning component from its context menu while preserving the current graph selection.
+
+- Redo with Command-Y from the focused canvas, alongside the standard Edit menu shortcut.
 
 - Connect to the nearest existing node in Add mode when node hit areas overlap. A closer edge midpoint takes precedence when the pointer hits its tapered edge.
 
