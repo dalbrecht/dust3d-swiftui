@@ -2926,7 +2926,23 @@ final class EditorStore {
     }
     func canvasPrecisionKeyHandler() -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
         let handler = canvasPrecisionHandler()
-        return { input in
+        let deleteTarget = acceptedDocumentSource.map {
+            GraphSelectionActionTarget(snapshot: $0, action: .deleteSelection)
+        }
+        let tool = rotationInputContextID
+        let mode = addModeID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] input in
+            if input.isAlternateDelete {
+                guard let self, let deleteTarget, self.canSave, !self.isSelectingRigEdges,
+                    self.rotationInputContextID == tool, self.addModeID == mode,
+                    self.referenceColorInteractionEpoch == interaction,
+                    self.canvasProfileMotion == nil, self.originDrag == nil,
+                    self.canPerformGraphSelectionAction(deleteTarget)
+                else { return false }
+                if !input.isRepeat { self.graphSelectionAction(deleteTarget)() }
+                return true
+            }
             guard let action = input.action else { return false }
             return handler(action)
         }
