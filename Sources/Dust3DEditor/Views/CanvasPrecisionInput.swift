@@ -40,6 +40,14 @@ struct CanvasPrecisionKeyInput {
         modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty
     }
 
+    var isAlternateDelete: Bool {
+        let editingModifiers = modifiers.intersection([.command, .control, .option, .shift, .function])
+        if characters == "\u{F728}" {  // AppKit's forward-delete function character
+            return editingModifiers.isEmpty || editingModifiers == .function
+        }
+        return editingModifiers == .control && (characters == "\u{4}" || characters == "d")
+    }
+
     var axisLockConstraint: EditingConstraint? {
         guard isBareEditingKey else { return nil }
         switch characters {
@@ -64,6 +72,7 @@ struct CanvasPrecisionKeyInput {
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
         guard
             axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
+                || isAlternateDelete
         else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil
