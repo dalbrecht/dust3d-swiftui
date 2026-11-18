@@ -46,7 +46,7 @@ enum EditorLaunchRequest: Sendable, Equatable {
                 case "--":
                     parsesOptions = false
                     acceptsPositionals = true
-                case "-o", "-output", "--textured-fbx", "--geometry-fbx":
+                case "-o", "-output", "--geometry-fbx", "--textured-fbx":
                     throw .unsupportedExportArgument
                 case "-paste-xml":
                     guard let operand = arguments.popFirst(), !operand.isEmpty,
@@ -150,17 +150,14 @@ final class EditorLaunchDocumentOpener {
                 reportError(error)
             }
         case .success(.open(let urls, let hidesPreviewColors, let pasteXML)):
-            let pasteData: Data?
-            do {
-                if let pasteXML {
+            var pasteData: Data?
+            var pasteError: Error?
+            if let pasteXML {
+                do {
                     pasteData = try await validatedPaste(at: pasteXML, read: readPaste)
-                } else {
-                    pasteData = nil
+                } catch {
+                    pasteError = error
                 }
-                try Task.checkCancellation()
-            } catch {
-                if !Task.isCancelled { reportError(error) }
-                return
             }
             for url in urls {
                 guard !Task.isCancelled else { return }
@@ -170,8 +167,8 @@ final class EditorLaunchDocumentOpener {
                     let opened = try await open(url)
                     claim?.finish(document: opened)
                     if claim?.document == nil { neutralPreviewClaims[url] = nil }
-                    if let pasteData, let opened {
-                        if !Task.isCancelled {
+                    if pasteXML != nil, let opened {
+                        if let pasteData, !Task.isCancelled {
                             registerStartupPaste(pasteData, document: opened, source: url)
                         }
                         displayNew(opened)
@@ -182,6 +179,7 @@ final class EditorLaunchDocumentOpener {
                     reportError(error)
                 }
             }
+            if let pasteError, !Task.isCancelled { reportError(pasteError) }
         case .failure(let error): reportError(error)
         }
     }

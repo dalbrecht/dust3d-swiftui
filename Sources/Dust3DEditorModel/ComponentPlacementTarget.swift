@@ -23,26 +23,39 @@ public struct ComponentPlacementTarget: Sendable {
             ? Array(snapshot.selectedComponentIDs) : [grabbedID]
     }
 
-    /// Capture an explicit context-menu row independently of the sidebar's selection.
-    package init?(snapshot: EditorSnapshot, singleComponentID: String) {
-        guard snapshot.componentTree.rows.contains(where: { $0.id.utf8.elementsEqual(singleComponentID.utf8) })
-        else { return nil }
+    /// Capture explicit context-menu rows independently of the sidebar's selection.
+    package init?(snapshot: EditorSnapshot, componentIDs: Set<String>) {
+        let rowIDs = Set(snapshot.componentTree.rows.map { Data($0.id.utf8) })
+        guard !componentIDs.isEmpty, componentIDs.allSatisfy({ rowIDs.contains(Data($0.utf8)) }) else {
+            return nil
+        }
         context = CanvasAdjustmentTarget(snapshot: snapshot)
-        ids = [singleComponentID]
+        ids = Array(componentIDs)
+    }
+
+    package init?(snapshot: EditorSnapshot, singleComponentID: String) {
+        self.init(snapshot: snapshot, componentIDs: [singleComponentID])
     }
 
     package func siblingPlacement(for move: ComponentOrderMove, in snapshot: EditorSnapshot) -> ComponentDropPlacement?
     {
-        guard isCurrent(in: snapshot), ids.count == 1, let id = ids.first else { return nil }
+        guard isCurrent(in: snapshot), let id = ids.first else { return nil }
         let rows = snapshot.componentTree.rows
         guard let row = rows.first(where: { $0.id.utf8.elementsEqual(id.utf8) }) else { return nil }
         let parent = row.component.parentID.map { Data($0.utf8) }
         let siblings = rows.filter { $0.component.parentID.map { Data($0.utf8) } == parent }
-        guard let index = siblings.firstIndex(where: { $0.id.utf8.elementsEqual(id.utf8) }),
-            let destination = move.destinationIndex(from: index, count: siblings.count)
+        let selection = Set(ids.map { Data($0.utf8) })
+        let selectedPositions = siblings.indices.filter { selection.contains(Data(siblings[$0].id.utf8)) }
+        guard selectedPositions.count == selection.count, let first = selectedPositions.first,
+            let last = selectedPositions.last
         else { return nil }
-        let anchor = siblings[destination].id
-        return destination < index ? .before(anchor) : .after(anchor)
+        let unselected = siblings.indices.filter { !selection.contains(Data(siblings[$0].id.utf8)) }
+        switch move {
+        case .up: return unselected.last(where: { $0 < first }).map { .before(siblings[$0].id) }
+        case .down: return unselected.first(where: { $0 > last }).map { .after(siblings[$0].id) }
+        case .first: return unselected.first.map { .before(siblings[$0].id) }
+        case .last: return unselected.last.map { .after(siblings[$0].id) }
+        }
     }
 
     public func canPlace(at placement: ComponentDropPlacement, in snapshot: EditorSnapshot) -> Bool {

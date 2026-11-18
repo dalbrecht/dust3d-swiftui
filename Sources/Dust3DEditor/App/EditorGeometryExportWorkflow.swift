@@ -15,6 +15,7 @@ protocol EditorGeometryExportDestinationChoosing: AnyObject {
 final class EditorGeometryExportWorkflow {
     typealias Completion = Result<EditorExportReceipt?, any Error>
     private let store: EditorStore
+    private let diagnostics: EditorSessionDiagnostics?
     private let destinations: any EditorGeometryExportDestinationChoosing
     private var task: Task<Completion, Never>?
     private var cancellationID: UUID?
@@ -22,9 +23,13 @@ final class EditorGeometryExportWorkflow {
     private(set) var format = DocumentExportFormat.obj
     private(set) var phase = EditorGeometryExportPhase.idle
 
-    init(store: EditorStore, destinations: any EditorGeometryExportDestinationChoosing) {
+    init(
+        store: EditorStore, destinations: any EditorGeometryExportDestinationChoosing,
+        diagnostics: EditorSessionDiagnostics? = nil
+    ) {
         self.store = store
         self.destinations = destinations
+        self.diagnostics = diagnostics
     }
 
     var canBegin: Bool { !stopped && task == nil && store.canExport }
@@ -71,11 +76,13 @@ final class EditorGeometryExportWorkflow {
                 } else {
                     phase = .idle
                 }
+                diagnostics?.record(.exportCompleted)
                 return .success(receipt)
             } catch {
                 if !stopped, isCurrent(identity: identity, revision: revision), !(error is CancellationError) {
                     store.errorMessage = EditorStore.message(error)
                     phase = .failed(error)
+                    diagnostics?.record(.exportFailed)
                 } else {
                     phase = .idle
                 }

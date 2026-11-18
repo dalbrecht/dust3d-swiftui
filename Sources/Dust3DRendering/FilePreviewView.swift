@@ -39,24 +39,7 @@ public struct FilePreviewView: View {
                     Text("This document has no enabled procedural geometry.")
                 }
             }
-            if let issue = materialRenderIssue ?? document.materialError?.localizedDescription {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Showing geometry without materials", systemImage: "exclamationmark.triangle")
-                    Text(issue).textSelection(.enabled)
-                }.font(.caption).frame(maxWidth: .infinity, alignment: .leading).padding(10)
-            }
-            if let warning = document.compatibilityWarning(
-                materialsRendered: materialsRendered, materialRenderingFailed: materialRenderIssue != nil)
-            {
-                Text(warning).font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true).padding(8)
-            }
-            if let issue = document.materialSourceCapabilities.issue {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Material source details unavailable", systemImage: "info.circle")
-                    Text(issue.localizedDescription).textSelection(.enabled)
-                }.font(.caption).foregroundStyle(.secondary).padding(8)
-            }
+            materialDiagnostics
             Divider()
             ViewThatFits(in: .horizontal) {
                 HStack {
@@ -71,6 +54,36 @@ public struct FilePreviewView: View {
             .disabled(document.mesh == nil || renderIssue != nil)
             .padding(10)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder private var materialDiagnostics: some View {
+        let materialIssue = materialRenderIssue ?? document.materialError?.localizedDescription
+        let warning = document.compatibilityWarning(
+            materialsRendered: materialsRendered, materialRenderingFailed: materialRenderIssue != nil)
+        let sourceIssue = document.materialSourceCapabilities.issue
+        if materialIssue != nil || warning != nil || sourceIssue != nil {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    if let materialIssue {
+                        Label("Showing geometry without materials", systemImage: "exclamationmark.triangle")
+                        Text(materialIssue)
+                    }
+                    if let warning {
+                        Text(warning).foregroundStyle(.secondary)
+                    }
+                    if let sourceIssue {
+                        Label("Material source details unavailable", systemImage: "info.circle")
+                        Text(sourceIssue.localizedDescription).foregroundStyle(.secondary)
+                    }
+                }
+                .font(.caption)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(8)
+            }
+            .frame(maxHeight: 56)
+            .accessibilityLabel("Preview diagnostics")
+        }
     }
 
     private var cameraControls: some View {

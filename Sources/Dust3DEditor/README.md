@@ -3,11 +3,11 @@
 Separate macOS 14+ SwiftUI document app. Run from the repository root with
 `./script/build_and_run.sh --editor`, or package with `--editor --build-only`.
 
-For headless output, pass one `.ds3` archive and one or more `.ds3`, `.obj` or
-`.fbx` destinations to the editor executable. `-o` and `-output` are interchangeable.
+For a headless source save, pass one `.ds3` archive and one or more `.ds3`
+outputs to the editor executable. `-o` and `-output` are interchangeable.
 
 ```sh
-Dust3DEditor input.ds3 -o copy.ds3 -output model.obj -o model.fbx --geometry-fbx geometry.fbx
+Dust3DEditor input.ds3 -o copy.ds3 -output second-copy.ds3
 Dust3DEditor input.ds3 -paste-xml fragment.xml -o edited.ds3
 Dust3DEditor -paste-xml fragment.xml -o new.ds3
 ```
@@ -21,12 +21,12 @@ links. The command processes destinations in argument order and replaces individ
 archive files atomically. A failed destination is reported and the command continues
 with later destinations.
 
-OBJ writes static procedural geometry. FBX includes baked procedural textures and
-UVs by default, as in Qt. Use `--geometry-fbx output.fbx` for geometry only.
-The `--textured-fbx` spelling is also accepted. A `.glb` destination reports an
-unavailable export and later destinations are still processed. Exit status `0`
-means all outputs succeeded, `1` means an input or output failed, and `2` means
-a usage or path preflight error.
+The editor CLI exports procedural geometry to `.obj` and textured geometry to
+`.fbx`. Use `--geometry-fbx output.fbx` to export geometry only or
+`--textured-fbx output.fbx` to request the textured mode explicitly.
+A `.glb` destination reports that export is unavailable. Exit status `0` means all outputs
+succeeded, `1` means an input or output failed, and `2` means a usage or path
+preflight error.
 
 Use `-list-rigs` to print the authored XML rig catalog. As in Qt, it takes
 precedence over document and export arguments and writes only to standard output.
@@ -467,14 +467,18 @@ for owned offscreen evidence and the live keyboard/accessibility acceptance limi
 ### Original procedural geometry export (#281, #286)
 
 Choose File → Export OBJ Geometry… (Command-Shift-E), File → Export FBX
-Geometry…, or choose either format from the toolbar Export menu. The destination sheet belongs to the current document window. It exports
-the captured current state, including unsaved edits, without marking the document
-saved or changing Undo/Redo. Source path/inode aliases are rejected. A changed
-source while choosing a destination cancels that export intent.
+Geometry…, or File → Export Textured FBX…. The toolbar Export menu offers the
+same three choices. The destination sheet belongs to the current document window.
+Export captures the current state, including unsaved edits, without marking the
+document saved or changing Undo/Redo. Source path and inode aliases are rejected.
+A source change while choosing a destination cancels that export intent.
 
-This exports original procedural geometry. OBJ contains positions/faces; FBX
-retains supplied static corner streams without generating an atlas. Materials,
-textures, embedded imported models, rigs and animation are unsupported. The completion strip
+OBJ Geometry exports positions and faces. FBX Geometry exports procedural
+geometry and any supplied static corner data. Textured FBX also bakes supported
+procedural materials into an embedded atlas and requires complete packed UVs.
+If Textured FBX reports missing packed UVs, choose FBX Geometry to export the
+mesh without the baked texture. Embedded imported models, rigs, and animation
+remain unsupported by these commands. The completion strip
 shows the destination, byte count and original warning. Failures use the existing
 error banner. Cancel/Escape prevents uncommitted publication; synchronous native
 generation must finish before the workflow becomes available again. “Finishing

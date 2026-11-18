@@ -7,6 +7,70 @@ import XCTest
 
 @MainActor
 final class EditorHeadlessDS3SaveTests: XCTestCase {
+    func testQtPasteClearsOnlyMissingCutFaceLinksBeforeSaving() async throws {
+        let directory = try temporaryDirectory()
+        let source = directory.appendingPathComponent("source.ds3")
+        let fragment = directory.appendingPathComponent("fragment.xml")
+        let output = directory.appendingPathComponent("output.ds3")
+        let missing = "{11111111-1111-4111-8111-111111111111}"
+        let existing = "{22222222-2222-4222-8222-222222222222}"
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas>
+                <nodes><node id="profile" partId="\(existing)" x="0" y="0" z="0" radius=".1"/></nodes>
+                <parts><part id="\(existing)" target="CutFace" cutFace="\(missing)"/></parts>
+                </canvas>
+                """.utf8)
+        ).encoded()
+        try original.write(to: source)
+        let xml = Data(
+            """
+            <canvas>
+            <nodes>
+              <node id="a" partId="p" x="0" y="0" z="0" radius=".1" cutFace="\(missing)" cutRotation=".5"/>
+              <node id="b" partId="q" x="1" y="0" z="0" radius=".1" cutFace="\(existing)" cutRotation=".3"/>
+            </nodes>
+            <parts>
+              <part id="p" name="Missing" cutFace="\(missing)" cutRotation=".25"/>
+              <part id="q" name="Existing" cutFace="\(existing)"/>
+            </parts>
+            </canvas>
+            """.utf8)
+        try xml.write(to: fragment)
+
+        let result = await run(["Editor", source.path, "-paste-xml", fragment.path, "-o", output.path])
+
+        XCTAssertEqual(result.status, 0)
+        XCTAssertTrue(result.errors.isEmpty)
+        let saved = try Dust3DDocument(data: Data(contentsOf: output))
+        let root = try XCTUnwrap(XMLDocument(data: saved.modelXML).rootElement())
+        let parts = root.elements(forName: "parts").flatMap { $0.elements(forName: "part") }
+        let missingPart = try XCTUnwrap(parts.first { $0.attribute(forName: "name")?.stringValue == "Missing" })
+        let existingPart = try XCTUnwrap(parts.first { $0.attribute(forName: "name")?.stringValue == "Existing" })
+        XCTAssertNil(missingPart.attribute(forName: "cutFace"))
+        XCTAssertEqual(missingPart.attribute(forName: "cutRotation")?.stringValue, ".25")
+        XCTAssertEqual(existingPart.attribute(forName: "cutFace")?.stringValue, existing)
+        XCTAssertEqual(
+            parts.first { $0.attribute(forName: "id")?.stringValue == existing }?.attribute(forName: "cutFace")?
+                .stringValue, missing)
+        let nodes = root.elements(forName: "nodes").flatMap { $0.elements(forName: "node") }
+        let missingNode = try XCTUnwrap(
+            nodes.first {
+                $0.attribute(forName: "partId")?.stringValue == missingPart.attribute(forName: "id")?.stringValue
+            })
+        let existingNode = try XCTUnwrap(
+            nodes.first {
+                $0.attribute(forName: "partId")?.stringValue == existingPart.attribute(forName: "id")?.stringValue
+            })
+        XCTAssertNil(missingNode.attribute(forName: "cutFace"))
+        XCTAssertNil(missingNode.attribute(forName: "cutRotation"))
+        XCTAssertEqual(existingNode.attribute(forName: "cutFace")?.stringValue, existing)
+        XCTAssertEqual(existingNode.attribute(forName: "cutRotation")?.stringValue, ".3")
+        XCTAssertEqual(try Data(contentsOf: source), original)
+        XCTAssertEqual(try Data(contentsOf: fragment), xml)
+    }
+
     func testOrdinaryLaunchAndOtherHeadlessCommandsFallThrough() async {
         for arguments in [
             ["Editor"], ["Editor", "input.ds3", "-paste-xml", "fragment.xml"], ["Editor", "-list-rigs"],
@@ -44,18 +108,24 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: source), original)
     }
 
-    func testSavePreservesSourceBytesAndContinuesAfterOneDestinationFails() async throws {
+    func testSavePreservesSourceBytesAndContinuesAfterDestinationsFail() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
         let first = directory.appendingPathComponent("first.ds3")
+        let directoryOutput = directory.appendingPathComponent("directory.ds3", isDirectory: true)
+        let sentinel = directoryOutput.appendingPathComponent("existing.txt")
         let failed = directory.appendingPathComponent("missing/failed.ds3")
         let last = directory.appendingPathComponent("last.ds3")
         let bytes = try archive().encoded()
         try bytes.write(to: source)
+        try FileManager.default.createDirectory(at: directoryOutput, withIntermediateDirectories: false)
+        let sentinelBytes = Data("existing directory contents".utf8)
+        try sentinelBytes.write(to: sentinel)
         try Data("old destination".utf8).write(to: first)
 
         let result = await run([
-            "Editor", "-o", first.path, source.path, "-toggle-color", "True", "-output", failed.path, "-o", last.path,
+            "Editor", "-o", first.path, source.path, "-toggle-color", "True",
+            "-output", directoryOutput.path, "-output", failed.path, "-o", last.path,
         ])
 
         XCTAssertEqual(result.status, 1)
@@ -66,8 +136,10 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertEqual(result.output.count, 2)
         XCTAssertTrue(result.output.first?.contains(first.path) == true)
         XCTAssertTrue(result.output.last?.contains(last.path) == true)
-        XCTAssertEqual(result.errors.count, 1)
-        XCTAssertTrue(result.errors.first?.contains(failed.path) == true)
+        XCTAssertEqual(try Data(contentsOf: sentinel), sentinelBytes)
+        XCTAssertEqual(result.errors.count, 2)
+        XCTAssertTrue(result.errors.first?.contains(directoryOutput.path) == true)
+        XCTAssertTrue(result.errors.last?.contains(failed.path) == true)
     }
 
     func testHeadlessQtPasteSettlesOnlyANewDocumentsOrigin() async throws {
@@ -154,6 +226,35 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: ignored), original.encoded())
     }
 
+    func testRepeatedPasteIgnoresAnEarlierDirectoryButRejectsItAsTheLastOperand() async throws {
+        let directory = try temporaryDirectory()
+        let unused = directory.appendingPathComponent("unused.xml")
+        try FileManager.default.createDirectory(at: unused, withIntermediateDirectories: false)
+        let sentinel = unused.appendingPathComponent("sentinel")
+        let sentinelBytes = Data("preserve me".utf8)
+        try sentinelBytes.write(to: sentinel)
+        let chosen = directory.appendingPathComponent("chosen.xml")
+        let fragment = try archive().modelXML
+        try fragment.write(to: chosen)
+        let output = directory.appendingPathComponent("result.ds3")
+
+        let result = await run([
+            "Editor", "-paste-xml", unused.path, "-paste-xml", chosen.path, "-o", output.path,
+        ])
+        XCTAssertEqual(result.status, 0, result.errors.joined())
+        let savedBytes = try Data(contentsOf: output)
+        let saved = try Dust3DDocument(data: savedBytes)
+        XCTAssertEqual(try saved.editorContents().nodes.count, 1)
+
+        let rejected = await run([
+            "Editor", "-paste-xml", chosen.path, "-paste-xml", unused.path, "-o", output.path,
+        ])
+        XCTAssertNotEqual(rejected.status, 0)
+        XCTAssertEqual(try Data(contentsOf: output), savedBytes)
+        XCTAssertEqual(try Data(contentsOf: sentinel), sentinelBytes)
+        XCTAssertEqual(try Data(contentsOf: chosen), fragment)
+    }
+
     func testInvalidInputLeavesEveryDestinationUntouched() async throws {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
@@ -166,6 +267,8 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let invalidArchive = await run(["Editor", source.path, "-o", existing.path, "-o", absent.path])
         XCTAssertEqual(invalidArchive.status, 1)
         XCTAssertTrue(invalidArchive.errors.first?.contains(source.path) == true)
+        XCTAssertTrue(
+            invalidArchive.errors.first?.contains("This file is not a supported Dust3D 1.0 archive.") == true)
 
         try archive().encoded().write(to: source)
         try Data("<canvas><nodes>".utf8).write(to: xml)
@@ -200,7 +303,7 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let tooMany = (0..<64).flatMap { ["-o", directory.appendingPathComponent("\($0).ds3").path] }
         for invalid in [
             ["Editor", "-o", output.path], arguments + ["-o"], arguments + ["another.ds3"],
-            arguments + ["-output", "unsupported.txt"], arguments + ["-o", output.path],
+            arguments + ["-output", "-"], arguments + ["-o", output.path],
             arguments + ["-o", source.path], arguments + tooMany,
             arguments + ["-paste-xml", "one.xml", "-paste-xml"],
         ] {
@@ -217,14 +320,18 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let directory = try temporaryDirectory()
         let source = directory.appendingPathComponent("source.ds3")
         let first = directory.appendingPathComponent("first.ds3")
+        let directoryOutput = directory.appendingPathComponent("directory.ds3", isDirectory: true)
         let hardLink = directory.appendingPathComponent("hard.ds3")
         let symlink = directory.appendingPathComponent("symbolic.ds3")
         let bytes = try archive().encoded()
         try bytes.write(to: source)
+        try FileManager.default.createDirectory(at: directoryOutput, withIntermediateDirectories: false)
         try FileManager.default.linkItem(at: source, to: hardLink)
         try FileManager.default.createSymbolicLink(at: symlink, withDestinationURL: source)
         for alias in [hardLink, symlink] {
-            let result = await run(["Editor", source.path, "-o", first.path, "-o", alias.path])
+            let result = await run([
+                "Editor", source.path, "-o", first.path, "-o", directoryOutput.path, "-o", alias.path,
+            ])
             XCTAssertEqual(result.status, 2)
             XCTAssertTrue(result.output.isEmpty)
             XCTAssertFalse(FileManager.default.fileExists(atPath: first.path))
@@ -232,38 +339,45 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         }
     }
 
-    func testHeadlessFBXDefaultsToTexturesAndOffersExplicitGeometry() async throws {
+    func testUnavailableAndUnsupportedOutputsPreserveFilesAndContinueInOrder() async throws {
         let directory = try temporaryDirectory()
-        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Dust3DKitTests/Fixtures/Capsule.ds3")
-        let geometry = directory.appendingPathComponent("geometry.fbx")
-        let textured = directory.appendingPathComponent("textured.FBX")
-        let alias = directory.appendingPathComponent("alias.fbx")
-        let original = try Data(contentsOf: fixture)
+        let source = directory.appendingPathComponent("source.ds3")
+        let first = directory.appendingPathComponent("first.ds3")
+        let obj = directory.appendingPathComponent("geometry.obj")
+        let glb = directory.appendingPathComponent("geometry.glb")
+        let unsupported = directory.appendingPathComponent("geometry.txt")
+        let last = directory.appendingPathComponent("last.ds3")
+        let original = try archive().encoded()
+        let previous = Data("previous output".utf8)
+        try original.write(to: source)
+        try previous.write(to: obj)
+        try previous.write(to: glb)
+        try previous.write(to: unsupported)
 
-        let result = await run(
-            [
-                "Editor", fixture.path, "-o", textured.path, "--geometry-fbx", geometry.path, "--textured-fbx",
-                alias.path,
-            ], geometryEncoder: NativeGeometryExportEncoder())
-        XCTAssertEqual(result.status, 0)
-        XCTAssertEqual(result.output.count, 3)
-        XCTAssertTrue(result.errors.isEmpty)
-        let uvNode = Data("LayerElementUV".utf8)
-        XCTAssertNotNil(try Data(contentsOf: textured).range(of: uvNode))
-        XCTAssertNil(try Data(contentsOf: geometry).range(of: uvNode))
-        XCTAssertEqual(try Data(contentsOf: alias), try Data(contentsOf: textured))
-        XCTAssertEqual(try Data(contentsOf: fixture), original)
+        var messages: [String] = []
+        let status = await EditorHeadlessDS3SaveCommand.run(
+            arguments: [
+                "Editor", source.path, "-o", first.path, "-o", obj.path, "-o", glb.path, "-o", unsupported.path, "-o",
+                last.path,
+            ],
+            stdout: { messages.append($0) }, stderr: { messages.append($0) })
 
-        let invalid = await run(
-            ["Editor", fixture.path, "--geometry-fbx", geometry.path, "-o", geometry.path],
-            geometryEncoder: NativeGeometryExportEncoder())
-        XCTAssertEqual(invalid.status, 2)
-        XCTAssertTrue(invalid.output.isEmpty)
-        XCTAssertNil(try Data(contentsOf: geometry).range(of: uvNode))
+        XCTAssertEqual(status, 1)
+        XCTAssertEqual(try Data(contentsOf: first), original)
+        XCTAssertEqual(try Data(contentsOf: last), original)
+        XCTAssertEqual(try Data(contentsOf: obj), previous)
+        XCTAssertEqual(try Data(contentsOf: glb), previous)
+        XCTAssertEqual(try Data(contentsOf: unsupported), previous)
+        XCTAssertEqual(try Data(contentsOf: source), original)
+        XCTAssertEqual(messages.count, 5)
+        for (message, destination) in zip(messages, [first, obj, glb, unsupported, last]) {
+            XCTAssertTrue(message.contains(destination.path), message)
+        }
+        XCTAssertEqual(messages.filter { $0.localizedCaseInsensitiveContains("unavailable") }.count, 2)
+        XCTAssertTrue(messages.contains { $0.contains("Unsupported output format") && $0.contains(unsupported.path) })
     }
 
-    func testDefaultEncoderExportsGeometryAndContinuesAfterUnavailableGLB() async throws {
+    func testNativeEncoderExportsGeometryAndContinuesAfterUnavailableGLB() async throws {
         let directory = try temporaryDirectory()
         let source = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Dust3DKitTests/Fixtures/Capsule.ds3")
@@ -278,9 +392,8 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         var errors: [String] = []
 
         let status = await EditorHeadlessDS3SaveCommand.run(
-            arguments: [
-                "Editor", source.path, "-o", obj.path, "-o", glb.path, "--geometry-fbx", fbx.path, "-o", copy.path,
-            ],
+            arguments: ["Editor", source.path, "-o", obj.path, "-o", glb.path, "-o", fbx.path, "-o", copy.path],
+            geometryEncoder: NativeGeometryExportEncoder(),
             stdout: { messages.append($0) }, stderr: { errors.append($0) })
 
         XCTAssertEqual(status, 1)
@@ -295,36 +408,6 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: glb), previousGLB)
         XCTAssertEqual(try Data(contentsOf: source), original)
         XCTAssertEqual(try Data(contentsOf: copy), original)
-    }
-
-    func testUnavailableGeometryLeavesExistingFilesAndContinuesInOrder() async throws {
-        let directory = try temporaryDirectory()
-        let source = directory.appendingPathComponent("source.ds3")
-        let first = directory.appendingPathComponent("first.ds3")
-        let obj = directory.appendingPathComponent("geometry.obj")
-        let glb = directory.appendingPathComponent("geometry.glb")
-        let last = directory.appendingPathComponent("last.ds3")
-        let original = try archive().encoded()
-        let previous = Data("previous output".utf8)
-        try original.write(to: source)
-        try previous.write(to: obj)
-        try previous.write(to: glb)
-
-        var messages: [String] = []
-        let status = await EditorHeadlessDS3SaveCommand.run(
-            arguments: ["Editor", source.path, "-o", first.path, "-o", obj.path, "-o", glb.path, "-o", last.path],
-            geometryEncoder: nil, stdout: { messages.append($0) }, stderr: { messages.append($0) })
-
-        XCTAssertEqual(status, 1)
-        XCTAssertEqual(try Data(contentsOf: first), original)
-        XCTAssertEqual(try Data(contentsOf: last), original)
-        XCTAssertEqual(try Data(contentsOf: obj), previous)
-        XCTAssertEqual(try Data(contentsOf: glb), previous)
-        XCTAssertEqual(messages.count, 4)
-        for (message, destination) in zip(messages, [first, obj, glb, last]) {
-            XCTAssertTrue(message.contains(destination.path), message)
-        }
-        XCTAssertEqual(messages.filter { $0.localizedCaseInsensitiveContains("unavailable") }.count, 2)
     }
 
     func testMixedOutputsUseOneCapturedArchiveAndContinueAfterEncoderFailure() async throws {
@@ -415,6 +498,32 @@ final class EditorHeadlessDS3SaveTests: XCTestCase {
         let calls = await encoder.calls
         XCTAssertEqual(calls.map(\.format), [.fbxTextured])
         XCTAssertEqual(calls.map(\.archive), [archive])
+    }
+
+    func testFBXDefaultsToTexturesAndKeepsExplicitGeometryOutput() async throws {
+        let directory = try temporaryDirectory()
+        let source = directory.appendingPathComponent("source.ds3")
+        let baked = directory.appendingPathComponent("baked.fbx")
+        let geometry = directory.appendingPathComponent("geometry.fbx")
+        let explicit = directory.appendingPathComponent("explicit.fbx")
+        try archive().encoded().write(to: source)
+        let encoder = FakeGeometryEncoder(source: nil, replacement: Data())
+        let result = await run(
+            [
+                "Editor", source.path, "-o", baked.path, "--geometry-fbx", geometry.path, "--textured-fbx",
+                explicit.path,
+            ],
+            geometryEncoder: encoder)
+        XCTAssertEqual(result.status, 0)
+        XCTAssertTrue(result.errors.isEmpty)
+        let calls = await encoder.calls
+        XCTAssertEqual(calls.map(\.format), [.fbxTextured, .fbx, .fbxTextured])
+
+        let wrongSuffix = directory.appendingPathComponent("wrong.obj")
+        let invalid = await run(
+            ["Editor", source.path, "--geometry-fbx", wrongSuffix.path], geometryEncoder: encoder)
+        XCTAssertEqual(invalid.status, 2)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: wrongSuffix.path))
     }
 
     private func run(_ arguments: [String], geometryEncoder: (any DocumentExportEncoding)? = nil) async
