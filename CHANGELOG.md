@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Keep Next Step available during Replay Steps playback.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -306,6 +309,8 @@
 - Select a whole part graph from its nodes, edges, or inspector and reveal the linked component in the sidebar. Reuse each rendered node’s validated owner for constant-time whole-part availability.
 
 - Preview a new node and adjust its radius before placing it on the canvas in Add mode. Keep cancellation bound to its placement request, refit on selection exit, discard held presses across tool changes, and allow inward placement at document coordinate limits.
+
+- Keep Next Step available during Replay Steps playback.
 
 - Adjust selected node radii using canvas-focused keyboard input or the canvas wheel, with one-step Undo. Radius menu and inspector actions remain available independently of canvas focus.
 
