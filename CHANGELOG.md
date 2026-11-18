@@ -4,7 +4,7 @@
 
 - Disable camera input on outdated Replay Steps previews while the current frame builds.
 
-- Show a native keyboard focus ring around the 3D preview.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -233,6 +233,8 @@
 - Include upstream contributor and supporter credits in both native About panels, available offline (#346).
 
 - Use native About panels with bundled project MIT attribution and separate Help > Build Diagnostics commands in both apps, retaining the graph QA name (#344).
+
+- Show a native keyboard focus ring around the 3D preview.
 
 - Use the native adjustable inspector, standard Control–Command–I visibility command, compact section switcher and an accessible toolbar visibility toggle (#341).
 
