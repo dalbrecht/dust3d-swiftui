@@ -359,6 +359,24 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertEqual(picks, 0)
     }
 
+    func testTrackpadGestureDeniedAtBeginCannotResumeAfterInputBecomesAvailable() {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        view.cameraInteractionAllowed = { false }
+        let original = view.orbitCamera.transform(aspect: 1)
+
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        view.cameraInteractionAllowed = { true }
+        view.applyCameraGesture(phase: .changed) { $0.rotateGesture(by: 15) }
+        XCTAssertFalse(view.isDraggingCamera)
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), original)
+        view.applyCameraGesture(phase: .ended) { $0.magnify(by: 0.1) }
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), original)
+
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        XCTAssertTrue(view.isDraggingCamera)
+        XCTAssertNotEqual(view.orbitCamera.transform(aspect: 1), original)
+    }
+
     func testActivePointerPressKeepsOwnershipAgainstTrackpadGesture() throws {
         let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
         var picks = 0
@@ -399,6 +417,36 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertNotEqual(view.orbitCamera.transform(aspect: 1), gestureTransform)
         view.applyCameraGesture(phase: .ended) { _ in false }
         XCTAssertFalse(view.isDraggingCamera)
+    }
+
+    func testOnlyCommittedTrackpadBeginClaimsInputEvenWithoutMotion() throws {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        var picks = 0
+        view.updatePicking(revision: UUID()) { _ in picks += 1 }
+        let initialTransform = view.orbitCamera.transform(aspect: 1)
+        let mouseDown = try overlappingMouseEvent(.leftMouseDown, x: 100)
+        let mouseUp = try overlappingMouseEvent(.leftMouseUp, x: 100)
+
+        view.applyCameraGesture(phase: .mayBegin) { $0.magnify(by: 0) }
+        XCTAssertFalse(view.isDraggingCamera, "An uncommitted trackpad gesture does not own camera input")
+        view.mouseDown(with: mouseDown)
+        view.mouseUp(with: mouseUp)
+        XCTAssertEqual(picks, 1, "A speculative trackpad event must leave pointer clicks available")
+
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0) }
+        XCTAssertTrue(view.isDraggingCamera, "An admitted begin owns camera input even without a delta")
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), initialTransform)
+        view.mouseDown(with: mouseDown)
+        view.mouseUp(with: mouseUp)
+        XCTAssertEqual(picks, 1)
+
+        view.applyCameraGesture(phase: .changed) { $0.rotateGesture(by: 15) }
+        XCTAssertNotEqual(view.orbitCamera.transform(aspect: 1), initialTransform)
+        view.applyCameraGesture(phase: .ended) { $0.magnify(by: 0) }
+        XCTAssertFalse(view.isDraggingCamera)
+        view.mouseDown(with: mouseDown)
+        view.mouseUp(with: mouseUp)
+        XCTAssertEqual(picks, 2)
     }
 
     private func overlappingMouseEvent(_ type: NSEvent.EventType, x: CGFloat) throws -> NSEvent {

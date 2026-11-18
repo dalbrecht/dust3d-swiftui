@@ -169,6 +169,8 @@ public struct MeshViewport: NSViewRepresentable {
     public static func dismantleNSView(_ view: InteractiveMeshView, coordinator: ()) {
         view.automaticOrbitBinding.dismantle()
         view.cancelMaterialUpload()
+        // A queued geometry diagnostic belongs to the retired view.
+        view.failedMeshRevision = nil
         view.delegate = nil
     }
 
@@ -556,6 +558,8 @@ public class InteractiveMeshView: MTKView {
         }
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
+            // Restoring input eligibility does not admit the remainder of a rejected gesture.
+            if phase != .mayBegin && phase != .none { gestureActivity.discardContinuation() }
             automaticOrbitBinding.cameraInputChanged()
             return
         }

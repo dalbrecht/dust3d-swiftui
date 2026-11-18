@@ -6,7 +6,10 @@ struct CameraGestureActivity {
 
     mutating func admits(_ phase: Phase) -> Bool {
         switch phase {
-        case .mayBegin, .began, .none:
+        case .mayBegin:
+            // A possible gesture does not own input or supersede a cancelled sequence.
+            return false
+        case .began, .none:
             discardsContinuation = false
         case .changed, .stationary, .ended, .cancelled:
             break
@@ -16,7 +19,8 @@ struct CameraGestureActivity {
 
     mutating func update(_ phase: Phase) {
         switch phase {
-        case .mayBegin, .began, .changed, .stationary: isActive = true
+        case .mayBegin: break
+        case .began, .changed, .stationary: isActive = true
         case .ended, .cancelled, .none: isActive = false
         }
     }
