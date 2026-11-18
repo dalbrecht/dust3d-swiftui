@@ -36,6 +36,7 @@ struct NodeCanvas: View {
             let cancelAddInput = store.canvasAddCancellationAction()
             let handlePrecisionKey = store.canvasPrecisionKeyHandler()
             let zoomPreview = store.canvasPreviewWheelAction(lease: profileLease, camera: previewCamera)
+            let previewDrag = store.canvasPreviewDragAction(lease: profileLease, camera: previewCamera)
             let handleAxisLockKey = store.canvasAxisLockKeyHandler(profileLease: profileLease)
             let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
@@ -117,7 +118,7 @@ struct NodeCanvas: View {
                     admitsPrimaryPress: { admitsInput() && admitPrimaryPress($0) },
                     profileFocusRequest: profileFocusRequest,
                     ownsProfile: { ownsProfile }, switchProfile: switchProfile,
-                    focusControl: focusControl, focusTarget: focusTarget
+                    focusControl: focusControl, focusTarget: focusTarget, previewDrag: previewDrag
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"
@@ -126,7 +127,9 @@ struct NodeCanvas: View {
                 .accessibilityLabel(
                     store.isSelectingRigEdges ? "Bone assignment edge selection canvas" : "Marquee selection canvas"
                 )
-                .help("Drag to select. Shift adds, Command toggles, and Command-Option removes hit nodes and edges.")
+                .help(
+                    "Drag to select. Shift adds, Command toggles, and Command-Option subtracts. Middle-drag or Option-drag orbits the 3D preview. Hold Shift to pan."
+                )
                 if let marquee {
                     let frame = CGRect(
                         x: marquee.minimum.x, y: marquee.minimum.y,
@@ -290,7 +293,8 @@ struct NodeCanvas: View {
                             shiftedDrag = (token, plan, [:])
                             store.beginCanvasProfileMotion(token: token, lease: profileLease)
                         },
-                        admitsPrimaryPress: { admitsNodeInput() && admitPrimaryPress($0) }, switchProfile: switchProfile
+                        admitsPrimaryPress: { admitsNodeInput() && admitPrimaryPress($0) },
+                        switchProfile: switchProfile, previewDrag: previewDrag
                     )
                     .id(addModeID)
                     .id(selectionEpoch)
@@ -298,8 +302,11 @@ struct NodeCanvas: View {
                     .accessibilityHidden(store.isSelectingRigEdges)
                 }
                 if let origin = store.originDragPosition ?? store.snapshot?.origin {
-                    OriginHandle(store: store, origin: origin, projection: projection, profileLease: profileLease)
-                        .allowsHitTesting(!store.isAddingNodes && !store.isSelectingRigEdges)
+                    OriginHandle(
+                        store: store, origin: origin, projection: projection, profileLease: profileLease,
+                        previewDrag: previewDrag
+                    )
+                    .allowsHitTesting(!store.isAddingNodes && !store.isSelectingRigEdges)
                 }
             }
             .onChange(of: referenceCanvas, initial: true) { _, _ in
@@ -452,6 +459,7 @@ private struct NodeHandle: View {
     let beginShiftDrag: (UUID) -> Void
     let admitsPrimaryPress: (Int) -> Bool
     let switchProfile: ((CanvasProfileFocusRequest) -> Bool)?
+    var previewDrag: CanvasPreviewDrag.Begin? = nil
 
     var body: some View {
         let point = projection.point(for: position)
@@ -472,7 +480,8 @@ private struct NodeHandle: View {
                 select: select, toggle: toggle, add: add, subtract: subtract, wheel: wheel, radiusKey: radiusKey,
                 doubleClick: doubleClick,
                 precisionKey: precisionKey,
-                beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress, switchProfile: switchProfile
+                beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress, switchProfile: switchProfile,
+                previewDrag: previewDrag
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)

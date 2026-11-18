@@ -180,6 +180,7 @@ public struct MeshViewport: NSViewRepresentable {
     }
     public static func dismantleNSView(_ view: InteractiveMeshView, coordinator: ()) {
         view.focusTarget?.unbind(view)
+        view.cancelCameraInteraction()
         view.automaticOrbitBinding.dismantle()
         view.cancelMaterialUpload()
         view.delegate = nil
@@ -532,11 +533,15 @@ public class InteractiveMeshView: MTKView {
     var failedMeshRevision: Int?
     var cameraReset = 0
     private var lastDragLocation: CGPoint?
-    var isDraggingCamera: Bool { lastDragLocation != nil || gestureActivity.isActive }
+    private var reversesHorizontalOrbit = false
+    private var canvasDrag: (id: UUID, meshRevision: Int, reset: Int)?
+    private var discardsConcurrentTrackpadGesture = false
+    var isDraggingCamera: Bool { lastDragLocation != nil || gestureActivity.isActive || canvasDrag != nil }
 
     /// Lifecycle loss discards incomplete input before automatic orbit reconciles.
     func cancelCameraInteraction() {
         gestureActivity.cancel()
+        canvasDrag = nil
         cancelPicking()
         cameraState?.invalidateProjection(interactionAllowed: cameraInteractionAllowed)
         fallbackInputRevision = UUID()
@@ -556,6 +561,17 @@ public class InteractiveMeshView: MTKView {
         phase: NSEvent.Phase, update: (inout OrbitCamera) -> Bool
     ) {
         let phase = cameraGesturePhase(phase)
+        if canvasDrag != nil {
+            if phase != .none { discardsConcurrentTrackpadGesture = true }
+            return
+        }
+        if phase == .mayBegin || phase == .began || phase == .none {
+            discardsConcurrentTrackpadGesture = false
+        }
+        if discardsConcurrentTrackpadGesture {
+            if phase == .ended || phase == .cancelled { discardsConcurrentTrackpadGesture = false }
+            return
+        }
         guard phase != .cancelled else {
             cancelCameraInteraction()
             automaticOrbitBinding.cameraInputChanged()
@@ -626,6 +642,7 @@ public class InteractiveMeshView: MTKView {
     public override var acceptsFirstResponder: Bool { true }
 
     public override func mouseDown(with event: NSEvent) {
+        guard canvasDrag == nil else { return }
         window?.makeFirstResponder(self)
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
@@ -640,6 +657,30 @@ public class InteractiveMeshView: MTKView {
         automaticOrbitBinding.cameraInputChanged()
     }
 
+    func beginCanvasDrag() -> UUID? {
+        guard cameraInteractionAllowed(), !isDraggingCamera, let meshRevision else { return nil }
+        let id = UUID()
+        canvasDrag = (id, meshRevision, cameraReset)
+        reversesHorizontalOrbit = abs(orbitCamera.pitch.remainder(dividingBy: 2 * .pi)) > .pi / 2
+        automaticOrbitBinding.cameraInputChanged()
+        return id
+    }
+
+    func updateCanvasDrag(_ id: UUID, by delta: SIMD2<Float>, pans: Bool) -> Bool {
+        guard let canvasDrag, canvasDrag.id == id, canvasDrag.meshRevision == meshRevision,
+            canvasDrag.reset == cameraReset, cameraInteractionAllowed()
+        else { return false }
+        let motion = !pans && reversesHorizontalOrbit ? SIMD2(-delta.x, delta.y) : delta
+        dragCamera(by: motion, pans: pans)
+        return true
+    }
+
+    func endCanvasDrag(_ id: UUID) {
+        guard canvasDrag?.id == id else { return }
+        canvasDrag = nil
+        automaticOrbitBinding.cameraInputChanged()
+    }
+
     private func dragCamera(by delta: SIMD2<Float>, pans: Bool) {
         var camera = orbitCamera
         guard camera.drag(by: delta, viewport: SIMD2(Float(bounds.width), Float(bounds.height)), pans: pans) else {
@@ -650,6 +691,7 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func mouseDragged(with event: NSEvent) {
+        guard canvasDrag == nil else { return }
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
             return

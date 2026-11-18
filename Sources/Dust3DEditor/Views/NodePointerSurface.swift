@@ -23,6 +23,7 @@ struct NodePointerSurface: NSViewRepresentable {
     var beginShiftDrag: ((UUID) -> Void)? = nil
     var admitsPrimaryPress: ((Int) -> Bool)? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var previewDrag: CanvasPreviewDrag.Begin? = nil
 
     func makeNSView(context: Context) -> NodePointerView { NodePointerView() }
     static func dismantleNSView(_ view: NodePointerView, coordinator: ()) {
@@ -52,10 +53,12 @@ struct NodePointerSurface: NSViewRepresentable {
         view.clickCancel = clickCancel
         view.admitsPrimaryPress = admitsPrimaryPress
         view.switchProfile = switchProfile
+        view.beginPreviewDrag = previewDrag
     }
 }
 
-final class NodePointerView: NSView {
+final class NodePointerView: CanvasCameraPointerView {
+    override var canBeginPreviewDrag: Bool { enabled && activation == nil }
     var enabled = false
     var canDrag = false
     var begin: (UUID) -> Void = { _ in }
@@ -83,6 +86,7 @@ final class NodePointerView: NSView {
 
     func routeWheel(_ input: CanvasWheelInput) -> Bool { enabled && input.isSupported && wheel(input) }
     override func scrollWheel(with event: NSEvent) {
+        guard !isPreviewDragging else { return }
         if !routeWheel(CanvasWheelInput(event)) { super.scrollWheel(with: event) }
     }
 
@@ -117,6 +121,7 @@ final class NodePointerView: NSView {
         guard enabled else { return }
         if activation != nil { cancelActivation() }
         guard admitsPrimaryPress?(event.clickCount) != false else { return }
+        if routePreviewPress(event) || isPreviewDragging { return }
         var mode = GraphSelectionMode.pointerMode(modifiers: event.modifierFlags)
         // Non-graph handles keep their existing modifier behavior.
         if mode == .subtract && subtract == nil { mode = .toggle }
@@ -146,6 +151,7 @@ final class NodePointerView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        if routePreviewDrag(event) || isPreviewDragging { return }
         guard var current = activation else { return }
         guard current.mode != .subtract else { return }
         guard enabled, canDrag, !lostPrecisionFocus else {
@@ -167,6 +173,7 @@ final class NodePointerView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        if routePreviewRelease(event) || isPreviewDragging { return }
         guard let current = activation else { return }
         activation = nil
         let mayFocus =
@@ -236,6 +243,10 @@ final class NodePointerView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
+        if isPreviewDragging {
+            if event.keyCode == 53 { cancelPreviewDrag() }
+            return
+        }
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if activation == nil, superview != nil, let window, window.firstResponder === self {
             let input = CanvasPrecisionKeyInput(event)
@@ -256,6 +267,7 @@ final class NodePointerView: NSView {
     @objc private func windowResigned() { cancelActivation() }
 
     func cancelActivation(deferred: Bool = false, restoringFocus: Bool = true) {
+        cancelPreviewDrag()
         guard let current = activation else { return }
         activation = nil
         if restoringFocus { restoreResponder() } else { previousResponder = nil }

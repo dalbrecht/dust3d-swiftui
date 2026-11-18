@@ -356,14 +356,16 @@ struct EditorRootView: View {
                 },
                 move: { [weak store] in store?.movePreviewCamera($0) },
                 fit: { [weak store] in store?.fitPreviewCamera() },
-                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) },
+                beginDrag: { [weak previewFocus] in previewFocus?.beginCanvasDrag() })
         #else
             return EditorPreviewCameraActions(
                 canMove: store.canMovePreviewCamera,
                 isCurrent: { [weak store] in store?.canMovePreviewCamera == true },
                 move: { [weak store] in store?.movePreviewCamera($0) },
                 fit: { [weak store] in store?.fitPreviewCamera() },
-                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) },
+                beginDrag: { [weak previewFocus] in previewFocus?.beginCanvasDrag() })
         #endif
     }
 

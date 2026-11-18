@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Orbit the 3D preview from the editing canvas with a middle-button or Option drag. Hold Shift to pan.
+
 - Add Focus 3D Preview to the Editor’s View menu.
 
 - Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
