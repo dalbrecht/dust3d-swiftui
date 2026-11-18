@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- List preview orbit and camera reset in searchable Keyboard Shortcuts, with their focus requirements.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -239,6 +242,8 @@
 
 - Add searchable Keyboard Shortcuts help with native command focus restrictions (#333).
 - Archive exactly the signed app tree without generated Finder metadata, retaining executable permissions and framework links (#329).
+
+- List preview orbit and camera reset in searchable Keyboard Shortcuts, with their focus requirements.
 
 - Prepare lossless hollow-thickness history and an explicitly gated local-core inspector experiment; production geometry support remains unchanged (#96).
 
