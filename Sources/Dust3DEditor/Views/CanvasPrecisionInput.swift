@@ -73,6 +73,19 @@ struct CanvasPrecisionKeyInput {
             && NSApp.modalWindow == nil
     }
 
+    var opensComponentProperties: Bool { isBareEditingKey && characters == " " }
+
+    var selectsOwningComponent: Bool { isBareEditingKey && (characters == "f" || characters == "F") }
+
+    @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
+        guard
+            axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
+                || isAlternateDelete
+        else { return true }
+        return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
+            && NSApp.modalWindow == nil
+    }
+
     var action: CanvasPrecisionAction? {
         guard modifiers.intersection([.command, .control, .option, .shift]).isEmpty else { return nil }
         switch keyCode {
