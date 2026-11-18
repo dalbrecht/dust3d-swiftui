@@ -40,10 +40,42 @@ import XCTest
         XCTAssertEqual(
             displayDiameterBeforePlacement,
             try XCTUnwrap(store.snapshot?.nodes.first).value.radius * projection.scale * 2, accuracy: 1e-12)
-        store.updateAddPointer(at: .init(x: 300, y: 180), modeID: epoch)
-        store.placeAddNode(at: .init(x: 300, y: 180), modeID: epoch)
+        let nextPoint = CanvasPoint(x: 330, y: 210)
+        store.updateAddPointer(at: nextPoint, modeID: epoch)
+        store.adjustSelectionRadius(direction: 1)
+        let requestedRadius = store.addGhostModelRadius
+        let anchorID = store.addPlacement.anchorID
+        let resizedProjection = CanvasProjection(bounds: store.bounds, plane: .front, width: 600, height: 360)
+        let previousProjection = try XCTUnwrap(store.frozenAddProjection)
+        store.setCanvasContext(projection: previousProjection, width: 600, height: 360)
+        guard store.isAddingNodes else {
+            XCTFail("Resizing must retain the active Add chain")
+            return
+        }
+        XCTAssertEqual(store.addPlacement.anchorID, anchorID)
+        XCTAssertEqual(store.frozenAddProjection, resizedProjection)
+        XCTAssertEqual(store.addGhostModelRadius, requestedRadius, accuracy: 1e-12)
+        XCTAssertNil(store.addGhostPoint)
+        XCTAssertFalse(store.canPlaceAddGhost)
+        let resizedEpoch = store.addModeID
+        XCTAssertNotEqual(resizedEpoch, epoch)
+        store.updateAddPointer(at: nextPoint, modeID: epoch)
+        store.placeAddNode(at: nextPoint, modeID: epoch)
+        XCTAssertNil(store.addGhostPoint)
+        XCTAssertFalse(store.isWorking)
+        store.updateAddPointer(at: nextPoint, modeID: resizedEpoch)
+        XCTAssertEqual(store.addGhostModelRadius, requestedRadius, accuracy: 1e-12)
+        let anchor = try XCTUnwrap(store.snapshot?.nodes.first { $0.id == anchorID })
+        let expectedPosition = try resizedProjection.position(at: nextPoint, hiddenCoordinate: anchor.value.position.z)
+        store.placeAddNode(at: nextPoint, modeID: resizedEpoch)
         try await settle(store)
         XCTAssertEqual(store.snapshot?.nodes.count, 2)
+        let added = try XCTUnwrap(store.snapshot?.nodes.first { $0.id != anchorID })
+        XCTAssertEqual(added.partID, anchor.partID)
+        XCTAssertEqual(added.value.radius, requestedRadius, accuracy: 1e-12)
+        XCTAssertEqual(added.value.position.x, expectedPosition.x, accuracy: 1e-12)
+        XCTAssertEqual(added.value.position.y, expectedPosition.y, accuracy: 1e-12)
+        XCTAssertEqual(added.value.position.z, expectedPosition.z, accuracy: 1e-12)
         XCTAssertEqual(store.snapshot?.edges.count, 1)
         XCTAssertNil(store.errorMessage)
         XCTAssertNotNil(store.mesh)
@@ -114,7 +146,7 @@ import XCTest
         XCTAssertEqual(selections, 0)
     }
     func testCancellationBeforeCommitCreatesNothingAndAfterCommitStillPublishesActorTruth() async throws {
-        for beforeCommit in [true, false] {
+        for (beforeCommit, resizes) in [(true, false), (false, false), (true, true), (false, true)] {
             let service = GatedAddPlacementService(beforeCommit: beforeCommit)
             let store = EditorStore(addPlacements: service)
             defer { store.stop() }
@@ -127,7 +159,11 @@ import XCTest
             store.updateAddPointer(at: .init(x: 200, y: 150), modeID: store.addModeID)
             store.placeAddNode(at: .init(x: 200, y: 150), modeID: store.addModeID)
             await service.waitUntilBlocked()
-            store.cancelAddMode()
+            if resizes {
+                store.setCanvasContext(projection: projection, width: 450, height: 300)
+            } else {
+                store.cancelAddMode()
+            }
             await service.release()
             try await settle(store)
             XCTAssertFalse(store.isAddingNodes)
@@ -237,8 +273,8 @@ import XCTest
         XCTAssertEqual(store.snapshot?.document.encoded(), source)
         XCTAssertFalse(store.canUndo)
     }
-    func testConnectionExitsAndRejectedJoinFallbackCommitsWithOriginalDiagnostic() async throws {
-        for rejectedTarget in [false, true] {
+    func testAddConnectionUsesVisibleNodeRadiusAndPreservesRejectedJoinDiagnostic() async throws {
+        for (rejectedTarget, outsideOutline) in [(false, false), (true, false), (false, true)] {
             var source = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
             let a = "{11111111-1111-4111-8111-111111111111}"
             let b = "{22222222-2222-4222-8222-222222222222}"
@@ -268,13 +304,24 @@ import XCTest
             let projection = CanvasProjection(bounds: store.bounds, plane: .front, width: 500, height: 300)
             store.setCanvasContext(projection: projection, width: 500, height: 300)
             store.beginAddMode()
-            let point = projection.point(for: try XCTUnwrap(store.snapshot?.nodes.first { $0.id == b }).value.position)
+            let target = try XCTUnwrap(store.snapshot?.nodes.first { $0.id == b })
+            let center = projection.point(for: target.value.position)
+            let outlineRadius =
+                CanvasNodeMarkerGeometry(
+                    projectedDiameter: target.value.radius * projection.scale * 2, selected: false, hovered: false
+                ).outlineDiameter / 2
+            XCTAssertGreaterThan(outlineRadius, 25)
+            let point = CanvasPoint(x: center.x, y: center.y + (outsideOutline ? outlineRadius + 4 : 25))
             store.updateAddPointer(at: point, modeID: store.addModeID)
             store.placeAddNode(at: point, modeID: store.addModeID)
             try await settle(store)
-            XCTAssertEqual(store.snapshot?.nodes.count, rejectedTarget ? 4 : 2)
+            XCTAssertEqual(store.snapshot?.nodes.count, rejectedTarget ? 4 : (outsideOutline ? 3 : 2))
             XCTAssertEqual(store.snapshot?.edges.count, 1)
-            XCTAssertEqual(store.isAddingNodes, rejectedTarget)
+            if !rejectedTarget && !outsideOutline {
+                let edge = try XCTUnwrap(store.snapshot?.edges.first)
+                XCTAssertEqual(Set([edge.fromID, edge.toID]), [a, b])
+            }
+            XCTAssertEqual(store.isAddingNodes, rejectedTarget || outsideOutline)
             XCTAssertEqual(store.addPlacementNotice != nil, rejectedTarget)
             XCTAssertNil(store.errorMessage)
             store.undo()
