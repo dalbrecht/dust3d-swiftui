@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep name, type, and keyboard actions on the animation draft that supplied them.
+
 - Keep retained animation parameter controls from editing a reopened draft.
 
 - Keep animation type and parameter controls on the selected row that supplied them.

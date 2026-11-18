@@ -21,6 +21,7 @@ final class EditorAnimationAuthoringWorkflow {
 
     private let store: EditorStore
     private var stopped = false
+    private var draftID = UUID()
     private var parameterControlsID = UUID()
     private var lastIssue: (any Error)?
     private(set) var mode = Mode.idle
@@ -178,13 +179,30 @@ final class EditorAnimationAuthoringWorkflow {
     func parameterValue(for name: String) -> String? {
         parameterDraft?.value(for: name) ?? unknownParameterDraft?.value(for: name)
     }
+    func draftAction(_ action: @escaping @MainActor (EditorAnimationAuthoringWorkflow) -> Void)
+        -> @MainActor () -> Void
+    {
+        let invoke: @MainActor (()) -> Void = draftAction { workflow, _ in action(workflow) }
+        return { invoke(()) }
+    }
+
+    func draftAction<Value>(_ action: @escaping @MainActor (EditorAnimationAuthoringWorkflow, Value) -> Void)
+        -> @MainActor (Value) -> Void
+    {
+        let currentDraftID = draftID
+        return { [weak self] value in
+            guard let self, !stopped, !isSubmitting, isActive, draftID == currentDraftID else { return }
+            action(self, value)
+        }
+    }
+
     func parameterAction<Value>(_ action: @escaping @MainActor (EditorAnimationAuthoringWorkflow, Value) -> Void)
         -> @MainActor (Value) -> Void
     {
         let controlsID = parameterControlsID
-        return { [weak self] value in
-            guard let self, !stopped, !isSubmitting, isCurrent, parameterControlsID == controlsID else { return }
-            action(self, value)
+        return draftAction { workflow, value in
+            guard workflow.isCurrent, workflow.parameterControlsID == controlsID else { return }
+            action(workflow, value)
         }
     }
 
@@ -251,6 +269,7 @@ final class EditorAnimationAuthoringWorkflow {
         reset()
     }
     private func reset() {
+        draftID = UUID()
         parameterControlsID = UUID()
         mode = .idle
         sourceTitle = ""
