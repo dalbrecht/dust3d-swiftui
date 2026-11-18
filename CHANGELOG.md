@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Preserve existing recovery copies and receipts if preparing a private replacement fails.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -51,6 +51,8 @@
 - Announce document errors through VoiceOver in the active editor window.
 
 - Clear missing cut-face links when opening the Editor with a Qt XML fragment.
+
+- Preserve existing recovery copies and receipts if preparing a private replacement fails.
 
 - Open requested documents and report the error when a startup Qt XML fragment cannot be pasted.
 
