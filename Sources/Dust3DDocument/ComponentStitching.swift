@@ -62,10 +62,11 @@ package struct ComponentStitchingBatchSupport: Sendable {
     package let line: Bool
     package let loop: Bool
     package let back: Bool
+    package let cap: Bool
 
     package init(groups: [DocumentComponent], components: [DocumentComponent], parts: [DocumentPart]) {
-        guard groups.count > 1, groups.allSatisfy(\.isGroup) else {
-            (line, loop, back) = (false, false, false)
+        guard !groups.isEmpty, groups.allSatisfy(\.isGroup) else {
+            (line, loop, back, cap) = (false, false, false, false)
             return
         }
         let roles = Dictionary(
@@ -82,6 +83,7 @@ package struct ComponentStitchingBatchSupport: Sendable {
         line = families.allSatisfy { $0.contains(.stitchingLine) }
         loop = families.allSatisfy { $0.contains(.stitchingLoop) }
         back = families.allSatisfy { $0.contains(.stitchingLine) || $0.contains(.stitchingLoop) }
+        cap = loop && groups.allSatisfy { $0.stitching.closureValue(.back) == true }
     }
 
     package func permits(_ edit: ComponentStitchingEdit) -> Bool {
@@ -158,7 +160,7 @@ enum ComponentStitching {
         guard keys.count == ids.count else { throw DocumentError.invalidComponentStructure }
         let components = try ComponentHierarchy.read(model)
         let groups = components.filter { keys.contains(Data($0.id.utf8)) }
-        guard groups.count == ids.count,
+        guard ids.count > 1, groups.count == ids.count,
             ComponentStitchingBatchSupport(groups: groups, components: components, parts: parts).permits(edit)
         else { throw DocumentError.invalidComponentStructure }
         let elements = Dictionary(

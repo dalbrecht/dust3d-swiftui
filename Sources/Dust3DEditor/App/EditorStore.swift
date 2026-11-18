@@ -2188,7 +2188,7 @@ final class EditorStore {
     func setBatchStitchingScalar(
         _ property: ComponentStitchingScalarProperty, draft: String, target: ComponentStitchingBatchTarget
     ) {
-        guard canEditComponentStitchingBatch(target), target.supportsLoop else { return }
+        guard canEditComponentStitchingBatch(target), target.supportsCap else { return }
         guard let value = EngineScalar.parse(draft, in: property.bounds) else {
             errorMessage = Self.message(DocumentError.invalidComponentStitchingScalar)
             return
