@@ -63,6 +63,38 @@ private actor ContextPreviewCounter: EditorPreviewServing {
         }
         XCTFail("Context actions did not settle")
     }
+    func testGraphEditsCannotCrossRigEdgePickingMode() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.selectGraph(nodes: [], edges: ["ab"])
+        try await settle(value)
+        let before = try XCTUnwrap(value.canvasGraphEditAction(.reverseEdges))
+
+        value.setRigEdgeSelection(true)
+        XCTAssertTrue(value.isSelectingRigEdges)
+        XCTAssertNil(value.canvasGraphEditAction(.reverseEdges))
+        XCTAssertTrue(GraphSelectionMenuActions(store: value).entries.isEmpty)
+        before()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+
+        value.setRigEdgeSelection(false)
+        XCTAssertFalse(value.isSelectingRigEdges)
+        before()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+
+        try XCTUnwrap(value.canvasGraphEditAction(.reverseEdges))()
+        try await settle(value)
+        XCTAssertNotEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertTrue(value.canUndo)
+    }
+
     func testCanvasAxisKeysToggleOnlyWindowLocksWithoutEditingSelectionOrSource() async throws {
         let original = try source().encoded()
         let value = store()
