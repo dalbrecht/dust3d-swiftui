@@ -45,7 +45,9 @@ struct ComponentInspector: View {
                 "Normal unions, Inversion subtracts, and Uncombined retains separate geometry. Order matters. One undo step."
             )
             ComponentColorControls(store: store, component: component)
-            ComponentColorImageControls(store: store, component: component)
+            if store.snapshot?.allowsComponentColorImage(for: component) == true {
+                ComponentColorImageControls(store: store, component: component)
+            }
             if store.snapshot?.showsComponentSmoothing(for: [component]) == true {
                 ComponentSmoothingControls(store: store, component: component)
             }

@@ -46,7 +46,12 @@ struct PartInspector: View {
                 .id(snapshot.documentIdentity)
             }
             #if MOTE3D_EXPERIMENTAL_HOLLOW
-                if part.target == .model { PartHollowControls(store: store, partID: part.id).id(part.id) }
+                if part.target == .model, let snapshot = store.snapshot {
+                    PartHollowControls(
+                        store: store, partID: part.id, target: CanvasAdjustmentTarget(snapshot: snapshot)
+                    )
+                    .id(part.id)
+                }
             #endif
             if part.supportsDeformationScales, let snapshot = store.snapshot {
                 PartCutFaceControls(

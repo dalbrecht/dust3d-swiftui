@@ -11,7 +11,18 @@ import plistlib
 import subprocess
 import sys
 
+def build_identity(binary):
+    section = subprocess.check_output(
+        ['/usr/bin/otool', '-X', '-s', '__TEXT', '__dust3d_build', str(binary)], text=True)
+    # Ignore load addresses, which differ between the host and provider executables.
+    words = [word for line in section.splitlines() for word in line.split()[1:]]
+    if not words:
+        raise SystemExit(f'Missing embedded build identity: {binary}')
+    return ''.join(words)
+
+
 app = pathlib.Path(sys.argv[1])
+editor_identity = build_identity(app / 'Contents' / 'MacOS' / 'Dust3DEditor')
 for name, suffix, point, principal in [
     ('Dust3DQuickLookExtension', 'quicklook', 'com.apple.quicklook.preview', 'PreviewViewController'),
     ('Dust3DThumbnailExtension', 'thumbnail', 'com.apple.quicklook.thumbnail', 'ThumbnailProvider'),
@@ -28,6 +39,8 @@ for name, suffix, point, principal in [
     shader = bundle / 'Contents' / 'Resources' / 'Dust3DNative_Dust3DRendering.bundle' / 'Shaders.metal'
     assert shader.is_file(), f'Missing packaged preview shaders: {shader}'
     binary = bundle / 'Contents' / 'MacOS' / name
+    if build_identity(binary) != editor_identity:
+        raise SystemExit(f'{name}: embedded build identity differs from Dust3DEditor')
     symbols = subprocess.check_output(['xcrun', 'nm', '-u', str(binary)], text=True)
     assert '_NSExtensionMain' in symbols, 'Extension does not use the SDK entry point'
     links = subprocess.check_output(['/usr/bin/otool', '-L', str(binary)], text=True)
@@ -39,5 +52,5 @@ for name, suffix, point, principal in [
     assert entitlements.get('com.apple.security.app-sandbox') is True
     assert entitlements.get('com.apple.security.files.user-selected.read-only') is True
     assert not entitlements.get('com.apple.security.network.client', False)
-    print(f'{name}: metadata, shader resources, entry point, readonly sandbox and signature verified')
+    print(f'{name}: metadata, build identity, shader resources, entry point, readonly sandbox and signature verified')
 PY
