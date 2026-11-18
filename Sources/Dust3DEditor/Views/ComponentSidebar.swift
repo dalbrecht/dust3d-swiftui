@@ -241,7 +241,7 @@ struct ComponentSidebar: View {
                         .disabled(store.isWorking)
                         .onChange(of: store.snapshot?.componentRevealHint?.revision, initial: true) { _, _ in
                             guard let snapshot = store.snapshot, let hint = snapshot.componentRevealHint else { return }
-                            disclosure.reveal(hint)
+                            disclosure.reveal(hint, documentIdentity: snapshot.documentIdentity)
                         }
                         .task(id: revealKey) { @MainActor in
                             guard revealKey != nil, let hint = store.snapshot?.componentRevealHint else { return }
@@ -256,7 +256,9 @@ struct ComponentSidebar: View {
                 }
             }
         }
-        .onChange(of: store.snapshot?.documentIdentity) { _, _ in disclosure.collapsedIDs = [] }
+        .onChange(of: store.snapshot?.documentIdentity, initial: true) { _, _ in
+            disclosure.restore(from: store.snapshot)
+        }
     }
     private func componentRow(
         _ row: ComponentTreeRow, scoped: Bool, scopeEpoch: UUID,
@@ -325,10 +327,12 @@ struct ComponentSidebar: View {
     private func browsePath(_ browse: ComponentGroupBrowse, snapshot: EditorSnapshot) -> some View {
         let parent = browse.path.dropLast().last
         let destination = parent?.title ?? "Full Component Tree"
-        return HStack {
+        return VStack(alignment: .leading, spacing: 4) {
             Button(action: store.componentBrowseAction(parent?.id, snapshot: snapshot)) {
                 Label {
-                    Text(destination).lineLimit(1)
+                    Text(destination)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 } icon: {
                     Image(systemName: "chevron.up")
                         .accessibilityHidden(true)
@@ -338,19 +342,25 @@ struct ComponentSidebar: View {
             }
             .accessibilityLabel("Go to \(destination)")
             .help("Go to \(destination).")
-            Menu {
-                Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
-                ForEach(browse.path.dropLast()) { row in
-                    Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
-                }
-            } label: {
+            HStack(alignment: .top, spacing: 4) {
                 Text(browse.path.last?.title ?? "Group")
-                    .lineLimit(1)
-                    .frame(minWidth: 20, minHeight: 20)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                Menu {
+                    Button("Full Component Tree", action: store.componentBrowseAction(nil, snapshot: snapshot))
+                    ForEach(browse.path.dropLast()) { row in
+                        Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .frame(minWidth: 20, minHeight: 20)
+                }
+                .accessibilityLabel("Go to Ancestor Group")
+                .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
+                .help("Go to an ancestor group or the full component tree.")
             }
-            .accessibilityLabel("Go to Ancestor Group")
-            .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
-            .help("Go to an ancestor group or the full component tree.")
         }
         .focusedValue(\.editorComponentSidebarFocus, true)
         .focusedValue(

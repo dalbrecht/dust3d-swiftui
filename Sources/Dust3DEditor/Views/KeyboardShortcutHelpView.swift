@@ -34,6 +34,9 @@ enum KeyboardShortcutHelp {
             action: "Toggle Canvas Visibility / Isolate Part", keys: "H / ⇧H",
             scope: "Focused canvas or node. Hover takes precedence over a sole selected graph owner."),
         .init(
+            action: "Toggle Add / Return to Selection", keys: "A / S",
+            scope: "Focused canvas or node, outside Move Origin and bone edge selection"),
+        .init(
             action: "Remove Graph Picks", keys: "⌥⌘ click / drag",
             scope: "Canvas nodes, edges or marquee; removes hits while preserving the other picks"),
         .init(action: "Export OBJ Geometry", keys: "⇧⌘E", scope: "Active document with available export geometry"),
@@ -47,26 +50,45 @@ enum KeyboardShortcutHelp {
             action: "Delete Graph Selection", keys: "Delete",
             scope: "Graph selection, outside text, animation and component sidebar controls"),
         .init(
+            action: "Delete in Canvas", keys: "Forward Delete / ⌃D",
+            scope: "Focused canvas or graph handle with an editable selection and no active drag"),
+        .init(
             action: "Nudge Selection or Origin", keys: "← / → / ↑ / ↓",
             scope:
-                "Focused canvas, node or origin marker. Nudges the stored origin in Move Origin mode; otherwise the editable selection. No active drag"
+                "Focused canvas, node or origin marker. Nudges the stored origin in Move Origin mode; otherwise the editable selection. No active drag. Choose Focus Canvas from the Canvas menu."
         ),
         .init(
             action: "Decrease / Increase Selection Spacing", keys: "[ / ]",
             scope: "Focused canvas, node or origin marker, with editable selection and no active drag"),
         .init(action: "Lock X / Y / Z / Radius", keys: "⌥⌘X / ⌥⌘Y / ⌥⌘Z / ⌥⌘R", scope: "Active document"),
+        .init(action: "Show / Hide Sidebar", keys: "⌃⌘S", scope: "Focused editor window"),
         .init(action: "Show / Hide Inspector", keys: "⌃⌘I", scope: "Focused editor window"),
-        .init(action: "Show Animations Inspector", keys: "⌥⌘A", scope: "Editor window"),
+        .init(
+            action: "Show Animations Inspector", keys: "⌥⌘A",
+            scope:
+                "Focused editor window with an accepted document and no open sheet. Choose Show Animations Inspector from the Window menu."
+        ),
         .init(
             action: "Switch Editing Profile", keys: "E",
             scope: "Focused Side by Side canvas or node with a graph selection and no active drag"),
+        .init(
+            action: "Select Hovered Item’s Component", keys: "F",
+            scope: "Focused canvas or node with a hovered graph item and no active drag"),
         .init(
             action: "Browse Selected Component Group", keys: "⌘↓",
             scope: "Focused component sidebar with one visible group selected"),
         .init(
             action: "Go to Enclosing Component Group", keys: "⌘↑",
             scope: "Focused component sidebar while browsing a group"),
+        .init(
+            action: "Discard Inspector Draft", keys: "Escape",
+            scope: "Focused width, thickness, rotation or smoothing field"),
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
+        .init(
+            action: "Cancel Geometry Export", keys: "Escape",
+            scope:
+                "Cancellable export in the active document, outside text and animation controls, with no modal dialog and no active canvas input"
+        ),
         .init(action: "Next Replay Step", keys: "⌥→", scope: "Replay Steps window, when a next step is available"),
         .init(
             action: "Assign Selected Edges to Bone", keys: "⌘Return",
@@ -74,6 +96,9 @@ enum KeyboardShortcutHelp {
         .init(
             action: "Commit Animation Draft", keys: "⌘Return",
             scope: "Animation authoring controls, when the draft is valid"),
+        .init(
+            action: "Edit Owning Component Properties", keys: "Space",
+            scope: "Focused canvas with selected or hovered graph owners"),
     ]
 
     static func matching(_ query: String, in entries: [Entry] = entries) -> [Entry] {

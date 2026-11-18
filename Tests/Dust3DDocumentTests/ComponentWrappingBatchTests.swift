@@ -25,6 +25,35 @@ final class ComponentWrappingBatchTests: XCTestCase {
             try original.applying(.editComponentWrapping(ids: ["a", "b"], edit: .mode(.none))).components().prefix(2)
                 .map { $0.wrapping.mode }, [ComponentWrapMode.none, ComponentWrapMode.none])
     }
+    func testClearWrappingSettingsRemovesOverridesAndKeepsUnrelatedAttributes() throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas xmlns:other='urn:other'><components>
+                    <component id='a' wrap='Cloth' wrapBindTo='body' wrapFaces='400' wrapPattern='Spots'
+                        wrapFuture='opaque' future='keep' other:wrapValue='keep'/>
+                    <component id='b' wrapDrape='0.5'/>
+                    <component id='body' wrap='Skin' wrapFaces='900'/>
+                </components></canvas>
+                """.utf8))
+        let clear = DocumentCommand.editComponentWrapping(ids: ["a", "b"], edit: .clearSettings)
+        let cleared = try source.applying(clear)
+        let xml = try XMLDocument(data: cleared.modelXML)
+        let a = try XCTUnwrap(xml.nodes(forXPath: "/canvas/components/component[@id='a']").first as? XMLElement)
+        XCTAssertEqual(a.attribute(forName: "future")?.stringValue, "keep")
+        XCTAssertEqual(a.attribute(forName: "other:wrapValue")?.stringValue, "keep")
+        XCTAssertFalse(a.attributes?.contains { ($0.name ?? "").hasPrefix("wrap") } ?? true)
+        XCTAssertEqual(try cleared.components().last?.wrapping.targetFaces, 900)
+        XCTAssertEqual(try cleared.applying(clear).encoded(), cleared.encoded())
+        XCTAssertEqual(try Dust3DDocument(data: cleared.encoded()).encoded(), cleared.encoded())
+
+        let enabled = try cleared.applying(.setComponentWrapMode(id: "a", mode: .cloth))
+        let fresh = try XCTUnwrap(try enabled.components().first?.wrapping)
+        XCTAssertEqual(fresh.targetFaces, 1200)
+        XCTAssertEqual(fresh.surfaceDetails.pattern, ComponentSurfacePattern.none)
+        XCTAssertEqual(fresh.binding, .absent)
+    }
+
     func testLateMissingAndDuplicateOwnersRejectWithoutChangingArchive() throws {
         let source = try document()
         let bytes = source.encoded()
