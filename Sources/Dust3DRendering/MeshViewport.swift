@@ -711,15 +711,17 @@ public class InteractiveMeshView: MTKView {
         }
 
         var camera = orbitCamera
-        switch event.keyCode {
-        case 123: camera.orbit(horizontal: -10, vertical: 0)
-        case 124: camera.orbit(horizontal: 10, vertical: 0)
-        case 125: camera.orbit(horizontal: 0, vertical: 10)
-        case 126: camera.orbit(horizontal: 0, vertical: -10)
-        case 3: camera = OrbitCamera()  // F: fit model.
+        switch event.specialKey {
+        case .leftArrow: camera.orbit(horizontal: -10, vertical: 0)
+        case .rightArrow: camera.orbit(horizontal: 10, vertical: 0)
+        case .downArrow: camera.orbit(horizontal: 0, vertical: 10)
+        case .upArrow: camera.orbit(horizontal: 0, vertical: -10)
         default:
-            super.keyDown(with: event)
-            return
+            guard event.charactersIgnoringModifiers?.lowercased() == "f" else {
+                super.keyDown(with: event)
+                return
+            }
+            camera = OrbitCamera()
         }
 
         cancelPicking()
