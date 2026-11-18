@@ -5,7 +5,11 @@ struct EditorSessionDiagnosticsView: View {
     let diagnostics: EditorSessionDiagnostics
     @State private var report: SessionDiagnosticsReport?
     @State private var isExporting = false
-    @State private var showsSaveError = false
+    @State private var saveError: (any Error)?
+
+    private var showsSaveError: Binding<Bool> {
+        Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -45,10 +49,12 @@ struct EditorSessionDiagnosticsView: View {
             defaultFilename: "Mote3D Session Log"
         ) { result in
             report = nil
-            if case .failure = result { showsSaveError = true }
+            if case .failure(let error) = result { saveError = error }
         }
-        .alert("Could Not Save Session Log", isPresented: $showsSaveError) {
+        .alert("Could Not Save Session Log", isPresented: showsSaveError, presenting: saveError) { _ in
             Button("OK", role: .cancel) {}
+        } message: { error in
+            Text(error.localizedDescription)
         }
     }
 }
