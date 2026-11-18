@@ -12,6 +12,7 @@ struct EdgeInspector: View {
         let boneSelect = context?.target(for: .selectBoneEdges(edgeID: edge.id))
         let midpoint = context?.target(for: .insertMidpoint(edgeID: edge.id))
         let reverse = context?.target(for: .reverseEdge(id: edge.id))
+        let repairDirections = context?.target(for: .repairEdgeDirections(edgeID: edge.id))
         let delete = context?.target(for: .disconnectEdge(id: edge.id))
         let nodes = store.snapshot?.nodes ?? []
         let from = nodes.first { $0.id == edge.fromID }?.title ?? edge.fromID
@@ -39,6 +40,11 @@ struct EdgeInspector: View {
                 .accessibilityLabel("Insert Midpoint")
             Button("Reverse Edge", action: store.inspectorAction(reverse))
                 .disabled(!store.canPerformInspectorAction(reverse))
+            if repairDirections?.changesDocument == true {
+                Button("Repair Edge Directions", action: store.inspectorAction(repairDirections))
+                    .disabled(!store.canPerformInspectorAction(repairDirections))
+                    .help("Align the directions in this part’s open chain in one undo step.")
+            }
             Button("Delete Edge", role: .destructive, action: store.inspectorAction(delete))
                 .disabled(!store.canPerformInspectorAction(delete))
             if !store.canPerformInspectorAction(reverse) {

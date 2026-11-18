@@ -10,11 +10,12 @@ struct EditorGeometryExportMenu: View {
         Menu {
             Button("OBJ Geometry…") { onExport(.obj) }
             Button("FBX Geometry…") { onExport(.fbx) }
+            Button("Textured FBX…") { onExport(.fbxTextured) }
         } label: {
             Label("Export", systemImage: "square.and.arrow.up").frame(minHeight: 40)
         }
         .disabled(!canExport)
-        .help("Export original procedural geometry as OBJ or FBX")
-        .accessibilityLabel("Export original procedural geometry")
+        .help("Export geometry or textured FBX")
+        .accessibilityLabel("Export model")
     }
 }

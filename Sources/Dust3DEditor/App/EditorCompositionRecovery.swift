@@ -1,3 +1,4 @@
+import Dust3DKit
 import Foundation
 
 /// Recovery accepts only explicit bounded commands; ordinary macOS launch arguments pass through.
@@ -60,7 +61,7 @@ enum EditorCompositionRecoveryChannel {
         }
 
         if let status = await EditorHeadlessDS3SaveCommand.run(
-            arguments: CommandLine.arguments,
+            arguments: CommandLine.arguments, geometryEncoder: NativeGeometryExportEncoder(),
             stdout: { FileHandle.standardOutput.write(Data($0.utf8)) },
             stderr: { FileHandle.standardError.write(Data($0.utf8)) })
         {

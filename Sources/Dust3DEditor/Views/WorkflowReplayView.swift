@@ -167,6 +167,9 @@ struct WorkflowReplayView: View {
                         }
                     }
                     .accessibilityElement(children: .combine)
+                    if let property = plan.appliedProperty(after: completedSteps) {
+                        WorkflowReplayPropertyDetail(property: property)
+                    }
                     if waitsForReference {
                         ProgressView("Preparing reference image…")
                     } else if plan.showsReferenceImage(after: completedSteps),
@@ -389,5 +392,40 @@ struct WorkflowReplayView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .accessibilityLabel("Reconstructed graph")
         .accessibilityValue("\(frame.nodes.count) nodes and \(frame.edges.count) edges")
+    }
+}
+
+private struct WorkflowReplayPropertyDetail: View {
+    let property: ReplayProperty
+
+    private var ownerLabel: String {
+        switch property.owner {
+        case .node: "Node"
+        case .part: "Part"
+        case .component: "Component"
+        case .animation: "Animation"
+        }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
+                LabeledContent(ownerLabel, value: property.id)
+                    .font(.caption).foregroundStyle(.secondary)
+                ForEach(property.fields, id: \.name) { field in
+                    LabeledContent(field.name) {
+                        if field.value.isEmpty {
+                            Text("Empty").foregroundStyle(.secondary)
+                        } else {
+                            Text(verbatim: field.value).textSelection(.enabled)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, 4)
+        }
+        .frame(maxHeight: 100)
+        .accessibilityLabel("Applied replay property")
     }
 }
