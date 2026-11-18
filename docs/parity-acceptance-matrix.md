@@ -35,6 +35,46 @@ Unknown or missing evidence remains open. The baseline includes #382 subtraction
 | Desktop menus, toolbars/inspectors, camera/display modes and settings | Native commands, `InspectorCommands`, standard About, Help/credits, preview palettes/camera routes and documented shortcuts | Actual menu/focus dispatch, customization, Full Keyboard Access, VoiceOver, contrast/appearance/Reduce Motion and supported OS/hardware scenarios. See physical criteria below. |
 | Worker containment, lifecycle, memory/performance and distribution | Scoped core coordinator/local worker contracts; Qt-free builds, package identities/resources, ad-hoc signatures/exact archives | Separate new-C++ adapter coverage, ASan/UBSan and archive/XML/asset/command fuzzing; strong memory/descendant/filesystem/network/parent-death containment and stop/escalation; measured load/edit/generate/bake/export latency, peak memory and interaction budgets on supported Apple Silicon/Intel/OS hardware; file associations, settings, entitlements/sandbox decision, signing/notarization, versioning/reproducible packaging and upgrade/distribution (#147/core #123). Metadata is not a sandbox. |
 
+## Signed canvas acceptance evidence
+
+The local QA tag `mote3d-master-qa-20261112.7` points to App
+`bf48642a9` (#676) with Core `48b0ce2d`. The canvas tests cover
+visible node outlines in both profiles, overlapping node and tapered edge
+precedence, and whole-part selection. The full local run recorded 2,304 XCTest
+cases, including two skips and zero failures. Hosted checks passed before merge.
+
+The signed local candidate `mote3d-canvas-add-input-candidate-qa-20261112.1`
+points to App `f027bba41` with the same Core revision. Its tests cover
+Command-double-click Open on blank space, geometry precedence, stale document
+callbacks, hover-radius edits with sidebar selection, and Add chain reprojection
+after a resize. The full local run recorded 2,305 XCTest cases, including two
+skips and zero failures. The changes are under review in #677, #617 and #618.
+
+Both builds passed archive signature and checksum verification, Finder provider
+bundle verification, and a byte-exact headless OBJ comparison for the batch
+scaling fixture. Physical pointer, keyboard-only and VoiceOver checks remain
+open for these canvas workflows.
+
+## Signed static export comparison
+
+Standard QA `.48` uses Core `48b0ce2d`. The signed local QA tag
+`mote3d-mirrored-fbx-qa-20261112.1` records App `ec975c09`,
+Core `9027e031`, and the archive checksum.
+
+- The isolated Editor exported and independently reimported all 11 procedural
+  textured FBX fixtures. Standard QA failed six of those fixtures.
+- The mirrored textured capsule reimported with 312 triangles and an embedded
+  PNG. Save and reopen preserved its positions, UV coordinates, and texture.
+- The displaced concave OBJ matched all 70 Qt polygons in winding and
+  connectivity. The coplanar case exported a closed mesh at the fixture's
+  expected volume. Qt exited with a Boolean failure on that case.
+- Sword retained equivalent surface geometry across two FBX triangulations.
+  Nearest-texel samples differed by at most two 8-bit levels on the sampled
+  points. Filtering across mip levels and physical preview remain unverified.
+
+These fixtures exercise ordinary headless export and reimport. Production
+Core adoption and the remaining export families are still open.
+
 ## Source correspondence anchors
 
 Inspected activated M3/non-quarantined M5 families map as follows. Qt paths are

@@ -13,6 +13,7 @@ struct AddModeControls: View {
                     set: { active in toggleAction(active) })
             )
             .disabled(!store.isAddingNodes && !store.canBeginAddMode)
+            .help("While the canvas has keyboard focus, A toggles Add and S returns to selection.")
             if store.canvasProfiles.isDualProfile {
                 Toggle(
                     "Qt Opposite-Profile Depth",

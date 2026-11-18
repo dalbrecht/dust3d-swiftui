@@ -62,7 +62,35 @@ final class CanvasProfileActivationView: NSView {
     }
 }
 
-/// A mouse-driven profile change may claim focus once in the originating window.
+struct CanvasProfileFocusTarget: Equatable {
+    let documentIdentity: UUID
+    let lease: UUID
+}
+
+/// A root's explicit focus control reaches only its attached active canvas.
+@MainActor
+final class CanvasProfileFocusControl {
+    private weak var view: CanvasPointerView?
+    private var target: CanvasProfileFocusTarget?
+
+    func attach(_ view: CanvasPointerView, target: CanvasProfileFocusTarget) {
+        self.view = view
+        self.target = target
+    }
+
+    func detach(_ view: CanvasPointerView) {
+        guard self.view === view else { return }
+        self.view = nil
+        target = nil
+    }
+
+    func focus(_ target: CanvasProfileFocusTarget) -> Bool {
+        guard self.target == target, let view, let window = view.window else { return false }
+        return CanvasProfileFocusRequest(window: window).claim(for: view, ownsProfile: view.ownsProfile())
+    }
+}
+
+/// A profile focus request may claim focus once in the originating window.
 @MainActor
 final class CanvasProfileFocusRequest {
     private weak var window: NSWindow?
@@ -77,13 +105,15 @@ final class CanvasProfileFocusRequest {
         previousWasCanvas = previous is CanvasPointerView || previous is NodePointerView
     }
 
-    func claim(for view: CanvasPointerView, ownsProfile: Bool) {
-        guard isPending, view.superview != nil, let attachedWindow = view.window else { return }
+    @discardableResult
+    func claim(for view: CanvasPointerView, ownsProfile: Bool) -> Bool {
+        guard isPending, view.superview != nil, let attachedWindow = view.window else { return false }
         isPending = false
-        guard ownsProfile, attachedWindow === window, attachedWindow.isKeyWindow else { return }
+        guard ownsProfile, attachedWindow === window, attachedWindow.isKeyWindow, attachedWindow.attachedSheet == nil
+        else { return false }
         let current = attachedWindow.firstResponder
         let detachedCanvas = previousWasCanvas && (previousResponder as? NSView)?.window == nil
-        guard current === previousResponder || (detachedCanvas && current === attachedWindow) else { return }
-        attachedWindow.makeFirstResponder(view)
+        guard current === previousResponder || (detachedCanvas && current === attachedWindow) else { return false }
+        return attachedWindow.makeFirstResponder(view)
     }
 }
