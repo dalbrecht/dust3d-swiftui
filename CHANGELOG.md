@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Enable Replay Steps when the document has model parts or a loaded reference image.
+
 - Open Replay Steps in independent windows so starting another replay keeps the current step and source of each existing replay.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.

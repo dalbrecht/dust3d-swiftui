@@ -65,6 +65,33 @@ final class WorkflowReplayWindowTests: XCTestCase {
         XCTAssertNil(windows.request(id, owner: owner))
     }
 
+    func testReplayCommandRequiresPartsOrALoadedReferenceImage() async throws {
+        let store = makeStore()
+        defer { store.stop() }
+        let blank = try document("blank")
+        await store.load(data: blank.encoded())
+        XCTAssertNil(store.workflowReplayCommand)
+
+        let png = try XCTUnwrap(
+            Data(
+                base64Encoded:
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=="))
+        let reference = try blank.applying(.setReferenceImagePNG(png))
+        await store.load(data: reference.encoded())
+        for _ in 0..<100 {
+            if !store.isLoadingReferenceImage { break }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertNotNil(store.referenceImage)
+        let command = try XCTUnwrap(store.workflowReplayCommand)
+
+        await store.load(data: blank.encoded())
+        XCTAssertNil(store.workflowReplayCommand)
+        command.invoke(in: store, windows: WorkflowReplayWindows()) { _ in
+            XCTFail("A retired reference image opened replay")
+        }
+    }
+
     func testFocusedCommandRejectsAnotherWindowReplacementAndFailedLoad() async throws {
         let first = makeStore()
         let second = makeStore()
@@ -74,9 +101,9 @@ final class WorkflowReplayWindowTests: XCTestCase {
         }
         let windows = WorkflowReplayWindows()
         var opened: [UUID] = []
-        let original = try document("first")
+        let original = try modelDocument("first")
         await first.load(data: original.encoded())
-        await second.load(data: try document("second").encoded())
+        await second.load(data: try modelDocument("second").encoded())
         let command = try XCTUnwrap(first.workflowReplayCommand)
 
         command.invoke(in: second, windows: windows) { opened.append($0) }
@@ -86,7 +113,7 @@ final class WorkflowReplayWindowTests: XCTestCase {
         let owner = UUID()
         windows.attach(id, owner: owner)
 
-        let replacement = try document("replacement")
+        let replacement = try modelDocument("replacement")
         await first.load(data: replacement.encoded())
         command.invoke(in: first, windows: windows) { opened.append($0) }
         XCTAssertEqual(opened, [id])
@@ -102,6 +129,12 @@ final class WorkflowReplayWindowTests: XCTestCase {
 
     private func document(_ marker: String) throws -> Dust3DDocument {
         try Dust3DDocument(snapshotXML: Data("<canvas marker='\(marker)'/>".utf8))
+    }
+
+    private func modelDocument(_ marker: String) throws -> Dust3DDocument {
+        try document(marker).applying(
+            .addNode(
+                id: "node", partID: "part", componentID: "component", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
     }
 
     private func makeStore() -> EditorStore {
