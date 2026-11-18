@@ -24,6 +24,7 @@ final class EditorGeometryExportDestinationService: EditorGeometryExportDestinat
     private weak var windowAnchor: NSView?
 
     var attachedDocument: NSDocument? { windowAnchor?.window?.windowController?.document as? NSDocument }
+    var hasActiveDocumentWindow: Bool { NSApp.isActive && windowAnchor?.window?.isKeyWindow == true }
 
     func trackWindowAnchor(_ anchor: NSView) { windowAnchor = anchor }
     func clearWindowAnchor(_ anchor: NSView) {
@@ -42,10 +43,9 @@ final class EditorGeometryExportDestinationService: EditorGeometryExportDestinat
         try Self.validateAvailability(isChoosing: panel != nil, hasAttachedSheet: window.attachedSheet != nil)
         let type = try Self.contentType(for: format)
         let panel = NSSavePanel()
-        panel.title = "Export \(format.rawValue.uppercased()) Geometry"
+        panel.title = "Export \(format.exportName)"
         panel.prompt = "Export"
-        panel.message =
-            "Exports original procedural geometry. Materials, textures, rigs and animations are not included. Imported models are unsupported."
+        panel.message = Self.message(for: format)
         panel.allowedContentTypes = [type]
         panel.allowsOtherFileTypes = false
         panel.canCreateDirectories = true
@@ -65,6 +65,15 @@ final class EditorGeometryExportDestinationService: EditorGeometryExportDestinat
         }
     }
 
+    static func message(for format: DocumentExportFormat) -> String {
+        switch format {
+        case .obj, .fbx:
+            "Exports original procedural geometry. Materials, textures, rigs and animations are not included. Imported models are unsupported."
+        case .fbxTextured:
+            "Exports procedural geometry with baked textures and UVs. Imported models, rigs and animations are unsupported."
+        }
+    }
+
     func cancel() {
         guard let panel, !isCancelling else { return }
         isCancelling = true
@@ -72,7 +81,7 @@ final class EditorGeometryExportDestinationService: EditorGeometryExportDestinat
     }
 
     static func contentType(for format: DocumentExportFormat) throws -> UTType {
-        guard let type = UTType(filenameExtension: format.rawValue) else {
+        guard let type = UTType(filenameExtension: format.fileExtension) else {
             throw EditorGeometryExportDestinationError.unavailableFileType
         }
         return type
@@ -86,9 +95,19 @@ final class EditorGeometryExportDestinationService: EditorGeometryExportDestinat
     static func destination(wasAccepted: Bool, url: URL?, format: DocumentExportFormat = .obj) throws -> URL? {
         guard wasAccepted else { return nil }
         guard let url else { throw EditorGeometryExportDestinationError.missingDestination }
-        guard url.isFileURL, url.pathExtension.lowercased() == format.rawValue else {
+        guard url.isFileURL, url.pathExtension.lowercased() == format.fileExtension else {
             throw DocumentExportError.invalidDestination
         }
         return url
+    }
+}
+
+extension DocumentExportFormat {
+    var exportName: String {
+        switch self {
+        case .obj: "OBJ Geometry"
+        case .fbx: "FBX Geometry"
+        case .fbxTextured: "Textured FBX"
+        }
     }
 }
