@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- List Cut Face parts and existing linked profiles in Front view order.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -389,6 +392,8 @@
 - Move and resize existing reference-image crops with Draw/Adjust tools and eight visible handles; preserve numeric editing, bounded geometry and atomic composition Apply (#56).
 
 - Bound editor preview work to one active operation and one latest waiting archive; retire queued cancellation promptly and keep cleanup serialized with explicit backlog errors (#243).
+
+- List Cut Face parts and existing linked profiles in Front view order.
 
 - Select mixed material preparation without imported-only image admission, and clear supported surface-detail notices only after a confirmed source-baked frame.
 
