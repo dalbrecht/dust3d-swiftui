@@ -484,11 +484,12 @@ struct EditorRootView: View {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)
                 }
                 if let issue = store.materialIssue {
+                    let retryMaterials = store.materialRetryAction()
                     VStack(alignment: .leading, spacing: 6) {
                         Label("Showing geometry without materials", systemImage: "exclamationmark.triangle")
                         Text(issue).textSelection(.enabled)
-                        Button("Retry Materials") { store.retryMaterials() }
-                            .disabled(store.isGenerating || store.isUpdatingMaterials || store.isWorking)
+                        Button("Retry Materials") { retryMaterials?() }
+                            .disabled(retryMaterials == nil)
                     }
                     .font(.caption).padding(8)
                 }
