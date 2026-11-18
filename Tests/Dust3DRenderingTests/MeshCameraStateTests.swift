@@ -332,6 +332,33 @@ final class MeshCameraStateTests: XCTestCase {
         XCTAssertNotEqual(view.orbitCamera.transform(aspect: 1), cancelledTransform)
     }
 
+    func testResigningPreviewFocusDiscardsActiveTrackpadAndPointerInput() throws {
+        let view = InteractiveMeshView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), device: nil)
+        var picks = 0
+        view.updatePicking(revision: UUID()) { _ in picks += 1 }
+
+        view.applyCameraGesture(phase: .began) { $0.magnify(by: 0.1) }
+        XCTAssertTrue(view.isDraggingCamera)
+        let focusedTransform = view.orbitCamera.transform(aspect: 1)
+        XCTAssertTrue(view.resignFirstResponder())
+        XCTAssertFalse(view.isDraggingCamera, "Leaving preview focus must release its active gesture")
+        view.applyCameraGesture(phase: .changed) { $0.rotateGesture(by: 15) }
+        XCTAssertEqual(view.orbitCamera.transform(aspect: 1), focusedTransform)
+
+        func mouse(_ type: NSEvent.EventType) throws -> NSEvent {
+            try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: type, location: CGPoint(x: 100, y: 100), modifierFlags: [], timestamp: 0, windowNumber: 0,
+                    context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+        }
+        view.mouseDown(with: try mouse(.leftMouseDown))
+        XCTAssertTrue(view.isDraggingCamera)
+        XCTAssertTrue(view.resignFirstResponder())
+        XCTAssertFalse(view.isDraggingCamera)
+        view.mouseUp(with: try mouse(.leftMouseUp))
+        XCTAssertEqual(picks, 0)
+    }
+
     func testDefaultExpandedAndIndexedViewportValuesHaveNoOwner() {
         let mesh = Mesh(vertices: [], nodeCount: 0, partCount: 0, warning: "")
         let ordinary = MeshViewport(mesh: mesh, isWireframe: false, cameraReset: 0, onError: { _ in })

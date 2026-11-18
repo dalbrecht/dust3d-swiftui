@@ -617,6 +617,15 @@ public class InteractiveMeshView: MTKView {
 
     public override var acceptsFirstResponder: Bool { true }
 
+    public override func resignFirstResponder() -> Bool {
+        guard super.resignFirstResponder() else { return false }
+        if isDraggingCamera {
+            cancelCameraInteraction()
+            automaticOrbitBinding.cameraInputChanged()
+        }
+        return true
+    }
+
     public override func mouseDown(with event: NSEvent) {
         guard !isMiddleButtonDragging else { return }
         window?.makeFirstResponder(self)
