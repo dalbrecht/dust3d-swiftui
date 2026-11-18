@@ -1,10 +1,10 @@
-import AppKit
 import SwiftUI
 
 /// The drop owns a new native open request and never edits the receiving document.
 struct EditorDocumentDropControl: View {
     @State private var isTargeted = false
-    @State private var isOpening = false
+    let isOpening: Bool
+    let open: @MainActor (EditorDocumentDrop) -> Bool
 
     var body: some View {
         Label("Drop a .ds3 document to open", systemImage: "folder")
@@ -21,16 +21,7 @@ struct EditorDocumentDropControl: View {
             .help("Open one local Dust3D document. The current document stays open.")
             .dropDestination(for: URL.self) { urls, _ in
                 guard !isOpening, let drop = EditorDocumentDrop(urls: urls) else { return false }
-                isOpening = true
-                Task {
-                    defer { isOpening = false }
-                    await drop.open(
-                        using: { url in
-                            _ = try await NSDocumentController.shared.openDocument(withContentsOf: url, display: true)
-                        },
-                        reportError: { NSApp.presentError($0) })
-                }
-                return true
+                return open(drop)
             } isTargeted: {
                 isTargeted = $0
             }
