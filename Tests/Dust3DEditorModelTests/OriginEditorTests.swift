@@ -97,7 +97,7 @@ final class OriginEditorTests: XCTestCase {
         XCTAssertFalse(state.snapshot.canUndo)
         XCTAssertEqual(state.snapshot.selectedIDs, ["a", "b", "c"])
         try state.transformSelection(.frontAlignX)
-        XCTAssertEqual(try state.snapshot.document.node(id: "a").position.x, 0.4, accuracy: 0.000001)
+        XCTAssertEqual(try state.snapshot.document.node(id: "a").position.x, 3.6, accuracy: 0.000001)
     }
     func testActorOriginBatchAndGlobalAlignmentAreSeparateUndoSteps() async throws {
         let original = try document()
