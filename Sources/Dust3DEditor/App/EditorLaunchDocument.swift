@@ -14,7 +14,7 @@ enum EditorLaunchError: Error, LocalizedError, Sendable, Equatable {
         case .unsupportedExportArgument:
             "Export at launch is unavailable. Open the document and use File > Export Geometry."
         case .invalidPasteArgument:
-            "Supply one local .xml path after -paste-xml, at most 4096 UTF-8 bytes."
+            "Supply one local XML fragment path after -paste-xml, at most 4096 UTF-8 bytes."
         case .invalidColorArgument:
             "Use -toggle-color followed by true or false, or choose Model Colors in the View menu."
         }
@@ -46,16 +46,15 @@ enum EditorLaunchRequest: Sendable, Equatable {
                 case "--":
                     parsesOptions = false
                     acceptsPositionals = true
-                case "-o", "-output":
+                case "-o", "-output", "--geometry-fbx", "--textured-fbx":
                     throw .unsupportedExportArgument
                 case "-paste-xml":
-                    guard pasteXML == nil, let operand = arguments.popFirst(), !operand.hasPrefix("-"),
+                    guard let operand = arguments.popFirst(), !operand.isEmpty,
+                        !operand.hasPrefix("-"),
                         operand.hasPrefix("/") || URLComponents(string: operand)?.scheme == nil,
                         operand.utf8.count <= 4096, !operand.utf8.contains(0)
                     else { throw .invalidPasteArgument }
-                    let url = URL(fileURLWithPath: operand).standardizedFileURL
-                    guard url.pathExtension.lowercased() == "xml" else { throw .invalidPasteArgument }
-                    pasteXML = url
+                    pasteXML = URL(fileURLWithPath: operand).standardizedFileURL
                 case "-toggle-color":
                     guard let operand = arguments.popFirst(), !operand.hasPrefix("-") else {
                         throw .invalidColorArgument
@@ -151,17 +150,14 @@ final class EditorLaunchDocumentOpener {
                 reportError(error)
             }
         case .success(.open(let urls, let hidesPreviewColors, let pasteXML)):
-            let pasteData: Data?
-            do {
-                if let pasteXML {
+            var pasteData: Data?
+            var pasteError: Error?
+            if let pasteXML {
+                do {
                     pasteData = try await validatedPaste(at: pasteXML, read: readPaste)
-                } else {
-                    pasteData = nil
+                } catch {
+                    pasteError = error
                 }
-                try Task.checkCancellation()
-            } catch {
-                if !Task.isCancelled { reportError(error) }
-                return
             }
             for url in urls {
                 guard !Task.isCancelled else { return }
@@ -171,8 +167,8 @@ final class EditorLaunchDocumentOpener {
                     let opened = try await open(url)
                     claim?.finish(document: opened)
                     if claim?.document == nil { neutralPreviewClaims[url] = nil }
-                    if let pasteData, let opened {
-                        if !Task.isCancelled {
+                    if pasteXML != nil, let opened {
+                        if let pasteData, !Task.isCancelled {
                             registerStartupPaste(pasteData, document: opened, source: url)
                         }
                         displayNew(opened)
@@ -183,6 +179,7 @@ final class EditorLaunchDocumentOpener {
                     reportError(error)
                 }
             }
+            if let pasteError, !Task.isCancelled { reportError(pasteError) }
         case .failure(let error): reportError(error)
         }
     }

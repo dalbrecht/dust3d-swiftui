@@ -1,10 +1,12 @@
 import Foundation
 
-/// One explicit field replacement across selected groups, without changing their other settings.
+/// An explicit wrapping edit across selected groups.
 public enum ComponentWrappingEdit: Sendable {
     /// Replace body-weight references using one common owner/descendant exclusion plan.
     case binding(ComponentWrapBindingChoice)
     case mode(ComponentWrapMode)
+    /// Turn wrapping off and remove the group’s saved wrapping overrides.
+    case clearSettings
     case scalar(ComponentWrappingScalarProperty, Double)
     case keepChildren(Bool)
     case targetFaces(Int)
@@ -50,6 +52,14 @@ enum ComponentWrappingBatch {
             let name: String
             let replacement: String?
             switch edit {
+            case .clearSettings:
+                for attribute in element.attributes ?? [] {
+                    guard let name = attribute.name, name.hasPrefix("wrap"),
+                        attribute.prefix?.isEmpty != false, attribute.uri?.isEmpty != false
+                    else { continue }
+                    updates.append((element, name, nil))
+                }
+                continue
             case .binding(let choice):
                 guard !ComponentWrapBindingXML.isUnchanged(current.binding, choice: choice) else { continue }
                 name = "wrapBindTo"
