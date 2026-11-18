@@ -709,7 +709,6 @@ public class InteractiveMeshView: MTKView {
             super.keyDown(with: event)
             return
         }
-
         var camera = orbitCamera
         switch event.specialKey {
         case .leftArrow: camera.orbit(horizontal: -10, vertical: 0)
@@ -723,7 +722,6 @@ public class InteractiveMeshView: MTKView {
             }
             camera = OrbitCamera()
         }
-
         cancelPicking()
         automaticOrbitBinding.cameraInputChanged()
         orbitCamera = camera

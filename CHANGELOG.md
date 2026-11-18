@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- Add a keyboard-accessible Focus 3D Preview control to Replay Steps.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
-- Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -18,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -289,6 +290,10 @@
 - Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
 
 - Drag component rows before or after siblings, into groups, or to the document root.
+
+- Add a keyboard-accessible Focus 3D Preview control to Replay Steps.
+
+- Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
 
 - Select all visible component rows with Command-A when the component sidebar has focus (#386).
 
