@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Highlight affected edges and announce their count when Replay Steps shows a bone assignment.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -147,6 +147,8 @@
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Edit or clear the Equipment Slot of the Model component that owns the current canvas selection.
+
+- Highlight affected edges and announce their count when Replay Steps shows a bone assignment.
 
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
