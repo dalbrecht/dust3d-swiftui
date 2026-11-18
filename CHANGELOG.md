@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Update the combined reference image preview while drawing, moving or resizing a crop. The document changes only on Apply.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -129,6 +129,8 @@
 - Preview applied and retained component color images in the inspector without changing image assignments.
 
 - Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
+
+- Update the combined reference image preview while drawing, moving or resizing a crop. The document changes only on Apply.
 
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
