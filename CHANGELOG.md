@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Sort animation inspector names numerically while preserving archive order.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -335,6 +338,8 @@
 - Retain valid mesh previews across animation metadata Undo/Redo using history-owned geometry/material identities; reject obsolete auxiliary preview results (#275).
 
 - Upgrade the pinned native core to reviewed revision `48b0ce2d`, including removal of automatic stitching debug SVG writes; feature quarantines remain in place (#272).
+
+- Sort animation inspector names numerically while preserving archive order.
 
 - Preserve the latest waiting preview independently for up to eight document scopes, with FIFO fairness and explicit backlog diagnostics (#271).
 
