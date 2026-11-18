@@ -8,20 +8,22 @@ import XCTest
 @MainActor
 final class EditorGeometryExportDestinationTests: XCTestCase {
     func testSelectedFormatsProvideNativePanelTypes() throws {
-        for format in [DocumentExportFormat.obj, .fbx] {
+        for format in [DocumentExportFormat.obj, .fbx, .fbxTextured] {
             let type = try EditorGeometryExportDestinationService.contentType(for: format)
-            XCTAssertEqual(type.preferredFilenameExtension, format.rawValue)
+            XCTAssertEqual(type.preferredFilenameExtension, format.fileExtension)
         }
     }
 
     func testFBXDestinationRejectsOBJAndKeepsCaseInsensitiveFBXExtension() throws {
         let valid = URL(fileURLWithPath: "/owned/Example.FBX")
-        XCTAssertEqual(
-            try EditorGeometryExportDestinationService.destination(
-                wasAccepted: true, url: valid, format: .fbx), valid)
-        XCTAssertThrowsError(
-            try EditorGeometryExportDestinationService.destination(
-                wasAccepted: true, url: URL(fileURLWithPath: "/owned/Example.obj"), format: .fbx))
+        for format in [DocumentExportFormat.fbx, .fbxTextured] {
+            XCTAssertEqual(
+                try EditorGeometryExportDestinationService.destination(wasAccepted: true, url: valid, format: format),
+                valid)
+            XCTAssertThrowsError(
+                try EditorGeometryExportDestinationService.destination(
+                    wasAccepted: true, url: URL(fileURLWithPath: "/owned/Example.obj"), format: format))
+        }
     }
 
     func testShouldRejectMissingWindowWithoutGlobalFallback() async throws {

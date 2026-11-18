@@ -6,17 +6,20 @@ struct RigSettingsControls: View {
     let store: EditorStore
     private let isAssignmentPresented: @MainActor () -> Bool
     @State private var isExpanded: Bool
+    private let expansion: Binding<Bool>?
 
     init(
-        store: EditorStore, isExpanded: Bool = false, isAssignmentPresented: @escaping @MainActor () -> Bool = { true }
+        store: EditorStore, isExpanded: Bool = false, expansion: Binding<Bool>? = nil,
+        isAssignmentPresented: @escaping @MainActor () -> Bool = { true }
     ) {
         self.store = store
+        self.expansion = expansion
         self.isAssignmentPresented = isAssignmentPresented
         _isExpanded = State(initialValue: isExpanded)
     }
 
     var body: some View {
-        let disclosure = $isExpanded
+        let disclosure = expansion ?? $isExpanded
         return DisclosureGroup(isExpanded: disclosure) {
             VStack(alignment: .leading, spacing: 8) {
                 if let settings = store.snapshot?.rigSettings {
