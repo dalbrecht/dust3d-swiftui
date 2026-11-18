@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Select Whole Part uses exact stored ownership for graph picks and the revealed component.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -153,6 +153,8 @@
 - Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
 
 - Rotate the canvas selection by a quarter turn around the other profile’s world axis while staying in the current profile.
+
+- Select Whole Part uses exact stored ownership for graph picks and the revealed component.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
