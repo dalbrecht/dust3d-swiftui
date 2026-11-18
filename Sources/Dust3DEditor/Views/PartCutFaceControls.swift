@@ -38,6 +38,7 @@ struct PartCutFaceControls: View {
                 .accessibilityIdentifier("part-cut-rotation")
                 .focusedValue(\.editorTextEditing, true)
                 .onSubmit { applyRotation() }
+                .onExitCommand { resetRotation() }
             if part.cutRotation == nil {
                 Text("Unsupported source rotation. Enter a value to replace it.")
                     .font(.caption).foregroundStyle(.primary)

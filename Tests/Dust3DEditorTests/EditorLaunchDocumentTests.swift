@@ -50,6 +50,20 @@ final class EditorLaunchDocumentTests: XCTestCase {
             .open([URL(fileURLWithPath: "/tmp/explicit.ds3")]))
     }
 
+    func testQtPasteAcceptsAnExtensionlessLocalFragment() throws {
+        let path = "/tmp/Modèle fragment"
+        XCTAssertEqual(
+            try EditorLaunchRequest(arguments: ["Editor", "-paste-xml", path]),
+            .untitledPaste(URL(fileURLWithPath: path)))
+    }
+
+    func testRepeatedQtPasteUsesLastFragment() throws {
+        let path = "/tmp/last fragment"
+        XCTAssertEqual(
+            try EditorLaunchRequest(arguments: ["Editor", "-paste-xml", "/tmp/first.xml", "-paste-xml", path]),
+            .untitledPaste(URL(fileURLWithPath: path)))
+    }
+
     @MainActor
     func testInvalidBatchAndUnsupportedQtOptionsNeverOpenAnyDocument() async {
         for (arguments, expected) in [
@@ -61,7 +75,7 @@ final class EditorLaunchDocumentTests: XCTestCase {
             (["Editor", "/tmp/first.ds3", "-output", "/tmp/result.obj"], .unsupportedExportArgument),
             (["Editor", "/tmp/first.ds3", "-paste-xml"], .invalidPasteArgument),
             (["Editor", "/tmp/first.ds3", "-paste-xml", "https://example.com/edits.xml"], .invalidPasteArgument),
-            (["Editor", "/tmp/first.ds3", "-paste-xml", "/tmp/edits.ds3"], .invalidPasteArgument),
+            (["Editor", "/tmp/first.ds3", "-paste-xml", ""], .invalidPasteArgument),
             (["Editor", "/tmp/first.ds3", "-toggle-color"], .invalidColorArgument),
         ] {
             let opener = EditorLaunchDocumentOpener(arguments: arguments)

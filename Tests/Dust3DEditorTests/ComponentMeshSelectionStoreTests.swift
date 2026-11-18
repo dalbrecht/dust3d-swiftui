@@ -166,6 +166,32 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertFalse(value.canUndo)
     }
 
+    func testComponentImageEditingRequiresEligibleSelectedOwner() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><parts><part id='i' target='ImportedModel'/><part id='p' target='CutFace'/></parts>
+                <components><component id='imported' linkDataType='partId' linkData='i'/>
+                <component id='profile' linkDataType='partId' linkData='p'/>
+                <component id='group'/></components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        for id in ["imported", "profile"] {
+            value.selectComponent(id)
+            try await settle(value)
+            let target = try XCTUnwrap(ComponentColorImageTarget(snapshot: try XCTUnwrap(value.snapshot)))
+            XCTAssertFalse(value.canEditComponentColorImage(.component(target)))
+        }
+        value.selectComponent("group")
+        try await settle(value)
+        let target = try XCTUnwrap(ComponentColorImageTarget(snapshot: try XCTUnwrap(value.snapshot)))
+        XCTAssertTrue(value.canEditComponentColorImage(.component(target)))
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testGraphOwnerMaterialApplyAndResetRejectRetiredAndFailedSourceTargets() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(

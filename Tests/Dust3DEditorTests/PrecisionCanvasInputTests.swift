@@ -25,6 +25,53 @@ import XCTest
         document = try document.applying(.addEdge(id: edge, from: a, to: b))
         return try document.applying(.setOrigin(.init(x: 0.5, y: 0.5, z: 0.5)))
     }
+    func testForwardDeleteRemovesTheCapturedGraphSelectionWithOneUndo() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let source = try document()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectGraph(nodes: [], edges: [edge])
+        try await settle(store)
+
+        let forwardDelete = "\u{F728}"
+        let handler = store.canvasPrecisionKeyHandler()
+        XCTAssertFalse(handler(.init(keyCode: 117, characters: forwardDelete, modifiers: [.option, .function])))
+        XCTAssertTrue(handler(.init(keyCode: 117, characters: forwardDelete, modifiers: .function, isRepeat: true)))
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+
+        XCTAssertTrue(handler(.init(keyCode: 117, characters: forwardDelete, modifiers: .function)))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.nodes.count, 2)
+        XCTAssertTrue(store.snapshot?.edges.isEmpty == true)
+        XCTAssertFalse(handler(.init(keyCode: 117, characters: forwardDelete, modifiers: .function)))
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testControlDDeletesInTheCanvasAndRejectsAReplacedSelection() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let source = try document()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectGraph(nodes: [a], edges: [])
+        try await settle(store)
+        let stale = store.canvasPrecisionKeyHandler()
+        store.selectGraph(nodes: [], edges: [edge])
+        try await settle(store)
+
+        let controlD = CanvasPrecisionKeyInput(keyCode: 2, characters: "\u{4}", modifiers: .control)
+        XCTAssertFalse(stale(controlD))
+        XCTAssertTrue(store.canvasPrecisionKeyHandler()(controlD))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.nodes.count, 2)
+        XCTAssertTrue(store.snapshot?.edges.isEmpty == true)
+    }
+
     func testActualHeightAndCapturedPlaneDriveMovementNotProjectionScaleAndEachEditUndoesOnce() async throws {
         let source = try document()
         let first = EditorStore()
