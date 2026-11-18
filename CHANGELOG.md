@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Include the upstream Dust3D authors in the Editor and Viewer About panels.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -225,6 +225,8 @@
 - Keep node and edge inspector actions bound to their original document and selection, preserving atomic Undo and read-only endpoint selection (#352).
 
 - Connect two selected endpoints from the inspector or Canvas menu, with explicit surviving part settings, stale-action protection and one Undo step (#349).
+
+- Include the upstream Dust3D authors in the Editor and Viewer About panels.
 
 - Add shared Help commands for the native project, issue reporting and upstream Dust3D, with visible link-opening failures (#348).
 
