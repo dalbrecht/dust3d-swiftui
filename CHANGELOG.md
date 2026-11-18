@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Add keyboard-focusable Zoom In and Zoom Out buttons to Quick Look previews.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
+
+- Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
@@ -16,6 +18,7 @@
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
+- Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -353,6 +356,8 @@
 - Add lossless stored-animation listing and create/rename/type/parameter/duplicate/delete commands with exact history and opaque-data preservation; native evaluation/playback remain quarantined (#145).
 
 - Connect accepted editor snapshots to an injected export workflow with source revision receipts, history preservation and lifecycle cancellation; native encoder/menu binding remains unavailable by default (#146).
+
+- Add keyboard-focusable Zoom In and Zoom Out buttons to Quick Look previews.
 
 - Serialize final export source checks and atomic publication with accepted editor commands, preserving committed success on late task cancellation; native UI binding remains pending (#146).
 
