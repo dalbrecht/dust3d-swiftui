@@ -281,6 +281,56 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertNil(pasted.component.parentID)
     }
 
+    func testDisclosureStartsFromAuthoredCollapseForEachDocumentAndWindow() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='z' partId='p' x='.2' y='.5' z='.5' radius='.1'/></nodes>
+                <edges/><parts><part id='p'/></parts><components>
+                <component id='closed' expanded='false'>
+                  <component id='child' linkDataType='partId' linkData='p'/>
+                </component>
+                <component id='open' expanded='true'><component id='open-child'/></component>
+                <component id='default'><component id='default-child'/></component>
+                <component id='future' expanded='opaque'><component id='future-child'/></component>
+                </components></canvas>
+                """.utf8)
+        ).encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        let snapshot = try XCTUnwrap(value.snapshot)
+        let disclosure = ComponentSidebarDisclosure()
+        disclosure.restore(from: snapshot)
+        XCTAssertEqual(disclosure.collapsedIDs, ["closed"])
+        XCTAssertEqual(
+            snapshot.componentTree.visibleRows(collapsing: disclosure.collapsedIDs).map(\.id),
+            ["closed", "open", "open-child", "default", "default-child", "future", "future-child"])
+
+        disclosure.collapsedIDs.remove("closed")
+        disclosure.restore(from: snapshot)
+        XCTAssertTrue(disclosure.collapsedIDs.isEmpty)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+
+        let otherWindow = ComponentSidebarDisclosure()
+        otherWindow.restore(from: snapshot)
+        XCTAssertEqual(otherWindow.collapsedIDs, ["closed"])
+
+        value.selectWholePart(.node("z"))
+        try await settle(value)
+        let revealed = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(revealed.componentRevealHint?.ancestorIDs, ["closed"])
+        let revealedWindow = ComponentSidebarDisclosure()
+        revealedWindow.restore(from: revealed)
+        XCTAssertTrue(revealedWindow.collapsedIDs.isEmpty)
+
+        await value.load(data: try source().encoded())
+        try await settle(value)
+        otherWindow.restore(from: try XCTUnwrap(value.snapshot))
+        XCTAssertTrue(otherWindow.collapsedIDs.isEmpty)
+    }
+
     func testBrowsingPreservesGraphAndWorkingGroupAndRejectsRetainedScope() async throws {
         let original = try source().encoded()
         let value = store()
