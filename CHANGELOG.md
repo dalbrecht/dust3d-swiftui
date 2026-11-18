@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Describe keyboard orbit and camera reset in the Editor and Viewer preview accessibility hints.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -237,6 +237,8 @@
 - Announce completed geometry exports and warnings to assistive technologies, with one notification per export even for repeated destinations (#339).
 
 - Match Qt reference-image pixel selection and alpha fitting while preserving 16-bit sample precision; retain correct RGB16 transparency decoding despite a Qt reader defect (#337).
+
+- Describe keyboard orbit and camera reset in the Editor and Viewer preview accessibility hints.
 
 - Package and verify the seven pinned rig templates for native SDK consumers and installed file-preview bundles (#195).
 
