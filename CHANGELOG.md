@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Orbit the preview with a middle-button drag, or hold Shift to pan.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -207,6 +207,8 @@
 - Add an isolated experimental native rig-template preview with complete solids/rings, exact-name selection, background preparation, stale-result protection and camera menu controls; preserve the production core pin (#144).
 
 - Show rig assignment progress with stored/selectable counts, select unassigned or chosen-bone edges, and highlight matches on hover without changing document history (#363).
+
+- Orbit the preview with a middle-button drag, or hold Shift to pan.
 
 - Clear exact stored assignments for a template bone or its descendant chain across the document in one Undo step, including hidden and locked parts (#361).
 
