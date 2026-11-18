@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Select editable geometry from the Canvas menu without including hidden or locked parts.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -81,6 +81,8 @@
 - Select All in the focused Nodes sidebar selects the filtered node rows.
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
+
+- Select editable geometry from the Canvas menu without including hidden or locked parts.
 
 - Stop cancelled preview requests before they start fallback mesh generation.
 
