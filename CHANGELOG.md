@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Drop a local .ds3 file from Finder onto a Viewer window to open it.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -201,6 +201,8 @@
 - Add a source-ordered generated-joint hierarchy and read-only parent, endpoint, length, radius and signed-angle inspection to the experimental rest preview; preserve copied rig data if hierarchy preparation fails (#367).
 
 - Show the selected joint’s numerical weight range and influenced body-triangle count in the experimental rest preview, publishing these values with their matching mesh (#367).
+
+- Drop a local .ds3 file from Finder onto a Viewer window to open it.
 
 - Add an isolated experimental generated-rest rig preview with grounded skeleton/body geometry, weight highlighting, all-joint selection, and guarded camera controls; keep the production core pin unchanged (#367).
 
