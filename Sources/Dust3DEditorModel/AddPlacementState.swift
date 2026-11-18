@@ -115,7 +115,7 @@ public struct AddPlacementState: Sendable {
 
     public init() {}
 
-    /// Enter with a frozen one-plane projection. A sole merged node of degree <2 anchors; otherwise create a part.
+    /// Enter with a frozen one-plane projection. A sole editable, owned endpoint of degree <2 anchors; otherwise create a part.
     /// - Parameters: `snapshot` captures document/selection; `canvasHeight` converts scene radius; nil parent derives the current group.
     /// - Throws: Invalid geometry/height or unsupported parent. Locks are deliberately absent from placement epochs.
     public mutating func begin(
@@ -135,7 +135,7 @@ public struct AddPlacementState: Sendable {
         let probe = NodePosition(x: 0.5, y: 0.5, z: 0.5)
         _ = try projection.position(at: projection.point(for: probe), hiddenCoordinate: 0.5)
         let merged = snapshot.transformNodes
-        let candidate = merged.count == 1 ? merged.first : nil
+        let candidate = merged.count == 1 ? merged.first { $0.isEditable && $0.partID != nil } : nil
         let anchor = candidate.flatMap { node in
             snapshot.edges.reduce(0) { $0 + ($1.fromID == node.id ? 1 : 0) + ($1.toID == node.id ? 1 : 0) } < 2
                 ? node : nil

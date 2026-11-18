@@ -23,6 +23,7 @@ struct NodePointerSurface: NSViewRepresentable {
     var beginShiftDrag: ((UUID) -> Void)? = nil
     var admitsPrimaryPress: ((Int) -> Bool)? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var addModeKey: CanvasAddModeKey.Handler? = nil
     var previewDrag: CanvasPreviewDrag.Begin? = nil
 
     func makeNSView(context: Context) -> NodePointerView { NodePointerView() }
@@ -31,6 +32,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.enabled = false
         view.precisionKey = nil
         view.switchProfile = nil
+        view.addModeKey = nil
     }
     func updateNSView(_ view: NodePointerView, context: Context) {
         if !enabled { view.cancelActivation(deferred: true, restoringFocus: false) }
@@ -53,6 +55,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.clickCancel = clickCancel
         view.admitsPrimaryPress = admitsPrimaryPress
         view.switchProfile = switchProfile
+        view.addModeKey = addModeKey
         view.beginPreviewDrag = previewDrag
     }
 }
@@ -78,6 +81,7 @@ final class NodePointerView: CanvasCameraPointerView {
     var clickCancel: ((UUID) -> Void)?
     var admitsPrimaryPress: ((Int) -> Bool)?
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)?
+    var addModeKey: CanvasAddModeKey.Handler?
     private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, mode: GraphSelectionMode)?
     private weak var previousResponder: NSResponder?
     private weak var activationResponder: NSResponder?
@@ -98,7 +102,8 @@ final class NodePointerView: CanvasCameraPointerView {
         if isRectangular { return self }
         let dx = local.x - bounds.midX
         let dy = local.y - bounds.midY
-        return dx * dx + dy * dy <= 18 * 18 ? self : nil
+        let radius = CanvasNodeMarkerGeometry.centerHitRadius
+        return dx * dx + dy * dy <= radius * radius ? self : nil
     }
 
     override func rightMouseDown(with event: NSEvent) {
@@ -251,6 +256,7 @@ final class NodePointerView: CanvasCameraPointerView {
         if activation == nil, superview != nil, let window, window.firstResponder === self {
             let input = CanvasPrecisionKeyInput(event)
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
+                || CanvasAddModeKey.route(event, in: window, handle: addModeKey)
                 || (input.permitsDispatch(in: window) && precisionKey?(input) == true)
             {
                 return

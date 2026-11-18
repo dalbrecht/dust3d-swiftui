@@ -7,6 +7,22 @@ import XCTest
 
 @MainActor
 final class FilePreviewLayoutTests: XCTestCase {
+    func testLongDiagnosticsDoNotExpandTheShortQuickLookHost() throws {
+        let baked = try BakedMetalFixture.quad(color: BakedMetalFixture.image([255, 0, 0, 255]))
+        let mesh = IndexedMesh(
+            vertices: baked.geometry.vertices, indices: [0, 1, 2, 3, 4, 5],
+            nodeCount: 1, partCount: 1,
+            warning: String(repeating: "A retained compatibility diagnostic. ", count: 60))
+        let document = FilePreviewDocument(mesh: mesh, bakedMesh: baked, materialError: nil)
+        NSApplication.shared.setActivationPolicy(.prohibited)
+        let hosting = NSHostingController(rootView: FilePreviewView(document: document))
+        for width: CGFloat in [160, 240, 640] {
+            let hostSize = CGSize(width: width, height: 180)
+            let measured = hosting.sizeThatFits(in: hostSize)
+            XCTAssertLessThanOrEqual(measured.height, hostSize.height)
+        }
+    }
+
     func testPreviewFitsNarrowSystemHostsWithoutImposingItsFloatingWindowMinimum() throws {
         let baked = try BakedMetalFixture.quad(color: BakedMetalFixture.image([255, 0, 0, 255]))
         let source = baked.geometry
