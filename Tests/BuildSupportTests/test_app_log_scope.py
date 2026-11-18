@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class AppLogScopeTests(unittest.TestCase):
-    def run_log_mode(self, app_arguments):
+    def run_log_mode(self, app_arguments, configuration="debug"):
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             source = temporary / 'source'
@@ -28,7 +28,10 @@ import os,pathlib,sys
 if not pathlib.Path(os.environ['LOG_SCOPE_TEST_RECORDING']).exists():
     print('Consumer was not attached before app launch', file=sys.stderr)
     sys.exit(25)
-pathlib.Path(os.environ['LOG_SCOPE_TEST_LAUNCHED']).write_text('appStartup fixture')
+launch = pathlib.Path(os.environ['LOG_SCOPE_TEST_LAUNCHED'])
+pending = launch.with_suffix('.pending')
+pending.write_text('appStartup fixture')
+pending.replace(launch)
 ''')
             log_stub = tools / 'stream-log'
             log_stub.write_text('''#!/usr/bin/env python3
@@ -65,8 +68,10 @@ print(launch.read_text(), flush=True)
             build.write_text('''#!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/build_paths.sh"
+configuration=${5:-debug}
+DUST3D_BINARY_DIR="${DUST3D_BINARY_DIR%/*}/$configuration"
 mkdir -p "$DUST3D_BINARY_DIR/Dust3DNative_Dust3DRendering.bundle" "$DUST3D_BINARY_DIR/Dust3DNative_Dust3DKit.bundle"
-printf fixture-resource > "$DUST3D_BINARY_DIR/Dust3DNative_Dust3DKit.bundle/fixture"
+printf "%s" "$configuration-resource" > "$DUST3D_BINARY_DIR/Dust3DNative_Dust3DKit.bundle/fixture"
 printf '%s' 'fixture binary' > "$DUST3D_BINARY_DIR/Dust3DEditor"
 printf '%s' 'fixture binary' > "$DUST3D_BINARY_DIR/Dust3DViewer"
 ''')
@@ -81,6 +86,7 @@ printf '%s' 'fixture binary' > "$DUST3D_BINARY_DIR/Dust3DViewer"
                 (icons / (name + '.icns')).write_bytes(b'icns-fixture')
             environment = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ['PATH'],
                                DUST3D_BUILD_ROOT=str(temporary / 'cache'),
+                               DUST3D_PACKAGE_CONFIGURATION=configuration,
                                DUST3D_APP_OUTPUT_DIR=str(temporary / 'apps'),
                                DUST3D_ARCHIVE_OUTPUT_DIR=str(temporary / 'archives'),
                                LOG_SCOPE_TEST_RECORDING=str(recording),
@@ -91,10 +97,14 @@ printf '%s' 'fixture binary' > "$DUST3D_BINARY_DIR/Dust3DViewer"
             self.assertIn('appStartup fixture', result.stdout)
             app_name = 'Dust3DEditor' if '--editor' in app_arguments or '--editor-qa' in app_arguments else 'Dust3DViewer'
             resource = temporary / 'apps' / (app_name + '.app') / 'Contents/Resources/Dust3DNative_Dust3DKit.bundle/fixture'
-            self.assertEqual(resource.read_bytes(), b'fixture-resource')
+            self.assertEqual(resource.read_bytes(), f'{configuration}-resource'.encode())
             arguments = json.loads(recording.read_text())
             self.assertIn('--predicate', arguments)
             return arguments[arguments.index('--predicate') + 1]
+
+    def test_should_package_release_resources_with_the_release_editor(self):
+        predicate = self.run_log_mode(['--editor'], configuration='release')
+        self.assert_scope(predicate, 'org.dust3d.editor', 'Dust3DEditor')
 
     def test_should_scope_qa_logs_to_the_qa_subsystem(self):
         self.assert_scope(self.run_log_mode(['--editor-qa']), 'org.dust3d.editor.combine-qa', 'Dust3DEditor')
