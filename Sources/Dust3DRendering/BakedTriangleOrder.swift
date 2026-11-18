@@ -42,7 +42,7 @@ struct BakedTriangleOrder: Sendable, Equatable {
     private let transparent: [Triangle]
     var transparentIndexCount: Int { transparent.count * 3 }
 
-    init(geometry: TexturedRenderGeometry, hasTransparentColor: Bool, usesAtlasAlpha: Bool = true) throws {
+    init(geometry: TexturedRenderGeometry, hasTransparentColor: Bool, isNeutral: Bool = false) throws {
         var opaque: [Triangle] = []
         var transparent: [Triangle] = []
         for ordinal in 0..<geometry.metadata.triangleCount {
@@ -52,11 +52,15 @@ struct BakedTriangleOrder: Sendable, Equatable {
             let first = geometry.vertices[Int(indices.x)]
             let second = geometry.vertices[Int(indices.y)]
             let third = geometry.vertices[Int(indices.z)]
-            let observedTransparency =
-                usesAtlasAlpha && geometry.metadata.hasMapping(at: ordinal)
-                ? hasTransparentColor : (first.color.w < 1 || second.color.w < 1 || third.color.w < 1)
+            let hasVertexTransparency = first.color.w < 1 || second.color.w < 1 || third.color.w < 1
             let policy = geometry.metadata.policy(at: ordinal)
-            let hasTransparency = policy.map { $0.alphaMode == .blend } ?? observedTransparency
+            let hasTransparency: Bool
+            if isNeutral && geometry.metadata.isProcedural(at: ordinal) {
+                hasTransparency = hasVertexTransparency
+            } else {
+                let observed = geometry.metadata.hasMapping(at: ordinal) ? hasTransparentColor : hasVertexTransparency
+                hasTransparency = policy.map { $0.alphaMode == .blend } ?? observed
+            }
             let sum = (first.position + second.position + third.position) / 3
             let triangle = Triangle(
                 indices: indices, center: SIMD3(sum.x, sum.y, sum.z), ordinal: ordinal, policy: policy)

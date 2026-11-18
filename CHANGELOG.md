@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use procedural vertex opacity alongside imported alpha when Model Colors is off for mixed previews.
+
 - Use vertex opacity when Model Colors is off for textured procedural previews.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.

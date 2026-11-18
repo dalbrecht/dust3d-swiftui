@@ -17,7 +17,6 @@ struct OwnedTexturedMetalResources: ~Copyable {
     var transparentBatches: [BakedDrawBatch]
     let textures: [any MTLTexture]
     let order: BakedTriangleOrder
-    let usesVertexAlphaInNeutralMode: Bool
     var neutralDraws: TexturedNeutralDraws?
     let normalMapEnabled: Bool
     let camera: OrbitCamera
@@ -83,12 +82,10 @@ actor TexturedMetalResourcesBuilder {
             mipmaps: mipmaps)
         let order = try BakedTriangleOrder(geometry: geometry, hasTransparentColor: plan.hasTransparentColor)
         let sorted = try order.transparentDraws(rotation: camera.rotation)
-        var usesVertexAlphaInNeutralMode = false
         var neutralDraws: TexturedNeutralDraws?
-        if case .legacy = geometry.metadata {
-            usesVertexAlphaInNeutralMode = true
+        if geometry.metadata.hasProceduralTriangles {
             let neutralOrder = try BakedTriangleOrder(
-                geometry: geometry, hasTransparentColor: plan.hasTransparentColor, usesAtlasAlpha: false)
+                geometry: geometry, hasTransparentColor: plan.hasTransparentColor, isNeutral: true)
             if neutralOrder != order {
                 guard geometry.indices.count <= (maximumPayloadBytes - plan.payloadBytes) / MemoryLayout<UInt32>.stride
                 else { throw BakedMetalPreparationError.payloadLimitExceeded }
@@ -167,7 +164,7 @@ actor TexturedMetalResourcesBuilder {
             device: device, queue: queue, pipeline: pipeline, opaqueDepth: opaqueDepth,
             transparentDepth: transparentDepth, sampler: sampler, vertices: vertices,
             opaqueIndices: opaque, transparentIndices: transparent, transparentBatches: sorted.batches,
-            textures: textures, order: order, usesVertexAlphaInNeutralMode: usesVertexAlphaInNeutralMode,
+            textures: textures, order: order,
             neutralDraws: neutralDraws,
             normalMapEnabled: plan.normalMapEnabled, camera: camera)
     }

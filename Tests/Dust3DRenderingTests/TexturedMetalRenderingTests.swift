@@ -414,6 +414,30 @@ final class TexturedMetalRenderingTests: XCTestCase {
         }
     }
 
+    func testMixedNeutralColorUsesProceduralVertexAlphaAndImportedAtlasAlpha() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        let baked = try BakedMetalFixture.quad(
+            color: BakedMetalFixture.image([255, 0, 0, 64]),
+            layers: [.init(offsetX: -1.2), .init(offsetX: 1.2)])
+        let policy = SourceBakedPolicy(alphaMode: .blend, alphaCutoff: 0.5, isDoubleSided: true)
+        let mixed = BakedMetalFixture.source(baked, policyAt: { _ in policy }, importedAt: { $0 >= 2 })
+        let owner = try await TexturedMetalResourcesBuilder().make(
+            bakedMesh: mixed, device: device, camera: OrbitCamera(yaw: 0, pitch: 0, distance: 3))
+        let renderer = TexturedMeshRenderer(resources: owner)
+        let colored = try await pixels(renderer, device: device)
+        XCTAssertEqual(pixel(colored, x: 32, y: 64)[3], 64)
+        XCTAssertEqual(pixel(colored, x: 96, y: 64)[3], 64)
+
+        renderer.showsColor = false
+        let neutral = try await pixels(renderer, device: device)
+        XCTAssertEqual(pixel(neutral, x: 32, y: 64)[3], 255)
+        XCTAssertEqual(pixel(neutral, x: 96, y: 64)[3], 64)
+
+        renderer.showsColor = true
+        let restored = try await pixels(renderer, device: device)
+        XCTAssertEqual(restored, colored)
+    }
+
     func testNeutralColorPreservesSourceAlphaPoliciesAndRestoresEveryMaterialMap() async throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
         for mode in [ImportedAlphaMode.opaque, .mask, .blend] {
@@ -427,7 +451,8 @@ final class TexturedMetalRenderingTests: XCTestCase {
                         emissive: BakedMetalFixture.image([255, 0, 0, 255]), mapped: mapped,
                         layers: [.init(color: SIMD4(1, 0, 0, 0.5))])
                     let source = BakedMetalFixture.source(
-                        baked, policy: .init(alphaMode: mode, alphaCutoff: cutoff, isDoubleSided: true))
+                        baked, policyAt: { _ in .init(alphaMode: mode, alphaCutoff: cutoff, isDoubleSided: true) },
+                        importedAt: { _ in true })
                     let owner = try await TexturedMetalResourcesBuilder().make(
                         bakedMesh: source, device: device, camera: OrbitCamera(yaw: 0, pitch: 0, distance: 3))
                     let renderer = TexturedMeshRenderer(resources: owner)
