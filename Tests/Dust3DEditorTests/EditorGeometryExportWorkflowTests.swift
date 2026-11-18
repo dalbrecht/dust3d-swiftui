@@ -120,7 +120,8 @@ final class EditorGeometryExportWorkflowTests: XCTestCase {
             let store = await store(encoder)
             let source = try XCTUnwrap(store.snapshot?.document.encoded())
             let chooser = DialogChooser()
-            let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
+            let diagnostics = EditorSessionDiagnostics()
+            let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser, diagnostics: diagnostics)
             let operation = try XCTUnwrap(workflow.begin(format: .fbx, sourceURL: nil))
             await chooser.waitUntilStarted()
             let destination = directory.appendingPathComponent("not-published.fbx")
@@ -128,6 +129,7 @@ final class EditorGeometryExportWorkflowTests: XCTestCase {
             let outcome = await operation.value
             XCTAssertThrowsError(try outcome.get()) { XCTAssertEqual($0 as? NativeFBXExportError, cause) }
             XCTAssertEqual(store.errorMessage, cause.localizedDescription)
+            XCTAssertEqual(diagnostics.entries.map(\.event), [.exportFailed])
             XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
             XCTAssertEqual(store.snapshot?.document.encoded(), source)
             XCTAssertTrue(workflow.canBegin)
@@ -195,7 +197,8 @@ final class EditorGeometryExportWorkflowTests: XCTestCase {
         let store = await store(encoder)
         defer { store.stop() }
         let chooser = DialogChooser()
-        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
+        let diagnostics = EditorSessionDiagnostics()
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser, diagnostics: diagnostics)
         let operation = try XCTUnwrap(workflow.begin(sourceURL: source))
         await chooser.waitUntilStarted()
         XCTAssertEqual(chooser.names, ["Example.obj"])
@@ -205,6 +208,7 @@ final class EditorGeometryExportWorkflowTests: XCTestCase {
         let outcome = await operation.value
         let receipt = try XCTUnwrap(try outcome.get())
         XCTAssertEqual(receipt.destination, destination)
+        XCTAssertEqual(diagnostics.entries.map(\.event), [.exportCompleted])
         XCTAssertEqual(receipt.warning, "original export warning")
         guard case .completed(let shown) = workflow.phase else { return XCTFail("Expected published receipt") }
         XCTAssertEqual(shown.documentIdentity, receipt.documentIdentity)
@@ -221,7 +225,8 @@ final class EditorGeometryExportWorkflowTests: XCTestCase {
         let store = await store(encoder)
         defer { store.stop() }
         let chooser = DialogChooser()
-        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
+        let diagnostics = EditorSessionDiagnostics()
+        let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser, diagnostics: diagnostics)
         let operation = try XCTUnwrap(workflow.begin(sourceURL: nil))
         await chooser.waitUntilStarted()
         XCTAssertEqual(chooser.names, ["Untitled.obj"])
@@ -229,6 +234,7 @@ final class EditorGeometryExportWorkflowTests: XCTestCase {
         chooser.complete(nil)
         let outcome = await operation.value
         XCTAssertNil(try outcome.get())
+        XCTAssertTrue(diagnostics.entries.isEmpty)
         let received = await encoder.received
         XCTAssertNil(received)
         XCTAssertTrue(workflow.canBegin)
