@@ -15,6 +15,7 @@ struct ComponentSmoothingControls: View {
                 .accessibilityIdentifier("component-smoothing-cutoff")
                 .focusedValue(\.editorTextEditing, true)
                 .onSubmit { apply() }
+                .onExitCommand { reset() }
             if component.smoothCutoffDegrees == nil {
                 Text("Unsupported source cutoff. Enter a value to replace it.")
                     .font(.caption).foregroundStyle(.secondary)
