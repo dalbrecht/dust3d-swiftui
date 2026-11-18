@@ -162,6 +162,19 @@ final class ViewerStore {
         isRendererFailureDismissed = false
     }
 
+    private var canRetryMaterials: Bool {
+        !isLoading && !isUpdatingMaterials && mesh != nil && archiveData != nil && materialIssue?.isEmpty == false
+    }
+
+    func materialRetryAction(ownsWindow: @escaping @MainActor () -> Bool = { true }) -> (@MainActor () -> Void)? {
+        guard canRetryMaterials, ownsWindow() else { return nil }
+        let attemptID = materialRequestID
+        return { [weak self] in
+            guard let self, ownsWindow(), self.canRetryMaterials, self.materialRequestID == attemptID else { return }
+            self.retryMaterials()
+        }
+    }
+
     func retryMaterials() {
         guard !isLoading, mesh != nil, let data = archiveData else { return }
         clearMaterials()
