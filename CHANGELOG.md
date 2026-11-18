@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Drop an image directly onto the Front or Side panel of the reference composer to replace that profile before applying the draft.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -123,6 +123,8 @@
 - Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
+
+- Drop an image directly onto the Front or Side panel of the reference composer to replace that profile before applying the draft.
 
 - Clear missing cut-face links when pasting Qt XML interactively, keeping profiles found in the fragment or document.
 
