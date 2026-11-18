@@ -159,8 +159,8 @@ private struct ComponentColorDraftPreviewControls: View {
                 Button("Preview Color Draft") {
                     if let color { store.startComponentColorDraftPreview(color, target: target) }
                 }
-                .disabled(color == nil)
-                .help("Preview the solid colors on the model before applying them to the document.")
+                .disabled(color?.alpha != 255)
+                .help("Preview opaque solid colors before applying. Apply transparent colors to view their opacity.")
             }
         }
     }

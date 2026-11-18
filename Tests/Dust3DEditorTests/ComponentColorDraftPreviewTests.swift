@@ -131,6 +131,28 @@ private actor HeldColorDraftPreview: ComponentColorDraftPreviewServing {
         XCTAssertFalse(store.canUndo)
     }
 
+    func testTransparentDraftAndSourceKeepTheCommittedPreview() async throws {
+        let (store, preview, original) = try await setup()
+        defer {
+            store.stop()
+            Task { await preview.drain() }
+        }
+        let target = try XCTUnwrap(store.componentColorDraftPreviewTarget(componentID: "c"))
+        let transparent = DocumentColor(red: 255, green: 0, blue: 0, alpha: 64)
+        store.startComponentColorDraftPreview(transparent, target: target)
+        XCTAssertNil(store.componentColorDraftMesh)
+        XCTAssertEqual(
+            store.componentColorDraftPreviewMessage,
+            "Draft preview supports opaque colors. Apply to view transparency.")
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+
+        store.stopComponentColorDraftPreview(target: target)
+        store.setComponentColor("c", value: transparent.archiveValue)
+        try await settle { !store.isWorking }
+        XCTAssertNil(store.componentColorDraftPreviewTarget(componentID: "c"))
+    }
+
     func testAcceptedDraftRemainsVisibleWhileValidReplacementIsHeld() async throws {
         let (store, preview, original) = try await setup()
         defer {

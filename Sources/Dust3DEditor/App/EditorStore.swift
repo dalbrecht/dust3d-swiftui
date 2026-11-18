@@ -2187,7 +2187,14 @@ final class EditorStore {
             source.componentTree.failureDescription == nil,
             source.parts.allSatisfy({ $0.target == .model || $0.target == .cutFace }),
             source.componentTree.rows.allSatisfy({
-                $0.component.colorImage == .unset && $0.component.wrapping.mode == ComponentWrapMode.none
+                let isOpaque: Bool
+                switch $0.component.color {
+                case .unset: isOpaque = true
+                case .value(let color): isOpaque = color.alpha == 255
+                case .unsupported: isOpaque = false
+                }
+                return isOpaque && $0.component.colorImage == .unset
+                    && $0.component.wrapping.mode == ComponentWrapMode.none
                     && !$0.component.hasLegacySurfaceDetails
                     && ($0.component.isGroup || $0.component.partID != nil)
             })
@@ -2230,6 +2237,11 @@ final class EditorStore {
         guard let color else {
             componentColorDraftMesh = nil
             componentColorDraftPreviewMessage = "Choose a valid color to preview."
+            return
+        }
+        guard color.alpha == 255 else {
+            componentColorDraftMesh = nil
+            componentColorDraftPreviewMessage = "Draft preview supports opaque colors. Apply to view transparency."
             return
         }
         componentColorDraftPreviewMessage = "Updating color draft…"
