@@ -21,6 +21,12 @@ struct EditorGeometryExportAnnouncement: Equatable {
 }
 
 extension EditorGeometryExportPhase {
+    @MainActor func editorErrorAnnouncement(_ message: String?, isKeyWindow: Bool) -> String? {
+        guard isKeyWindow, let message, !message.isEmpty else { return nil }
+        if case .failed(let error) = self, EditorStore.message(error) == message { return nil }
+        return message
+    }
+
     @MainActor var accessibilityAnnouncement: EditorGeometryExportAnnouncement? {
         switch self {
         case .completed(let receipt):
