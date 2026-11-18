@@ -4,6 +4,61 @@ import XCTest
 @testable import Dust3DRendering
 
 @MainActor final class ApplicationHelpLinkTests: XCTestCase {
+    func testExplicitAcknowledgementsCommandOpensTheOfflineResource() throws {
+        var opened: [URL] = []
+        var errors: [ApplicationHelpLinkError] = []
+        ApplicationHelpLink.upstreamAcknowledgements.open(
+            using: {
+                opened.append($0)
+                return true
+            }, report: { errors.append($0) })
+        let destination = try XCTUnwrap(opened.first)
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        XCTAssertEqual(opened.count, 1)
+        XCTAssertTrue(destination.isFileURL)
+        XCTAssertEqual(destination.lastPathComponent, "ACKNOWLEDGEMENTS.html")
+        let source = try String(contentsOf: root.appendingPathComponent("ACKNOWLEDGEMENTS.html"), encoding: .utf8)
+        XCTAssertEqual(
+            try String(contentsOf: destination, encoding: .utf8),
+            source.replacingOccurrences(of: #"[ \t]+(?=\n|$)"#, with: "", options: .regularExpression))
+        XCTAssertTrue(errors.isEmpty)
+    }
+
+    func testMissingInstalledAcknowledgementsNeverOpensOrUsesDevelopmentResources() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let app = folder.appendingPathComponent("Copied.app")
+        let contents = app.appendingPathComponent("Contents")
+        try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
+        let info = ["CFBundleIdentifier": "test.help", "CFBundlePackageType": "APPL"]
+        try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
+            .write(to: contents.appendingPathComponent("Info.plist"))
+        var errors: [ApplicationHelpLinkError] = []
+        ApplicationHelpLink.upstreamAcknowledgements.open(
+            applicationBundle: try XCTUnwrap(Bundle(url: app)),
+            developmentBundle: {
+                XCTFail("An installed app must not look up build resources")
+                return .main
+            },
+            using: { _ in
+                XCTFail("An absent resource must not open")
+                return true
+            }, report: { errors.append($0) })
+        XCTAssertEqual(errors, [.missingBundledResource("ACKNOWLEDGEMENTS.html")])
+    }
+
+    func testSupportCommandUsesTheUpstreamDestination() {
+        var destinations: [URL] = []
+        ApplicationHelpLink.upstreamSupport.open(
+            using: {
+                destinations.append($0)
+                return true
+            }, report: { _ in XCTFail("Valid upstream support link failed") })
+        XCTAssertEqual(destinations.map(\.absoluteString), ["https://fund.dust3d.org/"])
+        XCTAssertEqual(ApplicationHelpLink.upstreamSupport.title, "Support Upstream Dust3D")
+    }
+
     func testExplicitIssueCommandOpensNativeTrackerOnce() {
         var opened: [URL] = []
         var errors: [ApplicationHelpLinkError] = []
