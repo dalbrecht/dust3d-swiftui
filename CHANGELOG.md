@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Retry a failed Viewer file open from its error banner.
+
 - Announce when the active Viewer falls back to geometry without materials.
 
 - Announce new Viewer errors in the active window with VoiceOver.
