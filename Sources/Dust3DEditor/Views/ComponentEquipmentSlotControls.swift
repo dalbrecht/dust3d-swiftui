@@ -27,6 +27,7 @@ struct ComponentEquipmentSlotControls: View {
                     .disabled(!hasChange)
             }
         }
+        .disabled(!store.canEditComponentEquipmentSlot(target))
         .onChange(of: component.id, initial: true) { _, _ in draft = component.equipmentSlot ?? "" }
         .onChange(of: component.equipmentSlot.map { Data($0.utf8) }) { _, _ in
             draft = component.equipmentSlot ?? ""

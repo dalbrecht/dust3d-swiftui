@@ -12,20 +12,36 @@ struct Dust3DEditorApp: App {
         @FocusedValue(\.editorRestPreviewActions) private var restPreviewActions
     #endif
     @FocusedValue(\.editorStore) private var store
+    @FocusedValue(\.editorInspectorNavigation) private var navigateInspector
+    @FocusedValue(\.editorSidebarVisibility) private var isSidebarPresented
+    @FocusedValue(\.editorCanvasFocus) private var focusCanvas
     @FocusedValue(\.editorGeometryExportAction) private var geometryExportAction
     @FocusedValue(\.rigAssignmentCommand) private var rigAssignmentCommand
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
     @FocusedValue(\.editorPreviewDisplayActions) private var previewDisplayActions
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     @FocusedValue(\.editorTextEditing) private var isEditingText
+    @FocusedValue(\.editorComponentSidebarBrowseSelection) private var browseSidebarSelection
     @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
     @State private var pasteboard = EditorPasteboard()
+    private let sessionDiagnostics = EditorSessionDiagnostics.shared
     @State private var replayRequest: WorkflowReplayRequest?
     @State private var nativeUndoCommands = NativeUndoCommandState()
 
     private var applicationName: String {
         BuildIdentityPresentation.applicationName(
             bundleIdentifier: buildIdentity.launchBundleIdentifier, fallback: "Dust3D Editor")
+    }
+
+    private var focusCanvasMenuButton: some View {
+        let window = NSApp.keyWindow
+        let command = EditorCanvasFocusCommand(window: window, focus: focusCanvas)
+        return Button("Focus Canvas") {
+            let currentWindow = NSApp.keyWindow
+            let hasSheet = currentWindow?.attachedSheet != nil || currentWindow?.sheetParent != nil
+            _ = command.perform(in: currentWindow, hasSheet: hasSheet || NSApp.modalWindow != nil)
+        }
+        .disabled(!command.isAvailable(in: window, hasSheet: rigAssignmentFocus.hasSheet))
     }
 
     private var nativeTextEditor: NSTextView? {
@@ -68,7 +84,7 @@ struct Dust3DEditorApp: App {
     var body: some Scene {
         DocumentGroup(newDocument: EditorFileDocument()) { file in
             EditorRootView(
-                file: file.$document, sourceURL: file.fileURL,
+                file: file.$document, sourceURL: file.fileURL, diagnostics: sessionDiagnostics,
                 claimLaunchNeutralPreview: appDelegate.claimLaunchNeutralPreview,
                 claimStartupPaste: appDelegate.claimStartupPaste
             )
@@ -124,6 +140,21 @@ struct Dust3DEditorApp: App {
             EditorGeometryExportCommands()
             InspectorCommands()
             CommandGroup(after: .windowArrangement) {
+                let window = NSApp.keyWindow
+                let navigate = navigateInspector
+                Button("Show Rig Settings") {
+                    guard let window, NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
+                    navigate?(.rig)
+                }
+                .disabled(window == nil || navigate == nil || rigAssignmentFocus.hasSheet)
+                Button("Show Animations Inspector") {
+                    guard let window, NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
+                    navigate?(.animations)
+                }
+                .keyboardShortcut("a", modifiers: [.command, .option])
+                .disabled(window == nil || navigate == nil || rigAssignmentFocus.hasSheet)
+                Divider()
+                Button("Session Log") { openWindow(id: "session-log") }
                 Button("Replay Steps…") {
                     guard let document = store?.snapshot?.document else { return }
                     replayRequest = WorkflowReplayRequest(document: document)
@@ -132,6 +163,42 @@ struct Dust3DEditorApp: App {
                 .disabled(store?.snapshot == nil)
             }
             CommandGroup(after: .toolbar) {
+                let browseWindow = NSApp.keyWindow
+                let browseOwner = store
+                let browseSelected = browseSidebarSelection
+                Button("Browse Selected Component Group") {
+                    guard let browseWindow, NSApp.keyWindow === browseWindow,
+                        store === browseOwner, !rigAssignmentFocus.hasSheet,
+                        isComponentSidebarFocused == true, !hasTextEditingFocus
+                    else { return }
+                    browseSelected?()
+                }
+                .disabled(
+                    browseWindow == nil || browseSelected == nil || rigAssignmentFocus.hasSheet || hasTextEditingFocus
+                )
+                .keyboardShortcut(
+                    isComponentSidebarFocused == true && !hasTextEditingFocus
+                        ? KeyboardShortcut(.downArrow, modifiers: [.command]) : nil)
+                let browseParent = browseOwner?.componentBrowseParentAction()
+                Button("Go to Enclosing Component Group") {
+                    guard let browseWindow, NSApp.keyWindow === browseWindow,
+                        store === browseOwner, !rigAssignmentFocus.hasSheet
+                    else { return }
+                    browseParent?()
+                }
+                .disabled(browseWindow == nil || browseParent == nil || rigAssignmentFocus.hasSheet)
+                .keyboardShortcut(
+                    isComponentSidebarFocused == true && !hasTextEditingFocus
+                        ? KeyboardShortcut(.upArrow, modifiers: [.command]) : nil)
+                let window = NSApp.keyWindow
+                let navigate = navigateInspector
+                let isVisible = isSidebarPresented == true
+                Button(isVisible ? "Hide Sidebar" : "Show Sidebar") {
+                    guard let window, NSApp.keyWindow === window, !rigAssignmentFocus.hasSheet else { return }
+                    navigate?(.sidebar(!isVisible))
+                }
+                .keyboardShortcut("s", modifiers: [.control, .command])
+                .disabled(window == nil || navigate == nil || isSidebarPresented == nil || rigAssignmentFocus.hasSheet)
                 #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
                     Picker(
                         "Preview Mode",
@@ -197,9 +264,23 @@ struct Dust3DEditorApp: App {
                 .help("Pauses during dragging, while inactive, and when Reduce Motion is enabled.")
                 PreviewCameraMenu(
                     title: "Preview Camera", isEnabled: previewCameraActions?.canMove == true,
-                    move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() })
+                    move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() },
+                    canvasWheelZoom: Binding(
+                        get: { store?.canvasWheelZoomEnabled == true },
+                        set: { enabled in
+                            guard previewCameraActions?.canZoomFromCanvas == true else { return }
+                            store?.setCanvasWheelZoomEnabled(enabled)
+                        }),
+                    canZoomFromCanvas: previewCameraActions?.canZoomFromCanvas == true)
             }
             CommandMenu("Canvas") {
+                focusCanvasMenuButton
+                let openProperties = store.flatMap {
+                    $0.canvasComponentPropertiesAction(
+                        profileLease: $0.canvasProfiles.isDualProfile ? $0.canvasProfiles.lease : nil)
+                }
+                Button("Edit Owning Component Properties…") { _ = openProperties?(false) }
+                    .disabled(openProperties == nil)
                 Button("Switch Editing Profile") { _ = store?.switchSelectedCanvasProfile() }
                     .disabled(store?.canSwitchSelectedCanvasProfile != true)
                 Divider()
@@ -220,6 +301,7 @@ struct Dust3DEditorApp: App {
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 let canvasOwner = store
                 let canvasWindow = NSApp.keyWindow
+                let selectGraphOwner = canvasOwner?.selectedGraphOwningComponentAction()
                 let cancelCanvasInput = canvasOwner?.canvasInputCancellationAction()
                 if escapeDestination == .canvas {
                     Button("Cancel Canvas Input") {
@@ -239,12 +321,22 @@ struct Dust3DEditorApp: App {
                 Button("Select All Nodes") { store?.selectAllNodes() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
                     .disabled(store?.snapshot == nil || store?.isWorking != false || store?.isSelectingRigEdges == true)
+                Button("Select Owning Component") {
+                    guard let canvasWindow, NSApp.keyWindow === canvasWindow, store === canvasOwner,
+                        rigAssignmentFocus.allowsAssignment
+                    else { return }
+                    selectGraphOwner?()
+                }
+                .disabled(canvasWindow == nil || selectGraphOwner == nil || !rigAssignmentFocus.allowsAssignment)
                 Button("Select Whole Part") {
                     if let target = store?.wholePartActionTarget { store?.selectWholePart(target) }
                 }
                 .disabled(store?.wholePartActionTarget.map { store?.canSelectWholePart($0) == true } != true)
                 Button("Clear Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
+                CanvasPartStateMenu(store: store) { [capturedStore = store, capturedWindow = NSApp.keyWindow] in
+                    store === capturedStore && NSApp.keyWindow === capturedWindow && rigAssignmentFocus.allowsAssignment
+                }
                 Menu("Part Visibility") {
                     CanvasHideAllPartsButton(store: store)
                     CanvasPartIsolationButtons(store: store)
@@ -269,22 +361,34 @@ struct Dust3DEditorApp: App {
                 GraphColorizeMenu(store: store)
                 DescendantRotationMenu(store: store)
                 NodeConnectionControls(store: store)
-                Button("Reduce Selected Nodes") { store?.reduceSelectedNodes() }
-                    .disabled(store?.canReduceSelectedNodes != true)
-                    .accessibilityLabel("Reduce Selected Nodes")
-                Button("Reverse Edges Between Selected Nodes") { store?.reverseSelectedEdges() }
-                    .disabled(store?.isWorking != false || store?.snapshot?.reversibleEdges.isEmpty != false)
-                Button("Insert Midpoints on Selected Edges") { store?.insertSelectedEdgeMidpoints() }
-                    .disabled(store?.canInsertEdgeMidpoint != true)
-                    .accessibilityLabel("Insert Midpoints on Selected Edges")
-                Button("Reverse Selected Edges") { store?.reverseExplicitlySelectedEdges() }
-                    .disabled(store?.canReverseSelectedEdges != true)
+                let graphOwner = store
+                let graphWindow = NSApp.keyWindow
+                let admitsGraphCommand: @MainActor () -> Bool = {
+                    guard let graphWindow, NSApp.keyWindow === graphWindow else { return false }
+                    return store === graphOwner && !rigAssignmentFocus.hasSheet
+                }
+                ForEach([GraphSelectionAction.reduceNodes, .insertMidpoints, .reverseEdges], id: \.self) { action in
+                    let invoke = graphOwner?.canvasGraphEditAction(action)
+                    Button(action.title) {
+                        guard admitsGraphCommand() else { return }
+                        invoke?()
+                    }
+                    .disabled(invoke == nil || !admitsGraphCommand())
+                }
+                Button("Reverse Edges Between Selected Nodes") {
+                    guard admitsGraphCommand(), graphOwner?.isSelectingRigEdges == false else { return }
+                    graphOwner?.reverseSelectedEdges()
+                }
+                .disabled(
+                    !admitsGraphCommand() || graphOwner?.isSelectingRigEdges != false
+                        || graphOwner?.isWorking != false || graphOwner?.snapshot?.reversibleEdges.isEmpty != false)
+                let deleteGraph = graphOwner?.canvasGraphEditAction(.deleteSelection)
                 Button("Delete Graph Selection") {
-                    guard canDeleteGraphSelection else { return }
-                    store?.deleteSelection()
+                    guard admitsGraphCommand(), canDeleteGraphSelection else { return }
+                    deleteGraph?()
                 }
                 .keyboardShortcut(.delete, modifiers: [])
-                .disabled(!canDeleteGraphSelection)
+                .disabled(deleteGraph == nil || !admitsGraphCommand() || !canDeleteGraphSelection)
                 Divider()
                 ForEach(EditingConstraint.allCases, id: \.self) { constraint in
                     Toggle(
@@ -299,6 +403,7 @@ struct Dust3DEditorApp: App {
             }
         }
         .commands {
+            EditorReferenceImageCommands()
             CommandMenu("Rig") {
                 if let rigAssignmentCommand, rigAssignmentCommand.canInvoke(in: store, focus: rigAssignmentFocus) {
                     Button("Assign Selected Edges to Bone") {
@@ -318,7 +423,10 @@ struct Dust3DEditorApp: App {
         Window("Replay Steps", id: "workflow-replay") {
             Group {
                 if let replayRequest {
-                    WorkflowReplayView(document: replayRequest.document).id(replayRequest.id)
+                    WorkflowReplayView(document: replayRequest.document, sourceID: replayRequest.id) {
+                        self.replayRequest?.id == replayRequest.id
+                    }
+                    .id(replayRequest.id)
                 } else {
                     ContentUnavailableView("No Replay", systemImage: "play.rectangle")
                 }
@@ -326,6 +434,11 @@ struct Dust3DEditorApp: App {
             .onDisappear { replayRequest = nil }
         }
         .defaultSize(width: 700, height: 540)
+        Window("Session Log", id: "session-log") {
+            EditorSessionDiagnosticsView(diagnostics: sessionDiagnostics)
+        }
+        .defaultSize(width: 620, height: 400)
+        .commandsRemoved()
         Window("Build Diagnostics – \(applicationName)", id: "build-diagnostics") {
             BuildDiagnosticsView(applicationName: applicationName, identity: buildIdentity)
         }
@@ -377,12 +490,12 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func claimStartupPaste(
-        for url: URL, attachedDocument: @MainActor () -> NSDocument?
+        for url: URL?, attachedDocument: @MainActor () -> NSDocument?
     ) async -> StartupQtXMLDelivery? {
         // The existing window anchor can attach after SwiftUI starts the file task.
         while launchDocument.hasStartupPaste(for: url), !Task.isCancelled {
             if let document = attachedDocument() {
-                guard document.fileURL?.standardizedFileURL == url.standardizedFileURL,
+                guard document.fileURL?.standardizedFileURL == url?.standardizedFileURL,
                     let data = launchDocument.claimStartupPaste(
                         for: url, document: document, isEdited: document.isDocumentEdited)
                 else { return nil }
@@ -415,6 +528,7 @@ final class EditorAppDelegate: NSObject, NSApplicationDelegate {
                     if alreadyOpen && self.launchDocument.hasPasteRequest { document.showWindows() }
                     return alreadyOpen ? nil : document
                 },
+                createUntitled: { try NSDocumentController.shared.openUntitledDocumentAndDisplay(false) },
                 displayNew: { object in
                     guard let document = object as? NSDocument else { return }
                     document.makeWindowControllers()
@@ -498,11 +612,22 @@ private struct EditorTextEditingKey: FocusedValueKey { typealias Value = Bool }
 
 private struct EditorComponentSidebarFocusKey: FocusedValueKey { typealias Value = Bool }
 
+private struct EditorComponentSidebarBrowseSelectionKey: FocusedValueKey {
+    typealias Value = @MainActor () -> Void
+}
+
 private struct EditorComponentSidebarSelectAllKey: FocusedValueKey {
     typealias Value = ComponentSidebarSelectAllTarget
 }
 
+private struct EditorEdgeSidebarSelectAllKey: FocusedValueKey {
+    typealias Value = EdgeSidebarSelectAllTarget
+}
+
+private struct EditorNodesSidebarSelectAllKey: FocusedValueKey { typealias Value = NodesSidebarSelectAll }
+
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
+private struct EditorCanvasFocusKey: FocusedValueKey { typealias Value = @MainActor () -> Bool }
 
 extension FocusedValues {
     var editorAnimationFocus: Bool? {
@@ -520,9 +645,29 @@ extension FocusedValues {
         set { self[EditorComponentSidebarFocusKey.self] = newValue }
     }
 
+    var editorComponentSidebarBrowseSelection: (@MainActor () -> Void)? {
+        get { self[EditorComponentSidebarBrowseSelectionKey.self] }
+        set { self[EditorComponentSidebarBrowseSelectionKey.self] = newValue }
+    }
+
     var editorComponentSidebarSelectAll: ComponentSidebarSelectAllTarget? {
         get { self[EditorComponentSidebarSelectAllKey.self] }
         set { self[EditorComponentSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorEdgeSidebarSelectAll: EdgeSidebarSelectAllTarget? {
+        get { self[EditorEdgeSidebarSelectAllKey.self] }
+        set { self[EditorEdgeSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorNodesSidebarSelectAll: NodesSidebarSelectAll? {
+        get { self[EditorNodesSidebarSelectAllKey.self] }
+        set { self[EditorNodesSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorCanvasFocus: (@MainActor () -> Bool)? {
+        get { self[EditorCanvasFocusKey.self] }
+        set { self[EditorCanvasFocusKey.self] = newValue }
     }
 
     var editorStore: EditorStore? {

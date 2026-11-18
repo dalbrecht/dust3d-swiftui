@@ -72,6 +72,41 @@ final class ComponentEquipmentSlotStoreTests: XCTestCase {
         XCTAssertTrue(store.canRedo)
     }
 
+    func testGraphSlotStoreEditsWithoutLosingPicksAndRejectsFailedSource() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes>
+                <parts><part id='p'/></parts><components>
+                <component id='vest' name='Vest @armor/1' linkDataType='partId' linkData='p'/>
+                </components></canvas>
+                """.utf8))
+        let stub = EquipmentSlotNoNative()
+        let store = EditorStore(
+            preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        store.select("a")
+        try await settle(store)
+        let before = try XCTUnwrap(store.snapshot)
+        let target = try XCTUnwrap(GraphModelPartTarget(snapshot: before).equipmentSlotTarget)
+        store.setComponentEquipmentSlot("armor/2", target: target)
+        try await settle(store)
+        let changed = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(changed.selectedIDs, ["a"])
+        XCTAssertEqual(changed.componentTree.rows.first?.component.equipmentSlot, "armor/2")
+        XCTAssertEqual(changed.previewIdentity, before.previewIdentity)
+
+        let retained = try XCTUnwrap(GraphModelPartTarget(snapshot: changed).equipmentSlotTarget)
+        await store.load(data: Data("bad archive".utf8))
+        let error = try XCTUnwrap(store.errorMessage)
+        store.setComponentEquipmentSlot("", target: retained)
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.errorMessage, error)
+        XCTAssertEqual(store.snapshot?.document.encoded(), changed.document.encoded())
+    }
+
     private func settle(_ store: EditorStore) async throws {
         for _ in 0..<300 {
             if !store.isWorking && !store.isGenerating && !store.isBakingMaterials { return }

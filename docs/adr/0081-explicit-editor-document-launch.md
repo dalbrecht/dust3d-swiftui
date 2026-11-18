@@ -21,14 +21,20 @@ over 4096 UTF-8 bytes before opening any document.
 
 Skip known platform option operands. After an unknown option, use
 `--open-document` or the `--` delimiter to identify paths unambiguously.
-Reject unsupported Qt launch options `-o` and `-output` before opening any
-document. A single `-paste-xml` operand requires explicit document inputs.
-Validate the bounded XML fragment before opening the first document, then
-apply it once at the document root of each newly opened eligible document.
-A reused document does not receive the fragment. The import is one Undo step.
+The headless source-save command handles supported invocations with `-o` or
+`-output` before interactive startup. For interactive startup, validate a
+single bounded `-paste-xml` fragment before opening the first file-backed
+document. Apply it once at the document root of each newly opened eligible
+document. A reused document does not receive the fragment.
+
+With no source archive, create one untitled document and apply the fragment
+after its blank source loads. The import is one Undo step, and Undo restores
+the blank archive. A read or validation error displays the blank untitled
+document and reports the error.
 
 The last `-toggle-color` operand sets launch neutral
-preview for new document windows. Qt treats `true`, `True`, and `1` as true
+preview for newly opened file-backed windows. XML-only launch uses the default
+model colors. Qt treats `true`, `True`, and `1` as true
 and other operands as false. An absent operand is an argument error.
 A window can claim the preference only once from a matching live native
 document returned by the launch open call. A failed or reused document open

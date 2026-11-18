@@ -53,6 +53,36 @@ enum ColorImageCodec {
         _ = try MeshPNGDecoder.decode(data, imageID: "import-validation")
     }
 
+    static func previewPNG(_ data: Data) throws -> CGImage {
+        try Task.checkCancellation()
+        do {
+            _ = try PNGContainerMetadata(
+                data: data, maximumEncodedBytes: maximumEncodedBytes, maximumDecodedBytes: maximumDecodedBytes)
+        } catch PNGContainerError.encodedLimitExceeded {
+            throw ColorImageError.imageTooLarge
+        } catch PNGContainerError.decodedLimitExceeded {
+            throw ColorImageError.imageTooLarge
+        } catch {
+            throw ColorImageError.invalidImage
+        }
+        let maximumPreviewDimension = 128
+        let options =
+            [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: false,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceThumbnailMaxPixelSize: maximumPreviewDimension,
+            ] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options),
+            CGImageSourceGetStatusAtIndex(source, 0) == .statusComplete,
+            image.width > 0, image.height > 0, image.width <= maximumPreviewDimension,
+            image.height <= maximumPreviewDimension
+        else { throw ColorImageError.invalidImage }
+        try Task.checkCancellation()
+        return image
+    }
+
     static func prepare(_ data: Data) throws -> Data {
         try Task.checkCancellation()
         guard data.count <= maximumEncodedBytes else { throw ColorImageError.imageTooLarge }
@@ -100,7 +130,7 @@ protocol ColorImageServing: Sendable {
 
 /// Off-main bounded raster boundary. Cancellation never publishes a partially prepared image.
 actor ColorImageService: ColorImageServing {
-    func validateRetainedImage(document: Dust3DDocument, asset: DocumentColorImageAsset) throws {
+    private func retainedImageData(document: Dust3DDocument, asset: DocumentColorImageAsset) throws -> Data {
         try Task.checkCancellation()
         guard asset.canAssign, document.colorImageAssets().contains(asset) else {
             if let issue = asset.issue { throw issue }
@@ -110,6 +140,15 @@ actor ColorImageService: ColorImageServing {
             throw ColorImageError.imageTooLarge
         }
         guard let data = document.asset(named: asset.assetName) else { throw ColorImageError.invalidRetainedAsset }
+        return data
+    }
+
+    func previewRetainedImage(document: Dust3DDocument, asset: DocumentColorImageAsset) throws -> CGImage {
+        try ColorImageCodec.previewPNG(retainedImageData(document: document, asset: asset))
+    }
+
+    func validateRetainedImage(document: Dust3DDocument, asset: DocumentColorImageAsset) throws {
+        let data = try retainedImageData(document: document, asset: asset)
         do {
             try ColorImageCodec.validatePNG(data)
             try Task.checkCancellation()

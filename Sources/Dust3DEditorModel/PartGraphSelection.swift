@@ -25,6 +25,52 @@ public struct PartGraphSelectionContext: Sendable {
     }
 }
 
+/// Constant-time Reveal availability for graph rows from one document revision.
+package struct GraphComponentRevealLookup {
+    private let context: PartGraphSelectionContext
+    private let parts: Set<Data>
+    private let nodes: Set<Data>
+    private let edges: Set<Data>
+
+    package init(snapshot: EditorSnapshot) {
+        context = PartGraphSelectionContext(snapshot: snapshot)
+        let existingParts = Set(snapshot.parts.map { Data($0.id.utf8) })
+        var uniqueParts = Set<Data>()
+        var ambiguousParts = Set<Data>()
+        for row in snapshot.componentTree.rows {
+            guard let partID = row.component.partID, !partID.isEmpty else { continue }
+            let key = Data(partID.utf8)
+            guard existingParts.contains(key), !ambiguousParts.contains(key) else { continue }
+            if !uniqueParts.insert(key).inserted {
+                uniqueParts.remove(key)
+                ambiguousParts.insert(key)
+            }
+        }
+        parts = uniqueParts
+        nodes = Set(
+            snapshot.nodes.compactMap { node in
+                guard let partID = node.partID, uniqueParts.contains(Data(partID.utf8)) else { return nil }
+                return Data(node.id.utf8)
+            })
+        edges = Set(
+            snapshot.edges.compactMap { edge in
+                guard let partID = edge.partID, uniqueParts.contains(Data(partID.utf8)) else { return nil }
+                return Data(edge.id.utf8)
+            })
+    }
+
+    package func isCurrent(in snapshot: EditorSnapshot) -> Bool { context.isCurrent(in: snapshot) }
+
+    package func contains(_ target: PartGraphTarget, in snapshot: EditorSnapshot) -> Bool {
+        guard isCurrent(in: snapshot) else { return false }
+        switch target {
+        case .part(let id): return parts.contains(Data(id.utf8))
+        case .node(let id): return nodes.contains(Data(id.utf8))
+        case .edge(let id): return edges.contains(Data(id.utf8))
+        }
+    }
+}
+
 /// A reveal/scroll request independent of exclusive component selection and explicit graph selection.
 public struct ComponentRevealHint: Equatable, Sendable {
     public let componentID: String
@@ -80,7 +126,15 @@ extension EditorSnapshot {
     }
 
     func owningComponentID(for target: PartGraphTarget) -> String? {
-        guard let partID = partID(for: target) else { return nil }
+        let storedOwner: String?
+        switch target {
+        case .part(let id): storedOwner = id
+        case .node(let id): storedOwner = nodes.first { $0.id.utf8.elementsEqual(id.utf8) }?.partID
+        case .edge(let id): storedOwner = edges.first { $0.id.utf8.elementsEqual(id.utf8) }?.partID
+        }
+        guard let partID = storedOwner, !partID.isEmpty,
+            parts.contains(where: { $0.id.utf8.elementsEqual(partID.utf8) })
+        else { return nil }
         let owners = componentTree.rows.filter { row in
             row.component.partID?.utf8.elementsEqual(partID.utf8) == true
         }

@@ -5,29 +5,19 @@ import UniformTypeIdentifiers
 
 struct ReferenceImageControls: View {
     let store: EditorStore
-    let fileIdentity: UUID
-    let currentFileIdentity: @MainActor () -> UUID
+    let actions: EditorReferenceImageActions?
     @State private var isDropTargeted = false
     @Binding var composition: ReferenceCompositionPresentation?
+    @Binding var isImporting: Bool
+    let completeImport: @MainActor (Result<URL, Error>) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Menu("Reference Image", systemImage: "photo") {
-                    let remove = store.referenceImageRemovalAction(
-                        fileIdentity: fileIdentity, currentFileIdentity: { currentFileIdentity() })
-                    Button("Compose Reference Image…") {
-                        guard composition == nil, let target = store.referenceCompositionTarget else { return }
-                        composition = ReferenceCompositionPresentation(target: target)
+                    EditorReferenceImageButtons(canBegin: actions != nil, canRemove: actions?.canRemove == true) {
+                        actions?.perform($0)
                     }
-                    .disabled(store.referenceCompositionTarget == nil)
-                    Button("Import Reference Image…") {
-                        guard currentFileIdentity() == fileIdentity else { return }
-                        store.chooseReferenceImage(fileIdentity: fileIdentity)
-                    }
-                    .disabled(!store.canChooseReferenceImage(fileIdentity: fileIdentity))
-                    Button("Remove Reference Image", role: .destructive) { remove?() }
-                        .disabled(remove == nil)
                 }
                 Spacer()
                 Toggle(
@@ -85,36 +75,9 @@ struct ReferenceImageControls: View {
         .help(
             "PNG, JPEG, BMP, GIF or TIFF. Uses the first frame. Maximum 32 MiB, 8192 pixels per side and 16 megapixels. Display settings stay in this window."
         )
-        .background {
-            if let requestID = store.referenceImageFileRequestID {
-                ReferenceImageFilePicker(
-                    store: store, requestID: requestID, currentFileIdentity: { currentFileIdentity() }
-                )
-                .id(requestID)
-            }
-        }
-    }
-}
-
-private struct ReferenceImageFilePicker: View {
-    let store: EditorStore
-    let requestID: UUID
-    let currentFileIdentity: @MainActor () -> UUID
-    @State private var isPresented = false
-
-    var body: some View {
-        Color.clear.frame(width: 0, height: 0)
-            .accessibilityHidden(true)
-            .fileImporter(
-                isPresented: $isPresented, allowedContentTypes: [.png, .jpeg, .bmp, .gif, .tiff],
-                allowsMultipleSelection: false
-            ) { result in
-                store.finishReferenceImageChoice(
-                    requestID: requestID, result: result, currentFileIdentity: { currentFileIdentity() })
-            } onCancellation: {
-                store.cancelReferenceImageChoice(requestID: requestID)
-            }
-            .onAppear { isPresented = true }
+        .fileImporter(
+            isPresented: $isImporting, allowedContentTypes: [.png, .jpeg, .bmp, .gif, .tiff],
+            onCompletion: completeImport)
     }
 }
 

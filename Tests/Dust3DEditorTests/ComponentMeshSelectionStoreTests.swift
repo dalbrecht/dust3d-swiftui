@@ -208,6 +208,40 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
     }
 
+    func testGraphOwnerRoleRoutesCapturedPickerAndRejectsFailedReload() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='a' partId='p' x='0' y='0' z='0' radius='.1'/></nodes>
+                <parts><part id='p' target='CutFace'/></parts><components>
+                <component id='owner' linkDataType='partId' linkData='p'/>
+                </components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        value.select("a")
+        try await settle(value)
+        let initial = GraphPartRoleTarget(snapshot: try XCTUnwrap(value.snapshot))
+        XCTAssertTrue(value.canEditGraphPartRole(initial))
+        value.setGraphPartRole(.model, target: initial)
+        try await settle(value)
+        let changed = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(changed.parts.first?.target, .model)
+        XCTAssertEqual(changed.selectedIDs, ["a"])
+        value.setGraphPartRole(.stitchingLine, target: initial)
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
+
+        let retained = GraphPartRoleTarget(snapshot: changed)
+        await value.load(data: Data("bad archive".utf8))
+        let loadError = try XCTUnwrap(value.errorMessage)
+        XCTAssertFalse(value.canEditGraphPartRole(retained))
+        value.setGraphPartRole(.cutFace, target: retained)
+        XCTAssertEqual(value.errorMessage, loadError)
+        XCTAssertEqual(value.snapshot?.document.encoded(), changed.document.encoded())
+    }
+
     func testGraphOwnerColorSingletonAndFailedSourcePreserveExactHistory() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(
