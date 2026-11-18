@@ -17,7 +17,7 @@ public enum ComponentMeshSelectionValue<Value: Equatable & Sendable>: Equatable,
 /// Exact component rows captured from the sidebar or explicit graph picks.
 public struct ComponentMeshSelectionTarget: Hashable, Sendable {
     private let context: CanvasAdjustmentTarget
-    let ids: [String]
+    package let ids: [String]
     package let isGraphSelection: Bool
     public var count: Int { ids.count }
 
@@ -38,12 +38,21 @@ public struct ComponentMeshSelectionTarget: Hashable, Sendable {
         ids = snapshot.componentTree.rows.filter { keys.contains(Data($0.id.utf8)) }.map(\.id)
     }
     /// Capture one unique linked component per authored part owner. Ambiguous or missing owners make the batch unavailable.
-    package init(graphSelection snapshot: EditorSnapshot) {
+    package init(graphSelection snapshot: EditorSnapshot, hovered: PartGraphTarget? = nil) {
         context = CanvasAdjustmentTarget(snapshot: snapshot)
         isGraphSelection = true
-        guard let partKeys = snapshot.explicitGraphPartKeys() else {
+        let selected = snapshot.explicitGraphPartKeys()
+        guard selected != nil || (snapshot.selectedIDs.isEmpty && snapshot.selectedEdgeIDs.isEmpty) else {
             ids = []
             return
+        }
+        var partKeys = selected ?? []
+        if let hovered {
+            guard let owner = snapshot.partID(for: hovered) else {
+                ids = []
+                return
+            }
+            partKeys.insert(Data(owner.utf8))
         }
         let available = Set(snapshot.parts.map { Data($0.id.utf8) })
         guard partKeys.count <= ComponentMeshEdit.maximumBatchCount, partKeys.isSubset(of: available) else {
