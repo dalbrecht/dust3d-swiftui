@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Explain why saving an Editor Session Log failed and release the report when the save panel is cancelled.
+
 - Record explicit geometry export cancellation requests in the Editor Session Log.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.

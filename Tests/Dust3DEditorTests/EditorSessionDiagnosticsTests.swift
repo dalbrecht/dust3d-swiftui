@@ -30,6 +30,20 @@ import XCTest
         XCTAssertEqual(snapshot.split(separator: "\n").count, 256)
     }
 
+    func testSaveLogFeedbackPreservesTheFailureAndIgnoresCancellation() {
+        let failure = NSError(
+            domain: "SessionLogTest", code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "The selected folder is read-only."])
+        XCTAssertEqual(
+            EditorSessionDiagnosticsView.saveFailureMessage(for: .failure(failure)),
+            "The selected folder is read-only.")
+        XCTAssertNil(
+            EditorSessionDiagnosticsView.saveFailureMessage(for: .failure(CocoaError(.userCancelled))))
+        XCTAssertNil(EditorSessionDiagnosticsView.saveFailureMessage(for: .failure(CancellationError())))
+        XCTAssertNil(
+            EditorSessionDiagnosticsView.saveFailureMessage(for: .success(URL(fileURLWithPath: "/test/session.txt"))))
+    }
+
     func testEditorLoadsRecordOutcomesWithoutCopyingInvalidInputIntoTheLog() async {
         let log = EditorSessionDiagnostics()
         let store = EditorStore(diagnostics: log)

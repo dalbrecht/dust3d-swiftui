@@ -5,7 +5,7 @@ struct EditorSessionDiagnosticsView: View {
     let diagnostics: EditorSessionDiagnostics
     @State private var report: SessionDiagnosticsReport?
     @State private var isExporting = false
-    @State private var showsSaveError = false
+    @State private var saveErrorMessage: String?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -41,15 +41,32 @@ struct EditorSessionDiagnosticsView: View {
         .padding()
         .frame(minWidth: 480, minHeight: 320)
         .fileExporter(
-            isPresented: $isExporting, document: report, contentType: .plainText,
-            defaultFilename: "Mote3D Session Log"
-        ) { result in
-            report = nil
-            if case .failure = result { showsSaveError = true }
-        }
-        .alert("Could Not Save Session Log", isPresented: $showsSaveError) {
+            isPresented: $isExporting, document: report, contentTypes: [.plainText],
+            defaultFilename: "Mote3D Session Log",
+            onCompletion: { result in
+                report = nil
+                saveErrorMessage = Self.saveFailureMessage(for: result)
+            },
+            onCancellation: { report = nil }
+        )
+        .alert(
+            "Could Not Save Session Log",
+            isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }),
+            presenting: saveErrorMessage
+        ) { _ in
             Button("OK", role: .cancel) {}
+        } message: { cause in
+            Text(verbatim: cause)
         }
+    }
+
+    static func saveFailureMessage(for result: Result<URL, any Error>) -> String? {
+        guard case .failure(let cause) = result, !(cause is CancellationError),
+            (cause as? CocoaError)?.code != .userCancelled
+        else { return nil }
+        return cause.localizedDescription
     }
 }
 
