@@ -73,6 +73,25 @@ struct ComponentParentDropZone<Content: View>: View {
     }
 }
 
+struct ComponentListEndDropZone: View {
+    let receive: @MainActor @Sendable (UUID) -> Bool
+
+    var body: some View {
+        ComponentDropZone(
+            alignment: .top,
+            receive: { token in _ = receive(token) },
+            content: {
+                Label("Drop at End", systemImage: "arrow.down.to.line")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+            }
+        )
+        .help("Drop to move components to the end of this list.")
+        .accessibilityHidden(true)
+    }
+}
+
 private struct ComponentDropZone<Content: View>: View {
     let alignment: Alignment?
     let receive: @MainActor @Sendable (UUID) -> Void
