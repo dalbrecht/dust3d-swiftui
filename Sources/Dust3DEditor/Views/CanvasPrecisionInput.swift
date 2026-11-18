@@ -1,5 +1,6 @@
 import AppKit
 import Dust3DDocument
+import Dust3DEditorModel
 
 /// Logical scene-point commands. Conversion uses the originating canvas height, never its fit scale.
 enum CanvasPrecisionAction: CaseIterable, Hashable, Sendable {
@@ -18,7 +19,7 @@ enum CanvasPrecisionAction: CaseIterable, Hashable, Sendable {
     }
 }
 
-/// Keyboard commands routed by the canvas responder.
+/// Only actual bare arrow/bracket events belong to this responder boundary.
 struct CanvasPrecisionKeyInput {
     let keyCode: UInt16
     let characters: String
@@ -35,14 +36,48 @@ struct CanvasPrecisionKeyInput {
             keyCode: event.keyCode, characters: event.characters ?? "", modifiers: event.modifierFlags,
             isRepeat: event.isARepeat)
     }
+    private var isBareEditingKey: Bool {
+        modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty
+    }
+
+    var isAlternateDelete: Bool {
+        let editingModifiers = modifiers.intersection([.command, .control, .option, .shift, .function])
+        if characters == "\u{F728}" {  // AppKit's forward-delete function character
+            return editingModifiers.isEmpty || editingModifiers == .function
+        }
+        return editingModifiers == .control && (characters == "\u{4}" || characters == "d")
+    }
+
+    var axisLockConstraint: EditingConstraint? {
+        guard isBareEditingKey else { return nil }
+        switch characters {
+        case "x", "X": return .x
+        case "y", "Y": return .y
+        case "z", "Z": return .z
+        default: return nil
+        }
+    }
     var partStateProperty: PartStateProperty? {
-        guard modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty else { return nil }
+        guard isBareEditingKey else { return nil }
         switch characters {
         case "j", "J": return .disabled
         case "l", "L": return .locked
         default: return nil
         }
     }
+    var opensComponentProperties: Bool { isBareEditingKey && characters == " " }
+
+    var selectsOwningComponent: Bool { isBareEditingKey && (characters == "f" || characters == "F") }
+
+    @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
+        guard
+            axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
+                || isAlternateDelete
+        else { return true }
+        return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
+            && NSApp.modalWindow == nil
+    }
+
     private var isSelectionPropertiesShortcut: Bool {
         characters == " " && modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty
     }

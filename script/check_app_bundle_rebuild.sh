@@ -134,4 +134,11 @@ cmp "$APP_TEST_DIR/default-archives-before.json" "$APP_TEST_DIR/default-archives
 for app in Dust3DEditor Dust3DViewer; do
     test -s "$DUST3D_ARCHIVE_OUTPUT_DIR/$app.zip"
 done
+# Exercise the packaged entry point, including its native encoder wiring.
+editor="$APP_TEST_DIR/Dust3DEditor.app/Contents/MacOS/Dust3DEditor"
+source_archive="$ROOT_DIR/Tests/Dust3DKitTests/Fixtures/Capsule.ds3"
+"$editor" "$source_archive" -o "$APP_TEST_DIR/copy.ds3" -o "$APP_TEST_DIR/capsule.obj" -o "$APP_TEST_DIR/capsule.fbx"
+cmp "$source_archive" "$APP_TEST_DIR/copy.ds3"
+awk '/^v /{vertices++} /^f /{faces++} END{exit !(vertices==42 && faces==48)}' "$APP_TEST_DIR/capsule.obj"
+test "$(head -c 18 "$APP_TEST_DIR/capsule.fbx")" = 'Kaydara FBX Binary'
 echo "Rebuild regression leaves default archives unchanged and packages only isolated archives."

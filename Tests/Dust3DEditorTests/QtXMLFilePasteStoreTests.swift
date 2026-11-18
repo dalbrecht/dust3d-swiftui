@@ -47,9 +47,52 @@ private actor HeldQtXMLReader {
 
 @MainActor
 final class QtXMLFilePasteStoreTests: XCTestCase {
+    func testPasteRequestsExpireAcrossRigPickingEvenWithUnchangedSelection() async throws {
+        let empty = Dust3DDocument.emptyArchive()
+        let source = try Dust3DDocument(data: empty).applying(
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+        let store = makeStore()
+        defer { store.stop() }
+        let fileID = UUID()
+        await store.load(data: empty, fileIdentity: fileID)
+        try await settle(store)
+        let staleClipboard = try XCTUnwrap(store.clipboardPasteRequest())
+        store.chooseQtXMLFile()
+        let staleFile = try XCTUnwrap(store.qtXMLFilePasteRequestID)
+        let url = URL(fileURLWithPath: "/unused/fragment.xml")
+
+        store.setRigEdgeSelection(true)
+        XCTAssertTrue(store.isSelectingRigEdges)
+        XCTAssertNil(store.clipboardPasteRequest())
+        store.pasteQtNodes(snapshotXML: source.modelXML)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), empty)
+        XCTAssertFalse(store.canUndo)
+
+        store.setRigEdgeSelection(false)
+        XCTAssertFalse(store.isSelectingRigEdges)
+        let delivery = store.finishQtXMLFileChoice(requestID: staleFile, result: .success([url])) { _ in source.modelXML
+        }
+        XCTAssertNil(delivery)
+        await delivery?.value
+        store.pasteQtNodes(snapshotXML: source.modelXML, request: staleClipboard)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), empty)
+        XCTAssertFalse(store.canUndo)
+
+        XCTAssertTrue(store.canChooseQtXMLFile)
+        store.pasteQtNodes(snapshotXML: source.modelXML)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        XCTAssertTrue(store.canUndo)
+    }
+
     func testPickerLeaseRejectsStaleDeliveryAndPublishesOnlyToTheCapturedStore() async throws {
         let source = try Dust3DDocument(data: Dust3DDocument.emptyArchive()).applying(
-            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1)
+        )
+        .applying(.addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 1, y: 0, z: 0), radius: 0.1))
+        .applying(.addEdge(id: "ab", from: "a", to: "b"))
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("fragment.xml")
@@ -88,7 +131,9 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         other.finishQtXMLFileChoice(requestID: current, result: .success([url]))
         store.finishQtXMLFileChoice(requestID: current, result: .success([url]))
         try await settle(store)
-        XCTAssertEqual(store.snapshot?.nodes.count, 2)
+        XCTAssertEqual(store.snapshot?.nodes.count, 4)
+        let pastedEdge = try XCTUnwrap(store.snapshot?.edges.first { $0.id != "ab" })
+        XCTAssertEqual(store.snapshot?.selectedEdgeIDs, [pastedEdge.id])
         XCTAssertTrue(store.snapshot?.componentTree.rows.allSatisfy { $0.component.parentID == nil } == true)
         XCTAssertEqual(other.snapshot?.document.encoded(), source.encoded())
         XCTAssertEqual(writes.count, 1)
@@ -206,7 +251,20 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
     func testUntitledStartupPasteUndoesToBlankAndRedoesExactArchive() async throws {
         let blank = Dust3DDocument.emptyArchive()
         let source = try Dust3DDocument(data: blank).applying(
-            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
+            .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1)
+        )
+        .applying(.addNode(id: "b", partID: "p", componentID: nil, position: .init(x: 1, y: 0, z: 0), radius: 0.1))
+        .applying(.addEdge(id: "ab", from: "a", to: "b"))
+        let missingProfile = "{11111111-1111-4111-8111-111111111111}"
+        let sourceXML = try XMLDocument(data: source.modelXML)
+        let root = try XCTUnwrap(sourceXML.rootElement())
+        let sourceNode = try XCTUnwrap(root.elements(forName: "nodes").first?.elements(forName: "node").first)
+        let sourcePart = try XCTUnwrap(root.elements(forName: "parts").first?.elements(forName: "part").first)
+        for element in [sourceNode, sourcePart] {
+            let attribute = try XCTUnwrap(
+                XMLNode.attribute(withName: "cutFace", stringValue: missingProfile) as? XMLNode)
+            element.addAttribute(attribute)
+        }
         let store = makeStore()
         defer { store.stop() }
         let identity = UUID()
@@ -214,10 +272,17 @@ final class QtXMLFilePasteStoreTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
         var writes: [Data] = []
         store.onDocumentChanged = { writes.append($0) }
-        let operation = try XCTUnwrap(store.applyStartupQtXML(source.modelXML, fileIdentity: identity))
+        let operation = try XCTUnwrap(
+            store.applyStartupQtXML(sourceXML.xmlData, fileIdentity: identity, settlesNewDocumentOrigin: true))
         await operation.value
         let pasted = try XCTUnwrap(store.snapshot?.document.encoded())
-        XCTAssertEqual(store.snapshot?.nodes.count, 1)
+        let pastedDocument = try Dust3DDocument(data: pasted)
+        XCTAssertFalse(String(decoding: pastedDocument.modelXML, as: UTF8.self).contains(missingProfile))
+        XCTAssertEqual(store.snapshot?.origin, .init(x: 0.5, y: 0, z: 0))
+        XCTAssertEqual(store.snapshot?.nodes.count, 2)
+        XCTAssertEqual(store.snapshot?.edges.count, 1)
+        XCTAssertEqual(store.snapshot?.selectedIDs.count, 2)
+        XCTAssertTrue(store.snapshot?.selectedEdgeIDs.isEmpty == true)
         XCTAssertEqual(writes, [pasted])
         XCTAssertTrue(store.showsPreviewColor)
         XCTAssertTrue(store.canUndo)
