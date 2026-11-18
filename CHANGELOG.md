@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Edit duration and sample count for named stored animations whose type is unknown.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -99,6 +99,8 @@
 - Preview authored linked cross-section outlines before choosing a profile.
 
 - Repair edge directions in an unambiguous open chain from the Edge Inspector, with one-step Undo.
+
+- Edit duration and sample count for named stored animations whose type is unknown.
 
 - Choose Lasso in Drag Selection to pick graph items within a freehand outline and preview the affected picks while drawing.
 
