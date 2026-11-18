@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Keep keyboard and VoiceOver edge picks eligible for bone assignment, with removal available for existing picks.
+- Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
@@ -40,6 +40,8 @@
 - Announce new Viewer errors in the active window with VoiceOver.
 
 - Explain invalid document and Qt XML input in headless export diagnostics.
+- Keep keyboard and VoiceOver edge picks eligible for bone assignment, with removal available for existing picks.
+
 - Read shortcut key names aloud and support searching by their names.
 
 - Prefer exact key bindings when searching Keyboard Shortcuts Help.
