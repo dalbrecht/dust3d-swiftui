@@ -30,6 +30,7 @@ struct EditorRootView: View {
     @State private var isImportingReferenceImage = false
     @State private var admitReferenceImageImport: (@MainActor () -> Bool)?
     @State private var referenceComposition: ReferenceCompositionPresentation?
+    @State private var isOpeningDroppedDocument = false
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
         @State private var restPreview: GeneratedRigPreviewSession
     #endif
@@ -323,7 +324,7 @@ struct EditorRootView: View {
                             isImporting: $isImportingReferenceImage, completeImport: finishReferenceImageImport
                         )
                         .padding(.horizontal, 12).padding(.bottom, 8)
-                        EditorDocumentDropControl()
+                        EditorDocumentDropControl(isOpening: isOpeningDroppedDocument, open: openDroppedDocument)
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
                         canvasWithGetStarted
@@ -400,10 +401,32 @@ struct EditorRootView: View {
                 }
             }
             .dropDestination(for: URL.self) { urls, _ in
-                guard referenceComposition == nil, let presentation = actions?.referenceDrop(urls) else { return false }
-                referenceComposition = presentation
-                return true
+                guard source.wrappedValue.identity == identity, referenceComposition == nil,
+                    let drop = EditorCanvasDrop(urls: urls, acceptsReference: actions != nil)
+                else { return false }
+                switch drop {
+                case .reference(let images):
+                    guard let presentation = actions?.referenceDrop(images) else { return false }
+                    referenceComposition = presentation
+                    return true
+                case .document(let document):
+                    return openDroppedDocument(document)
+                }
             }
+    }
+
+    private func openDroppedDocument(_ drop: EditorDocumentDrop) -> Bool {
+        guard !isOpeningDroppedDocument else { return false }
+        isOpeningDroppedDocument = true
+        Task {
+            defer { isOpeningDroppedDocument = false }
+            await drop.open(
+                using: { url in
+                    _ = try await NSDocumentController.shared.openDocument(withContentsOf: url, display: true)
+                },
+                reportError: { NSApp.presentError($0) })
+        }
+        return true
     }
 
     private func openDocument() { NSDocumentController.shared.openDocument(nil) }
@@ -569,7 +592,8 @@ struct EditorRootView: View {
     }
 
     private var modelPreview: some View {
-        VStack(spacing: 0) {
+        let rendererAttempt = store.previewRendererAttemptID
+        return VStack(spacing: 0) {
             HStack {
                 Text("Mesh preview").font(.headline)
                 Spacer()
@@ -581,7 +605,8 @@ struct EditorRootView: View {
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry Preview") { store.retryPreview() }.disabled(store.isGenerating)
+                    Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }
+                        .disabled(store.isGenerating)
                 }
             } else if let mesh = store.mesh {
                 let materialRevision = store.materialViewportRevision
@@ -590,11 +615,20 @@ struct EditorRootView: View {
                     meshRevision: store.materialViewportRevision, materials: store.materialContent,
                     cameraCommand: store.previewCameraCommand, showsColor: store.showsPreviewColor,
                     automaticallyOrbits: store.isPreviewAutomaticallyOrbiting,
-                    onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
-                    onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
-                ) { store.renderError = $0 }
+                    onMaterialError: {
+                        guard store.previewRendererAttemptID == rendererAttempt else { return }
+                        store.materialsFailed($0, revision: materialRevision)
+                    },
+                    onMaterialRendered: {
+                        guard store.previewRendererAttemptID == rendererAttempt else { return }
+                        store.materialsRendered(revision: materialRevision)
+                    }
+                ) { error in
+                    store.reportPreviewRendererError(error, attemptID: rendererAttempt, revision: materialRevision)
+                }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
                 .accessibilityLabel("3D mesh preview")
+                .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 if store.isUpdatingMaterials {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)
                 }
