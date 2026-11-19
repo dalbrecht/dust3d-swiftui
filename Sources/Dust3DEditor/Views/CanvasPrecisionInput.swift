@@ -19,12 +19,37 @@ enum CanvasPrecisionAction: CaseIterable, Hashable, Sendable {
     }
 }
 
+enum CanvasPartShapeShortcut: String, CaseIterable {
+    case subdivision = "b"
+    case roundedEnds = "u"
+    case chamfer = "c"
+
+    var property: PartModifierProperty {
+        switch self {
+        case .subdivision: .subdivision
+        case .roundedEnds: .roundedEnds
+        case .chamfer: .chamfer
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .subdivision: "Toggle Subdivision"
+        case .roundedEnds: "Toggle Rounded Ends"
+        case .chamfer: "Toggle Chamfer"
+        }
+    }
+
+    var keyLabel: String { rawValue.uppercased() }
+}
+
 enum CanvasVisibilityShortcut: Equatable {
     case toggle
     case isolate
 }
 
-/// Only actual bare arrow/bracket events belong to this responder boundary.
+/// Routes canvas navigation and bare graph editing keys at the canvas responder boundary.
+
 struct CanvasPrecisionKeyInput {
     let keyCode: UInt16
     let characters: String
@@ -78,11 +103,17 @@ struct CanvasPrecisionKeyInput {
             && NSApp.modalWindow == nil
     }
 
+    var partShapeShortcut: CanvasPartShapeShortcut? {
+        guard isBareEditingKey else { return nil }
+        return CanvasPartShapeShortcut(rawValue: characters.lowercased())
+    }
+
     var visibilityShortcut: CanvasVisibilityShortcut? {
         guard modifiers.intersection([.command, .control, .option, .function]).isEmpty,
             characters == "h" || characters == "H"
         else { return nil }
         return modifiers.contains(.shift) ? .isolate : .toggle
+
     }
 
     var opensComponentProperties: Bool { isBareEditingKey && characters == " " }
@@ -92,7 +123,8 @@ struct CanvasPrecisionKeyInput {
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
         guard
             axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
-                || isAlternateDelete || visibilityShortcut != nil
+                || isAlternateDelete || partShapeShortcut != nil || visibilityShortcut != nil
+
         else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil

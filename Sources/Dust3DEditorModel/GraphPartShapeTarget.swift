@@ -1,7 +1,7 @@
 import Dust3DDocument
 import Foundation
 
-/// A shape edit belongs to the sole exact authored Model owner of the explicit graph selection.
+/// A shape edit belongs to one exact authored Model owner in the captured graph context.
 package struct GraphPartShapeTarget: Sendable {
     package static let properties: [PartModifierProperty] = [
         .subdivision, .chamfer, .roundedEnds, .hardJoin, .interpolation,
@@ -16,6 +16,12 @@ package struct GraphPartShapeTarget: Sendable {
         } else {
             part = nil
         }
+    }
+
+    package init?(snapshot: EditorSnapshot, canvasTarget: CanvasPartStateTarget) {
+        guard canvasTarget.part.target == .model, canvasTarget.isCurrent(in: snapshot) else { return nil }
+        context = CanvasAdjustmentTarget(snapshot: snapshot)
+        part = canvasTarget.part
     }
 
     package func isCurrent(in snapshot: EditorSnapshot) -> Bool {
