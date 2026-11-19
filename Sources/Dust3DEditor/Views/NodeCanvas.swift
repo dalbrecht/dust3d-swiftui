@@ -16,6 +16,7 @@ struct NodeCanvas: View {
     @State private var nodeDrag = NodeDragLifecycle()
     @State private var shiftedDrag: (token: UUID, plan: CanvasShiftDrag, positions: [String: NodePosition])?
     @State private var marquee: CanvasSelectionRectangle?
+    @State private var visibilityFocus: (document: UUID, request: CanvasProfileFocusRequest)?
     @State private var addModeFocus: (document: UUID, mode: UUID, request: CanvasProfileFocusRequest)?
     @State private var lasso = CanvasLassoFeedback()
 
@@ -71,6 +72,9 @@ struct NodeCanvas: View {
             }
             let modeFocus =
                 addModeFocus?.document == documentID && addModeFocus?.mode == addModeID ? addModeFocus?.request : nil
+            let visibilityFocusRequest =
+                visibilityFocus?.document == documentID && visibilityFocus?.request.isPending == true
+                ? visibilityFocus?.request : nil
             let shiftContext = store.canvasRotationContext
             let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
             let focusTarget = profileLease.flatMap { lease in
@@ -158,7 +162,7 @@ struct NodeCanvas: View {
                     addPress: { if admitsInput() { store.placeAddNode(at: $0, modeID: addModeID) } },
                     cancelInput: { if admitsInput() { cancelAddInput() } },
                     admitsPrimaryPress: { admitsInput() && admitPrimaryPress($0) },
-                    profileFocusRequest: modeFocus ?? profileFocusRequest,
+                    profileFocusRequest: visibilityFocusRequest ?? modeFocus ?? profileFocusRequest,
                     ownsProfile: {
                         ownsProfile && store.snapshot?.documentIdentity == documentID && store.addModeID == addModeID
                     }, switchProfile: switchProfile,
@@ -348,7 +352,10 @@ struct NodeCanvas: View {
                             store.beginCanvasProfileMotion(token: token, lease: profileLease)
                         },
                         admitsPrimaryPress: { admitsNodeInput() && admitPrimaryPress($0) },
-                        switchProfile: switchProfile, addModeKey: addModeKey
+                        switchProfile: switchProfile,
+                        retainVisibilityFocus: { request in
+                            if let documentID { visibilityFocus = (documentID, request) }
+                        }, addModeKey: addModeKey
                     )
                     .id(addModeID)
                     .id(selectionEpoch)
@@ -545,6 +552,7 @@ private struct NodeHandle: View {
     let beginShiftDrag: (UUID) -> Void
     let admitsPrimaryPress: (Int) -> Bool
     let switchProfile: ((CanvasProfileFocusRequest) -> Bool)?
+    let retainVisibilityFocus: (CanvasProfileFocusRequest) -> Void
     let addModeKey: CanvasAddModeKey.Handler?
 
     var body: some View {
@@ -569,7 +577,7 @@ private struct NodeHandle: View {
                 doubleClick: doubleClick,
                 precisionKey: precisionKey,
                 beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress,
-                switchProfile: switchProfile, addModeKey: addModeKey
+                switchProfile: switchProfile, retainVisibilityFocus: retainVisibilityFocus, addModeKey: addModeKey
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
