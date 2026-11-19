@@ -68,6 +68,8 @@
 
 - Continue headless export batches after an unsupported output format and report the failed destination.
 
+- Give newly created component groups a saved default name that stays the same when the group is reordered.
+
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
 - Browse a selected component group with Command–Down Arrow while the sidebar has focus.
