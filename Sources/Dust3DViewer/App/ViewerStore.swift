@@ -7,6 +7,9 @@ import Observation
 @Observable
 final class ViewerStore {
     private(set) var mesh: IndexedMesh?
+    private(set) var cameraState = MeshCameraState()
+    private(set) var isWireframe = false
+    private(set) var automaticallyRotates = false
     private(set) var showsModelColors = true
 
     func setModelColors(_ visible: Bool) {
@@ -97,6 +100,26 @@ final class ViewerStore {
             importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
     }
 
+    func setWireframe(_ enabled: Bool) {
+        guard mesh != nil else { return }
+        isWireframe = enabled
+    }
+
+    func setAutomaticallyRotates(_ enabled: Bool) {
+        guard mesh != nil else { return }
+        automaticallyRotates = enabled
+    }
+
+    func fitModel() {
+        guard mesh != nil else { return }
+        cameraState.fit()
+    }
+
+    func moveCamera(_ action: MeshCameraCommand.Action) {
+        guard mesh != nil else { return }
+        cameraState.move(action)
+    }
+
     func openDroppedDocuments(_ urls: [URL]) -> Bool {
         guard
             let url = urls.last(where: { url in
@@ -125,6 +148,7 @@ final class ViewerStore {
                 mesh = loaded.mesh
                 materialSourceCapabilities = loaded.materialSourceCapabilities
                 archiveData = loaded.data
+                cameraState = MeshCameraState()
                 meshRevision += 1
                 cameraState = MeshCameraState()
                 resetRendererAttempt()
@@ -242,6 +266,9 @@ final class ViewerStore {
     }
 
     func stop() {
+        cameraState = MeshCameraState()
+        isWireframe = false
+        automaticallyRotates = false
         revision += 1
         loadTask?.cancel()
         clearMaterials()

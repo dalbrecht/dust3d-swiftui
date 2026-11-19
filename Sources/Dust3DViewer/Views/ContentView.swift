@@ -7,7 +7,7 @@ struct ContentView: View {
     @State private var store = ViewerStore()
     @State private var isImporterPresented = false
     @State private var isFileDropTargeted = false
-    @State private var isWireframe = false
+
     var body: some View {
         let cancelOperation = isImporterPresented ? nil : store.pendingCancellation
         let rendererAttempt = store.rendererAttemptID
@@ -36,9 +36,10 @@ struct ContentView: View {
                 if let mesh = store.mesh {
                     let materialRevision = store.meshRevision + store.materialRevision
                     MeshViewport(
-                        mesh: mesh, isWireframe: isWireframe, cameraReset: 0,
+                        mesh: mesh, isWireframe: store.isWireframe, cameraReset: 0,
                         meshRevision: materialRevision, materials: store.materials,
-                        showsColor: store.showsModelColors, cameraState: store.cameraState,
+                        showsColor: store.showsModelColors, automaticallyOrbits: store.automaticallyRotates,
+                        cameraState: store.cameraState,
                         onMaterialError: {
                             guard store.rendererAttemptID == rendererAttempt else { return }
                             store.materialsFailed($0, revision: materialRevision)
@@ -116,7 +117,10 @@ struct ContentView: View {
                     Text("\(mesh.partCount) parts · \(mesh.nodeCount) nodes · \(mesh.triangleCount) triangles")
                         .monospacedDigit()
                     Spacer()
-                    Text("Drag to orbit · Scroll to zoom")
+                    ViewThatFits(in: .horizontal) {
+                        Text("Drag to orbit · Shift-drag to pan · Scroll to zoom").lineLimit(1)
+                        Text("Camera controls in View menu")
+                    }
                 } else {
                     Text("Native SwiftUI viewer")
                     Spacer()
@@ -156,12 +160,12 @@ struct ContentView: View {
                 Toggle(isOn: store.modelColorsBinding) { Label("Model Colors", systemImage: "paintpalette") }
                     .help("Show authored colors or inspect the model in neutral shading")
                     .disabled(store.mesh == nil)
-                Toggle(isOn: $isWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+                Toggle(isOn: store.wireframeBinding) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+
                     .help("Show triangle edges")
                     .disabled(store.mesh == nil)
-                Button {
-                    store.cameraState.fit()
-                } label: {
+                Button(action: store.fitModel) {
+
                     Label("Fit Model", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
                 .help("Reset the camera and fit the model")

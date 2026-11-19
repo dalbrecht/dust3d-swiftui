@@ -13,6 +13,10 @@
 - Let Viewer users retry a failed 3D preview while keeping the accepted model and camera.
 
 - Let Viewer users cancel a material update and retry it while keeping the model visible.
+- Use the View menu to orbit, pan, zoom, and fit the model in the active Viewer window.
+
+- Toggle Viewer wireframe from the View menu or with W.
+
 
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
@@ -205,6 +209,8 @@
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
 
 - Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
+
+- Toggle automatic model rotation from the Viewer’s View menu or with R.
 
 - Click a companion profile to make it the editing pane without placing or selecting a graph element.
 
