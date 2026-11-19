@@ -96,6 +96,8 @@
 
 - Scope Edit → Select All to edges when the Edges sidebar has keyboard focus.
 
+- Open the Selection inspector for one owning component with Space on the canvas or Show Selection Properties in the Canvas menu.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Preview authored linked cross-section outlines before choosing a profile.
