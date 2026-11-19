@@ -121,7 +121,8 @@ public struct MeshViewport: NSViewRepresentable {
     ///   - cameraCommand: A discrete activation consumed once across viewport refreshes.
     ///   - meshRevision: Increment for replacement geometry/material output or retry.
     ///   - materials: Mutually exclusive current material data; uploads off the main actor.
-    ///   - cameraState: Optional camera owner; when present, use its move and fit methods.
+    ///   - cameraState: Optional camera owner across viewport replacements; use its move and fit methods.
+
     ///   - onMaterialError: Original material preparation/GPU cause; defaults to onError.
     ///   - onMaterialRendered: Called only after a current material GPU frame completes.
     ///   - onError: Ordinary geometry setup failure on the main actor.

@@ -308,6 +308,20 @@
 
 - View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
 
+- Keep Viewer preview retry with its active window and renderer attempt.
+
+- Keep Retry Preview available in the Viewer’s View menu after dismissing a renderer error.
+
+- Add Cancel Current Operation to the Viewer’s File menu for pending opens and material updates.
+
+- Let the focused Viewer cancel a pending open or material update with Escape.
+
+- Let Viewer users retry a failed 3D preview while keeping the accepted model and camera.
+
+- Let Viewer users cancel a material update and retry it while keeping the model visible.
+
+- Let Viewer users cancel an open in progress while keeping the current model.
+
 - Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
 
 - Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
