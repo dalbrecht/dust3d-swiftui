@@ -19,6 +19,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorGeometryExportAction) private var geometryExportAction
     @FocusedValue(\.rigAssignmentCommand) private var rigAssignmentCommand
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
+    @FocusedValue(\.editorPreviewFocus) private var previewFocus
     @FocusedValue(\.editorPreviewDisplayActions) private var previewDisplayActions
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     @FocusedValue(\.editorTextEditing) private var isEditingText
@@ -272,6 +273,11 @@ struct Dust3DEditorApp: App {
                 )
                 .disabled(previewCameraActions?.canAutomaticallyOrbit != true)
                 .help("Pauses during dragging, while inactive, and when Reduce Motion is enabled.")
+                Button("Focus 3D Preview") {
+                    guard !rigAssignmentFocus.hasSheet else { return }
+                    previewFocus?.moveFocus(in: NSApp.keyWindow)
+                }
+                .disabled(previewFocus == nil || rigAssignmentFocus.hasSheet)
                 PreviewCameraMenu(
                     title: "Preview Camera", isEnabled: previewCameraActions?.canMove == true,
                     move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() },
@@ -651,6 +657,7 @@ private struct EditorNodesSidebarSelectAllKey: FocusedValueKey { typealias Value
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 private struct EditorCanvasFocusKey: FocusedValueKey { typealias Value = @MainActor () -> Bool }
 
+private struct EditorPreviewFocusKey: FocusedValueKey { typealias Value = MeshViewportFocus }
 private struct EditorSelectionPropertiesActionKey: FocusedValueKey {
     typealias Value = @MainActor () -> Bool
 }
@@ -694,6 +701,11 @@ extension FocusedValues {
     var editorNodesSidebarSelectAll: NodesSidebarSelectAll? {
         get { self[EditorNodesSidebarSelectAllKey.self] }
         set { self[EditorNodesSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorPreviewFocus: MeshViewportFocus? {
+        get { self[EditorPreviewFocusKey.self] }
+        set { self[EditorPreviewFocusKey.self] = newValue }
     }
 
     var editorCanvasFocus: (@MainActor () -> Bool)? {

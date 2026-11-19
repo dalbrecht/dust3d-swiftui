@@ -18,6 +18,20 @@ enum TexturedRenderMetadata: Sendable, Equatable {
         }
     }
 
+    var hasProceduralTriangles: Bool {
+        switch self {
+        case .legacy: return true
+        case .source(let triangles, _, _): return triangles.contains { $0.modelIndex == nil }
+        }
+    }
+
+    func isProcedural(at index: Int) -> Bool {
+        switch self {
+        case .legacy: return true
+        case .source(let triangles, _, _): return triangles[index].modelIndex == nil
+        }
+    }
+
     func hasMapping(at index: Int) -> Bool {
         switch self {
         case .legacy(let metadata): return metadata.triangles[index].hasMapping

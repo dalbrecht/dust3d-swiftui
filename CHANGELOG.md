@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Orbit the 3D preview from the editing canvas with a middle-button or Option drag. Hold Shift to pan.
+
+- Add Focus 3D Preview to the Editor’s View menu.
+
 - Connect two explicitly selected nodes while keeping existing edge picks.
 
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
@@ -9,6 +13,8 @@
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
+
+- Keep component selection visible when collapsing groups, and prevent sidebar Delete from targeting hidden rows.
 
 - Wrap long component breadcrumb labels in narrow sidebars.
 
@@ -94,6 +100,8 @@
 
 - Honor saved component collapse flags when opening older Dust3D documents.
 
+- Keep rapid canvas nudge and spacing keystrokes in order, with one Undo step for each edit.
+
 - Open the document picker with Command-double-click on blank canvas.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
@@ -131,6 +139,8 @@
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
+
+- Keep component texture actions and image picker results tied to the original selection.
 
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
 
@@ -232,11 +242,21 @@
 
 - Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
 
+- Use the View menu to orbit, pan, zoom, and fit the model in the active Viewer window.
+
+- Toggle Viewer wireframe from the View menu or with W.
+
+- Toggle automatic model rotation from the Viewer’s View menu or with R.
+
 - Click a companion profile to make it the editing pane without placing or selecting a graph element.
 
 - Press E with a graph selection and canvas focus, or choose Switch Editing Profile in the Canvas menu, to edit the selection in the opposite profile.
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
+
+- Use procedural vertex opacity alongside imported alpha when Model Colors is off for mixed previews.
+
+- Use vertex opacity when Model Colors is off for textured procedural previews.
 
 - Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
 
@@ -289,6 +309,10 @@
 - Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
 
 - Resolve About attribution from installed app resources without requiring the original SwiftPM build directory, and report missing packaged attribution safely (#344).
+
+- Explain why saving an Editor Session Log failed and release the report when the save panel is cancelled.
+
+- Record explicit geometry export cancellation requests in the Editor Session Log.
 
 - Allow opt-in owned source-bake mip copying through the existing pinned core, validating level counts and aggregate payload quotas; default loading remains base-only (#288).
 
@@ -552,6 +576,12 @@
 
 - Adopt owned imported surface UV/RGBA metadata with explicit RGB encoding, aligned geometry and independently bounded background Swift copies; texture rendering remains pending.
 
+- Drop selected sibling components at the end of a component listing.
+
+- Offer sibling reordering when dropping components onto a group row.
+
+- Confirm a component drop into a group before changing the hierarchy.
+
 - Adopt reviewed core `4db1bb7` for embedded imported geometry, lifetime-safe material/image metadata copies, and bounded background PNG/JPEG decoding. Imported material rendering, UV/baking and textured export remain pending; archives and original assets survive native edits and undo.
 
 - Add immutable executable build diagnostics to both apps and a repeatable editor QA packaging mode that reuses its existing identity, omits preview providers and refuses to overwrite a running target bundle.
@@ -733,7 +763,19 @@
 
 - Add a Qt-free C++17 engine library and C bridge, with validated `.ds3` archive loading.
 - Add a native SwiftUI/Metal macOS viewer with file opening, orbit/zoom, wireframe, and camera fitting.
+- Keep profile names readable in narrow inspectors.
+
+- Explain and disable linked profile choices that would create a cycle.
+
 - Pin c65llc coding standards, assemble Codex instructions, and document native/C++ supplements and gaps.
+- Keep name, type, and keyboard actions on the animation draft that supplied them.
+
+- Keep retained animation parameter controls from editing a reopened draft.
+
+- Keep animation type and parameter controls on the selected row that supplied them.
+
+- Edit the stored animation surface material when the archive uses an unknown animation type.
+
 - Add document-loading regression tests, native validation commands, and a local app bundle/run script.
 
 Original Dust3D release history remains in `CHANGELOGS`.

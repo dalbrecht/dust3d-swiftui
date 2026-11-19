@@ -5,23 +5,25 @@ import SwiftUI
 /// Native controls render the tested workflow; no view callback enters the engine directly.
 struct AnimationAuthoringControls: View {
     let store: EditorStore
-    @Bindable var workflow: EditorAnimationAuthoringWorkflow
+    let workflow: EditorAnimationAuthoringWorkflow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let submit = workflow.draftAction { $0.submit() }
+        let cancel = workflow.draftAction { $0.cancel() }
+        return VStack(alignment: .leading, spacing: 12) {
             if workflow.isActive {
-                draftForm.disabled(workflow.isSubmitting || !workflow.isCurrent)
+                draftForm(submit: submit, cancel: cancel).disabled(workflow.isSubmitting || !workflow.isCurrent)
                 if let message = workflow.validationMessage {
                     Text(message).font(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 HStack {
-                    Button(action: workflow.cancel) { Text("Cancel").frame(minWidth: 40, minHeight: 40) }
+                    Button(action: { cancel() }) { Text(workflow.dismissalTitle).frame(minWidth: 40, minHeight: 40) }
                         .disabled(workflow.isSubmitting)
                     Spacer()
                     if workflow.isSubmitting {
                         ProgressView().controlSize(.small).accessibilityLabel("Applying animation settings")
                     }
-                    Button(action: workflow.submit) { Text(applyTitle).frame(minWidth: 40, minHeight: 40) }
+                    Button(action: { submit() }) { Text(applyTitle).frame(minWidth: 40, minHeight: 40) }
                         .buttonStyle(.borderedProminent).disabled(!workflow.canApply)
                         .keyboardShortcut(.return, modifiers: [.command])
                         .help("Apply animation settings (Command-Return)")
@@ -32,9 +34,11 @@ struct AnimationAuthoringControls: View {
                     Label("New Animation", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 40)
                 }.disabled(!workflow.canBeginCreation).accessibilityLabel("Create stored animation")
                 HStack(spacing: 8) {
-                    Button(action: workflow.beginType) { Text("Change Type").frame(maxWidth: .infinity, minHeight: 40) }
-                        .disabled(!workflow.canBeginType).accessibilityLabel("Change stored animation type")
-                    Button(action: workflow.beginParameters) {
+                    Button(action: workflow.editAction(.type)) {
+                        Text("Change Type").frame(maxWidth: .infinity, minHeight: 40)
+                    }
+                    .disabled(!workflow.canBeginType).accessibilityLabel("Change stored animation type")
+                    Button(action: workflow.editAction(.parameters)) {
                         Text("Parameters").frame(maxWidth: .infinity, minHeight: 40)
                     }
                     .disabled(!workflow.canBeginParameters).accessibilityLabel("Edit stored animation parameters")
@@ -46,7 +50,7 @@ struct AnimationAuthoringControls: View {
             }
         }
         .buttonStyle(.bordered)
-        .onExitCommand { workflow.cancel() }
+        .onExitCommand { cancel() }
     }
 
     @ViewBuilder private var availability: some View {
@@ -72,13 +76,19 @@ struct AnimationAuthoringControls: View {
         }
     }
 
-    @ViewBuilder private var draftForm: some View {
+    @ViewBuilder private func draftForm(
+        submit: @escaping @MainActor () -> Void, cancel: @escaping @MainActor () -> Void
+    ) -> some View {
         switch workflow.mode {
         case .idle: EmptyView()
         case .create:
+            let setName = workflow.draftAction { $0.name = $1 }
             Text("New animation").font(.subheadline)
-            AnimationNameField(text: $workflow.name, onSubmit: workflow.submit, onCancel: workflow.cancel)
-                .frame(height: 44).focusedValue(\.editorTextEditing, true)
+            AnimationNameField(
+                text: Binding(get: { workflow.name }, set: { setName($0) }),
+                onSubmit: submit, onCancel: cancel
+            )
+            .frame(height: 44).focusedValue(\.editorTextEditing, true)
             typePicker
             if let clip = workflow.selectedClip {
                 Text("Declared duration: \(clip.seconds.formatted()) s · \(clip.samples) samples")
@@ -98,7 +108,7 @@ struct AnimationAuthoringControls: View {
                 Text("Unchanged settings and unsupported values are kept. Default removes a stored override.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 timingFields(draft.timing, seconds: draft.clip.seconds, frames: draft.clip.samples)
-                surfacePicker(draft)
+                surfacePicker(draft.surfaceMaterials)
                 ForEach(draft.clip.controls.indices, id: \.self) { index in
                     let control = draft.clip.controls[index]
                     Divider()
@@ -109,10 +119,13 @@ struct AnimationAuthoringControls: View {
                             return (try? control.slider(for: value)) != nil
                         })
                     if control.minimumSlider < control.maximumSlider {
+                        let setPosition = workflow.parameterAction { workflow, value in
+                            workflow.setSlider(name: control.name, index: value)
+                        }
                         Slider(
                             value: Binding(
                                 get: { sliderPosition(control) ?? Double(control.defaultSlider) },
-                                set: { workflow.setSlider(name: control.name, index: $0) }),
+                                set: { setPosition($0) }),
                             in: Double(control.minimumSlider)...Double(control.maximumSlider), step: 1
                         )
                         .frame(minHeight: 40).accessibilityLabel(control.label)
@@ -120,11 +133,12 @@ struct AnimationAuthoringControls: View {
                         .disabled(sliderPosition(control) == nil)
                     }
                 }
-            } else if let draft = workflow.unknownTimingDraft {
+            } else if let draft = workflow.unknownParameterDraft {
                 Text(workflow.sourceType ?? "").font(.caption).textSelection(.enabled)
-                Text("Only stored timing is editable for this type. Other parameters are kept.")
+                Text("Timing and surface material are editable for this type. Other parameters are kept.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 timingFields(draft.timing, seconds: draft.defaultSeconds, frames: draft.defaultFrames)
+                surfacePicker(draft.surfaceMaterials)
             }
         }
     }
@@ -137,18 +151,22 @@ struct AnimationAuthoringControls: View {
             supported: { text in
                 guard let value = Double(text) else { return false }
                 return (try? timing.validate(seconds: value, frames: Double(timing.minimumFrames))) != nil
-            })
+            }, timingStep: (timing, seconds))
         numericField(
             name: "frameCount", label: "Sample count", defaultText: String(frames),
             supported: { text in
                 guard let value = Double(text) else { return false }
                 return (try? timing.validate(seconds: timing.minimumSeconds, frames: value)) != nil
-            })
+            }, timingStep: (timing, Double(frames)))
     }
 
     private var typePicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Picker("Stored type", selection: $workflow.selectedType) {
+        let setType = workflow.draftAction { $0.selectedType = $1 }
+        return VStack(alignment: .leading, spacing: 6) {
+            Picker(
+                "Stored type",
+                selection: Binding(get: { workflow.selectedType }, set: { setType($0) })
+            ) {
                 Text("Choose a type").tag([UInt8]()).disabled(true)
                 if let source = workflow.sourceType, workflow.catalog?.clip(type: source) == nil {
                     Text("Unsupported: \(source)").tag(Array(source.utf8)).disabled(true)
@@ -167,21 +185,42 @@ struct AnimationAuthoringControls: View {
     }
 
     private func numericField(
-        name: String, label: String, defaultText: String, supported: @escaping (String) -> Bool
+        name: String, label: String, defaultText: String, supported: @escaping (String) -> Bool,
+        timingStep: (definition: AnimationTimingDefinition, fallback: Double)? = nil
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        let setText = workflow.parameterAction { workflow, value in
+            workflow.setText(name: name, value: value)
+        }
+        return VStack(alignment: .leading, spacing: 4) {
             Text(label).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 6) {
                 TextField(
                     "Default \(defaultText)",
                     text: Binding(
                         get: { workflow.parameterValue(for: name) ?? "" },
-                        set: { workflow.setText(name: name, value: $0) })
+                        set: { setText($0) })
                 )
                 .textFieldStyle(.roundedBorder).monospacedDigit().frame(minHeight: 40)
                 .focusedValue(\.editorTextEditing, true).accessibilityLabel(label)
+                if let timingStep {
+                    let step = workflow.parameterAction { workflow, increasing in
+                        workflow.stepTiming(name: name, increasing: increasing)
+                    }
+                    Stepper(
+                        label,
+                        onIncrement: steppedTimingText(workflow, name: name, timingStep: timingStep, increasing: true)
+                            != nil
+                            ? { step(true) } : nil,
+                        onDecrement: steppedTimingText(workflow, name: name, timingStep: timingStep, increasing: false)
+                            != nil
+                            ? { step(false) } : nil
+                    )
+                    .labelsHidden()
+                    .accessibilityLabel(label)
+                    .accessibilityValue(workflow.parameterValue(for: name) ?? defaultText)
+                }
                 Button {
-                    workflow.useDefault(name: name)
+                    setText(nil)
                 } label: {
                     Text("Default").frame(minWidth: 40, minHeight: 40)
                 }.buttonStyle(.borderless)
@@ -195,34 +234,49 @@ struct AnimationAuthoringControls: View {
             }
         }
     }
+    private func steppedTimingText(
+        _ workflow: EditorAnimationAuthoringWorkflow, name: String,
+        timingStep: (definition: AnimationTimingDefinition, fallback: Double), increasing: Bool
+    ) -> String? {
+        if let draft = workflow.parameterDraft {
+            return draft.steppedTimingText(name: name, increasing: increasing)
+        }
+        return AnimationParameterDraft.steppedTimingText(
+            name: name, current: workflow.parameterValue(for: name), fallback: timingStep.fallback,
+            timing: timingStep.definition, increasing: increasing)
+    }
+
     private func sliderPosition(_ control: AnimationControlDefinition) -> Double? {
         guard let text = workflow.parameterDraft?.value(for: control.name) else { return Double(control.defaultSlider) }
         guard let number = Double(text), let index = try? control.slider(for: number) else { return nil }
         return Double(index)
     }
-    private func surfacePicker(_ draft: AnimationParameterDraft) -> some View {
-        let raw = draft.value(for: "surfaceMaterial")
+    private func surfacePicker(_ materials: [String]) -> some View {
+        let raw = workflow.parameterValue(for: "surfaceMaterial")
+        let setMaterial = workflow.parameterAction { workflow, material in
+            workflow.setText(name: "surfaceMaterial", value: material)
+        }
         return Picker(
             "Surface material",
             selection: Binding<[UInt8]?>(
-                get: { workflow.parameterDraft?.value(for: "surfaceMaterial").map { Array($0.utf8) } },
+                get: { workflow.parameterValue(for: "surfaceMaterial").map { Array($0.utf8) } },
                 set: { value in
                     guard let value else {
-                        workflow.useDefault(name: "surfaceMaterial")
+                        setMaterial(nil)
                         return
                     }
-                    guard let selected = draft.surfaceMaterials.first(where: { $0.utf8.elementsEqual(value) }) else {
+                    guard let selected = materials.first(where: { $0.utf8.elementsEqual(value) }) else {
                         return
                     }
-                    workflow.setText(name: "surfaceMaterial", value: selected)
+                    setMaterial(selected)
                 })
         ) {
             Text("Default").tag(Optional<[UInt8]>.none)
-            if let raw, !draft.surfaceMaterials.contains(where: { $0.utf8.elementsEqual(raw.utf8) }) {
+            if let raw, !materials.contains(where: { $0.utf8.elementsEqual(raw.utf8) }) {
                 Text("Unsupported: \(raw)").tag(Optional(Array(raw.utf8))).disabled(true)
             }
-            ForEach(draft.surfaceMaterials.indices, id: \.self) { index in
-                let name = draft.surfaceMaterials[index]
+            ForEach(materials.indices, id: \.self) { index in
+                let name = materials[index]
                 Text(name).tag(Optional(Array(name.utf8)))
             }
         }
