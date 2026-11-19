@@ -401,6 +401,10 @@
 
 - Prevent editor writes and Cut from using a retained preview after a replacement document fails to load.
 
+- Hide Combine Mode for Cut Face components and keep inspector edits scoped to the selection that supplied them.
+
+- Set an inspected component’s smoothing cutoff to zero in one Undo step.
+
 - Require an exact PID and versioned notification channel for composition cancellation, ignoring older broadcast requests and bounding pending cancellation work (#56, #248).
 
 - Add bounded app-owned recovery copies targeted to an exact process, with PID/UUID-correlated receipts, preserving original files and undo history (#248).
