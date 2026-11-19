@@ -216,6 +216,8 @@
 
 - Show the selected joint’s numerical weight range and influenced body-triangle count in the experimental rest preview, publishing these values with their matching mesh (#367).
 
+- Drop a local .ds3 file from Finder onto a Viewer window to open it.
+
 - Add an isolated experimental generated-rest rig preview with grounded skeleton/body geometry, weight highlighting, all-joint selection, and guarded camera controls; keep the production core pin unchanged (#367).
 
 - Add an isolated experimental native rig-template preview with complete solids/rings, exact-name selection, background preparation, stale-result protection and camera menu controls; preserve the production core pin (#144).
@@ -382,6 +384,8 @@
 - Add stale-source animation edit targets and editor metadata workflows with latest-request list adoption, lifecycle retirement and geometry-independent history; native controls/evaluation remain pending (#145).
 
 - Add actor-owned stored-animation selection, fresh-ID creation/duplication and source-correlated list presentation, isolating optional metadata errors from graph editing; native UI/playback remain pending (#145).
+
+- Reject nonregular archive inputs before Viewer and Quick Look attempt to read them.
 
 - Preserve exact animation bytes and redo for restored parameter transactions (#145).
 
