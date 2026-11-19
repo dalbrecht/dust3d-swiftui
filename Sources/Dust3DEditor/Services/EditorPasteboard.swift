@@ -20,6 +20,15 @@ import Observation
             .sink { [weak self] _ in self?.textSelectionRevision &+= 1 }
     }
 
+    func writeQtXML(_ xml: Data) throws {
+        let item = NSPasteboardItem()
+        guard let text = String(data: xml, encoding: .utf8), item.setString(text, forType: .string) else {
+            throw PasteboardError.writeFailed
+        }
+        pasteboard.clearContents()
+        guard pasteboard.writeObjects([item]) else { throw PasteboardError.writeFailed }
+    }
+
     func write(_ data: Data, snapshotXML: Data) throws {
         let item = NSPasteboardItem()
         // Advertise the immutable snapshot now; AppKit requests its bytes only when a consumer needs them.
