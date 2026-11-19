@@ -571,6 +571,7 @@ struct EditorRootView: View {
         let draftStatus =
             store.componentColorDraftPreviewMessage
             ?? (displayingDraft ? "Solid color draft · Apply to keep" : nil)
+        let rendererAttempt = store.previewRendererAttemptID
         return VStack(spacing: 0) {
             HStack {
                 Text("Mesh preview").font(.headline)
@@ -589,7 +590,8 @@ struct EditorRootView: View {
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry Preview") { store.retryPreview() }.disabled(store.isGenerating)
+                    Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }
+                        .disabled(store.isGenerating)
                 }
             } else if let mesh = draftMesh ?? store.mesh {
                 let materialRevision = store.materialViewportRevision
@@ -600,12 +602,16 @@ struct EditorRootView: View {
                     cameraCommand: store.previewCameraCommand, showsColor: displayingDraft || store.showsPreviewColor,
                     automaticallyOrbits: store.isPreviewAutomaticallyOrbiting,
                     onMaterialError: {
-                        if !displayingDraft, store.componentColorDraftMesh == nil {
+                        if !displayingDraft, store.componentColorDraftMesh == nil,
+                            store.previewRendererAttemptID == rendererAttempt
+                        {
                             store.materialsFailed($0, revision: materialRevision)
                         }
                     },
                     onMaterialRendered: {
-                        if !displayingDraft, store.componentColorDraftMesh == nil {
+                        if !displayingDraft, store.componentColorDraftMesh == nil,
+                            store.previewRendererAttemptID == rendererAttempt
+                        {
                             store.materialsRendered(revision: materialRevision)
                         }
                     }
@@ -613,7 +619,7 @@ struct EditorRootView: View {
                     if displayingDraft {
                         store.colorDraftRenderFailed(error, revision: draftRevision)
                     } else if store.componentColorDraftMesh == nil {
-                        store.renderError = error
+                        store.reportPreviewRendererError(error, attemptID: rendererAttempt, revision: materialRevision)
                     }
                 }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
@@ -637,7 +643,8 @@ struct EditorRootView: View {
                     }
                     if let error = store.previewState.errorMessage {
                         Text("Preview out of date: \(error)").font(.caption).padding(8)
-                        Button("Retry Preview") { store.retryPreview() }.padding(.bottom, 8)
+                        Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }.padding(
+                            .bottom, 8)
                     }
                 }
                 .opacity(displayingDraft ? 0 : 1)

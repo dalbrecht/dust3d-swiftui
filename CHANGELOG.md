@@ -102,6 +102,8 @@
 
 - Repair edge directions in an unambiguous open chain from the Edge Inspector, with one-step Undo.
 
+- Edit duration and sample count for named stored animations whose type is unknown.
+
 - Choose Lasso in Drag Selection to pick graph items within a freehand outline and preview the affected picks while drawing.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
@@ -312,6 +314,8 @@
 
 - Preview a new node and adjust its radius before placing it on the canvas in Add mode. Keep cancellation bound to its placement request, refit on selection exit, discard held presses across tool changes, and allow inward placement at document coordinate limits.
 
+- Keep Next Step available during Replay Steps playback.
+
 - Adjust selected node radii using canvas-focused keyboard input or the canvas wheel, with one-step Undo. Radius menu and inspector actions remain available independently of canvas focus.
 
 - Highlight the hovered node or edge in both canvas profiles, with node hits taking precedence over edges.
@@ -347,6 +351,8 @@
 
 - Clear removed animation selections when publishing edits and history transitions, independently of list reads (#145).
 
+- Retry a failed Editor renderer using the accepted mesh and prepared materials.
+
 - Add a native stored-animation inspector with selection, source-bound rename/duplicate/delete, inline exact-text drafts and scoped graph shortcuts; playback remains unavailable (#145).
 
 - Add stale-source animation edit targets and editor metadata workflows with latest-request list adoption, lifecycle retirement and geometry-independent history; native controls/evaluation remain pending (#145).
@@ -358,6 +364,8 @@
 - Add lossless stored-animation listing and create/rename/type/parameter/duplicate/delete commands with exact history and opaque-data preservation; native evaluation/playback remain quarantined (#145).
 
 - Connect accepted editor snapshots to an injected export workflow with source revision receipts, history preservation and lifecycle cancellation; native encoder/menu binding remains unavailable by default (#146).
+
+- Add keyboard-focusable Zoom In and Zoom Out buttons to Quick Look previews.
 
 - Serialize final export source checks and atomic publication with accepted editor commands, preserving committed success on late task cancellation; native UI binding remains pending (#146).
 
