@@ -187,6 +187,10 @@ struct ComponentSidebar: View {
                         let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
                         let deleteSelection = store.componentSidebarDeleteAction(
                             snapshot: sidebarSnapshot, disclosure: disclosure)
+                        let activateRow = store.componentSidebarPrimaryAction(
+                            snapshot: sidebarSnapshot, rows: visibleRows, scopeEpoch: scopeEpoch, disclosure: disclosure
+                        )
+
                         List(
                             selection: Binding(
                                 get: { store.snapshot?.selectedComponentIDs ?? [] },
@@ -231,18 +235,8 @@ struct ComponentSidebar: View {
                                     admitsInput: admitsRows)
                             }
                         } primaryAction: { ids in
-                            guard admitsRows(), ids.count == 1, let id = ids.first,
-                                let row = visibleRows.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
-                            else { return }
-                            if browse != nil, row.component.isGroup {
-                                store.componentBrowseAction(id, snapshot: sidebarSnapshot)()
-                            } else if row.hasChildren {
-                                store.componentDisclosureAction(
-                                    id, collapsed: false, snapshot: sidebarSnapshot, disclosure: disclosure)()
-                            } else {
-                                store.selectComponentGraph(
-                                    ComponentGraphSelectionTarget(snapshot: sidebarSnapshot, componentIDs: ids))
-                            }
+                            guard admitsRows() else { return }
+                            activateRow(ids)
                         }
                         .focusedValue(\.editorComponentSidebarFocus, true)
                         .focusedValue(
