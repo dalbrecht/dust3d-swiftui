@@ -411,6 +411,8 @@
 
 - Add canvas one-degree keyboard rotation and explicit angle controls, with automatic pivot/descendant selection, native lock protection and stale-input rejection (#45).
 
+- List the Add tool’s preview radius keys in Keyboard Shortcuts Help.
+
 - Open the Part inspector when multiple component rows link directly to one shared part.
 
 - Show, hide, lock, unlock, enable, or disable directly selected parts in one edit.
