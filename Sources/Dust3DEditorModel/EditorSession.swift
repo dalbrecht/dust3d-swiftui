@@ -207,6 +207,15 @@ public actor EditorSession {
         }
     }
 
+    package func editRigSettings(_ edit: RigSettingsEdit, target: RigSettingsTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw RigSettingsEditError.staleSource
+            }
+            try state.apply([edit.command])
+        }.snapshot
+    }
+
     public func select(_ id: String?) throws -> EditorSnapshot { try update { try $0.select(id) } }
 
     public func select(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.select(ids) } }
@@ -1007,6 +1016,18 @@ public actor EditorSession {
         let fragment = try state.snapshot.document.copyingNodes(Set(nodes.map(\.id)))
         try Task.checkCancellation()
         return fragment
+    }
+
+    /// Copy a captured graph selection as plain Qt XML without changing history.
+    package func copySelectionAsQtXML(target: CanvasAdjustmentTarget) throws -> Data {
+        try Task.checkCancellation()
+        guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
+            throw EditorError.staleCanvasAdjustment
+        }
+        let snapshot = state.snapshot
+        let xml = try snapshot.document.copyingNodesAsQtXML(Set(snapshot.selectedNodes.map(\.id)))
+        try Task.checkCancellation()
+        return xml
     }
 
     /// Serialize off the UI actor; the platform boundary supplies the transient clipboard identifier.

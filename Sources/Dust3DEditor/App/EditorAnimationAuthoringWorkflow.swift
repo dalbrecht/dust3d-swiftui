@@ -24,6 +24,7 @@ final class EditorAnimationAuthoringWorkflow {
     private(set) var sourceTitle = ""
     private(set) var sourceType: String?
     private(set) var parameterDraft: AnimationParameterDraft?
+    private(set) var unknownTimingDraft: UnknownAnimationTimingDraft?
     private(set) var isSubmitting = false
     private var creationNameKeys: Set<String> = []
     private var suggestedName = AnimationNameText("")
@@ -58,8 +59,9 @@ final class EditorAnimationAuthoringWorkflow {
         canBegin && catalog?.clips.isEmpty == false && store.animationSnapshot?.list.selectedRow != nil
     }
     var canBeginParameters: Bool {
-        guard canBegin, let type = store.animationSnapshot?.list.selectedRow?.source.type else { return false }
-        return catalog?.clip(type: type) != nil
+        guard canBegin, let record = store.animationSnapshot?.list.selectedRow?.source, let type = record.type
+        else { return false }
+        return catalog?.clip(type: type) != nil || UnknownAnimationTimingDraft.admits(record)
     }
     var selectedClip: AnimationClipDefinition? {
         typeChoices.first { $0.type.utf8.elementsEqual(selectedType) }
@@ -85,7 +87,7 @@ final class EditorAnimationAuthoringWorkflow {
             case .type:
                 if selectedClip == nil { return EditorAnimationAuthoringError.chooseType }
             case .parameters:
-                _ = try parameterDraft?.validatedEdits()
+                _ = try validatedParameterEdits()
             }
         } catch { return error }
         return nil
@@ -104,7 +106,7 @@ final class EditorAnimationAuthoringWorkflow {
         case .idle: return false
         case .create: return true
         case .type: return !selectedType.elementsEqual((sourceType ?? "").utf8)
-        case .parameters: return (try? parameterDraft?.validatedEdits().isEmpty) == false
+        case .parameters: return (try? validatedParameterEdits().isEmpty) == false
         }
     }
 
@@ -158,19 +160,35 @@ final class EditorAnimationAuthoringWorkflow {
         }
         do {
             let target = try AnimationEditTarget(snapshot: value, animationID: row.source.id)
-            let draft = try AnimationParameterDraft(record: row.source, catalog: catalog)
+            let hasDeclaredType = row.source.type.flatMap { catalog.clip(type: $0) } != nil
+            let draft = hasDeclaredType ? try AnimationParameterDraft(record: row.source, catalog: catalog) : nil
             reset()
             sourceTitle = row.title
             sourceType = row.source.type
             parameterDraft = draft
+            if !hasDeclaredType {
+                unknownTimingDraft = UnknownAnimationTimingDraft(record: row.source, timing: catalog.timing)
+            }
             mode = .parameters(target)
         } catch { lastIssue = error }
     }
+    func parameterValue(for name: String) -> String? {
+        parameterDraft?.value(for: name) ?? unknownTimingDraft?.value(for: name)
+    }
     func setText(name: String, value: String?) {
-        guard !isSubmitting, var draft = parameterDraft else { return }
-        draft.setText(name: name, value: value)
-        parameterDraft = draft
+        guard !isSubmitting else { return }
+        if var draft = parameterDraft {
+            draft.setText(name: name, value: value)
+            parameterDraft = draft
+        } else {
+            unknownTimingDraft?.setText(name: name, value: value)
+        }
         lastIssue = nil
+    }
+
+    private func validatedParameterEdits() throws -> [AnimationEdit] {
+        if let parameterDraft { return try parameterDraft.validatedEdits() }
+        return try unknownTimingDraft?.validatedEdits() ?? []
     }
     func useDefault(name: String) { setText(name: name, value: nil) }
     func setSlider(name: String, index: Double) {
@@ -204,8 +222,7 @@ final class EditorAnimationAuthoringWorkflow {
                 isSubmitting = true
                 store.editAnimation(.setType(clip.type), target: target, completion: completion)
             case .parameters(let target):
-                guard let draft = parameterDraft else { return }
-                let edits = try draft.validatedEdits()
+                let edits = try validatedParameterEdits()
                 isSubmitting = true
                 store.editAnimation(edits, target: target, completion: completion)
             }
@@ -225,6 +242,7 @@ final class EditorAnimationAuthoringWorkflow {
         sourceTitle = ""
         sourceType = nil
         parameterDraft = nil
+        unknownTimingDraft = nil
         selectedType = []
         creationNameKeys = []
         suggestedName = AnimationNameText("")
