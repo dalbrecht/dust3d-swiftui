@@ -1420,10 +1420,34 @@ final class EditorStore {
         performAnimationMutation(completion: completion) { try await $0.editAnimation(edits, target: target) }
     }
 
+    func editAnimationParameters(
+        _ edits: [AnimationEdit], target: AnimationEditTarget,
+        refreshed: @escaping @MainActor (EditorAnimationSnapshot?) -> Void
+    ) {
+        performAnimationMutation(refreshed: refreshed) { try await $0.editAnimation(edits, target: target) }
+    }
+
     func editAnimation(
         _ edit: AnimationEdit, target: AnimationEditTarget, completion: (@MainActor (Bool) -> Void)? = nil
     ) {
         performAnimationMutation(completion: completion) { try await $0.editAnimation(edit, target: target) }
+    }
+
+    func animationSelectedRowAction(
+        snapshot: EditorAnimationSnapshot,
+        perform: @escaping @MainActor (AnimationListRow, AnimationEditTarget) -> Void
+    ) -> @MainActor () -> Void {
+        guard let row = snapshot.list.selectedRow,
+            let target = try? AnimationEditTarget(snapshot: snapshot, animationID: row.source.id)
+        else { return {} }
+        let request = animationRequestID
+        return { [weak self] in
+            guard let self, self.canManageAnimations, self.animationRequestID == request,
+                let current = self.animationSnapshot, current.list.selectedID == row.id,
+                target.isCurrent(in: current.editor)
+            else { return }
+            perform(row, target)
+        }
     }
 
     func duplicateAnimation(
@@ -1434,14 +1458,20 @@ final class EditorStore {
 
     private func performAnimationMutation(
         completion: (@MainActor (Bool) -> Void)? = nil,
+        refreshed: (@MainActor (EditorAnimationSnapshot?) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorAnimationSnapshot
     ) {
         guard canManageAnimations else {
             completion?(false)
+            refreshed?(nil)
             return
         }
         let refreshAfterPublication: @MainActor (Bool) -> Void = { [weak self] succeeded in
-            if succeeded { self?.refreshAnimations() }
+            if succeeded, let self {
+                self.requestAnimations(completion: refreshed) { try await $0.animationSnapshot() }
+            } else {
+                refreshed?(nil)
+            }
             completion?(succeeded)
         }
         perform(completion: refreshAfterPublication) { session in
@@ -1451,9 +1481,13 @@ final class EditorStore {
     }
 
     private func requestAnimations(
+        completion: (@MainActor (EditorAnimationSnapshot?) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorAnimationSnapshot
     ) {
-        guard !isWorking, let source = acceptedDocumentSource else { return }
+        guard !isWorking, let source = acceptedDocumentSource else {
+            completion?(nil)
+            return
+        }
         let sourceIdentity = source.documentIdentity
         let sourceRevision = source.documentRevision
         let requestID = UUID()
@@ -1462,17 +1496,22 @@ final class EditorStore {
         animationQueryFailure = nil
         isLoadingAnimations = true
         animationQuery = Task { [weak self, session] in
+            var accepted: EditorAnimationSnapshot?
             defer {
                 if let self, self.animationRequestID == requestID { self.isLoadingAnimations = false }
+                completion?(accepted)
             }
             do {
                 let result = try await action(session)
                 guard !Task.isCancelled, let self, self.animationRequestID == requestID, !self.isWorking,
                     let current = self.acceptedDocumentSource,
                     current.documentIdentity == result.editor.documentIdentity,
-                    current.documentRevision == result.editor.documentRevision
+                    current.documentRevision == result.editor.documentRevision,
+                    completion == nil
+                        || (current.documentIdentity == sourceIdentity && current.documentRevision == sourceRevision)
                 else { return }
                 self.animationValue = result
+                accepted = result
             } catch {
                 guard !Task.isCancelled, let self, self.animationRequestID == requestID,
                     let current = self.acceptedDocumentSource,

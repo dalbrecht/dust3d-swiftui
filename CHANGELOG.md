@@ -752,6 +752,14 @@
 - Explain and disable linked profile choices that would create a cycle.
 
 - Pin c65llc coding standards, assemble Codex instructions, and document native/C++ supplements and gaps.
+- Keep name, type, and keyboard actions on the animation draft that supplied them.
+
+- Keep retained animation parameter controls from editing a reopened draft.
+
+- Keep animation type and parameter controls on the selected row that supplied them.
+
+- Edit the stored animation surface material when the archive uses an unknown animation type.
+
 - Add document-loading regression tests, native validation commands, and a local app bundle/run script.
 
 Original Dust3D release history remains in `CHANGELOGS`.
