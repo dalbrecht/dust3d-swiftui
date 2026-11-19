@@ -138,6 +138,8 @@
 
 - Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
 
+- Keep numeric node inspector drafts and actions tied to their original node and document.
+
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
 - Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
