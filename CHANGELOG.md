@@ -68,6 +68,8 @@
 
 - Settle the origin from node bounds when a headless Qt XML paste creates a new document.
 
+- Preview a component color draft on the solid-color model before applying the edit.
+
 - Settle the origin when launching the Editor with a Qt XML fragment and no document, in the same Undo step as the paste.
 
 - Announce document errors through VoiceOver in the active editor window.
@@ -305,6 +307,20 @@
 - Browse the pinned rig template bone hierarchy and stored assignment counts, then assign the chosen exact name to selected edges in one Undo step (#359).
 
 - View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
+
+- Keep Viewer preview retry with its active window and renderer attempt.
+
+- Keep Retry Preview available in the Viewer’s View menu after dismissing a renderer error.
+
+- Add Cancel Current Operation to the Viewer’s File menu for pending opens and material updates.
+
+- Let the focused Viewer cancel a pending open or material update with Escape.
+
+- Let Viewer users retry a failed 3D preview while keeping the accepted model and camera.
+
+- Let Viewer users cancel a material update and retry it while keeping the model visible.
+
+- Let Viewer users cancel an open in progress while keeping the current model.
 
 - Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
 
