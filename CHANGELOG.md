@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Drop selected sibling components at the end of a component listing.
+
+- Offer sibling reordering when dropping components onto a group row.
+
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.

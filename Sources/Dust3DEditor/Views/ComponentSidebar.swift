@@ -181,6 +181,14 @@ struct ComponentSidebar: View {
                                     row, scoped: browse != nil, scopeEpoch: scopeEpoch,
                                     stitchingOrdinal: stitching.ordinal(for: row.id))
                             }
+                            if !visibleRows.isEmpty {
+                                ComponentListEndDropZone(
+                                    receive: store.componentListEndDropAction(
+                                        snapshot: sidebarSnapshot, disclosure: disclosure)
+                                )
+                                .selectionDisabled()
+                                .listRowSeparator(.hidden)
+                            }
                         }
                         .contextMenu(forSelectionType: String.self) { ids in
                             if admitsRows(), !ids.isEmpty, ids.allSatisfy({ visibleKeys.contains(Data($0.utf8)) }) {

@@ -32,7 +32,9 @@ struct ComponentRowDrag: ViewModifier {
                 VStack(spacing: 0) {
                     dropZone(.before(id), alignment: .top)
                     if isGroup {
-                        ComponentParentDropZone(store: store, parent: .component(id), scopeEpoch: scopeEpoch) {
+                        ComponentParentDropZone(
+                            store: store, parent: .component(id), scopeEpoch: scopeEpoch, offersSiblingReorder: true
+                        ) {
                             Color.clear
                         }
                     }
@@ -58,14 +60,35 @@ struct ComponentParentDropZone<Content: View>: View {
     let store: EditorStore
     let parent: ComponentParent
     var scopeEpoch: UUID? = nil
+    var offersSiblingReorder = false
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         ComponentDropZone(
             alignment: nil,
             receive: { token in
-                _ = store.dropComponents(token: token, in: parent, scopeEpoch: scopeEpoch)
+                _ = store.dropComponents(
+                    token: token, in: parent, scopeEpoch: scopeEpoch, offersSiblingReorder: offersSiblingReorder)
             }, content: content)
+    }
+}
+
+struct ComponentListEndDropZone: View {
+    let receive: @MainActor @Sendable (UUID) -> Bool
+
+    var body: some View {
+        ComponentDropZone(
+            alignment: .top,
+            receive: { token in _ = receive(token) },
+            content: {
+                Label("Drop at End", systemImage: "arrow.down.to.line")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+            }
+        )
+        .help("Drop to move components to the end of this list.")
+        .accessibilityHidden(true)
     }
 }
 

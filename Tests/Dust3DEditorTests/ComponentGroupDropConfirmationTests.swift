@@ -109,6 +109,56 @@ private struct GroupDropNoNative: EditorPreviewServing, ArchiveTextureBaking, Ar
         XCTAssertNil(store.snapshot?.componentTree.rows.first { $0.id == "child" }?.component.parentID)
     }
 
+    func testGroupRowOffersQtSiblingDirectionAndKeepsOneExactUndo() async throws {
+        let (store, original) = try await setup()
+        defer { store.stop() }
+        store.selectComponents(["a", "b"])
+        try await settle(store)
+        let afterToken = try XCTUnwrap(store.beginComponentDrag(grabbedID: "b"))
+        XCTAssertTrue(store.dropComponents(token: afterToken, in: .component("g"), offersSiblingReorder: true))
+        let after = try XCTUnwrap(store.pendingComponentGroupDrop)
+        XCTAssertEqual(after.siblingReorderTitle, "Reorder After “Destination”")
+        XCTAssertTrue(store.confirmComponentGroupSiblingReorder(after.id))
+        XCTAssertFalse(store.confirmComponentGroupSiblingReorder(after.id))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), ["g", "child", "a", "b", "other"])
+        XCTAssertNil(store.snapshot?.componentTree.rows.first { $0.id == "a" }?.component.parentID)
+        XCTAssertEqual(store.snapshot?.selectedComponentIDs, ["a", "b"])
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+
+        let beforeToken = try XCTUnwrap(store.beginComponentDrag(grabbedID: "other"))
+        XCTAssertTrue(store.dropComponents(token: beforeToken, in: .component("g"), offersSiblingReorder: true))
+        let before = try XCTUnwrap(store.pendingComponentGroupDrop)
+        XCTAssertEqual(before.siblingReorderTitle, "Reorder Before “Destination”")
+        XCTAssertTrue(store.confirmComponentGroupSiblingReorder(before.id))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.componentTree.rows.map(\.id), ["a", "b", "other", "g", "child"])
+    }
+
+    func testCrossParentGroupRowOffersOnlyMoveAndCannotReorder() async throws {
+        let archive = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><components>
+                <component id='source'><component id='leaf'/></component>
+                <component id='destination'><component id='other'/></component>
+                </components></canvas>
+                """.utf8)
+        ).encoded()
+        let (store, original) = await open(archive)
+        defer { store.stop() }
+        let token = try XCTUnwrap(store.beginComponentDrag(grabbedID: "leaf"))
+        XCTAssertTrue(store.dropComponents(token: token, in: .component("destination"), offersSiblingReorder: true))
+        let proposal = try XCTUnwrap(store.pendingComponentGroupDrop)
+        XCTAssertNil(proposal.siblingReorderTitle)
+        XCTAssertFalse(store.confirmComponentGroupSiblingReorder(proposal.id))
+        XCTAssertEqual(store.pendingComponentGroupDrop?.id, proposal.id)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testAncestorBreadcrumbDropStagesExactDestinationAndRejectsRetiredScope() async throws {
         let archive = try Dust3DDocument(
             snapshotXML: Data(
@@ -145,6 +195,7 @@ private struct GroupDropNoNative: EditorPreviewServing, ArchiveTextureBaking, Ar
         let proposal = try XCTUnwrap(store.pendingComponentGroupDrop)
         XCTAssertEqual(proposal.destinationTitle, "Outer")
         XCTAssertEqual(proposal.componentCount, 1)
+        XCTAssertNil(proposal.siblingReorderTitle)
         store.cancelComponentGroupDrop(proposal.id)
         XCTAssertEqual(store.snapshot?.document.encoded(), original)
         XCTAssertFalse(store.canUndo)
