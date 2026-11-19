@@ -58,7 +58,7 @@
                 "<edge id='\(identity(index + 200))' partId='\(identity(100))' from='\(identity(index + 1))' to='\(identity(index + 2))' boneName='\(bone)'/>"
             }.joined()
             return """
-                <canvas rigType='Fish'>
+                <canvas rigType='Fish' originX='0' originY='0' originZ='0'>
                   <nodes>\(nodeXML)</nodes><edges>\(edgeXML)</edges>
                   <parts><part id='\(identity(100))' target='Model' rounded='false' subdivided='false'/></parts>
                   <components><component id='\(identity(101))' linkDataType='partId' linkData='\(identity(100))'/></components>
