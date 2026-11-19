@@ -134,6 +134,8 @@
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
+- Keep component texture actions and image picker results tied to the original selection.
+
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
 
 - Apply one Qt XML fragment at launch with `-paste-xml` in one Undo step per newly opened eligible document. With no `.ds3` input or output option, open one untitled document with default model colors. A read or validation error leaves that document blank and displays a diagnostic.
