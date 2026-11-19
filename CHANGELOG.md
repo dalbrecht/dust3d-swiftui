@@ -23,6 +23,8 @@
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
 - Review and save recent document, preview, and export outcomes from Window → Session Log.
+- Configure stitching closures, segments and loop caps across selected groups in one undoable edit.
+
 - Open the bundled upstream Dust3D acknowledgements from the Help menu.
 - Open the upstream Dust3D sponsorship page from the Help menu.
 
