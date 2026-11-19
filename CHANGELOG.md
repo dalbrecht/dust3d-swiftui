@@ -330,6 +330,10 @@
 
 - Use native About panels with bundled project MIT attribution and separate Help > Build Diagnostics commands in both apps, retaining the graph QA name (#344).
 
+- Disable camera input on outdated Replay Steps previews while the current frame builds.
+
+- Show a native keyboard focus ring around the 3D preview.
+
 - Use the native adjustable inspector, standard Control–Command–I visibility command, compact section switcher and an accessible toolbar visibility toggle (#341).
 
 - Announce completed geometry exports and warnings to assistive technologies, with one notification per export even for repeated destinations (#339).

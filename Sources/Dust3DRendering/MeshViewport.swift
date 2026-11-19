@@ -39,7 +39,7 @@ public struct MeshViewport: NSViewRepresentable {
     let onPick: (@MainActor (MeshPickInput) -> Void)?
     let cameraState: MeshCameraState?
     let cameraRevision: Int?
-    let cameraInteractionAllowed: @MainActor () -> Bool
+    private(set) var cameraInteractionAllowed: @MainActor () -> Bool
     let onError: (String) -> Void
     let meshRevision: Int
     let materials: MeshMaterialContent?
@@ -155,6 +155,13 @@ public struct MeshViewport: NSViewRepresentable {
     package func withCanvasWheelZoom(_ input: MeshCameraWheelZoom) -> Self {
         var next = self
         next.canvasWheelZoom = input
+        return next
+    }
+
+    package func withCameraInteractionAllowed(_ isCurrent: @escaping @MainActor () -> Bool) -> Self {
+        let previous = cameraInteractionAllowed
+        var next = self
+        next.cameraInteractionAllowed = { previous() && isCurrent() }
         return next
     }
 
@@ -304,7 +311,11 @@ public class InteractiveMeshView: MTKView {
 
     private var fallbackCamera = OrbitCamera()
     private var cameraState: MeshCameraState?
-    var cameraInteractionAllowed: @MainActor () -> Bool = { true }
+    var cameraInteractionAllowed: @MainActor () -> Bool = { true } {
+        didSet {
+            if window?.firstResponder === self { noteFocusRingMaskChanged() }
+        }
+    }
     private var lastCameraCommand: UUID?
     private var fallbackInputRevision = UUID()
     private var pickingRevision: UUID?
@@ -646,8 +657,10 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func setFrameSize(_ newSize: NSSize) {
-        if frame.size != newSize { invalidatePickingProjection() }
+        let sizeChanged = frame.size != newSize
+        if sizeChanged { invalidatePickingProjection() }
         super.setFrameSize(newSize)
+        if sizeChanged && window?.firstResponder === self { noteFocusRingMaskChanged() }
     }
 
     public override func viewDidChangeBackingProperties() {
@@ -655,7 +668,18 @@ public class InteractiveMeshView: MTKView {
         super.viewDidChangeBackingProperties()
     }
 
-    public override var acceptsFirstResponder: Bool { true }
+    public override var acceptsFirstResponder: Bool { cameraInteractionAllowed() }
+    public override class var defaultFocusRingType: NSFocusRingType { .exterior }
+
+    public override var focusRingMaskBounds: NSRect {
+        // Keep the native ring inside the preview pane.
+        guard cameraInteractionAllowed(), bounds.width > 8, bounds.height > 8 else { return .zero }
+        return bounds.insetBy(dx: 4, dy: 4)
+    }
+
+    public override func drawFocusRingMask() {
+        NSBezierPath(rect: focusRingMaskBounds).fill()
+    }
 
     public override func resignFirstResponder() -> Bool {
         guard super.resignFirstResponder() else { return false }
