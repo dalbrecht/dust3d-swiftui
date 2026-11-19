@@ -1,19 +1,22 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import SwiftUI
 
 struct ComponentStitchingControls: View {
     let store: EditorStore
     let component: DocumentComponent
+    let support: ComponentStitchingBatchSupport
 
     private var identity: String { (store.snapshot?.documentIdentity.uuidString ?? "") + component.id }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Stitching").font(.headline)
-            ForEach(ComponentStitchingClosureProperty.allCases, id: \.self) { property in
+            ForEach(ComponentStitchingClosureProperty.allCases.filter { $0 == .back || support.line }, id: \.self) {
+                property in
                 if let value = component.stitching.closureValue(property) {
                     Toggle(
-                        title(property),
+                        stitchingClosureTitle(property),
                         isOn: Binding(
                             get: { value },
                             set: {
@@ -23,9 +26,9 @@ struct ComponentStitchingControls: View {
                     .accessibilityIdentifier("component-stitching-\(property.rawValue)")
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(title(property)).font(.callout)
+                        Text(stitchingClosureTitle(property)).font(.callout)
                         Picker(
-                            title(property),
+                            stitchingClosureTitle(property),
                             selection: Binding<Bool?>(
                                 get: { nil },
                                 set: {
@@ -41,43 +44,123 @@ struct ComponentStitchingControls: View {
                         }
                         .labelsHidden().pickerStyle(.menu)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityLabel(Text(title(property)))
+                        .accessibilityLabel(Text(stitchingClosureTitle(property)))
                         .accessibilityIdentifier("component-stitching-\(property.rawValue)")
                     }
                 }
             }
-            StitchingNumberControl(
-                title: "Target segments", identifier: "component-target-segments", identity: identity,
-                source: component.stitching.targetSegments.map { String($0) }
-            ) {
-                store.setComponentTargetSegments(component.id, segments: $0)
-            }
-            ForEach(ComponentStitchingScalarProperty.allCases, id: \.self) { property in
+            if support.line {
                 StitchingNumberControl(
-                    title: property == .depthRatio ? "Loop cap depth" : "Loop cap sharpness",
-                    identifier: "component-\(property.rawValue)", identity: identity,
-                    source: component.stitching.scalarValue(property).map { String($0) }
+                    title: "Target segments (0–100; 0 = automatic)", identifier: "component-target-segments",
+                    identity: identity, source: component.stitching.targetSegments.map { String($0) }
                 ) {
-                    store.setComponentStitchingScalar(component.id, property: property, value: $0)
+                    store.setComponentTargetSegments(component.id, segments: $0)
                 }
             }
-            Text(
-                "Target segments: 0–100 (0 = automatic). Loop cap depth: 0–2; sharpness: 0–1. Each choice or Apply is one undo step."
-            )
-            .font(.caption).foregroundStyle(.primary)
-            Text(
-                "Line closures join spline ends and end profiles. Loop caps use Back closed and depend on profile orientation. These settings apply to stitching children in this group."
-            )
-            .font(.caption).foregroundStyle(.primary)
+            if support.loop {
+                ForEach(ComponentStitchingScalarProperty.allCases, id: \.self) { property in
+                    StitchingNumberControl(
+                        title: property == .depthRatio ? "Loop cap depth (0–2)" : "Loop cap sharpness (0–1)",
+                        identifier: "component-\(property.rawValue)", identity: identity,
+                        source: component.stitching.scalarValue(property).map { String($0) }
+                    ) {
+                        store.setComponentStitchingScalar(component.id, property: property, value: $0)
+                    }
+                    .disabled(!support.cap)
+                }
+                if !support.cap {
+                    Text("Turn on Back closed to edit the loop cap.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
-    private func title(_ property: ComponentStitchingClosureProperty) -> String {
-        switch property {
-        case .front: return "Front closed"
-        case .back: return "Back closed"
-        case .side: return "Side closed"
+}
+
+struct ComponentStitchingBatchControls: View {
+    let store: EditorStore
+    let target: ComponentStitchingBatchTarget
+    let identity: String
+
+    var body: some View {
+        DisclosureGroup("Selected Group Stitching") {
+            if target.supportsLine { closure(.front) }
+            closure(.back)
+            if target.supportsLine {
+                closure(.side)
+                number(
+                    "Target segments (0–100; 0 = automatic)", identifier: "batch-stitching-segments",
+                    value: target.targetSegments, sourceValues: target.segmentDraftValues
+                ) { store.setBatchStitchingSegments($0, target: target) }
+            }
+            if target.supportsLoop {
+                number(
+                    "Loop cap depth (0–2)", identifier: "batch-stitching-depth", value: target.scalar(.depthRatio),
+                    sourceValues: target.scalarDraftValues(.depthRatio)
+                ) { store.setBatchStitchingScalar(.depthRatio, draft: $0, target: target) }
+                .disabled(!target.supportsCap)
+                number(
+                    "Loop cap sharpness (0–1)", identifier: "batch-stitching-sharpness",
+                    value: target.scalar(.sharpness),
+                    sourceValues: target.scalarDraftValues(.sharpness)
+                ) { store.setBatchStitchingScalar(.sharpness, draft: $0, target: target) }
+                .disabled(!target.supportsCap)
+                if !target.supportsCap {
+                    Text("Turn on Back closed for all selected groups to edit the loop caps.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Text("Each edit applies to all selected groups and can be undone in one step.")
+                .font(.caption).foregroundStyle(.secondary)
         }
+        .disabled(!store.canEditComponentStitchingBatch(target))
+    }
+
+    @ViewBuilder private func closure(_ property: ComponentStitchingClosureProperty) -> some View {
+        let title = stitchingClosureTitle(property)
+        let value = target.closure(property)
+        if case .uniform(let current) = value {
+            Toggle(title, isOn: Binding(get: { current }, set: { apply(property, $0) }))
+        } else {
+            let status = value == .mixed ? "Mixed values" : "Unsupported source value"
+            Menu("\(title): \(status)") {
+                Button("On") { apply(property, true) }
+                Button("Off") { apply(property, false) }
+            }
+            .accessibilityLabel(title)
+            .accessibilityValue(status)
+        }
+    }
+
+    private func apply(_ property: ComponentStitchingClosureProperty, _ value: Bool) {
+        store.editComponentStitchingBatch(.closure(property, value), target: target)
+    }
+
+    private func number<Value: Equatable & Sendable>(
+        _ title: String, identifier: String, value: ComponentMeshSelectionValue<Value>, sourceValues: [Value?],
+        apply: @escaping (String) -> Void
+    ) -> some View {
+        let source: String?
+        if case .uniform(let current) = value {
+            source = String(describing: current)
+        } else {
+            source = nil
+        }
+        return StitchingNumberControl(
+            title: title, identifier: identifier, identity: identity, source: source,
+            sourceValues: sourceValues.map { $0.map { String(describing: $0) } },
+            nilNotice: value == .mixed
+                ? "Mixed values. Enter a replacement." : "Unsupported source value. Enter a replacement.",
+            apply: apply)
+    }
+}
+
+private func stitchingClosureTitle(_ property: ComponentStitchingClosureProperty) -> String {
+    switch property {
+    case .front: "Front closed"
+    case .back: "Back closed"
+    case .side: "Side closed"
     }
 }
 
@@ -86,6 +169,8 @@ private struct StitchingNumberControl: View {
     let identifier: String
     let identity: String
     let source: String?
+    var sourceValues: [String?]? = nil
+    var nilNotice = "Unsupported source value. Enter a replacement."
     let apply: (String) -> Void
     @State private var draft = ""
 
@@ -97,7 +182,7 @@ private struct StitchingNumberControl: View {
                 .focusedValue(\.editorTextEditing, true)
                 .onSubmit { apply(draft) }
             if source == nil {
-                Text("Unsupported source value. Enter a replacement.").font(.caption).foregroundStyle(.primary)
+                Text(nilNotice).font(.caption).foregroundStyle(.primary)
             }
             HStack {
                 Button("Reset Draft") { reset() }.accessibilityLabel("Reset \(title.lowercased()) draft")
@@ -106,7 +191,7 @@ private struct StitchingNumberControl: View {
             }
         }
         .onChange(of: identity, initial: true) { _, _ in reset() }
-        .onChange(of: source) { _, _ in reset() }
+        .onChange(of: sourceValues ?? [source]) { _, _ in reset() }
     }
 
     private func reset() { draft = source ?? "" }
