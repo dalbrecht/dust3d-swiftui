@@ -8,6 +8,7 @@ struct Dust3DViewerApp: App {
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
     @FocusedValue(\.openDocument) private var openDocument
+    @FocusedValue(\.viewerPreviewFocus) private var previewFocus
     @FocusedValue(\.viewerStore) private var store
 
     private var applicationName: String {
@@ -46,6 +47,8 @@ struct Dust3DViewerApp: App {
                     cameraItem("Pan Up", .panUp)
                     cameraItem("Pan Down", .panDown)
                 }
+                Button("Focus 3D Preview") { previewFocus?.moveFocus(in: NSApp.keyWindow) }
+                    .disabled(previewFocus == nil)
                 if let store {
                     Toggle("Model Colors", isOn: store.modelColorsBinding)
                         .disabled(store.mesh == nil)
@@ -54,6 +57,7 @@ struct Dust3DViewerApp: App {
                         .disabled(true)
 
                 }
+
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)") {
@@ -122,10 +126,20 @@ private struct OpenDocumentKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct ViewerPreviewFocusKey: FocusedValueKey {
+    typealias Value = MeshViewportFocus
+}
+
 extension FocusedValues {
+    var viewerPreviewFocus: MeshViewportFocus? {
+        get { self[ViewerPreviewFocusKey.self] }
+        set { self[ViewerPreviewFocusKey.self] = newValue }
+    }
+
     var viewerStore: ViewerStore? {
         get { self[ViewerStoreKey.self] }
         set { self[ViewerStoreKey.self] = newValue }
+
     }
 
     var openDocument: (() -> Void)? {

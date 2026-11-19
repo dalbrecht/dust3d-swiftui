@@ -2,8 +2,17 @@ import Dust3DDocument
 import SwiftUI
 
 struct PartLoopInteriorControls: View {
-    let store: EditorStore
     let part: DocumentPart
+    let apply: @MainActor (Bool) -> Void
+
+    init(store: EditorStore, part: DocumentPart) {
+        self.init(part: part) { value in store.setPartFillLoopInterior(part.id, value: value) }
+    }
+
+    init(part: DocumentPart, apply: @escaping @MainActor (Bool) -> Void) {
+        self.part = part
+        self.apply = apply
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -13,7 +22,7 @@ struct PartLoopInteriorControls: View {
                     isOn: Binding(
                         get: { value },
                         set: {
-                            store.setPartFillLoopInterior(part.id, value: $0)
+                            apply($0)
                         })
                 )
                 .accessibilityIdentifier("part-fill-loop-interior")
@@ -24,7 +33,7 @@ struct PartLoopInteriorControls: View {
                     selection: Binding<Bool?>(
                         get: { nil },
                         set: {
-                            if let value = $0 { store.setPartFillLoopInterior(part.id, value: value) }
+                            if let value = $0 { apply(value) }
                         })
                 ) {
                     Text("Unsupported source value").tag(nil as Bool?).disabled(true)
