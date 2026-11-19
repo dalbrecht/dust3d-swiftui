@@ -23,6 +23,8 @@ extension MeshMaterialContent {
 
 /// Main-actor SwiftUI surface for a validated mesh and its interactive orbit camera.
 public struct MeshViewport: NSViewRepresentable {
+    package static let keyboardCameraHelp = "Use the arrow keys to orbit and F to reset the camera."
+
     let mesh: RenderMesh
     let isWireframe: Bool
     let showsColor: Bool
@@ -622,6 +624,12 @@ public class InteractiveMeshView: MTKView {
 
     public override func drawFocusRingMask() {
         NSBezierPath(rect: focusRingMaskBounds).fill()
+    }
+
+    public override func accessibilityHelp() -> String? {
+        if let help = super.accessibilityHelp() { return help }
+        guard cameraInteractionAllowed() else { return nil }
+        return MeshViewport.keyboardCameraHelp
     }
 
     public override func mouseDown(with event: NSEvent) {
