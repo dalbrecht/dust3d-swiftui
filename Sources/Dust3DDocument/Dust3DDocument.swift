@@ -206,6 +206,8 @@ public enum DocumentCommand: Sendable {
     /// Set target segments in 0...100; zero means automatic. Throws `invalidComponentTargetSegments` or `missingComponent`.
     /// Example: `.setComponentTargetSegments(id: id, segments: 12)`.
     case setComponentTargetSegments(id: String, segments: Int)
+    /// Apply one stitching field atomically to exact eligible groups.
+    case editComponentStitchingBatch(ids: [String], edit: ComponentStitchingEdit)
     /// Move a component within its current siblings, preserving its entire subtree and all assets.
     case placeComponents(ids: [String], placement: ComponentDropPlacement)
     case reorderComponent(id: String, direction: ComponentOrderMove)
@@ -946,6 +948,11 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentTargetSegments(let id, let segments):
             guard try ComponentStitching.setSegments(model, id: id, segments: segments) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .editComponentStitchingBatch(let ids, let edit):
+            guard try ComponentStitching.setBatch(model, parts: contents.parts, ids: ids, edit: edit) else {
+                return self
+            }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartFillLoopInterior(let id, let value):
             guard try PartLoopInterior.set(model, parts: contents.parts, id: id, value: value) else { return self }

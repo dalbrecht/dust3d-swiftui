@@ -839,6 +839,7 @@ final class EditorStore {
         }
     }
     var mesh: IndexedMesh? { previewState.value?.mesh }
+    private var previewRecoveryPending = false
     var previewSourceHints: MeshSourceHints? {
         guard !previewState.isStale, !isWorking, !stopped else { return nil }
         return previewState.value?.sourceHints
@@ -2089,6 +2090,28 @@ final class EditorStore {
             && acceptedDocumentSource.map { context.isCurrent(in: $0) } == true
     }
 
+    func componentSidebarPrimaryAction(
+        snapshot: EditorSnapshot, rows: [ComponentTreeRow], scopeEpoch: UUID, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor (Set<String>) -> Void {
+        let source = PartGraphSelectionContext(snapshot: snapshot)
+        let disclosureEpoch = disclosure.epoch
+        let scoped = componentBrowseGroupID != nil
+        return { [weak self] ids in
+            guard let self, disclosure.epoch == disclosureEpoch,
+                self.admitsComponentSidebarInput(context: source, scopeEpoch: scopeEpoch),
+                ids.count == 1, let id = ids.first,
+                let row = rows.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
+            else { return }
+            if row.component.isGroup, scoped || row.hasChildren {
+                self.componentBrowseAction(id, snapshot: snapshot)()
+            } else if row.hasChildren {
+                disclosure.collapsedIDs.remove(id)
+            } else {
+                self.selectComponentGraph(ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids))
+            }
+        }
+    }
+
     func selectBrowsedComponents(_ ids: Set<String>, scopeEpoch: UUID) {
         guard canBrowseComponents, componentBrowseEpoch == scopeEpoch,
             componentGroupBrowse.map({ ids.allSatisfy($0.contains) }) != false
@@ -2373,6 +2396,35 @@ final class EditorStore {
         }
         perform { try await $0.apply([.setComponentTargetSegments(id: id, segments: number)]) }
     }
+    func canEditComponentStitchingBatch(_ target: ComponentStitchingBatchTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+
+    func editComponentStitchingBatch(_ edit: ComponentStitchingEdit, target: ComponentStitchingBatchTarget) {
+        guard canEditComponentStitchingBatch(target), target.permits(edit) else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.editComponentStitchingBatch(edit, target: target) }
+    }
+
+    func setBatchStitchingSegments(_ draft: String, target: ComponentStitchingBatchTarget) {
+        guard canEditComponentStitchingBatch(target), target.supportsLine else { return }
+        guard let segments = Int(draft), (0...100).contains(segments) else {
+            errorMessage = Self.message(DocumentError.invalidComponentTargetSegments)
+            return
+        }
+        editComponentStitchingBatch(.segments(segments), target: target)
+    }
+
+    func setBatchStitchingScalar(
+        _ property: ComponentStitchingScalarProperty, draft: String, target: ComponentStitchingBatchTarget
+    ) {
+        guard canEditComponentStitchingBatch(target), target.supportsCap else { return }
+        guard let value = EngineScalar.parse(draft, in: property.bounds) else {
+            errorMessage = Self.message(DocumentError.invalidComponentStitchingScalar)
+            return
+        }
+        editComponentStitchingBatch(.scalar(property, value), target: target)
+    }
+
     func setPartFillLoopInterior(_ id: String, value: Bool) {
         perform { try await $0.apply([.setPartFillLoopInterior(id: id, value: value)]) }
     }
@@ -3879,6 +3931,7 @@ final class EditorStore {
         clearMaterials()
         generation?.cancel()
         previewState.clear()
+        previewRecoveryPending = false
         previewCacheStatistics = nil
         previewSourceIssue = nil
         let previousScope = previewScopeID
@@ -3922,16 +3975,19 @@ final class EditorStore {
                 previewSourceIssue = result.sourceIssue
                 if let output = result.output {
                     previewState.succeed(output, requestID: requestID)
+                    if previewRecoveryPending { diagnostics?.record(.previewRecovered) }
                     if let currentSnapshot = self.snapshot { generateMaterials(currentSnapshot) }
                 } else {
                     previewState.succeedEmpty(requestID: requestID)
                 }
+                previewRecoveryPending = false
             } catch {
                 guard !Task.isCancelled, !stopped, scopeID == previewScopeID,
                     self.snapshot?.previewIdentity.geometry == snapshot.previewIdentity.geometry,
                     previewState.isCurrent(requestID: requestID)
                 else { return }
                 previewState.fail(Self.message(error), requestID: requestID)
+                previewRecoveryPending = true
                 diagnostics?.record(.previewFailed)
             }
         }
