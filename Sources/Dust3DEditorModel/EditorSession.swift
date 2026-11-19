@@ -549,6 +549,15 @@ public actor EditorSession {
         }.snapshot
     }
 
+    package func setGraphLoopInterior(_ value: Bool, target: GraphLoopInteriorTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.apply([.setPartFillLoopInterior(id: part.id, value: value)])
+        }.snapshot
+    }
+
     package func editComponentStitchingBatch(
         _ edit: ComponentStitchingEdit, target: ComponentStitchingBatchTarget
     ) throws -> EditorSnapshot {

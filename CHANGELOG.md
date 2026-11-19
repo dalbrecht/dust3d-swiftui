@@ -26,6 +26,8 @@
 - Focus the drawing canvas from the Canvas menu.
 - Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
 
+- Edit an isolated Stitching Loop’s interior fill from its graph selection.
+
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
 - Review and save recent document, preview, and export outcomes from Window → Session Log.
