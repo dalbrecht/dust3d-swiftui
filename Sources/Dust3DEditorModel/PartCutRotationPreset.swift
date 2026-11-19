@@ -9,8 +9,11 @@ package enum PartCutRotationPreset: Int, CaseIterable, Sendable {
 
 extension EditorSnapshot {
     /// Match the Part inspector's explicit selection and shared linked-part routes.
-    package func allowsCutRotationPreset(for partID: String) -> Bool {
-        guard selectedComponent == nil, let part = selectedPart ?? selectedLinkedComponentPart else { return false }
-        return part.id.utf8.elementsEqual(partID.utf8) && part.target == .model
+    package func cutRotationPresets(for partID: String) -> [PartCutRotationPreset] {
+        guard selectedComponent == nil, let part = selectedPart ?? selectedLinkedComponentPart,
+            part.id.utf8.elementsEqual(partID.utf8)
+        else { return [] }
+        if part.isImportedModel { return [.zero] }
+        return part.target == .model ? PartCutRotationPreset.allCases : []
     }
 }

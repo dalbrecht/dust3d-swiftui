@@ -39,7 +39,12 @@ struct PartInspector: View {
             .font(.caption).foregroundStyle(.secondary)
             PartModifierControls(store: store, part: part)
             PartMirrorControls(store: store)
-            PartDeformationControls(store: store, part: part)
+            if part.supportsDeformationScales, let snapshot = store.snapshot {
+                PartDeformationControls(
+                    store: store, part: part, inspectorTarget: CanvasAdjustmentTarget(snapshot: snapshot)
+                )
+                .id(snapshot.documentIdentity)
+            }
             #if MOTE3D_EXPERIMENTAL_HOLLOW
                 if part.target == .model, let snapshot = store.snapshot {
                     PartHollowControls(
@@ -48,7 +53,12 @@ struct PartInspector: View {
                     .id(part.id)
                 }
             #endif
-            PartCutFaceControls(store: store, part: part)
+            if part.supportsDeformationScales, let snapshot = store.snapshot {
+                PartCutFaceControls(
+                    store: store, part: part, inspectorTarget: CanvasAdjustmentTarget(snapshot: snapshot)
+                )
+                .id(snapshot.documentIdentity)
+            }
             if part.target == .model, let snapshot = store.snapshot {
                 PartMaterialControls(
                     store: store, part: part, inspectorTarget: CanvasAdjustmentTarget(snapshot: snapshot)

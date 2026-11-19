@@ -247,6 +247,273 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertNil(store.materialSourceIssue)
     }
 
+    func testCancelPendingOpenRetainsAcceptedModelAndRejectsStaleActions() async throws {
+        let frame = try snapshot()
+        let baked = try await MeshBakingService().load(
+            data: frame.data,
+            options: MeshBakeOptions(colorSize: 32, normalSize: 16, materialSize: 8, atlasTextureSize: 32))
+        let loader = SuspendedSnapshotLoader()
+        let baker = SuspendedViewerBaker()
+        let store = ViewerStore(service: loader, materialBaker: baker)
+        defer { store.stop() }
+        let originalURL = URL(fileURLWithPath: "/test/first.ds3")
+        store.open(originalURL)
+        try await waitForFileRequests(1, loader)
+        await loader.finish(0, frame)
+        await store.loadTask?.value
+        try await waitForRequests(1, baker)
+        await baker.finish(0, baked)
+        await store.materialTask?.value
+        let meshRevision = store.meshRevision
+        let materialRevision = store.materialRevision
+        store.materialsRendered(revision: meshRevision + materialRevision)
+        XCTAssertNil(store.pendingOpenRevision)
+
+        store.open(URL(fileURLWithPath: "/test/superseded.ds3"))
+        try await waitForFileRequests(2, loader)
+        let staleRevision = try XCTUnwrap(store.pendingOpenRevision)
+        let staleTask = try XCTUnwrap(store.loadTask)
+
+        store.open(URL(fileURLWithPath: "/test/replacement.ds3"))
+        try await waitForFileRequests(3, loader)
+        let currentRevision = try XCTUnwrap(store.pendingOpenRevision)
+        let currentTask = try XCTUnwrap(store.loadTask)
+        store.cancelOpen(revision: staleRevision)
+        XCTAssertEqual(store.pendingOpenRevision, currentRevision)
+        XCTAssertFalse(currentTask.isCancelled)
+        store.cancelOpen(revision: currentRevision)
+        XCTAssertTrue(currentTask.isCancelled)
+        XCTAssertFalse(store.isLoading)
+        XCTAssertNil(store.pendingOpenRevision)
+
+        await loader.finish(2, frame)
+        await loader.fail(1)
+        await currentTask.value
+        await staleTask.value
+        XCTAssertNil(store.errorMessage)
+        XCTAssertEqual(store.documentName, "first.ds3")
+        XCTAssertEqual(store.meshRevision, meshRevision)
+        XCTAssertEqual(store.materialRevision, materialRevision)
+        XCTAssertEqual(store.bakedMesh?.textures.color, baked.textures.color)
+        XCTAssertFalse(store.isUpdatingMaterials)
+    }
+
+    func testRetryRendererKeepsAcceptedModelAndRejectsRetiredDiagnostics() async throws {
+        let frame = try snapshot()
+        let store = ViewerStore(service: SnapshotLoader(snapshot: frame))
+        defer { store.stop() }
+
+        store.open(URL(fileURLWithPath: "/test/model.ds3"))
+        await store.loadTask?.value
+        store.cameraState.move(.zoomIn)
+        let camera = store.cameraState
+        let meshRevision = store.meshRevision
+        let originalAttempt = store.rendererAttemptID
+        store.reportRendererError("Original Metal failure", attemptID: originalAttempt)
+        XCTAssertEqual(store.rendererError, "Original Metal failure")
+
+        store.dismissRendererError(attemptID: originalAttempt)
+        XCTAssertNil(store.rendererError)
+        let retryOriginal = try XCTUnwrap(store.rendererRetryAction())
+        retryOriginal()
+        let retryAttempt = store.rendererAttemptID
+        XCTAssertNotEqual(retryAttempt, originalAttempt)
+        XCTAssertNil(store.rendererError)
+        XCTAssertNil(store.rendererRetryAction())
+        XCTAssertTrue(store.cameraState === camera)
+        XCTAssertEqual(camera.revision, 1)
+        XCTAssertEqual(store.meshRevision, meshRevision)
+        XCTAssertEqual(store.mesh?.indices, frame.mesh.indices)
+        XCTAssertEqual(store.documentName, "model.ds3")
+
+        store.reportRendererError("Late diagnostic", attemptID: originalAttempt)
+        XCTAssertNil(store.rendererError)
+        store.reportRendererError("Retry failed", attemptID: retryAttempt)
+        retryOriginal()
+        XCTAssertEqual(store.rendererAttemptID, retryAttempt)
+        XCTAssertEqual(store.rendererError, "Retry failed")
+
+        store.open(URL(fileURLWithPath: "/test/replacement.ds3"))
+        await store.loadTask?.value
+        XCTAssertNotEqual(store.rendererAttemptID, retryAttempt)
+        store.reportRendererError("Retired model failure", attemptID: retryAttempt)
+        XCTAssertNil(store.rendererError)
+        XCTAssertNil(store.rendererRetryAction())
+
+        let acceptedAttempt = store.rendererAttemptID
+        store.stop()
+        store.reportRendererError("Closed window failure", attemptID: acceptedAttempt)
+        XCTAssertNil(store.rendererError)
+    }
+
+    func testCapturedPreviewRetryRequiresItsWindowAtDelivery() async throws {
+        let store = ViewerStore(service: SnapshotLoader(snapshot: try snapshot()))
+        defer { store.stop() }
+        store.open(URL(fileURLWithPath: "/test/model.ds3"))
+        await store.loadTask?.value
+
+        let failedAttempt = store.rendererAttemptID
+        store.reportRendererError("Metal failure", attemptID: failedAttempt)
+        var ownsWindow = false
+        XCTAssertNil(store.rendererRetryAction { ownsWindow })
+        ownsWindow = true
+        let retry = try XCTUnwrap(store.rendererRetryAction { ownsWindow })
+        ownsWindow = false
+        retry()
+        XCTAssertEqual(store.rendererAttemptID, failedAttempt)
+        XCTAssertEqual(store.rendererError, "Metal failure")
+
+        ownsWindow = true
+        retry()
+        XCTAssertNotEqual(store.rendererAttemptID, failedAttempt)
+        XCTAssertNil(store.rendererError)
+    }
+
+    func testCancellingReplacementDoesNotDiscardCurrentMaterialBake() async throws {
+        let frame = try snapshot()
+        let baked = try await MeshBakingService().load(
+            data: frame.data,
+            options: MeshBakeOptions(colorSize: 32, normalSize: 16, materialSize: 8, atlasTextureSize: 32))
+        let loader = SuspendedSnapshotLoader()
+        let baker = SuspendedViewerBaker()
+        let store = ViewerStore(service: loader, materialBaker: baker)
+        defer { store.stop() }
+
+        store.open(URL(fileURLWithPath: "/test/current.ds3"))
+        try await waitForFileRequests(1, loader)
+        await loader.finish(0, frame)
+        await store.loadTask?.value
+        try await waitForRequests(1, baker)
+        let currentMaterials = try XCTUnwrap(store.materialTask)
+        let meshRevision = store.meshRevision
+
+        store.open(URL(fileURLWithPath: "/test/replacement.ds3"))
+        try await waitForFileRequests(2, loader)
+        let replacement = try XCTUnwrap(store.loadTask)
+        store.cancelOpen(revision: try XCTUnwrap(store.pendingOpenRevision))
+        await loader.finish(1, frame)
+        await replacement.value
+        await baker.finish(0, baked)
+        await currentMaterials.value
+
+        XCTAssertFalse(store.isLoading)
+        XCTAssertFalse(store.isBakingMaterials)
+        XCTAssertEqual(store.meshRevision, meshRevision)
+        XCTAssertEqual(store.documentName, "current.ds3")
+        XCTAssertEqual(store.bakedMesh?.textures.color, baked.textures.color)
+        store.materialsRendered(revision: store.meshRevision + store.materialRevision)
+        XCTAssertFalse(store.isUpdatingMaterials)
+    }
+
+    func testCancellationCommandsStayBoundToTheirPendingOperation() async throws {
+        let frame = try snapshot()
+        let baked = try await MeshBakingService().load(
+            data: frame.data,
+            options: MeshBakeOptions(colorSize: 32, normalSize: 16, materialSize: 8, atlasTextureSize: 32))
+        let loader = SuspendedSnapshotLoader()
+        let baker = SuspendedViewerBaker()
+        let store = ViewerStore(service: loader, materialBaker: baker)
+        defer { store.stop() }
+
+        XCTAssertNil(store.pendingCancellation)
+        store.open(URL(fileURLWithPath: "/test/model.ds3"))
+        try await waitForFileRequests(1, loader)
+        await loader.finish(0, frame)
+        await store.loadTask?.value
+        try await waitForRequests(1, baker)
+        let materialTask = try XCTUnwrap(store.materialTask)
+        let materialID = try XCTUnwrap(store.pendingMaterialUpdateID)
+        let cancelMaterials = try XCTUnwrap(store.pendingCancellation)
+
+        store.open(URL(fileURLWithPath: "/test/replacement.ds3"))
+        try await waitForFileRequests(2, loader)
+        let openTask = try XCTUnwrap(store.loadTask)
+        let cancelOpening = try XCTUnwrap(store.pendingCancellation)
+        cancelMaterials()
+        XCTAssertFalse(materialTask.isCancelled)
+        cancelOpening()
+        XCTAssertTrue(openTask.isCancelled)
+        XCTAssertNil(store.pendingOpenRevision)
+        XCTAssertEqual(store.pendingMaterialUpdateID, materialID)
+        XCTAssertFalse(materialTask.isCancelled)
+
+        cancelOpening()
+        XCTAssertFalse(materialTask.isCancelled)
+        try XCTUnwrap(store.pendingCancellation)()
+        XCTAssertTrue(materialTask.isCancelled)
+        XCTAssertNil(store.pendingCancellation)
+        XCTAssertEqual(store.documentName, "model.ds3")
+        await loader.finish(1, frame)
+        await baker.finish(0, baked)
+        await openTask.value
+        await materialTask.value
+        XCTAssertNil(store.materials)
+        XCTAssertEqual(store.documentName, "model.ds3")
+    }
+
+    func testCancelMaterialUpdateKeepsGeometryAndPermitsRetry() async throws {
+        let frame = try snapshot()
+        let baked = try await MeshBakingService().load(
+            data: frame.data,
+            options: MeshBakeOptions(colorSize: 32, normalSize: 16, materialSize: 8, atlasTextureSize: 32))
+        let baker = SuspendedViewerBaker()
+        let store = ViewerStore(service: SnapshotLoader(snapshot: frame), materialBaker: baker)
+        defer { store.stop() }
+
+        store.open(URL(fileURLWithPath: "/test/model.ds3"))
+        await store.loadTask?.value
+        try await waitForRequests(1, baker)
+        let initialRequest = try XCTUnwrap(store.pendingMaterialUpdateID)
+        let initialTask = try XCTUnwrap(store.materialTask)
+        let acceptedIndices = try XCTUnwrap(store.mesh).indices
+        let meshRevision = store.meshRevision
+        store.cancelMaterialUpdate(requestID: initialRequest)
+        XCTAssertTrue(initialTask.isCancelled)
+        XCTAssertFalse(store.isUpdatingMaterials)
+        XCTAssertNil(store.pendingMaterialUpdateID)
+        XCTAssertNotNil(store.materialIssue)
+        await baker.finish(0, baked)
+        await initialTask.value
+        XCTAssertNil(store.materials)
+
+        var ownsWindow = true
+        let capturedRetry = try XCTUnwrap(store.materialRetryAction { ownsWindow })
+        ownsWindow = false
+        capturedRetry()
+        XCTAssertNil(store.materialRetryAction { ownsWindow })
+        XCTAssertFalse(store.isUpdatingMaterials)
+        ownsWindow = true
+        capturedRetry()
+        try await waitForRequests(2, baker)
+        let uploadRequest = try XCTUnwrap(store.pendingMaterialUpdateID)
+        store.cancelMaterialUpdate(requestID: initialRequest)
+        XCTAssertEqual(store.pendingMaterialUpdateID, uploadRequest)
+        await baker.finish(1, baked)
+        await store.materialTask?.value
+        let uploadRevision = store.meshRevision + store.materialRevision
+        XCTAssertEqual(store.pendingMaterialUpdateID, uploadRequest)
+        store.cancelMaterialUpdate(requestID: uploadRequest)
+        store.materialsRendered(revision: uploadRevision)
+        XCTAssertNil(store.materials)
+        XCTAssertFalse(store.isUpdatingMaterials)
+
+        capturedRetry()
+        XCTAssertFalse(store.isUpdatingMaterials)
+        let currentRetry = try XCTUnwrap(store.materialRetryAction())
+        currentRetry()
+        try await waitForRequests(3, baker)
+        await baker.finish(2, baked)
+        await store.materialTask?.value
+        store.materialsRendered(revision: store.meshRevision + store.materialRevision)
+        XCTAssertFalse(store.isUpdatingMaterials)
+        XCTAssertNil(store.pendingMaterialUpdateID)
+        XCTAssertNil(store.materialIssue)
+        XCTAssertEqual(store.bakedMesh?.textures.color, baked.textures.color)
+        XCTAssertEqual(store.meshRevision, meshRevision)
+        XCTAssertEqual(store.mesh?.indices, acceptedIndices)
+        XCTAssertEqual(store.documentName, "model.ds3")
+    }
+
     func testMaterialNoticeTracksCurrentRenderingAndKeepsSourceFailureCause() async throws {
         let original = try snapshot()
         let warning = "Untextured preview: image textures and procedural surface details are not yet displayed."

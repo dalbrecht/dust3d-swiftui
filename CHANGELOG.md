@@ -68,6 +68,8 @@
 
 - Settle the origin from node bounds when a headless Qt XML paste creates a new document.
 
+- Preview a component color draft on the solid-color model before applying the edit.
+
 - Settle the origin when launching the Editor with a Qt XML fragment and no document, in the same Undo step as the paste.
 
 - Announce document errors through VoiceOver in the active editor window.
@@ -308,6 +310,20 @@
 
 - View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
 
+- Keep Viewer preview retry with its active window and renderer attempt.
+
+- Keep Retry Preview available in the Viewer’s View menu after dismissing a renderer error.
+
+- Add Cancel Current Operation to the Viewer’s File menu for pending opens and material updates.
+
+- Let the focused Viewer cancel a pending open or material update with Escape.
+
+- Let Viewer users retry a failed 3D preview while keeping the accepted model and camera.
+
+- Let Viewer users cancel a material update and retry it while keeping the model visible.
+
+- Let Viewer users cancel an open in progress while keeping the current model.
+
 - Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
 
 - Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
@@ -357,6 +373,10 @@
 
 - Add window-local Model Colors and Wireframe controls to the View menu, preserving material transparency in neutral preview mode (#324).
 
+- Keep preview camera commands in the editor window that supplied them.
+
+- Add Editor menu shortcuts for Wireframe, Automatic Rotation, and preview zoom.
+
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
 - Show the exact authored values applied at the current replay property step.
@@ -392,6 +412,8 @@
 - Add graph auto-color from displayed reference pixels and default-color reset, with source-bound atomic Undo and stale-raster rejection (#45).
 
 - Add canvas one-degree keyboard rotation and explicit angle controls, with automatic pivot/descendant selection, native lock protection and stale-input rejection (#45).
+
+- List the Add tool’s preview radius keys in Keyboard Shortcuts Help.
 
 - Open the Part inspector when multiple component rows link directly to one shared part.
 
@@ -540,6 +562,18 @@
 - Add bounded app-owned recovery copies targeted to an exact process, with PID/UUID-correlated receipts, preserving original files and undo history (#248).
 
 - Add native edge bone assignment with Apply, Clear, draft reset and lossless undo/redo; rigged preview remains unavailable (#247).
+
+- Keep Part inspector profiles and rotation on the selection that supplied them.
+
+- Keep Part inspector deformation edits on the selection that supplied them.
+
+- Reset imported model width and thickness scales independently.
+
+- Mirror imported models from the inspector.
+
+- Hide component color image editing for imported models and Cut Faces.
+
+- Reset imported model rotation to zero from its orientation controls.
 
 - Expose stored rig-template and eyelid parameters in the native inspector, preserving undo/redo and lossless save; skeleton generation and pose preview remain unavailable (#254).
 

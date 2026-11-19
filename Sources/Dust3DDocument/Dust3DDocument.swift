@@ -538,6 +538,11 @@ public struct Dust3DDocument: Sendable {
         return Data(bytes[(payloadOffset + item.range.lowerBound)..<(payloadOffset + item.range.upperBound)])
     }
 
+    /// Recognize Core's embedded-model archive namespace without reading any asset payload.
+    package var hasEmbeddedModelAssets: Bool {
+        items.contains { $0.type == "asset" && $0.name.hasPrefix("models/") }
+    }
+
     /// Inventory retained image metadata in source order, including unused and unsupported resources.
     /// - Returns: Byte-stable grouped rows; pixel decoding remains a platform responsibility.
     /// This copies metadata only and never changes archive bytes.
@@ -1803,6 +1808,7 @@ public struct Dust3DDocument: Sendable {
                 modifiers: PartModifiers.values(part), deformationScales: PartDeformation.scales(part),
                 isDeformationUnified: PartDeformation.unified(part), cutFace: PartCutFace.selection(part),
                 cutRotation: PartCutFace.rotation(part), target: PartTargetMetadata.value(part),
+                isImportedModel: part.attribute(forName: "target")?.stringValue == "ImportedModel",
                 isLoopInteriorFilled: PartLoopInterior.value(part), materials: PartMaterial.values(part),
                 cutFaceReferenceCount: cutFaceReferenceCounts[id, default: 0],
                 xMirrored: PartMirrorMetadata.value(part))

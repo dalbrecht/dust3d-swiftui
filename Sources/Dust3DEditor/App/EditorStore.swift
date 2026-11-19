@@ -74,6 +74,7 @@ final class EditorStore {
     }
 
     private func changeRigEdgeSelection(_ enabled: Bool) {
+        stopComponentColorDraftPreview()
         guard enabled != isSelectingRigEdges else { return }
         isSelectingRigEdges = enabled
         rigEdgeSelectionEpoch = UUID()
@@ -552,10 +553,12 @@ final class EditorStore {
     }
 
     func beginAddMode() {
+        stopComponentColorDraftPreview()
         guard canBeginAddMode, let snapshot = acceptedAddPlacementSource, let depthSeed = addDepthSeed(in: snapshot)
         else {
             return
         }
+
         cancelReferenceColorCommit()
         let currentCanvasProjection = CanvasProjection(
             bounds: bounds, plane: plane, width: canvasWidth, height: canvasHeight)
@@ -1325,6 +1328,7 @@ final class EditorStore {
         addPlacements: any AddPlacementServing = AddPlacementService(),
         referenceColorRaster: any ReferenceColorRasterServing = ReferenceColorRasterService(),
         referenceColorApplying: any ReferenceColorApplying = ReferenceColorApplicationService(),
+        colorDraftPreview: (any ComponentColorDraftPreviewServing)? = nil,
         diagnostics: EditorSessionDiagnostics? = nil
     ) {
         self.referenceColorRaster = referenceColorRaster
@@ -1335,6 +1339,7 @@ final class EditorStore {
         self.colorImages = colorImages
         self.referenceImages = referenceImages
         self.preview = preview
+        self.colorDraftPreview = colorDraftPreview ?? OrdinaryColorDraftPreviewService(preview: preview)
         self.diagnostics = diagnostics
         materialPreparation = ArchiveMaterialPreparationService(
             importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
@@ -1676,6 +1681,7 @@ final class EditorStore {
 
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
+        stopComponentColorDraftPreview()
         canvasPrecisionQueue = nil
         graphComponentRevealLookup = nil
         canvasAxisLockQueue = nil
@@ -1908,6 +1914,7 @@ final class EditorStore {
     }
 
     func setMovingOrigin(_ enabled: Bool) {
+        stopComponentColorDraftPreview()
         guard !enabled || !isSelectingRigEdges else { return }
         if enabled { cancelAddMode() }
         cancelOriginDrag()
@@ -2927,22 +2934,29 @@ final class EditorStore {
         perform(acceptCommittedCancellation: true) { try await $0.setGraphPartRole(role, target: target) }
     }
 
-    func setPartCutFace(_ id: String, selection: CutFaceSelection) {
-        perform { try await $0.apply([.setPartCutFace(id: id, selection: selection)]) }
+    func setPartCutFace(_ id: String, selection: CutFaceSelection, target: CanvasAdjustmentTarget? = nil) {
+        if let target, currentInspectedModelPart(id, target: target)?.target != .model { return }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setPartCutFace(id: id, selection: selection)], selecting: nil, target: target)
+        }
     }
-    func setPartCutRotation(_ id: String, rotation: String) {
+    func setPartCutRotation(_ id: String, rotation: String, target: CanvasAdjustmentTarget? = nil) {
         guard !isWorking, !stopped else { return }
+        if let target, currentInspectedModelPart(id, target: target) == nil { return }
         guard let value = EngineScalar.parse(rotation, in: -1...1) else {
             errorMessage = Self.message(DocumentError.invalidPartCutRotation)
             return
         }
-        perform { try await $0.apply([.setPartCutRotation(id: id, rotation: value)]) }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setPartCutRotation(id: id, rotation: value)], selecting: nil, target: target)
+        }
     }
     func partCutRotationPresetAction(_ preset: PartCutRotationPreset, partID: String) -> @MainActor () -> Void {
-        guard let snapshot, snapshot.allowsCutRotationPreset(for: partID) else { return {} }
+        guard let snapshot = acceptedDocumentSource, snapshot.cutRotationPresets(for: partID).contains(preset)
+        else { return {} }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         return { [weak self] in
-            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+            guard let self, !self.stopped, !self.isWorking, let current = self.acceptedDocumentSource,
                 target.isCurrent(in: current)
             else { return }
             self.perform { try await $0.setPartCutRotationPreset(preset, partID: partID, target: target) }
@@ -3070,31 +3084,49 @@ final class EditorStore {
         editGraphPartCrossSection(.deformationScale(property, scale), target: target)
     }
 
-    func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
+    func setPartDeformationScale(
+        _ id: String, property: PartDeformationProperty, value: String, target: CanvasAdjustmentTarget? = nil
+    ) {
         guard !isWorking, !stopped else { return }
+        if let target, currentInspectedModelPart(id, target: target) == nil { return }
         guard let scale = EngineScalar.parse(value, in: 0...2) else {
             errorMessage = Self.message(DocumentError.invalidPartDeformation)
             return
         }
-        perform { try await $0.apply([.setPartDeformationScale(id: id, property: property, value: scale)]) }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply(
+                [.setPartDeformationScale(id: id, property: property, value: scale)], selecting: nil, target: target)
+        }
     }
     func partDeformationResetAction(
         _ property: PartDeformationProperty, partID: String
     ) -> (@MainActor () -> Void)? {
-        guard let snapshot, let part = snapshot.inspectedPart, part.target == .model,
+        guard let snapshot = acceptedDocumentSource, let part = snapshot.inspectedPart, part.supportsDeformationScales,
             part.id.utf8.elementsEqual(partID.utf8)
         else { return nil }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         return { [weak self] in
-            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+            guard let self, !self.stopped, !self.isWorking, let current = self.acceptedDocumentSource,
                 target.isCurrent(in: current)
             else { return }
-            self.perform { try await $0.resetPartDeformationScale(property, partID: partID, target: target) }
+            self.perform(acceptCommittedCancellation: true) {
+                try await $0.resetPartDeformationScale(property, partID: partID, target: target)
+            }
         }
     }
 
-    func setPartDeformationUnified(_ id: String, value: Bool) {
-        perform { try await $0.apply([.setPartDeformationUnified(id: id, value: value)]) }
+    func setPartDeformationUnified(_ id: String, value: Bool, target: CanvasAdjustmentTarget? = nil) {
+        if let target, currentInspectedModelPart(id, target: target)?.target != .model { return }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setPartDeformationUnified(id: id, value: value)], selecting: nil, target: target)
+        }
+    }
+    private func currentInspectedModelPart(_ id: String, target: CanvasAdjustmentTarget) -> DocumentPart? {
+        guard let source = acceptedDocumentSource, target.isCurrent(in: source),
+            let part = source.inspectedPart, part.supportsDeformationScales,
+            part.id.utf8.elementsEqual(id.utf8)
+        else { return nil }
+        return part
     }
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
@@ -3216,6 +3248,124 @@ final class EditorStore {
         perform(acceptCommittedCancellation: true) {
             try await $0.setSelectedComponentPartState(property, value: value, target: target)
         }
+    }
+
+    private let colorDraftPreview: any ComponentColorDraftPreviewServing
+    private let colorDraftScopeID = UUID()
+    private var colorDraftTarget: ComponentColorDraftPreviewTarget?
+    private var colorDraftRequest = UUID()
+    private var colorDraftColor: DocumentColor?
+    private var colorDraftTask: Task<Void, Never>?
+    private(set) var componentColorDraftMesh: IndexedMesh?
+    private(set) var componentColorDraftRevision = 0
+    private(set) var componentColorDraftPreviewMessage: String?
+
+    private var solidColorDraftSource: EditorSnapshot? {
+        guard canSave, !isAddingNodes, !isMovingOrigin, !isSelectingRigEdges, let source = acceptedDocumentSource,
+            source.hasEnabledGeometry, !source.document.hasEmbeddedModelAssets,
+            source.componentTree.failureDescription == nil,
+            source.parts.allSatisfy({ $0.target == .model || $0.target == .cutFace }),
+            source.componentTree.rows.allSatisfy({
+                let isOpaque: Bool
+                switch $0.component.color {
+                case .unset: isOpaque = true
+                case .value(let color): isOpaque = color.alpha == 255
+                case .unsupported: isOpaque = false
+                }
+                return isOpaque && $0.component.colorImage == .unset
+                    && $0.component.wrapping.mode == ComponentWrapMode.none
+                    && !$0.component.hasLegacySurfaceDetails
+                    && ($0.component.isGroup || $0.component.partID != nil)
+            })
+        else { return nil }
+        return source
+    }
+
+    func componentColorDraftPreviewTarget(componentID: String) -> ComponentColorDraftPreviewTarget? {
+        guard let source = solidColorDraftSource, let selected = source.selectedComponentID,
+            selected.utf8.elementsEqual(componentID.utf8)
+        else { return nil }
+        return .init(context: .init(snapshot: source), componentIDs: [selected])
+    }
+
+    func componentColorDraftPreviewTarget(selection: ComponentMeshSelectionTarget) -> ComponentColorDraftPreviewTarget?
+    {
+        guard let source = solidColorDraftSource, canEditSelectedComponentColors(selection) else { return nil }
+        let components = ComponentMeshSelectionPresentation(snapshot: source, target: selection).components
+        guard !components.isEmpty else { return nil }
+        return .init(context: .init(snapshot: source), componentIDs: components.map(\.id))
+    }
+
+    func isComponentColorDraftPreviewActive(target: ComponentColorDraftPreviewTarget) -> Bool {
+        colorDraftTarget == target
+    }
+
+    func startComponentColorDraftPreview(_ color: DocumentColor, target: ComponentColorDraftPreviewTarget) {
+        guard solidColorDraftSource.map({ target.context.isCurrent(in: $0) }) == true else { return }
+        stopComponentColorDraftPreview()
+        colorDraftTarget = target
+        updateComponentColorDraftPreview(color, target: target)
+    }
+
+    func updateComponentColorDraftPreview(_ color: DocumentColor?, target: ComponentColorDraftPreviewTarget) {
+        guard colorDraftTarget == target, colorDraftColor != color else { return }
+        colorDraftTask?.cancel()
+        colorDraftTask = nil
+        colorDraftColor = color
+        colorDraftRequest = UUID()
+        guard let color else {
+            componentColorDraftMesh = nil
+            componentColorDraftPreviewMessage = "Choose a valid color to preview."
+            return
+        }
+        guard color.alpha == 255 else {
+            componentColorDraftMesh = nil
+            componentColorDraftPreviewMessage = "Draft preview supports opaque colors. Apply to view transparency."
+            return
+        }
+        componentColorDraftPreviewMessage = "Updating color draft…"
+        let request = colorDraftRequest
+        let service = colorDraftPreview
+        let scopeID = colorDraftScopeID
+        colorDraftTask = Task { [weak self, session] in
+            do {
+                try await Task.sleep(for: .milliseconds(150))
+                let archive = try await session.componentColorPreviewArchive(
+                    color, componentIDs: target.componentIDs, target: target.context)
+                try Task.checkCancellation()
+                let mesh = try await service.generate(archive, scopeID: scopeID)
+                guard let self, self.admitsColorDraftResult(request, target: target) else { return }
+                self.componentColorDraftRevision += 1
+                self.componentColorDraftMesh = mesh
+                self.componentColorDraftPreviewMessage = mesh == nil ? "The color draft generated no geometry." : nil
+            } catch {
+                guard let self, self.admitsColorDraftResult(request, target: target) else { return }
+                self.componentColorDraftMesh = nil
+                self.componentColorDraftPreviewMessage = Self.message(error)
+            }
+        }
+    }
+
+    func colorDraftRenderFailed(_ message: String, revision: Int) {
+        guard componentColorDraftMesh != nil, componentColorDraftRevision == revision else { return }
+        componentColorDraftMesh = nil
+        componentColorDraftPreviewMessage = message
+    }
+
+    private func admitsColorDraftResult(_ request: UUID, target: ComponentColorDraftPreviewTarget) -> Bool {
+        !Task.isCancelled && colorDraftRequest == request && colorDraftTarget == target
+            && solidColorDraftSource.map { target.context.isCurrent(in: $0) } == true
+    }
+
+    func stopComponentColorDraftPreview(target: ComponentColorDraftPreviewTarget? = nil) {
+        guard let active = colorDraftTarget, target == nil || active == target else { return }
+        colorDraftTask?.cancel()
+        colorDraftTask = nil
+        colorDraftRequest = UUID()
+        colorDraftTarget = nil
+        colorDraftColor = nil
+        componentColorDraftMesh = nil
+        componentColorDraftPreviewMessage = nil
     }
 
     func canEditSelectedComponentColors(_ target: ComponentMeshSelectionTarget) -> Bool {
@@ -4679,6 +4829,7 @@ final class EditorStore {
     }
 
     func stop() {
+        stopComponentColorDraftPreview()
         canvasPrecisionQueue = nil
         graphComponentRevealLookup = nil
         canvasAxisLockQueue = nil
@@ -4736,6 +4887,7 @@ final class EditorStore {
         operationRequestID = requestID
         canvasPartStateHoverOperation = preservePartStateHover ? requestID : nil
         isSelectingGraph = selectionOnly
+        stopComponentColorDraftPreview()
         isWorking = true
         operation = Task {
             var succeeded = false
@@ -5046,7 +5198,7 @@ final class EditorStore {
             case .invalidPartCutRotation:
                 return "Enter a cut rotation from -1 to 1 that the modeling engine can represent."
             case .invalidPartHollowThickness: return "Enter a hollow thickness from 0 to 1."
-            case .invalidPartMirrorRole: return "Mirrored copies can be authored only on Model parts."
+            case .invalidPartMirrorRole: return "Mirrored copies require a procedural or imported model part."
             case .invalidPartMirrorOrigin: return "Set all three canvas origin coordinates before enabling Mirrored."
             case .invalidPartMaterial: return "Enter a material value within its supported range."
             case .invalidPartDeformation: return "Enter a scale from 0 to 2 that the modeling engine can represent."

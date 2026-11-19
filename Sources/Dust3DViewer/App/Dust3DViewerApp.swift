@@ -7,6 +7,8 @@ struct Dust3DViewerApp: App {
     @Environment(\.openWindow) private var openWindow
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
+    @FocusedValue(\.viewerCancellation) private var cancelOperation
+    @FocusedValue(\.viewerPreviewRetryStore) private var retryStore
     @FocusedValue(\.openDocument) private var openDocument
     @FocusedValue(\.viewerPreviewFocus) private var previewFocus
     @FocusedValue(\.viewerStore) private var store
@@ -23,6 +25,17 @@ struct Dust3DViewerApp: App {
         .defaultSize(width: 1000, height: 720)
         .commands {
             CommandMenu("View") {
+                let window = NSApp.keyWindow
+                let ownsPreviewWindow: @MainActor () -> Bool = { [weak window] in
+                    guard let window, NSApp.keyWindow === window else { return false }
+                    return window.attachedSheet == nil && window.sheetParent == nil && NSApp.modalWindow == nil
+                }
+                let retryPreview = retryStore?.rendererRetryAction(ownsWindow: ownsPreviewWindow)
+                Button("Retry Preview") { retryPreview?() }
+                    .disabled(retryPreview == nil)
+                let retryMaterials = retryStore?.materialRetryAction(ownsWindow: ownsPreviewWindow)
+                Button("Retry Materials") { retryMaterials?() }
+                    .disabled(retryMaterials == nil)
                 Toggle("Wireframe", isOn: store?.wireframeBinding ?? .constant(false))
                     .keyboardShortcut("w", modifiers: [])
                     .disabled(store?.mesh == nil)
@@ -47,6 +60,7 @@ struct Dust3DViewerApp: App {
                     cameraItem("Pan Up", .panUp)
                     cameraItem("Pan Down", .panDown)
                 }
+
                 Button("Focus 3D Preview") { previewFocus?.moveFocus(in: NSApp.keyWindow) }
                     .disabled(previewFocus == nil)
                 if let store {
@@ -77,6 +91,8 @@ struct Dust3DViewerApp: App {
                 }
                 .keyboardShortcut("o")
                 .disabled(openDocument == nil)
+                Button("Cancel Current Operation") { cancelOperation?() }
+                    .disabled(cancelOperation == nil)
             }
         }
         Window("Build Diagnostics – \(applicationName)", id: "build-diagnostics") {
@@ -126,11 +142,29 @@ private struct OpenDocumentKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct ViewerCancellationKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+private struct ViewerPreviewRetryStoreKey: FocusedValueKey {
+    typealias Value = ViewerStore
+}
+
 private struct ViewerPreviewFocusKey: FocusedValueKey {
     typealias Value = MeshViewportFocus
 }
 
 extension FocusedValues {
+    var viewerPreviewRetryStore: ViewerStore? {
+        get { self[ViewerPreviewRetryStoreKey.self] }
+        set { self[ViewerPreviewRetryStoreKey.self] = newValue }
+    }
+
+    var viewerCancellation: (() -> Void)? {
+        get { self[ViewerCancellationKey.self] }
+        set { self[ViewerCancellationKey.self] = newValue }
+    }
+
     var viewerPreviewFocus: MeshViewportFocus? {
         get { self[ViewerPreviewFocusKey.self] }
         set { self[ViewerPreviewFocusKey.self] = newValue }

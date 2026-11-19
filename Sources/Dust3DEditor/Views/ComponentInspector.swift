@@ -65,8 +65,12 @@ struct ComponentInspector: View {
                 )
             }
             ComponentColorControls(store: store, component: component)
-            ComponentColorImageControls(store: store, component: component, destination: colorImageDestination)
-            if let snapshot, let meshTarget {
+            if store.snapshot?.allowsComponentColorImage(for: component) == true {
+                ComponentColorImageControls(store: store, component: component, destination: colorImageDestination)
+            }
+            if let snapshot, let meshTarget,
+                snapshot.showsComponentSmoothing(for: [component])
+            {
                 ComponentSmoothingControls(
                     store: store, component: component, target: meshTarget
                 )

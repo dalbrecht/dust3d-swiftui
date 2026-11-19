@@ -17,7 +17,8 @@ struct PartTargetControls: View {
                 )
             ) {
                 if part.target == nil {
-                    Text("Unsupported source role").tag(nil as PartTarget?).disabled(true)
+                    Text(part.isImportedModel ? "Imported model" : "Unsupported source role")
+                        .tag(nil as PartTarget?).disabled(true)
                 }
                 ForEach(PartTarget.allCases, id: \.self) { target in
                     Text(title(target)).tag(Optional(target))

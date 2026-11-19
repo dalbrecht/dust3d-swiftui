@@ -6,38 +6,44 @@ struct PartDeformationControls: View {
     let store: EditorStore
     let part: DocumentPart
     var graphTarget: GraphPartCrossSectionTarget? = nil
+    var inspectorTarget: CanvasAdjustmentTarget? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Cross-section deformation").font(.headline)
             ForEach(PartDeformationProperty.allCases, id: \.self) { property in
-                PartDeformationScaleControl(store: store, part: part, property: property, graphTarget: graphTarget)
-            }
-            if let value = part.isDeformationUnified {
-                Toggle(
-                    "Unified deformation",
-                    isOn: Binding(get: { value }, set: { setUnified($0) })
+                PartDeformationScaleControl(
+                    store: store, part: part, property: property, graphTarget: graphTarget,
+                    inspectorTarget: inspectorTarget
                 )
-                .accessibilityIdentifier("part-deformation-unified")
-            } else {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Unified deformation").font(.callout)
-                    Picker(
+            }
+            if !part.isImportedModel {
+                if let value = part.isDeformationUnified {
+                    Toggle(
                         "Unified deformation",
-                        selection: Binding<Bool?>(
-                            get: { nil },
-                            set: {
-                                if let value = $0 { setUnified(value) }
-                            })
-                    ) {
-                        Text("Unsupported source value").tag(nil as Bool?)
-                        Text("On").tag(Optional(true))
-                        Text("Off").tag(Optional(false))
-                    }
-                    .labelsHidden().pickerStyle(.menu)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel("Unified deformation")
+                        isOn: Binding(get: { value }, set: { setUnified($0) })
+                    )
                     .accessibilityIdentifier("part-deformation-unified")
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Unified deformation").font(.callout)
+                        Picker(
+                            "Unified deformation",
+                            selection: Binding<Bool?>(
+                                get: { nil },
+                                set: {
+                                    if let value = $0 { setUnified(value) }
+                                })
+                        ) {
+                            Text("Unsupported source value").tag(nil as Bool?)
+                            Text("On").tag(Optional(true))
+                            Text("Off").tag(Optional(false))
+                        }
+                        .labelsHidden().pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel("Unified deformation")
+                        .accessibilityIdentifier("part-deformation-unified")
+                    }
                 }
             }
             Text(
@@ -56,8 +62,8 @@ struct PartDeformationControls: View {
     private func setUnified(_ value: Bool) {
         if let graphTarget {
             store.editGraphPartCrossSection(.deformationUnified(value), target: graphTarget)
-        } else {
-            store.setPartDeformationUnified(part.id, value: value)
+        } else if let inspectorTarget {
+            store.setPartDeformationUnified(part.id, value: value, target: inspectorTarget)
         }
     }
 }
@@ -67,6 +73,7 @@ private struct PartDeformationScaleControl: View {
     let part: DocumentPart
     let property: PartDeformationProperty
     let graphTarget: GraphPartCrossSectionTarget?
+    let inspectorTarget: CanvasAdjustmentTarget?
     @State private var draft = ""
 
     private var title: String { property == .width ? "Width scale" : "Thickness scale" }
@@ -116,8 +123,8 @@ private struct PartDeformationScaleControl: View {
     private func apply() {
         if let graphTarget {
             store.setGraphPartDeformationScale(property, value: draft, target: graphTarget)
-        } else {
-            store.setPartDeformationScale(part.id, property: property, value: draft)
+        } else if let inspectorTarget {
+            store.setPartDeformationScale(part.id, property: property, value: draft, target: inspectorTarget)
         }
     }
 }

@@ -25,7 +25,13 @@ enum KeyboardShortcutHelp {
         }.joined().split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
+    private static let previewMenuScope =
+        "Focused editor window, outside text and animation controls and with no modal dialog"
+
     static let entries: [Entry] = [
+        .init(action: "Wireframe", keys: "W", scope: previewMenuScope),
+        .init(action: "Rotate Preview Automatically", keys: "R", scope: previewMenuScope),
+        .init(action: "Zoom Preview", keys: "⌥- / ⌥=", scope: previewMenuScope),
         .init(action: "Undo / Redo", keys: "⌘Z / ⇧⌘Z", scope: "Focused text editor or document history"),
         .init(
             action: "Redo in Canvas", keys: "⌘Y", scope: "Focused canvas or graph handle with available document redo"),
@@ -45,6 +51,9 @@ enum KeyboardShortcutHelp {
         .init(
             action: "Decrease / Increase Radius", keys: "- / =",
             scope: "Focused canvas or node, with an editable graph selection and no active drag"),
+        .init(
+            action: "Adjust Add Tool Preview Radius", keys: "- / =",
+            scope: "Focused canvas in the Add tool with a visible placement preview and no active drag"),
         .init(
             action: "Rotate Selection −1° / +1°", keys: ", / .",
             scope: "Editable graph selection, outside text and animation controls"),
