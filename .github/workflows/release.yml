@@ -299,6 +299,8 @@ jobs:
           archive: false
 
   publish-gh-pages:
+    # This deployment writes to the upstream maintainer's website.
+    if: github.repository == 'huxingyi/dust3d'
     runs-on: ubuntu-22.04
     needs:
       - appimage-upload
