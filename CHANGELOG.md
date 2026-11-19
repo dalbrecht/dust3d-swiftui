@@ -10,6 +10,8 @@
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
+- Keep component selection visible when collapsing groups, and prevent sidebar Delete from targeting hidden rows.
+
 - Wrap long component breadcrumb labels in narrow sidebars.
 
 - Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.
