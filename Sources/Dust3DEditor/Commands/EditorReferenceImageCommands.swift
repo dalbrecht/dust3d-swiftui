@@ -5,9 +5,11 @@ struct EditorReferenceImageActions {
     enum Action {
         case compose
         case importImage
+        case clearArtwork
         case remove
     }
 
+    var canClearArtwork: Bool = false
     let canRemove: Bool
     let perform: @MainActor (Action) -> Void
 }
@@ -26,6 +28,7 @@ extension FocusedValues {
 struct EditorReferenceImageButtons: View {
     let canBegin: Bool
     let canRemove: Bool
+    var canClearArtwork: Bool = false
     let perform: @MainActor (EditorReferenceImageActions.Action) -> Void
 
     var body: some View {
@@ -33,6 +36,9 @@ struct EditorReferenceImageButtons: View {
             .disabled(!canBegin)
         Button("Import Reference Image…") { perform(.importImage) }
             .disabled(!canBegin)
+        Button("Clear Reference Artwork") { perform(.clearArtwork) }
+            .disabled(!canBegin || !canClearArtwork)
+            .help("Clear the image while keeping its dimensions and canvas alignment. You can undo this.")
         Button("Remove Reference Image", role: .destructive) { perform(.remove) }
             .disabled(!canRemove)
     }
@@ -47,7 +53,10 @@ struct EditorReferenceImageCommands: Commands {
             let actions = actions
             let canBegin = actions != nil && admits(window)
             Menu("Reference Image") {
-                EditorReferenceImageButtons(canBegin: canBegin, canRemove: canBegin && actions?.canRemove == true) {
+                EditorReferenceImageButtons(
+                    canBegin: canBegin, canRemove: canBegin && actions?.canRemove == true,
+                    canClearArtwork: canBegin && actions?.canClearArtwork == true
+                ) {
                     guard admits(window) else { return }
                     actions?.perform($0)
                 }

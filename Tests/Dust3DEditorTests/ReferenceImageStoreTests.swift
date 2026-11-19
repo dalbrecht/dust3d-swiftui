@@ -12,6 +12,38 @@ final class ReferenceImageStoreTests: XCTestCase {
                     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
     }
     @MainActor
+    func testClearingReferenceArtworkKeepsEmbeddedAlignmentAndOneUndo() async throws {
+        let origin = NodePosition(x: 3, y: 4, z: 5)
+        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+            .applying(.setReferenceImagePNG(png()))
+            .applying(.setOrigin(origin))
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: original.encoded())
+        try await waitForImage(store)
+
+        store.clearReferenceArtwork()
+        try await waitForImage(store)
+        let cleared = try XCTUnwrap(store.snapshot)
+        XCTAssertNotEqual(cleared.document.referenceImagePNG, original.referenceImagePNG)
+        XCTAssertEqual(cleared.origin, origin)
+        XCTAssertTrue(store.hasReferenceImage)
+        XCTAssertEqual(store.referenceImage?.width, 1)
+        XCTAssertEqual(store.referenceImage?.height, 1)
+        XCTAssertTrue(store.canUndo)
+        XCTAssertEqual(
+            try Dust3DDocument(data: cleared.document.encoded()).referenceImagePNG, cleared.document.referenceImagePNG)
+
+        store.clearReferenceArtwork()
+        try await waitForImage(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), cleared.document.encoded())
+        store.undo()
+        try await waitForImage(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
+    @MainActor
     private func waitForImage(_ store: EditorStore) async throws {
         for _ in 0..<300 {
             if !store.isWorking && !store.isLoadingReferenceImage { return }

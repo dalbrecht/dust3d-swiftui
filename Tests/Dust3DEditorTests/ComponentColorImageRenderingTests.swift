@@ -58,7 +58,10 @@ final class ComponentColorImageRenderingTests: XCTestCase {
             let selected = try XCTUnwrap(store.snapshot?.selectedComponent)
             for scheme in [ColorScheme.light, .dark] {
                 let data = try InspectorRenderer.png(
-                    ComponentColorImageControls(store: store, component: selected), width: 250, scheme: scheme)
+                    ComponentColorImageControls(
+                        store: store, component: selected,
+                        destination: store.componentColorImageDestination(componentID: selected.id)),
+                    width: 250, scheme: scheme)
                 let image = try XCTUnwrap(NSBitmapImageRep(data: data))
                 XCTAssertGreaterThan(image.pixelsWide, 0)
                 try data.write(

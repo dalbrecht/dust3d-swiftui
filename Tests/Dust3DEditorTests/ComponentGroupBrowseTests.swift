@@ -281,6 +281,98 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertNil(pasted.component.parentID)
     }
 
+    func testCollapsingPrunesOnlyHiddenComponentPicksAndExpansionDoesNotRestoreThem() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.workingGroupAction(.group("other"), snapshot: try XCTUnwrap(value.snapshot))()
+        value.selectComponents(["leaf", "other"])
+        try await settle(value)
+        let disclosure = ComponentSidebarDisclosure()
+        let before = try XCTUnwrap(value.snapshot)
+        var writes = 0
+        value.onDocumentChanged = { _ in writes += 1 }
+        value.componentDisclosureAction("g", collapsed: true, snapshot: before, disclosure: disclosure)()
+        try await settle(value)
+        XCTAssertEqual(disclosure.collapsedIDs, ["g"])
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["other"])
+        XCTAssertEqual(value.addPlacementDestination, .group("other"))
+
+        value.componentDisclosureAction(
+            "g", collapsed: false, snapshot: try XCTUnwrap(value.snapshot), disclosure: disclosure)()
+        XCTAssertTrue(disclosure.collapsedIDs.isEmpty)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["other"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertFalse(value.canUndo)
+        XCTAssertEqual(writes, 0)
+    }
+
+    func testSidebarDeleteRejectsHiddenAndRetainedDisclosureActions() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.selectComponents(["leaf", "other"])
+        try await settle(value)
+        let before = try XCTUnwrap(value.snapshot)
+        let disclosure = ComponentSidebarDisclosure()
+        let oldDelete = value.componentSidebarDeleteAction(snapshot: before, disclosure: disclosure)
+        let oldCollapse = value.componentDisclosureAction(
+            "g", collapsed: true, snapshot: before, disclosure: disclosure)
+        disclosure.collapsedIDs.insert("g")
+        oldDelete()
+        XCTAssertFalse(value.isWorking)
+        value.componentSidebarDeleteAction(snapshot: before, disclosure: disclosure)()
+        XCTAssertFalse(value.isWorking)
+        disclosure.collapsedIDs.remove("g")
+        oldDelete()
+        oldCollapse()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertTrue(disclosure.collapsedIDs.isEmpty)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["leaf", "other"])
+        XCTAssertFalse(value.canUndo)
+
+        value.selectComponents(["leaf"])
+        try await settle(value)
+        value.componentSidebarDeleteAction(snapshot: try XCTUnwrap(value.snapshot), disclosure: disclosure)()
+        try await settle(value)
+        XCTAssertFalse(value.snapshot?.componentTree.rows.contains(where: { $0.id == "leaf" }) ?? true)
+        XCTAssertTrue(value.canUndo)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
+    func testDisclosurePreservesGraphPicksAndRejectsFailedSourceOrScopedBrowse() async throws {
+        let original = try source().encoded()
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original)
+        try await settle(value)
+        value.select("z")
+        try await settle(value)
+        let disclosure = ComponentSidebarDisclosure()
+        let before = try XCTUnwrap(value.snapshot)
+        value.componentDisclosureAction("g", collapsed: true, snapshot: before, disclosure: disclosure)()
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["z"])
+        XCTAssertEqual(value.snapshot?.selectionRevision, before.selectionRevision)
+        XCTAssertEqual(disclosure.collapsedIDs, ["g"])
+
+        value.componentBrowseAction("g", snapshot: before)()
+        value.componentDisclosureAction("g", collapsed: false, snapshot: before, disclosure: disclosure)()
+        XCTAssertEqual(disclosure.collapsedIDs, ["g"])
+        value.componentBrowseAction(nil, snapshot: before)()
+        let expand = value.componentDisclosureAction("g", collapsed: false, snapshot: before, disclosure: disclosure)
+        await value.load(data: Data("invalid source".utf8))
+        expand()
+        XCTAssertEqual(disclosure.collapsedIDs, ["g"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original)
+    }
+
     func testDisclosureStartsFromAuthoredCollapseForEachDocumentAndWindow() async throws {
         let original = try Dust3DDocument(
             snapshotXML: Data(
@@ -513,6 +605,96 @@ private struct BrowseNoNative: EditorPreviewServing, ArchiveTextureBaking, Archi
         XCTAssertFalse(value.admitsComponentSidebarInput(context: context, scopeEpoch: scope))
         let updated = PartGraphSelectionContext(snapshot: try XCTUnwrap(value.snapshot))
         XCTAssertTrue(value.admitsComponentSidebarInput(context: updated, scopeEpoch: scope))
+    }
+
+    func testBatchStitchingEntersNewGroupWithSelectedChildrenAndExactUndo() async throws {
+        let original = try stitchingSource(reusingGroup: false)
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.workingGroupAction(.group("keep"), snapshot: try XCTUnwrap(value.snapshot))()
+        value.selectComponents(["a", "b", "keep"])
+        try await settle(value)
+        let oldScope = value.componentBrowseEpoch
+        var publications = 0
+        value.onDocumentChanged = { _ in publications += 1 }
+        value.componentPartRoleAction(.stitchingLine)()
+        try await settle(value)
+
+        let snapshot = try XCTUnwrap(value.snapshot)
+        let browse = try XCTUnwrap(value.componentGroupBrowse)
+        let group = try XCTUnwrap(browse.path.last)
+        XCTAssertEqual(browse.children.map(\.id), ["a", "b"])
+        XCTAssertEqual(snapshot.selectedComponentIDs, ["a", "b"])
+        XCTAssertEqual(snapshot.parts.map(\.target), [.stitchingLine, .stitchingLine])
+        XCTAssertNotEqual(value.componentBrowseEpoch, oldScope)
+        XCTAssertEqual(value.addPlacementDestination, .group("keep"))
+        XCTAssertEqual(publications, 1)
+
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertNil(value.snapshot?.componentTree.rows.first { $0.id == group.id })
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testBatchStitchingEntersReusedGroupEvenWhenRolesAlreadyMatch() async throws {
+        let original = try stitchingSource(reusingGroup: true)
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        value.componentPartRoleAction(.stitchingLoop)()
+        try await settle(value)
+
+        XCTAssertEqual(value.componentGroupBrowse?.path.map(\.id), ["g"])
+        XCTAssertEqual(value.componentGroupBrowse?.children.map(\.id), ["a", "b", "unselected"])
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, ["a", "b"])
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
+    func testBatchStitchingRejectsRetainedBrowseScopeAndFailedSource() async throws {
+        let original = try stitchingSource(reusingGroup: true)
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        let snapshot = try XCTUnwrap(value.snapshot)
+        let retained = value.componentPartRoleAction(.stitchingLine)
+        value.componentBrowseAction("g", snapshot: snapshot)()
+        value.componentBrowseAction(nil, snapshot: snapshot)()
+        retained()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+
+        let failedSource = value.componentPartRoleAction(.stitchingLine)
+        await value.load(data: Data("invalid archive".utf8))
+        failedSource()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertNil(value.componentGroupBrowse)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
+    private func stitchingSource(reusingGroup: Bool) throws -> Dust3DDocument {
+        let rows =
+            "<component id='a' linkDataType='partId' linkData='p'/><component id='b' linkDataType='partId' linkData='q'/>"
+        let hierarchy =
+            reusingGroup ? "<component id='g'>\(rows)<component id='unselected'/></component>" : rows
+        let role = reusingGroup ? "target='StitchingLoop'" : ""
+        let xml = """
+            <canvas><nodes/><edges/><parts><part id='p' \(role)/><part id='q' \(role)/></parts>
+            <components>\(hierarchy)<component id='keep'/></components></canvas>
+            """
+        return try Dust3DDocument(snapshotXML: Data(xml.utf8))
     }
 
     func testNestedNavigationRetiresOldDragAndDeletedScope() async throws {

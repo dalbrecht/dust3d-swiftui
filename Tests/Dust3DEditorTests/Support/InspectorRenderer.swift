@@ -41,6 +41,8 @@ import SwiftUI
         window.setContentSize(NSSize(width: width, height: height))
         hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
         hosting.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        hosting.layoutSubtreeIfNeeded()
         guard !window.isVisible else { throw Failure.visibleWindow }
         try inspect(hosting)
         guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {

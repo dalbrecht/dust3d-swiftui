@@ -2,7 +2,7 @@ import Foundation
 
 /// Match inherited dust3d::Uuid's brace/length/dash classification before interpreting cutFace.
 /// Named presets and arbitrary non-UUID part IDs are never profile links.
-enum CutFaceLinks {
+package enum CutFaceLinks {
     static func canonicalID(_ value: String) -> String? {
         let bytes = Array(value.utf8)
         let body: ArraySlice<UInt8>
@@ -44,6 +44,30 @@ enum CutFaceLinks {
         for part in parts { count(part) }
         for node in nodes where node.attribute(forName: "partId") != nil { count(node) }
         return counts
+    }
+
+    /// Profiles whose saved part or node links already reach the proposed owner.
+    package static func cyclicChoices(from owner: String, parts: [DocumentPart], nodes: [DocumentNode]) -> Set<String> {
+        let profiles = index(parts.map(\.id))
+        var dependents: [String: Set<String>] = [:]
+        func record(_ source: String, selection: CutFaceSelection?) {
+            guard case .linkedPart(let target) = selection, profiles.contains(target) else { return }
+            dependents[target, default: []].insert(source)
+        }
+        for part in parts { record(part.id, selection: part.cutFace) }
+        for node in nodes {
+            if let partID = node.partID { record(partID, selection: node.cutFace) }
+        }
+
+        var pending = [owner]
+        var reachable: Set<String> = [owner]
+        while let current = pending.popLast() {
+            for dependent in dependents[current, default: []] where reachable.insert(dependent).inserted {
+                pending.append(dependent)
+            }
+        }
+        reachable.remove(owner)
+        return reachable
     }
 
     static func target(_ value: String?, in parts: Set<String>) -> String? {

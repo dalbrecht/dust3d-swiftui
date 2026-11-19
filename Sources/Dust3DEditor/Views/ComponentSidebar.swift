@@ -30,7 +30,10 @@ struct ComponentSidebar: View {
                 let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
                 let stitching = ComponentStitchingOrder(snapshot: sidebarSnapshot)
                 let scopeEpoch = store.componentBrowseEpoch
-                let admitsScope: @MainActor () -> Bool = { store.componentBrowseEpoch == scopeEpoch }
+                let disclosureEpoch = disclosure.epoch
+                let admitsScope: @MainActor () -> Bool = {
+                    store.componentBrowseEpoch == scopeEpoch && disclosure.epoch == disclosureEpoch
+                }
                 Divider()
                 HStack {
                     ComponentParentDropZone(store: store, parent: .root, scopeEpoch: scopeEpoch) {
@@ -50,7 +53,14 @@ struct ComponentSidebar: View {
                         if let deletionSnapshot {
                             ComponentDeletionButton(
                                 store: store, target: ComponentDeletionTarget(snapshot: deletionSnapshot),
-                                admitsInput: admitsScope)
+                                admitsInput: {
+                                    admitsScope()
+                                        && store.componentSidebarSelectionIsVisible(
+                                            deletionSnapshot, disclosure: disclosure)
+                                }
+                            )
+                            .disabled(
+                                !store.componentSidebarSelectionIsVisible(deletionSnapshot, disclosure: disclosure))
                         }
                         Button("Clear Component Selection") { store.clearComponentSelection() }
                             .disabled(store.snapshot?.selectedComponentIDs.isEmpty != false)
@@ -106,8 +116,16 @@ struct ComponentSidebar: View {
                                 admitsInput: admitsScope)
                         }
                         Divider()
+                        let collapse = sidebarSnapshot.selectedComponentID.map {
+                            store.componentDisclosureAction(
+                                $0, collapsed: true, snapshot: sidebarSnapshot, disclosure: disclosure)
+                        }
+                        let expand = sidebarSnapshot.selectedComponentID.map {
+                            store.componentDisclosureAction(
+                                $0, collapsed: false, snapshot: sidebarSnapshot, disclosure: disclosure)
+                        }
                         Button("Collapse Selected Group") {
-                            if let id = store.snapshot?.selectedComponentID { disclosure.collapsedIDs.insert(id) }
+                            collapse?()
                         }
                         .disabled(
                             browse != nil || store.snapshot?.selectedComponent?.childIDs.isEmpty != false
@@ -115,7 +133,7 @@ struct ComponentSidebar: View {
                                     != false
                         )
                         Button("Expand Selected Group") {
-                            if let id = store.snapshot?.selectedComponentID { disclosure.collapsedIDs.remove(id) }
+                            expand?()
                         }
                         .disabled(
                             browse != nil || store.snapshot?.selectedComponent?.childIDs.isEmpty != false
@@ -164,16 +182,22 @@ struct ComponentSidebar: View {
                         let documentIdentity = sidebarSnapshot.documentIdentity
                         let context = PartGraphSelectionContext(snapshot: sidebarSnapshot)
                         let admitsRows: @MainActor () -> Bool = {
-                            store.admitsComponentSidebarInput(context: context, scopeEpoch: scopeEpoch)
+                            admitsScope() && store.admitsComponentSidebarInput(context: context, scopeEpoch: scopeEpoch)
                         }
+                        let visibleKeys = Set(visibleRows.map { Data($0.id.utf8) })
+                        let deleteSelection = store.componentSidebarDeleteAction(
+                            snapshot: sidebarSnapshot, disclosure: disclosure)
                         let activateRow = store.componentSidebarPrimaryAction(
                             snapshot: sidebarSnapshot, rows: visibleRows, scopeEpoch: scopeEpoch, disclosure: disclosure
                         )
+
                         List(
                             selection: Binding(
                                 get: { store.snapshot?.selectedComponentIDs ?? [] },
                                 set: {
-                                    if $0 != store.snapshot?.selectedComponentIDs {
+                                    if admitsRows(), $0 != store.snapshot?.selectedComponentIDs,
+                                        $0.allSatisfy({ visibleKeys.contains(Data($0.utf8)) })
+                                    {
                                         store.selectBrowsedComponents($0, scopeEpoch: scopeEpoch)
                                     }
                                 }
@@ -181,8 +205,16 @@ struct ComponentSidebar: View {
                         ) {
                             ForEach(visibleRows) { row in
                                 componentRow(
-                                    row, scoped: browse != nil, scopeEpoch: scopeEpoch,
+                                    row, snapshot: sidebarSnapshot, scoped: browse != nil, scopeEpoch: scopeEpoch,
                                     stitchingOrdinal: stitching.ordinal(for: row.id))
+                            }
+                            if !visibleRows.isEmpty {
+                                ComponentListEndDropZone(
+                                    receive: store.componentListEndDropAction(
+                                        snapshot: sidebarSnapshot, disclosure: disclosure)
+                                )
+                                .selectionDisabled()
+                                .listRowSeparator(.hidden)
                             }
                         }
                         .contextMenu(forSelectionType: String.self) { ids in
@@ -211,6 +243,7 @@ struct ComponentSidebar: View {
                                     admitsInput: admitsRows)
                             }
                         } primaryAction: { ids in
+                            guard admitsRows() else { return }
                             activateRow(ids)
                         }
                         .focusedValue(\.editorComponentSidebarFocus, true)
@@ -225,10 +258,7 @@ struct ComponentSidebar: View {
                                 snapshot: sidebarSnapshot, visibleIDs: Set(visibleRows.map(\.id)),
                                 scopeEpoch: scopeEpoch)
                         )
-                        .onDeleteCommand {
-                            guard admitsScope(), let deletionSnapshot else { return }
-                            store.componentDeletionAction(ComponentDeletionTarget(snapshot: deletionSnapshot))()
-                        }
+                        .onDeleteCommand { deleteSelection() }
                         .listStyle(.sidebar)
                         .frame(maxHeight: 120)
                         .disabled(store.isWorking)
@@ -254,28 +284,24 @@ struct ComponentSidebar: View {
         }
     }
     private func componentRow(
-        _ row: ComponentTreeRow, scoped: Bool, scopeEpoch: UUID,
+        _ row: ComponentTreeRow, snapshot: EditorSnapshot, scoped: Bool, scopeEpoch: UUID,
         stitchingOrdinal: ComponentStitchingOrder.Ordinal?
     ) -> some View {
         HStack(spacing: 4) {
             if !scoped && row.hasChildren {
-                Button {
-                    if disclosure.collapsedIDs.contains(row.id) {
-                        disclosure.collapsedIDs.remove(row.id)
-                    } else {
-                        disclosure.collapsedIDs.insert(row.id)
-                    }
-                } label: {
+                let isCollapsed = disclosure.collapsedIDs.contains(row.id)
+                let toggle = store.componentDisclosureAction(
+                    row.id, collapsed: !isCollapsed, snapshot: snapshot, disclosure: disclosure)
+                Button(action: { toggle() }) {
                     Image(
-                        systemName: disclosure.collapsedIDs.contains(row.id)
-                            ? "chevron.right" : "chevron.down"
+                        systemName: isCollapsed ? "chevron.right" : "chevron.down"
                     )
                     .frame(width: 20, height: 20)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(
-                    "\(disclosure.collapsedIDs.contains(row.id) ? "Expand" : "Collapse") \(row.title)"
+                    "\(isCollapsed ? "Expand" : "Collapse") \(row.title)"
                 )
             } else {
                 Color.clear.frame(width: 20, height: 1).accessibilityHidden(true)
@@ -318,23 +344,29 @@ struct ComponentSidebar: View {
     }
 
     private func browsePath(_ browse: ComponentGroupBrowse, snapshot: EditorSnapshot) -> some View {
-        let parent = browse.path.dropLast().last
+        let ancestors = browse.path.dropLast()
+        let parent = ancestors.last
+        let scopeEpoch = store.componentBrowseEpoch
         let destination = parent?.title ?? "Full Component Tree"
         return VStack(alignment: .leading, spacing: 4) {
-            Button(action: store.componentBrowseAction(parent?.id, snapshot: snapshot)) {
-                Label {
-                    Text(destination)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: "chevron.up")
-                        .accessibilityHidden(true)
+            ComponentParentDropZone(
+                store: store, parent: parent.map { .component($0.id) } ?? .root, scopeEpoch: scopeEpoch
+            ) {
+                Button(action: store.componentBrowseAction(parent?.id, snapshot: snapshot)) {
+                    Label {
+                        Text(destination)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "chevron.up")
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 20)
+                    .contentShape(Rectangle())
                 }
-                .frame(minHeight: 20)
-                .contentShape(Rectangle())
+                .accessibilityLabel("Go to \(destination)")
+                .help("Go to \(destination).")
             }
-            .accessibilityLabel("Go to \(destination)")
-            .help("Go to \(destination).")
             HStack(alignment: .top, spacing: 4) {
                 Text(browse.path.last?.title ?? "Group")
                     .multilineTextAlignment(.leading)
@@ -353,6 +385,19 @@ struct ComponentSidebar: View {
                 .accessibilityLabel("Go to Ancestor Group")
                 .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
                 .help("Go to an ancestor group or the full component tree.")
+            }
+            if ancestors.count > 1 {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 4) {
+                        ForEach(ancestors.dropLast()) { row in
+                            ComponentParentDropZone(store: store, parent: .component(row.id), scopeEpoch: scopeEpoch) {
+                                Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+                            }
+                            .help("Browse or drop components into \(row.title).")
+                        }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .focusedValue(\.editorComponentSidebarFocus, true)

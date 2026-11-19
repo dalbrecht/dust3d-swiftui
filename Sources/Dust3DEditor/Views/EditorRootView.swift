@@ -28,6 +28,7 @@ struct EditorRootView: View {
     private let claimLaunchNeutralPreview: @MainActor (URL) async -> Bool
     @State private var store: EditorStore
     @State private var canvasFocus = CanvasProfileFocusControl()
+    @State private var previewFocus = MeshViewportFocus()
     @State private var exportDestinations: EditorGeometryExportDestinationService
     @State private var exportWorkflow: EditorGeometryExportWorkflow
     @State private var isSidebarPresented = true
@@ -144,6 +145,10 @@ struct EditorRootView: View {
             }
             .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
             .background {
+                if let requestID = store.componentColorImageChoiceRequestID {
+                    ComponentColorImagePicker(store: store, requestID: requestID)
+                        .id(requestID)
+                }
                 if let requestID = store.qtXMLFilePasteRequestID {
                     QtXMLFilePicker(store: store, requestID: requestID)
                         .id(requestID)
@@ -262,6 +267,7 @@ struct EditorRootView: View {
             Divider()
             CanvasNodeSidebar(store: store, query: $sidebarNodeQuery)
             ComponentSidebar(store: store, disclosure: sidebarDisclosure)
+            ComponentGroupDropConfirmation(store: store)
             PartSidebar(store: store)
             EdgeSidebar(store: store)
         }
@@ -369,7 +375,9 @@ struct EditorRootView: View {
         guard !isImportingReferenceImage, referenceComposition == nil,
             let admit = store.referenceImageActionAdmission(fileIdentity: fileIdentity, ownsWindow: ownsWindow)
         else { return nil }
-        return EditorReferenceImageActions(canRemove: store.hasReferenceImage) { action in
+        return EditorReferenceImageActions(
+            canClearArtwork: store.canClearReferenceArtwork, canRemove: store.hasReferenceImage
+        ) { action in
             guard admit(), !isImportingReferenceImage, referenceComposition == nil else { return }
             switch action {
             case .compose:
@@ -380,6 +388,8 @@ struct EditorRootView: View {
                 referenceImageImportRequest = request
                 admitReferenceImageImport = admit
                 isImportingReferenceImage = true
+            case .clearArtwork:
+                store.clearReferenceArtwork()
             case .remove:
                 guard store.hasReferenceImage else { return }
                 store.removeReferenceImage()
@@ -526,14 +536,16 @@ struct EditorRootView: View {
                 },
                 move: { [weak store] in store?.movePreviewCamera($0) },
                 fit: { [weak store] in store?.fitPreviewCamera() },
-                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) },
+                beginDrag: { [weak previewFocus] in previewFocus?.beginCanvasDrag() })
         #else
             return EditorPreviewCameraActions(
                 canMove: store.canMovePreviewCamera,
                 isCurrent: { [weak store] in store?.canMovePreviewCamera == true },
                 move: { [weak store] in store?.movePreviewCamera($0) },
                 fit: { [weak store] in store?.fitPreviewCamera() },
-                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) },
+                beginDrag: { [weak previewFocus] in previewFocus?.beginCanvasDrag() })
         #endif
     }
 
@@ -649,6 +661,8 @@ struct EditorRootView: View {
                     store.reportPreviewRendererError(error, attemptID: rendererAttempt, revision: materialRevision)
                 }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
+                .withFocusTarget(previewFocus)
+                .focusedSceneValue(\.editorPreviewFocus, previewFocus)
                 .accessibilityLabel("3D mesh preview")
                 .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 if store.isUpdatingMaterials {

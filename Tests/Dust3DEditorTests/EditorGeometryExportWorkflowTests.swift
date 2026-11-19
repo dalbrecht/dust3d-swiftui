@@ -358,10 +358,13 @@ final class EditorGeometryExportWorkflowTests: XCTestCase {
             let chooser = DialogChooser()
             // Fail immediately if incorrectly invoked, so this regression never opens or hangs a panel.
             chooser.failure = NSError(domain: "UnexpectedExportPresentation", code: 1)
-            let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser)
+            let diagnostics = EditorSessionDiagnostics()
+            let workflow = EditorGeometryExportWorkflow(store: store, destinations: chooser, diagnostics: diagnostics)
             let operation = try XCTUnwrap(workflow.begin(sourceURL: nil))
             switch retirement {
-            case 0: workflow.cancel()
+            case 0:
+                workflow.cancel()
+                workflow.cancel()
             case 1: workflow.sourceDidChange()
             default: workflow.stop()
             }
@@ -374,6 +377,9 @@ final class EditorGeometryExportWorkflowTests: XCTestCase {
             let received = await encoder.received
             XCTAssertNil(received)
             XCTAssertNil(store.errorMessage)
+            XCTAssertEqual(
+                diagnostics.entries.map(\.event.rawValue),
+                retirement == 0 ? ["Geometry export cancellation requested"] : [])
             XCTAssertEqual(workflow.canBegin, retirement != 2)
             guard case .idle = workflow.phase else { return XCTFail("Retired task must drain to idle") }
         }

@@ -66,6 +66,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var focusControl: CanvasProfileFocusControl? = nil
     var focusTarget: CanvasProfileFocusTarget? = nil
     var addModeKey: CanvasAddModeKey.Handler? = nil
+    var previewDrag: CanvasPreviewDrag.Begin? = nil
 
     func makeNSView(context: Context) -> CanvasPointerView { CanvasPointerView() }
     static func dismantleNSView(_ view: CanvasPointerView, coordinator: ()) {
@@ -108,13 +109,15 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.ownsProfile = ownsProfile
         view.switchProfile = switchProfile
         view.focusControl = focusControl
+        view.beginPreviewDrag = previewDrag
         if let focusTarget, ownsProfile() { focusControl?.attach(view, target: focusTarget) }
         view.addModeKey = addModeKey
         view.scheduleProfileFocus()
     }
 }
 
-final class CanvasPointerView: NSView {
+final class CanvasPointerView: CanvasCameraPointerView {
+    override var canBeginPreviewDrag: Bool { enabled && !isAddingNodes && start == nil }
     var tracksHoverWhileDisabled = false
     var enabled = false {
         didSet { if oldValue && !enabled { cancelActivation(preservingHover: tracksHoverWhileDisabled) } }
@@ -217,6 +220,7 @@ final class CanvasPointerView: NSView {
             cancelActivation()
             return
         }
+        if routePreviewPress(event) || isPreviewDragging { return }
         window?.makeFirstResponder(self)
         if isAddingNodes {
             addPress(point(event))
@@ -247,6 +251,7 @@ final class CanvasPointerView: NSView {
         start = (origin, mode)
     }
     override func mouseDragged(with event: NSEvent) {
+        if routePreviewDrag(event) || isPreviewDragging { return }
         if enabled && isAddingNodes {
             activity.hasHover = true
             hover(point(event))
@@ -277,6 +282,7 @@ final class CanvasPointerView: NSView {
         }
     }
     override func mouseUp(with event: NSEvent) {
+        if routePreviewRelease(event) || isPreviewDragging { return }
         guard let start else { return }
         self.start = nil
         let lasso = self.lasso
@@ -369,6 +375,7 @@ final class CanvasPointerView: NSView {
     }
     /// Lifecycle updates cancel native input only; SwiftUI lifecycle hooks clear presentation and hover.
     func cancelActivation(preservingHover: Bool = false) {
+        cancelPreviewDrag()
         start = nil
         let hadHover = activity.hasHover
         cancelEdgeStroke(deferred: true)
@@ -377,6 +384,7 @@ final class CanvasPointerView: NSView {
         activity.hasHover = preservingHover && hadHover
     }
     func invalidate() {
+        cancelPreviewDrag()
         start = nil
         cancelEdgeStroke(deferred: false)
         lasso = nil
@@ -394,6 +402,10 @@ final class CanvasPointerView: NSView {
         return radiusKey(direction)
     }
     override func keyDown(with event: NSEvent) {
+        if isPreviewDragging {
+            if event.keyCode == 53 { cancelPreviewDrag() }
+            return
+        }
         // The captured precision handler admits keyboard edits independently of pointer picking.
         if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self,
             CanvasPrecisionKeyInput.permitsDispatch(in: window)
@@ -448,6 +460,7 @@ final class CanvasPointerView: NSView {
     }
 
     override func scrollWheel(with event: NSEvent) {
+        guard !isPreviewDragging else { return }
         if !routeWheel(CanvasWheelInput(event), at: point(event)) {
             super.scrollWheel(with: event)
         }

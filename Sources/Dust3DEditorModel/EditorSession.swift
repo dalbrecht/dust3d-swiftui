@@ -456,11 +456,20 @@ public actor EditorSession {
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws
         -> EditorSnapshot
     {
+        try setSelectedComponentPartRole(role, target: target, retainingBrowsePicks: false)
+    }
+
+    package func setSelectedComponentPartRole(
+        _ role: PartTarget, target: ComponentPartRoleTarget, retainingBrowsePicks: Bool
+    ) throws -> EditorSnapshot {
         try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw ComponentPartRoleError.staleContext }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw ComponentPartRoleError.staleContext
+            }
             let plan = try state.snapshot.componentPartRolePlan(role)
             try state.setSelectedComponentPartRole(
-                role, target: target, newGroupID: plan.requiresNewGroup ? Self.identifier() : nil)
+                role, target: target, newGroupID: plan.requiresNewGroup ? Self.identifier() : nil,
+                retainingBrowsePicks: retainingBrowsePicks)
             try Task.checkCancellation()
         }
     }
@@ -669,9 +678,23 @@ public actor EditorSession {
     public func placeComponents(
         at placement: ComponentDropPlacement, target: ComponentPlacementTarget
     ) throws -> EditorSnapshot {
+        try placeComponents(at: placement, target: target, clearingMovedPicks: false)
+    }
+
+    package func placeComponents(
+        at placement: ComponentDropPlacement, target: ComponentPlacementTarget, clearingMovedPicks: Bool
+    ) throws -> EditorSnapshot {
         try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleComponentMove }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw EditorError.staleComponentMove
+            }
             try state.apply([.placeComponents(ids: target.ids, placement: placement)])
+            if clearingMovedPicks {
+                let selected = state.snapshot.selectedComponentIDs
+                let moved = Set(target.ids.map { Data($0.utf8) })
+                let retained = selected.filter { !moved.contains(Data($0.utf8)) }
+                if retained.count != selected.count { try state.selectComponents(retained) }
+            }
             try Task.checkCancellation()
         }
     }

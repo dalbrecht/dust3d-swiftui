@@ -5,6 +5,15 @@ import SwiftUI
 struct ComponentInspector: View {
     let store: EditorStore
     let component: DocumentComponent
+
+    private let colorImageDestination: EditorStore.ComponentColorImageDestination?
+
+    init(store: EditorStore, component: DocumentComponent) {
+        self.store = store
+        self.component = component
+        colorImageDestination = store.componentColorImageDestination(componentID: component.id)
+    }
+
     var body: some View {
         let snapshot = store.snapshot
         let equipment = snapshot?.equipmentSlotTarget.flatMap { target in
@@ -56,7 +65,7 @@ struct ComponentInspector: View {
                 )
             }
             ComponentColorControls(store: store, component: component)
-            ComponentColorImageControls(store: store, component: component)
+            ComponentColorImageControls(store: store, component: component, destination: colorImageDestination)
             if let snapshot, let meshTarget {
                 ComponentSmoothingControls(
                     store: store, component: component, target: meshTarget
