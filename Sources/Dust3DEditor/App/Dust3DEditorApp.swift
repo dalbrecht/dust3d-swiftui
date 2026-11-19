@@ -12,6 +12,7 @@ struct Dust3DEditorApp: App {
         @FocusedValue(\.editorRestPreviewActions) private var restPreviewActions
     #endif
     @FocusedValue(\.editorStore) private var store
+    @FocusedValue(\.editorSelectionPropertiesAction) private var selectionPropertiesAction
     @FocusedValue(\.editorInspectorNavigation) private var navigateInspector
     @FocusedValue(\.editorSidebarVisibility) private var isSidebarPresented
     @FocusedValue(\.editorCanvasFocus) private var focusCanvas
@@ -25,7 +26,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorComponentSidebarFocus) private var isComponentSidebarFocused
     @State private var pasteboard = EditorPasteboard()
     private let sessionDiagnostics = EditorSessionDiagnostics.shared
-    @State private var replayRequest: WorkflowReplayRequest?
+    @State private var replayWindows = WorkflowReplayWindows()
     @State private var nativeUndoCommands = NativeUndoCommandState()
 
     private var applicationName: String {
@@ -163,12 +164,13 @@ struct Dust3DEditorApp: App {
                 .disabled(window == nil || navigate == nil || rigAssignmentFocus.hasSheet)
                 Divider()
                 Button("Session Log") { openWindow(id: "session-log") }
+                let command = store?.workflowReplayCommand
                 Button("Replay Steps…") {
-                    guard let document = store?.snapshot?.document else { return }
-                    replayRequest = WorkflowReplayRequest(document: document)
-                    openWindow(id: "workflow-replay")
+                    command?.invoke(in: store, windows: replayWindows) { id in
+                        openWindow(id: "workflow-replay", value: id)
+                    }
                 }
-                .disabled(store?.snapshot == nil)
+                .disabled(command == nil || !replayWindows.hasCapacity)
             }
             CommandGroup(after: .toolbar) {
                 let browseWindow = NSApp.keyWindow
@@ -354,6 +356,14 @@ struct Dust3DEditorApp: App {
                     if let target = store?.wholePartActionTarget { store?.selectWholePart(target) }
                 }
                 .disabled(store?.wholePartActionTarget.map { store?.canSelectWholePart($0) == true } != true)
+                let showSelectionProperties = selectionPropertiesAction
+                Button("Show Selection Properties") {
+                    guard let canvasWindow, NSApp.keyWindow === canvasWindow, store === canvasOwner,
+                        !rigAssignmentFocus.hasSheet
+                    else { return }
+                    _ = showSelectionProperties?()
+                }
+                .disabled(showSelectionProperties == nil || canvasWindow == nil || rigAssignmentFocus.hasSheet)
                 Button("Clear Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 CanvasPartStateMenu(store: store) { [capturedStore = store, capturedWindow = NSApp.keyWindow] in
@@ -442,20 +452,12 @@ struct Dust3DEditorApp: App {
             KeyboardShortcutHelpView()
         }
         .defaultSize(width: 740, height: 620)
-        Window("Replay Steps", id: "workflow-replay") {
-            Group {
-                if let replayRequest {
-                    WorkflowReplayView(document: replayRequest.document, sourceID: replayRequest.id) {
-                        self.replayRequest?.id == replayRequest.id
-                    }
-                    .id(replayRequest.id)
-                } else {
-                    ContentUnavailableView("No Replay", systemImage: "play.rectangle")
-                }
-            }
-            .onDisappear { replayRequest = nil }
+        WindowGroup("Replay Steps", id: "workflow-replay", for: UUID.self) { request in
+            WorkflowReplayWindow(requestID: request.wrappedValue, windows: replayWindows)
+                .id(request.wrappedValue)
         }
         .defaultSize(width: 700, height: 540)
+        .commandsRemoved()
         Window("Session Log", id: "session-log") {
             EditorSessionDiagnosticsView(diagnostics: sessionDiagnostics)
         }
@@ -651,7 +653,16 @@ private struct EditorNodesSidebarSelectAllKey: FocusedValueKey { typealias Value
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 private struct EditorCanvasFocusKey: FocusedValueKey { typealias Value = @MainActor () -> Bool }
 
+private struct EditorSelectionPropertiesActionKey: FocusedValueKey {
+    typealias Value = @MainActor () -> Bool
+}
+
 extension FocusedValues {
+    var editorSelectionPropertiesAction: (@MainActor () -> Bool)? {
+        get { self[EditorSelectionPropertiesActionKey.self] }
+        set { self[EditorSelectionPropertiesActionKey.self] = newValue }
+    }
+
     var editorAnimationFocus: Bool? {
         get { self[EditorAnimationFocusKey.self] }
         set { self[EditorAnimationFocusKey.self] = newValue }
