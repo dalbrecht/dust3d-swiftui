@@ -89,6 +89,9 @@ enum KeyboardShortcutHelp {
             scope: "Focused width, thickness, rotation or smoothing field"),
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
         .init(
+            action: "Previous Replay Step", keys: "⌥←",
+            scope: "Replay Steps window, after at least one step has completed"),
+        .init(
             action: "Cancel Geometry Export", keys: "Escape",
             scope:
                 "Cancellable export in the active document, outside text and animation controls, with no modal dialog and no active canvas input"
@@ -100,10 +103,19 @@ enum KeyboardShortcutHelp {
         .init(
             action: "Commit Animation Draft", keys: "⌘Return",
             scope: "Animation authoring controls, when the draft is valid"),
+        canvasShapeEntry(.subdivision),
+        canvasShapeEntry(.roundedEnds),
+        canvasShapeEntry(.chamfer),
         .init(
             action: "Edit Owning Component Properties", keys: "Space",
             scope: "Focused canvas with selected or hovered graph owners"),
     ]
+
+    private static func canvasShapeEntry(_ shortcut: CanvasPartShapeShortcut) -> Entry {
+        Entry(
+            action: shortcut.title, keys: shortcut.keyLabel,
+            scope: "Focused canvas, for the hovered Model part or the sole selected Model part")
+    }
 
     static func matching(_ query: String, in entries: [Entry] = entries) -> [Entry] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)

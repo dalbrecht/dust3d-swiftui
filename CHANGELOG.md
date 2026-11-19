@@ -15,6 +15,8 @@
 - Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.
 
 - Select visible nodes when their circles intersect the marquee.
+- Keep reference image import and removal tied to the document where the action started.
+
 - Announce reference-image composition errors with VoiceOver in the active sheet.
 - Identify the composed reference preview and profile-specific crop actions in VoiceOver.
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
@@ -23,6 +25,8 @@
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
 - Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
+
+- Edit an isolated Stitching Loop’s interior fill from its graph selection.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -96,11 +100,15 @@
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
 
+- Select editable geometry from the Canvas menu without including hidden or locked parts.
+
 - Stop cancelled preview requests before they start fallback mesh generation.
 
 - Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
 
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
+
+- Preserve a Model component’s equipment slot when editing its name in the inspector.
 
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
@@ -145,6 +153,8 @@
 - Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
+
+- Drop an image directly onto the Front or Side panel of the reference composer to replace that profile before applying the draft.
 
 - Clear missing cut-face links when pasting Qt XML interactively, keeping profiles found in the fragment or document.
 
@@ -208,6 +218,8 @@
 
 - Keep a working component group as the destination for new parts while graph selection changes.
 
+- VoiceOver includes a linked profile’s ID in action labels when visible profile names are duplicated.
+
 - Paste native or Qt clipboard nodes and Qt XML files into an explicitly chosen working group.
 
 - Start a blank document by drawing a first node, composing a reference image, or opening an existing document from the canvas.
@@ -247,6 +259,24 @@
 - Add an isolated experimental native rig-template preview with complete solids/rings, exact-name selection, background preparation, stale-result protection and camera menu controls; preserve the production core pin (#144).
 
 - Show rig assignment progress with stored/selectable counts, select unassigned or chosen-bone edges, and highlight matches on hover without changing document history (#363).
+
+- Discard pending preview errors when their view closes or is replaced.
+
+- Keep preview clicks available until a trackpad gesture commits.
+
+- Keep the active preview gesture in control when mouse and trackpad input overlap.
+
+- End preview camera gestures and pending picks when keyboard focus leaves the viewport.
+
+- Let Escape cancel active preview trackpad gestures and ignore their late events.
+
+- Press Escape to cancel an active preview drag or pending pick.
+
+- Orbit the preview through the top and underside of the model.
+
+- Keep an active preview drag in progress when the scroll wheel moves.
+
+- Orbit the preview with a middle-button drag, or hold Shift to pan.
 
 - Clear exact stored assignments for a template bone or its descendant chain across the document in one Undo step, including hidden and locked parts (#361).
 
@@ -307,6 +337,8 @@
 
 - Mirror live node and origin movement in the companion profile during canvas edits (#388).
 
+- Use B, U, and C on the canvas to toggle subdivision, rounded ends, and chamfer.
+
 - Add shared Weights From editing across selected wrapping groups with common target eligibility, exact retained references and one atomic Undo.
 
 - Add explicit multi-group wrapping and surface-finish edits with mixed values, captured selection protection and one atomic Undo.
@@ -340,6 +372,12 @@
 - Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
 
 - Drag component rows before or after siblings, into groups, or to the document root.
+
+- Add a keyboard-accessible Focus 3D Preview control to Replay Steps.
+
+- Add a Focus Object button for keyboard orbit in Quick Look.
+
+- Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
 
 - Select all visible component rows with Command-A when the component sidebar has focus (#386).
 
