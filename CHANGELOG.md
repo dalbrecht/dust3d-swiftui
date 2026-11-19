@@ -154,6 +154,8 @@
 
 - Edit or clear the Equipment Slot of the Model component that owns the current canvas selection.
 
+- Highlight affected edges and announce their count when Replay Steps shows a bone assignment.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
