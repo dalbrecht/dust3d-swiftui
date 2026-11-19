@@ -291,6 +291,8 @@
 
 - Add batch component part roles with atomic stitching grouping, shared-group reveal and one-step Undo (#45).
 
+- Show the Option and Command modifiers for both click and drag when removing graph selections.
+
 - Apply or clear color across selected components with the native color picker and one-step Undo.
 
 - Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
