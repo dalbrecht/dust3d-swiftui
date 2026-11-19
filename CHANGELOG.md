@@ -104,6 +104,8 @@
 
 - Repair edge directions in an unambiguous open chain from the Edge Inspector, with one-step Undo.
 
+- Edit duration and sample count for named stored animations whose type is unknown.
+
 - Choose Lasso in Drag Selection to pick graph items within a freehand outline and preview the affected picks while drawing.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
