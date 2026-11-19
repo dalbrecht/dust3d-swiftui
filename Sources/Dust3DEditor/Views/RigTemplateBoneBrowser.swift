@@ -51,6 +51,12 @@ struct RigTemplateBoneBrowser: View {
                     let target = context.overview.target(for: .named(bone.name))
                     let hover = store.boneEdgeHoverAction(
                         target, owner: .init(surface: hoverSurface, row: bone.id))
+                    let clearBone = browserSelection.clearCommand(
+                        for: bone.name, includeDescendants: false, store: store, context: context,
+                        isPresented: isAssignmentPresented)
+                    let clearChain = browserSelection.clearCommand(
+                        for: bone.name, includeDescendants: true, store: store, context: context,
+                        isPresented: isAssignmentPresented)
                     Button {
                         guard let current = store.snapshot, context.isCurrent(in: current) else { return }
                         browserSelection.select(bone.name)
@@ -75,6 +81,20 @@ struct RigTemplateBoneBrowser: View {
                     .accessibilityAddTraits(
                         selectedName?.utf8.elementsEqual(bone.name.utf8) == true ? .isSelected : []
                     )
+                    .contextMenu {
+                        Button("Clear Bone Assignments") { clearBone?() }
+                            .disabled(clearBone == nil)
+                        Button("Clear Bone Chain Assignments") { clearChain?() }
+                            .disabled(clearChain == nil)
+                    }
+                    .accessibilityActions {
+                        if let clearBone {
+                            Button("Clear \(bone.name) Assignments", action: clearBone)
+                        }
+                        if let clearChain {
+                            Button("Clear \(bone.name) Chain Assignments", action: clearChain)
+                        }
+                    }
                     .onHover(perform: hover)
                     .onDisappear { hover(false) }
                 }
