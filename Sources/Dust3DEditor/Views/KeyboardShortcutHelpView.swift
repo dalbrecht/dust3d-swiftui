@@ -87,6 +87,9 @@ enum KeyboardShortcutHelp {
             scope: "Focused width, thickness, rotation or smoothing field"),
         .init(action: "Cancel Canvas Input", keys: "Escape", scope: "Active node creation, node drag or origin drag"),
         .init(
+            action: "Previous Replay Step", keys: "⌥←",
+            scope: "Replay Steps window, after at least one step has completed"),
+        .init(
             action: "Cancel Geometry Export", keys: "Escape",
             scope:
                 "Cancellable export in the active document, outside text and animation controls, with no modal dialog and no active canvas input"

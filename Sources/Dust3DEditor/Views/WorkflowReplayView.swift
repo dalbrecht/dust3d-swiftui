@@ -47,6 +47,8 @@ enum WorkflowReplayPlaybackPhase: Equatable {
     case inProgress
     case complete
 
+    var canGoBack: Bool { self == .inProgress || self == .complete }
+
     func canAdvance(waitsForReference: Bool) -> Bool {
         self != .empty && self != .complete && !waitsForReference
     }
@@ -129,6 +131,7 @@ struct WorkflowReplayView: View {
     let document: Dust3DDocument
     let sourceID: UUID
     let isCurrentSource: @MainActor () -> Bool
+    @Environment(\.appearsActive) private var appearsActive
     @Environment(\.newDocument) private var newDocument
     @State private var checkpoint = WorkflowReplayCheckpoint()
     @State private var checkpointRevision = 0
@@ -249,6 +252,7 @@ struct WorkflowReplayView: View {
                             retireCheckpoint()
                             isPlaying = false
                             completedSteps = 0
+                            announceStep(total: plan.steps.count)
                         }
                         .disabled(phase == .ready)
                         Button(isPlaying ? "Pause" : "Play") {
@@ -256,6 +260,9 @@ struct WorkflowReplayView: View {
                             isPlaying.toggle()
                         }
                         .disabled(phase == .complete)
+                        Button("Previous Step") { rewind(plan) }
+                            .disabled(!phase.canGoBack)
+                            .keyboardShortcut(.leftArrow, modifiers: .option)
                         Button("Next Step") { advance(plan) }
                             .disabled(!phase.canAdvance(waitsForReference: waitsForReference))
                             .keyboardShortcut(.rightArrow, modifiers: .option)
@@ -359,9 +366,9 @@ struct WorkflowReplayView: View {
             guard let interval = playbackInterval, let plan else { return }
             while !Task.isCancelled, completedSteps < plan.steps.count {
                 do { try await Task.sleep(for: .milliseconds(interval)) } catch { return }
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, isPlaying else { return }
                 if let requestedMeshStep, meshStep != requestedMeshStep { continue }
-                advance(plan)
+                advance(plan, automatic: true)
             }
         }
     }
@@ -371,11 +378,28 @@ struct WorkflowReplayView: View {
         checkpoint.cancel()
     }
 
-    private func advance(_ plan: WorkflowReplayPlan) {
+    private func rewind(_ plan: WorkflowReplayPlan) {
+        guard playbackPhase?.canGoBack == true else { return }
+        retireCheckpoint()
+        isPlaying = false
+        completedSteps -= 1
+        announceStep(total: plan.steps.count)
+    }
+
+    private func advance(_ plan: WorkflowReplayPlan, automatic: Bool = false) {
         guard playbackPhase?.canAdvance(waitsForReference: waitsForReference) == true else { return }
         retireCheckpoint()
         completedSteps = min(completedSteps + 1, plan.steps.count)
         if completedSteps == plan.steps.count { isPlaying = false }
+        announceStep(total: plan.steps.count, automatic: automatic)
+    }
+
+    private func announceStep(total: Int, automatic: Bool = false) {
+        if let message = WorkflowReplayStepAnnouncement.message(
+            step: completedSteps, total: total, automatic: automatic, active: NSApp.isActive && appearsActive)
+        {
+            AccessibilityNotification.Announcement(message).post()
+        }
     }
 
     private var meshPreview: some View {
