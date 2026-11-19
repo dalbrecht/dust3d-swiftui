@@ -207,6 +207,15 @@ public actor EditorSession {
         }
     }
 
+    package func editRigSettings(_ edit: RigSettingsEdit, target: RigSettingsTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw RigSettingsEditError.staleSource
+            }
+            try state.apply([edit.command])
+        }.snapshot
+    }
+
     public func select(_ id: String?) throws -> EditorSnapshot { try update { try $0.select(id) } }
 
     public func select(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.select(ids) } }
@@ -465,6 +474,20 @@ public actor EditorSession {
         }.snapshot
     }
 
+    /// Rename the selected Model component while retaining its captured equipment assignment.
+    package func renameEquipmentComponentBase(_ name: String, target: ComponentEquipmentSlotTarget) throws
+        -> EditorSnapshot
+    {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            let current = state.snapshot
+            guard hasAcceptedSource, target.isCurrent(in: current),
+                let component = current.selectedComponent, component.id.utf8.elementsEqual(target.componentID.utf8),
+                component.equipmentRenameBaseName != nil
+            else { throw ComponentEquipmentSlotError.staleTarget }
+            try state.apply([.setComponentBaseNamePreservingEquipmentSlot(id: target.componentID, name: name)])
+        }.snapshot
+    }
+
     /// Apply one equipment assignment to the captured Model component.
     package func setComponentEquipmentSlot(_ slot: String, target: ComponentEquipmentSlotTarget) throws
         -> EditorSnapshot
@@ -523,6 +546,18 @@ public actor EditorSession {
                 throw PartMirrorError.staleTarget
             }
             try state.apply([.setPartXMirrored(id: id, value: value)])
+        }.snapshot
+    }
+
+    package func editComponentStitchingBatch(
+        _ edit: ComponentStitchingEdit, target: ComponentStitchingBatchTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            guard target.permits(edit) else { throw DocumentError.invalidComponentStructure }
+            try state.apply([.editComponentStitchingBatch(ids: target.ids, edit: edit)])
         }.snapshot
     }
 
@@ -643,6 +678,7 @@ public actor EditorSession {
     /// - Example: `try await session.setCanvasPartIsolation(target: target)`.
     public func setCanvasPartIsolation(target: CanvasPartIsolationTarget) throws -> EditorSnapshot {
         try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource else { throw CanvasPartIsolationError.staleTarget }
             let commands = try target.commands(in: state.snapshot)
             try state.apply(commands)
         }.snapshot
@@ -653,8 +689,9 @@ public actor EditorSession {
         _ property: PartStateProperty, target: CanvasPartStateTarget
     ) throws -> EditorSnapshot {
         try updateWithResult(checkCancellationBeforePublication: true) { state in
-            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), property == .locked || property == .disabled
-            else { throw EditorError.staleCanvasAdjustment }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw EditorError.staleCanvasAdjustment
+            }
             try state.apply([
                 .setPartsState(ids: [target.part.id], property: property, value: !target.part.state(property))
             ])
@@ -836,11 +873,14 @@ public actor EditorSession {
     /// - Returns: The resulting snapshot as one undoable edit.
     /// - Throws: `EditorError.staleNodeDrag` or the original geometry and state error.
     public func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) throws -> EditorSnapshot {
-        try update { state in
-            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
             guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidNode }
+            if let edgeID = drag.edgeID, !state.snapshot.selectedEdgeIDs.contains(edgeID) {
+                try state.selectEdge(edgeID)
+            }
             try state.move(id: drag.anchorID, to: drag.position(by: translation))
-        }
+        }.snapshot
     }
 
     /// Publish the captured Shift-drag result as one undoable graph edit.
@@ -873,6 +913,18 @@ public actor EditorSession {
 
     public func edit(id: String, position: NodePosition, radius: Double) throws -> EditorSnapshot {
         try update { try $0.edit(id: id, position: position, radius: radius) }
+    }
+
+    package func editInspectorNode(
+        id: String, position: NodePosition, radius: Double, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            let current = state.snapshot
+            guard target.isCurrent(in: current), current.selectedIDs.count == 1, current.selectedEdgeIDs.isEmpty,
+                current.selectedNode?.id.utf8.elementsEqual(id.utf8) == true
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.edit(id: id, position: position, radius: radius)
+        }.snapshot
     }
 
     /// Assign or clear an exact stored bone name on one frozen explicit-edge set.
@@ -970,11 +1022,11 @@ public actor EditorSession {
     /// - Returns: One undoable origin edit, or the unchanged snapshot for a no-op.
     /// - Throws: `EditorError.staleOriginDrag`, load/cancellation errors, or invalid-origin errors atomically.
     public func commitOriginDrag(_ drag: OriginDrag, translation: CanvasPoint) throws -> EditorSnapshot {
-        try update { state in
-            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleOriginDrag }
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, drag.isCurrent(in: state.snapshot) else { throw EditorError.staleOriginDrag }
             guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidOrigin }
             try state.apply([.setOrigin(drag.position(by: translation))])
-        }
+        }.snapshot
     }
 
     /// Copy without dirtying the archive/history; Cut callers can restrict copying to editable nodes.
@@ -993,6 +1045,18 @@ public actor EditorSession {
         let fragment = try state.snapshot.document.copyingNodes(Set(nodes.map(\.id)))
         try Task.checkCancellation()
         return fragment
+    }
+
+    /// Copy a captured graph selection as plain Qt XML without changing history.
+    package func copySelectionAsQtXML(target: CanvasAdjustmentTarget) throws -> Data {
+        try Task.checkCancellation()
+        guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
+            throw EditorError.staleCanvasAdjustment
+        }
+        let snapshot = state.snapshot
+        let xml = try snapshot.document.copyingNodesAsQtXML(Set(snapshot.selectedNodes.map(\.id)))
+        try Task.checkCancellation()
+        return xml
     }
 
     /// Serialize off the UI actor; the platform boundary supplies the transient clipboard identifier.

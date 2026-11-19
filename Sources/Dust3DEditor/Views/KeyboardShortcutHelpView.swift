@@ -31,10 +31,13 @@ enum KeyboardShortcutHelp {
         .init(action: "Select All", keys: "⌘A", scope: "Focused text or graph; unavailable in animation controls"),
         .init(action: "Select All Nodes", keys: "⇧⌘A", scope: "Active document"),
         .init(
+            action: "Toggle Canvas Visibility / Isolate Part", keys: "H / ⇧H",
+            scope: "Focused canvas or node. Hover takes precedence over a sole selected graph owner."),
+        .init(
             action: "Toggle Add / Return to Selection", keys: "A / S",
             scope: "Focused canvas or node, outside Move Origin and bone edge selection"),
         .init(
-            action: "Remove Graph Picks", keys: "⌥⌘ click / drag",
+            action: "Remove Graph Picks", keys: "⌥⌘ click / ⌥⌘ drag",
             scope: "Canvas nodes, edges or marquee; removes hits while preserving the other picks"),
         .init(action: "Export OBJ Geometry", keys: "⇧⌘E", scope: "Active document with available export geometry"),
         .init(
@@ -58,6 +61,8 @@ enum KeyboardShortcutHelp {
             action: "Decrease / Increase Selection Spacing", keys: "[ / ]",
             scope: "Focused canvas, node or origin marker, with editable selection and no active drag"),
         .init(action: "Lock X / Y / Z / Radius", keys: "⌥⌘X / ⌥⌘Y / ⌥⌘Z / ⌥⌘R", scope: "Active document"),
+        .init(action: "Orbit 3D Preview", keys: "← / → / ↑ / ↓", scope: "Focused 3D preview"),
+        .init(action: "Reset Preview Camera", keys: "F", scope: "Focused 3D preview"),
         .init(action: "Show / Hide Sidebar", keys: "⌃⌘S", scope: "Focused editor window"),
         .init(action: "Show / Hide Inspector", keys: "⌃⌘I", scope: "Focused editor window"),
         .init(

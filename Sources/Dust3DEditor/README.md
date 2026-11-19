@@ -28,6 +28,9 @@ A `.glb` destination reports that export is unavailable. Exit status `0` means a
 succeeded, `1` means an input or output failed, and `2` means a usage or path
 preflight error.
 
+Use `-list-rigs` to print the authored XML rig catalog. As in Qt, it takes
+precedence over document and export arguments and writes only to standard output.
+
 Open an existing `.ds3`, select a node in the list or canvas, drag it in Front
 (X/Y) or Side (Z/Y), or edit X/Y/Z/radius and press Apply. Undo/redo operates on
 committed edits. Native document scenes provide Open, Save, Save As and unsaved
@@ -452,7 +455,8 @@ remain pending; ADR 0106 records remaining acceptance and unchanged quarantines.
 
 Use the Animations toolbar button (Command-Option-A), or choose Animations in the
 right inspector, to inspect stored animation records. Select a row to rename,
-duplicate or delete it. Rename and duplicate use an inline name field: Return
+duplicate or delete it. Duplicate suggests the stored name followed by `_copy`.
+Rename and duplicate use an inline name field: Return
 applies, Escape cancels, and a changed document disables the captured draft until
 you cancel and select again. Accepted changes use document Undo/Redo and Save.
 Native text editing retains its own undo and clipboard routing; graph clipboard

@@ -61,6 +61,7 @@ final class ComponentPartRoleTests: XCTestCase {
         let changed = history.document
         XCTAssertEqual(try changed.components().map(\.id), ["g", "a", "b", "other"])
         XCTAssertEqual(try changed.components().first?.childIDs, ["a", "b"])
+        XCTAssertEqual(try changed.components().first?.name, "Group 2")
         XCTAssertTrue(try changed.editorContents().parts.allSatisfy { $0.target == .stitchingLine })
         XCTAssertEqual(try Dust3DDocument(data: changed.encoded()).components(), try changed.components())
         XCTAssertTrue(history.undo())
