@@ -102,6 +102,8 @@
 
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
 
+- Preserve a Model component’s equipment slot when editing its name in the inspector.
+
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
 - Connect selected endpoints on separate islands of a legacy part, preserving any remaining islands as separate parts in the same Undo step.
