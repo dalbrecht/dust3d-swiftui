@@ -2096,14 +2096,16 @@ final class EditorStore {
     func edgeSidebarSelectionAction(
         _ id: String, context: PartGraphSelectionContext?
     ) -> @MainActor (GraphSelectionMode) -> Void {
-        { [weak self] mode in
-            guard let self, self.canPickGraph, let context, let snapshot = self.snapshot,
-                context.isCurrent(in: snapshot), snapshot.edges.contains(where: { $0.id.utf8.elementsEqual(id.utf8) })
+        let rigEpoch = rigEdgeSelectionEpoch
+        return { [weak self] mode in
+            guard let self, self.rigEdgeSelectionEpoch == rigEpoch, self.canPickGraph,
+                let context, let snapshot = self.snapshot, context.isCurrent(in: snapshot),
+                snapshot.edges.contains(where: { $0.id.utf8.elementsEqual(id.utf8) })
             else { return }
-            if case .subtract = mode,
-                !snapshot.selectedEdgeIDs.contains(where: { $0.utf8.elementsEqual(id.utf8) })
-            {
-                return
+            let selected = snapshot.selectedEdgeIDs.contains { $0.utf8.elementsEqual(id.utf8) }
+            if mode == .subtract && !selected { return }
+            if self.isSelectingRigEdges, !self.rigEdgeEligibility(in: snapshot).contains(Data(id.utf8)) {
+                guard selected, mode == .subtract || mode == .toggle else { return }
             }
             self.selectGraph(nodes: [], edges: [id], mode: mode)
         }
@@ -2228,9 +2230,27 @@ final class EditorStore {
             })
     }
 
-    private func rigEdgePickCandidates(in snapshot: EditorSnapshot, mode: GraphSelectionMode) -> [DocumentEdge] {
-        let editable = EdgeBoneAssignmentEligibility.edgeIDs(
+    @ObservationIgnored private var rigEdgeEligibilityCache: (identity: UUID, revision: Int, ids: Set<Data>)?
+
+    var rigEdgeSidebarEligibleIDs: Set<Data>? {
+        guard isSelectingRigEdges else { return nil }
+        return acceptedDocumentSource.map { rigEdgeEligibility(in: $0) } ?? []
+    }
+
+    private func rigEdgeEligibility(in snapshot: EditorSnapshot) -> Set<Data> {
+        if let cache = rigEdgeEligibilityCache, cache.identity == snapshot.documentIdentity,
+            cache.revision == snapshot.documentRevision
+        {
+            return cache.ids
+        }
+        let ids = EdgeBoneAssignmentEligibility.edgeIDs(
             nodes: snapshot.nodes, edges: snapshot.edges, parts: snapshot.parts)
+        rigEdgeEligibilityCache = (snapshot.documentIdentity, snapshot.documentRevision, ids)
+        return ids
+    }
+
+    private func rigEdgePickCandidates(in snapshot: EditorSnapshot, mode: GraphSelectionMode) -> [DocumentEdge] {
+        let editable = rigEdgeEligibility(in: snapshot)
         return snapshot.edges.filter {
             editable.contains(Data($0.id.utf8))
                 || ((mode == .subtract || mode == .toggle) && snapshot.selectedEdgeIDs.contains($0.id))
@@ -2476,20 +2496,36 @@ final class EditorStore {
     }
     func clearComponentSelection() { selectComponents([]) }
     func canAssignComponentPartRole(_ role: PartTarget) -> Bool {
-        !isWorking && !stopped && (try? snapshot?.componentPartRolePlan(role)) != nil
+        canSave && (try? snapshot?.componentPartRolePlan(role)) != nil
     }
 
     /// Capture once at menu/inspector construction; an unavailable action never acquires a later selection.
     func componentPartRoleAction(_ role: PartTarget) -> @MainActor () -> Void {
-        guard canAssignComponentPartRole(role), let snapshot else { return {} }
+        guard canSave, let snapshot, let plan = try? snapshot.componentPartRolePlan(role) else { return {} }
         let target = ComponentPartRoleTarget(snapshot: snapshot)
+        let sourceID = snapshot.documentIdentity
+        let scope = componentBrowseEpoch
+        let entersGroup = plan.requiresNewGroup || plan.revealGroupID != nil
         return { [weak self] in
-            guard let self, let current = self.snapshot, target.isCurrent(in: current),
-                self.canAssignComponentPartRole(role)
+            guard let self, self.canSave, self.componentBrowseEpoch == scope,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current)
             else { return }
-            self.perform(acceptCommittedCancellation: true) {
-                try await $0.setSelectedComponentPartRole(role, target: target)
-            }
+            self.perform(
+                acceptCommittedCancellation: true,
+                completion: { [weak self] succeeded in
+                    guard succeeded, entersGroup, let self, self.componentBrowseEpoch == scope,
+                        let next = self.acceptedDocumentSource, next.documentIdentity == sourceID,
+                        let firstID = plan.componentIDs.first,
+                        let groupID = next.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(firstID.utf8) })?
+                            .component.parentID,
+                        plan.revealGroupID.map({ $0.utf8.elementsEqual(groupID.utf8) }) != false,
+                        let group = ComponentGroupBrowse(tree: next.componentTree, groupID: groupID),
+                        plan.componentIDs.allSatisfy(group.contains),
+                        next.selectedComponentIDs.allSatisfy(group.contains)
+                    else { return }
+                    self.componentBrowseAction(groupID, snapshot: next)()
+                },
+                { try await $0.setSelectedComponentPartRole(role, target: target, retainingBrowsePicks: entersGroup) })
         }
     }
 
@@ -3052,7 +3088,9 @@ final class EditorStore {
     func partMirrorAction(_ value: Bool, target: PartMirrorTarget) -> @MainActor () -> Void {
         { [weak self] in
             guard let self, self.canEditPartMirror(target) else { return }
-            self.perform(acceptCommittedCancellation: true) { try await $0.setPartXMirrored(value, target: target) }
+            self.perform(acceptCommittedCancellation: true, preservePartStateHover: true) {
+                try await $0.setPartXMirrored(value, target: target)
+            }
         }
     }
 
@@ -3280,6 +3318,7 @@ final class EditorStore {
     }
     private enum CanvasPartOperation {
         case state(PartStateProperty)
+        case mirror
         case shape(PartModifierProperty)
     }
 
@@ -3287,6 +3326,12 @@ final class EditorStore {
         let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
         guard let handler = canvasPartStateHandler(profileLease: lease) else { return nil }
         return { _ = handler.perform(.state(property), false) }
+    }
+
+    func canvasPartMirrorAction() -> (@MainActor () -> Void)? {
+        let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
+        guard let handler = canvasPartStateHandler(profileLease: lease), handler.canMirror else { return nil }
+        return { _ = handler.perform(.mirror, false) }
     }
 
     func canvasPartShapeAction(_ property: PartModifierProperty) -> (@MainActor () -> Void)? {
@@ -3368,6 +3413,7 @@ final class EditorStore {
             if input.opensComponentProperties { return openProperties?(input.isRepeat) ?? false }
             if input.selectsOwningComponent { return selectOwner?(input.isRepeat) ?? false }
             guard let handler else { return false }
+            if input.togglesPartMirror { return handler.perform(.mirror, input.isRepeat) }
             if let shape = input.partShapeShortcut { return handler.perform(.shape(shape.property), input.isRepeat) }
             guard let property = input.partStateProperty else { return false }
             return handler.perform(.state(property), input.isRepeat)
@@ -3380,7 +3426,7 @@ final class EditorStore {
     }
 
     private func canvasPartStateHandler(profileLease: UUID?) -> (
-        shapePart: DocumentPart?, perform: @MainActor (CanvasPartOperation, Bool) -> Bool
+        canMirror: Bool, shapePart: DocumentPart?, perform: @MainActor (CanvasPartOperation, Bool) -> Bool
     )? {
         guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
             let context = canvasRotationContext
@@ -3390,8 +3436,11 @@ final class EditorStore {
         let hoverEpoch = canvasPartStateHoverEpoch
         let layout = precisionLayoutEpoch
         let interaction = referenceColorInteractionEpoch
+        let mirrorTarget = PartMirrorTarget(canvasTarget: target)
+        let mirrorValue = target.part.xMirrored
         let shapeTarget = GraphPartShapeTarget(snapshot: snapshot, canvasTarget: target)
         return (
+            mirrorTarget != nil && mirrorValue != nil,
             shapeTarget?.part,
             { [weak self] operation, isRepeat in
                 guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
@@ -3407,6 +3456,9 @@ final class EditorStore {
                             try await $0.toggleCanvasPartState(property, target: target)
                         }
                     }
+                case .mirror:
+                    guard let mirrorTarget, let mirrorValue, canEditPartMirror(mirrorTarget) else { return false }
+                    if !isRepeat { partMirrorAction(!mirrorValue, target: mirrorTarget)() }
                 case .shape(let property):
                     guard let shapeTarget, let value = shapeTarget.part?.modifierValue(property),
                         canEditGraphPartShape(shapeTarget)
@@ -4553,6 +4605,22 @@ final class EditorStore {
             self.perform(
                 reloadReferenceImage: true, admitsPublication: { currentFileIdentity() == fileIdentity },
                 { try await $0.removeReferenceImage(target: target) })
+        }
+    }
+
+    var canClearReferenceArtwork: Bool {
+        canSave && hasReferenceImage && referenceImage != nil && !isLoadingReferenceImage
+    }
+
+    func clearReferenceArtwork() {
+        guard canClearReferenceArtwork, let source = acceptedDocumentSource,
+            let png = source.document.referenceImagePNG
+        else { return }
+        let target = ReferenceCompositionTarget(snapshot: source)
+        perform(reloadReferenceImage: true, acceptCommittedCancellation: true) { session in
+            let cleared = try await ReferenceImageService.clearArtwork(png)
+            try Task.checkCancellation()
+            return try await session.applyReferenceComposition(png: cleared, origin: nil, target: target)
         }
     }
 

@@ -39,6 +39,7 @@ struct EdgeSidebar: View {
         let renderedRevision = filterRevision
         let admitsFilter: @MainActor () -> Bool = { filterRevision == renderedRevision }
         let partContext = store.snapshot.map { PartGraphSelectionContext(snapshot: $0) }
+        let rigEligible = store.rigEdgeSidebarEligibleIDs
         if let selectAll = store.edgeSidebarSelectAllTarget(
             displayedIDs: Set(rows.map(\.id)), admitsFilter: admitsFilter)
         {
@@ -73,11 +74,15 @@ struct EdgeSidebar: View {
                             .edge(edge.id), admitsInput: admitsFilter)
                         let revealOwningComponent = store.revealOwningComponentAction(
                             .edge(edge.id), context: partContext, admitsInput: admitsFilter)
-                        let title = "\(edge.from) → \(edge.to)"
+                        let from = edge.from
+                        let to = edge.to
                         let isSelected = store.snapshot?.selectedEdgeIDs.contains(edge.id) == true
+                        let canPick = rigEligible?.contains(Data(edge.id.utf8)) ?? true
                         Button {
                             let flags = NSApp.currentEvent?.modifierFlags ?? []
-                            if flags.contains(.command) {
+                            if !canPick {
+                                selectEdge(.subtract)
+                            } else if flags.contains(.command) {
                                 selectEdge(.toggle)
                             } else if flags.contains(.shift) {
                                 selectEdge(.add)
@@ -86,30 +91,32 @@ struct EdgeSidebar: View {
                             }
                         } label: {
                             Label(
-                                title,
-                                systemImage: isSelected
-                                    ? "checkmark.circle.fill" : "line.diagonal"
+                                "\(from) → \(to)",
+                                systemImage: isSelected ? "checkmark.circle.fill" : "line.diagonal"
                             )
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.bordered)
                         .tint(isSelected ? .accentColor : .secondary)
+                        .disabled(!canPick && !isSelected)
                         .accessibilityLabel(
-                            "Select edge from \(edge.from) to \(edge.to)"
+                            canPick || !isSelected
+                                ? "Select edge from \(from) to \(to)" : "Remove edge from \(from) to \(to)"
                         )
-                        .accessibilityAddTraits(
-                            isSelected ? .isSelected : []
-                        )
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .accessibilityValue(
-                            isSelected ? "Selected" : "Not selected"
+                            canPick
+                                ? (isSelected ? "Selected" : "Not selected")
+                                : (isSelected
+                                    ? "Selected, unavailable for bone assignment" : "Unavailable for bone assignment")
                         )
-                        .accessibilityAction(named: Text("Add edge to selection")) {
-                            selectEdge(.add)
-                        }
-                        .accessibilityAction(named: Text("Remove edge from selection")) {
-                            selectEdge(.subtract)
-                        }
                         .accessibilityActions {
+                            if canPick && !isSelected {
+                                Button("Add edge to selection") { selectEdge(.add) }
+                            }
+                            if isSelected {
+                                Button("Remove edge from selection") { selectEdge(.subtract) }
+                            }
                             if let reveal = revealOwningComponent {
                                 Button("Reveal Owning Component", action: reveal)
                             }
@@ -121,13 +128,19 @@ struct EdgeSidebar: View {
                             Button("Select Whole Part", action: selectWholePart)
                                 .disabled(!store.canSelectWholePart(.edge(edge.id)))
                         }
-                        .help("\(edge.id) · Shift-click adds; Command-click toggles selection")
+                        .help(
+                            canPick
+                                ? "\(edge.id) · Shift-click adds; Command-click toggles selection"
+                                : (isSelected
+                                    ? "Remove this unavailable edge from the selection."
+                                    : "Unavailable for bone assignment.")
+                        )
                     }
                 }.padding(.horizontal, 12).padding(.bottom, 12)
             }
             .frame(maxHeight: 120)
             .focusedValue(\.editorEdgeSidebarSelectAll, selectAll)
-            .disabled(store.isWorking)
+            .disabled(store.isWorking || !store.canPickGraph)
         }
     }
 }

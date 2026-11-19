@@ -60,6 +60,8 @@
 - Announce new Viewer errors in the active window with VoiceOver.
 
 - Explain invalid document and Qt XML input in headless export diagnostics.
+- Keep keyboard and VoiceOver edge picks eligible for bone assignment, with removal available for existing picks.
+
 - Read shortcut key names aloud and support searching by their names.
 
 - Prefer exact key bindings when searching Keyboard Shortcuts Help.
@@ -93,6 +95,8 @@
 - Browse a selected component group with Command–Down Arrow while the sidebar has focus.
 
 - Name the destinations of component breadcrumb controls, including the full tree.
+
+- Open the shared group in the component sidebar after assigning stitching roles to multiple parts.
 
 - Go to the enclosing component group from the View menu or with Command–Up Arrow while the component sidebar has focus.
 
@@ -328,6 +332,10 @@
 
 - Use native About panels with bundled project MIT attribution and separate Help > Build Diagnostics commands in both apps, retaining the graph QA name (#344).
 
+- Disable camera input on outdated Replay Steps previews while the current frame builds.
+
+- Show a native keyboard focus ring around the 3D preview.
+
 - Use the native adjustable inspector, standard Control–Command–I visibility command, compact section switcher and an accessible toolbar visibility toggle (#341).
 
 - Announce completed geometry exports and warnings to assistive technologies, with one notification per export even for repeated destinations (#339).
@@ -368,6 +376,8 @@
 - Add explicit multi-group wrapping and surface-finish edits with mixed values, captured selection protection and one atomic Undo.
 
 - Retarget copied wrapping body bindings to the copied body, preserving external references and opaque wrapping metadata.
+
+- Press M on the canvas to toggle X mirror on the owning Model part.
 
 - Add wrapping surface finish authoring for coat patterns, RGB ink, belly shading and generated cloth wrinkles, with cancellable drafts and one-step Undo.
 

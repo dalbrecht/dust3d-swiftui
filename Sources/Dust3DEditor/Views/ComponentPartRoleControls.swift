@@ -42,7 +42,7 @@ struct ComponentPartRoleControls: View {
             Text("Selected component part roles").font(.headline)
             ComponentPartRoleMenu(store: store)
             Text(
-                "Only directly selected part rows change. Selected groups do not include descendants. Multiple stitching parts must be siblings; their shared group is revealed after applying."
+                "Only directly selected part rows change. Selected groups do not include descendants. Multiple stitching parts must be siblings; the sidebar opens their shared group after applying."
             )
             .font(.caption)
         }
