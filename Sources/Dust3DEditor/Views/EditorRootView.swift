@@ -6,9 +6,19 @@ import Dust3DKit
 import Dust3DRendering
 import SwiftUI
 
-private enum EditorInspectorSection: String, CaseIterable, Hashable {
+enum EditorInspectorSection: String, CaseIterable, Hashable {
     case selection = "Selection"
     case animations = "Animations"
+}
+
+struct EditorInspectorPresentation {
+    var isPresented = true
+    var section = EditorInspectorSection.selection
+
+    mutating func showSelectionProperties() {
+        section = .selection
+        isPresented = true
+    }
 }
 
 struct EditorRootView: View {
@@ -24,12 +34,12 @@ struct EditorRootView: View {
     @State private var sidebarNodeQuery = ""
     @State private var sidebarDisclosure = ComponentSidebarDisclosure()
     @State private var rigInspectorDocumentID: UUID?
-    @State private var isInspectorPresented = true
-    @State private var inspectorSection = EditorInspectorSection.selection
+    @State private var inspectorPresentation = EditorInspectorPresentation()
     @State private var recoveryRegistrationID: UUID?
     @State private var isImportingReferenceImage = false
     @State private var admitReferenceImageImport: (@MainActor () -> Bool)?
     @State private var referenceComposition: ReferenceCompositionPresentation?
+    @State private var isOpeningDroppedDocument = false
     #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
         @State private var restPreview: GeneratedRigPreviewSession
     #endif
@@ -61,11 +71,15 @@ struct EditorRootView: View {
         #endif
     }
 
+    private var selectionPropertiesAction: (@MainActor () -> Bool)? {
+        store.selectionPropertiesAction { inspectorPresentation.showSelectionProperties() }
+    }
+
     var body: some View {
         let fitAction = toolbarFitAction
         editorLayout
             .frame(minWidth: 800, minHeight: 600)
-            .inspector(isPresented: $isInspectorPresented) {
+            .inspector(isPresented: $inspectorPresentation.isPresented) {
                 inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
             }
             #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
@@ -115,7 +129,7 @@ struct EditorRootView: View {
                     } label: {
                         Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
                     }
-                    EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
+                    EditorInspectorVisibilityControl(isPresented: $inspectorPresentation.isPresented)
                     let navigateInspector = inspectorNavigation
                     Button {
                         navigateInspector?(.animations)
@@ -135,6 +149,7 @@ struct EditorRootView: View {
                 }
             }
             .focusedSceneValue(\.editorStore, store)
+            .focusedSceneValue(\.editorSelectionPropertiesAction, selectionPropertiesAction)
             .focusedSceneValue(\.editorReferenceImageActions, referenceImageActions)
             .focusedSceneValue(\.editorInspectorNavigation, inspectorNavigation)
             .focusedSceneValue(\.editorSidebarVisibility, isSidebarPresented)
@@ -219,12 +234,12 @@ struct EditorRootView: View {
             case .sidebar(let visible):
                 isSidebarPresented = visible
             case .rig:
-                isInspectorPresented = true
-                inspectorSection = .selection
+                inspectorPresentation.isPresented = true
+                inspectorPresentation.section = .selection
                 rigInspectorDocumentID = store.snapshot?.documentIdentity
             case .animations:
-                isInspectorPresented = true
-                inspectorSection = .animations
+                inspectorPresentation.isPresented = true
+                inspectorPresentation.section = .animations
             }
         }
     }
@@ -320,7 +335,7 @@ struct EditorRootView: View {
                             isImporting: $isImportingReferenceImage, completeImport: finishReferenceImageImport
                         )
                         .padding(.horizontal, 12).padding(.bottom, 8)
-                        EditorDocumentDropControl()
+                        EditorDocumentDropControl(isOpening: isOpeningDroppedDocument, open: openDroppedDocument)
                             .padding(.horizontal, 12).padding(.bottom, 8)
                         Divider()
                         canvasWithGetStarted
@@ -386,35 +401,60 @@ struct EditorRootView: View {
         let source = $file
         let actions = EditorGetStartedActions(
             store: store, fileIdentity: identity, ownsWindow: { source.wrappedValue.identity == identity })
-        return CanvasProfilePanes(store: store, focusControl: canvasFocus, previewCamera: previewCameraActions)
-            .overlay(alignment: .bottom) {
-                if let actions {
-                    EditorGetStartedCard(actions: actions, openDocument: openDocument) { target in
-                        guard referenceComposition == nil else { return }
-                        referenceComposition = ReferenceCompositionPresentation(target: target)
-                    }
-                    .padding(12)
+        return CanvasProfilePanes(
+            store: store, showSelectionProperties: selectionPropertiesAction, focusControl: canvasFocus,
+            previewCamera: previewCameraActions
+        )
+        .overlay(alignment: .bottom) {
+            if let actions {
+                EditorGetStartedCard(actions: actions, openDocument: openDocument) { target in
+                    guard referenceComposition == nil else { return }
+                    referenceComposition = ReferenceCompositionPresentation(target: target)
                 }
+                .padding(12)
             }
-            .dropDestination(for: URL.self) { urls, _ in
-                guard referenceComposition == nil, let presentation = actions?.referenceDrop(urls) else { return false }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            guard source.wrappedValue.identity == identity, referenceComposition == nil,
+                let drop = EditorCanvasDrop(urls: urls, acceptsReference: actions != nil)
+            else { return false }
+            switch drop {
+            case .reference(let images):
+                guard let presentation = actions?.referenceDrop(images) else { return false }
                 referenceComposition = presentation
                 return true
+            case .document(let document):
+                return openDroppedDocument(document)
             }
+        }
+    }
+
+    private func openDroppedDocument(_ drop: EditorDocumentDrop) -> Bool {
+        guard !isOpeningDroppedDocument else { return false }
+        isOpeningDroppedDocument = true
+        Task {
+            defer { isOpeningDroppedDocument = false }
+            await drop.open(
+                using: { url in
+                    _ = try await NSDocumentController.shared.openDocument(withContentsOf: url, display: true)
+                },
+                reportError: { NSApp.presentError($0) })
+        }
+        return true
     }
 
     private func openDocument() { NSDocumentController.shared.openDocument(nil) }
 
     private var inspectorContent: some View {
-        let visibility = $isInspectorPresented
-        let section = $inspectorSection
+        let visibility = $inspectorPresentation.isPresented
+        let section = $inspectorPresentation.section
         return VStack(spacing: 0) {
-            Picker("Inspector section", selection: $inspectorSection) {
+            Picker("Inspector section", selection: $inspectorPresentation.section) {
                 ForEach(EditorInspectorSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented).labelsHidden().padding(10)
             Divider()
-            if inspectorSection == .animations {
+            if inspectorPresentation.section == .animations {
                 AnimationPanel(store: store)
             } else {
                 NodeInspector(store: store, rigInspectorDocumentID: $rigInspectorDocumentID) {
@@ -566,7 +606,8 @@ struct EditorRootView: View {
     }
 
     private var modelPreview: some View {
-        VStack(spacing: 0) {
+        let rendererAttempt = store.previewRendererAttemptID
+        return VStack(spacing: 0) {
             HStack {
                 Text("Mesh preview").font(.headline)
                 Spacer()
@@ -578,7 +619,8 @@ struct EditorRootView: View {
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry Preview") { store.retryPreview() }.disabled(store.isGenerating)
+                    Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }
+                        .disabled(store.isGenerating)
                 }
             } else if let mesh = store.mesh {
                 let materialRevision = store.materialViewportRevision
@@ -587,11 +629,20 @@ struct EditorRootView: View {
                     meshRevision: store.materialViewportRevision, materials: store.materialContent,
                     cameraCommand: store.previewCameraCommand, showsColor: store.showsPreviewColor,
                     automaticallyOrbits: store.isPreviewAutomaticallyOrbiting,
-                    onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
-                    onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
-                ) { store.renderError = $0 }
+                    onMaterialError: {
+                        guard store.previewRendererAttemptID == rendererAttempt else { return }
+                        store.materialsFailed($0, revision: materialRevision)
+                    },
+                    onMaterialRendered: {
+                        guard store.previewRendererAttemptID == rendererAttempt else { return }
+                        store.materialsRendered(revision: materialRevision)
+                    }
+                ) { error in
+                    store.reportPreviewRendererError(error, attemptID: rendererAttempt, revision: materialRevision)
+                }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
                 .accessibilityLabel("3D mesh preview")
+                .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 if store.isUpdatingMaterials {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)
                 }
