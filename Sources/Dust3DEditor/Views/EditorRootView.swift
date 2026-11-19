@@ -626,14 +626,26 @@ struct EditorRootView: View {
     }
 
     private var modelPreview: some View {
+        let draftMesh = store.componentColorDraftMesh
+        let draftRevision = store.componentColorDraftRevision
+        let displayingDraft = draftMesh != nil
+        let draftStatus =
+            store.componentColorDraftPreviewMessage
+            ?? (displayingDraft ? "Solid color draft · Apply to keep" : nil)
         let rendererAttempt = store.previewRendererAttemptID
         return VStack(spacing: 0) {
             HStack {
                 Text("Mesh preview").font(.headline)
                 Spacer()
+                if let draftStatus {
+                    Text(draftStatus).font(.caption).lineLimit(1).help(draftStatus)
+                        .accessibilityLabel("Color draft preview: \(draftStatus)")
+                }
             }.padding(12)
             Divider()
-            if let error = store.renderError ?? (store.mesh == nil ? store.previewState.errorMessage : nil) {
+            if !displayingDraft,
+                let error = store.renderError ?? (store.mesh == nil ? store.previewState.errorMessage : nil)
+            {
                 ContentUnavailableView {
                     Label("Preview unavailable", systemImage: "cube.transparent")
                 } description: {
@@ -642,53 +654,74 @@ struct EditorRootView: View {
                     Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }
                         .disabled(store.isGenerating)
                 }
-            } else if let mesh = store.mesh {
+            } else if let mesh = draftMesh ?? store.mesh {
                 let materialRevision = store.materialViewportRevision
                 MeshViewport(
                     mesh: mesh, isWireframe: store.isWireframe, cameraReset: store.cameraReset,
-                    meshRevision: store.materialViewportRevision, materials: store.materialContent,
-                    cameraCommand: store.previewCameraCommand, showsColor: store.showsPreviewColor,
+                    meshRevision: displayingDraft ? -draftRevision : materialRevision,
+                    materials: displayingDraft ? nil : store.materialContent,
+                    cameraCommand: store.previewCameraCommand, showsColor: displayingDraft || store.showsPreviewColor,
                     automaticallyOrbits: store.isPreviewAutomaticallyOrbiting,
                     onMaterialError: {
-                        guard store.previewRendererAttemptID == rendererAttempt else { return }
-                        store.materialsFailed($0, revision: materialRevision)
+                        if !displayingDraft, store.componentColorDraftMesh == nil,
+                            store.previewRendererAttemptID == rendererAttempt
+                        {
+                            store.materialsFailed($0, revision: materialRevision)
+                        }
                     },
                     onMaterialRendered: {
-                        guard store.previewRendererAttemptID == rendererAttempt else { return }
-                        store.materialsRendered(revision: materialRevision)
+                        if !displayingDraft, store.componentColorDraftMesh == nil,
+                            store.previewRendererAttemptID == rendererAttempt
+                        {
+                            store.materialsRendered(revision: materialRevision)
+                        }
                     }
                 ) { error in
-                    store.reportPreviewRendererError(error, attemptID: rendererAttempt, revision: materialRevision)
+                    if displayingDraft {
+                        store.colorDraftRenderFailed(error, revision: draftRevision)
+                    } else if store.componentColorDraftMesh == nil {
+                        store.reportPreviewRendererError(error, attemptID: rendererAttempt, revision: materialRevision)
+                    }
                 }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
                 .withFocusTarget(previewFocus)
                 .focusedSceneValue(\.editorPreviewFocus, previewFocus)
-                .accessibilityLabel("3D mesh preview")
+                .accessibilityLabel(displayingDraft ? "3D solid color draft preview" : "3D mesh preview")
                 .accessibilityHint(MeshViewport.keyboardCameraHelp)
-                if store.isUpdatingMaterials {
-                    ProgressView("Updating materials…").controlSize(.small).padding(8)
-                }
-                if let issue = store.materialIssue {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label("Showing geometry without materials", systemImage: "exclamationmark.triangle")
-                        Text(issue).textSelection(.enabled)
-                        Button("Retry Materials") { store.retryMaterials() }
-                            .disabled(store.isGenerating || store.isUpdatingMaterials || store.isWorking)
+                Group {
+                    if store.isUpdatingMaterials {
+                        ProgressView("Updating materials…").controlSize(.small).padding(8)
                     }
-                    .font(.caption).padding(8)
-                }
-                if store.previewState.isStale {
-                    Label("Showing last valid mesh", systemImage: "exclamationmark.triangle")
+                    if let issue = store.materialIssue {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Showing geometry without materials", systemImage: "exclamationmark.triangle")
+                            Text(issue).textSelection(.enabled)
+                            Button("Retry Materials") { store.retryMaterials() }
+                                .disabled(store.isGenerating || store.isUpdatingMaterials || store.isWorking)
+                        }
                         .font(.caption).padding(8)
+                    }
+                    if store.previewState.isStale {
+                        Label("Showing last valid mesh", systemImage: "exclamationmark.triangle")
+                            .font(.caption).padding(8)
+                    }
+                    if let error = store.previewState.errorMessage {
+                        Text("Preview out of date: \(error)").font(.caption).padding(8)
+                        Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }.padding(
+                            .bottom, 8)
+                    }
                 }
-                if let error = store.previewState.errorMessage {
-                    Text("Preview out of date: \(error)").font(.caption).padding(8)
-                    Button("Retry Preview") { store.retryPreview() }.padding(.bottom, 8)
-                }
+                .opacity(displayingDraft ? 0 : 1)
+                .accessibilityHidden(displayingDraft)
+                .allowsHitTesting(!displayingDraft)
                 Text("\(mesh.triangleCount) triangles · Drag to orbit · Scroll to zoom")
                     .font(.caption).foregroundStyle(.secondary).padding(8)
-                if store.isGenerating { ProgressView("Updating preview…").controlSize(.small).padding(8) }
-                if let warning = store.previewCompatibilityWarning { Text(warning).font(.caption).padding(8) }
+                if !displayingDraft, store.isGenerating {
+                    ProgressView("Updating preview…").controlSize(.small).padding(8)
+                }
+                if !displayingDraft, let warning = store.previewCompatibilityWarning {
+                    Text(warning).font(.caption).padding(8)
+                }
             } else if store.isGenerating {
                 Spacer()
                 ProgressView("Generating mesh…")

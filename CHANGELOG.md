@@ -68,6 +68,8 @@
 
 - Settle the origin from node bounds when a headless Qt XML paste creates a new document.
 
+- Preview a component color draft on the solid-color model before applying the edit.
+
 - Settle the origin when launching the Editor with a Qt XML fragment and no document, in the same Undo step as the paste.
 
 - Announce document errors through VoiceOver in the active editor window.
