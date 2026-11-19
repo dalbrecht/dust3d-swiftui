@@ -167,7 +167,8 @@ final class ComponentPartRoleStoreTests: XCTestCase {
             return view.subviews.lazy.compactMap { table(in: $0) }.first
         }
         let nativeTable = try XCTUnwrap(table(in: host))
-        XCTAssertEqual(nativeTable.numberOfRows, browse.children.count)
+        // The nonselectable end-drop destination follows the browsed component rows.
+        XCTAssertEqual(nativeTable.numberOfRows, browse.children.count + 1)
         XCTAssertTrue(NSLocationInRange(0, nativeTable.rows(in: nativeTable.visibleRect)))
     }
 
