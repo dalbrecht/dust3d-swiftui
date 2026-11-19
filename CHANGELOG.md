@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Use the View menu to orbit, pan, zoom, and fit the model in the active Viewer window.
+
+- Toggle Viewer wireframe from the View menu or with W.
+
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.

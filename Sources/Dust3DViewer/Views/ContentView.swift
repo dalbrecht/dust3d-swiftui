@@ -6,8 +6,6 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @State private var store = ViewerStore()
     @State private var isImporterPresented = false
-    @State private var isWireframe = false
-    @State private var cameraReset = 0
     @State private var rendererError: String?
 
     var body: some View {
@@ -32,9 +30,9 @@ struct ContentView: View {
                 if let mesh = store.mesh {
                     let materialRevision = store.meshRevision + store.materialRevision
                     MeshViewport(
-                        mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
+                        mesh: mesh, isWireframe: store.isWireframe, cameraReset: 0,
                         meshRevision: store.meshRevision + store.materialRevision, materials: store.materials,
-                        automaticallyOrbits: store.automaticallyRotates,
+                        automaticallyOrbits: store.automaticallyRotates, cameraState: store.cameraState,
                         onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                         onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                     ) { message in
@@ -42,6 +40,7 @@ struct ContentView: View {
                     }
                     .id(store.meshRevision)
                     .accessibilityLabel("3D mesh preview")
+                    .accessibilityHint("Use the View menu to orbit, pan, zoom, or fit the model.")
                 } else {
                     ContentUnavailableView {
                         Label("Open a Dust3D model", systemImage: "cube.transparent")
@@ -80,7 +79,10 @@ struct ContentView: View {
                     Text("\(mesh.partCount) parts · \(mesh.nodeCount) nodes · \(mesh.triangleCount) triangles")
                         .monospacedDigit()
                     Spacer()
-                    Text("Drag to orbit · Scroll to zoom")
+                    ViewThatFits(in: .horizontal) {
+                        Text("Drag to orbit · Shift-drag to pan · Scroll to zoom").lineLimit(1)
+                        Text("Camera controls in View menu")
+                    }
                 } else {
                     Text("Native SwiftUI viewer")
                     Spacer()
@@ -117,12 +119,10 @@ struct ContentView: View {
                     Label("Open", systemImage: "folder")
                 }
                 .help("Open a .ds3 document (⌘O)")
-                Toggle(isOn: $isWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+                Toggle(isOn: store.wireframeBinding) { Label("Wireframe", systemImage: "square.3.layers.3d") }
                     .help("Show triangle edges")
                     .disabled(store.mesh == nil)
-                Button {
-                    cameraReset += 1
-                } label: {
+                Button(action: store.fitModel) {
                     Label("Fit Model", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
                 .help("Reset the camera and fit the model")
