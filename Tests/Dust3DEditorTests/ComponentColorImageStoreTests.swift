@@ -44,6 +44,23 @@ private struct GraphTextureNoNative: EditorPreviewServing, ArchiveTextureBaking,
     }
 }
 
+private actor RecordingTextureActions: ColorImageServing {
+    let png: Data
+    private(set) var importedURLs: [URL] = []
+    private(set) var assignments = 0
+
+    init(png: Data) { self.png = png }
+
+    func importImage(url: URL) async throws -> Data {
+        importedURLs.append(url)
+        return png
+    }
+
+    func validateRetainedImage(document: Dust3DDocument, asset: DocumentColorImageAsset) {
+        assignments += 1
+    }
+}
+
 private actor HeldColorImageInspection {
     private var pending: CheckedContinuation<CGImage, Never>?
     private var waiter: CheckedContinuation<Void, Never>?
@@ -103,6 +120,132 @@ final class ComponentColorImageStoreTests: XCTestCase {
         }
         XCTFail("Import did not start")
         return request
+    }
+
+    private let otherComponent = "{dddddddd-dddd-4ddd-8ddd-dddddddddddd}"
+    private let imageURL = URL(fileURLWithPath: "/unused.png")
+
+    private func twoTextureOwners() throws -> Dust3DDocument {
+        try document().applying(
+            .addNode(
+                id: "{22222222-2222-4222-8222-222222222222}",
+                partID: "{bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb}", componentID: otherComponent,
+                position: .init(x: 0.7, y: 0.5, z: 0.5), radius: 0.1)
+        )
+        .applying(
+            .importComponentColorImage(
+                id: component, imageID: "{eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee}", png: png))
+    }
+
+    private func inertTextureStore(service: RecordingTextureActions) -> EditorStore {
+        let stub = GraphTextureNoNative()
+        return EditorStore(
+            colorImages: service, preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+    }
+
+    func testRenderedImageActionsRejectDifferentAndRoundTripSelectionBeforeImageWork() async throws {
+        let source = try twoTextureOwners()
+        let service = RecordingTextureActions(png: try png)
+        let store = inertTextureStore(service: service)
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        store.selectComponent(component)
+        try await ready(store)
+        let rendered = try XCTUnwrap(store.componentColorImageDestination(componentID: component))
+        let asset = try XCTUnwrap(store.snapshot?.colorImageAssets.first)
+
+        for selected in [otherComponent, component] {
+            store.selectComponent(selected)
+            try await ready(store)
+            XCTAssertNil(
+                store.componentColorImageDestination(componentID: selected == component ? otherComponent : component))
+            store.chooseComponentColorImage(destination: rendered)
+            XCTAssertNil(store.componentColorImageChoiceRequestID)
+            store.assignComponentColorImage(asset, destination: rendered)
+            store.clearComponentColorImage(destination: rendered)
+            try await ready(store)
+            XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+            XCTAssertFalse(store.canUndo)
+        }
+        let importedURLs = await service.importedURLs
+        let assignments = await service.assignments
+        XCTAssertTrue(importedURLs.isEmpty)
+        XCTAssertEqual(assignments, 0)
+    }
+
+    func testPickerCancellationAndLateCallbacksCannotClearNewRequest() async throws {
+        let source = try twoTextureOwners()
+        let service = RecordingTextureActions(png: try png)
+        let store = inertTextureStore(service: service)
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        store.selectComponent(component)
+        try await ready(store)
+        let oldDestination = try XCTUnwrap(store.componentColorImageDestination(componentID: component))
+        store.chooseComponentColorImage(destination: oldDestination)
+        let old = try XCTUnwrap(store.componentColorImageChoiceRequestID)
+        store.chooseComponentColorImage(destination: oldDestination)
+        XCTAssertEqual(store.componentColorImageChoiceRequestID, old)
+        store.cancelComponentColorImageChoice(requestID: old)
+
+        store.selectComponent(otherComponent)
+        try await ready(store)
+        let newDestination = try XCTUnwrap(store.componentColorImageDestination(componentID: otherComponent))
+        store.chooseComponentColorImage(destination: newDestination)
+        let current = try XCTUnwrap(store.componentColorImageChoiceRequestID)
+        XCTAssertNotEqual(current, old)
+        store.finishComponentColorImageChoice(requestID: old, result: .success([imageURL]))
+        store.finishComponentColorImageChoice(requestID: old, result: .failure(DelayedColorImages.Failure.rejected))
+        store.cancelComponentColorImageChoice(requestID: old)
+        XCTAssertEqual(store.componentColorImageChoiceRequestID, current)
+        XCTAssertNil(store.errorMessage)
+
+        store.finishComponentColorImageChoice(requestID: current, result: .success([imageURL]))
+        try await ready(store)
+        let importedURLs = await service.importedURLs
+        XCTAssertEqual(importedURLs, [imageURL])
+        XCTAssertNil(store.componentColorImageChoiceRequestID)
+        XCTAssertEqual(store.snapshot?.selectedComponentID, otherComponent)
+        XCTAssertNotEqual(store.snapshot?.selectedComponent?.colorImage, .some(.unset))
+        XCTAssertEqual(store.snapshot?.colorImageAssets.count, 2)
+        XCTAssertTrue(store.canUndo)
+        store.undo()
+        try await ready(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testPickerRejectsSelectionABAAndReplacementBeforeDecode() async throws {
+        let source = try twoTextureOwners()
+        let service = RecordingTextureActions(png: try png)
+        let store = inertTextureStore(service: service)
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        store.selectComponent(component)
+        try await ready(store)
+        let destination = try XCTUnwrap(store.componentColorImageDestination(componentID: component))
+        store.chooseComponentColorImage(destination: destination)
+        let request = try XCTUnwrap(store.componentColorImageChoiceRequestID)
+        store.selectComponent(otherComponent)
+        try await ready(store)
+        store.selectComponent(component)
+        try await ready(store)
+        store.finishComponentColorImageChoice(requestID: request, result: .success([imageURL]))
+        try await ready(store)
+        XCTAssertNil(store.componentColorImageChoiceRequestID)
+
+        let fresh = try XCTUnwrap(store.componentColorImageDestination(componentID: component))
+        store.chooseComponentColorImage(destination: fresh)
+        let replaced = try XCTUnwrap(store.componentColorImageChoiceRequestID)
+        await store.load(data: source.encoded())
+        try await ready(store)
+        XCTAssertNil(store.componentColorImageChoiceRequestID)
+        store.finishComponentColorImageChoice(requestID: replaced, result: .success([imageURL]))
+        let importedURLs = await service.importedURLs
+        XCTAssertTrue(importedURLs.isEmpty)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
     }
 
     func testAppliedAndRetainedTextureInspectionDoesNotAssignOrWrite() async throws {

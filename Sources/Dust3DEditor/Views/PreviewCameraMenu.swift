@@ -4,6 +4,7 @@ import SwiftUI
 struct PreviewCameraMenu: View {
     let title: String
     let isEnabled: Bool
+    let allowsZoomShortcuts: Bool
     let move: (MeshCameraCommand.Action) -> Void
     let fit: () -> Void
     var canvasWheelZoom: Binding<Bool>? = nil
@@ -23,7 +24,9 @@ struct PreviewCameraMenu: View {
                 Button("Pan Down") { move(.panDown) }
                 Divider()
                 Button("Zoom In") { move(.zoomIn) }
+                    .keyboardShortcut(allowsZoomShortcuts ? KeyboardShortcut("=", modifiers: .option) : nil)
                 Button("Zoom Out") { move(.zoomOut) }
+                    .keyboardShortcut(allowsZoomShortcuts ? KeyboardShortcut("-", modifiers: .option) : nil)
                 Button("Fit Mesh", action: fit)
             }.disabled(!isEnabled)
             if let canvasWheelZoom {

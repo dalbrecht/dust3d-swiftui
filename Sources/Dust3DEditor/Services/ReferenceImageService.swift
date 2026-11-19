@@ -118,6 +118,21 @@ enum ReferenceImageCodec {
         return output as Data
     }
 
+    static func clearArtwork(_ png: Data) throws -> Data {
+        let source = try decodePNG(png)
+        let width = source.width
+        let height = source.height
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+            let context = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { throw ReferenceImageError.conversionFailed }
+        context.clear(CGRect(x: 0, y: 0, width: width, height: height))
+        guard let image = context.makeImage() else { throw ReferenceImageError.conversionFailed }
+        return try encodePNG(image)
+    }
+
     static func straightStandardPNGImage(_ data: Data) -> CGImage? {
         let options = [kCGImageSourceShouldCache: false, kCGImageSourceShouldAllowFloat: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, options),
@@ -182,6 +197,17 @@ protocol ReferenceImageServing: Sendable {
 
 /// One window's off-main raster decoding/cache. Model-only edits do not call this service.
 actor ReferenceImageService: ReferenceImageServing {
+    static func clearArtwork(_ png: Data) async throws -> Data {
+        try await ReferenceImageService().clearArtwork(png)
+    }
+
+    private func clearArtwork(_ png: Data) throws -> Data {
+        try Task.checkCancellation()
+        let cleared = try ReferenceImageCodec.clearArtwork(png)
+        try Task.checkCancellation()
+        return cleared
+    }
+
     private var cachedPNG: Data?
     private var cachedImage: CGImage?
 

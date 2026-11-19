@@ -49,6 +49,7 @@ struct EditorRootView: View {
     private let claimLaunchNeutralPreview: @MainActor (URL) async -> Bool
     @State private var store: EditorStore
     @State private var canvasFocus = CanvasProfileFocusControl()
+    @State private var previewFocus = MeshViewportFocus()
     @State private var exportDestinations: EditorGeometryExportDestinationService
     @State private var exportWorkflow: EditorGeometryExportWorkflow
     @State private var isSidebarPresented = true
@@ -58,6 +59,7 @@ struct EditorRootView: View {
     @State private var inspectorPresentation = EditorInspectorPresentation()
     @State private var recoveryRegistrationID: UUID?
     @State private var isImportingReferenceImage = false
+    @State private var referenceImageImportRequest: UUID?
     @State private var admitReferenceImageImport: (@MainActor () -> Bool)?
     @State private var referenceComposition: ReferenceCompositionPresentation?
     @State private var isOpeningDroppedDocument = false
@@ -164,6 +166,10 @@ struct EditorRootView: View {
             }
             .background(EditorExportWindowAnchor(service: exportDestinations).frame(width: 0, height: 0))
             .background {
+                if let requestID = store.componentColorImageChoiceRequestID {
+                    ComponentColorImagePicker(store: store, requestID: requestID)
+                        .id(requestID)
+                }
                 if let requestID = store.qtXMLFilePasteRequestID {
                     QtXMLFilePicker(store: store, requestID: requestID)
                         .id(requestID)
@@ -282,6 +288,7 @@ struct EditorRootView: View {
             Divider()
             CanvasNodeSidebar(store: store, query: $sidebarNodeQuery)
             ComponentSidebar(store: store, disclosure: sidebarDisclosure)
+            ComponentGroupDropConfirmation(store: store)
             PartSidebar(store: store)
             EdgeSidebar(store: store)
         }
@@ -389,15 +396,21 @@ struct EditorRootView: View {
         guard !isImportingReferenceImage, referenceComposition == nil,
             let admit = store.referenceImageActionAdmission(fileIdentity: fileIdentity, ownsWindow: ownsWindow)
         else { return nil }
-        return EditorReferenceImageActions(canRemove: store.hasReferenceImage) { action in
+        return EditorReferenceImageActions(
+            canClearArtwork: store.canClearReferenceArtwork, canRemove: store.hasReferenceImage
+        ) { action in
             guard admit(), !isImportingReferenceImage, referenceComposition == nil else { return }
             switch action {
             case .compose:
                 guard let target = store.referenceCompositionTarget else { return }
                 referenceComposition = ReferenceCompositionPresentation(target: target)
             case .importImage:
+                guard let request = store.chooseReferenceImage(fileIdentity: fileIdentity) else { return }
+                referenceImageImportRequest = request
                 admitReferenceImageImport = admit
                 isImportingReferenceImage = true
+            case .clearArtwork:
+                store.clearReferenceArtwork()
             case .remove:
                 guard store.hasReferenceImage else { return }
                 store.removeReferenceImage()
@@ -406,14 +419,20 @@ struct EditorRootView: View {
     }
 
     private func finishReferenceImageImport(_ result: Result<URL, Error>) {
-        defer { admitReferenceImageImport = nil }
-        guard admitReferenceImageImport?() == true else { return }
-        switch result {
-        case .success(let url):
-            store.importReferenceImage(from: url)
-        case .failure(let error):
-            if (error as? CocoaError)?.code != .userCancelled { store.errorMessage = EditorStore.message(error) }
+        let request = referenceImageImportRequest
+        defer {
+            referenceImageImportRequest = nil
+            admitReferenceImageImport = nil
         }
+        guard let request else { return }
+        guard admitReferenceImageImport?() == true else {
+            store.cancelReferenceImageChoice(requestID: request)
+            return
+        }
+        let source = $file
+        store.finishReferenceImageChoice(
+            requestID: request, result: result.map { [$0] },
+            currentFileIdentity: { source.wrappedValue.identity })
     }
 
     private var canvasWithGetStarted: some View {
@@ -538,14 +557,16 @@ struct EditorRootView: View {
                 },
                 move: { [weak store] in store?.movePreviewCamera($0) },
                 fit: { [weak store] in store?.fitPreviewCamera() },
-                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) },
+                beginDrag: { [weak previewFocus] in previewFocus?.beginCanvasDrag() })
         #else
             return EditorPreviewCameraActions(
                 canMove: store.canMovePreviewCamera,
                 isCurrent: { [weak store] in store?.canMovePreviewCamera == true },
                 move: { [weak store] in store?.movePreviewCamera($0) },
                 fit: { [weak store] in store?.fitPreviewCamera() },
-                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) },
+                beginDrag: { [weak previewFocus] in previewFocus?.beginCanvasDrag() })
         #endif
     }
 
@@ -665,6 +686,8 @@ struct EditorRootView: View {
                     store.reportPreviewRendererError(error, attemptID: rendererAttempt, revision: materialRevision)
                 }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
+                .withFocusTarget(previewFocus)
+                .focusedSceneValue(\.editorPreviewFocus, previewFocus)
                 .accessibilityLabel("3D mesh preview")
                 .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 if store.isUpdatingMaterials {

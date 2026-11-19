@@ -3,6 +3,27 @@ import XCTest
 @testable import Dust3DEditor
 
 final class KeyboardShortcutHelpTests: XCTestCase {
+    func testPreviewMenuKeysUseEditorWindowScope() {
+        for (action, keys) in [("Wireframe", "W"), ("Rotate Preview Automatically", "R"), ("Zoom Preview", "⌥- / ⌥=")] {
+            let entry = KeyboardShortcutHelp.matching(action).first { $0.action == action }
+            XCTAssertEqual(entry?.keys, keys)
+            XCTAssertEqual(
+                entry?.scope, "Focused editor window, outside text and animation controls and with no modal dialog")
+        }
+    }
+
+    func testPreviewCameraKeysDescribeTheirFocusScope() throws {
+        for key in ["←", "→", "↑", "↓"] {
+            let results = KeyboardShortcutHelp.matching(key)
+            XCTAssertTrue(results.contains { $0.action == "Nudge Selection or Origin" })
+            let orbit = try XCTUnwrap(results.first { $0.action == "Orbit 3D Preview" })
+            XCTAssertEqual(orbit.scope, "Focused 3D preview")
+        }
+        let reset = try XCTUnwrap(KeyboardShortcutHelp.matching("f").first { $0.action == "Reset Preview Camera" })
+        XCTAssertEqual(reset.keys, "F")
+        XCTAssertEqual(reset.scope, "Focused 3D preview")
+    }
+
     func testInspectorDraftEscapeNamesItsFocusedFields() throws {
         let entry = try XCTUnwrap(
             KeyboardShortcutHelp.matching("Escape").first { $0.action == "Discard Inspector Draft" })
@@ -100,6 +121,11 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(KeyboardShortcutHelp.matching(" \n ", in: entries), entries)
         XCTAssertTrue(KeyboardShortcutHelp.matching("unimplemented", in: entries).isEmpty)
     }
+    func testPreviousReplayStepShortcutIsDiscoverable() throws {
+        let entry = try XCTUnwrap(KeyboardShortcutHelp.matching("⌥←").first { $0.action == "Previous Replay Step" })
+        XCTAssertEqual(entry.scope, "Replay Steps window, after at least one step has completed")
+    }
+
     func testSubtractiveClickAndDragEachDisplayBothModifiers() throws {
         let entry = try XCTUnwrap(KeyboardShortcutHelp.entries.first { $0.action == "Remove Graph Picks" })
         XCTAssertEqual(entry.keys, "⌥⌘ click / ⌥⌘ drag")

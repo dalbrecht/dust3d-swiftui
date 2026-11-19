@@ -5,6 +5,7 @@ public struct PartMirrorTarget: Sendable {
     private enum Scope: Sendable {
         case inspected(CanvasAdjustmentTarget)
         case graph(GraphModelPartTarget)
+        case canvas(CanvasPartStateTarget)
     }
 
     private let scope: Scope
@@ -21,9 +22,17 @@ public struct PartMirrorTarget: Sendable {
         partID = graphTarget.part?.id
     }
 
+    package init?(canvasTarget: CanvasPartStateTarget) {
+        guard canvasTarget.part.target == .model else { return nil }
+        scope = .canvas(canvasTarget)
+        partID = canvasTarget.part.id
+    }
+
     public func isCurrent(in snapshot: EditorSnapshot) -> Bool {
         switch scope {
         case .graph(let target):
+            return target.isCurrent(in: snapshot)
+        case .canvas(let target):
             return target.isCurrent(in: snapshot)
         case .inspected(let context):
             guard let partID, context.isCurrent(in: snapshot), let part = snapshot.mirrorInspectorPart else {

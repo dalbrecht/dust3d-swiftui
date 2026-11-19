@@ -117,6 +117,41 @@ private struct CanvasWheelZoomNoNative: EditorPreviewServing, ArchiveTextureBaki
         XCTAssertFalse(store.canUndo)
     }
 
+    func testDragKeepsGraphSelectionAndRetiresWhenTheVisibleCameraOrPaneChanges() async throws {
+        let (store, original) = try await setup()
+        defer { store.stop() }
+        store.select("n")
+        try await settle(store)
+        store.setDualCanvasProfile(true)
+        let frontLease = store.canvasProfiles.lease
+        let visibility = WheelPreviewVisibility()
+        var motions: [SIMD2<Float>] = []
+        let camera = EditorPreviewCameraActions(
+            canMove: true, isCurrent: { visibility.visible }, move: { _ in }, fit: {},
+            beginDrag: {
+                (
+                    update: { delta, _ in
+                        motions.append(delta)
+                        return true
+                    },
+                    end: {}
+                )
+            })
+        let front = try XCTUnwrap(store.canvasPreviewDragAction(lease: frontLease, camera: camera)?())
+        XCTAssertTrue(front.update(.init(4, 2), false))
+        visibility.visible = false
+        XCTAssertFalse(front.update(.init(5, 3), false))
+        visibility.visible = true
+        let sideLease = try XCTUnwrap(store.activateCanvasCompanion(plane: .side, expectedLease: frontLease))
+        XCTAssertFalse(front.update(.init(8, 5), true))
+        let side = try XCTUnwrap(store.canvasPreviewDragAction(lease: sideLease, camera: camera)?())
+        XCTAssertTrue(side.update(.init(2, 9), true))
+        XCTAssertEqual(motions, [SIMD2(4, 2), SIMD2(2, 9)])
+        XCTAssertEqual(store.snapshot?.selectedIDs, ["n"])
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testRetainedWheelCannotCrossPanePreferenceToolOrFailedSource() async throws {
         let (store, _) = try await setup()
         defer { store.stop() }

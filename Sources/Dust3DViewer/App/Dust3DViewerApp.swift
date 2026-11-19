@@ -8,6 +8,7 @@ struct Dust3DViewerApp: App {
     private let buildIdentity = RuntimeBuildIdentity.current
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
     @FocusedValue(\.openDocument) private var openDocument
+    @FocusedValue(\.viewerPreviewFocus) private var previewFocus
     @FocusedValue(\.viewerStore) private var store
 
     private var applicationName: String {
@@ -22,13 +23,41 @@ struct Dust3DViewerApp: App {
         .defaultSize(width: 1000, height: 720)
         .commands {
             CommandMenu("View") {
+                Toggle("Wireframe", isOn: store?.wireframeBinding ?? .constant(false))
+                    .keyboardShortcut("w", modifiers: [])
+                    .disabled(store?.mesh == nil)
+                Toggle("Automatic Rotation", isOn: store?.automaticRotationBinding ?? .constant(false))
+                    .keyboardShortcut("r", modifiers: [])
+                    .disabled(store?.mesh == nil)
+                Divider()
+                Button("Fit Model") { store?.fitModel() }
+                    .keyboardShortcut("0")
+                    .disabled(store?.mesh == nil)
+                cameraItem("Zoom In", .zoomIn).keyboardShortcut("=")
+                cameraItem("Zoom Out", .zoomOut).keyboardShortcut("-")
+                Menu("Orbit") {
+                    cameraItem("Orbit Left", .orbitLeft)
+                    cameraItem("Orbit Right", .orbitRight)
+                    cameraItem("Orbit Up", .orbitUp)
+                    cameraItem("Orbit Down", .orbitDown)
+                }
+                Menu("Pan") {
+                    cameraItem("Pan Left", .panLeft)
+                    cameraItem("Pan Right", .panRight)
+                    cameraItem("Pan Up", .panUp)
+                    cameraItem("Pan Down", .panDown)
+                }
+                Button("Focus 3D Preview") { previewFocus?.moveFocus(in: NSApp.keyWindow) }
+                    .disabled(previewFocus == nil)
                 if let store {
                     Toggle("Model Colors", isOn: store.modelColorsBinding)
                         .disabled(store.mesh == nil)
                 } else {
                     Toggle("Model Colors", isOn: .constant(true))
                         .disabled(true)
+
                 }
+
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)") {
@@ -55,6 +84,11 @@ struct Dust3DViewerApp: App {
         }
         .defaultSize(width: 660, height: 520)
     }
+
+    private func cameraItem(_ title: LocalizedStringKey, _ action: MeshCameraCommand.Action) -> some View {
+        Button(title) { store?.moveCamera(action) }
+            .disabled(store?.mesh == nil)
+    }
 }
 
 @MainActor
@@ -70,8 +104,17 @@ final class ViewerAppDelegate: NSObject, NSApplicationDelegate {
 }
 
 extension ViewerStore {
+    var wireframeBinding: Binding<Bool> {
+        Binding(get: { self.isWireframe }, set: { self.setWireframe($0) })
+    }
+
+    var automaticRotationBinding: Binding<Bool> {
+        Binding(get: { self.automaticallyRotates }, set: { self.setAutomaticallyRotates($0) })
+    }
+
     var modelColorsBinding: Binding<Bool> {
         Binding(get: { self.showsModelColors }, set: { self.setModelColors($0) })
+
     }
 }
 
@@ -83,10 +126,20 @@ private struct OpenDocumentKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct ViewerPreviewFocusKey: FocusedValueKey {
+    typealias Value = MeshViewportFocus
+}
+
 extension FocusedValues {
+    var viewerPreviewFocus: MeshViewportFocus? {
+        get { self[ViewerPreviewFocusKey.self] }
+        set { self[ViewerPreviewFocusKey.self] = newValue }
+    }
+
     var viewerStore: ViewerStore? {
         get { self[ViewerStoreKey.self] }
         set { self[ViewerStoreKey.self] = newValue }
+
     }
 
     var openDocument: (() -> Void)? {

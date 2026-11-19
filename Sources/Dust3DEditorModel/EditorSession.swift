@@ -456,11 +456,20 @@ public actor EditorSession {
     public func setSelectedComponentPartRole(_ role: PartTarget, target: ComponentPartRoleTarget) throws
         -> EditorSnapshot
     {
+        try setSelectedComponentPartRole(role, target: target, retainingBrowsePicks: false)
+    }
+
+    package func setSelectedComponentPartRole(
+        _ role: PartTarget, target: ComponentPartRoleTarget, retainingBrowsePicks: Bool
+    ) throws -> EditorSnapshot {
         try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw ComponentPartRoleError.staleContext }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw ComponentPartRoleError.staleContext
+            }
             let plan = try state.snapshot.componentPartRolePlan(role)
             try state.setSelectedComponentPartRole(
-                role, target: target, newGroupID: plan.requiresNewGroup ? Self.identifier() : nil)
+                role, target: target, newGroupID: plan.requiresNewGroup ? Self.identifier() : nil,
+                retainingBrowsePicks: retainingBrowsePicks)
             try Task.checkCancellation()
         }
     }
@@ -471,6 +480,20 @@ public actor EditorSession {
                 throw EditorError.staleCanvasAdjustment
             }
             try state.apply([.setPartTarget(id: part.id, target: role)])
+        }.snapshot
+    }
+
+    /// Rename the selected Model component while retaining its captured equipment assignment.
+    package func renameEquipmentComponentBase(_ name: String, target: ComponentEquipmentSlotTarget) throws
+        -> EditorSnapshot
+    {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            let current = state.snapshot
+            guard hasAcceptedSource, target.isCurrent(in: current),
+                let component = current.selectedComponent, component.id.utf8.elementsEqual(target.componentID.utf8),
+                component.equipmentRenameBaseName != nil
+            else { throw ComponentEquipmentSlotError.staleTarget }
+            try state.apply([.setComponentBaseNamePreservingEquipmentSlot(id: target.componentID, name: name)])
         }.snapshot
     }
 
@@ -532,6 +555,15 @@ public actor EditorSession {
                 throw PartMirrorError.staleTarget
             }
             try state.apply([.setPartXMirrored(id: id, value: value)])
+        }.snapshot
+    }
+
+    package func setGraphLoopInterior(_ value: Bool, target: GraphLoopInteriorTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot), let part = target.part else {
+                throw EditorError.staleCanvasAdjustment
+            }
+            try state.apply([.setPartFillLoopInterior(id: part.id, value: value)])
         }.snapshot
     }
 
@@ -646,9 +678,23 @@ public actor EditorSession {
     public func placeComponents(
         at placement: ComponentDropPlacement, target: ComponentPlacementTarget
     ) throws -> EditorSnapshot {
+        try placeComponents(at: placement, target: target, clearingMovedPicks: false)
+    }
+
+    package func placeComponents(
+        at placement: ComponentDropPlacement, target: ComponentPlacementTarget, clearingMovedPicks: Bool
+    ) throws -> EditorSnapshot {
         try update { state in
-            guard target.isCurrent(in: state.snapshot) else { throw EditorError.staleComponentMove }
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw EditorError.staleComponentMove
+            }
             try state.apply([.placeComponents(ids: target.ids, placement: placement)])
+            if clearingMovedPicks {
+                let selected = state.snapshot.selectedComponentIDs
+                let moved = Set(target.ids.map { Data($0.utf8) })
+                let retained = selected.filter { !moved.contains(Data($0.utf8)) }
+                if retained.count != selected.count { try state.selectComponents(retained) }
+            }
             try Task.checkCancellation()
         }
     }
@@ -713,6 +759,17 @@ public actor EditorSession {
     public func selectPart(_ id: String?) throws -> EditorSnapshot { try update { try $0.selectPart(id) } }
     public func toggleSelection(_ id: String) throws -> EditorSnapshot { try update { try $0.toggleSelection(id) } }
     public func selectAll() throws -> EditorSnapshot { try update { $0.selectAll() } }
+
+    /// Replace inspection selection with only editable owned canvas geometry.
+    package func selectEditableGeometry(target: CanvasAdjustmentTarget) throws -> EditorSnapshot {
+        try update { state in
+            let current = state.snapshot
+            guard hasAcceptedSource, target.isCurrent(in: current) else { throw EditorError.staleCanvasAdjustment }
+            let selection = current.editableGeometrySelection
+            guard !selection.nodes.isEmpty else { return }
+            try state.selectGraph(nodes: selection.nodes, edges: selection.edges)
+        }
+    }
     /// Replace selection with all explicit nodes and no explicit edges.
     public func selectAllNodes() throws -> EditorSnapshot { try update { $0.selectAllNodes() } }
     /// Explicitly center origin on all node radius bounds, honoring axis locks in one history transaction.
@@ -773,6 +830,13 @@ public actor EditorSession {
         try update {
             guard hasAcceptedSource else { throw EditorError.staleReferenceComposition }
             try $0.applyReferenceComposition(png: png, origin: origin, target: target)
+        }
+    }
+
+    package func removeReferenceImage(target: ReferenceCompositionTarget) throws -> EditorSnapshot {
+        try update {
+            guard hasAcceptedSource else { throw EditorError.staleReferenceComposition }
+            try $0.applyReferenceImage(png: nil, target: target)
         }
     }
 
@@ -859,11 +923,14 @@ public actor EditorSession {
     /// - Returns: The resulting snapshot as one undoable edit.
     /// - Throws: `EditorError.staleNodeDrag` or the original geometry and state error.
     public func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) throws -> EditorSnapshot {
-        try update { state in
-            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
             guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidNode }
+            if let edgeID = drag.edgeID, !state.snapshot.selectedEdgeIDs.contains(edgeID) {
+                try state.selectEdge(edgeID)
+            }
             try state.move(id: drag.anchorID, to: drag.position(by: translation))
-        }
+        }.snapshot
     }
 
     /// Publish the captured Shift-drag result as one undoable graph edit.
@@ -896,6 +963,18 @@ public actor EditorSession {
 
     public func edit(id: String, position: NodePosition, radius: Double) throws -> EditorSnapshot {
         try update { try $0.edit(id: id, position: position, radius: radius) }
+    }
+
+    package func editInspectorNode(
+        id: String, position: NodePosition, radius: Double, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            let current = state.snapshot
+            guard target.isCurrent(in: current), current.selectedIDs.count == 1, current.selectedEdgeIDs.isEmpty,
+                current.selectedNode?.id.utf8.elementsEqual(id.utf8) == true
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.edit(id: id, position: position, radius: radius)
+        }.snapshot
     }
 
     /// Assign or clear an exact stored bone name on one frozen explicit-edge set.

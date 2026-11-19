@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Orbit the 3D preview from the editing canvas with a middle-button or Option drag. Hold Shift to pan.
+
+- Add Focus 3D Preview to the Editor’s View menu.
+
 - Connect two explicitly selected nodes while keeping existing edge picks.
 
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
@@ -10,11 +14,15 @@
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
+- Keep component selection visible when collapsing groups, and prevent sidebar Delete from targeting hidden rows.
+
 - Wrap long component breadcrumb labels in narrow sidebars.
 
 - Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.
 
 - Select visible nodes when their circles intersect the marquee.
+- Keep reference image import and removal tied to the document where the action started.
+
 - Announce reference-image composition errors with VoiceOver in the active sheet.
 - Identify the composed reference preview and profile-specific crop actions in VoiceOver.
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
@@ -23,6 +31,8 @@
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
 - Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
+
+- Edit an isolated Stitching Loop’s interior fill from its graph selection.
 
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
@@ -33,6 +43,8 @@
 - Open the upstream Dust3D sponsorship page from the Help menu.
 
 - Select the owning component of the canvas picks from the Canvas menu.
+- Drag an edge stroke in the canvas to move its endpoints or the current graph selection in one undoable edit.
+
 - Use A to toggle Add and S to return to selection while the canvas has keyboard focus.
 - Open properties for the canvas graph owners with Space or the Canvas menu.
 
@@ -48,6 +60,8 @@
 - Announce new Viewer errors in the active window with VoiceOver.
 
 - Explain invalid document and Qt XML input in headless export diagnostics.
+- Keep keyboard and VoiceOver edge picks eligible for bone assignment, with removal available for existing picks.
+
 - Read shortcut key names aloud and support searching by their names.
 
 - Prefer exact key bindings when searching Keyboard Shortcuts Help.
@@ -82,11 +96,15 @@
 
 - Name the destinations of component breadcrumb controls, including the full tree.
 
+- Open the shared group in the component sidebar after assigning stitching roles to multiple parts.
+
 - Go to the enclosing component group from the View menu or with Command–Up Arrow while the component sidebar has focus.
 
 - Identify empty and populated groups in the component sidebar and enlarge disclosure controls.
 
 - Honor saved component collapse flags when opening older Dust3D documents.
+
+- Keep rapid canvas nudge and spacing keystrokes in order, with one Undo step for each edit.
 
 - Open the document picker with Command-double-click on blank canvas.
 
@@ -94,11 +112,15 @@
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
 
+- Select editable geometry from the Canvas menu without including hidden or locked parts.
+
 - Stop cancelled preview requests before they start fallback mesh generation.
 
 - Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
 
 - Optionally zoom the 3D preview by scrolling over blank space in the active canvas profile.
+
+- Preserve a Model component’s equipment slot when editing its name in the inspector.
 
 - Toggle X, Y and Z editing locks with the matching keys while the canvas has keyboard focus.
 
@@ -122,6 +144,8 @@
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
 
+- Keep component texture actions and image picker results tied to the original selection.
+
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
 
 - Apply one Qt XML fragment at launch with `-paste-xml` in one Undo step per newly opened eligible document. With no `.ds3` input or output option, open one untitled document with default model colors. A read or validation error leaves that document blank and displays a diagnostic.
@@ -136,11 +160,15 @@
 
 - Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
 
+- Keep numeric node inspector drafts and actions tied to their original node and document.
+
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
 - Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
+
+- Drop an image directly onto the Front or Side panel of the reference composer to replace that profile before applying the draft.
 
 - Clear missing cut-face links when pasting Qt XML interactively, keeping profiles found in the fragment or document.
 
@@ -202,6 +230,8 @@
 
 - Keep a working component group as the destination for new parts while graph selection changes.
 
+- VoiceOver includes a linked profile’s ID in action labels when visible profile names are duplicated.
+
 - Paste native or Qt clipboard nodes and Qt XML files into an explicitly chosen working group.
 
 - Start a blank document by drawing a first node, composing a reference image, or opening an existing document from the canvas.
@@ -214,11 +244,21 @@
 
 - Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
 
+- Use the View menu to orbit, pan, zoom, and fit the model in the active Viewer window.
+
+- Toggle Viewer wireframe from the View menu or with W.
+
+- Toggle automatic model rotation from the Viewer’s View menu or with R.
+
 - Click a companion profile to make it the editing pane without placing or selecting a graph element.
 
 - Press E with a graph selection and canvas focus, or choose Switch Editing Profile in the Canvas menu, to edit the selection in the opposite profile.
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
+
+- Use procedural vertex opacity alongside imported alpha when Model Colors is off for mixed previews.
+
+- Use vertex opacity when Model Colors is off for textured procedural previews.
 
 - Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
 
@@ -242,6 +282,24 @@
 
 - Show rig assignment progress with stored/selectable counts, select unassigned or chosen-bone edges, and highlight matches on hover without changing document history (#363).
 
+- Discard pending preview errors when their view closes or is replaced.
+
+- Keep preview clicks available until a trackpad gesture commits.
+
+- Keep the active preview gesture in control when mouse and trackpad input overlap.
+
+- End preview camera gestures and pending picks when keyboard focus leaves the viewport.
+
+- Let Escape cancel active preview trackpad gestures and ignore their late events.
+
+- Press Escape to cancel an active preview drag or pending pick.
+
+- Orbit the preview through the top and underside of the model.
+
+- Keep an active preview drag in progress when the scroll wheel moves.
+
+- Orbit the preview with a middle-button drag, or hold Shift to pan.
+
 - Clear exact stored assignments for a template bone or its descendant chain across the document in one Undo step, including hidden and locked parts (#361).
 
 - Browse the pinned rig template bone hierarchy and stored assignment counts, then assign the chosen exact name to selected edges in one Undo step (#359).
@@ -253,6 +311,10 @@
 - Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
 
 - Resolve About attribution from installed app resources without requiring the original SwiftPM build directory, and report missing packaged attribution safely (#344).
+
+- Explain why saving an Editor Session Log failed and release the report when the save panel is cancelled.
+
+- Record explicit geometry export cancellation requests in the Editor Session Log.
 
 - Allow opt-in owned source-bake mip copying through the existing pinned core, validating level counts and aggregate payload quotas; default loading remains base-only (#288).
 
@@ -268,6 +330,10 @@
 
 - Use native About panels with bundled project MIT attribution and separate Help > Build Diagnostics commands in both apps, retaining the graph QA name (#344).
 
+- Disable camera input on outdated Replay Steps previews while the current frame builds.
+
+- Show a native keyboard focus ring around the 3D preview.
+
 - Use the native adjustable inspector, standard Control–Command–I visibility command, compact section switcher and an accessible toolbar visibility toggle (#341).
 
 - Announce completed geometry exports and warnings to assistive technologies, with one notification per export even for repeated destinations (#339).
@@ -281,11 +347,17 @@
 - Add searchable Keyboard Shortcuts help with native command focus restrictions (#333).
 - Archive exactly the signed app tree without generated Finder metadata, retaining executable permissions and framework links (#329).
 
+- List preview orbit and camera reset in searchable Keyboard Shortcuts, with their focus requirements.
+
 - Prepare lossless hollow-thickness history and an explicitly gated local-core inspector experiment; production geometry support remains unchanged (#96).
 
 - Add opt-in automatic preview rotation that respects Reduce Motion and pauses while dragging or inactive (#326).
 
 - Add window-local Model Colors and Wireframe controls to the View menu, preserving material transparency in neutral preview mode (#324).
+
+- Keep preview camera commands in the editor window that supplied them.
+
+- Add Editor menu shortcuts for Wireframe, Automatic Rotation, and preview zoom.
 
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
@@ -299,11 +371,15 @@
 
 - Mirror live node and origin movement in the companion profile during canvas edits (#388).
 
+- Use B, U, and C on the canvas to toggle subdivision, rounded ends, and chamfer.
+
 - Add shared Weights From editing across selected wrapping groups with common target eligibility, exact retained references and one atomic Undo.
 
 - Add explicit multi-group wrapping and surface-finish edits with mixed values, captured selection protection and one atomic Undo.
 
 - Retarget copied wrapping body bindings to the copied body, preserving external references and opaque wrapping metadata.
+
+- Press M on the canvas to toggle X mirror on the owning Model part.
 
 - Add wrapping surface finish authoring for coat patterns, RGB ink, belly shading and generated cloth wrinkles, with cancellable drafts and one-step Undo.
 
@@ -332,6 +408,12 @@
 - Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
 
 - Drag component rows before or after siblings, into groups, or to the document root.
+
+- Add a keyboard-accessible Focus 3D Preview control to Replay Steps.
+
+- Add a Focus Object button for keyboard orbit in Quick Look.
+
+- Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
 
 - Select all visible component rows with Command-A when the component sidebar has focus (#386).
 
@@ -505,6 +587,12 @@
 - Render supported imported GLB materials in the standalone viewer with authored UV/sampler policy, linear color/factors, PBR scalars, alpha modes and double-sided handling; preserve geometry fallback and remaining editor/file-preview/atlas/export limits.
 
 - Adopt owned imported surface UV/RGBA metadata with explicit RGB encoding, aligned geometry and independently bounded background Swift copies; texture rendering remains pending.
+
+- Drop selected sibling components at the end of a component listing.
+
+- Offer sibling reordering when dropping components onto a group row.
+
+- Confirm a component drop into a group before changing the hierarchy.
 
 - Adopt reviewed core `4db1bb7` for embedded imported geometry, lifetime-safe material/image metadata copies, and bounded background PNG/JPEG decoding. Imported material rendering, UV/baking and textured export remain pending; archives and original assets survive native edits and undo.
 
@@ -691,7 +779,19 @@
 - Add Retry Preview to the Editor’s View menu for the current document.
 
 - Add a native SwiftUI/Metal macOS viewer with file opening, orbit/zoom, wireframe, and camera fitting.
+- Keep profile names readable in narrow inspectors.
+
+- Explain and disable linked profile choices that would create a cycle.
+
 - Pin c65llc coding standards, assemble Codex instructions, and document native/C++ supplements and gaps.
+- Keep name, type, and keyboard actions on the animation draft that supplied them.
+
+- Keep retained animation parameter controls from editing a reopened draft.
+
+- Keep animation type and parameter controls on the selected row that supplied them.
+
+- Edit the stored animation surface material when the archive uses an unknown animation type.
+
 - Add document-loading regression tests, native validation commands, and a local app bundle/run script.
 
 Original Dust3D release history remains in `CHANGELOGS`.
