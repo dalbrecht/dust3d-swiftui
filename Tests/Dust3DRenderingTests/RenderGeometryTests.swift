@@ -5,6 +5,18 @@ import simd
 @testable import Dust3DRendering
 
 final class RenderGeometryTests: XCTestCase {
+    func testAnimationPosePreservesTranslationRelativeToRestBounds() throws {
+        let rest = [vertex(-1, 0, 0), vertex(1, 0, 0), vertex(0, 0, 0)]
+        let pose = [vertex(0, 1, 0), vertex(2, 1, 0), vertex(1, 1, 0)]
+        let mesh = RenderMesh.expanded(Mesh(vertices: pose, nodeCount: 3, partCount: 1, warning: ""))
+        let restBounds = try RenderBounds(vertices: rest)
+        let geometry = try RenderGeometry(mesh: mesh, referenceBounds: restBounds)
+        XCTAssertEqual(
+            geometry.vertices.map(\.position),
+            [SIMD4(0, 1, 0, 1), SIMD4(2, 1, 0, 1), SIMD4(1, 1, 0, 1)])
+        XCTAssertEqual(try RenderGeometry(mesh: mesh).vertices.first?.position, SIMD4(-1, 0, 0, 1))
+    }
+
     func testIndexedPreparationPreservesReferencesAttributesAndNormalizedBounds() throws {
         let source = [vertex(2, 4, 6), vertex(4, 4, 6), vertex(2, 6, 6)]
         let geometry = try RenderGeometry(

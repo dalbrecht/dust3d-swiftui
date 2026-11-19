@@ -11,9 +11,12 @@ enum AnimationNameAction {
     }
 }
 
-/// Stored document animation management. No controls in this view invoke native evaluation.
+/// Stored animation authoring and opt-in native playback controls.
 struct AnimationPanel: View {
     let store: EditorStore
+    let fileIdentity: UUID?
+    let wavDestinations: EditorGeometryExportDestinationService?
+    let documentSourceURL: URL?
     @State private var authoring: EditorAnimationAuthoringWorkflow
     @State private var nameTarget: AnimationEditTarget?
     @State private var name: AnimationNameText
@@ -23,9 +26,14 @@ struct AnimationPanel: View {
 
     init(
         store: EditorStore, nameTarget: AnimationEditTarget? = nil,
-        name: AnimationNameText = AnimationNameText(""), action: AnimationNameAction = .rename
+        name: AnimationNameText = AnimationNameText(""), action: AnimationNameAction = .rename,
+        fileIdentity: UUID? = nil, wavDestinations: EditorGeometryExportDestinationService? = nil,
+        documentSourceURL: URL? = nil
     ) {
         self.store = store
+        self.fileIdentity = fileIdentity
+        self.wavDestinations = wavDestinations
+        self.documentSourceURL = documentSourceURL
         _authoring = State(initialValue: EditorAnimationAuthoringWorkflow(store: store))
         _nameTarget = State(initialValue: nameTarget)
         _name = State(initialValue: name)
@@ -93,8 +101,33 @@ struct AnimationPanel: View {
                     AnimationAuthoringControls(store: store, workflow: authoring)
                 }
                 Divider()
-                Text("Changes are included when you save. Playback is not available yet.")
-                    .font(.caption).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
+                #if MOTE3D_EXPERIMENTAL_FISH_IDLE && MOTE3D_EXPERIMENTAL_GENERATED_RIG
+                    if nameTarget == nil, !authoring.isActive, let fileIdentity,
+                        let request = store.animationPlaybackRequest(fileIdentity: fileIdentity),
+                        FishIdleCopyReceipt.supportsClipType(request.animation.type, rigType: request.rig.sourceType)
+                    {
+                        ExperimentalAnimationPlaybackView(
+                            request: request, isCurrent: { store.isCurrentAnimationPlaybackRequest(request) },
+                            loader: { source, includePCM in
+                                let limits = FishIdleCopyLimits(
+                                    nativeBytes: 64 * 1024 * 1024, swiftBytes: 64 * 1024 * 1024,
+                                    combinedBytes: 128 * 1024 * 1024)
+                                return try await ExperimentalFishIdleClipService().load(
+                                    source: source, includePCM: includePCM, limits: limits)
+                            }, wavDestinations: wavDestinations
+                        ).id(request.queryID)
+                    }
+                    if nameTarget == nil, !authoring.isActive, let fileIdentity, let wavDestinations {
+                        CombinedFishIdleExportControls(
+                            store: store, fileIdentity: fileIdentity, destinations: wavDestinations,
+                            documentSourceURL: documentSourceURL)
+                    }
+                    Text("Changes are included when you save.")
+                        .font(.caption).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
+                #else
+                    Text("Changes are included when you save. Playback is not available yet.")
+                        .font(.caption).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
+                #endif
             }
             .padding(16)
         }

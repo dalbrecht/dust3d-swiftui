@@ -40,7 +40,7 @@ struct RenderGeometry: Sendable {
         else { throw RendererError.unavailable("The mesh exceeds this Metal device's buffer size limit.") }
     }
 
-    init(mesh: RenderMesh) throws {
+    init(mesh: RenderMesh, referenceBounds: RenderBounds? = nil) throws {
         let source = mesh.vertices
         let indices = mesh.indices
         guard !source.isEmpty,
@@ -51,22 +51,25 @@ struct RenderGeometry: Sendable {
             indices.map({ !$0.isEmpty && $0.count.isMultiple(of: 3) && $0.allSatisfy { Int($0) < source.count } })
                 ?? source.count.isMultiple(of: 3)
         else { throw RendererError.unavailable("The mesh contains invalid triangle buffers.") }
-        let bounds = try RenderBounds(vertices: source)
-        vertices = source.map { vertex in
-            Vertex(
-                position: SIMD4((vertex.position - bounds.center) / bounds.radius, 1),
-                normal: SIMD4(vertex.normal, 0), color: vertex.color)
+        let bounds = try referenceBounds ?? RenderBounds(vertices: source)
+        vertices = try source.map { vertex in
+            let position = (vertex.position - bounds.center) / bounds.radius
+            guard position.x.isFinite, position.y.isFinite, position.z.isFinite else {
+                throw RendererError.unavailable("The mesh position cannot be represented for rendering.")
+            }
+            return Vertex(
+                position: SIMD4(position, 1), normal: SIMD4(vertex.normal, 0), color: vertex.color)
         }
         self.indices = indices
     }
 }
 
 /// Shared normalization keeps ordinary and textured previews in the same camera space.
-struct RenderBounds: Sendable {
+package struct RenderBounds: Sendable {
     let center: SIMD3<Float>
     let radius: Float
 
-    init(vertices: [MeshVertex], cancellationCheck: () throws -> Void = {}) throws {
+    package init(vertices: [MeshVertex], cancellationCheck: () throws -> Void = {}) throws {
         var minimum = SIMD3<Float>(repeating: .infinity)
         var maximum = SIMD3<Float>(repeating: -.infinity)
         for (index, vertex) in vertices.enumerated() {

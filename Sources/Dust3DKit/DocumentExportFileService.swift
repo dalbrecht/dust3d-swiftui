@@ -79,7 +79,7 @@ public actor DocumentExportFileService {
         defer { if sourceScoped { sourceURL?.stopAccessingSecurityScopedResource() } }
         try await validateSnapshot()
         try Task.checkCancellation()
-        try Self.validate(destination, format: format, source: sourceURL)
+        try Self.validateDestination(destination, fileExtension: format.fileExtension, source: sourceURL)
         let output = try await encoder.encode(archive: document.encoded(), format: format)
         try Task.checkCancellation()
         guard !output.bytes.isEmpty, output.bytes.count <= Self.maximumBytes else {
@@ -89,14 +89,14 @@ public actor DocumentExportFileService {
         try Task.checkCancellation()
         try await publish {
             try Task.checkCancellation()
-            try Self.validate(destination, format: format, source: sourceURL)
+            try Self.validateDestination(destination, fileExtension: format.fileExtension, source: sourceURL)
             try output.bytes.write(to: destination, options: .atomic)
         }
         return output
     }
 
-    private static func validate(_ destination: URL, format: DocumentExportFormat, source: URL?) throws {
-        guard destination.isFileURL, destination.pathExtension.lowercased() == format.fileExtension,
+    package static func validateDestination(_ destination: URL, fileExtension: String, source: URL?) throws {
+        guard destination.isFileURL, destination.pathExtension.lowercased() == fileExtension,
             source == nil || source?.isFileURL == true
         else { throw DocumentExportError.invalidDestination }
         if let source,

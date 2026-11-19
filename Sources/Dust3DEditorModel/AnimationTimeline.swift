@@ -16,6 +16,14 @@ public struct AnimationTimeline: Sendable {
     private let sampleTimes: [Double]
     public let duration: Double
     public let loops: Bool
+    /// The closing loop sample remains available to clip consumers but duplicates the first preview pose.
+    package var previewSampleCount: Int { loops ? sampleTimes.count - 1 : sampleTimes.count }
+
+    /// Return a visible scrub position, excluding the closing loop sample.
+    package func previewSampleTime(at index: Int) throws -> Double {
+        guard (0..<previewSampleCount).contains(index) else { throw AnimationTimelineError.invalidSamples }
+        return try sampleTime(at: index)
+    }
 
     /// Admit finite strictly increasing times spanning exactly zero through duration.
     /// - Parameters:
@@ -59,6 +67,23 @@ public struct AnimationTimeline: Sendable {
     public func scrub(to seconds: Double) throws -> AnimationTimelinePosition {
         guard seconds.isFinite, (0...duration).contains(seconds) else { throw AnimationTimelineError.invalidTime }
         return project(seconds: seconds)
+    }
+
+    /// Resume at the discrete scrub pose and carry unwrapped travel through loops.
+    package func resume(fromSample index: Int, elapsed: Double) throws -> (
+        pose: AnimationTimelinePosition, groundTime: Double
+    ) {
+        guard elapsed.isFinite, elapsed >= 0 else { throw AnimationTimelineError.invalidTime }
+        let start = try sampleTime(at: index)
+        if elapsed == 0 { return (project(seconds: start), start) }
+        let time = start + (loops ? elapsed : min(elapsed, duration - start))
+        let pose = try position(at: time)
+        return (pose, loops ? time : pose.seconds)
+    }
+
+    package func sampleTime(at index: Int) throws -> Double {
+        guard sampleTimes.indices.contains(index) else { throw AnimationTimelineError.invalidSamples }
+        return sampleTimes[index]
     }
 
     private func project(seconds: Double) -> AnimationTimelinePosition {

@@ -39,28 +39,65 @@ final class EditorGeometryExportDestinationService: EditorGeometryExportDestinat
     }
 
     func chooseDestination(format: DocumentExportFormat = .obj, suggestedName: String) async throws -> URL? {
+        try await choose(
+            title: "Export \(format.exportName)", message: Self.message(for: format),
+            type: Self.contentType(for: format), suggestedName: suggestedName
+        ) { try Self.destination(wasAccepted: $0, url: $1, format: format) }
+    }
+
+    #if MOTE3D_EXPERIMENTAL_FISH_IDLE && MOTE3D_EXPERIMENTAL_GENERATED_RIG
+        func chooseCombinedFishIdleDestination() async throws -> URL? {
+            try await choose(
+                title: "Export Animated FBX and WAVs",
+                message: "Exports a textured animated model and saves sound files beside it.",
+                type: Self.contentType(for: .fbx), suggestedName: "Animated Model.fbx"
+            ) { try Self.destination(wasAccepted: $0, url: $1, format: .fbx) }
+        }
+
+        func chooseWavDestination() async throws -> URL? {
+            try await choose(
+                title: "Export Animation Sound", message: "Saves the selected animation’s sound as a WAV file.",
+                type: .wav, suggestedName: "Animation Sound.wav"
+            ) { accepted, url in
+                guard accepted else { return nil }
+                guard let url else { throw EditorGeometryExportDestinationError.missingDestination }
+                return url
+            }
+        }
+    #endif
+
+    private func choose(
+        title: String, message: String, type: @autoclosure () throws -> UTType, suggestedName: String,
+        destination: @escaping (Bool, URL?) throws -> URL?
+    ) async throws -> URL? {
         guard let window else { throw EditorGeometryExportDestinationError.unavailableWindow }
         try Self.validateAvailability(isChoosing: panel != nil, hasAttachedSheet: window.attachedSheet != nil)
-        let type = try Self.contentType(for: format)
         let panel = NSSavePanel()
-        panel.title = "Export \(format.exportName)"
+        panel.title = title
         panel.prompt = "Export"
-        panel.message = Self.message(for: format)
-        panel.allowedContentTypes = [type]
+        panel.message = message
+        panel.allowedContentTypes = [try type()]
         panel.allowsOtherFileTypes = false
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
         panel.nameFieldStringValue = suggestedName
         self.panel = panel
         isCancelling = false
-        return try await withCheckedThrowingContinuation { continuation in
-            panel.beginSheetModal(for: window) { [weak self] response in
-                if self?.panel === panel {
-                    self?.panel = nil
-                    self?.isCancelling = false
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                panel.beginSheetModal(for: window) { [weak self] response in
+                    if self?.panel === panel {
+                        self?.panel = nil
+                        self?.isCancelling = false
+                    }
+                    continuation.resume(
+                        with: Result { try destination(response == .OK, panel.url) })
                 }
-                continuation.resume(
-                    with: Result { try Self.destination(wasAccepted: response == .OK, url: panel.url, format: format) })
+            }
+        } onCancel: {
+            Task { @MainActor [weak self, weak panel] in
+                guard let panel, self?.panel === panel else { return }
+                self?.cancel()
             }
         }
     }

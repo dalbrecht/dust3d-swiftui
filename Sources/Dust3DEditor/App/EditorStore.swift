@@ -1449,6 +1449,54 @@ final class EditorStore {
         return true
     }
 
+    struct AnimationPlaybackRequest: Equatable, Sendable {
+        let fileIdentity: UUID
+        let rig: GeneratedRigPreviewRequest
+        let animation: DocumentAnimation
+        let queryID: UUID
+    }
+
+    func animationPlaybackRequest(fileIdentity: UUID) -> AnimationPlaybackRequest? {
+        guard let (source, animation) = animationPlaybackSelection(fileIdentity: fileIdentity) else { return nil }
+        return AnimationPlaybackRequest(
+            fileIdentity: fileIdentity, rig: GeneratedRigPreviewRequest(snapshot: source),
+            animation: animation, queryID: animationRequestID)
+    }
+
+    func isCurrentAnimationPlaybackRequest(_ request: AnimationPlaybackRequest) -> Bool {
+        guard request.queryID == animationRequestID,
+            let (source, animation) = animationPlaybackSelection(fileIdentity: request.fileIdentity)
+        else { return false }
+        return request.rig.matchesVersion(source) && request.animation == animation
+    }
+
+    private func animationPlaybackSelection(fileIdentity: UUID) -> (EditorSnapshot, DocumentAnimation)? {
+        guard canManageAnimations, case .success(let accepted) = recoveryLoadResult,
+            accepted.fileIdentity == fileIdentity, let source = acceptedDocumentSource,
+            let animation = animationSnapshot?.list.selectedRow?.source,
+            let type = animation.type, !type.isEmpty
+        else { return nil }
+        return (source, animation)
+    }
+
+    #if MOTE3D_EXPERIMENTAL_FISH_IDLE && MOTE3D_EXPERIMENTAL_GENERATED_RIG
+        func combinedFishIdleExportTarget(fileIdentity: UUID) throws -> CombinedFishIdleExportTarget {
+            guard canManageAnimations, case .success(let accepted) = recoveryLoadResult,
+                accepted.fileIdentity == fileIdentity, let source = acceptedDocumentSource,
+                let catalog = authoringCatalog.catalog
+            else { throw FishIdleCopyError.sourceMismatch }
+            return try CombinedFishIdleExportTarget(
+                snapshot: source, fileIdentity: fileIdentity, surfaces: catalog.surfaceMaterials)
+        }
+
+        func isCurrentCombinedFishIdleExport(_ target: CombinedFishIdleExportTarget) -> Bool {
+            guard canManageAnimations, case .success(let accepted) = recoveryLoadResult,
+                let identity = accepted.fileIdentity, let source = acceptedDocumentSource
+            else { return false }
+            return target.matches(source, fileIdentity: identity)
+        }
+    #endif
+
     func refreshAnimations() { requestAnimations { try await $0.animationSnapshot() } }
 
     func selectAnimation(_ id: String?) {

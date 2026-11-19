@@ -41,23 +41,23 @@ public actor MeshBakingService {
 /// A checked Sendable owner backed by the system's lock container. Only the
 /// operation's actor-local pointer is borrowed during loading. Cancel/close use
 /// this shared lock; no pointer is returned through a Sendable closure or result.
-final class NativeBakeCancellation: Sendable {
+package final class NativeBakeCancellation: Sendable {
     private let state: OSAllocatedUnfairLock<OpaquePointer?>
 
-    init(_ pointer: OpaquePointer) {
+    package init(_ pointer: OpaquePointer) {
         // C explicitly permits atomic cancellation concurrent with loading. The
         // non-Sendable foreign handle is confined to lock-protected cancel/destroy;
         // the operation must finish before close. No custom unchecked conformance.
         state = OSAllocatedUnfairLock(uncheckedState: pointer)
     }
 
-    func cancel() {
+    package func cancel() {
         state.withLock { pointer in
             if let pointer { dust3d_cancellation_token_cancel(pointer) }
         }
     }
 
-    func close() {
+    package func close() {
         state.withLock { pointer in
             if let live = pointer {
                 dust3d_cancellation_token_destroy(live)

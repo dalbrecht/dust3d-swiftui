@@ -38,7 +38,17 @@ extension MeshLoader {
     }
 }
 
-enum MeshBakedInput {
+package enum MeshBakedInput {
+    /// Decode the exact archive’s admitted images and lend native descriptors only during the call.
+    package static func withArchiveOptions<Result>(
+        archive: Data, options: MeshBakeOptions, cancellation: OpaquePointer?,
+        _ body: (inout Dust3DBakeOptions) throws -> Result
+    ) throws -> Result {
+        let images = try ArchiveTextureImagePreparation.load(data: archive, limits: ArchiveTextureLimits())
+        try Task.checkCancellation()
+        return try withOptions(images: images, options: options, cancellation: cancellation, body)
+    }
+
     static func withOptions<Result>(
         images: [MeshBakeImage], options: MeshBakeOptions, cancellation: OpaquePointer?,
         _ body: (inout Dust3DBakeOptions) throws -> Result

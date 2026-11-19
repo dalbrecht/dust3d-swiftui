@@ -494,7 +494,9 @@ struct EditorRootView: View {
             .pickerStyle(.segmented).labelsHidden().padding(10)
             Divider()
             if inspectorPresentation.section == .animations {
-                AnimationPanel(store: store)
+                AnimationPanel(
+                    store: store, fileIdentity: file.identity, wavDestinations: exportDestinations,
+                    documentSourceURL: sourceURL)
             } else {
                 NodeInspector(store: store, rigInspectorDocumentID: $rigInspectorDocumentID) {
                     visibility.wrappedValue && section.wrappedValue == .selection
