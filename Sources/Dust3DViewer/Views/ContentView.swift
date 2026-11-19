@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @State private var store = ViewerStore()
+    @State private var previewFocus = MeshViewportFocus()
     @State private var isImporterPresented = false
     @State private var isFileDropTargeted = false
 
@@ -52,6 +53,7 @@ struct ContentView: View {
                     ) { message in
                         store.reportRendererError(message, attemptID: rendererAttempt)
                     }
+                    .withFocusTarget(previewFocus)
                     .id(rendererAttempt)
                     .accessibilityLabel("3D mesh preview")
                     .accessibilityHint(MeshViewport.keyboardCameraHelp)
@@ -184,6 +186,7 @@ struct ContentView: View {
         .focusedSceneValue(\.viewerPreviewRetryStore, isImporterPresented ? nil : store)
         .focusedSceneValue(\.viewerCancellation, cancelOperation)
         .focusedSceneValue(\.openDocument, { isImporterPresented = true })
+        .focusedSceneValue(\.viewerPreviewFocus, store.mesh != nil && !isImporterPresented ? previewFocus : nil)
         .focusedSceneValue(\.viewerStore, store)
     }
 }

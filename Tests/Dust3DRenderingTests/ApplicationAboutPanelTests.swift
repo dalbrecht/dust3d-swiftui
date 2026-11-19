@@ -16,6 +16,9 @@ final class ApplicationAboutPanelTests: XCTestCase {
         try license.write(
             to: try XCTUnwrap(embedded.resourceURL).appendingPathComponent("ApplicationLicense.txt"), atomically: true,
             encoding: .utf8)
+        try "Embedded authors".write(
+            to: try XCTUnwrap(embedded.resourceURL).appendingPathComponent("ApplicationAuthors.txt"), atomically: true,
+            encoding: .utf8)
         try "Embedded contributors".write(
             to: try XCTUnwrap(embedded.resourceURL).appendingPathComponent("ApplicationContributors.txt"),
             atomically: true, encoding: .utf8)
@@ -29,7 +32,8 @@ final class ApplicationAboutPanelTests: XCTestCase {
         }
         XCTAssertEqual(
             (options[.credits] as? NSAttributedString)?.string,
-            license + "\n\nContributors\n\nEmbedded contributors\n\nSupporters\n\nEmbedded supporters")
+            license + "\n\nAuthors\n\nEmbedded authors\n\nContributors\n\nEmbedded contributors"
+                + "\n\nSupporters\n\nEmbedded supporters")
         XCTAssertFalse(usedDevelopment)
     }
 
@@ -89,21 +93,25 @@ final class ApplicationAboutPanelTests: XCTestCase {
         XCTAssertNil(options[.version])
     }
 
-    func testCreditsRetainExactRootContributorAndSupporterListsOffline() throws {
+    func testCreditsRetainExactRootAttributionListsOffline() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
         let license = try String(contentsOf: root.appendingPathComponent("LICENSE"), encoding: .utf8)
+        let authors = try String(contentsOf: root.appendingPathComponent("AUTHORS"), encoding: .utf8)
+            .replacingOccurrences(of: "\r\n", with: "\n")
         let contributors = try String(contentsOf: root.appendingPathComponent("CONTRIBUTORS"), encoding: .utf8)
         let supporters = try String(contentsOf: root.appendingPathComponent("SUPPORTERS"), encoding: .utf8)
         let options = ApplicationAboutPanel.options(applicationName: "Dust3D Viewer")
         XCTAssertEqual(
             (options[.credits] as? NSAttributedString)?.string,
-            license + "\n\nContributors\n\n" + contributors + "\n\nSupporters\n\n" + supporters)
+            license + "\n\nAuthors\n\n" + authors + "\n\nContributors\n\n" + contributors
+                + "\n\nSupporters\n\n" + supporters)
     }
 
-    func testMissingContributorAndSupporterResourcesRemainVisible() {
+    func testMissingAttributionResourcesRemainVisible() {
         let options = ApplicationAboutPanel.options(applicationName: "Dust3D Viewer", licenseURL: nil)
         let credits = (options[.credits] as? NSAttributedString)?.string ?? ""
+        XCTAssertTrue(credits.contains("the bundled ApplicationAuthors.txt file is missing"))
         XCTAssertTrue(credits.contains("the bundled ApplicationContributors.txt file is missing"))
         XCTAssertTrue(credits.contains("the bundled ApplicationSupporters.txt file is missing"))
     }
@@ -118,10 +126,13 @@ final class ApplicationAboutPanelTests: XCTestCase {
             cause = error.localizedDescription
         }
         let options = ApplicationAboutPanel.options(
-            applicationName: "Dust3D Viewer", licenseURL: missing, contributorsURL: missing,
+            applicationName: "Dust3D Viewer", licenseURL: missing, authorsURL: missing, contributorsURL: missing,
             supportersURL: missing)
         let credits = (options[.credits] as? NSAttributedString)?.string ?? ""
-        for resource in ["ApplicationLicense.txt", "ApplicationContributors.txt", "ApplicationSupporters.txt"] {
+        for resource in [
+            "ApplicationLicense.txt", "ApplicationAuthors.txt", "ApplicationContributors.txt",
+            "ApplicationSupporters.txt",
+        ] {
             XCTAssertTrue(credits.contains("Unable to read \(resource): \(cause)"))
         }
     }

@@ -11,6 +11,13 @@ final class InspectorNodeDraft {
     var z = 0.0
     var radius = 0.0
     private(set) var resetID = UUID()
+    private(set) var source: InspectorNodeDraftSource?
+
+    func synchronize(to source: InspectorNodeDraftSource?) {
+        guard self.source != source else { return }
+        self.source = source
+        if let source { reset(source.geometry) }
+    }
 
     func reset(_ node: EditableNode) {
         x = node.position.x
@@ -29,7 +36,9 @@ struct InspectorNodeDraftSource: Equatable {
     let geometry: EditableNode
 
     init?(_ snapshot: EditorSnapshot?) {
-        guard let snapshot, let node = snapshot.selectedNode else { return nil }
+        guard let snapshot, snapshot.selectedIDs.count == 1, snapshot.selectedEdgeIDs.isEmpty,
+            let node = snapshot.selectedNode
+        else { return nil }
         documentIdentity = snapshot.documentIdentity
         selectionRevision = snapshot.selectionRevision
         nodeID = Data(node.id.utf8)

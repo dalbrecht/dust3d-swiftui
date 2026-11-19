@@ -25,6 +25,18 @@ final class ComponentWrappingBatchTests: XCTestCase {
             try original.applying(.editComponentWrapping(ids: ["a", "b"], edit: .mode(.none))).components().prefix(2)
                 .map { $0.wrapping.mode }, [ComponentWrapMode.none, ComponentWrapMode.none])
     }
+    func testMixedModeEditAuthorsChangedValuesWithoutRewritingUnchangedDefaults() throws {
+        let source = try document()
+        let edit = DocumentCommand.editComponentWrapping(ids: ["a", "b"], edit: .scalar(.offset, 0))
+        let changed = try source.applying(edit)
+        let xml = try XMLDocument(data: changed.modelXML)
+        let a = try XCTUnwrap(xml.nodes(forXPath: "//component[@id='a']").first as? XMLElement)
+        let b = try XCTUnwrap(xml.nodes(forXPath: "//component[@id='b']").first as? XMLElement)
+        XCTAssertNil(a.attribute(forName: "wrapOffset"))
+        XCTAssertEqual(b.attribute(forName: "wrapOffset")?.stringValue, "0.0")
+        XCTAssertEqual(try changed.applying(edit).encoded(), changed.encoded())
+    }
+
     func testClearWrappingSettingsRemovesOverridesAndKeepsUnrelatedAttributes() throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(

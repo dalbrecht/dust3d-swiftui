@@ -144,7 +144,13 @@ enum EditorHeadlessDS3SaveCommand {
             return 1
         }
 
-        let exports = geometryEncoder.map { DocumentExportFileService(encoder: $0) }
+        let formats: [DocumentExportFormat] = invocation.destinations.compactMap { destination in
+            if case .geometry(let format)? = destination.kind { return format }
+            return nil
+        }
+        let formatUses = Dictionary(grouping: formats, by: { $0 }).mapValues(\.count)
+        let batchEncoder = geometryEncoder.map { BatchGeometryEncoder(encoder: $0, formatUses: formatUses) }
+        let exports = batchEncoder.map { DocumentExportFileService(encoder: $0) }
         var status: Int32 = 0
         for (destination, kind) in invocation.destinations {
             do {
@@ -170,8 +176,42 @@ enum EditorHeadlessDS3SaveCommand {
                 let operation = kind == .ds3 ? "save" : "export"
                 stderr("Could not \(operation) \(destination.path): \(error.localizedDescription)\n")
             }
+            if case .geometry(let format)? = kind {
+                await batchEncoder?.finishedDestination(format: format)
+            }
         }
         return status
+    }
+
+    /// Retain repeated exports only while another destination may need their bytes.
+    private actor BatchGeometryEncoder: DocumentExportEncoding {
+        private let encoder: any DocumentExportEncoding
+        private var remainingUses: [DocumentExportFormat: Int]
+        private var artifacts: [DocumentExportFormat: DocumentExportArtifact] = [:]
+
+        init(encoder: any DocumentExportEncoding, formatUses: [DocumentExportFormat: Int]) {
+            self.encoder = encoder
+            remainingUses = formatUses.filter { $0.value > 1 }
+        }
+
+        func finishedDestination(format: DocumentExportFormat) {
+            guard let count = remainingUses[format] else { return }
+            if count == 1 {
+                remainingUses.removeValue(forKey: format)
+                artifacts.removeValue(forKey: format)
+            } else {
+                remainingUses[format] = count - 1
+            }
+        }
+
+        func encode(archive: Data, format: DocumentExportFormat) async throws -> DocumentExportArtifact {
+            if let artifact = artifacts[format] { return artifact }
+            let artifact = try await encoder.encode(archive: archive, format: format)
+            if remainingUses[format, default: 0] > 1 {
+                artifacts[format] = artifact
+            }
+            return artifact
+        }
     }
 
     private static func prepareDocument(_ invocation: Invocation, files: DocumentFileService) async throws

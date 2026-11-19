@@ -143,6 +143,59 @@ private struct ConnectionNoNative: EditorPreviewServing, ArchiveTextureBaking, A
         }
     }
 
+    func testMixedConnectionKeepsUnrelatedEdgeAndRejectsRetainedSelectionAndToolActions() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas originX='0' originY='0' originZ='0'><nodes>
+                <node id='a' partId='p' x='0' y='0' z='0' radius='.1'/>
+                <node id='b' partId='q' x='1' y='0' z='0' radius='.1'/>
+                <node id='c' partId='r' x='2' y='0' z='0' radius='.1'/>
+                <node id='d' partId='r' x='3' y='0' z='0' radius='.1'/>
+                </nodes><edges><edge id='cd' from='c' to='d' partId='r'/></edges>
+                <parts><part id='p'/><part id='q'/><part id='r'/></parts></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: original.encoded())
+        try await settle(value)
+        value.selectGraph(nodes: ["a", "b"], edges: ["cd"])
+        try await settle(value)
+        let first = NodeConnectionTarget(snapshot: try XCTUnwrap(value.snapshot))
+        XCTAssertTrue(value.canConnectSelectedNodes(first))
+        let oldSelection = value.nodeConnectionAction(first, ownerID: "b")
+        value.selectGraph(nodes: ["a", "b"], edges: [])
+        try await settle(value)
+        value.selectGraph(nodes: ["a", "b"], edges: ["cd"])
+        try await settle(value)
+        oldSelection()
+        XCTAssertFalse(value.isWorking)
+
+        let current = NodeConnectionTarget(snapshot: try XCTUnwrap(value.snapshot))
+        let oldTool = value.nodeConnectionAction(current, ownerID: "b")
+        value.setMovingOrigin(true)
+        XCTAssertFalse(value.canConnectSelectedNodes(current))
+        oldTool()
+        XCTAssertFalse(value.isWorking)
+        value.setMovingOrigin(false)
+        oldTool()
+        XCTAssertFalse(value.isWorking)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+
+        var writes = 0
+        value.onDocumentChanged = { _ in writes += 1 }
+        value.nodeConnectionAction(current, ownerID: "b")()
+        try await settle(value)
+        XCTAssertEqual(writes, 1)
+        XCTAssertEqual(value.snapshot?.selectedIDs, ["a", "b"])
+        XCTAssertEqual(value.snapshot?.selectedEdgeIDs, ["cd"])
+        XCTAssertEqual(value.snapshot?.edges.count, 2)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), original.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testUnavailableOrWrongOwnerActionNeverAcquiresLaterSelection() async throws {
         let value = store()
         defer { value.stop() }

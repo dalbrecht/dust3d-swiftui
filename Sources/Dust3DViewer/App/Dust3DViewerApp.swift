@@ -10,6 +10,7 @@ struct Dust3DViewerApp: App {
     @FocusedValue(\.viewerCancellation) private var cancelOperation
     @FocusedValue(\.viewerPreviewRetryStore) private var retryStore
     @FocusedValue(\.openDocument) private var openDocument
+    @FocusedValue(\.viewerPreviewFocus) private var previewFocus
     @FocusedValue(\.viewerStore) private var store
 
     private var applicationName: String {
@@ -60,6 +61,8 @@ struct Dust3DViewerApp: App {
                     cameraItem("Pan Down", .panDown)
                 }
 
+                Button("Focus 3D Preview") { previewFocus?.moveFocus(in: NSApp.keyWindow) }
+                    .disabled(previewFocus == nil)
                 if let store {
                     Toggle("Model Colors", isOn: store.modelColorsBinding)
                         .disabled(store.mesh == nil)
@@ -82,7 +85,7 @@ struct Dust3DViewerApp: App {
                     Button(link.title) { link.open() }
                 }
             }
-            CommandGroup(replacing: .newItem) {
+            CommandGroup(after: .newItem) {
                 Button("Open…") {
                     openDocument?()
                 }
@@ -147,6 +150,10 @@ private struct ViewerPreviewRetryStoreKey: FocusedValueKey {
     typealias Value = ViewerStore
 }
 
+private struct ViewerPreviewFocusKey: FocusedValueKey {
+    typealias Value = MeshViewportFocus
+}
+
 extension FocusedValues {
     var viewerPreviewRetryStore: ViewerStore? {
         get { self[ViewerPreviewRetryStoreKey.self] }
@@ -156,6 +163,11 @@ extension FocusedValues {
     var viewerCancellation: (() -> Void)? {
         get { self[ViewerCancellationKey.self] }
         set { self[ViewerCancellationKey.self] = newValue }
+    }
+
+    var viewerPreviewFocus: MeshViewportFocus? {
+        get { self[ViewerPreviewFocusKey.self] }
+        set { self[ViewerPreviewFocusKey.self] = newValue }
     }
 
     var viewerStore: ViewerStore? {

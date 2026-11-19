@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Dust3DDocument
 import Dust3DEditorModel
@@ -6,9 +7,28 @@ import Dust3DRendering
 import Foundation
 import SwiftUI
 
-struct WorkflowReplayRequest: Identifiable {
-    let id = UUID()
-    let document: Dust3DDocument
+struct WorkflowReplayWindow: View {
+    let requestID: UUID?
+    let windows: WorkflowReplayWindows
+    @State private var owner = UUID()
+
+    var body: some View {
+        ZStack {
+            if let request = windows.request(requestID, owner: owner) {
+                WorkflowReplayView(document: request.document, sourceID: request.id) {
+                    windows.request(request.id, owner: owner) != nil
+                }
+            } else {
+                ContentUnavailableView {
+                    Label("No Replay", systemImage: "play.rectangle")
+                } description: {
+                    Text("Choose Replay Steps from a document window to start a new replay.")
+                }
+            }
+        }
+        .onAppear { windows.attach(requestID, owner: owner) }
+        .onDisappear { windows.close(requestID, owner: owner) }
+    }
 }
 
 private actor WorkflowReplayMeshLoader {
@@ -118,6 +138,7 @@ struct WorkflowReplayView: View {
     @State private var isPlaying = false
     @State private var speed = Double(WorkflowReplaySpeed.initial)
     @State private var presentation: Presentation = .front
+    @State private var previewFocus = MeshViewportFocus()
     @State private var meshLoader = WorkflowReplayMeshLoader()
     @State private var mesh: IndexedMesh?
     @State private var materials: MeshMaterialContent?
@@ -166,6 +187,12 @@ struct WorkflowReplayView: View {
                     }
                     .pickerStyle(.segmented)
                     if presentation == .mesh {
+                        Button("Focus 3D Preview") {
+                            guard mesh != nil, requestedMeshStep == meshStep else { return }
+                            previewFocus.moveFocus(in: NSApp.keyWindow)
+                        }
+                        .disabled(mesh == nil || requestedMeshStep != meshStep)
+                        .help("Use the arrow keys to orbit and F to reset the camera.")
                         meshPreview
                     } else {
                         replayCanvas(plan, plane: presentation == .front ? .front : .side, boneHighlight: boneHighlight)
@@ -365,6 +392,7 @@ struct WorkflowReplayView: View {
                 ) { message in
                     if requestedMeshStep == meshStep { meshFailure = message }
                 }
+                .withFocusTarget(previewFocus)
                 .opacity(status == .updating ? 0.35 : 1)
                 .allowsHitTesting(status != .updating)
                 .accessibilityHidden(status == .updating)

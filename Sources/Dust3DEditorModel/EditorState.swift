@@ -347,8 +347,8 @@ public struct EditorState: Sendable {
     public mutating func selectWholePart(_ target: PartGraphTarget, context: PartGraphSelectionContext? = nil) throws {
         if let context, !context.isCurrent(in: snapshot) { throw EditorError.stalePartGraphSelection }
         let partID = try snapshot.resolvedPartGraphID(for: target)
-        let nodes = Set(contents.nodes.filter { $0.partID == partID }.map(\.id))
-        let edges = Set(contents.edges.filter { $0.partID == partID }.map(\.id))
+        let nodes = Set(contents.nodes.filter { $0.partID?.utf8.elementsEqual(partID.utf8) == true }.map(\.id))
+        let edges = Set(contents.edges.filter { $0.partID?.utf8.elementsEqual(partID.utf8) == true }.map(\.id))
         try selectGraph(nodes: nodes, edges: edges)
         componentRevealRevision += 1
         componentRevealHint = ComponentRevealHint.make(
@@ -744,6 +744,12 @@ public struct EditorState: Sendable {
     public mutating func applyReferenceComposition(
         png: Data, origin: NodePosition?, target: ReferenceCompositionTarget
     ) throws {
+        try applyReferenceImage(png: png, origin: origin, target: target)
+    }
+
+    mutating func applyReferenceImage(png: Data?, origin: NodePosition? = nil, target: ReferenceCompositionTarget)
+        throws
+    {
         guard target.documentIdentity == documentIdentity, target.documentRevision == revision,
             target.constraintRevision == constraintRevision
         else { throw EditorError.staleReferenceComposition }
