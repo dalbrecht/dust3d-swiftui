@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Connect two explicitly selected nodes while keeping existing edge picks.
+
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
@@ -16,6 +18,8 @@
 - Announce reference-image composition errors with VoiceOver in the active sheet.
 - Identify the composed reference preview and profile-specific crop actions in VoiceOver.
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
+- Opt into Qt opposite-profile depth when starting a part in the dual-profile canvas and see the placement preview in both profiles.
+
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
 - Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
@@ -29,6 +33,8 @@
 - Open the upstream Dust3D sponsorship page from the Help menu.
 
 - Select the owning component of the canvas picks from the Canvas menu.
+- Drag an edge stroke in the canvas to move its endpoints or the current graph selection in one undoable edit.
+
 - Use A to toggle Add and S to return to selection while the canvas has keyboard focus.
 - Open properties for the canvas graph owners with Space or the Canvas menu.
 
@@ -38,6 +44,8 @@
 - Keep modified keyboard shortcuts available when the model preview has focus.
 
 - Accept Qt XML fragments by content regardless of filename suffix when using `-paste-xml`.
+- Drag the document origin marker directly in Select mode.
+
 - Show the authored order of stitching lines in each component listing.
 - Announce new Viewer errors in the active window with VoiceOver.
 
@@ -54,6 +62,8 @@
 
 - Clear missing cut-face links when opening the Editor with a Qt XML fragment.
 
+- Preserve existing recovery copies and receipts if preparing a private replacement fails.
+
 - Open requested documents and report the error when a startup Qt XML fragment cannot be pasted.
 
 - Clear missing cut-face links from Qt XML pasted in headless exports.
@@ -65,6 +75,8 @@
 - Continue a headless batch when an output destination is an existing directory.
 
 - Continue headless export batches after an unsupported output format and report the failed destination.
+
+- Give newly created component groups a saved default name that stays the same when the group is reordered.
 
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
@@ -96,6 +108,8 @@
 
 - Scope Edit → Select All to edges when the Edges sidebar has keyboard focus.
 
+- Open the Selection inspector for one owning component with Space on the canvas or Show Selection Properties in the Canvas menu.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Preview authored linked cross-section outlines before choosing a profile.
@@ -124,6 +138,8 @@
 
 - Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
 
+- Keep numeric node inspector drafts and actions tied to their original node and document.
+
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
 - Change the role of the part that owns the current canvas selection while keeping its node and edge picks.
@@ -135,6 +151,8 @@
 - Preview applied and retained component color images in the inspector without changing image assignments.
 
 - Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
+
+- Update the combined reference image preview while drawing, moving or resizing a crop. The document changes only on Apply.
 
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
@@ -214,6 +232,8 @@
 
 - Add independent Model, Bones and Weights controls to experimental generated-rest inspection, preserving the full camera frame, selected joint and numerical properties when geometry or weight colors are hidden (#367).
 
+- Open a separate Viewer window with File → New Window or Command-N.
+
 - Add a resizable Model/Generated Rest workspace with one per-window rest session, shared camera and stale-safe focused controls; preserve selection and camera across presentation changes (#367).
 
 - Add a source-ordered generated-joint hierarchy and read-only parent, endpoint, length, radius and signed-angle inspection to the experimental rest preview; preserve copied rig data if hierarchy preparation fails (#367).
@@ -246,6 +266,8 @@
 
 - Connect two selected endpoints from the inspector or Canvas menu, with explicit surviving part settings, stale-action protection and one Undo step (#349).
 
+- Include the upstream Dust3D authors in the Editor and Viewer About panels.
+
 - Add shared Help commands for the native project, issue reporting and upstream Dust3D, with visible link-opening failures (#348).
 
 - Include upstream contributor and supporter credits in both native About panels, available offline (#346).
@@ -264,6 +286,8 @@
 
 - Add searchable Keyboard Shortcuts help with native command focus restrictions (#333).
 - Archive exactly the signed app tree without generated Finder metadata, retaining executable permissions and framework links (#329).
+
+- List preview orbit and camera reset in searchable Keyboard Shortcuts, with their focus requirements.
 
 - Prepare lossless hollow-thickness history and an explicitly gated local-core inspector experiment; production geometry support remains unchanged (#96).
 
@@ -329,6 +353,8 @@
 
 - Add atomic Combine Mode and Normal Smoothing edits for multiple selected components, with explicit mixed values and one-step Undo.
 
+
+- Require two editable nodes for alignment to the selection center.
 
 - Select component graphs in the canvas from the sidebar context menu or by double-clicking a leaf row.
 

@@ -8,6 +8,7 @@ struct NodeCanvas: View {
     var profileLease: UUID? = nil
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var showSelectionProperties: (@MainActor () -> Bool)? = nil
     var focusControl: CanvasProfileFocusControl? = nil
     var previewCamera: EditorPreviewCameraActions? = nil
     var openDocument: @MainActor () -> Void = { NSDocumentController.shared.openDocument(nil) }
@@ -51,7 +52,9 @@ struct NodeCanvas: View {
             let handleAxisLockKey = store.canvasAxisLockKeyHandler(profileLease: profileLease)
             let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
-                admitsInput() && (handleAxisLockKey($0) || handlePartStateKey($0) || handlePrecisionKey($0))
+                admitsInput()
+                    && (handleAxisLockKey($0) || handlePartStateKey($0) || handlePrecisionKey($0)
+                        || $0.routeSelectionProperties(action: showSelectionProperties))
             }
             let precisionActions = CanvasPrecisionActions(store: store)
             let quarterTurns = OrthogonalQuarterTurnActions(store: store, profileLease: profileLease)
@@ -157,6 +160,11 @@ struct NodeCanvas: View {
                             lasso.clear()
                         }
                     },
+                    edgeStrokeGesture: { point in
+                        edgeStrokeGesture(at: point, projection: projection) {
+                            admitsNodeInput() && store.addModeID == addModeID
+                        }
+                    },
                     precisionKey: precisionKey, tracksHoverWhileDisabled: store.tracksPartStateHoverWhileWorking,
                     isAddingNodes: store.isAddingNodes,
                     addPress: { if admitsInput() { store.placeAddNode(at: $0, modeID: addModeID) } },
@@ -176,7 +184,9 @@ struct NodeCanvas: View {
                     Self.selectionAccessibilityLabel(
                         usesLasso: store.canvasUsesLasso, selectsRigEdges: store.isSelectingRigEdges)
                 )
-                .help("Drag to select. Shift adds, Command toggles, and Command-Option removes hit nodes and edges.")
+                .help(
+                    "Drag an edge to move it or drag empty canvas to select. Shift adds, Command toggles, and Command-Option removes hit nodes and edges."
+                )
                 if let marquee {
                     let frame = CGRect(
                         x: marquee.minimum.x, y: marquee.minimum.y,
@@ -363,8 +373,11 @@ struct NodeCanvas: View {
                     .accessibilityHidden(store.isSelectingRigEdges)
                 }
                 if let origin = store.originDragPosition ?? store.snapshot?.origin {
-                    OriginHandle(store: store, origin: origin, projection: projection, profileLease: profileLease)
-                        .allowsHitTesting(!store.isAddingNodes && !store.isSelectingRigEdges)
+                    OriginHandle(
+                        store: store, origin: origin, projection: projection, profileLease: profileLease,
+                        precisionKey: precisionKey, switchProfile: switchProfile
+                    )
+                    .allowsHitTesting(!store.isAddingNodes && !store.isSelectingRigEdges)
                 }
             }
             .onChange(of: referenceCanvas, initial: true) { _, _ in
@@ -468,6 +481,54 @@ struct NodeCanvas: View {
         }
         .background(.background)
     }
+    private func edgeStrokeGesture(
+        at point: CanvasPoint, projection: CanvasProjection, admitsInput: @escaping @MainActor () -> Bool
+    ) -> CanvasEdgeStrokeGesture? {
+        func currentSnapshot() -> EditorSnapshot? {
+            guard admitsInput(), store.canPickGraph, !store.isWorking, !store.isAddingNodes, !store.isMovingOrigin,
+                store.plane == projection.plane
+            else { return nil }
+            return store.snapshot
+        }
+        guard let snapshot = currentSnapshot(),
+            let baseline = NodeDrag.edgeStroke(at: point, snapshot: snapshot, projection: projection)
+        else { return nil }
+        let token = UUID()
+        func clear() {
+            nodeDrag.cancel(token: token)
+            store.clearCanvasProfileMotion(token: token, lease: profileLease)
+        }
+        return CanvasEdgeStrokeGesture(
+            begin: {
+                guard let current = currentSnapshot(), baseline.isCurrent(in: current) else { return }
+                nodeDrag.begin(token: token, baseline: baseline)
+                store.beginCanvasProfileMotion(token: token, lease: profileLease)
+            },
+            update: { translation in
+                guard let current = currentSnapshot() else {
+                    clear()
+                    return
+                }
+                nodeDrag.update(token: token, snapshot: current, translation: translation)
+                if let preview = nodeDrag.preview {
+                    store.updateCanvasProfileMotion(.ordinary(preview), token: token, lease: profileLease)
+                } else {
+                    store.clearCanvasProfileMotion(token: token, lease: profileLease)
+                }
+            },
+            finish: { translation in
+                guard let current = currentSnapshot(), let drag = nodeDrag.finish(token: token),
+                    drag.isCurrent(in: current)
+                else {
+                    clear()
+                    return
+                }
+                store.clearCanvasProfileMotion(token: token, lease: profileLease)
+                store.commitNodeDrag(drag, translation: translation)
+            },
+            cancel: { clear() })
+    }
+
     private func clearSelectionRegion() {
         marquee = nil
         lasso.clear()

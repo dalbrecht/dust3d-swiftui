@@ -12,6 +12,7 @@ struct Dust3DEditorApp: App {
         @FocusedValue(\.editorRestPreviewActions) private var restPreviewActions
     #endif
     @FocusedValue(\.editorStore) private var store
+    @FocusedValue(\.editorSelectionPropertiesAction) private var selectionPropertiesAction
     @FocusedValue(\.editorInspectorNavigation) private var navigateInspector
     @FocusedValue(\.editorSidebarVisibility) private var isSidebarPresented
     @FocusedValue(\.editorCanvasFocus) private var focusCanvas
@@ -341,6 +342,14 @@ struct Dust3DEditorApp: App {
                     if let target = store?.wholePartActionTarget { store?.selectWholePart(target) }
                 }
                 .disabled(store?.wholePartActionTarget.map { store?.canSelectWholePart($0) == true } != true)
+                let showSelectionProperties = selectionPropertiesAction
+                Button("Show Selection Properties") {
+                    guard let canvasWindow, NSApp.keyWindow === canvasWindow, store === canvasOwner,
+                        !rigAssignmentFocus.hasSheet
+                    else { return }
+                    _ = showSelectionProperties?()
+                }
+                .disabled(showSelectionProperties == nil || canvasWindow == nil || rigAssignmentFocus.hasSheet)
                 Button("Clear Selection") { store?.select(nil) }
                     .disabled(store?.snapshot == nil || store?.isWorking != false)
                 CanvasPartStateMenu(store: store) { [capturedStore = store, capturedWindow = NSApp.keyWindow] in
@@ -630,7 +639,16 @@ private struct EditorNodesSidebarSelectAllKey: FocusedValueKey { typealias Value
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 private struct EditorCanvasFocusKey: FocusedValueKey { typealias Value = @MainActor () -> Bool }
 
+private struct EditorSelectionPropertiesActionKey: FocusedValueKey {
+    typealias Value = @MainActor () -> Bool
+}
+
 extension FocusedValues {
+    var editorSelectionPropertiesAction: (@MainActor () -> Bool)? {
+        get { self[EditorSelectionPropertiesActionKey.self] }
+        set { self[EditorSelectionPropertiesActionKey.self] = newValue }
+    }
+
     var editorAnimationFocus: Bool? {
         get { self[EditorAnimationFocusKey.self] }
         set { self[EditorAnimationFocusKey.self] = newValue }

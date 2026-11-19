@@ -859,11 +859,14 @@ public actor EditorSession {
     /// - Returns: The resulting snapshot as one undoable edit.
     /// - Throws: `EditorError.staleNodeDrag` or the original geometry and state error.
     public func commitNodeDrag(_ drag: NodeDrag, translation: CanvasPoint) throws -> EditorSnapshot {
-        try update { state in
-            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, drag.isCurrent(in: state.snapshot) else { throw EditorError.staleNodeDrag }
             guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidNode }
+            if let edgeID = drag.edgeID, !state.snapshot.selectedEdgeIDs.contains(edgeID) {
+                try state.selectEdge(edgeID)
+            }
             try state.move(id: drag.anchorID, to: drag.position(by: translation))
-        }
+        }.snapshot
     }
 
     /// Publish the captured Shift-drag result as one undoable graph edit.
@@ -896,6 +899,18 @@ public actor EditorSession {
 
     public func edit(id: String, position: NodePosition, radius: Double) throws -> EditorSnapshot {
         try update { try $0.edit(id: id, position: position, radius: radius) }
+    }
+
+    package func editInspectorNode(
+        id: String, position: NodePosition, radius: Double, target: CanvasAdjustmentTarget
+    ) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            let current = state.snapshot
+            guard target.isCurrent(in: current), current.selectedIDs.count == 1, current.selectedEdgeIDs.isEmpty,
+                current.selectedNode?.id.utf8.elementsEqual(id.utf8) == true
+            else { throw EditorError.staleCanvasAdjustment }
+            try state.edit(id: id, position: position, radius: radius)
+        }.snapshot
     }
 
     /// Assign or clear an exact stored bone name on one frozen explicit-edge set.
@@ -993,11 +1008,11 @@ public actor EditorSession {
     /// - Returns: One undoable origin edit, or the unchanged snapshot for a no-op.
     /// - Throws: `EditorError.staleOriginDrag`, load/cancellation errors, or invalid-origin errors atomically.
     public func commitOriginDrag(_ drag: OriginDrag, translation: CanvasPoint) throws -> EditorSnapshot {
-        try update { state in
-            guard drag.isCurrent(in: state.snapshot) else { throw EditorError.staleOriginDrag }
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, drag.isCurrent(in: state.snapshot) else { throw EditorError.staleOriginDrag }
             guard translation.x.isFinite, translation.y.isFinite else { throw DocumentError.invalidOrigin }
             try state.apply([.setOrigin(drag.position(by: translation))])
-        }
+        }.snapshot
     }
 
     /// Copy without dirtying the archive/history; Cut callers can restrict copying to editable nodes.
