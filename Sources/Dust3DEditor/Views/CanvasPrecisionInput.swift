@@ -43,7 +43,13 @@ enum CanvasPartShapeShortcut: String, CaseIterable {
     var keyLabel: String { rawValue.uppercased() }
 }
 
+enum CanvasVisibilityShortcut: Equatable {
+    case toggle
+    case isolate
+}
+
 /// Routes canvas navigation and bare graph editing keys at the canvas responder boundary.
+
 struct CanvasPrecisionKeyInput {
     let keyCode: UInt16
     let characters: String
@@ -94,6 +100,14 @@ struct CanvasPrecisionKeyInput {
         return CanvasPartShapeShortcut(rawValue: characters.lowercased())
     }
 
+    var visibilityShortcut: CanvasVisibilityShortcut? {
+        guard modifiers.intersection([.command, .control, .option, .function]).isEmpty,
+            characters == "h" || characters == "H"
+        else { return nil }
+        return modifiers.contains(.shift) ? .isolate : .toggle
+
+    }
+
     var opensComponentProperties: Bool { isBareEditingKey && characters == " " }
 
     var selectsOwningComponent: Bool { isBareEditingKey && (characters == "f" || characters == "F") }
@@ -101,7 +115,8 @@ struct CanvasPrecisionKeyInput {
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
         guard
             axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
-                || isAlternateDelete || partShapeShortcut != nil
+                || isAlternateDelete || partShapeShortcut != nil || visibilityShortcut != nil
+
         else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil
