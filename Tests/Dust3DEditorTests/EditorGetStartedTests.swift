@@ -77,26 +77,28 @@ private struct GetStartedNoNative: EditorPreviewServing, ArchiveTextureBaking, A
         var writes = 0
         store.onDocumentChanged = { _ in writes += 1 }
 
-        let staged = try XCTUnwrap(actions.referenceDrop([front, side]))
+        let pair = try XCTUnwrap(ReferenceCompositionDrop(urls: [front, side]))
+        let single = try XCTUnwrap(ReferenceCompositionDrop(urls: [front]))
+        let staged = try XCTUnwrap(actions.referenceDrop(pair))
         XCTAssertEqual(staged.droppedSources?.front, front)
         XCTAssertEqual(staged.droppedSources?.side, side)
-        XCTAssertNil(actions.referenceDrop([front, ds3]))
-        XCTAssertNil(actions.referenceDrop([front, side, front]))
+        XCTAssertNil(ReferenceCompositionDrop(urls: [front, ds3]))
+        XCTAssertNil(ReferenceCompositionDrop(urls: [front, side, front]))
         XCTAssertEqual(store.snapshot?.document.encoded(), blank)
         XCTAssertEqual(writes, 0)
         XCTAssertFalse(store.canUndo)
 
         ownsWindow = false
-        XCTAssertNil(actions.referenceDrop([front]))
+        XCTAssertNil(actions.referenceDrop(single))
         ownsWindow = true
         let withNode = try Dust3DDocument(data: blank).applying(
             .addNode(id: "a", partID: "p", componentID: "c", position: .init(x: 0, y: 0, z: 0), radius: 0.1))
         await store.load(data: withNode.encoded(), fileIdentity: file)
-        XCTAssertNil(actions.referenceDrop([front]))
+        XCTAssertNil(actions.referenceDrop(single))
         XCTAssertNil(EditorGetStartedActions(store: store, fileIdentity: file))
         await store.load(data: blank, fileIdentity: file)
-        XCTAssertNil(actions.referenceDrop([front]))
-        XCTAssertNotNil(EditorGetStartedActions(store: store, fileIdentity: file)?.referenceDrop([front]))
+        XCTAssertNil(actions.referenceDrop(single))
+        XCTAssertNotNil(EditorGetStartedActions(store: store, fileIdentity: file)?.referenceDrop(single))
     }
 
     func testWorkingGroupChangeRejectsRetainedDrawWithoutWriting() async throws {
