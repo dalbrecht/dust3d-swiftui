@@ -37,6 +37,7 @@ struct EditorRootView: View {
     @State private var inspectorPresentation = EditorInspectorPresentation()
     @State private var recoveryRegistrationID: UUID?
     @State private var isImportingReferenceImage = false
+    @State private var referenceImageImportRequest: UUID?
     @State private var admitReferenceImageImport: (@MainActor () -> Bool)?
     @State private var referenceComposition: ReferenceCompositionPresentation?
     @State private var isOpeningDroppedDocument = false
@@ -375,6 +376,8 @@ struct EditorRootView: View {
                 guard let target = store.referenceCompositionTarget else { return }
                 referenceComposition = ReferenceCompositionPresentation(target: target)
             case .importImage:
+                guard let request = store.chooseReferenceImage(fileIdentity: fileIdentity) else { return }
+                referenceImageImportRequest = request
                 admitReferenceImageImport = admit
                 isImportingReferenceImage = true
             case .remove:
@@ -385,14 +388,20 @@ struct EditorRootView: View {
     }
 
     private func finishReferenceImageImport(_ result: Result<URL, Error>) {
-        defer { admitReferenceImageImport = nil }
-        guard admitReferenceImageImport?() == true else { return }
-        switch result {
-        case .success(let url):
-            store.importReferenceImage(from: url)
-        case .failure(let error):
-            if (error as? CocoaError)?.code != .userCancelled { store.errorMessage = EditorStore.message(error) }
+        let request = referenceImageImportRequest
+        defer {
+            referenceImageImportRequest = nil
+            admitReferenceImageImport = nil
         }
+        guard let request else { return }
+        guard admitReferenceImageImport?() == true else {
+            store.cancelReferenceImageChoice(requestID: request)
+            return
+        }
+        let source = $file
+        store.finishReferenceImageChoice(
+            requestID: request, result: result.map { [$0] },
+            currentFileIdentity: { source.wrappedValue.identity })
     }
 
     private var canvasWithGetStarted: some View {

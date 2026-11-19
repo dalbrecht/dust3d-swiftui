@@ -34,6 +34,7 @@ public struct MeshViewport: NSViewRepresentable {
     let cameraReset: Int
     let cameraCommand: MeshCameraCommand?
     private var canvasWheelZoom: MeshCameraWheelZoom?
+    private var focusTarget: MeshViewportFocus?
     let pickingRevision: UUID?
     let onPick: (@MainActor (MeshPickInput) -> Void)?
     let cameraState: MeshCameraState?
@@ -157,6 +158,12 @@ public struct MeshViewport: NSViewRepresentable {
         return next
     }
 
+    package func withFocusTarget(_ target: MeshViewportFocus) -> Self {
+        var next = self
+        next.focusTarget = target
+        return next
+    }
+
     public func makeNSView(context: Context) -> InteractiveMeshView {
         let view = InteractiveMeshView()
         view.device = MTLCreateSystemDefaultDevice()
@@ -167,11 +174,19 @@ public struct MeshViewport: NSViewRepresentable {
         return view
     }
     public func updateNSView(_ view: InteractiveMeshView, context: Context) {
+        if view.focusTarget !== focusTarget {
+            view.focusTarget?.unbind(view)
+            view.focusTarget = focusTarget
+            focusTarget?.bind(view)
+        }
         updateRenderer(in: view, reduceMotion: context.environment.accessibilityReduceMotion)
     }
     public static func dismantleNSView(_ view: InteractiveMeshView, coordinator: ()) {
+        view.focusTarget?.unbind(view)
         view.automaticOrbitBinding.dismantle()
         view.cancelMaterialUpload()
+        // A queued geometry diagnostic belongs to the retired view.
+        view.failedMeshRevision = nil
         view.delegate = nil
     }
 
@@ -269,6 +284,7 @@ public struct MeshViewport: NSViewRepresentable {
 @MainActor
 /// AppKit event boundary owned by MeshViewport; geometry and camera remain renderer-owned.
 public class InteractiveMeshView: MTKView {
+    fileprivate weak var focusTarget: MeshViewportFocus?
     var renderer: MeshRenderer?
     var materialRenderer: TexturedMeshRenderer?
     var importedRenderer: ImportedMeshRenderer?
@@ -305,6 +321,7 @@ public class InteractiveMeshView: MTKView {
         pickGesture.cancel()
         pressedPick = nil
         lastDragLocation = nil
+        isMiddleButtonDragging = false
     }
     private var pickLease: MeshPickGesture.Lease? {
         pickingRevision.map {
@@ -521,6 +538,8 @@ public class InteractiveMeshView: MTKView {
     var failedMeshRevision: Int?
     var cameraReset = 0
     private var lastDragLocation: CGPoint?
+    private var isMiddleButtonDragging = false
+    private var reversesHorizontalOrbit = false
     var isDraggingCamera: Bool { lastDragLocation != nil || gestureActivity.isActive }
 
     /// Lifecycle loss discards incomplete input before automatic orbit reconciles.
@@ -541,10 +560,14 @@ public class InteractiveMeshView: MTKView {
         return .none
     }
 
-    private func applyCameraGesture(
+    func applyCameraGesture(
         phase: NSEvent.Phase, update: (inout OrbitCamera) -> Bool
     ) {
         let phase = cameraGesturePhase(phase)
+        guard lastDragLocation == nil else {
+            if phase != .none { gestureActivity.discardContinuation() }
+            return
+        }
         guard phase != .cancelled else {
             cancelCameraInteraction()
             automaticOrbitBinding.cameraInputChanged()
@@ -552,19 +575,24 @@ public class InteractiveMeshView: MTKView {
         }
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
+            // Restoring input eligibility does not admit the remainder of a rejected gesture.
+            if phase != .mayBegin && phase != .none { gestureActivity.discardContinuation() }
             automaticOrbitBinding.cameraInputChanged()
             return
         }
+        guard gestureActivity.admits(phase) else { return }
         var camera = orbitCamera
         guard update(&camera) else {
             if phase == .ended || phase == .none {
-                gestureActivity.cancel()
+                gestureActivity.update(phase)
                 automaticOrbitBinding.cameraInputChanged()
             }
             return
         }
+        let wasActive = gestureActivity.isActive
         cancelPicking()
         gestureActivity.update(phase)
+        if !wasActive && gestureActivity.isActive { window?.makeFirstResponder(self) }
         orbitCamera = camera
         automaticOrbitBinding.cameraInputChanged()
         needsDisplay = true
@@ -614,6 +642,15 @@ public class InteractiveMeshView: MTKView {
 
     public override var acceptsFirstResponder: Bool { true }
 
+    public override func resignFirstResponder() -> Bool {
+        guard super.resignFirstResponder() else { return false }
+        if isDraggingCamera {
+            cancelCameraInteraction()
+            automaticOrbitBinding.cameraInputChanged()
+        }
+        return true
+    }
+
     public override func accessibilityHelp() -> String? {
         if let help = super.accessibilityHelp() { return help }
         guard cameraInteractionAllowed() else { return nil }
@@ -621,6 +658,7 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func mouseDown(with event: NSEvent) {
+        guard !isMiddleButtonDragging, !gestureActivity.isActive else { return }
         window?.makeFirstResponder(self)
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
@@ -631,13 +669,20 @@ public class InteractiveMeshView: MTKView {
             if event.modifierFlags.contains(.shift) { pickGesture.disallowClick() }
             pressedPick = onPick
         }
-        lastDragLocation = event.locationInWindow
+        beginCameraDrag(at: event.locationInWindow)
+    }
+
+    private func beginCameraDrag(at location: CGPoint) {
+        // Hold the direction from the press so crossing a pole does not reverse a continuous drag.
+        reversesHorizontalOrbit = abs(orbitCamera.pitch.remainder(dividingBy: 2 * .pi)) > .pi / 2
+        lastDragLocation = location
         automaticOrbitBinding.cameraInputChanged()
     }
 
     private func dragCamera(by delta: SIMD2<Float>, pans: Bool) {
         var camera = orbitCamera
-        guard camera.drag(by: delta, viewport: SIMD2(Float(bounds.width), Float(bounds.height)), pans: pans) else {
+        let motion = !pans && reversesHorizontalOrbit ? SIMD2(-delta.x, delta.y) : delta
+        guard camera.drag(by: motion, viewport: SIMD2(Float(bounds.width), Float(bounds.height)), pans: pans) else {
             return
         }
         orbitCamera = camera
@@ -645,6 +690,7 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func mouseDragged(with event: NSEvent) {
+        guard !isMiddleButtonDragging, lastDragLocation != nil else { return }
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
             return
@@ -663,6 +709,10 @@ public class InteractiveMeshView: MTKView {
             lastDragLocation = location
             return
         }
+        dragCamera(to: location, pans: pans)
+    }
+
+    private func dragCamera(to location: CGPoint, pans: Bool) {
         if let previous = lastDragLocation {
             dragCamera(
                 by: SIMD2(Float(location.x - previous.x), Float(location.y - previous.y)), pans: pans)
@@ -672,6 +722,7 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func mouseUp(with event: NSEvent) {
+        guard !isMiddleButtonDragging, lastDragLocation != nil else { return }
         if event.modifierFlags.contains(.shift) { pickGesture.disallowClick() }
         let callback = pressedPick
         if cameraInteractionAllowed(), let lease = pickLease,
@@ -690,10 +741,55 @@ public class InteractiveMeshView: MTKView {
         automaticOrbitBinding.cameraInputChanged()
     }
 
-    public override func scrollWheel(with event: NSEvent) {
+    public override func otherMouseDown(with event: NSEvent) {
+        guard event.buttonNumber == 2 else {
+            super.otherMouseDown(with: event)
+            return
+        }
+        guard !isDraggingCamera else { return }
+        guard cameraInteractionAllowed() else {
+            cancelCameraInteraction()
+            return
+        }
+        window?.makeFirstResponder(self)
+        isMiddleButtonDragging = true
+        beginCameraDrag(at: event.locationInWindow)
+    }
+
+    public override func otherMouseDragged(with event: NSEvent) {
+        guard event.buttonNumber == 2 else {
+            super.otherMouseDragged(with: event)
+            return
+        }
+        guard isMiddleButtonDragging else { return }
+        guard cameraInteractionAllowed() else {
+            cancelCameraInteraction()
+            automaticOrbitBinding.cameraInputChanged()
+            return
+        }
+        dragCamera(to: event.locationInWindow, pans: event.modifierFlags.contains(.shift))
+    }
+
+    public override func otherMouseUp(with event: NSEvent) {
+        guard event.buttonNumber == 2 else {
+            super.otherMouseUp(with: event)
+            return
+        }
+        guard isMiddleButtonDragging else { return }
         cancelPicking()
         automaticOrbitBinding.cameraInputChanged()
-        orbitCamera.zoom(delta: Float(event.scrollingDeltaY))
+    }
+
+    public override func scrollWheel(with event: NSEvent) {
+        let delta = Float(event.scrollingDeltaY)
+        guard cameraInteractionAllowed(), delta.isFinite, delta != 0 else {
+            super.scrollWheel(with: event)
+            return
+        }
+        guard !isDraggingCamera else { return }
+        cancelPicking()
+        automaticOrbitBinding.cameraInputChanged()
+        orbitCamera.zoom(delta: delta)
         needsDisplay = true
     }
 
@@ -702,6 +798,11 @@ public class InteractiveMeshView: MTKView {
             event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty
         else {
             super.keyDown(with: event)
+            return
+        }
+        if isDraggingCamera, event.charactersIgnoringModifiers == "\u{1b}" {
+            cancelCameraInteraction()
+            automaticOrbitBinding.cameraInputChanged()
             return
         }
         var camera = orbitCamera
