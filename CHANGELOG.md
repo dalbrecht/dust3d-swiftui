@@ -367,6 +367,12 @@
 
 - Drag component rows before or after siblings, into groups, or to the document root.
 
+- Add a keyboard-accessible Focus 3D Preview control to Replay Steps.
+
+- Add a Focus Object button for keyboard orbit in Quick Look.
+
+- Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
+
 - Select all visible component rows with Command-A when the component sidebar has focus (#386).
 
 - Place selected components before or after a sibling from the inspector, with one-step Undo.

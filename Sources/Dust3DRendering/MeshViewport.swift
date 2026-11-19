@@ -34,6 +34,7 @@ public struct MeshViewport: NSViewRepresentable {
     let cameraReset: Int
     let cameraCommand: MeshCameraCommand?
     private var canvasWheelZoom: MeshCameraWheelZoom?
+    private var focusTarget: MeshViewportFocus?
     let pickingRevision: UUID?
     let onPick: (@MainActor (MeshPickInput) -> Void)?
     let cameraState: MeshCameraState?
@@ -156,6 +157,12 @@ public struct MeshViewport: NSViewRepresentable {
         return next
     }
 
+    package func withFocusTarget(_ target: MeshViewportFocus) -> Self {
+        var next = self
+        next.focusTarget = target
+        return next
+    }
+
     public func makeNSView(context: Context) -> InteractiveMeshView {
         let view = InteractiveMeshView()
         view.device = MTLCreateSystemDefaultDevice()
@@ -166,9 +173,15 @@ public struct MeshViewport: NSViewRepresentable {
         return view
     }
     public func updateNSView(_ view: InteractiveMeshView, context: Context) {
+        if view.focusTarget !== focusTarget {
+            view.focusTarget?.unbind(view)
+            view.focusTarget = focusTarget
+            focusTarget?.bind(view)
+        }
         updateRenderer(in: view, reduceMotion: context.environment.accessibilityReduceMotion)
     }
     public static func dismantleNSView(_ view: InteractiveMeshView, coordinator: ()) {
+        view.focusTarget?.unbind(view)
         view.automaticOrbitBinding.dismantle()
         view.cancelMaterialUpload()
         // A queued geometry diagnostic belongs to the retired view.
@@ -270,6 +283,7 @@ public struct MeshViewport: NSViewRepresentable {
 @MainActor
 /// AppKit event boundary owned by MeshViewport; geometry and camera remain renderer-owned.
 public class InteractiveMeshView: MTKView {
+    fileprivate weak var focusTarget: MeshViewportFocus?
     var renderer: MeshRenderer?
     var materialRenderer: TexturedMeshRenderer?
     var importedRenderer: ImportedMeshRenderer?
