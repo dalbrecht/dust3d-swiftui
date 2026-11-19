@@ -41,7 +41,10 @@ Production Core stays at `48b0ce2d6d61cf58731bb0c3e14ef5965a686d68`.
 The evaluated runtime is opt-in: both `MOTE3D_EXPERIMENTAL_FISH_IDLE` and
 `MOTE3D_EXPERIMENTAL_GENERATED_RIG`, with Core's optional SwiftPM product enabled
 by `DUST3D_EXPERIMENTAL_ANIMATION=1`. Core #393/#394 are merged at
-`0d93595fb359de8eecfd33046d1a7b09eafee46d`; #395 remains pending CI/review.
+`0d93595fb359de8eecfd33046d1a7b09eafee46d`. Core #395 subsequently merged
+at `474bb80923baf75f664fe5214e1df1d733e3f029`; QA tag
+`dust3d-core-animation-qa-20261119.3` preserves tested source
+`a0cc08b6f6d424be5e5d5ad44273230e5a620e90` with an identical tree.
 
 Signed QA tag `mote3d-evaluated-animation-qa-20261119.1` uses App
 `02b6b8f51b555255543028e905540a8bfd5e50f9` and that Core revision. Its
@@ -50,9 +53,9 @@ are development evidence. Later tests at local App candidate
 `9da47e9e997a0f455e0dba4f61953762f2adcae3` retain identical product sources:
 
 - [Seven native CPU family tests](../Tests/Dust3DEditorTests/NativeAnimationFamilyBridgeTests.swift)
-  cover copied owned clips, deformation, retained frames, PCM and source retirement.
+  cover copied owned clips, deformation, retained clips, PCM and lease retirement.
 - [Seven actual Metal family tests](../Tests/Dust3DEditorTests/NativeAnimationFamilyMetalTests.swift)
-  passed with zero skips, strict silhouette checks, source replacement and fixed-rest bounds.
+  passed with zero skips, strict silhouette checks, pose-buffer replacement and fixed-rest bounds.
 - [Selected-FBX tests](../Tests/Dust3DEditorTests/NativeAnimationBridgeTests.swift) and
   [bounded structural inspector tests](../Tests/Dust3DEditorTests/FbxAnimationStackInspectorTests.swift)
   passed seven cases: exact UTF-8 authored titles/order, unnamed-ID fallback,
@@ -63,12 +66,14 @@ are development evidence. Later tests at local App candidate
   cover one current-active error, deduplication and inactive/retired suppression.
   This does not replace physical VoiceOver acceptance.
 
-The full paired App suite against the pending Core candidate is running.
-No full-suite pass, physical UI acceptance or epic closure is claimed. The source
+The complete paired App suite at `9da47e9e997a0f455e0dba4f61953762f2adcae3`
+passed 2,626 tests with two expected accessibility skips and zero failures against
+reviewed Core `a0cc08b6f6d424be5e5d5ad44273230e5a620e90`, with both runtime
+flags enabled and all helper source/pin/identity/dependency postchecks passing.
+This does not establish physical UI acceptance or close any epic. The source
 inventory of 180 types (114 loops, 66 one-shots, four aliases) is source alignment,
 not runtime proof. `frameCount=1`, duration limits, all 66 one-shots, independent
-Qt motion/audio corpus and default runtime adoption remain gaps. Existing writer,
-GLB and Apple #199 quarantines remain in force; #145/#146/#147 stay open.
+Qt motion/audio corpus and default runtime adoption remain gaps. Existing writer/GLB quarantines and Apple #199 acceptance work remain in force; #145/#146/#147 stay open.
 
 ## Signed canvas acceptance evidence
 
@@ -125,7 +130,7 @@ native app. The inspected widget files are byte-identical to production core
 | `component_property_widget.cc:165–973` modifier/material/wrapping controls | Part deformation/profile/modifier/material and component mesh/stitching/wrapping/surface controls |
 | `bone_manage_widget.cc:222–375`, `:554`, `:663–673`, `:868` authoring/selection | `RigSettingsControls`, `RigTemplateBoneBrowser`, `BoneEdgeOverview`, assignment/clear targets |
 | `bone_manage_widget.cc:765`, `:943` generated-rest inspection | Experimental `GeneratedRigPreview`, hierarchy/weights/joint inspection; explicit opt-in local Core dependency |
-| `animation_manage_widget.cc:227–269`, `:578–581`, `:1093` generation/playback | Production-pin metadata-only route; guarded native evaluated playback exists with scoped evidence below, without full Qt acceptance |
+| `animation_manage_widget.cc:227–269`, `:578–581`, `:1093` generation/playback | Production-pin metadata-only route; guarded native evaluated playback exists with scoped evidence in the animation section, without full Qt acceptance |
 
 ## Physical macOS acceptance criteria
 

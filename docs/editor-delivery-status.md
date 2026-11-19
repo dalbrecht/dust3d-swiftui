@@ -16,7 +16,10 @@ are in [the acceptance matrix](parity-acceptance-matrix.md).
   `MOTE3D_EXPERIMENTAL_FISH_IDLE` and `MOTE3D_EXPERIMENTAL_GENERATED_RIG`;
   Core's optional SwiftPM product requires `DUST3D_EXPERIMENTAL_ANIMATION=1`.
   Core #393/#394 merged at `0d93595fb359de8eecfd33046d1a7b09eafee46d`.
-  Core #395 (quiet directional one-shot metadata) is pending CI/review.
+  Core #395 fixed quiet directional walk admission and merged at
+  `474bb80923baf75f664fe5214e1df1d733e3f029`; reviewed QA tag
+  `dust3d-core-animation-qa-20261119.3` preserves the exact tested source
+  `a0cc08b6f6d424be5e5d5ad44273230e5a620e90` with an identical tree.
 - Signed local QA tag `mote3d-evaluated-animation-qa-20261119.1` records App
   `02b6b8f51b555255543028e905540a8bfd5e50f9` and Core
   `0d93595fb359de8eecfd33046d1a7b09eafee46d`. It passed 69 focused tests,
@@ -24,9 +27,12 @@ are in [the acceptance matrix](parity-acceptance-matrix.md).
   smoke. These headless exports do not establish evaluated animation acceptance.
 - Subsequent local tests, with product sources identical to that tag, passed seven
   native CPU family tests, seven actual Metal tests (zero skips; strict silhouette,
-  source replacement and fixed-rest bounds), and seven selected-FBX/inspector tests.
-  The paired full App suite against the pending Core candidate is running; no
-  passing result is claimed here. See the [scoped animation evidence](parity-acceptance-matrix.md#guarded-evaluated-animation-evidence).
+  pose-buffer replacement and fixed-rest bounds), and seven selected-FBX/inspector tests.
+  The complete paired App suite passed 2,626 tests with two expected
+  accessibility skips and zero failures against Core
+  `a0cc08b6f6d424be5e5d5ad44273230e5a620e90`.
+  Both runtime flags were enabled; helper source, pin, identity and dependency
+  postchecks passed. The production pin is unchanged. See the [scoped animation evidence](parity-acceptance-matrix.md#guarded-evaluated-animation-evidence).
 - Local QA tags and verified archives are development checkpoints, not published
   GitHub Releases, notarized distribution, default adoption or physical acceptance.
   The user's Mac is locked and repository work was chosen; no protected QA process
