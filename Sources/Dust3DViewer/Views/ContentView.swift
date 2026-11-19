@@ -37,7 +37,8 @@ struct ContentView: View {
                     let materialRevision = store.meshRevision + store.materialRevision
                     MeshViewport(
                         mesh: mesh, isWireframe: isWireframe, cameraReset: 0,
-                        meshRevision: materialRevision, materials: store.materials, cameraState: store.cameraState,
+                        meshRevision: materialRevision, materials: store.materials,
+                        showsColor: store.showsModelColors, cameraState: store.cameraState,
                         onMaterialError: {
                             guard store.rendererAttemptID == rendererAttempt else { return }
                             store.materialsFailed($0, revision: materialRevision)
@@ -46,6 +47,7 @@ struct ContentView: View {
                             guard store.rendererAttemptID == rendererAttempt else { return }
                             store.materialsRendered(revision: materialRevision)
                         }
+
                     ) { message in
                         store.reportRendererError(message, attemptID: rendererAttempt)
                     }
@@ -151,6 +153,9 @@ struct ContentView: View {
                     Label("Open", systemImage: "folder")
                 }
                 .help("Open a .ds3 document (⌘O)")
+                Toggle(isOn: store.modelColorsBinding) { Label("Model Colors", systemImage: "paintpalette") }
+                    .help("Show authored colors or inspect the model in neutral shading")
+                    .disabled(store.mesh == nil)
                 Toggle(isOn: $isWireframe) { Label("Wireframe", systemImage: "square.3.layers.3d") }
                     .help("Show triangle edges")
                     .disabled(store.mesh == nil)
@@ -175,6 +180,7 @@ struct ContentView: View {
         .focusedSceneValue(\.viewerPreviewRetryStore, isImporterPresented ? nil : store)
         .focusedSceneValue(\.viewerCancellation, cancelOperation)
         .focusedSceneValue(\.openDocument, { isImporterPresented = true })
+        .focusedSceneValue(\.viewerStore, store)
     }
 }
 

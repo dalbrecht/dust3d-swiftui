@@ -10,6 +10,7 @@ struct Dust3DViewerApp: App {
     @FocusedValue(\.viewerCancellation) private var cancelOperation
     @FocusedValue(\.viewerPreviewRetryStore) private var retryStore
     @FocusedValue(\.openDocument) private var openDocument
+    @FocusedValue(\.viewerStore) private var store
 
     private var applicationName: String {
         BuildIdentityPresentation.applicationName(
@@ -34,6 +35,14 @@ struct Dust3DViewerApp: App {
                 let retryMaterials = retryStore?.materialRetryAction(ownsWindow: ownsPreviewWindow)
                 Button("Retry Materials") { retryMaterials?() }
                     .disabled(retryMaterials == nil)
+                if let store {
+                    Toggle("Model Colors", isOn: store.modelColorsBinding)
+                        .disabled(store.mesh == nil)
+                } else {
+                    Toggle("Model Colors", isOn: .constant(true))
+                        .disabled(true)
+                }
+
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)") {
@@ -76,6 +85,16 @@ final class ViewerAppDelegate: NSObject, NSApplicationDelegate {
 
 }
 
+extension ViewerStore {
+    var modelColorsBinding: Binding<Bool> {
+        Binding(get: { self.showsModelColors }, set: { self.setModelColors($0) })
+    }
+}
+
+private struct ViewerStoreKey: FocusedValueKey {
+    typealias Value = ViewerStore
+}
+
 private struct OpenDocumentKey: FocusedValueKey {
     typealias Value = () -> Void
 }
@@ -97,6 +116,12 @@ extension FocusedValues {
     var viewerCancellation: (() -> Void)? {
         get { self[ViewerCancellationKey.self] }
         set { self[ViewerCancellationKey.self] = newValue }
+    }
+
+    var viewerStore: ViewerStore? {
+        get { self[ViewerStoreKey.self] }
+        set { self[ViewerStoreKey.self] = newValue }
+
     }
 
     var openDocument: (() -> Void)? {

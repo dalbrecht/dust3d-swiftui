@@ -7,6 +7,13 @@ import Observation
 @Observable
 final class ViewerStore {
     private(set) var mesh: IndexedMesh?
+    private(set) var showsModelColors = true
+
+    func setModelColors(_ visible: Bool) {
+        guard mesh != nil else { return }
+        showsModelColors = visible
+    }
+
     private(set) var materials: MeshMaterialContent?
     var bakedMesh: MeshWithBakedTextures? {
         guard case .baked(let value) = materials else { return nil }
