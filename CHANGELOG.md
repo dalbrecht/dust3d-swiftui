@@ -54,6 +54,8 @@
 
 - Clear missing cut-face links when opening the Editor with a Qt XML fragment.
 
+- Preserve existing recovery copies and receipts if preparing a private replacement fails.
+
 - Open requested documents and report the error when a startup Qt XML fragment cannot be pasted.
 
 - Clear missing cut-face links from Qt XML pasted in headless exports.
