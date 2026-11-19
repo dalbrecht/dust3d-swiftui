@@ -35,6 +35,8 @@
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
 - Review and save recent document, preview, and export outcomes from Window → Session Log.
+- Configure stitching closures, segments and loop caps across selected groups in one undoable edit.
+
 - Open the bundled upstream Dust3D acknowledgements from the Help menu.
 - Open the upstream Dust3D sponsorship page from the Help menu.
 
@@ -164,6 +166,8 @@
 
 - Edit or clear the Equipment Slot of the Model component that owns the current canvas selection.
 
+- Highlight affected edges and announce their count when Replay Steps shows a bone assignment.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
@@ -217,6 +221,8 @@
 - Add a source-ordered generated-joint hierarchy and read-only parent, endpoint, length, radius and signed-angle inspection to the experimental rest preview; preserve copied rig data if hierarchy preparation fails (#367).
 
 - Show the selected joint’s numerical weight range and influenced body-triangle count in the experimental rest preview, publishing these values with their matching mesh (#367).
+
+- Drop a local .ds3 file from Finder onto a Viewer window to open it.
 
 - Add an isolated experimental generated-rest rig preview with grounded skeleton/body geometry, weight highlighting, all-joint selection, and guarded camera controls; keep the production core pin unchanged (#367).
 
@@ -387,6 +393,8 @@
 
 - Add actor-owned stored-animation selection, fresh-ID creation/duplication and source-correlated list presentation, isolating optional metadata errors from graph editing; native UI/playback remain pending (#145).
 
+- Reject nonregular archive inputs before Viewer and Quick Look attempt to read them.
+
 - Preserve exact animation bytes and redo for restored parameter transactions (#145).
 
 - Add lossless stored-animation listing and create/rename/type/parameter/duplicate/delete commands with exact history and opaque-data preservation; native evaluation/playback remain quarantined (#145).
@@ -465,6 +473,8 @@
 - Add an explicit editor document-launch argument for unattended native QA through the standard document controller, with bounded paths and original open-error reporting.
 
 - Add source-baked materials to the shared Metal viewport, preserving packed source metadata, alpha modes, sidedness, seam-safe indexing and atlas sampling limits, with revision-safe uploads and geometry fallback.
+
+- Open a component group directly by double-clicking its row in the full tree.
 
 - Prepare source-aware bakes from one unchanged archive snapshot, with shared imported/procedural image budgets, contextual codec failures and background cancellation.
 
