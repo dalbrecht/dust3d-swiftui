@@ -381,6 +381,8 @@
 
 - Add an explicit-fixture QA launcher using process-local AppKit restoration isolation while preserving normal launches and saved state (#257).
 
+- Open the last eligible Dust3D document in a mixed Finder drop.
+
 - Recheck actual recovery storage before each write so failed shrinking replacements cannot fund growth beyond the retained-byte budget (#248).
 
 - Reject recovery capture after a failed replacement load, preserving its original error and the previous accepted document (#248).

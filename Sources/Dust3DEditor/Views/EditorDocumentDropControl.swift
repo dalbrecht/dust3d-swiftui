@@ -18,7 +18,7 @@ struct EditorDocumentDropControl: View {
                 RoundedRectangle(cornerRadius: 6).strokeBorder(.secondary, style: StrokeStyle(dash: [4, 3]))
             }
             .contentShape(Rectangle())
-            .help("Open one local Dust3D document. The current document stays open.")
+            .help("Open the last local .ds3 document in the drop. The current document stays open.")
             .dropDestination(for: URL.self) { urls, _ in
                 guard !isOpening, let drop = EditorDocumentDrop(urls: urls) else { return false }
                 isOpening = true
