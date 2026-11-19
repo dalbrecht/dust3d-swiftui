@@ -7,15 +7,15 @@ struct OriginHandle: View {
     let origin: NodePosition
     let projection: CanvasProjection
     var profileLease: UUID? = nil
-    var previewDrag: CanvasPreviewDrag.Begin? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var previewDrag: CanvasPreviewDrag.Begin? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
 
     var body: some View {
         let point = projection.point(for: origin)
-        let handlePrecisionKey = precisionKey ?? store.canvasPrecisionKeyHandler()
+        let handlePrecisionKey = precisionKey ?? store.canvasPrecisionKeyHandler(profileLease: profileLease)
         let direct = store.directOriginDragAction(projection: projection, lease: profileLease)
         let explicit = store.isMovingOrigin && !store.isWorking
         let enabled = explicit || direct != nil
