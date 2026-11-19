@@ -105,6 +105,12 @@ final class KeyboardShortcutHelpTests: XCTestCase {
         XCTAssertEqual(entry.scope, "Replay Steps window, after at least one step has completed")
     }
 
+    func testSubtractiveClickAndDragEachDisplayBothModifiers() throws {
+        let entry = try XCTUnwrap(KeyboardShortcutHelp.entries.first { $0.action == "Remove Graph Picks" })
+        XCTAssertEqual(entry.keys, "⌥⌘ click / ⌥⌘ drag")
+        XCTAssertEqual(KeyboardShortcutHelp.matching("⌥⌘ drag").map(\.action), [entry.action])
+    }
+
     func testActualCatalogMakesFocusedRadiusAndOriginNudgingDiscoverable() {
         let focused = KeyboardShortcutHelp.matching("Focused canvas")
         XCTAssertTrue(focused.contains { $0.action == "Decrease / Increase Radius" })
