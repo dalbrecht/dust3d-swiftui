@@ -101,10 +101,19 @@ enum KeyboardShortcutHelp {
         .init(
             action: "Commit Animation Draft", keys: "⌘Return",
             scope: "Animation authoring controls, when the draft is valid"),
+        canvasShapeEntry(.subdivision),
+        canvasShapeEntry(.roundedEnds),
+        canvasShapeEntry(.chamfer),
         .init(
             action: "Edit Owning Component Properties", keys: "Space",
             scope: "Focused canvas with selected or hovered graph owners"),
     ]
+
+    private static func canvasShapeEntry(_ shortcut: CanvasPartShapeShortcut) -> Entry {
+        Entry(
+            action: shortcut.title, keys: shortcut.keyLabel,
+            scope: "Focused canvas, for the hovered Model part or the sole selected Model part")
+    }
 
     static func matching(_ query: String, in entries: [Entry] = entries) -> [Entry] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
