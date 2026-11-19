@@ -1,33 +1,36 @@
 # Native editor delivery and acceptance status
 
-Snapshot: November 6, 2026. Scope remains the complete M0–M8 plan in
+Snapshot: November 19, 2026. Scope remains the complete M0–M8 plan in
 [editor-port-plan.md](editor-port-plan.md). This is an evidence checkpoint,
 not a Qt parity, Apple HIG or release signoff. The requirement-level distinctions
 are in [the acceptance matrix](parity-acceptance-matrix.md).
 
 ## Current baselines
 
-- Merged Apple baseline: `0243cfcaeb81a037225ebb39a473db003b30404e` (#382).
-  It includes canvas context editing, interrupted-marquee cleanup, scoped
-  isolation, global Hide All Parts and Command-Option subtractive selection. The earlier October 25 baseline and
-  pending-publication descriptions in this file are superseded.
-- Production core remains `48b0ce2d6d61cf58731bb0c3e14ef5965a686d68`.
-  Local core work is not a dependency upgrade or production adoption.
-- QA57 was compiled at `f99c87e70678b8dd21fcac1583c26ece5b043019`;
-  its complete tree equals the reviewed #382 head and merged baseline.
-  Full local validation passed 71 support tests and 1,906 XCTest tests
-  (two expected accessibility skips, zero failures), required coverage,
-  Qt-free linkage and signed bundle/archive rebuilding. All exact-head public
-  checks passed and automated review completed without unresolved findings.
-- QA57 and experimental .15 package checks passed. The latter compiled the
-  generated-rest configuration against unchanged local-only core and passed
-  16 focused pure/model/copied-store/pointer-state tests. This does not establish
-  whole-app local-core modeling, evaluated animation or physical acceptance.
-  Earlier QA56 counts (1,899 XCTest tests) describe #381, not this baseline.
-- Local QA tags and verified archives are development checkpoints. They are not
-  published GitHub Releases, notarized distribution or physical acceptance.
-  QA52 remains the designated default; no protected existing QA process was
-  controlled to establish this checkpoint.
+- Merged Apple baseline: `6e62919b` (#691), following the guarded animation
+  port (#689), preview-error announcement ownership fix (#690), and seven-family
+  native CPU coverage (#691). Local test-only candidate
+  `9da47e9e997a0f455e0dba4f61953762f2adcae3` adds selected-FBX and Metal coverage.
+- Production Core remains `48b0ce2d6d61cf58731bb0c3e14ef5965a686d68`.
+  Guarded evaluated animation uses explicit local Core integration and both
+  `MOTE3D_EXPERIMENTAL_FISH_IDLE` and `MOTE3D_EXPERIMENTAL_GENERATED_RIG`;
+  Core's optional SwiftPM product requires `DUST3D_EXPERIMENTAL_ANIMATION=1`.
+  Core #393/#394 merged at `0d93595fb359de8eecfd33046d1a7b09eafee46d`.
+  Core #395 (quiet directional one-shot metadata) is pending CI/review.
+- Signed local QA tag `mote3d-evaluated-animation-qa-20261119.1` records App
+  `02b6b8f51b555255543028e905540a8bfd5e50f9` and Core
+  `0d93595fb359de8eecfd33046d1a7b09eafee46d`. It passed 69 focused tests,
+  archive/signature verification, and headless seven-rig inventory plus DS3/OBJ/FBX
+  smoke. These headless exports do not establish evaluated animation acceptance.
+- Subsequent local tests, with product sources identical to that tag, passed seven
+  native CPU family tests, seven actual Metal tests (zero skips; strict silhouette,
+  source replacement and fixed-rest bounds), and seven selected-FBX/inspector tests.
+  The paired full App suite against the pending Core candidate is running; no
+  passing result is claimed here. See the [scoped animation evidence](parity-acceptance-matrix.md#guarded-evaluated-animation-evidence).
+- Local QA tags and verified archives are development checkpoints, not published
+  GitHub Releases, notarized distribution, default adoption or physical acceptance.
+  The user's Mac is locked and repository work was chosen; no protected QA process
+  was controlled. Physical UI and VoiceOver acceptance remain outstanding.
 
 ## Milestone evidence and gaps
 
@@ -38,9 +41,9 @@ are in [the acceptance matrix](parity-acceptance-matrix.md).
 | M2 — Canvas/editor | Graph creation/join/removal, explicit node/edge selection, transforms, front/side editing, reference composition, per-window history, captured context edits, global/scoped visibility and subtraction. See ADRs [0174](adr/0174-canvas-context-actions.md), [0175](adr/0175-canvas-hide-all.md) and [0176](adr/0176-subtractive-graph-selection.md). | Physical held-gesture cancellation, keyboard/VoiceOver, multi-window focus and native-created capsule/sword Qt round trips. |
 | M3 — Modeling | Hierarchy, ordering, batch mesh modifiers, deformations, cut profiles, stitching and wrapping have native commands/controls and scoped tests. See [controlled modifier acceptance](controlled-native-modifier-acceptance.md). Endpoint Shift-drag IK also has a native graph-editing counterpart. | Broad interacting topology/modifier numerical comparisons. Hollow #96 includes local work, but its implementation is not implied by the production pin or a visible stored field. Full #120 acceptance remains open. |
 | M4 — Materials/imports | Source-aware material/texture/import routes and rendering foundations, plus staged owned source-mip work. See [material evidence](imported-material-editor-verification.md) and [file preview evidence](mixed-file-preview-verification.md). | Complete UV/PBR/alpha/source-mip/export comparison and malformed-asset containment; local core contracts do not establish production adoption. #143 remains open. |
-| M5 — Rigging | Stored rig/eyelid intent, exact edge assignments, clear bone/chain, matching/unassigned selection, progress and hover are implemented. Experimental generated-rest preview has hierarchy, weight colors, joint inspection, picking and camera controls. See ADRs [0163](adr/0163-generated-rest-preview-surface.md), [0165](adr/0165-generated-joint-inspection.md), [0168](adr/0168-generated-rest-picking.md). | Experimental actual-rest work requires unpublished local core; production adoption, executed Qt rest/weight comparison, evaluated deformation and physical acceptance are unproven. Preserve Apple #199. Endpoint graph IK is distinct from complete skeletal pose/deformation acceptance. |
-| M6 — Animation/audio | Stored animation create/name/type/duplicate/delete and catalog-backed parameter authoring; pure elapsed-time sample projection. See [authoring ADR](adr/0119-catalog-backed-animation-authoring.md) and [timeline ADR](adr/0120-elapsed-animation-timeline.md). | Native evaluated frames, skinning/playback/scrubbing, synchronized procedural sound and WAV workflows. Metadata controls and a pure timeline do not supply these capabilities. Preserve core #95. #145 remains open. |
-| M7 — Export/batch | Captured, admitted OBJ/FBX geometry export routes and parent-owned publication coordination. Save remains distinct from export. | Complete textured/rigged/animated OBJ/GLB/FBX/WAV outputs, independent re-import, batch behavior and recoverable partial multi-file publication. No GLB/writer quarantine is lifted. #146 remains open. |
+| M5 — Rigging | Stored rig/eyelid intent, exact edge assignments, clear bone/chain, matching/unassigned selection, progress and hover are implemented. Experimental generated-rest preview has hierarchy, weight colors, joint inspection, picking and camera controls. See ADRs [0163](adr/0163-generated-rest-preview-surface.md), [0165](adr/0165-generated-joint-inspection.md), [0168](adr/0168-generated-rest-picking.md). | Guarded local Core supplies evaluated deformation with seven-family CPU/Metal evidence; production adoption, executed Qt rest/weight comparison and physical acceptance remain unproven. Preserve Apple #199. Endpoint graph IK is distinct from complete skeletal pose/deformation acceptance. |
+| M6 — Animation/audio | Stored animation authoring and pure timeline projection remain the production route. Guarded native evaluated frames, skinning, scrubbing/playback, procedural PCM and WAV/export coordination are implemented with scoped tests. See [authoring ADR](adr/0119-catalog-backed-animation-authoring.md) and [timeline ADR](adr/0120-elapsed-animation-timeline.md). | Default runtime adoption, independent Qt motion/audio corpus, physical synchronization/VoiceOver, complete one-shot/duration/frame-count boundaries and broad WAV workflows remain open. Preserve core #95. #145 remains open. |
+| M7 — Export/batch | Captured, admitted OBJ/FBX geometry export routes and parent-owned publication coordination. Guarded animated FBX selection has exact authored-stack tests. Save remains distinct from export. | Complete textured/rigged/animated OBJ/GLB/FBX/WAV outputs, independent re-import, batch behavior and recoverable partial multi-file publication. No GLB/writer quarantine is lifted. #146 remains open. |
 | M8 — Hardening/release | Measured Swift gates, Qt isolation, identities/resources, local ad-hoc signatures and exact archive verification; standard About/credits/help and native command foundations. | Physical keyboard/VoiceOver/HIG, GPU/OS/hardware/performance matrix, separate C++ coverage/sanitizers/fuzzing, strong worker containment/lifecycle evidence, signing/notarization, upgrade and distribution acceptance. Native PR CI does not imply legacy release CI succeeds. #147 remains open. |
 
 ## Next delivery gates
