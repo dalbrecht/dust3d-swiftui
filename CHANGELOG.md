@@ -138,6 +138,8 @@
 
 - Add new parts and paste components into the browsed group when placement is automatic.
 
+- Keep rig template and eyelid edits tied to the document displayed when the control was drawn.
+
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
 
 - Select edges without moving or selecting nodes while preparing a bone assignment.

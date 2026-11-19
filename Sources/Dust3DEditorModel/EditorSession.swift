@@ -207,6 +207,15 @@ public actor EditorSession {
         }
     }
 
+    package func editRigSettings(_ edit: RigSettingsEdit, target: RigSettingsTarget) throws -> EditorSnapshot {
+        try updateWithResult(checkCancellationBeforePublication: true) { state in
+            guard hasAcceptedSource, target.isCurrent(in: state.snapshot) else {
+                throw RigSettingsEditError.staleSource
+            }
+            try state.apply([edit.command])
+        }.snapshot
+    }
+
     public func select(_ id: String?) throws -> EditorSnapshot { try update { try $0.select(id) } }
 
     public func select(_ ids: Set<String>) throws -> EditorSnapshot { try update { try $0.select(ids) } }
