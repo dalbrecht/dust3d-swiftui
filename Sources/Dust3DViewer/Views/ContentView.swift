@@ -40,7 +40,7 @@ struct ContentView: View {
                     }
                     .id(store.meshRevision)
                     .accessibilityLabel("3D mesh preview")
-                    .accessibilityHint("Use the View menu to orbit, pan, zoom, or fit the model.")
+                    .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 } else {
                     ContentUnavailableView {
                         Label("Open a Dust3D model", systemImage: "cube.transparent")
