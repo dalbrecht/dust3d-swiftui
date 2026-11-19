@@ -10,11 +10,13 @@ struct ContentView: View {
     var body: some View {
         let cancelOperation = isImporterPresented ? nil : store.pendingCancellation
         let rendererAttempt = store.rendererAttemptID
+        let visibleError = store.errorMessage ?? store.rendererError
         VStack(spacing: 0) {
-            if let message = store.errorMessage ?? store.rendererError {
+            if let message = visibleError {
                 HStack(alignment: .top) {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     Text(message).textSelection(.enabled)
                     Spacer()
                     if store.errorMessage != nil {
@@ -121,6 +123,7 @@ struct ContentView: View {
                 .accessibilityIdentifier("material-source-notice")
             }
         }
+        .background(ViewerErrorAnnouncement(message: visibleError).frame(width: 0, height: 0))
         .frame(minWidth: 650, minHeight: 450)
         .navigationTitle(store.documentName)
         .toolbar {

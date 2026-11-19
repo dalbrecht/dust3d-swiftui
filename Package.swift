@@ -24,7 +24,7 @@ let package = Package(
             name: "Dust3DRendering", dependencies: ["Dust3DKit", "Dust3DDocument"], exclude: ["README.md"],
             resources: [
                 .copy("Shaders.metal"), .copy("ApplicationLicense.txt"), .copy("ApplicationContributors.txt"),
-                .copy("ApplicationSupporters.txt"),
+                .copy("ApplicationSupporters.txt"), .copy("ACKNOWLEDGEMENTS.html"),
             ]),
         .testTarget(
             name: "Dust3DRenderingTests", dependencies: ["Dust3DRendering", "Dust3DKit", "Dust3DDocument"]),
