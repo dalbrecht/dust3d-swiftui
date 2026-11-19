@@ -210,6 +210,16 @@ struct Dust3DEditorApp: App {
                 }
                 .keyboardShortcut("s", modifiers: [.control, .command])
                 .disabled(window == nil || navigate == nil || isSidebarPresented == nil || rigAssignmentFocus.hasSheet)
+                let ownsPreviewWindow: @MainActor () -> Bool = { [weak window] in
+                    guard let window, NSApp.keyWindow === window else { return false }
+                    return window.attachedSheet == nil && window.sheetParent == nil && NSApp.modalWindow == nil
+                }
+                let retryPreview = store?.previewRetryAction(ownsWindow: ownsPreviewWindow)
+                Button("Retry Preview") { retryPreview?() }
+                    .disabled(retryPreview == nil)
+                let retryMaterials = store?.materialRetryAction(ownsWindow: ownsPreviewWindow)
+                Button("Retry Materials") { retryMaterials?() }
+                    .disabled(retryMaterials == nil)
                 let allowsPreviewShortcuts = rigAssignmentFocus.allowsAssignment
                 #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
                     Picker(

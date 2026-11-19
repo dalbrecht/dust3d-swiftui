@@ -11,6 +11,27 @@ enum EditorInspectorSection: String, CaseIterable, Hashable {
     case animations = "Animations"
 }
 
+struct EditorPreviewFailureNotice: Equatable {
+    static let unavailableTitle = String(localized: "Preview unavailable")
+    let issue: String
+    let isUnavailable: Bool
+
+    init?(rendererError: String?, generationError: String?, hasMesh: Bool) {
+        guard let issue = rendererError ?? generationError else { return nil }
+        self.issue = issue
+        isUnavailable = rendererError != nil || !hasMesh
+    }
+
+    var staleMessage: String {
+        String(localized: "Preview out of date: \(issue)")
+    }
+
+    func announcement(isKeyWindow: Bool) -> String? {
+        guard isKeyWindow else { return nil }
+        return isUnavailable ? String(localized: "\(Self.unavailableTitle). \(issue)") : staleMessage
+    }
+}
+
 struct EditorInspectorPresentation {
     var isPresented = true
     var section = EditorInspectorSection.selection
@@ -633,6 +654,13 @@ struct EditorRootView: View {
             store.componentColorDraftPreviewMessage
             ?? (displayingDraft ? "Solid color draft · Apply to keep" : nil)
         let rendererAttempt = store.previewRendererAttemptID
+        let retryPreview = store.previewRetryAction()
+        let failureNotice =
+            displayingDraft
+            ? nil
+            : EditorPreviewFailureNotice(
+                rendererError: store.renderError, generationError: store.previewState.errorMessage,
+                hasMesh: store.mesh != nil)
         return VStack(spacing: 0) {
             HStack {
                 Text("Mesh preview").font(.headline)
@@ -643,16 +671,14 @@ struct EditorRootView: View {
                 }
             }.padding(12)
             Divider()
-            if !displayingDraft,
-                let error = store.renderError ?? (store.mesh == nil ? store.previewState.errorMessage : nil)
-            {
+            if let failureNotice, failureNotice.isUnavailable {
                 ContentUnavailableView {
-                    Label("Preview unavailable", systemImage: "cube.transparent")
+                    Label(EditorPreviewFailureNotice.unavailableTitle, systemImage: "cube.transparent")
                 } description: {
-                    Text(error)
+                    Text(failureNotice.issue)
                 } actions: {
-                    Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }
-                        .disabled(store.isGenerating)
+                    Button("Retry Preview") { retryPreview?() }
+                        .disabled(retryPreview == nil)
                 }
             } else if let mesh = draftMesh ?? store.mesh {
                 let materialRevision = store.materialViewportRevision
@@ -693,11 +719,12 @@ struct EditorRootView: View {
                         ProgressView("Updating materials…").controlSize(.small).padding(8)
                     }
                     if let issue = store.materialIssue {
+                        let retryMaterials = store.materialRetryAction()
                         VStack(alignment: .leading, spacing: 6) {
                             Label("Showing geometry without materials", systemImage: "exclamationmark.triangle")
                             Text(issue).textSelection(.enabled)
-                            Button("Retry Materials") { store.retryMaterials() }
-                                .disabled(store.isGenerating || store.isUpdatingMaterials || store.isWorking)
+                            Button("Retry Materials") { retryMaterials?() }
+                                .disabled(retryMaterials == nil)
                         }
                         .font(.caption).padding(8)
                     }
@@ -705,10 +732,10 @@ struct EditorRootView: View {
                         Label("Showing last valid mesh", systemImage: "exclamationmark.triangle")
                             .font(.caption).padding(8)
                     }
-                    if let error = store.previewState.errorMessage {
-                        Text("Preview out of date: \(error)").font(.caption).padding(8)
-                        Button("Retry Preview") { store.retryPreview(rendererAttemptID: rendererAttempt) }.padding(
-                            .bottom, 8)
+                    if let failureNotice {
+                        Text(failureNotice.staleMessage).font(.caption).padding(8)
+                        Button("Retry Preview") { retryPreview?() }
+                            .disabled(retryPreview == nil).padding(.bottom, 8)
                     }
                 }
                 .opacity(displayingDraft ? 0 : 1)
@@ -736,6 +763,11 @@ struct EditorRootView: View {
             if let issue = store.previewCacheStatistics?.cacheIssue {
                 Divider()
                 PreviewDiagnosticNotice(kind: .cache, message: issue.message)
+            }
+        }
+        .onChange(of: failureNotice) { _, notice in
+            if let announcement = notice?.announcement(isKeyWindow: exportDestinations.hasActiveDocumentWindow) {
+                AccessibilityNotification.Announcement(announcement).post()
             }
         }
     }

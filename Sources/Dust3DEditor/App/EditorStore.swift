@@ -1033,6 +1033,7 @@ final class EditorStore {
             materialWarning: materialState.isStale ? nil : materialState.value?.preparationWarning)
     }
     private var renderedMaterialRevision: Int?
+    private var materialAttemptID = UUID()
 
     func materialsRendered(revision: Int) {
         guard materialContent != nil, revision == materialViewportRevision else { return }
@@ -5021,6 +5022,27 @@ final class EditorStore {
         materialRenderError = nil
     }
 
+    private var materialRetrySource: EditorSnapshot? {
+        guard !isWorking, !isGenerating, !previewState.isStale, !isUpdatingMaterials,
+            mesh != nil, renderError == nil, materialIssue?.isEmpty == false
+        else { return nil }
+        return acceptedDocumentSource
+    }
+
+    func materialRetryAction(ownsWindow: @escaping @MainActor () -> Bool = { true }) -> (@MainActor () -> Void)? {
+        guard let source = materialRetrySource, ownsWindow() else { return nil }
+        let identity = source.documentIdentity
+        let revision = source.documentRevision
+        let attemptID = materialAttemptID
+        return { [weak self] in
+            guard let self, ownsWindow(), let current = self.materialRetrySource,
+                current.documentIdentity == identity, current.documentRevision == revision,
+                self.materialAttemptID == attemptID
+            else { return }
+            self.retryMaterials()
+        }
+    }
+
     func retryMaterials() {
         guard !stopped, !isWorking, !previewState.isGenerating, !previewState.isStale,
             mesh != nil, let snapshot
@@ -5033,6 +5055,7 @@ final class EditorStore {
         materialGeneration?.cancel()
         materialRenderError = nil
         let requestID = UUID()
+        materialAttemptID = requestID
         let scopeID = previewScopeID
         materialState.begin(requestID: requestID)
         materialGeneration = Task { [materialPreparation] in
@@ -5058,6 +5081,28 @@ final class EditorStore {
     private func resetPreviewRenderer() {
         previewRendererAttemptID = UUID()
         renderError = nil
+    }
+
+    private var previewRetrySource: EditorSnapshot? {
+        guard !isWorking, !isGenerating,
+            renderError != nil || previewState.errorMessage != nil
+        else { return nil }
+        return acceptedDocumentSource
+    }
+
+    func previewRetryAction(ownsWindow: @escaping @MainActor () -> Bool = { true }) -> (@MainActor () -> Void)? {
+        guard let source = previewRetrySource, ownsWindow() else { return nil }
+        let identity = source.documentIdentity
+        let revision = source.documentRevision
+        let attemptID = previewRendererAttemptID
+        let retriesRenderer = renderError != nil
+        return { [weak self] in
+            guard let self, ownsWindow(), let current = self.previewRetrySource,
+                current.documentIdentity == identity, current.documentRevision == revision,
+                (self.renderError != nil) == retriesRenderer
+            else { return }
+            self.retryPreview(rendererAttemptID: attemptID)
+        }
     }
 
     func retryPreview(rendererAttemptID: UUID? = nil) {

@@ -38,10 +38,22 @@ final class EditorMaterialPreviewTests: XCTestCase {
         XCTAssertFalse(store.canUndo)
         XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
         let previousCount = await service.count
-        store.retryMaterials()
+        var ownsWindow = true
+        let retry = try XCTUnwrap(store.materialRetryAction { ownsWindow })
+        ownsWindow = false
+        retry()
+        XCTAssertNil(store.materialRetryAction { ownsWindow })
+        XCTAssertFalse(store.isBakingMaterials)
+        ownsWindow = true
+        retry()
         await store.materialGeneration?.value
         let currentCount = await service.count
         XCTAssertEqual(currentCount, previousCount + 1)
+        XCTAssertNotNil(store.materialRetryAction())
+        retry()
+        XCTAssertFalse(store.isBakingMaterials)
+        let afterStaleRetry = await service.count
+        XCTAssertEqual(afterStaleRetry, currentCount)
         store.stop()
         XCTAssertNil(store.materialIssue)
         XCTAssertNil(store.bakedMesh)

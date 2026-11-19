@@ -822,6 +822,10 @@
 - Consume the Qt-free engine from a pinned external core revision and remove the duplicate Apple-side native adapter.
 
 - Add a Qt-free C++17 engine library and C bridge, with validated `.ds3` archive loading.
+- Announce Editor preview failures in the active document window for VoiceOver users.
+
+- Add Retry Preview to the Editor’s View menu for the current document.
+
 - Add a native SwiftUI/Metal macOS viewer with file opening, orbit/zoom, wireframe, and camera fitting.
 - Keep profile names readable in narrow inspectors.
 
