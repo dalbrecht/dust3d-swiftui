@@ -342,6 +342,8 @@
 - Add atomic Combine Mode and Normal Smoothing edits for multiple selected components, with explicit mixed values and one-step Undo.
 
 
+- Require two editable nodes for alignment to the selection center.
+
 - Select component graphs in the canvas from the sidebar context menu or by double-clicking a leaf row.
 
 - Select a whole part graph from its nodes, edges, or inspector and reveal the linked component in the sidebar. Reuse each rendered node’s validated owner for constant-time whole-part availability.
