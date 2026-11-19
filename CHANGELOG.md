@@ -371,6 +371,8 @@
 
 - Retarget copied wrapping body bindings to the copied body, preserving external references and opaque wrapping metadata.
 
+- Press M on the canvas to toggle X mirror on the owning Model part.
+
 - Add wrapping surface finish authoring for coat patterns, RGB ink, belly shading and generated cloth wrinkles, with cancellable drafts and one-step Undo.
 
 - Mark the common role of selected parts in the Part Role menu.

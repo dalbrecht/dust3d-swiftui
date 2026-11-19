@@ -3088,7 +3088,9 @@ final class EditorStore {
     func partMirrorAction(_ value: Bool, target: PartMirrorTarget) -> @MainActor () -> Void {
         { [weak self] in
             guard let self, self.canEditPartMirror(target) else { return }
-            self.perform(acceptCommittedCancellation: true) { try await $0.setPartXMirrored(value, target: target) }
+            self.perform(acceptCommittedCancellation: true, preservePartStateHover: true) {
+                try await $0.setPartXMirrored(value, target: target)
+            }
         }
     }
 
@@ -3316,6 +3318,7 @@ final class EditorStore {
     }
     private enum CanvasPartOperation {
         case state(PartStateProperty)
+        case mirror
         case shape(PartModifierProperty)
     }
 
@@ -3323,6 +3326,12 @@ final class EditorStore {
         let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
         guard let handler = canvasPartStateHandler(profileLease: lease) else { return nil }
         return { _ = handler.perform(.state(property), false) }
+    }
+
+    func canvasPartMirrorAction() -> (@MainActor () -> Void)? {
+        let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
+        guard let handler = canvasPartStateHandler(profileLease: lease), handler.canMirror else { return nil }
+        return { _ = handler.perform(.mirror, false) }
     }
 
     func canvasPartShapeAction(_ property: PartModifierProperty) -> (@MainActor () -> Void)? {
@@ -3404,6 +3413,7 @@ final class EditorStore {
             if input.opensComponentProperties { return openProperties?(input.isRepeat) ?? false }
             if input.selectsOwningComponent { return selectOwner?(input.isRepeat) ?? false }
             guard let handler else { return false }
+            if input.togglesPartMirror { return handler.perform(.mirror, input.isRepeat) }
             if let shape = input.partShapeShortcut { return handler.perform(.shape(shape.property), input.isRepeat) }
             guard let property = input.partStateProperty else { return false }
             return handler.perform(.state(property), input.isRepeat)
@@ -3416,7 +3426,7 @@ final class EditorStore {
     }
 
     private func canvasPartStateHandler(profileLease: UUID?) -> (
-        shapePart: DocumentPart?, perform: @MainActor (CanvasPartOperation, Bool) -> Bool
+        canMirror: Bool, shapePart: DocumentPart?, perform: @MainActor (CanvasPartOperation, Bool) -> Bool
     )? {
         guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
             let context = canvasRotationContext
@@ -3426,8 +3436,11 @@ final class EditorStore {
         let hoverEpoch = canvasPartStateHoverEpoch
         let layout = precisionLayoutEpoch
         let interaction = referenceColorInteractionEpoch
+        let mirrorTarget = PartMirrorTarget(canvasTarget: target)
+        let mirrorValue = target.part.xMirrored
         let shapeTarget = GraphPartShapeTarget(snapshot: snapshot, canvasTarget: target)
         return (
+            mirrorTarget != nil && mirrorValue != nil,
             shapeTarget?.part,
             { [weak self] operation, isRepeat in
                 guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
@@ -3443,6 +3456,9 @@ final class EditorStore {
                             try await $0.toggleCanvasPartState(property, target: target)
                         }
                     }
+                case .mirror:
+                    guard let mirrorTarget, let mirrorValue, canEditPartMirror(mirrorTarget) else { return false }
+                    if !isRepeat { partMirrorAction(!mirrorValue, target: mirrorTarget)() }
                 case .shape(let property):
                     guard let shapeTarget, let value = shapeTarget.part?.modifierValue(property),
                         canEditGraphPartShape(shapeTarget)
