@@ -312,6 +312,8 @@
 
 - Preview a new node and adjust its radius before placing it on the canvas in Add mode. Keep cancellation bound to its placement request, refit on selection exit, discard held presses across tool changes, and allow inward placement at document coordinate limits.
 
+- Keep Next Step available during Replay Steps playback.
+
 - Adjust selected node radii using canvas-focused keyboard input or the canvas wheel, with one-step Undo. Radius menu and inspector actions remain available independently of canvas focus.
 
 - Highlight the hovered node or edge in both canvas profiles, with node hits taking precedence over edges.
