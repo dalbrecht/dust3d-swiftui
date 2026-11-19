@@ -43,6 +43,98 @@ final class ViewerMaterialTests: XCTestCase {
         XCTAssertEqual(store.meshRevision, acceptedRevision + 1)
     }
 
+    func testViewerCameraAndWireframeCommandsStayWithTheirWindowAndAcceptedMesh() async throws {
+        let snapshot = try snapshot()
+        let first = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        let second = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        defer {
+            first.stop()
+            second.stop()
+        }
+
+        first.setWireframe(true)
+        first.fitModel()
+        first.moveCamera(.zoomIn)
+        XCTAssertFalse(first.isWireframe)
+        XCTAssertEqual(first.cameraState.revision, 0)
+
+        first.open(URL(fileURLWithPath: "/test/first.ds3"))
+        await first.loadTask?.value
+        second.open(URL(fileURLWithPath: "/test/second.ds3"))
+        await second.loadTask?.value
+        let camera = first.cameraState
+        first.setWireframe(true)
+        first.moveCamera(.zoomIn)
+        first.moveCamera(.zoomIn)
+        XCTAssertEqual(camera.revision, 2)
+        XCTAssertEqual(second.cameraState.revision, 0)
+        XCTAssertTrue(first.isWireframe)
+        XCTAssertFalse(second.isWireframe)
+        first.fitModel()
+        XCTAssertEqual(camera.revision, 3)
+        XCTAssertEqual(second.cameraState.revision, 0)
+
+        first.moveCamera(.zoomOut)
+        first.open(URL(fileURLWithPath: "/test/replacement.ds3"))
+        await first.loadTask?.value
+        XCTAssertFalse(first.cameraState === camera)
+        XCTAssertEqual(first.cameraState.revision, 0)
+        XCTAssertEqual(camera.revision, 4)
+        XCTAssertTrue(first.isWireframe)
+    }
+
+    func testWireframeBindingBelongsToTheWindowAndRequiresAnAcceptedMesh() async throws {
+        let snapshot = try snapshot()
+        let first = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        let second = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        defer { second.stop() }
+
+        let wireframe = first.wireframeBinding
+        wireframe.wrappedValue = true
+        XCTAssertFalse(first.isWireframe)
+
+        first.open(URL(fileURLWithPath: "/test/first.ds3"))
+        second.open(URL(fileURLWithPath: "/test/second.ds3"))
+        await first.loadTask?.value
+        await second.loadTask?.value
+
+        wireframe.wrappedValue = true
+        XCTAssertTrue(first.isWireframe)
+        XCTAssertFalse(second.wireframeBinding.wrappedValue)
+        wireframe.wrappedValue = false
+        XCTAssertFalse(first.isWireframe)
+
+        wireframe.wrappedValue = true
+        first.stop()
+        XCTAssertFalse(wireframe.wrappedValue)
+    }
+
+    func testAutomaticRotationBelongsToTheWindowAndRequiresAnAcceptedMesh() async throws {
+        let snapshot = try snapshot()
+        let first = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        let second = ViewerStore(service: SnapshotLoader(snapshot: snapshot))
+        defer { second.stop() }
+
+        first.setAutomaticallyRotates(true)
+        XCTAssertFalse(first.automaticallyRotates)
+
+        first.open(URL(fileURLWithPath: "/test/first.ds3"))
+        second.open(URL(fileURLWithPath: "/test/second.ds3"))
+        await first.loadTask?.value
+        await second.loadTask?.value
+        XCTAssertFalse(first.automaticallyRotates)
+
+        first.setAutomaticallyRotates(true)
+        XCTAssertTrue(first.automaticallyRotates)
+        XCTAssertFalse(second.automaticallyRotates)
+        first.setAutomaticallyRotates(false)
+        XCTAssertFalse(first.automaticallyRotates)
+
+        first.setAutomaticallyRotates(true)
+        first.stop()
+        XCTAssertFalse(first.automaticallyRotates)
+    }
+
     func testFinderDropOpensTheLastLocalDust3DFileInTheReceivingViewer() async throws {
         let snapshot = try snapshot()
         let loader = SuspendedSnapshotLoader()

@@ -112,8 +112,8 @@ struct ReferenceCompositionDrop {
     }
 
     func importDroppedSource(urls: [URL], profile: ReferenceProfile) -> Bool {
-        guard !stopped, urls.count == 1, let drop = ReferenceCompositionDrop(urls: urls) else { return false }
-        importSource(url: drop.front, profile: profile)
+        guard !stopped, let url = urls.first(where: ReferenceCompositionDrop.supports) else { return false }
+        importSource(url: url, profile: profile)
         return true
     }
 

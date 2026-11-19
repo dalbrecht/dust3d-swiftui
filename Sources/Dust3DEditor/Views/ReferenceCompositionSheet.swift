@@ -153,6 +153,7 @@ private struct ReferenceCropField: Hashable {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Button("Import \(profile.rawValue)…", action: importImage)
+                        .help("Choose an image or drop it onto this profile panel")
                     Button("Remove") { draft.remove(profile) }
                         .accessibilityLabel("Remove \(profile.rawValue) reference image")
                         .disabled(source == nil)
@@ -227,7 +228,11 @@ private struct ReferenceCropField: Hashable {
                     Button("Use Full Image") { draft.useFullImage(profile) }
                         .accessibilityLabel("Use full \(profile.rawValue) reference image")
                 } else {
-                    ContentUnavailableView("No \(profile.rawValue) source", systemImage: "photo").frame(height: 180)
+                    ContentUnavailableView(
+                        "No \(profile.rawValue) source", systemImage: "photo",
+                        description: Text("Drop an image here or use Import \(profile.rawValue).")
+                    )
+                    .frame(height: 180)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

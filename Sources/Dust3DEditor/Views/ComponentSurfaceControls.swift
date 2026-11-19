@@ -48,7 +48,7 @@ private struct SurfaceDetailEditor: View {
             }
             if details.pattern != ComponentSurfacePattern.none {
                 SurfaceInkControls(
-                    source: details.ink, canEdit: { store.canEditComponentSurface(target) },
+                    source: .uniform(details.ink), canEdit: { store.canEditComponentSurface(target) },
                     apply: store.componentSurfaceInkAction(target: target),
                     automatic: store.componentSurfaceAction(.ink(nil), target: target))
                 number(.patternScale, title: "Pattern size")
@@ -72,31 +72,41 @@ private struct SurfaceDetailEditor: View {
 }
 
 struct SurfaceInkControls: View {
-    let source: ComponentColorValue
+    let source: ComponentWrappingSelectionValue<ComponentColorValue>
+    let identifier: String
     let canEdit: @MainActor () -> Bool
     let apply: @MainActor (DocumentColor) -> Void
     let automatic: @MainActor () -> Void
     @State private var draft: SurfaceInkDraft
 
     init(
-        source: ComponentColorValue, draft: SurfaceInkDraft? = nil, canEdit: @escaping @MainActor () -> Bool,
+        source: ComponentWrappingSelectionValue<ComponentColorValue>, identifier: String = "component-surface-ink",
+        draft: SurfaceInkDraft? = nil, canEdit: @escaping @MainActor () -> Bool,
         apply: @escaping @MainActor (DocumentColor) -> Void, automatic: @escaping @MainActor () -> Void
     ) {
         self.source = source
+        self.identifier = identifier
         self.canEdit = canEdit
         self.apply = apply
         self.automatic = automatic
-        _draft = State(initialValue: draft ?? SurfaceInkDraft(source: source))
+        _draft = State(initialValue: draft ?? SurfaceInkDraft(selection: source))
     }
     var body: some View {
         let choose = draft.choosingAction(canEdit: canEdit)
         let edit = draft.editingAction(canEdit: canEdit)
         VStack(alignment: .leading, spacing: 6) {
             Text("Pattern ink").font(.callout)
-            if case .unsupported(let text) = source {
+            switch source {
+            case .mixed:
+                Text("Selected groups have different inks. Choose a replacement to apply to all.").font(.caption)
+            case .unsupported:
+                Text("Unsupported source ink. Choose a replacement.").font(.caption)
+            case .uniform(.unsupported(let text)):
                 Text("Unsupported source ink: " + ComponentColorDraft.sourceSummary(text)).font(.caption)
-            } else if source == .unset {
+            case .uniform(.unset):
                 Text("Automatic: a dark tone of the base color.").font(.caption)
+            case .uniform(.value):
+                EmptyView()
             }
             ColorPicker(
                 "Ink color draft",
@@ -107,9 +117,9 @@ struct SurfaceInkControls: View {
                     set: { choose(DocumentColorPresentation.value(from: $0)) }), supportsOpacity: false
             )
             .id(draft.generation)
-            .accessibilityIdentifier("component-surface-ink-picker")
+            .accessibilityIdentifier(identifier + "-picker")
             TextField("Ink hex RGB", text: Binding(get: { draft.color.text }, set: { value in edit(value) }))
-                .accessibilityIdentifier("component-surface-ink-hex")
+                .accessibilityIdentifier(identifier + "-hex")
                 .focusedValue(\.editorTextEditing, true)
                 .onSubmit { commit() }
                 .onExitCommand { cancel() }
@@ -123,11 +133,11 @@ struct SurfaceInkControls: View {
                 Spacer()
                 Button("Apply Ink", action: commit).disabled(!draft.canApply)
             }
-            Button("Automatic Ink", action: automatic).disabled(source == .unset)
+            Button("Automatic Ink", action: automatic).disabled(source == .uniform(.unset))
         }
-        .onChange(of: source) { _, value in draft.cancel(source: value) }
+        .onChange(of: source) { _, value in draft.cancel(selection: value) }
     }
-    private func cancel() { draft.cancel(source: source) }
+    private func cancel() { draft.cancel(selection: source) }
     private func commit() {
         guard canEdit(), draft.canApply, let color = draft.color.parsedColor else { return }
         apply(color)
