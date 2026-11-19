@@ -452,6 +452,8 @@
 
 - Add source-baked materials to the shared Metal viewport, preserving packed source metadata, alpha modes, sidedness, seam-safe indexing and atlas sampling limits, with revision-safe uploads and geometry fallback.
 
+- Open a component group directly by double-clicking its row in the full tree.
+
 - Prepare source-aware bakes from one unchanged archive snapshot, with shared imported/procedural image budgets, contextual codec failures and background cancellation.
 
 - Add owned source-aware texture baking to the Swift SDK, with per-triangle material policy, bounded decoded inputs and output copies, cancellable background generation, and the core's atlas sampling LOD restriction.
