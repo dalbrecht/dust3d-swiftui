@@ -9,6 +9,7 @@ struct Dust3DViewerApp: App {
     @NSApplicationDelegateAdaptor(ViewerAppDelegate.self) private var appDelegate
     @FocusedValue(\.openDocument) private var openDocument
     @FocusedValue(\.viewerPreviewFocus) private var previewFocus
+    @FocusedValue(\.viewerStore) private var store
 
     private var applicationName: String {
         BuildIdentityPresentation.applicationName(
@@ -24,6 +25,14 @@ struct Dust3DViewerApp: App {
             CommandMenu("View") {
                 Button("Focus 3D Preview") { previewFocus?.moveFocus(in: NSApp.keyWindow) }
                     .disabled(previewFocus == nil)
+                if let store {
+                    Toggle("Model Colors", isOn: store.modelColorsBinding)
+                        .disabled(store.mesh == nil)
+                } else {
+                    Toggle("Model Colors", isOn: .constant(true))
+                        .disabled(true)
+                }
+
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)") {
@@ -37,7 +46,7 @@ struct Dust3DViewerApp: App {
                     Button(link.title) { link.open() }
                 }
             }
-            CommandGroup(replacing: .newItem) {
+            CommandGroup(after: .newItem) {
                 Button("Open…") {
                     openDocument?()
                 }
@@ -64,6 +73,16 @@ final class ViewerAppDelegate: NSObject, NSApplicationDelegate {
 
 }
 
+extension ViewerStore {
+    var modelColorsBinding: Binding<Bool> {
+        Binding(get: { self.showsModelColors }, set: { self.setModelColors($0) })
+    }
+}
+
+private struct ViewerStoreKey: FocusedValueKey {
+    typealias Value = ViewerStore
+}
+
 private struct OpenDocumentKey: FocusedValueKey {
     typealias Value = () -> Void
 }
@@ -76,6 +95,12 @@ extension FocusedValues {
     var viewerPreviewFocus: MeshViewportFocus? {
         get { self[ViewerPreviewFocusKey.self] }
         set { self[ViewerPreviewFocusKey.self] = newValue }
+    }
+
+    var viewerStore: ViewerStore? {
+        get { self[ViewerStoreKey.self] }
+        set { self[ViewerStoreKey.self] = newValue }
+
     }
 
     var openDocument: (() -> Void)? {

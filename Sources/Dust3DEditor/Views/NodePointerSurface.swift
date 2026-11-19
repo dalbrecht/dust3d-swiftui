@@ -23,6 +23,7 @@ struct NodePointerSurface: NSViewRepresentable {
     var beginShiftDrag: ((UUID) -> Void)? = nil
     var admitsPrimaryPress: ((Int) -> Bool)? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var retainVisibilityFocus: ((CanvasProfileFocusRequest) -> Void)? = nil
     var addModeKey: CanvasAddModeKey.Handler? = nil
     var previewDrag: CanvasPreviewDrag.Begin? = nil
 
@@ -32,6 +33,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.enabled = false
         view.precisionKey = nil
         view.switchProfile = nil
+        view.retainVisibilityFocus = nil
         view.addModeKey = nil
     }
     func updateNSView(_ view: NodePointerView, context: Context) {
@@ -55,6 +57,7 @@ struct NodePointerSurface: NSViewRepresentable {
         view.clickCancel = clickCancel
         view.admitsPrimaryPress = admitsPrimaryPress
         view.switchProfile = switchProfile
+        view.retainVisibilityFocus = retainVisibilityFocus
         view.addModeKey = addModeKey
         view.beginPreviewDrag = previewDrag
     }
@@ -81,6 +84,7 @@ final class NodePointerView: CanvasCameraPointerView {
     var clickCancel: ((UUID) -> Void)?
     var admitsPrimaryPress: ((Int) -> Bool)?
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)?
+    var retainVisibilityFocus: ((CanvasProfileFocusRequest) -> Void)?
     var addModeKey: CanvasAddModeKey.Handler?
     private var activation: (token: UUID, origin: NSPoint, isDragging: Bool, mode: GraphSelectionMode)?
     private weak var previousResponder: NSResponder?
@@ -259,6 +263,9 @@ final class NodePointerView: CanvasCameraPointerView {
                 || CanvasAddModeKey.route(event, in: window, handle: addModeKey)
                 || (input.permitsDispatch(in: window) && precisionKey?(input) == true)
             {
+                if input.visibilityShortcut != nil, !input.isRepeat {
+                    retainVisibilityFocus?(CanvasProfileFocusRequest(window: window))
+                }
                 return
             }
         }

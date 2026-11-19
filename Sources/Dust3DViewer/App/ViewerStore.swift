@@ -7,6 +7,13 @@ import Observation
 @Observable
 final class ViewerStore {
     private(set) var mesh: IndexedMesh?
+    private(set) var showsModelColors = true
+
+    func setModelColors(_ visible: Bool) {
+        guard mesh != nil else { return }
+        showsModelColors = visible
+    }
+
     private(set) var materials: MeshMaterialContent?
     var bakedMesh: MeshWithBakedTextures? {
         guard case .baked(let value) = materials else { return nil }
@@ -75,9 +82,22 @@ final class ViewerStore {
             importedLoader: importedMaterialLoader, proceduralBaker: materialBaker, sourceBaker: sourceMaterialBaker)
     }
 
+    func openDroppedDocuments(_ urls: [URL]) -> Bool {
+        guard
+            let url = urls.last(where: { url in
+                let host = url.host?.lowercased()
+                let path = url.path(percentEncoded: false)
+                return url.isFileURL && !url.hasDirectoryPath && (host == nil || host == "" || host == "localhost")
+                    && url.query == nil && url.fragment == nil && path.hasPrefix("/")
+                    && path.utf8.count <= 4096 && !path.utf8.contains(0) && url.pathExtension.lowercased() == "ds3"
+            })
+        else { return false }
+        open(url)
+        return true
+    }
+
     func open(_ url: URL) {
         loadTask?.cancel()
-        clearMaterials()
         revision += 1
         let requestedRevision = revision
         isLoading = true
@@ -106,19 +126,21 @@ final class ViewerStore {
         guard !isLoading, mesh != nil, let data = archiveData else { return }
         clearMaterials()
         let requestID = materialRequestID
-        let documentRevision = revision
+        let acceptedMeshRevision = meshRevision
         isBakingMaterials = true
         materialTask = Task { [weak self, materialPreparation] in
             do {
                 let prepared = try await materialPreparation.load(data: data, options: .init())
                 try Task.checkCancellation()
-                guard let self, self.revision == documentRevision, self.materialRequestID == requestID else { return }
+                guard let self, self.meshRevision == acceptedMeshRevision, self.materialRequestID == requestID else {
+                    return
+                }
                 self.materials = prepared
                 self.acceptedMaterialWarning = prepared.preparationWarning
                 self.materialRevision += 1
                 self.isBakingMaterials = false
             } catch {
-                guard !Task.isCancelled, let self, self.revision == documentRevision,
+                guard !Task.isCancelled, let self, self.meshRevision == acceptedMeshRevision,
                     self.materialRequestID == requestID
                 else { return }
                 self.materialFailed(error.localizedDescription)

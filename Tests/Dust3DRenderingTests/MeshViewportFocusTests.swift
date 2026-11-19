@@ -10,6 +10,28 @@ final class MeshViewportFocusTests: XCTestCase {
         override var acceptsFirstResponder: Bool { canFocus }
     }
 
+    func testHostFocusFollowsOnlyTheCurrentVisibleViewport() {
+        let focus = MeshViewportFocus()
+        let window = NSWindow()
+        let otherWindow = NSWindow()
+        let viewport = ResponderView()
+        let otherViewport = ResponderView()
+        window.contentView?.addSubview(viewport)
+        otherWindow.contentView?.addSubview(otherViewport)
+        XCTAssertTrue(otherWindow.makeFirstResponder(otherViewport))
+
+        XCTAssertFalse(focus.moveFocusInHostWindow())
+        focus.bind(viewport)
+        XCTAssertTrue(focus.moveFocusInHostWindow())
+        XCTAssertTrue(window.firstResponder === viewport)
+        XCTAssertTrue(otherWindow.firstResponder === otherViewport)
+
+        viewport.isHidden = true
+        XCTAssertFalse(focus.moveFocusInHostWindow())
+        focus.unbind(viewport)
+        XCTAssertFalse(focus.moveFocusInHostWindow())
+    }
+
     func testFocusIsScopedToTheAttachedWindowAndRetiresOnlyTheMatchingView() {
         let focus = MeshViewportFocus()
         let window = NSWindow()

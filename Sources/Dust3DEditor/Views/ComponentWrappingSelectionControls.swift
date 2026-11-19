@@ -80,20 +80,10 @@ private struct MultiWrappingEditor: View {
             .accessibilityLabel("Selected groups wrapping surface pattern")
             .accessibilityValue(title(presentation.pattern) { $0 == .none ? "None" : $0.rawValue })
             .accessibilityIdentifier("multi-wrap-pattern")
-            number(
-                "Pattern ink #RRGGBB",
-                source: title(presentation.ink) { value in
-                    switch value {
-                    case .unset: return "Automatic"
-                    case .value(let color): return color.archiveValue
-                    case .unsupported: return "Unsupported source"
-                    }
-                }, identifier: "ink", help: "Opaque RGB. Cancel Draft leaves every source ink unchanged."
-            ) { text in
-                guard let color = DocumentColor(archiveValue: text), color.alpha == 255 else { return nil }
-                return .surfaceInk(color)
-            }
-            Button("Automatic Ink", action: action(.surfaceInk(nil)))
+            SurfaceInkControls(
+                source: presentation.ink, identifier: "multi-wrap-ink",
+                canEdit: { store.canEditComponentWrappingSelection(target) },
+                apply: { action(.surfaceInk($0))() }, automatic: action(.surfaceInk(nil)))
             ForEach(ComponentSurfaceScalar.allCases, id: \.self) { property in
                 number(
                     surfaceTitle(property), source: title(presentation.surfaceScalar(property), render: { String($0) }),

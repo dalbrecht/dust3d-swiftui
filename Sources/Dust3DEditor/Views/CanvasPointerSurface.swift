@@ -29,6 +29,14 @@ struct CanvasWheelInput {
     }
 }
 
+/// Captured on the original press. A click never starts this gesture.
+struct CanvasEdgeStrokeGesture {
+    let begin: @MainActor () -> Void
+    let update: @MainActor (CanvasPoint) -> Void
+    let finish: @MainActor (CanvasPoint) -> Void
+    let cancel: @MainActor () -> Void
+}
+
 /// The local canvas responder owns background pointer input; node responders forward only their own wheel events.
 struct CanvasPointerSurface: NSViewRepresentable {
     let enabled: Bool
@@ -45,6 +53,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
     var lassoSelection: ((GraphSelectionMode) -> CanvasLassoInteraction?)? = nil
     var lassoPreview: (CanvasLassoSample?) -> Void = { _ in }
     var lassoFinish: (CanvasLassoSample) -> Void = { _ in }
+    var edgeStrokeGesture: ((CanvasPoint) -> CanvasEdgeStrokeGesture?)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var tracksHoverWhileDisabled = false
     var isAddingNodes = false
@@ -84,6 +93,7 @@ struct CanvasPointerSurface: NSViewRepresentable {
         view.unhandledWheel = unhandledWheel
         view.radiusKey = radiusKey
         view.doubleClick = doubleClick
+        view.edgeStrokeGesture = edgeStrokeGesture
         if view.lassoCanvas != lassoCanvas { view.cancelActivation() }
         view.lassoCanvas = lassoCanvas
         view.lassoSelection = lassoSelection
@@ -125,6 +135,7 @@ final class CanvasPointerView: CanvasCameraPointerView {
     var lassoSelection: ((GraphSelectionMode) -> CanvasLassoInteraction?)? = nil
     var lassoPreview: (CanvasLassoSample?) -> Void = { _ in }
     var lassoFinish: (CanvasLassoSample) -> Void = { _ in }
+    var edgeStrokeGesture: ((CanvasPoint) -> CanvasEdgeStrokeGesture?)? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var isAddingNodes = false
     var addPress: (CanvasPoint) -> Void = { _ in }
@@ -136,6 +147,8 @@ final class CanvasPointerView: CanvasCameraPointerView {
     weak var focusControl: CanvasProfileFocusControl?
     var addModeKey: CanvasAddModeKey.Handler? = nil
     private var start: (point: CanvasPoint, mode: GraphSelectionMode)?
+    private var edgeStroke: CanvasEdgeStrokeGesture?
+    private var isDraggingEdge = false
     private var lassoPreviewGeneration = UUID()
     private var lasso: (path: CanvasLasso, interaction: CanvasLassoInteraction)?
     private var tracking: NSTrackingArea?
@@ -220,6 +233,14 @@ final class CanvasPointerView: CanvasCameraPointerView {
             return
         }
         let origin = point(event)
+        cancelEdgeStroke(deferred: false)
+        start = (origin, mode)
+        let selectionModifiers: NSEvent.ModifierFlags = [.shift, .command, .option, .control]
+        if event.modifierFlags.intersection(selectionModifiers).isEmpty,
+            lassoCanvas == nil, window?.firstResponder === self, window?.isKeyWindow == true
+        {
+            edgeStroke = edgeStrokeGesture?(origin)
+        }
         lasso = nil
         if lassoCanvas != nil {
             guard let interaction = lassoSelection?(mode) else { return }
@@ -238,8 +259,13 @@ final class CanvasPointerView: CanvasCameraPointerView {
         }
         guard enabled, let start else { return }
         let end = point(event)
-        let beyondThreshold = hypot(end.x - start.point.x, end.y - start.point.y) >= 3
-        if lasso != nil {
+        let translation = CanvasPoint(x: end.x - start.point.x, y: end.y - start.point.y)
+        let beyondThreshold = hypot(translation.x, translation.y) >= 3
+        if let edgeStroke {
+            guard isDraggingEdge || beyondThreshold else { return }
+            beginEdgeStrokeIfNeeded(edgeStroke)
+            edgeStroke.update(translation)
+        } else if lasso != nil {
             lasso?.path.append(end)
             if activity.hasMarquee || beyondThreshold {
                 if !activity.hasMarquee { lassoPreviewGeneration = UUID() }
@@ -262,27 +288,58 @@ final class CanvasPointerView: CanvasCameraPointerView {
         let lasso = self.lasso
         self.lasso = nil
         let release = activity.finishMarquee()
+        release.notify(rectangle: rectangle, hover: hover)
         guard enabled else {
-            release.notify(rectangle: rectangle, hover: hover)
+            cancelEdgeStroke(deferred: false)
             return
         }
         let end = point(event)
-        let beyondThreshold = hypot(end.x - start.point.x, end.y - start.point.y) >= 3
-        if var active = lasso, release.clearsMarquee || beyondThreshold {
+        let translation = CanvasPoint(x: end.x - start.point.x, y: end.y - start.point.y)
+        let beyondThreshold = hypot(translation.x, translation.y) >= 3
+        if edgeStroke == nil, var active = lasso, release.clearsMarquee || beyondThreshold {
             active.path.append(end)
             lassoFinish(.init(path: active.path, interaction: active.interaction))
             return
         }
-        release.notify(rectangle: rectangle, hover: hover)
-        if beyondThreshold {
-            select(.init(from: start.point, to: end), start.mode)
+        if let edgeStroke, isDraggingEdge || beyondThreshold {
+            beginEdgeStrokeIfNeeded(edgeStroke)
+            self.edgeStroke = nil
+            isDraggingEdge = false
+            edgeStroke.finish(translation)
         } else {
-            tap(end, start.mode)
+            cancelEdgeStroke(deferred: false)
+            if beyondThreshold {
+                select(.init(from: start.point, to: end), start.mode)
+            } else {
+                tap(end, start.mode)
+            }
+        }
+    }
+
+    private func beginEdgeStrokeIfNeeded(_ gesture: CanvasEdgeStrokeGesture) {
+        guard !isDraggingEdge else { return }
+        isDraggingEdge = true
+        gesture.begin()
+    }
+
+    private func cancelEdgeStroke(deferred: Bool) {
+        let cancel = isDraggingEdge ? edgeStroke?.cancel : nil
+        edgeStroke = nil
+        isDraggingEdge = false
+        guard let cancel else { return }
+        if deferred {
+            Task { @MainActor in cancel() }
+        } else {
+            cancel()
         }
     }
 
     override func resignFirstResponder() -> Bool {
         let accepted = super.resignFirstResponder()
+        if accepted, edgeStroke != nil {
+            start = nil
+            cancelEdgeStroke(deferred: true)
+        }
         if accepted, lasso != nil {
             start = nil
             lasso = nil
@@ -321,6 +378,7 @@ final class CanvasPointerView: CanvasCameraPointerView {
         cancelPreviewDrag()
         start = nil
         let hadHover = activity.hasHover
+        cancelEdgeStroke(deferred: true)
         lasso = nil
         activity = CanvasPointerActivity()
         activity.hasHover = preservingHover && hadHover
@@ -328,6 +386,7 @@ final class CanvasPointerView: CanvasCameraPointerView {
     func invalidate() {
         cancelPreviewDrag()
         start = nil
+        cancelEdgeStroke(deferred: false)
         lasso = nil
         let cancellation = activity.clear()
         cancellation.notify(rectangle: rectangle, hover: hover)

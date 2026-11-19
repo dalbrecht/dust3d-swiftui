@@ -1,3 +1,4 @@
+import Darwin
 import Dust3DEditorModel
 import Foundation
 import os
@@ -19,12 +20,14 @@ actor EditorRecoveryCopyFileService: EditorRecoveryCopyWriting {
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support"))
             .appendingPathComponent(identifier).appendingPathComponent("RecoveryCopies", isDirectory: true)
         maximumBytes = RecoveryCopyPlan.maximumRetainedBytes
-        writeData = { try $0.write(to: $1, options: .atomic) }
+        writeData = { try Self.publishPrivately($0, to: $1) }
     }
 
     init(
         directory: URL, maximumBytes: Int = RecoveryCopyPlan.maximumRetainedBytes,
-        writeData: @escaping @Sendable (Data, URL) throws -> Void = { try $0.write(to: $1, options: .atomic) }
+        writeData: @escaping @Sendable (Data, URL) throws -> Void = {
+            try EditorRecoveryCopyFileService.publishPrivately($0, to: $1)
+        }
     ) {
         self.directory = directory
         isSupportedIdentity = true
@@ -60,7 +63,6 @@ actor EditorRecoveryCopyFileService: EditorRecoveryCopyWriting {
                 _ = try RecoveryCopyPlan(requests: [request], inventory: inventory(), maximumBytes: maximumBytes)
                 let destination = directory.appendingPathComponent(request.filename)
                 try writeData(snapshot.document.encoded(), destination)
-                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: destination.path)
                 report.copied.append(request)
             } catch {
                 report.failures.append(.init(documentID: request.documentID, cause: error))
@@ -71,11 +73,36 @@ actor EditorRecoveryCopyFileService: EditorRecoveryCopyWriting {
             guard data.count <= Self.maximumReceiptBytes else { throw RecoveryCopyPlanError.storageLimitExceeded }
             let destination = directory.appendingPathComponent(Self.receiptName)
             try writeData(data, destination)
-            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: destination.path)
         } catch {
             report.receiptError = error
         }
         return report
+    }
+
+    /// Stage a new private inode beside its destination and make rename the final fallible operation.
+    static func publishPrivately(
+        _ data: Data, to destination: URL, beforeSettingMode: ((Int32) throws -> Void)? = nil
+    ) throws {
+        let stage = destination.deletingLastPathComponent().appendingPathComponent(".recovery-\(UUID().uuidString)")
+        let descriptor = Darwin.open(stage.path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
+        guard descriptor >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
+        var published = false
+        defer {
+            if !published { _ = Darwin.unlink(stage.path) }
+        }
+
+        let file = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        try beforeSettingMode?(descriptor)
+        // A restrictive process umask may have removed owner permissions at creation.
+        guard Darwin.fchmod(descriptor, 0o600) == 0 else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+        try file.write(contentsOf: data)
+        try file.close()
+        guard Darwin.rename(stage.path, destination.path) == 0 else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+        published = true
     }
 
     private func prepareDirectory() throws {

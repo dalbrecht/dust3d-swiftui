@@ -130,6 +130,8 @@ public enum DocumentCommand: Sendable {
     case setPartName(id: String, name: String)
     /// Rename one component independently of its linked part; empty input removes its name.
     case setComponentName(id: String, name: String)
+    /// Edit the base of an exact Model component name without rewriting its recognized equipment suffix.
+    case setComponentBaseNamePreservingEquipmentSlot(id: String, name: String)
     /// Replace the final equipment suffix on a linked Model component. Blank input removes it.
     /// The exact component ID selects the owner; the trimmed slot is stored as entered, for example `armor/2`.
     case setComponentEquipmentSlot(id: String, slot: String)
@@ -206,6 +208,8 @@ public enum DocumentCommand: Sendable {
     /// Set target segments in 0...100; zero means automatic. Throws `invalidComponentTargetSegments` or `missingComponent`.
     /// Example: `.setComponentTargetSegments(id: id, segments: 12)`.
     case setComponentTargetSegments(id: String, segments: Int)
+    /// Apply one stitching field atomically to exact eligible groups.
+    case editComponentStitchingBatch(ids: [String], edit: ComponentStitchingEdit)
     /// Move a component within its current siblings, preserving its entire subtree and all assets.
     case placeComponents(ids: [String], placement: ComponentDropPlacement)
     case reorderComponent(id: String, direction: ComponentOrderMove)
@@ -316,6 +320,7 @@ public struct DocumentNode: Identifiable, Equatable, Sendable {
     public let isVisible: Bool
     public let isEditable: Bool
 
+    package let cutFace: CutFaceSelection?
     fileprivate let deformation: NodeDeformation
 
     /// The saved taper scale, 1 when absent or nil when the stored value is unsupported.
@@ -870,6 +875,10 @@ public struct Dust3DDocument: Sendable {
         case .setComponentName(let id, let name):
             guard try ComponentHierarchy.rename(model, id: id, name: name) else { return self }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .setComponentBaseNamePreservingEquipmentSlot(let id, let name):
+            guard try ComponentHierarchy.renameEquipmentBase(model, parts: contents.parts, id: id, name: name)
+            else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartHollowThickness(let id, let thickness):
             guard thickness.isFinite, (0...1).contains(thickness) else {
                 throw DocumentError.invalidPartHollowThickness
@@ -946,6 +955,11 @@ public struct Dust3DDocument: Sendable {
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setComponentTargetSegments(let id, let segments):
             guard try ComponentStitching.setSegments(model, id: id, segments: segments) else { return self }
+            return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
+        case .editComponentStitchingBatch(let ids, let edit):
+            guard try ComponentStitching.setBatch(model, parts: contents.parts, ids: ids, edit: edit) else {
+                return self
+            }
             return try replacingModel(model.xmlData(options: [.nodePreserveAll]))
         case .setPartFillLoopInterior(let id, let value):
             guard try PartLoopInterior.set(model, parts: contents.parts, id: id, value: value) else { return self }
@@ -1638,10 +1652,25 @@ public struct Dust3DDocument: Sendable {
     /// Copy selected graph objects and their linked-profile dependencies into a bounded fragment.
     /// Unknown attached fields and all archive assets are retained; canvas-global objects are excluded.
     public func copyingNodes(_ ids: Set<String>) throws -> NodeClipboard {
+        try NodeClipboard(document: replacingModel(selectedGraphXML(ids)), selectedNodeIDs: ids)
+    }
+
+    /// Copy the selected graph and linked profiles as bounded Qt canvas XML.
+    /// This text can carry inherited junctions and omits archive assets.
+    /// - Parameter ids: The exact selected node identities.
+    /// - Returns: UTF-8 canvas XML preserving directed edges and attached attributes.
+    /// - Throws: A document error if the selection cannot be represented as valid clipboard XML.
+    public func copyingNodesAsQtXML(_ ids: Set<String>) throws -> Data {
+        let xml = try selectedGraphXML(ids)
+        let fragment = try Dust3DDocument(snapshotXML: xml)
+        _ = try NodeClipboard.validate(fragment, selectedNodeIDs: ids, allowsJunctions: true)
+        return xml
+    }
+
+    private func selectedGraphXML(_ ids: Set<String>) throws -> Data {
         let model = try Self.xml(modelXML, root: "canvas")
         try NodeClipboardMutation.extract(ids, model: model, contents: editorContents())
-        return try NodeClipboard(
-            document: replacingModel(model.xmlData(options: [.nodePreserveAll])), selectedNodeIDs: ids)
+        return model.xmlData(options: [.nodePreserveAll])
     }
 
     private func mergingAssets(
@@ -1789,7 +1818,8 @@ public struct Dust3DDocument: Sendable {
             return DocumentNode(
                 id: id, title: name.isEmpty ? "Node \(index + 1)" : name, partID: partID,
                 value: try Self.decodeNode(node), isVisible: part?.isEditVisible ?? true,
-                isEditable: part?.isEditable ?? true, deformation: NodeDeformation(node))
+                isEditable: part?.isEditable ?? true, cutFace: PartCutFace.selection(node),
+                deformation: NodeDeformation(node))
         }
         let ids = Set(nodes.map(\.id))
         var edgeIDs = Set<String>()

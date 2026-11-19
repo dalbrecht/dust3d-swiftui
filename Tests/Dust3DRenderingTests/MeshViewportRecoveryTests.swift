@@ -6,6 +6,17 @@ import XCTest
 
 @MainActor
 final class MeshViewportRecoveryTests: XCTestCase {
+    func testNativePreviewHelpExplainsKeysOnlyWhileCameraInputIsAvailable() {
+        let view = InteractiveMeshView(frame: .zero, device: nil)
+        XCTAssertEqual(view.accessibilityHelp(), "Use the arrow keys to orbit and F to reset the camera.")
+        view.cameraInteractionAllowed = { false }
+        XCTAssertNil(view.accessibilityHelp())
+
+        view.setAccessibilityHelp("Use the View menu to move the camera.")
+        view.cameraInteractionAllowed = { true }
+        XCTAssertEqual(view.accessibilityHelp(), "Use the View menu to move the camera.")
+    }
+
     func testFailureReportsOncePerRevisionAndRetriesTheNextRevisionWithoutADevice() async {
         let view = InteractiveMeshView(frame: .zero, device: nil)
         view.isPaused = true
@@ -32,6 +43,19 @@ final class MeshViewportRecoveryTests: XCTestCase {
         viewport(revision: 2) { reported.append(2) }.updateRenderer(in: view)
         await drainCallbacks()
         XCTAssertEqual(reported, [2])
+    }
+
+    func testDismantledViewportCannotReportItsQueuedFailure() async {
+        let retired = InteractiveMeshView(frame: .zero, device: nil)
+        let current = InteractiveMeshView(frame: .zero, device: nil)
+        var reported: [String] = []
+
+        viewport(revision: 1) { reported.append("retired") }.updateRenderer(in: retired)
+        MeshViewport.dismantleNSView(retired, coordinator: ())
+        viewport(revision: 1) { reported.append("current") }.updateRenderer(in: current)
+        await drainCallbacks()
+
+        XCTAssertEqual(reported, ["current"])
     }
 
     func testValidLaterRevisionRecoversAndRetainsTheExistingCamera() async throws {

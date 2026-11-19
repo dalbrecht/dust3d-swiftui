@@ -30,6 +30,12 @@ package final class MeshViewportFocus {
         )
     }
 
+    /// Focus the mounted viewport from a control in the same host.
+    @discardableResult
+    package func moveFocusInHostWindow() -> Bool {
+        moveFocus(in: view?.window)
+    }
+
     @discardableResult
     package func moveFocus(in window: NSWindow?) -> Bool {
         guard let view, let window, view.window === window, !view.isHiddenOrHasHiddenAncestor,
