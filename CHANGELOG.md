@@ -33,6 +33,8 @@
 - Open the upstream Dust3D sponsorship page from the Help menu.
 
 - Select the owning component of the canvas picks from the Canvas menu.
+- Drag an edge stroke in the canvas to move its endpoints or the current graph selection in one undoable edit.
+
 - Use A to toggle Add and S to return to selection while the canvas has keyboard focus.
 - Open properties for the canvas graph owners with Space or the Canvas menu.
 
@@ -135,6 +137,8 @@
 - Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
 
 - Focus the active drawing profile from the canvas header to use its keyboard controls without clicking the drawing.
+
+- Keep numeric node inspector drafts and actions tied to their original node and document.
 
 - Edit or restore Metallic, Roughness and Glow for the Model part that owns the current canvas selection.
 
@@ -280,6 +284,8 @@
 
 - Add searchable Keyboard Shortcuts help with native command focus restrictions (#333).
 - Archive exactly the signed app tree without generated Finder metadata, retaining executable permissions and framework links (#329).
+
+- List preview orbit and camera reset in searchable Keyboard Shortcuts, with their focus requirements.
 
 - Prepare lossless hollow-thickness history and an explicitly gated local-core inspector experiment; production geometry support remains unchanged (#96).
 
