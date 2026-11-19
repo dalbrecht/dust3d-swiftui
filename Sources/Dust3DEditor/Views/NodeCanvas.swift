@@ -8,6 +8,7 @@ struct NodeCanvas: View {
     var profileLease: UUID? = nil
     var profileFocusRequest: CanvasProfileFocusRequest? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var showSelectionProperties: (@MainActor () -> Bool)? = nil
     var focusControl: CanvasProfileFocusControl? = nil
     var previewCamera: EditorPreviewCameraActions? = nil
     var openDocument: @MainActor () -> Void = { NSDocumentController.shared.openDocument(nil) }
@@ -51,7 +52,9 @@ struct NodeCanvas: View {
             let handleAxisLockKey = store.canvasAxisLockKeyHandler(profileLease: profileLease)
             let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
-                admitsInput() && (handleAxisLockKey($0) || handlePartStateKey($0) || handlePrecisionKey($0))
+                admitsInput()
+                    && (handleAxisLockKey($0) || handlePartStateKey($0) || handlePrecisionKey($0)
+                        || $0.routeSelectionProperties(action: showSelectionProperties))
             }
             let precisionActions = CanvasPrecisionActions(store: store)
             let quarterTurns = OrthogonalQuarterTurnActions(store: store, profileLease: profileLease)
@@ -363,8 +366,11 @@ struct NodeCanvas: View {
                     .accessibilityHidden(store.isSelectingRigEdges)
                 }
                 if let origin = store.originDragPosition ?? store.snapshot?.origin {
-                    OriginHandle(store: store, origin: origin, projection: projection, profileLease: profileLease)
-                        .allowsHitTesting(!store.isAddingNodes && !store.isSelectingRigEdges)
+                    OriginHandle(
+                        store: store, origin: origin, projection: projection, profileLease: profileLease,
+                        precisionKey: precisionKey, switchProfile: switchProfile
+                    )
+                    .allowsHitTesting(!store.isAddingNodes && !store.isSelectingRigEdges)
                 }
             }
             .onChange(of: referenceCanvas, initial: true) { _, _ in

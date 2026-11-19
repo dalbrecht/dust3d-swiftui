@@ -98,6 +98,18 @@ struct CanvasPrecisionKeyInput {
             && NSApp.modalWindow == nil
     }
 
+    private var isSelectionPropertiesShortcut: Bool {
+        characters == " " && modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty
+    }
+
+    var requiresActiveCanvasWindow: Bool { partStateProperty != nil || isSelectionPropertiesShortcut }
+
+    @MainActor
+    func routeSelectionProperties(action: (@MainActor () -> Bool)?) -> Bool {
+        guard isSelectionPropertiesShortcut, let action else { return false }
+        return isRepeat || action()
+    }
+
     var action: CanvasPrecisionAction? {
         guard modifiers.intersection([.command, .control, .option, .shift]).isEmpty else { return nil }
         switch keyCode {
