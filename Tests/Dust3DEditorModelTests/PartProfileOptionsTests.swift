@@ -19,6 +19,18 @@ final class PartProfileOptionsTests: XCTestCase {
         return document
     }
 
+    func testSpokenTitlesUseIdentityOnlyToDisambiguateVisibleDuplicateNames() throws {
+        let parts = try document().editorContents().parts
+        let all = PartProfileOptions.candidates(in: parts, excluding: owner, matching: "")
+        XCTAssertEqual(
+            PartProfileOptions.spokenTitles(for: all),
+            [first: "Duplicate Curve 曲線, \(first)", second: "Duplicate Curve 曲線, \(second)"])
+
+        let one = PartProfileOptions.candidates(in: parts, excluding: owner, matching: first)
+        XCTAssertEqual(PartProfileOptions.spokenTitles(for: one), [first: "Duplicate Curve 曲線"])
+        XCTAssertEqual(PartProfileOptions.spokenTitles(for: []), [:])
+    }
+
     func testCandidatesExcludeLegacyIdentitiesAndSelfWithoutRewritingSource() throws {
         let document = try document()
         let parts = try document.editorContents().parts
@@ -31,16 +43,38 @@ final class PartProfileOptionsTests: XCTestCase {
             try Dust3DDocument(data: before).editorContents().parts.map(\.id), [owner, "legacy", first, second])
     }
 
-    func testSpokenTitlesUseIdentityOnlyToDisambiguateVisibleDuplicateNames() throws {
-        let parts = try document().editorContents().parts
-        let all = PartProfileOptions.candidates(in: parts, excluding: owner, matching: "")
+    func testQtProfileInventoryIncludesDedicatedAndPreviouslyLinkedPartsInFrontOrder() throws {
+        let unlinked = "{dddddddd-dddd-4ddd-8ddd-dddddddddddd}"
+        let empty = "{eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee}"
+        let unresolved = "{ffffffff-ffff-4fff-8fff-ffffffffffff}"
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes>
+                <node id='r1' partId='\(first)' x='1' y='0' z='0' radius='.1'/>
+                <node id='r2' partId='\(first)' x='3' y='0' z='0' radius='.1'/>
+                <node id='l1' partId='\(second)' x='-4' y='0' z='0' radius='.1'/>
+                <node id='l2' partId='\(second)' x='-2' y='0' z='0' radius='.1'/>
+                </nodes><parts>
+                <part id='\(owner)' cutFace='\(second)'/>
+                <part id='\(first)' target='CutFace' name='Right profile' cutFace='\(unresolved)'/>
+                <part id='\(unlinked)' name='Ordinary part'/>
+                <part id='\(empty)' target='CutFace' name='Empty profile'/>
+                <part id='\(second)' name='Left legacy profile'/>
+                <part id='legacy' target='CutFace'/>
+                </parts><components/></canvas>
+                """.utf8))
+        let snapshot = try EditorState(document: source).snapshot
         XCTAssertEqual(
-            PartProfileOptions.spokenTitles(for: all),
-            [first: "Duplicate Curve 曲線, \(first)", second: "Duplicate Curve 曲線, \(second)"])
-
-        let one = PartProfileOptions.candidates(in: parts, excluding: owner, matching: first)
-        XCTAssertEqual(PartProfileOptions.spokenTitles(for: one), [first: "Duplicate Curve 曲線"])
-        XCTAssertEqual(PartProfileOptions.spokenTitles(for: []), [:])
+            PartProfileOptions.candidates(in: snapshot, excluding: owner, matching: "").map(\.id),
+            [second, empty, first])
+        XCTAssertEqual(
+            PartProfileOptions.candidates(in: snapshot, excluding: owner, matching: "legacy").map(\.id),
+            [second])
+        XCTAssertEqual(
+            PartProfileOptions.candidates(in: snapshot, excluding: second, matching: "").map(\.id),
+            [empty, first])
+        XCTAssertEqual(snapshot.document.encoded(), source.encoded())
     }
 
     func testSearchMatchesTitlesAndExactSourceIdentityCaseInsensitivelyInSourceOrder() throws {

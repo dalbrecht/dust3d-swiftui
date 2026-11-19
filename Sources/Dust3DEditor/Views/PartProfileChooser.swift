@@ -9,13 +9,11 @@ struct PartProfileChooser: View {
     @State private var query = ""
     @State private var preview: (documentID: UUID, ownerID: [UInt8], profileID: [UInt8])?
 
-    private var candidates: [DocumentPart] {
-        PartProfileOptions.candidates(in: store.snapshot?.parts ?? [], excluding: part.id, matching: query)
-    }
-
     var body: some View {
         let snapshot = store.snapshot
-        let candidates = self.candidates
+        let candidates =
+            snapshot.map { PartProfileOptions.candidates(in: $0, excluding: part.id, matching: query) }
+            ?? []
         let spokenTitles = PartProfileOptions.spokenTitles(for: candidates)
         let ownerID = Array(part.id.utf8)
         VStack(alignment: .leading, spacing: 8) {
@@ -23,7 +21,8 @@ struct PartProfileChooser: View {
                 .accessibilityIdentifier("part-profile-search")
                 .focusedValue(\.editorTextEditing, true)
             if candidates.isEmpty {
-                Text("No matching other parts.").font(.caption)
+                Text(query.isEmpty ? "Set a part’s role to Cut Face to add a profile." : "No matching profiles.")
+                    .font(.caption)
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 6) {
