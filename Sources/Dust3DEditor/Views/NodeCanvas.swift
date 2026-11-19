@@ -641,7 +641,8 @@ private struct NodeHandle: View {
                 doubleClick: doubleClick,
                 precisionKey: precisionKey,
                 beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress,
-                switchProfile: switchProfile, retainVisibilityFocus: retainVisibilityFocus, addModeKey: addModeKey, previewDrag: previewDrag
+                switchProfile: switchProfile, retainVisibilityFocus: retainVisibilityFocus, addModeKey: addModeKey,
+                previewDrag: previewDrag
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)
