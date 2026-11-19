@@ -142,6 +142,8 @@
 
 - Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
 
+- Update the combined reference image preview while drawing, moving or resizing a crop. The document changes only on Apply.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
