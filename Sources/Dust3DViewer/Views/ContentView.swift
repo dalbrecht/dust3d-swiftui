@@ -7,11 +7,12 @@ struct ContentView: View {
     @State private var store = ViewerStore()
     @State private var isImporterPresented = false
     @State private var isWireframe = false
-    @State private var cameraReset = 0
-    @State private var rendererError: String?
-
     var body: some View {
-        let visibleError = store.errorMessage ?? rendererError
+        let cancelOperation: (() -> Void)? =
+            !isImporterPresented && store.hasPendingCancellation
+            ? { store.cancelPendingOperation() } : nil
+        let rendererAttempt = store.rendererAttemptID
+        let visibleError = store.errorMessage ?? store.rendererError
         VStack(spacing: 0) {
             if let message = visibleError {
                 HStack(alignment: .top) {
@@ -20,9 +21,11 @@ struct ContentView: View {
                         .accessibilityHidden(true)
                     Text(message).textSelection(.enabled)
                     Spacer()
-                    Button("Dismiss") {
-                        store.errorMessage = nil
-                        rendererError = nil
+                    if store.errorMessage != nil {
+                        Button("Dismiss") { store.errorMessage = nil }
+                    } else {
+                        Button("Retry Preview") { store.retryRenderer(attemptID: rendererAttempt) }
+                        Button("Dismiss") { store.dismissRendererError(attemptID: rendererAttempt) }
                     }
                 }
                 .padding()
@@ -32,14 +35,20 @@ struct ContentView: View {
                 if let mesh = store.mesh {
                     let materialRevision = store.meshRevision + store.materialRevision
                     MeshViewport(
-                        mesh: mesh, isWireframe: isWireframe, cameraReset: cameraReset,
-                        meshRevision: store.meshRevision + store.materialRevision, materials: store.materials,
-                        onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
-                        onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
+                        mesh: mesh, isWireframe: isWireframe, cameraReset: 0,
+                        meshRevision: materialRevision, materials: store.materials, cameraState: store.cameraState,
+                        onMaterialError: {
+                            guard store.rendererAttemptID == rendererAttempt else { return }
+                            store.materialsFailed($0, revision: materialRevision)
+                        },
+                        onMaterialRendered: {
+                            guard store.rendererAttemptID == rendererAttempt else { return }
+                            store.materialsRendered(revision: materialRevision)
+                        }
                     ) { message in
-                        rendererError = message
+                        store.reportRendererError(message, attemptID: rendererAttempt)
                     }
-                    .id(store.meshRevision)
+                    .id(rendererAttempt)
                     .accessibilityLabel("3D mesh preview")
                 } else {
                     ContentUnavailableView {
@@ -128,7 +137,7 @@ struct ContentView: View {
                     .help("Show triangle edges")
                     .disabled(store.mesh == nil)
                 Button {
-                    cameraReset += 1
+                    store.cameraState.fit()
                 } label: {
                     Label("Fit Model", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
@@ -142,9 +151,9 @@ struct ContentView: View {
             case .failure(let error): store.errorMessage = error.localizedDescription
             }
         }
+        .onExitCommand(perform: cancelOperation)
         .onOpenURL { store.open($0) }
         .onDisappear { store.stop() }
-        .onChange(of: store.meshRevision) { rendererError = nil }
         .focusedSceneValue(\.openDocument, { isImporterPresented = true })
     }
 }
