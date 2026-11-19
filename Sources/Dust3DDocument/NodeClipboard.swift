@@ -9,6 +9,14 @@ public struct NodeClipboard: Sendable {
     public let identifiers: [String]
 
     public init(document: Dust3DDocument, selectedNodeIDs: Set<String>) throws {
+        identifiers = try Self.validate(document, selectedNodeIDs: selectedNodeIDs, allowsJunctions: false)
+        self.document = document
+        self.selectedNodeIDs = selectedNodeIDs
+    }
+
+    static func validate(
+        _ document: Dust3DDocument, selectedNodeIDs: Set<String>, allowsJunctions: Bool
+    ) throws -> [String] {
         let contents = try document.editorContents()
         guard !selectedNodeIDs.isEmpty, selectedNodeIDs.isSubset(of: Set(contents.nodes.map(\.id))),
             contents.nodes.allSatisfy({ $0.partID != nil })
@@ -45,7 +53,7 @@ public struct NodeClipboard: Sendable {
             degree[edge.fromID, default: 0] += 1
             degree[edge.toID, default: 0] += 1
         }
-        guard degree.values.allSatisfy({ $0 <= 2 }),
+        guard allowsJunctions || degree.values.allSatisfy({ $0 <= 2 }),
             PartSplitting.componentElements(model).allSatisfy({ component in
                 component.attribute(forName: "linkDataType")?.stringValue != "partId"
                     || partIDs.contains(component.attribute(forName: "linkData")?.stringValue ?? "")
@@ -53,9 +61,7 @@ public struct NodeClipboard: Sendable {
         else { throw DocumentError.invalidNode }
         try PartJoining.validateProfileLinks(
             parts: parts, nodes: model.rootElement()?.elements(forName: "nodes").first?.elements(forName: "node") ?? [])
-        self.document = document
-        self.selectedNodeIDs = selectedNodeIDs
-        self.identifiers = ids
+        return ids
     }
     /// Qt XML fragments can omit the profile definitions available in their source document.
     package func clearingMissingQtCutFaces(destinationPartIDs: [String]) throws -> NodeClipboard {
