@@ -28,7 +28,11 @@ final class EditorStore {
             }
             if let snapshot, isAddingNodes, !addPlacement.isCurrent(in: snapshot) { cancelAddMode() }
             if oldValue?.documentRevision != snapshot?.documentRevision {
-                if !preservesCanvasPartStateHover { canvasPartStateHover = nil }
+                if preservesCanvasPartStateHover, let snapshot {
+                    reconcileCanvasPartCommandHover(in: snapshot)
+                } else {
+                    canvasPartStateHover = nil
+                }
                 if case .edge = canvasGraphHover { canvasGraphHover = nil }
             }
             if let hoveredNodeID, snapshot?.nodes.contains(where: { $0.id == hoveredNodeID && $0.isVisible }) != true {
@@ -247,6 +251,45 @@ final class EditorStore {
             let source = acceptedDocumentSource, context.isCurrent(in: source)
         else { return nil }
         return source
+    }
+
+    func selectionPropertiesAction(present: @escaping @MainActor () -> Void) -> (@MainActor () -> Bool)? {
+        let lease = canvasProfiles.lease
+        guard let source = selectionPropertiesSource(lease: lease) else { return nil }
+        let target = ComponentMeshSelectionTarget(graphSelection: source)
+        guard target.count == 1,
+            let partID = ComponentMeshSelectionPresentation(snapshot: source, target: target).components.first?.partID,
+            selectionPropertiesHoverMatches(partID: partID, source: source)
+        else { return nil }
+        let interaction = rotationInputContextID
+        let mode = addModeID
+        let selectionMode = rigEdgeSelectionEpoch
+        return { [weak self] in
+            guard let self, self.rotationInputContextID == interaction, self.addModeID == mode,
+                self.rigEdgeSelectionEpoch == selectionMode,
+                let current = self.selectionPropertiesSource(lease: lease), target.isCurrent(in: current),
+                self.selectionPropertiesHoverMatches(partID: partID, source: current)
+            else { return false }
+            present()
+            return true
+        }
+    }
+
+    private func selectionPropertiesSource(lease: UUID) -> EditorSnapshot? {
+        guard ownsCanvasProfile(lease), !isWorking, !isAddingNodes, !isMovingOrigin, !isSelectingRigEdges else {
+            return nil
+        }
+        return acceptedDocumentSource
+    }
+
+    private func selectionPropertiesHoverMatches(partID: String, source: EditorSnapshot) -> Bool {
+        let hover: PartGraphTarget
+        switch canvasGraphHover {
+        case .none: return true
+        case .node(let id): hover = .node(id)
+        case .edge(let id): hover = .edge(id)
+        }
+        return source.partID(for: hover)?.utf8.elementsEqual(partID.utf8) == true
     }
 
     func selectComponentGraph(_ target: ComponentGraphSelectionTarget) {
@@ -496,6 +539,7 @@ final class EditorStore {
                 snapshot: snapshot, projection: currentCanvasProjection, canvasHeight: canvasHeight,
                 destination: effectiveAddPlacementDestination)
             addModeID = UUID()
+            clearCanvasHover()
         } catch { errorMessage = Self.message(error) }
     }
     func cancelAddMode(refit: Bool = true) {
@@ -593,9 +637,39 @@ final class EditorStore {
     @ObservationIgnored private var canvasPartStateHoverOperation: UUID?
     private var preservesCanvasPartStateHover: Bool { canvasPartStateHoverOperation == operationRequestID }
     var tracksPartStateHoverWhileWorking: Bool { isWorking && preservesCanvasPartStateHover }
-    private var canvasPartStateHover: CanvasGraphHover? {
+    private enum CanvasPartCommandHover: Equatable {
+        case graph(CanvasGraphHover)
+        case hiddenPart(id: String, graph: CanvasGraphHover)
+
+        var graphTarget: PartGraphTarget? {
+            guard case .graph(let graph) = self else { return nil }
+            return graph.partTarget
+        }
+
+        var visibilityTarget: PartGraphTarget {
+            switch self {
+            case .graph(let graph): graph.partTarget
+            case .hiddenPart(let id, _): .part(id)
+            }
+        }
+    }
+
+    private var canvasPartStateHover: CanvasPartCommandHover? {
         didSet {
             if oldValue != canvasPartStateHover { canvasPartStateHoverEpoch = UUID() }
+        }
+    }
+    private func reconcileCanvasPartCommandHover(in snapshot: EditorSnapshot) {
+        switch canvasPartStateHover {
+        case .graph(let graph):
+            if CanvasPartStateTarget(snapshot: snapshot, hovered: graph.partTarget)?.part.isVisible != true {
+                canvasPartStateHover = nil
+            }
+        case .hiddenPart(let id, let graph):
+            if snapshot.parts.first(where: { $0.id.utf8.elementsEqual(id.utf8) })?.isVisible == true {
+                canvasPartStateHover = .graph(graph)
+            }
+        case nil: break
         }
     }
     private(set) var canvasGraphHover: CanvasGraphHover?
@@ -627,7 +701,9 @@ final class EditorStore {
     func setHoveredNode(_ id: String?, projection: CanvasProjection? = nil) {
         let visibleID = snapshot?.nodes.first(where: { $0.id == id && $0.isVisible })?.id
         canvasGraphHover = visibleID.map(CanvasGraphHover.node)
-        if projection == nil || projection == currentCanvasProjection { canvasPartStateHover = canvasGraphHover }
+        if projection == nil || projection == currentCanvasProjection {
+            canvasPartStateHover = canvasGraphHover.map(CanvasPartCommandHover.graph)
+        }
     }
 
     func clearCanvasHover() {
@@ -643,7 +719,7 @@ final class EditorStore {
         let hover = canvasGraphHoverCache.hit(
             at: point, projection: projection, snapshot: snapshot, rigEdgesOnly: isSelectingRigEdges)
         if !tracksPartStateHoverWhileWorking, hover != canvasGraphHover { canvasGraphHover = hover }
-        if projection == currentCanvasProjection { canvasPartStateHover = hover }
+        if projection == currentCanvasProjection { canvasPartStateHover = hover.map(CanvasPartCommandHover.graph) }
     }
     var canAdjustSelectionRadius: Bool {
         !isSelectingRigEdges && canSave && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
@@ -714,7 +790,7 @@ final class EditorStore {
         } else if hasGraphSelection && snapshot.canAdjustSelectionRadius {
             edit = .selectionRadius(step)
         } else {
-            let hover = isWorking ? canvasPartStateHover : canvasGraphHover
+            let hover = isWorking ? canvasPartStateHover?.graphTarget : canvasGraphHover?.partTarget
             guard case .node(let id) = hover, snapshot.canAdjustNodeRadius(id: id) else { return false }
             edit = .nodeRadius(id, step)
         }
@@ -1201,6 +1277,25 @@ final class EditorStore {
             let snapshot, snapshot.documentIdentity == accepted.documentIdentity
         else { return nil }
         return snapshot
+    }
+
+    private var workflowReplaySource: EditorSnapshot? {
+        guard !isWorking, let source = acceptedDocumentSource,
+            !source.parts.isEmpty || referenceImageForComposition != nil
+        else { return nil }
+        return source
+    }
+
+    var workflowReplayCommand: WorkflowReplayCommand? {
+        guard let source = workflowReplaySource else { return nil }
+        let identity = source.documentIdentity
+        let revision = source.documentRevision
+        return WorkflowReplayCommand { [weak self] focusedStore in
+            guard let self, self === focusedStore, let current = self.workflowReplaySource,
+                current.documentIdentity == identity, current.documentRevision == revision
+            else { return nil }
+            return current.document
+        }
     }
 
     var referenceCompositionTarget: ReferenceCompositionTarget? {
@@ -2848,12 +2943,7 @@ final class EditorStore {
         guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
             let context = canvasRotationContext
         else { return nil }
-        let hovered: PartGraphTarget? =
-            switch canvasPartStateHover {
-            case .node(let id): .node(id)
-            case .edge(let id): .edge(id)
-            case nil: nil
-            }
+        let hovered = canvasPartStateHover?.graphTarget
         guard let properties = CanvasComponentProperties(snapshot: snapshot, hovered: hovered) else { return nil }
         let hoverEpoch = canvasPartStateHoverEpoch
         let layoutEpoch = precisionLayoutEpoch
@@ -2872,11 +2962,7 @@ final class EditorStore {
         guard canToggleCanvasPartState, let snapshot = acceptedDocumentSource, let context = canvasRotationContext,
             let hover = canvasPartStateHover
         else { return nil }
-        let target: PartGraphTarget =
-            switch hover {
-            case .node(let id): .node(id)
-            case .edge(let id): .edge(id)
-            }
+        guard let target = hover.graphTarget else { return nil }
         guard
             let select = revealOwningComponentAction(
                 target, context: PartGraphSelectionContext(snapshot: snapshot), profileLease: profileLease,
@@ -2899,7 +2985,11 @@ final class EditorStore {
         let handle = canvasPartStateHandler(profileLease: profileLease)
         let openProperties = canvasComponentPropertiesAction(profileLease: profileLease)
         let selectOwner = canvasOwningComponentAction(profileLease: profileLease)
+        let visibility = canvasVisibilityKeyHandler(profileLease: profileLease)
         return { input in
+            if let shortcut = input.visibilityShortcut {
+                return visibility?(shortcut, input.isRepeat) == true
+            }
             if input.opensComponentProperties { return openProperties?(input.isRepeat) ?? false }
             if input.selectsOwningComponent { return selectOwner?(input.isRepeat) ?? false }
             guard let property = input.partStateProperty, let handle else { return false }
@@ -2916,12 +3006,7 @@ final class EditorStore {
         guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
             let context = canvasRotationContext
         else { return nil }
-        let hover: PartGraphTarget? =
-            switch canvasPartStateHover {
-            case .node(let id): .node(id)
-            case .edge(let id): .edge(id)
-            case nil: nil
-            }
+        let hover = canvasPartStateHover?.graphTarget
         guard let target = CanvasPartStateTarget(snapshot: snapshot, hovered: hover) else { return nil }
         let hoverEpoch = canvasPartStateHoverEpoch
         let layout = precisionLayoutEpoch
@@ -2940,6 +3025,66 @@ final class EditorStore {
             }
             return true
         }
+    }
+
+    private func canvasVisibilityKeyHandler(profileLease: UUID?) -> (
+        @MainActor (CanvasVisibilityShortcut, Bool) -> Bool
+    )? {
+        guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let context = canvasRotationContext
+        else { return nil }
+        let hoverEpoch = canvasPartStateHoverEpoch
+        let layout = precisionLayoutEpoch
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] shortcut, isRepeat in
+            guard let self, self.canToggleCanvasPartState, self.ownsCanvasProfile(profileLease),
+                self.canvasRotationContext == context, self.canvasPartStateHoverEpoch == hoverEpoch,
+                self.precisionLayoutEpoch == layout, self.referenceColorInteractionEpoch == interaction,
+                let snapshot = self.acceptedDocumentSource
+            else { return false }
+            let hover = self.canvasPartStateHover
+            let owner = CanvasPartStateTarget(snapshot: snapshot, hovered: hover?.visibilityTarget)
+            if shortcut == .toggle, let owner {
+                if !isRepeat { self.toggleCanvasOwnerVisibility(owner, hover: hover) }
+                return true
+            }
+            let target: CanvasPartIsolationTarget
+            if shortcut == .isolate, let owner {
+                target = CanvasPartIsolationTarget(snapshot: snapshot, partID: owner.part.id)
+            } else if shortcut == .toggle, hover == nil, snapshot.selectedIDs.isEmpty, snapshot.selectedEdgeIDs.isEmpty,
+                snapshot.selectedPartID == nil, snapshot.selectedComponentIDs.isEmpty
+            {
+                target =
+                    snapshot.parts.contains(where: \.isVisible)
+                    ? .hidingAll(in: snapshot) : CanvasPartIsolationTarget(snapshot: snapshot, showAll: true)
+            } else {
+                return false
+            }
+            guard target.isAvailable else { return false }
+            if !isRepeat {
+                self.perform(acceptCommittedCancellation: true, preservePartStateHover: true, preserveCanvasFit: true) {
+                    try await $0.setCanvasPartIsolation(target: target)
+                }
+            }
+            return true
+        }
+    }
+
+    private func toggleCanvasOwnerVisibility(_ owner: CanvasPartStateTarget, hover: CanvasPartCommandHover?) {
+        var retainedHover: CanvasPartCommandHover?
+        if owner.part.isVisible, case .graph(let graph) = hover {
+            retainedHover = .hiddenPart(id: owner.part.id, graph: graph)
+            canvasPartStateHover = retainedHover
+        }
+        let epoch = canvasPartStateHoverEpoch
+        perform(
+            acceptCommittedCancellation: true, preservePartStateHover: true, preserveCanvasFit: true,
+            completion: { [weak self] succeeded in
+                guard !succeeded, let self, retainedHover != nil, self.canvasPartStateHoverEpoch == epoch else {
+                    return
+                }
+                self.canvasPartStateHover = hover
+            },
+            { try await $0.toggleCanvasPartState(.visible, target: owner) })
     }
 
     func setPartState(_ id: String, property: PartStateProperty, value: Bool) {
@@ -3632,7 +3777,10 @@ final class EditorStore {
         guard active != referenceColorInteractionActive else { return }
         referenceColorInteractionActive = active
         referenceColorInteractionEpoch = UUID()
-        if active { cancelReferenceColorCommit() }
+        if active {
+            clearCanvasHover()
+            cancelReferenceColorCommit()
+        }
     }
     private func cancelReferenceColorCommit() {
         if referenceColorOperationID == operationRequestID { operation?.cancel() }
@@ -3834,6 +3982,7 @@ final class EditorStore {
     private func perform(
         commits: Bool = true, reloadReferenceImage: Bool = false, acceptCommittedCancellation: Bool = false,
         selectionOnly: Bool = false, preserveOriginMode: Bool = false, preservePartStateHover: Bool = false,
+        preserveCanvasFit: Bool = false,
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
@@ -3877,7 +4026,7 @@ final class EditorStore {
                 snapshot = next
                 if countChanged && !isAddingNodes {
                     fit()
-                } else if needsFit && !isAddingNodes {
+                } else if needsFit && !isAddingNodes && !preserveCanvasFit {
                     fitCanvas(preservingOriginMode: preserveOriginMode)
                 }
                 errorMessage = nil

@@ -58,6 +58,8 @@
 
 - Clear missing cut-face links when opening the Editor with a Qt XML fragment.
 
+- Preserve existing recovery copies and receipts if preparing a private replacement fails.
+
 - Open requested documents and report the error when a startup Qt XML fragment cannot be pasted.
 
 - Clear missing cut-face links from Qt XML pasted in headless exports.
@@ -69,6 +71,8 @@
 - Continue a headless batch when an output destination is an existing directory.
 
 - Continue headless export batches after an unsupported output format and report the failed destination.
+
+- Give newly created component groups a saved default name that stays the same when the group is reordered.
 
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
@@ -100,6 +104,8 @@
 
 - Scope Edit → Select All to edges when the Edges sidebar has keyboard focus.
 
+- Open the Selection inspector for one owning component with Space on the canvas or Show Selection Properties in the Canvas menu.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Preview authored linked cross-section outlines before choosing a profile.
@@ -119,6 +125,8 @@
 - Apply one Qt XML fragment at launch with `-paste-xml` in one Undo step per newly opened eligible document. With no `.ds3` input or output option, open one untitled document with default model colors. A read or validation error leaves that document blank and displays a diagnostic.
 
 - Select newly pasted editable nodes and edges from Qt XML so edge commands are available immediately.
+
+- Switch Viewer windows between Model Colors and neutral shading from the toolbar or View menu. The Viewer retains the current mesh and its materials while a replacement loads or if that open fails.
 
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
@@ -152,17 +160,25 @@
 
 - Open a local .ds3 document by dropping it into the editor without replacing the current document.
 
+- Enable Replay Steps when the document has model parts or a loaded reference image.
+
+- Open Replay Steps in independent windows so starting another replay keeps the current step and source of each existing replay.
+
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Edit or clear the Equipment Slot of the Model component that owns the current canvas selection.
 
+- Highlight affected edges and announce their count when Replay Steps shows a bone assignment.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
 
 - Rotate the canvas selection by a quarter turn around the other profile’s world axis while staying in the current profile.
+
+- Select Whole Part uses exact stored ownership for graph picks and the revealed component.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
@@ -211,6 +227,8 @@
 - Add a source-ordered generated-joint hierarchy and read-only parent, endpoint, length, radius and signed-angle inspection to the experimental rest preview; preserve copied rig data if hierarchy preparation fails (#367).
 
 - Show the selected joint’s numerical weight range and influenced body-triangle count in the experimental rest preview, publishing these values with their matching mesh (#367).
+
+- Drop a local .ds3 file from Finder onto a Viewer window to open it.
 
 - Add an isolated experimental generated-rest rig preview with grounded skeleton/body geometry, weight highlighting, all-joint selection, and guarded camera controls; keep the production core pin unchanged (#367).
 
@@ -285,6 +303,8 @@
 
 - Enter a target in the node inspector to bend a chain from the keyboard.
 
+- Press H to toggle canvas visibility and Shift-H to isolate the owning part.
+
 - Shift-drag a graph selection to rotate it or bend a single endpoint chain.
 
 - Add graph auto-color from displayed reference pixels and default-color reset, with source-bound atomic Undo and stale-raster rejection (#45).
@@ -339,6 +359,8 @@
 
 - Refresh selectable export-warning accessibility text when the result changes (#235).
 
+- Reuse successful geometry encodes for repeated formats in a headless batch.
+
 - Add Insert Midpoint to the edge inspector and Canvas menu, with one-step Undo and preserved edge direction.
 
 - Bind origin-move callbacks to their pointer gesture so cancelled drags cannot affect a later gesture; Escape prioritizes origin mode over a concurrent export (#45).
@@ -378,6 +400,8 @@
 - Add stale-source animation edit targets and editor metadata workflows with latest-request list adoption, lifecycle retirement and geometry-independent history; native controls/evaluation remain pending (#145).
 
 - Add actor-owned stored-animation selection, fresh-ID creation/duplication and source-correlated list presentation, isolating optional metadata errors from graph editing; native UI/playback remain pending (#145).
+
+- Reject nonregular archive inputs before Viewer and Quick Look attempt to read them.
 
 - Preserve exact animation bytes and redo for restored parameter transactions (#145).
 
