@@ -33,7 +33,9 @@ struct ContentView: View {
                     MeshViewport(
                         mesh: mesh, isWireframe: store.isWireframe, cameraReset: 0,
                         meshRevision: store.meshRevision + store.materialRevision, materials: store.materials,
-                        automaticallyOrbits: store.automaticallyRotates, cameraState: store.cameraState,
+                        showsColor: store.showsModelColors, automaticallyOrbits: store.automaticallyRotates,
+                        cameraState: store.cameraState,
+
                         onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
                         onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                     ) { message in
@@ -134,7 +136,11 @@ struct ContentView: View {
                     Label("Open", systemImage: "folder")
                 }
                 .help("Open a .ds3 document (⌘O)")
+                Toggle(isOn: store.modelColorsBinding) { Label("Model Colors", systemImage: "paintpalette") }
+                    .help("Show authored colors or inspect the model in neutral shading")
+                    .disabled(store.mesh == nil)
                 Toggle(isOn: store.wireframeBinding) { Label("Wireframe", systemImage: "square.3.layers.3d") }
+
                     .help("Show triangle edges")
                     .disabled(store.mesh == nil)
                 Button(action: store.fitModel) {

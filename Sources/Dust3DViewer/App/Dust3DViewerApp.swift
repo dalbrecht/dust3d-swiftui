@@ -46,6 +46,14 @@ struct Dust3DViewerApp: App {
                     cameraItem("Pan Up", .panUp)
                     cameraItem("Pan Down", .panDown)
                 }
+                if let store {
+                    Toggle("Model Colors", isOn: store.modelColorsBinding)
+                        .disabled(store.mesh == nil)
+                } else {
+                    Toggle("Model Colors", isOn: .constant(true))
+                        .disabled(true)
+
+                }
             }
             CommandGroup(replacing: .appInfo) {
                 Button("About \(applicationName)") {
@@ -98,6 +106,11 @@ extension ViewerStore {
 
     var automaticRotationBinding: Binding<Bool> {
         Binding(get: { self.automaticallyRotates }, set: { self.setAutomaticallyRotates($0) })
+    }
+
+    var modelColorsBinding: Binding<Bool> {
+        Binding(get: { self.showsModelColors }, set: { self.setModelColors($0) })
+
     }
 }
 
