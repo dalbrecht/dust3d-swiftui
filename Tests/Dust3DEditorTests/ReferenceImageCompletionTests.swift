@@ -24,6 +24,103 @@ final class ReferenceImageCompletionTests: XCTestCase {
     }
 
     @MainActor
+    func testRetainedReferencePickerRejectsReboundAndFailedSourcesBeforeReading() async throws {
+        let images = HeldDirectReferenceReader()
+        let store = EditorStore(referenceImages: images)
+        defer { store.stop() }
+        let data = Dust3DDocument.emptyArchive()
+        let originalID = UUID()
+        let replacementID = UUID()
+        await store.load(data: data, fileIdentity: originalID)
+        let url = URL(fileURLWithPath: "/unused.png")
+        let rebound = try XCTUnwrap(store.chooseReferenceImage(fileIdentity: originalID))
+        XCTAssertNil(
+            store.finishReferenceImageChoice(
+                requestID: rebound, result: .success([url]), currentFileIdentity: { replacementID }))
+        XCTAssertNil(store.referenceImageFileRequestID)
+        let failed = try XCTUnwrap(store.chooseReferenceImage(fileIdentity: originalID))
+        await store.load(data: Data("bad archive".utf8), fileIdentity: replacementID)
+        let error = store.errorMessage
+        XCTAssertNotNil(error)
+        XCTAssertNil(
+            store.finishReferenceImageChoice(
+                requestID: failed, result: .failure(CocoaError(.fileReadUnknown)),
+                currentFileIdentity: { replacementID }))
+        XCTAssertEqual(store.errorMessage, error)
+        let reads = await images.reads
+        XCTAssertEqual(reads, 0)
+        XCTAssertEqual(store.snapshot?.document.encoded(), data)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    @MainActor
+    func testHeldReferenceReadCannotCommitAcrossBindingRebindOrReplacementLoad() async throws {
+        let images = HeldDirectReferenceReader()
+        let store = EditorStore(referenceImages: images)
+        defer { store.stop() }
+        let data = Dust3DDocument.emptyArchive()
+        let image = try png()
+        for replacement in [nil, data, Data("bad archive".utf8)] as [Data?] {
+            let originalID = UUID()
+            await store.load(data: data, fileIdentity: originalID)
+            let id = try XCTUnwrap(store.chooseReferenceImage(fileIdentity: originalID))
+            var currentID = originalID
+            let operation = try XCTUnwrap(
+                store.finishReferenceImageChoice(
+                    requestID: id, result: .success([URL(fileURLWithPath: "/unused.png")]),
+                    currentFileIdentity: { currentID }))
+            await images.waitForRequest()
+            currentID = UUID()
+            if let replacement { await store.load(data: replacement, fileIdentity: currentID) }
+            let error = store.errorMessage
+            await images.release(image)
+            await operation.value
+            XCTAssertEqual(store.snapshot?.document.encoded(), data)
+            XCTAssertEqual(store.errorMessage, error)
+            XCTAssertFalse(store.canUndo)
+        }
+    }
+
+    @MainActor
+    func testCapturedReferenceImportAndRemoveAreExactUndoSteps() async throws {
+        let images = HeldDirectReferenceReader()
+        let store = EditorStore(referenceImages: images)
+        defer { store.stop() }
+        let original = Dust3DDocument.emptyArchive()
+        let fileID = UUID()
+        await store.load(data: original, fileIdentity: fileID)
+        let request = try XCTUnwrap(store.chooseReferenceImage(fileIdentity: fileID))
+        let operation = try XCTUnwrap(
+            store.finishReferenceImageChoice(
+                requestID: request, result: .success([URL(fileURLWithPath: "/unused.png")]),
+                currentFileIdentity: { fileID }))
+        await images.waitForRequest()
+        await images.release(try png())
+        await operation.value
+        try await settle(store)
+        let imported = try XCTUnwrap(store.snapshot?.document.encoded())
+        XCTAssertNotEqual(imported, original)
+        XCTAssertTrue(store.canUndo)
+        let oldRemove = try XCTUnwrap(
+            store.referenceImageRemovalAction(fileIdentity: fileID, currentFileIdentity: { UUID() }))
+        oldRemove()
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.document.encoded(), imported)
+        let remove = try XCTUnwrap(
+            store.referenceImageRemovalAction(fileIdentity: fileID, currentFileIdentity: { fileID }))
+        remove()
+        try await settle(store)
+        XCTAssertFalse(store.hasReferenceImage)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), imported)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original)
+        XCTAssertFalse(store.canUndo)
+    }
+
+    @MainActor
     func testPendingImageFitKeepsNodeGestureDisplayProjectionStable() async throws {
         let context = try XCTUnwrap(
             CGContext(
@@ -171,6 +268,35 @@ final class ReferenceImageCompletionTests: XCTestCase {
         XCTAssertEqual(store.cameraReset, camera + 2)
         XCTAssertEqual(store.snapshot?.document.encoded(), document.encoded())
         await images.release()
+    }
+}
+
+private actor HeldDirectReferenceReader: ReferenceImageServing {
+    private var pending: CheckedContinuation<Data, Never>?
+    private var waiter: CheckedContinuation<Void, Never>?
+    private(set) var reads = 0
+
+    func importImage(url: URL) async throws -> Data {
+        reads += 1
+        return await withCheckedContinuation {
+            pending = $0
+            waiter?.resume()
+            waiter = nil
+        }
+    }
+
+    func preview(document: Dust3DDocument) async throws -> ReferenceImagePreview {
+        .init(image: nil, changed: false)
+    }
+
+    func waitForRequest() async {
+        if pending != nil { return }
+        await withCheckedContinuation { waiter = $0 }
+    }
+
+    func release(_ data: Data) {
+        pending?.resume(returning: data)
+        pending = nil
     }
 }
 

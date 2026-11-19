@@ -9,6 +9,7 @@ struct OriginHandle: View {
     var profileLease: UUID? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var previewDrag: CanvasPreviewDrag.Begin? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
 
@@ -45,7 +46,7 @@ struct OriginHandle: View {
                     precisionKey: { ownsProfile && handlePrecisionKey($0) }, isRectangular: true,
                     clickCancel: { store.endOriginClick(token: $0) },
                     admitsPrimaryPress: { store.admitsCanvasPrimaryPress(clickCount: $0, lease: profileLease) },
-                    switchProfile: switchProfile
+                    switchProfile: switchProfile, previewDrag: previewDrag
                 )
             }
             .position(x: point.x, y: point.y)

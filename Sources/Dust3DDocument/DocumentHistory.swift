@@ -11,7 +11,8 @@ public struct DocumentPreviewIdentity: Equatable, Sendable {
         case .createAnimation, .setAnimationName, .setAnimationType, .setAnimationParameter,
             .duplicateAnimation, .deleteAnimation, .setRigType, .setHeadHasEyelids, .setEdgeBoneName, .setEdgeBoneNames,
             .clearEdgeBoneNames,
-            .setPartName, .setComponentName, .setComponentEquipmentSlot, .setReferenceImagePNG:
+            .setPartName, .setComponentName, .setComponentBaseNamePreservingEquipmentSlot, .setComponentEquipmentSlot,
+            .setReferenceImagePNG:
             break
         case .setPartState(_, let property, _) where property != .disabled,
             .setPartsState(_, let property, _) where property != .disabled:

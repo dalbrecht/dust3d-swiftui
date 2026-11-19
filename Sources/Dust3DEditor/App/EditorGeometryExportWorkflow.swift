@@ -106,19 +106,24 @@ final class EditorGeometryExportWorkflow {
     }
 
     func cancel() {
+        cancel(recordRequest: true)
+    }
+
+    private func cancel(recordRequest: Bool) {
         guard let task, canCancel else { return }
         phase = .cancelling
+        if recordRequest { diagnostics?.record(.exportCancellationRequested) }
         task.cancel()
         destinations.cancel()
     }
 
     func sourceDidChange() {
-        if task != nil { cancel() } else { phase = .idle }
+        if task != nil { cancel(recordRequest: false) } else { phase = .idle }
     }
 
     func stop() {
         stopped = true
-        cancel()
+        cancel(recordRequest: false)
         if task == nil { phase = .idle }
     }
 

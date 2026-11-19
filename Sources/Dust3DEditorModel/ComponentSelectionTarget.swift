@@ -6,6 +6,7 @@ public struct ComponentSelectionTarget: Sendable {
     public let componentID: String
     private let documentIdentity: UUID
     private let documentRevision: Int
+    private let selectionRevision: Int
 
     /// Capture a singleton component selection; ambiguous or empty selections produce no target.
     /// - Parameter snapshot: Current immutable editing snapshot.
@@ -14,6 +15,7 @@ public struct ComponentSelectionTarget: Sendable {
         componentID = id
         documentIdentity = snapshot.documentIdentity
         documentRevision = snapshot.documentRevision
+        selectionRevision = snapshot.selectionRevision
     }
 
     /// Check the captured document epoch and singleton identity before any mutation.
@@ -24,7 +26,8 @@ public struct ComponentSelectionTarget: Sendable {
             && componentID == snapshot.selectedComponentID
     }
     package func isCurrentColorImage(in snapshot: EditorSnapshot) -> Bool {
-        guard isCurrent(in: snapshot), let component = snapshot.selectedComponent,
+        guard isCurrent(in: snapshot), selectionRevision == snapshot.selectionRevision,
+            let component = snapshot.selectedComponent,
             component.id.utf8.elementsEqual(componentID.utf8)
         else { return false }
         return snapshot.allowsComponentColorImage(for: component)

@@ -100,6 +100,30 @@ final class ComponentColorImageSessionTests: XCTestCase {
         XCTAssertEqual(retained.document.encoded(), imported.document.encoded())
     }
 
+    func testSingletonTextureTargetRejectsSelectionABAAndAcceptsUnchangedReselect() async throws {
+        let session = EditorSession()
+        _ = try await session.open(data: archive)
+        let selected = try await session.selectComponent("c")
+        let stale = try XCTUnwrap(ComponentColorImageTarget(snapshot: selected))
+        _ = try await session.selectComponent("other")
+        let back = try await session.selectComponent("c")
+        do {
+            _ = try await session.importComponentColorImage(png: png, target: stale)
+            XCTFail("A selection round trip must retire the original image target")
+        } catch { XCTAssertEqual(error as? EditorError, .staleColorImageTarget) }
+
+        let current = try XCTUnwrap(ComponentColorImageTarget(snapshot: back))
+        let reselected = try await session.selectComponent("c")
+        XCTAssertEqual(reselected.document.encoded(), archive)
+        XCTAssertEqual(reselected.selectionRevision, back.selectionRevision)
+        let imported = try await session.importComponentColorImage(png: png, target: current)
+        XCTAssertEqual(imported.colorImageAssets.count, 1)
+        XCTAssertTrue(imported.canUndo)
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), archive)
+        XCTAssertFalse(undone.canUndo)
+    }
+
     func testGraphTextureImportsOneSharedAssetClearsAndUndoesExactly() async throws {
         let source = try graphTextureDocument()
         let session = EditorSession()
