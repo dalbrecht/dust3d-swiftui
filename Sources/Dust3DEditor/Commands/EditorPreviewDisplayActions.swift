@@ -23,6 +23,14 @@ struct EditorPreviewDisplayActions {
         writeModelColors = setModelColors
     }
 
+    /// Apply scene command ownership in addition to the visible preview's own admission.
+    func scoped(to ownsMenu: @escaping @MainActor () -> Bool) -> Self {
+        Self(
+            isCurrent: { ownsMenu() && isCurrent() },
+            wireframe: wireframe, setWireframe: writeWireframe,
+            modelColors: modelColors, setModelColors: writeModelColors)
+    }
+
     var canChangeWireframe: Bool { isCurrent() }
     var canChangeModelColors: Bool { isCurrent() && modelColors != nil && writeModelColors != nil }
     var isWireframe: Bool { canChangeWireframe && wireframe() }
