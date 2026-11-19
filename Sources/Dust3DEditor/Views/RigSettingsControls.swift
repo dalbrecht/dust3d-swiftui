@@ -23,12 +23,16 @@ struct RigSettingsControls: View {
         return DisclosureGroup(isExpanded: disclosure) {
             VStack(alignment: .leading, spacing: 8) {
                 if let settings = store.snapshot?.rigSettings {
+                    let target = store.rigSettingsTarget
                     Text("Template").font(.caption).foregroundStyle(.secondary)
                     Picker(
                         "Rig template",
                         selection: Binding<DocumentRigType?>(
                             get: { settings.rigType },
-                            set: { if let type = $0 { store.setRigType(type) } }
+                            set: { type in
+                                guard let type, let target else { return }
+                                store.editRigSettings(.template(type), target: target)
+                            }
                         )
                     ) {
                         if settings.rigType == nil {
@@ -42,7 +46,7 @@ struct RigSettingsControls: View {
                     .frame(maxWidth: .infinity, minHeight: 40)
                     .accessibilityLabel("Rig template")
                     .accessibilityIdentifier("rig-template")
-                    .disabled(!store.canEditRigSettings)
+                    .disabled(target == nil)
                     if settings.rigType == nil {
                         Text("Unsupported template retained. Choose a template to replace it.")
                             .font(.caption).foregroundStyle(.primary)
@@ -53,12 +57,16 @@ struct RigSettingsControls: View {
                     Toggle(
                         "Head bone has eyelids",
                         isOn: Binding(
-                            get: { settings.headHasEyelids }, set: { store.setHeadHasEyelids($0) }
+                            get: { settings.headHasEyelids },
+                            set: { enabled in
+                                guard let target else { return }
+                                store.editRigSettings(.eyelids(enabled), target: target)
+                            }
                         )
                     )
                     .frame(minHeight: 40, alignment: .leading)
                     .accessibilityIdentifier("rig-eyelids")
-                    .disabled(!store.canEditRigSettings)
+                    .disabled(target == nil)
                 } else {
                     Text("Open a document to edit rig settings.").font(.caption)
                 }

@@ -10,6 +10,7 @@ final class EditorSessionDiagnostics {
         case documentOpened = "Document opened"
         case documentOpenFailed = "Document could not be opened"
         case previewFailed = "Mesh preview failed"
+        case previewRecovered = "Mesh preview recovered"
         case exportCompleted = "Geometry export completed"
         case exportCancellationRequested = "Geometry export cancellation requested"
         case exportFailed = "Geometry export failed"
@@ -17,7 +18,7 @@ final class EditorSessionDiagnostics {
         var isFailure: Bool {
             switch self {
             case .documentOpenFailed, .previewFailed, .exportFailed: true
-            case .documentOpened, .exportCompleted, .exportCancellationRequested: false
+            case .documentOpened, .previewRecovered, .exportCompleted, .exportCancellationRequested: false
             }
         }
     }
