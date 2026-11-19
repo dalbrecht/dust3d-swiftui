@@ -19,6 +19,11 @@ enum CanvasPrecisionAction: CaseIterable, Hashable, Sendable {
     }
 }
 
+enum CanvasVisibilityShortcut: Equatable {
+    case toggle
+    case isolate
+}
+
 /// Only actual bare arrow/bracket events belong to this responder boundary.
 struct CanvasPrecisionKeyInput {
     let keyCode: UInt16
@@ -69,6 +74,14 @@ struct CanvasPrecisionKeyInput {
         isBareEditingKey && (characters == "m" || characters == "M")
     }
 
+    var visibilityShortcut: CanvasVisibilityShortcut? {
+        guard modifiers.intersection([.command, .control, .option, .function]).isEmpty,
+            characters == "h" || characters == "H"
+        else { return nil }
+        return modifiers.contains(.shift) ? .isolate : .toggle
+
+    }
+
     var opensComponentProperties: Bool { isBareEditingKey && characters == " " }
 
     var selectsOwningComponent: Bool { isBareEditingKey && (characters == "f" || characters == "F") }
@@ -76,7 +89,8 @@ struct CanvasPrecisionKeyInput {
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
         guard
             axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
-                || isAlternateDelete || togglesPartMirror
+                || isAlternateDelete || togglesPartMirror || visibilityShortcut != nil
+
         else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil

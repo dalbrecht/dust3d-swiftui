@@ -1,4 +1,5 @@
 import Dust3DDocument
+import Dust3DEditorModel
 import XCTest
 
 @testable import Dust3DEditor
@@ -32,9 +33,20 @@ final class ComponentCombineStoreTests: XCTestCase {
         try await settle(store)
         store.selectComponent(last)
         try await settle(store)
+        let retired = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(store.snapshot))
+        store.selectComponent(first)
+        try await settle(store)
+        store.selectComponent(last)
+        try await settle(store)
+        store.setComponentCombineMode(last, mode: .inversion, target: retired)
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+        XCTAssertEqual(publications, 0)
+
         let camera = store.cameraReset
         let preview = store.previewRevision
-        store.setComponentCombineMode(last, mode: .inversion)
+        let current = CanvasAdjustmentTarget(snapshot: try XCTUnwrap(store.snapshot))
+        store.setComponentCombineMode(last, mode: .inversion, target: current)
         try await settle(store)
         XCTAssertNil(store.errorMessage)
         XCTAssertEqual(store.snapshot?.selectedComponentID, last)
