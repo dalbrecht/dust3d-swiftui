@@ -31,6 +31,9 @@ enum KeyboardShortcutHelp {
         .init(action: "Select All", keys: "⌘A", scope: "Focused text or graph; unavailable in animation controls"),
         .init(action: "Select All Nodes", keys: "⇧⌘A", scope: "Active document"),
         .init(
+            action: "Toggle Canvas Visibility / Isolate Part", keys: "H / ⇧H",
+            scope: "Focused canvas or node. Hover takes precedence over a sole selected graph owner."),
+        .init(
             action: "Toggle Add / Return to Selection", keys: "A / S",
             scope: "Focused canvas or node, outside Move Origin and bone edge selection"),
         .init(
