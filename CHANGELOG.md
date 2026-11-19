@@ -295,6 +295,8 @@
 
 - Add batch component part roles with atomic stitching grouping, shared-group reveal and one-step Undo (#45).
 
+- Show the Option and Command modifiers for both click and drag when removing graph selections.
+
 - Apply or clear color across selected components with the native color picker and one-step Undo.
 
 - Apply or clear explicit colors for components owning selected graph nodes and edges while keeping the graph picks.
@@ -340,6 +342,10 @@
 - Bind origin-move callbacks to their pointer gesture so cancelled drags cannot affect a later gesture; Escape prioritizes origin mode over a concurrent export (#45).
 
 - Reject node-canvas drag commits when the document, selection, or interaction locks changed during the gesture, preserving newer edits and undo history (#245).
+
+- Use reproducible compiler and linker options when building with SOURCE_DATE_EPOCH.
+
+- Honor SOURCE_DATE_EPOCH when packaging app ZIPs so identical signed bundles produce identical archives.
 
 - Add original procedural FBX export beside OBJ in the editor’s Export menu, with shared source-bound atomic publication, preserved diagnostics and independent Capsule re-import verification (#286).
 
@@ -398,6 +404,10 @@
 - Reject recovery capture after a failed replacement load, preserving its original error and the previous accepted document (#248).
 
 - Prevent editor writes and Cut from using a retained preview after a replacement document fails to load.
+
+- Hide Combine Mode for Cut Face components and keep inspector edits scoped to the selection that supplied them.
+
+- Set an inspected component’s smoothing cutoff to zero in one Undo step.
 
 - Require an exact PID and versioned notification channel for composition cancellation, ignoring older broadcast requests and bounding pending cancellation work (#56, #248).
 
