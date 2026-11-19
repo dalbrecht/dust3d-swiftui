@@ -25,6 +25,11 @@ set -- "$@" --build-system native --disable-sandbox \
     --scratch-path "$DUST3D_BUILD_ROOT/build" --cache-path "$DUST3D_BUILD_ROOT/swiftpm" \
     --config-path "$DUST3D_BUILD_ROOT/config" --security-path "$DUST3D_BUILD_ROOT/security" \
     -j "${DUST3D_BUILD_JOBS:-8}" -Xswiftc -warnings-as-errors
+if [ "${SOURCE_DATE_EPOCH+x}" = x ]; then
+    # Avoid embedding Clang module timestamps and link-time debug map timestamps.
+    set -- "$@" -Xswiftc -Xcc -Xswiftc -Xclang -Xswiftc -Xcc -Xswiftc -fno-pch-timestamp \
+        -Xlinker -reproducible
+fi
 if [ "$HAS_BUILD_IDENTITY" = true ]; then
     set -- "$@" -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __dust3d_build -Xlinker "$BUILD_IDENTITY_FILE"
 fi
