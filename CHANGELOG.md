@@ -319,6 +319,8 @@
 - Highlight the hovered node or edge in both canvas profiles, with node hits taking precedence over edges.
 - Preserve numeric move and scale controls for mixed and edge-only selections, expose additive node accessibility actions, and batch graph edge deletion into one validated XML mutation.
 
+- Suggest the Qt-style `_copy` name when duplicating a stored animation and include its type in the accessible list row.
+
 - Select nodes and edges together, with explicit graph editing modes and one-step batch midpoint insertion.
 
 - Reduce eligible selected nodes and reconnect their neighbors in one Undo step while preserving graph order.
