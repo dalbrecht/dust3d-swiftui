@@ -150,6 +150,10 @@
 
 - Open a local .ds3 document by dropping it into the editor without replacing the current document.
 
+- Enable Replay Steps when the document has model parts or a loaded reference image.
+
+- Open Replay Steps in independent windows so starting another replay keeps the current step and source of each existing replay.
+
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
