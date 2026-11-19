@@ -1,0 +1,30 @@
+Ó=DUST3D 1.0 xml 0000000134
+<?xml version="1.0" encoding="UTF-8"?>
+<ds3>
+    <model name="model.xml" offset="0" size="2230"/>
+</ds3>
+<?xml version="1.0" encoding="UTF-8"?>
+<canvas originX="0.170000" originY="0.330000" originZ="0.460000" rigType="Insect">
+ <nodes>
+  <node id="{0777bae5-e667-5ab8-81d0-e35e3382bcbe}" partId="{b57635f4-3375-51bd-8229-6a925572d998}" radius="0.070000" x="0.170000" y="0.170000" z="0.460000"/>
+  <node id="{9843ea7d-7c6a-51eb-98ab-6e0a522b2d21}" partId="{b57635f4-3375-51bd-8229-6a925572d998}" radius="0.070000" x="0.170000" y="0.170000" z="0.640000"/>
+  <node id="{968a13ac-b07e-5840-ab52-3bd88861c155}" partId="{b57635f4-3375-51bd-8229-6a925572d998}" radius="0.070000" x="0.170000" y="0.170000" z="0.820000"/>
+  <node id="{e724a55d-20bd-5afe-aa8e-778ba2f046f5}" partId="{b57635f4-3375-51bd-8229-6a925572d998}" radius="0.070000" x="0.170000" y="0.170000" z="1.000000"/>
+ </nodes>
+ <edges>
+  <edge boneName="Head" from="{0777bae5-e667-5ab8-81d0-e35e3382bcbe}" id="{d0ca792f-ecab-5b1a-92b9-811125a0c0e6}" partId="{b57635f4-3375-51bd-8229-6a925572d998}" to="{9843ea7d-7c6a-51eb-98ab-6e0a522b2d21}"/>
+  <edge boneName="Thorax" from="{9843ea7d-7c6a-51eb-98ab-6e0a522b2d21}" id="{d5b74ae9-9d86-5cee-8430-38069c23e4d0}" partId="{b57635f4-3375-51bd-8229-6a925572d998}" to="{968a13ac-b07e-5840-ab52-3bd88861c155}"/>
+  <edge boneName="Abdomen" from="{968a13ac-b07e-5840-ab52-3bd88861c155}" id="{63fe6f9d-4085-52f7-95f5-63d9c2efaa43}" partId="{b57635f4-3375-51bd-8229-6a925572d998}" to="{e724a55d-20bd-5afe-aa8e-778ba2f046f5}"/>
+ </edges>
+ <parts>
+  <part chamfered="false" disabled="false" id="{b57635f4-3375-51bd-8229-6a925572d998}" locked="false" name="body" rounded="true" subdived="true" target="Model" visible="true" xMirrored="false"/>
+ </parts>
+ <components>
+  <component color="#ffe0e0e0" combineMode="Normal" expanded="false" id="{b45872b6-3f79-5eb8-9a63-269090abb73c}" linkData="{b57635f4-3375-51bd-8229-6a925572d998}" linkDataType="partId" name="body" smoothCutoffDegrees="60.000000">
+  </component>
+ </components>
+ <animations>
+  <animation durationSeconds="4.000000" frameCount="90.000000" id="{737f3612-66fb-5cf7-8f36-0d5a889b5116}" name="idle" type="InsectIdle"/>
+  <animation durationSeconds="1.000000" frameCount="30.000000" id="{9078593c-a8d9-5169-830e-39ac26722f74}" name="walk" type="InsectWalk"/>
+ </animations>
+</canvas>

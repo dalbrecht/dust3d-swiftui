@@ -1,0 +1,44 @@
+{
+  "name": "insect",
+  "rig": "Insect",
+  "parts": [
+    {
+      "name": "body",
+      "bones": [
+        "Head",
+        "Thorax",
+        "Abdomen"
+      ],
+      "nodes": [
+        [
+          0,
+          0.16,
+          -0.0,
+          0.07
+        ],
+        [
+          0,
+          0.16,
+          -0.18,
+          0.07
+        ],
+        [
+          0,
+          0.16,
+          -0.36,
+          0.07
+        ],
+        [
+          0,
+          0.16,
+          -0.54,
+          0.07
+        ]
+      ]
+    }
+  ],
+  "animations": [
+    "InsectIdle",
+    "InsectWalk"
+  ]
+}
