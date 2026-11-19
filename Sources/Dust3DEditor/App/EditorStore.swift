@@ -2916,22 +2916,29 @@ final class EditorStore {
         perform(acceptCommittedCancellation: true) { try await $0.setGraphPartRole(role, target: target) }
     }
 
-    func setPartCutFace(_ id: String, selection: CutFaceSelection) {
-        perform { try await $0.apply([.setPartCutFace(id: id, selection: selection)]) }
+    func setPartCutFace(_ id: String, selection: CutFaceSelection, target: CanvasAdjustmentTarget? = nil) {
+        if let target, currentInspectedModelPart(id, target: target)?.target != .model { return }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setPartCutFace(id: id, selection: selection)], selecting: nil, target: target)
+        }
     }
-    func setPartCutRotation(_ id: String, rotation: String) {
+    func setPartCutRotation(_ id: String, rotation: String, target: CanvasAdjustmentTarget? = nil) {
         guard !isWorking, !stopped else { return }
+        if let target, currentInspectedModelPart(id, target: target) == nil { return }
         guard let value = EngineScalar.parse(rotation, in: -1...1) else {
             errorMessage = Self.message(DocumentError.invalidPartCutRotation)
             return
         }
-        perform { try await $0.apply([.setPartCutRotation(id: id, rotation: value)]) }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setPartCutRotation(id: id, rotation: value)], selecting: nil, target: target)
+        }
     }
     func partCutRotationPresetAction(_ preset: PartCutRotationPreset, partID: String) -> @MainActor () -> Void {
-        guard let snapshot, snapshot.allowsCutRotationPreset(for: partID) else { return {} }
+        guard let snapshot = acceptedDocumentSource, snapshot.cutRotationPresets(for: partID).contains(preset)
+        else { return {} }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         return { [weak self] in
-            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+            guard let self, !self.stopped, !self.isWorking, let current = self.acceptedDocumentSource,
                 target.isCurrent(in: current)
             else { return }
             self.perform { try await $0.setPartCutRotationPreset(preset, partID: partID, target: target) }
@@ -3059,31 +3066,49 @@ final class EditorStore {
         editGraphPartCrossSection(.deformationScale(property, scale), target: target)
     }
 
-    func setPartDeformationScale(_ id: String, property: PartDeformationProperty, value: String) {
+    func setPartDeformationScale(
+        _ id: String, property: PartDeformationProperty, value: String, target: CanvasAdjustmentTarget? = nil
+    ) {
         guard !isWorking, !stopped else { return }
+        if let target, currentInspectedModelPart(id, target: target) == nil { return }
         guard let scale = EngineScalar.parse(value, in: 0...2) else {
             errorMessage = Self.message(DocumentError.invalidPartDeformation)
             return
         }
-        perform { try await $0.apply([.setPartDeformationScale(id: id, property: property, value: scale)]) }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply(
+                [.setPartDeformationScale(id: id, property: property, value: scale)], selecting: nil, target: target)
+        }
     }
     func partDeformationResetAction(
         _ property: PartDeformationProperty, partID: String
     ) -> (@MainActor () -> Void)? {
-        guard let snapshot, let part = snapshot.inspectedPart, part.target == .model,
+        guard let snapshot = acceptedDocumentSource, let part = snapshot.inspectedPart, part.supportsDeformationScales,
             part.id.utf8.elementsEqual(partID.utf8)
         else { return nil }
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         return { [weak self] in
-            guard let self, !self.stopped, !self.isWorking, let current = self.snapshot,
+            guard let self, !self.stopped, !self.isWorking, let current = self.acceptedDocumentSource,
                 target.isCurrent(in: current)
             else { return }
-            self.perform { try await $0.resetPartDeformationScale(property, partID: partID, target: target) }
+            self.perform(acceptCommittedCancellation: true) {
+                try await $0.resetPartDeformationScale(property, partID: partID, target: target)
+            }
         }
     }
 
-    func setPartDeformationUnified(_ id: String, value: Bool) {
-        perform { try await $0.apply([.setPartDeformationUnified(id: id, value: value)]) }
+    func setPartDeformationUnified(_ id: String, value: Bool, target: CanvasAdjustmentTarget? = nil) {
+        if let target, currentInspectedModelPart(id, target: target)?.target != .model { return }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setPartDeformationUnified(id: id, value: value)], selecting: nil, target: target)
+        }
+    }
+    private func currentInspectedModelPart(_ id: String, target: CanvasAdjustmentTarget) -> DocumentPart? {
+        guard let source = acceptedDocumentSource, target.isCurrent(in: source),
+            let part = source.inspectedPart, part.supportsDeformationScales,
+            part.id.utf8.elementsEqual(id.utf8)
+        else { return nil }
+        return part
     }
     func setPartModifier(_ id: String, property: PartModifierProperty, value: Bool) {
         perform { try await $0.apply([.setPartModifier(id: id, property: property, value: value)]) }
@@ -5141,7 +5166,7 @@ final class EditorStore {
             case .invalidPartCutRotation:
                 return "Enter a cut rotation from -1 to 1 that the modeling engine can represent."
             case .invalidPartHollowThickness: return "Enter a hollow thickness from 0 to 1."
-            case .invalidPartMirrorRole: return "Mirrored copies can be authored only on Model parts."
+            case .invalidPartMirrorRole: return "Mirrored copies require a procedural or imported model part."
             case .invalidPartMirrorOrigin: return "Set all three canvas origin coordinates before enabling Mirrored."
             case .invalidPartMaterial: return "Enter a material value within its supported range."
             case .invalidPartDeformation: return "Enter a scale from 0 to 2 that the modeling engine can represent."

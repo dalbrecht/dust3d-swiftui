@@ -549,6 +549,18 @@
 
 - Add native edge bone assignment with Apply, Clear, draft reset and lossless undo/redo; rigged preview remains unavailable (#247).
 
+- Keep Part inspector profiles and rotation on the selection that supplied them.
+
+- Keep Part inspector deformation edits on the selection that supplied them.
+
+- Reset imported model width and thickness scales independently.
+
+- Mirror imported models from the inspector.
+
+- Hide component color image editing for imported models and Cut Faces.
+
+- Reset imported model rotation to zero from its orientation controls.
+
 - Expose stored rig-template and eyelid parameters in the native inspector, preserving undo/redo and lossless save; skeleton generation and pose preview remain unavailable (#254).
 
 - Add lossless, undoable stored rig-template and eyelid parameters with actor-prepared snapshots; skeleton generation and pose preview remain unavailable (#246).

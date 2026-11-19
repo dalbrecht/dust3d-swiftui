@@ -59,7 +59,9 @@ struct PartProfileChooser: View {
                                     if let choose {
                                         choose(.linkedPart(candidate.id))
                                     } else {
-                                        store.setPartCutFace(part.id, selection: .linkedPart(candidate.id))
+                                        store.setPartCutFace(
+                                            part.id, selection: .linkedPart(candidate.id),
+                                            target: CanvasAdjustmentTarget(snapshot: snapshot))
                                     }
                                 }
                                 .accessibilityLabel("Link profile \(spokenTitle)")

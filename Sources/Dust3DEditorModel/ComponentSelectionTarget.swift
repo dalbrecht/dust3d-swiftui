@@ -1,3 +1,4 @@
+import Dust3DDocument
 import Foundation
 
 /// Captured window/document/selection identity for a transient component operation.
@@ -24,10 +25,12 @@ public struct ComponentSelectionTarget: Sendable {
         documentIdentity == snapshot.documentIdentity && documentRevision == snapshot.documentRevision
             && componentID == snapshot.selectedComponentID
     }
-
     package func isCurrentColorImage(in snapshot: EditorSnapshot) -> Bool {
-        isCurrent(in: snapshot) && selectionRevision == snapshot.selectionRevision
-            && snapshot.selectedComponentID?.utf8.elementsEqual(componentID.utf8) == true
+        guard isCurrent(in: snapshot), selectionRevision == snapshot.selectionRevision,
+            let component = snapshot.selectedComponent,
+            component.id.utf8.elementsEqual(componentID.utf8)
+        else { return false }
+        return snapshot.allowsComponentColorImage(for: component)
     }
 
 }
@@ -37,3 +40,11 @@ public typealias ComponentReparentTarget = ComponentSelectionTarget
 
 /// Captured target for asynchronous image validation and assignment.
 public typealias ComponentColorImageTarget = ComponentSelectionTarget
+
+extension EditorSnapshot {
+    package func allowsComponentColorImage(for component: DocumentComponent) -> Bool {
+        guard let id = component.partID, let part = parts.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
+        else { return true }
+        return part.target != .cutFace && !part.isImportedModel
+    }
+}

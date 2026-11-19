@@ -408,13 +408,14 @@ public actor EditorSession {
         }
     }
 
-    /// Restore just one saved deformation scale on the originally inspected Model part.
+    /// Restore one saved scale on the originally inspected procedural or imported model.
     package func resetPartDeformationScale(
         _ property: PartDeformationProperty, partID: String, target: CanvasAdjustmentTarget
     ) throws -> EditorSnapshot {
         try update { state in
             let snapshot = state.snapshot
-            guard target.isCurrent(in: snapshot), let part = snapshot.inspectedPart, part.target == .model,
+            guard hasAcceptedSource, target.isCurrent(in: snapshot),
+                let part = snapshot.inspectedPart, part.supportsDeformationScales,
                 part.id.utf8.elementsEqual(partID.utf8)
             else { throw EditorError.staleCanvasAdjustment }
             try state.apply([.setPartDeformationScale(id: partID, property: property, value: 1)])
@@ -422,13 +423,14 @@ public actor EditorSession {
         }
     }
 
-    /// Set an absolute cross-section rotation on the originally inspected Model part.
+    /// Set an available rotation preset on the originally inspected part.
     package func setPartCutRotationPreset(
         _ preset: PartCutRotationPreset, partID: String, target: CanvasAdjustmentTarget
     ) throws -> EditorSnapshot {
         try update { state in
             let snapshot = state.snapshot
-            guard target.isCurrent(in: snapshot), snapshot.allowsCutRotationPreset(for: partID)
+            guard hasAcceptedSource, target.isCurrent(in: snapshot),
+                snapshot.cutRotationPresets(for: partID).contains(preset)
             else { throw EditorError.staleCanvasAdjustment }
             try state.apply([.setPartCutRotation(id: partID, rotation: preset.halfTurns)])
             try Task.checkCancellation()
@@ -631,6 +633,7 @@ public actor EditorSession {
     /// - Throws: Cancellation, stale-target or typed document/resource errors without partial state.
     public func importComponentColorImage(png: Data, target: ComponentColorImageTarget) throws -> EditorSnapshot {
         try update { state in
+            guard hasAcceptedSource else { throw EditorError.staleColorImageTarget }
             try state.applyColorImage(
                 .importComponentColorImage(id: target.componentID, imageID: Self.identifier(), png: png), target: target
             )
@@ -643,6 +646,7 @@ public actor EditorSession {
     /// - Throws: Cancellation, stale-target or original reference errors atomically.
     public func setComponentColorImage(imageID: String?, target: ComponentColorImageTarget) throws -> EditorSnapshot {
         try update { state in
+            guard hasAcceptedSource else { throw EditorError.staleColorImageTarget }
             try state.applyColorImage(.setComponentColorImage(id: target.componentID, imageID: imageID), target: target)
         }
     }

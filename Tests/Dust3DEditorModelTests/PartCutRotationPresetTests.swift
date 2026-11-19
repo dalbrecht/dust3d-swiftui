@@ -10,6 +10,7 @@ final class PartCutRotationPresetTests: XCTestCase {
             <part id='a' cutRotation='unsupported' visible='false' locked='true'/>
             <part id='b' cutRotation='0.25'/>
             <part id='profile' target='CutFace' cutRotation='0.25'/>
+            <part id='imported' target='ImportedModel' cutRotation='0.5' importedModelId='asset'/>
             </parts><components>
             <component id='first-link' linkDataType='partId' linkData='a'/>
             <component id='second-link' linkDataType='partId' linkData='a'/>
@@ -69,6 +70,27 @@ final class PartCutRotationPresetTests: XCTestCase {
         XCTAssertEqual(edited.selectedComponentIDs, selected.selectedComponentIDs)
         let undone = try await session.undo()
         XCTAssertEqual(undone.document.encoded(), selected.document.encoded())
+    }
+
+    func testImportedModelOffersZeroRotationAndPreservesExactUndo() async throws {
+        let source = try makeDocument()
+        let session = EditorSession()
+        _ = try await session.open(data: source.encoded())
+        let selected = try await session.selectPart("imported")
+        let target = CanvasAdjustmentTarget(snapshot: selected)
+        do {
+            _ = try await session.setPartCutRotationPreset(.positiveQuarterTurn, partID: "imported", target: target)
+            XCTFail("The imported-model inspector only offers the zero reset")
+        } catch {
+            XCTAssertEqual(error as? EditorError, .staleCanvasAdjustment)
+        }
+        let reset = try await session.setPartCutRotationPreset(.zero, partID: "imported", target: target)
+        let expected = try source.applying(.setPartCutRotation(id: "imported", rotation: 0))
+        XCTAssertEqual(reset.selectedPart?.cutRotation, 0)
+        XCTAssertEqual(reset.document.encoded(), expected.encoded())
+        let undone = try await session.undo()
+        XCTAssertEqual(undone.document.encoded(), source.encoded())
+        XCTAssertFalse(undone.canUndo)
     }
 
     func testPresetRejectsUnselectedPartAndStaleSelectionABA() async throws {
