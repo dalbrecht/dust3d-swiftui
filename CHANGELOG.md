@@ -33,6 +33,8 @@
 - Open the upstream Dust3D sponsorship page from the Help menu.
 
 - Select the owning component of the canvas picks from the Canvas menu.
+- Drag an edge stroke in the canvas to move its endpoints or the current graph selection in one undoable edit.
+
 - Use A to toggle Add and S to return to selection while the canvas has keyboard focus.
 - Open properties for the canvas graph owners with Space or the Canvas menu.
 
