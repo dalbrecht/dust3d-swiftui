@@ -116,6 +116,8 @@
 
 - Select newly pasted editable nodes and edges from Qt XML so edge commands are available immediately.
 
+- Switch Viewer windows between Model Colors and neutral shading from the toolbar or View menu. The Viewer retains the current mesh and its materials while a replacement loads or if that open fails.
+
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
 - Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
