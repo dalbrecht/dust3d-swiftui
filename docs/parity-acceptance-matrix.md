@@ -1,6 +1,6 @@
 # Qt parity and macOS acceptance matrix
 
-Checkpoint: November 6, 2026, merged Apple `0243cfca` (#382). Full requirements
+Checkpoint: November 19, 2026, merged Apple `6e62919b` (#691). Full requirements
 remain [editor-port-plan.md](editor-port-plan.md), including M0–M8 and its
 verification/risk controls. This matrix groups those requirements by acceptance
 boundary; rows are not equal-sized features or a completion denominator.
@@ -8,7 +8,7 @@ boundary; rows are not equal-sized features or a completion denominator.
 **Implemented** below means current source has a route. **Scoped evidence** means
 only the named fixtures/tests/contracts support it. Neither status means full
 parity, physical interaction acceptance or readiness for general distribution.
-Unknown or missing evidence remains open. The baseline includes #382 subtraction; broader physical modifier acceptance remains open.
+Unknown or missing evidence remains open. The baseline includes the guarded animation port; production runtime adoption and broader physical acceptance remain open.
 
 ## Requirement reconciliation
 
@@ -27,13 +27,53 @@ Unknown or missing evidence remains open. The baseline includes #382 subtraction
 | Combine/smoothing and procedural modifier families | Part deformation/profile/modifier, component mesh/stitching/wrapping/surface controls; [controlled comparisons](controlled-native-modifier-acceptance.md) | Per-family and interacting topology numerical comparisons, generated/reopened fixture corpus and production hollow consumer acceptance (#96/#120). Stored fields are not proof of generator adoption. |
 | Colors/images, transparency/metalness/roughness/emissive, countershade/detail, UV and baked maps | Native material/color/image/source-bake/render routes; [material evidence](imported-material-editor-verification.md) | Complete UV/PBR/alpha/mip/differential rendering/export proof and intended color-space correctness across every route (#143). |
 | Embedded GLB assets/transforms/materials and supported references | Lossless assets plus bounded import/material routes; [mixed file evidence](mixed-file-preview-verification.md) | Complete malformed/unsupported corpus and containment; no partial output may be claimed complete. GLB quarantine remains. |
-| Rig type/eyelid/bone assignment, hierarchy/weights/skeleton and IK | Stored authoring/assignment/progress/hover; graph endpoint IK; experimental generated-rest hierarchy/weights/joint viewport | Production actual-rest adoption, Qt joint/weight/rest comparison, evaluated skeletal deformation and physical viewport acceptance (#144). Graph endpoint IK does not establish all skeletal evaluation. |
-| Animation name/type/parameters, generation and elapsed-time playback | `DocumentAnimation`, catalog-backed authoring; pure `AnimationTimeline` projection | Evaluated owned frames/poses, skinning, scrubbing, playback independent of callback rate, cancellation and stale publication; native panel explicitly states playback unavailable (#145). |
-| Procedural sound, synchronization and WAV workflows | Stored `surfaceMaterial` authoring; Qt `animation_manage_widget.cc`/preview worker/sound sources define the reference intent | Native sound generation/adoption, format/duration, synchronized preview and WAV output remain unaccepted. A stored surface choice is not audio playback. |
-| Static/textured/rigged/animated OBJ/GLB/FBX and combined WAV export | `EditorGeometryExportCommands` and `DocumentExportFormat` expose OBJ/FBX geometry routes with captured source/publication admission | Full format families, materials/UV/rig/animation/audio and independent consumer re-import; writer/GLB quarantine remains (#146). |
+| Rig type/eyelid/bone assignment, hierarchy/weights/skeleton and IK | Stored authoring/assignment/progress/hover; graph endpoint IK; experimental generated-rest hierarchy/weights/joint viewport | Production actual-rest adoption, Qt joint/weight/rest comparison and physical viewport acceptance (#144); scoped native evaluated deformation evidence is recorded below. Graph endpoint IK does not establish all skeletal evaluation. |
+| Animation name/type/parameters, generation and elapsed-time playback | `DocumentAnimation`, catalog-backed authoring and `AnimationTimeline`; opt-in owned evaluated clips, skinning, elapsed-time scrubbing/playback and source/cancellation guards ([evidence below](#guarded-evaluated-animation-evidence)) | Production runtime adoption, independent Qt corpus, all clip/boundary cases and physical playback/VoiceOver acceptance (#145). Production-pin builds retain metadata-only controls. |
+| Procedural sound, synchronization and WAV workflows | Stored `surfaceMaterial` authoring; Qt `animation_manage_widget.cc`/preview worker/sound sources define the reference intent | Guarded native procedural PCM, copied WAV and synchronization routes have scoped tests; independent audio/duration corpus, physical synchronization and default adoption remain unaccepted. |
+| Static/textured/rigged/animated OBJ/GLB/FBX and combined WAV export | `EditorGeometryExportCommands` and `DocumentExportFormat` expose OBJ/FBX geometry routes with captured source/publication admission | Guarded selected animated FBX has exact stack-name/order/ID-fallback evidence; full format families, materials/UV/rig/audio and independent animated consumer re-import remain open. Writer/GLB quarantine remains (#146). |
 | Headless/batch behavior, exit diagnostics and partial multi-file recovery | Export ownership/coordinator foundations; source save differs from export | End-to-end batch and recoverable publication corpus; local helpers are not automation acceptance. |
 | Desktop menus, toolbars/inspectors, camera/display modes and settings | Native commands, `InspectorCommands`, standard About, Help/credits, preview palettes/camera routes and documented shortcuts | Actual menu/focus dispatch, customization, Full Keyboard Access, VoiceOver, contrast/appearance/Reduce Motion and supported OS/hardware scenarios. See physical criteria below. |
 | Worker containment, lifecycle, memory/performance and distribution | Scoped core coordinator/local worker contracts; Qt-free builds, package identities/resources, ad-hoc signatures/exact archives | Separate new-C++ adapter coverage, ASan/UBSan and archive/XML/asset/command fuzzing; strong memory/descendant/filesystem/network/parent-death containment and stop/escalation; measured load/edit/generate/bake/export latency, peak memory and interaction budgets on supported Apple Silicon/Intel/OS hardware; file associations, settings, entitlements/sandbox decision, signing/notarization, versioning/reproducible packaging and upgrade/distribution (#147/core #123). Metadata is not a sandbox. |
+
+## Guarded evaluated animation evidence
+
+Production Core stays at `48b0ce2d6d61cf58731bb0c3e14ef5965a686d68`.
+The evaluated runtime is opt-in: both `MOTE3D_EXPERIMENTAL_FISH_IDLE` and
+`MOTE3D_EXPERIMENTAL_GENERATED_RIG`, with Core's optional SwiftPM product enabled
+by `DUST3D_EXPERIMENTAL_ANIMATION=1`. Core #393/#394 are merged at
+`0d93595fb359de8eecfd33046d1a7b09eafee46d`. Core #395 subsequently merged
+at `474bb80923baf75f664fe5214e1df1d733e3f029`; QA tag
+`dust3d-core-animation-qa-20261119.3` preserves tested source
+`a0cc08b6f6d424be5e5d5ad44273230e5a620e90` with an identical tree.
+
+Signed QA tag `mote3d-evaluated-animation-qa-20261119.1` uses App
+`02b6b8f51b555255543028e905540a8bfd5e50f9` and that Core revision. Its
+69 focused tests, signed archive and headless seven-rig inventory/DS3/OBJ/FBX smoke
+are development evidence. Later tests at local App candidate
+`9da47e9e997a0f455e0dba4f61953762f2adcae3` retain identical product sources:
+
+- [Seven native CPU family tests](../Tests/Dust3DEditorTests/NativeAnimationFamilyBridgeTests.swift)
+  cover copied owned clips, deformation, retained clips, PCM and lease retirement.
+- [Seven actual Metal family tests](../Tests/Dust3DEditorTests/NativeAnimationFamilyMetalTests.swift)
+  passed with zero skips, strict silhouette checks, pose-buffer replacement and fixed-rest bounds.
+- [Selected-FBX tests](../Tests/Dust3DEditorTests/NativeAnimationBridgeTests.swift) and
+  [bounded structural inspector tests](../Tests/Dust3DEditorTests/FbxAnimationStackInspectorTests.swift)
+  passed seven cases: exact UTF-8 authored titles/order, unnamed-ID fallback,
+  archive authority despite misleading caller metadata, omitted unselected clips,
+  positive distinct object IDs and typed low-budget rejection. This reader checks
+  FBX7400 structure, not curves or independent importer compatibility.
+- [Mounted error-announcement tests](../Tests/Dust3DEditorTests/AnimationPreviewErrorAnnouncementTests.swift)
+  cover one current-active error, deduplication and inactive/retired suppression.
+  This does not replace physical VoiceOver acceptance.
+
+The complete paired App suite at `9da47e9e997a0f455e0dba4f61953762f2adcae3`
+passed 2,626 tests with two expected accessibility skips and zero failures against
+reviewed Core `a0cc08b6f6d424be5e5d5ad44273230e5a620e90`, with both runtime
+flags enabled and all helper source/pin/identity/dependency postchecks passing.
+This does not establish physical UI acceptance or close any epic. The source
+inventory of 180 types (114 loops, 66 one-shots, four aliases) is source alignment,
+not runtime proof. `frameCount=1`, duration limits, all 66 one-shots, independent
+Qt motion/audio corpus and default runtime adoption remain gaps. Existing writer/GLB quarantines and Apple #199 acceptance work remain in force; #145/#146/#147 stay open.
 
 ## Signed canvas acceptance evidence
 
@@ -89,8 +129,8 @@ native app. The inspected widget files are byte-identical to production core
 | `part_manage_widget.cc:294–433` hierarchy actions | `ComponentSidebar` and captured group/order/ungroup/delete/role controls |
 | `component_property_widget.cc:165–973` modifier/material/wrapping controls | Part deformation/profile/modifier/material and component mesh/stitching/wrapping/surface controls |
 | `bone_manage_widget.cc:222–375`, `:554`, `:663–673`, `:868` authoring/selection | `RigSettingsControls`, `RigTemplateBoneBrowser`, `BoneEdgeOverview`, assignment/clear targets |
-| `bone_manage_widget.cc:765`, `:943` generated-rest inspection | Experimental `GeneratedRigPreview`, hierarchy/weights/joint inspection; unpublished local-core dependency |
-| `animation_manage_widget.cc:227–269`, `:578–581`, `:1093` generation/playback | Actual capability gap; stored authoring and a pure timeline do not supply these routes |
+| `bone_manage_widget.cc:765`, `:943` generated-rest inspection | Experimental `GeneratedRigPreview`, hierarchy/weights/joint inspection; explicit opt-in local Core dependency |
+| `animation_manage_widget.cc:227–269`, `:578–581`, `:1093` generation/playback | Production-pin metadata-only route; guarded native evaluated playback exists with scoped evidence in the animation section, without full Qt acceptance |
 
 ## Physical macOS acceptance criteria
 

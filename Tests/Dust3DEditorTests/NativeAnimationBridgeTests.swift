@@ -39,6 +39,61 @@
             }
         }
 
+        func testFbxExportsExactlySelectedAuthoredStacksInRequestedOrder() async throws {
+            let namedTitle = "  Café 🐟  "
+            let xml = fishXML.replacingOccurrences(
+                of: "<animation id='idle'", with: "<animation id='idle' name='\(namedTitle)'"
+            )
+            .replacingOccurrences(
+                of: "</animations>",
+                with:
+                    "<animation id='unselected' name='Excluded stack' type='FishIdle' durationSeconds='1' frameCount='8'/></animations>"
+            )
+            let document = try Dust3DDocument(snapshotXML: Data(xml.utf8))
+            let snapshot = try await EditorSession().open(data: document.encoded())
+            let request = GeneratedRigPreviewRequest(snapshot: snapshot)
+            let animations = try document.animations()
+            let named = try XCTUnwrap(animations.first { $0.id == "idle" })
+            let unnamed = try XCTUnwrap(animations.first { $0.id == "swim" })
+            // The service must resolve titles from its archive, not caller-side metadata.
+            let misleadingDocument = try Dust3DDocument(
+                snapshotXML: Data(xml.replacingOccurrences(of: namedTitle, with: "Misleading UI title").utf8))
+            let misleading = try XCTUnwrap(misleadingDocument.animations().first { $0.id == named.id })
+            XCTAssertEqual(misleading.type, named.type)
+            let service = ExperimentalFishIdleFbxService()
+            // Match the actual combined-export controls, including native atlas preparation.
+            let limits = FishIdleCopyLimits(
+                nativeBytes: 256 * 1024 * 1024, swiftBytes: 64 * 1024 * 1024,
+                combinedBytes: 256 * 1024 * 1024)
+            for (selected, expected) in [
+                ([misleading], [Data(namedTitle.utf8)]),
+                ([unnamed, misleading], [Data(unnamed.id.utf8), Data(namedTitle.utf8)]),
+            ] {
+                let data = try await service.encode(rig: request, animations: selected, limits: limits)
+                let stacks = try FbxAnimationStackInspector.inspect(data)
+                XCTAssertEqual(stacks.map(\.titleUTF8), expected)
+                XCTAssertEqual(Set(stacks.map(\.objectID)).count, selected.count)
+                XCTAssertTrue(stacks.allSatisfy { $0.objectID > 0 })
+                XCTAssertFalse(stacks.contains { $0.titleUTF8 == Data("Excluded stack".utf8) })
+            }
+        }
+
+        func testFbxRejectsNativeBudgetBelowRetainedBakeReservations() async throws {
+            let document = try Dust3DDocument(snapshotXML: Data(fishXML.utf8))
+            let snapshot = try await EditorSession().open(data: document.encoded())
+            let animation = try XCTUnwrap(document.animations().first { $0.id == "idle" })
+            do {
+                _ = try await ExperimentalFishIdleFbxService().encode(
+                    rig: GeneratedRigPreviewRequest(snapshot: snapshot), animations: [animation],
+                    limits: FishIdleCopyLimits(
+                        nativeBytes: 64 * 1024 * 1024, swiftBytes: 64 * 1024 * 1024,
+                        combinedBytes: 128 * 1024 * 1024))
+                XCTFail("Expected the native retained-bake quota to reject this budget")
+            } catch let error as MeshLoadingError {
+                XCTAssertEqual(error.status, 4, error.localizedDescription)
+            }
+        }
+
         private func identity(_ value: Int) -> String {
             "{00000000-0000-4000-8000-\(String(format: "%012d", value))}"
         }
