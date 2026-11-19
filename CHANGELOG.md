@@ -291,6 +291,8 @@
 
 - Enter a target in the node inspector to bend a chain from the keyboard.
 
+- Press H to toggle canvas visibility and Shift-H to isolate the owning part.
+
 - Shift-drag a graph selection to rotate it or bend a single endpoint chain.
 
 - Add graph auto-color from displayed reference pixels and default-color reset, with source-bound atomic Undo and stale-raster rejection (#45).
