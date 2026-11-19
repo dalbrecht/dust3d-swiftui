@@ -484,15 +484,28 @@ public struct EditorState: Sendable {
     public mutating func setSelectedComponentPartRole(
         _ role: PartTarget, target: ComponentPartRoleTarget, newGroupID: String?
     ) throws {
+        try setSelectedComponentPartRole(role, target: target, newGroupID: newGroupID, retainingBrowsePicks: false)
+    }
+
+    mutating func setSelectedComponentPartRole(
+        _ role: PartTarget, target: ComponentPartRoleTarget, newGroupID: String?, retainingBrowsePicks: Bool
+    ) throws {
         guard target.isCurrent(in: snapshot) else { throw ComponentPartRoleError.staleContext }
         let plan = try snapshot.componentPartRolePlan(role)
         var next = self
         try next.apply([.setComponentPartRoles(componentIDs: plan.componentIDs, target: role, newGroupID: newGroupID)])
         if let group = plan.requiresNewGroup ? newGroupID : plan.revealGroupID {
-            try next.selectComponent(group)
-            next.componentRevealRevision += 1
-            next.componentRevealHint = ComponentRevealHint.make(
-                componentID: group, tree: next.componentTree, revision: next.componentRevealRevision)
+            if retainingBrowsePicks {
+                guard let row = next.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(group.utf8) })
+                else { throw ComponentPartRoleError.staleContext }
+                let children = Set(row.component.childIDs.map { Data($0.utf8) })
+                try next.selectComponents(next.selectedComponentIDs.filter { children.contains(Data($0.utf8)) })
+            } else {
+                try next.selectComponent(group)
+                next.componentRevealRevision += 1
+                next.componentRevealHint = ComponentRevealHint.make(
+                    componentID: group, tree: next.componentTree, revision: next.componentRevealRevision)
+            }
         }
         try Task.checkCancellation()
         self = next

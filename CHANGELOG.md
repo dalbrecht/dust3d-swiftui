@@ -94,6 +94,8 @@
 
 - Name the destinations of component breadcrumb controls, including the full tree.
 
+- Open the shared group in the component sidebar after assigning stitching roles to multiple parts.
+
 - Go to the enclosing component group from the View menu or with Command–Up Arrow while the component sidebar has focus.
 
 - Identify empty and populated groups in the component sidebar and enlarge disclosure controls.
