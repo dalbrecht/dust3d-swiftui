@@ -256,6 +256,24 @@
 
 - Show rig assignment progress with stored/selectable counts, select unassigned or chosen-bone edges, and highlight matches on hover without changing document history (#363).
 
+- Discard pending preview errors when their view closes or is replaced.
+
+- Keep preview clicks available until a trackpad gesture commits.
+
+- Keep the active preview gesture in control when mouse and trackpad input overlap.
+
+- End preview camera gestures and pending picks when keyboard focus leaves the viewport.
+
+- Let Escape cancel active preview trackpad gestures and ignore their late events.
+
+- Press Escape to cancel an active preview drag or pending pick.
+
+- Orbit the preview through the top and underside of the model.
+
+- Keep an active preview drag in progress when the scroll wheel moves.
+
+- Orbit the preview with a middle-button drag, or hold Shift to pan.
+
 - Clear exact stored assignments for a template bone or its descendant chain across the document in one Undo step, including hidden and locked parts (#361).
 
 - Browse the pinned rig template bone hierarchy and stored assignment counts, then assign the chosen exact name to selected edges in one Undo step (#359).
