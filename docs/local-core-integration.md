@@ -44,3 +44,21 @@ The production pin remains unchanged and its preserved-metadata warning remains
 visible. These document commands alone do not establish hollow geometry support in
 the standard editor. A dependency update, combined editor acceptance and physical
 inspector/keyboard/VoiceOver verification remain separate gates for issue #96.
+
+## Experimental animation module
+
+Use a Core checkout exposing `Dust3DExperimentalAnimation` to build the evaluated
+animation path. The helper selects that checkout before enabling its SwiftPM
+product, and records both compiler flags in the build identity.
+
+```sh
+python3 script/local_core_integration.py --core /absolute/path/to/dust3d-core \
+  --build-root /absolute/path/to/disposable-builds \
+  test --configuration release --filter 'NativeAnimationBridgeTests|SuppliedAnimationPreviewTests' \
+  -Xswiftc -DMOTE3D_EXPERIMENTAL_GENERATED_RIG \
+  -Xswiftc -DMOTE3D_EXPERIMENTAL_FISH_IDLE
+```
+
+The native bridge contract generates a small authored Fish body, loads its Idle
+and Swim clips with PCM, copies the owned poses, and skins a sampled frame through
+the Editor's playback controller.

@@ -78,6 +78,25 @@ class LocalCoreIntegrationTests(unittest.TestCase):
                 module.validate_arguments(args)
         module.validate_arguments(['test', '--filter', 'ExampleTests'])
 
+    def test_animation_flags_are_recorded_for_the_local_build(self):
+        self.assertEqual(module.validate_arguments([
+            'test', '-Xswiftc', '-DMOTE3D_EXPERIMENTAL_FISH_IDLE',
+            '-Xswiftc', '-DMOTE3D_EXPERIMENTAL_GENERATED_RIG'
+        ]), ['MOTE3D_EXPERIMENTAL_FISH_IDLE', 'MOTE3D_EXPERIMENTAL_GENERATED_RIG'])
+
+    def test_animation_product_is_enabled_after_local_core_selection(self):
+        features = ['MOTE3D_EXPERIMENTAL_FISH_IDLE', 'MOTE3D_EXPERIMENTAL_GENERATED_RIG']
+        original = {'DUST3D_EXPERIMENTAL_ANIMATION': '1', 'OTHER': 'retained'}
+        for command, selected, enabled in [
+            ('package', features, False), ('build', features, True), ('test', features, True),
+            ('test', features[:1], False), ('test', features[1:], False), ('build', [], False),
+        ]:
+            with self.subTest(command=command, selected=selected):
+                result = module.environment_for_swift_command(original, command, selected)
+                self.assertEqual(result.get('DUST3D_EXPERIMENTAL_ANIMATION'), '1' if enabled else None)
+                self.assertEqual(result['OTHER'], 'retained')
+        self.assertEqual(original['DUST3D_EXPERIMENTAL_ANIMATION'], '1')
+
     def test_generated_rig_flag_is_distinct_and_recorded(self):
         self.assertEqual(module.validate_arguments([
             'test', '--filter', 'GeneratedRigTests', '-Xswiftc', '-DMOTE3D_EXPERIMENTAL_GENERATED_RIG'

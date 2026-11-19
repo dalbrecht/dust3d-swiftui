@@ -1,6 +1,7 @@
 #if MOTE3D_EXPERIMENTAL_FISH_IDLE && MOTE3D_EXPERIMENTAL_GENERATED_RIG
     import Dust3DDocument
     import Dust3DEngine
+    import Dust3DExperimentalAnimation
     import Dust3DKit
     import Foundation
 
