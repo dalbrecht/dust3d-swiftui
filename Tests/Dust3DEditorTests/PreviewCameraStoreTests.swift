@@ -38,7 +38,8 @@ import XCTest
         XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
         XCTAssertFalse(store.canUndo)
         store.movePreviewCamera(.orbitLeft)
-        store.renderError = "Renderer unavailable"
+        store.reportPreviewRendererError(
+            "Renderer unavailable", attemptID: store.previewRendererAttemptID, revision: store.materialViewportRevision)
         XCTAssertFalse(store.canMovePreviewCamera)
         XCTAssertNil(store.previewCameraCommand)
         let failedReset = store.cameraReset
@@ -46,7 +47,7 @@ import XCTest
         store.fitPreviewCamera()
         XCTAssertNil(store.previewCameraCommand)
         XCTAssertEqual(store.cameraReset, failedReset)
-        store.renderError = nil
+        store.retryPreview()
         XCTAssertTrue(store.canMovePreviewCamera)
         store.movePreviewCamera(.orbitLeft)
         store.selectAllNodes()
@@ -98,6 +99,35 @@ import XCTest
         try await settle(store)
         XCTAssertNotNil(store.mesh)
         XCTAssertNil(store.previewCameraCommand)
+    }
+
+    func testRendererRetryKeepsAcceptedPreviewAndDoesNotRegenerateMesh() async throws {
+        let source = try cameraDocument()
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+        let acceptedMesh = try XCTUnwrap(store.mesh)
+        let revision = store.previewRevision
+        let attemptID = store.previewRendererAttemptID
+        let materialRevision = store.materialViewportRevision
+        store.reportPreviewRendererError("Obsolete mesh", attemptID: attemptID, revision: materialRevision - 1)
+        XCTAssertNil(store.renderError)
+        store.reportPreviewRendererError("Renderer unavailable", attemptID: attemptID, revision: materialRevision)
+        XCTAssertEqual(store.renderError, "Renderer unavailable")
+
+        store.retryPreview(rendererAttemptID: attemptID)
+
+        XCTAssertNotEqual(store.previewRendererAttemptID, attemptID)
+        store.reportPreviewRendererError("Retired renderer", attemptID: attemptID, revision: materialRevision)
+        store.retryPreview(rendererAttemptID: attemptID)
+        XCTAssertNil(store.renderError)
+        XCTAssertFalse(store.isGenerating)
+        try await settle(store)
+        XCTAssertEqual(store.previewRevision, revision)
+        XCTAssertEqual(store.mesh?.indices, acceptedMesh.indices)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
     }
 
     func testSuccessfulEmptyResultRetiresCommandWithoutChangingSourceOrHistory() async throws {
@@ -179,9 +209,10 @@ import XCTest
         XCTAssertFalse(store.canUndo)
         XCTAssertEqual(store.previewRevision, revision)
         XCTAssertEqual(store.cameraReset, reset)
-        store.renderError = "Renderer unavailable"
+        store.reportPreviewRendererError(
+            "Renderer unavailable", attemptID: store.previewRendererAttemptID, revision: store.materialViewportRevision)
         XCTAssertFalse(store.isPreviewAutomaticallyOrbiting)
-        store.renderError = nil
+        store.retryPreview()
         XCTAssertTrue(store.isPreviewAutomaticallyOrbiting)
         store.setPartState("{aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa}", property: .disabled, value: true)
         try await settle(store)
