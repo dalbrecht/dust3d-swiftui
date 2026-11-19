@@ -13,6 +13,20 @@ private struct AnimationPanelNoPreview: EditorPreviewServing {
 
 @MainActor
 final class AnimationPanelTests: XCTestCase {
+    func testDuplicateNameUsesExactStoredNameAndQtSuffix() throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                ("<canvas><animations><animation id='a' name=' cafe\u{301} ' type='future'/>"
+                    + "<animation id='b' type='future'/></animations></canvas>").utf8))
+        let rows = AnimationListPresentation(catalog: .success(try source.animations())).rows
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertTrue(
+            AnimationNameAction.duplicate.initialName(for: rows[0]).value.utf8.elementsEqual(
+                " cafe\u{301} _copy".utf8))
+        XCTAssertEqual(AnimationNameAction.duplicate.initialName(for: rows[1]).value, "_copy")
+        XCTAssertEqual(AnimationNameAction.rename.initialName(for: rows[1]).value, "")
+    }
+
     func testExactNativeNameInputPreservesUtf8AndReturnEscapeIntent() {
         NSApplication.shared.setActivationPolicy(.prohibited)
         var text = AnimationNameText("caf\u{e9}")
