@@ -13,7 +13,7 @@ enum PartMirrorMetadata {
             let element = root.elements(forName: "parts").first?.elements(forName: "part").first(
                 where: { $0.attribute(forName: "id")?.stringValue?.utf8.elementsEqual(id.utf8) == true })
         else { throw DocumentError.missingPart(id) }
-        guard part.target == .model else { throw DocumentError.invalidPartMirrorRole }
+        guard part.supportsMirroring else { throw DocumentError.invalidPartMirrorRole }
         guard part.xMirrored != value else { return false }
         if value {
             try ensureOrigin(in: root, nodes: contents.nodes)
