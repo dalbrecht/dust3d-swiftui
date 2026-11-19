@@ -42,6 +42,32 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         }
         XCTFail("Store did not settle")
     }
+    func testComponentImageEditingRequiresEligibleSelectedOwner() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><parts><part id='i' target='ImportedModel'/><part id='p' target='CutFace'/></parts>
+                <components><component id='imported' linkDataType='partId' linkData='i'/>
+                <component id='profile' linkDataType='partId' linkData='p'/>
+                <component id='group'/></components></canvas>
+                """.utf8))
+        let value = store()
+        defer { value.stop() }
+        await value.load(data: source.encoded())
+        for id in ["imported", "profile"] {
+            value.selectComponent(id)
+            try await settle(value)
+            let target = try XCTUnwrap(ComponentColorImageTarget(snapshot: try XCTUnwrap(value.snapshot)))
+            XCTAssertFalse(value.canEditComponentColorImage(.component(target)))
+        }
+        value.selectComponent("group")
+        try await settle(value)
+        let target = try XCTUnwrap(ComponentColorImageTarget(snapshot: try XCTUnwrap(value.snapshot)))
+        XCTAssertTrue(value.canEditComponentColorImage(.component(target)))
+        XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(value.canUndo)
+    }
+
     func testGraphSingletonCanEditWhileSidebarSingletonKeepsItsOwnRoute() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(
@@ -166,30 +192,39 @@ private struct MeshSettingsNoNative: EditorPreviewServing, ArchiveTextureBaking,
         XCTAssertFalse(value.canUndo)
     }
 
-    func testComponentImageEditingRequiresEligibleSelectedOwner() async throws {
+    func testInspectedMaterialAppliesAndResetsForSharedComponentOwner() async throws {
         let source = try Dust3DDocument(
             snapshotXML: Data(
                 """
-                <canvas><parts><part id='i' target='ImportedModel'/><part id='p' target='CutFace'/></parts>
-                <components><component id='imported' linkDataType='partId' linkData='i'/>
-                <component id='profile' linkDataType='partId' linkData='p'/>
-                <component id='group'/></components></canvas>
+                <canvas><parts><part id='p' emissive='.75'/></parts><components>
+                <component id='a' linkDataType='partId' linkData='p'/>
+                <component id='b' linkDataType='partId' linkData='p'/>
+                </components></canvas>
                 """.utf8))
         let value = store()
         defer { value.stop() }
         await value.load(data: source.encoded())
-        for id in ["imported", "profile"] {
-            value.selectComponent(id)
-            try await settle(value)
-            let target = try XCTUnwrap(ComponentColorImageTarget(snapshot: try XCTUnwrap(value.snapshot)))
-            XCTAssertFalse(value.canEditComponentColorImage(.component(target)))
-        }
-        value.selectComponent("group")
         try await settle(value)
-        let target = try XCTUnwrap(ComponentColorImageTarget(snapshot: try XCTUnwrap(value.snapshot)))
-        XCTAssertTrue(value.canEditComponentColorImage(.component(target)))
+        value.selectComponents(["a", "b"])
+        try await settle(value)
+        let selected = try XCTUnwrap(value.snapshot)
+        XCTAssertNil(selected.selectedPart)
+        XCTAssertEqual(selected.inspectedPart?.id, "p")
+
+        value.setPartMaterial("p", property: .emissive, value: "2", target: CanvasAdjustmentTarget(snapshot: selected))
+        try await settle(value)
+        let edited = try XCTUnwrap(value.snapshot)
+        XCTAssertEqual(edited.inspectedPart?.materialValue(.emissive), 2)
+        value.resetInspectedPartMaterial("p", property: .emissive, target: CanvasAdjustmentTarget(snapshot: edited))
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.inspectedPart?.materialValue(.emissive), 0)
+        XCTAssertEqual(value.snapshot?.selectedComponentIDs, selected.selectedComponentIDs)
+        value.undo()
+        try await settle(value)
+        XCTAssertEqual(value.snapshot?.document.encoded(), edited.document.encoded())
+        value.undo()
+        try await settle(value)
         XCTAssertEqual(value.snapshot?.document.encoded(), source.encoded())
-        XCTAssertFalse(value.canUndo)
     }
 
     func testGraphOwnerMaterialApplyAndResetRejectRetiredAndFailedSourceTargets() async throws {

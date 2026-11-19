@@ -97,19 +97,7 @@ struct AnimationAuthoringControls: View {
                 Text(draft.clip.type).font(.caption).textSelection(.enabled)
                 Text("Unchanged settings and unsupported values are kept. Default removes a stored override.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                numericField(
-                    name: "durationSeconds", label: "Duration (seconds)", defaultText: String(draft.clip.seconds),
-                    supported: { text in
-                        guard let value = Double(text) else { return false }
-                        return (try? draft.timing.validate(seconds: value, frames: Double(draft.timing.minimumFrames)))
-                            != nil
-                    })
-                numericField(
-                    name: "frameCount", label: "Sample count", defaultText: String(draft.clip.samples),
-                    supported: { text in
-                        guard let value = Double(text) else { return false }
-                        return (try? draft.timing.validate(seconds: draft.timing.minimumSeconds, frames: value)) != nil
-                    })
+                timingFields(draft.timing, seconds: draft.clip.seconds, frames: draft.clip.samples)
                 surfacePicker(draft)
                 ForEach(draft.clip.controls.indices, id: \.self) { index in
                     let control = draft.clip.controls[index]
@@ -132,8 +120,30 @@ struct AnimationAuthoringControls: View {
                         .disabled(sliderPosition(control) == nil)
                     }
                 }
+            } else if let draft = workflow.unknownTimingDraft {
+                Text(workflow.sourceType ?? "").font(.caption).textSelection(.enabled)
+                Text("Only stored timing is editable for this type. Other parameters are kept.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                timingFields(draft.timing, seconds: draft.defaultSeconds, frames: draft.defaultFrames)
             }
         }
+    }
+
+    @ViewBuilder private func timingFields(_ timing: AnimationTimingDefinition, seconds: Double, frames: Int)
+        -> some View
+    {
+        numericField(
+            name: "durationSeconds", label: "Duration (seconds)", defaultText: String(seconds),
+            supported: { text in
+                guard let value = Double(text) else { return false }
+                return (try? timing.validate(seconds: value, frames: Double(timing.minimumFrames))) != nil
+            })
+        numericField(
+            name: "frameCount", label: "Sample count", defaultText: String(frames),
+            supported: { text in
+                guard let value = Double(text) else { return false }
+                return (try? timing.validate(seconds: timing.minimumSeconds, frames: value)) != nil
+            })
     }
 
     private var typePicker: some View {
@@ -165,7 +175,7 @@ struct AnimationAuthoringControls: View {
                 TextField(
                     "Default \(defaultText)",
                     text: Binding(
-                        get: { workflow.parameterDraft?.value(for: name) ?? "" },
+                        get: { workflow.parameterValue(for: name) ?? "" },
                         set: { workflow.setText(name: name, value: $0) })
                 )
                 .textFieldStyle(.roundedBorder).monospacedDigit().frame(minHeight: 40)
@@ -176,10 +186,10 @@ struct AnimationAuthoringControls: View {
                     Text("Default").frame(minWidth: 40, minHeight: 40)
                 }.buttonStyle(.borderless)
                     .accessibilityLabel("Use default \(label)")
-                    .disabled(workflow.parameterDraft?.value(for: name) == nil)
+                    .disabled(workflow.parameterValue(for: name) == nil)
                     .help("Remove this stored override")
             }
-            if let raw = workflow.parameterDraft?.value(for: name), !supported(raw) {
+            if let raw = workflow.parameterValue(for: name), !supported(raw) {
                 Text("Unsupported value retained. Enter a replacement or use Default.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
