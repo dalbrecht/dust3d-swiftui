@@ -22,7 +22,10 @@ struct ContentView: View {
                     Text(message).textSelection(.enabled)
                     Spacer()
                     if store.errorMessage != nil {
-                        Button("Dismiss") { store.errorMessage = nil }
+                        if let failure = store.openFailure {
+                            Button("Try Again") { store.retryOpen(failure) }
+                        }
+                        Button("Dismiss") { store.dismissFileError() }
                     } else {
                         if let retryPreview = store.rendererRetryAction() {
                             Button("Retry Preview", action: retryPreview)
@@ -103,8 +106,9 @@ struct ContentView: View {
                 let retryMaterials = store.materialRetryAction()
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Showing geometry without materials")
+                        Text(ViewerErrorAnnouncement.materialFallbackTitle)
                         Text(issue).textSelection(.enabled)
                     }
                     Spacer()
@@ -148,7 +152,10 @@ struct ContentView: View {
                 .accessibilityIdentifier("material-source-notice")
             }
         }
-        .background(ViewerErrorAnnouncement(message: visibleError).frame(width: 0, height: 0))
+        .background(
+            ViewerErrorAnnouncement(message: visibleError, materialIssue: store.materialIssue)
+                .frame(width: 0, height: 0)
+        )
         .frame(minWidth: 650, minHeight: 450)
         .navigationTitle(store.documentName)
         .toolbar {
@@ -177,7 +184,7 @@ struct ContentView: View {
         .fileImporter(isPresented: $isImporterPresented, allowedContentTypes: [.dust3DDocument]) { result in
             switch result {
             case .success(let url): store.open(url)
-            case .failure(let error): store.errorMessage = error.localizedDescription
+            case .failure(let error): store.reportFilePickerError(error)
             }
         }
         .onExitCommand(perform: cancelOperation)

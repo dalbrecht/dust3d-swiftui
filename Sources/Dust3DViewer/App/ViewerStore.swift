@@ -6,6 +6,11 @@ import Observation
 @MainActor
 @Observable
 final class ViewerStore {
+    struct OpenFailure: Equatable {
+        let url: URL
+        let revision: Int
+    }
+
     private(set) var mesh: IndexedMesh?
     private(set) var cameraState = MeshCameraState()
     private(set) var isWireframe = false
@@ -67,7 +72,8 @@ final class ViewerStore {
     private(set) var materialIssue: String?
     private(set) var meshRevision = 0
     private(set) var materialRevision = 0
-    var errorMessage: String?
+    private(set) var errorMessage: String?
+    private(set) var openFailure: OpenFailure?
     private var rendererFailure: String?
     private var isRendererFailureDismissed = false
     var rendererError: String? { isRendererFailureDismissed ? nil : rendererFailure }
@@ -138,7 +144,7 @@ final class ViewerStore {
         revision += 1
         let requestedRevision = revision
         isLoading = true
-        errorMessage = nil
+        dismissFileError()
         loadTask = Task { [weak self, service] in
             do {
                 let loaded = try await service.loadIndexedSnapshot(url: url)
@@ -155,10 +161,26 @@ final class ViewerStore {
                 retryMaterials()
             } catch {
                 guard !Task.isCancelled, let self, self.revision == requestedRevision else { return }
+                openFailure = OpenFailure(url: url, revision: requestedRevision)
                 errorMessage = error.localizedDescription
                 isLoading = false
             }
         }
+    }
+
+    func retryOpen(_ failure: OpenFailure) {
+        guard openFailure == failure else { return }
+        open(failure.url)
+    }
+
+    func dismissFileError() {
+        openFailure = nil
+        errorMessage = nil
+    }
+
+    func reportFilePickerError(_ error: any Error) {
+        dismissFileError()
+        errorMessage = error.localizedDescription
     }
 
     func cancelOpen(revision: Int) {
@@ -274,6 +296,7 @@ final class ViewerStore {
         mesh = nil
         resetRendererAttempt()
         materialSourceCapabilities = .unknown
+        dismissFileError()
         isLoading = false
     }
 

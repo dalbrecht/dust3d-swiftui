@@ -240,6 +240,12 @@
 
 - Add undoable Hide Other Parts in Canvas and Show All controls for selected component subtrees and part owners, preserving mesh generation and unrelated flags (#343).
 
+- Announce a Viewer material fallback after the file error that took priority is dismissed.
+
+- Retry a failed Viewer file open from its error banner.
+
+- Announce when the active Viewer falls back to geometry without materials.
+
 - Reveal selected generated joints by expanding their hierarchy ancestors, with window-owned disclosure and guarded scrolling (#367).
 
 - Support Shift-drag panning in mesh previews while preserving orbit and bone-pick safety (#367).
