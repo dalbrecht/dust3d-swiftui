@@ -33,6 +33,7 @@ enum TexturedRenderGeometryError: LocalizedError, Equatable {
 struct TexturedRenderGeometry: Sendable {
     struct Vertex: Sendable, Equatable {
         let position: SIMD4<Float>
+        // W marks procedural ownership for the neutral color pass.
         let normal: SIMD4<Float>
         let color: SIMD4<Float>
         /// XY are atlas UVs; Z/W explicitly mark UV/tangent applicability.
@@ -121,6 +122,7 @@ struct TexturedRenderGeometry: Sendable {
         for triangleIndex in 0..<triangleCount {
             try Task.checkCancellation()
             let triangle = try triangleAt(triangleIndex)
+            let isProcedural = metadata.isProcedural(at: triangleIndex)
             let tangent = triangle.tangent
             let lengthSquared = simd_length_squared(tangent.direction)
             guard (0..<3).allSatisfy({ tangent.direction[$0].isFinite }),
@@ -148,7 +150,7 @@ struct TexturedRenderGeometry: Sendable {
                 vertices.append(
                     Vertex(
                         position: SIMD4((vertex.position - bounds.center) / bounds.radius, 1),
-                        normal: SIMD4(vertex.normal, 0), color: vertex.color,
+                        normal: SIMD4(vertex.normal, isProcedural ? 1 : 0), color: vertex.color,
                         textureCoordinate: SIMD4(
                             Float(uv.x), Float(uv.y), triangle.hasMapping ? 1 : 0, tangent.hasMapping ? 1 : 0),
                         tangent: SIMD4(tangent.direction, tangent.handedness)))

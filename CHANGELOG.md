@@ -10,6 +10,8 @@
 
 - Search edges by endpoint, ID, or assigned bone, and select matching rows from the keyboard.
 
+- Keep component selection visible when collapsing groups, and prevent sidebar Delete from targeting hidden rows.
+
 - Wrap long component breadcrumb labels in narrow sidebars.
 
 - Select nodes by their visible outlines and open the context menu for the node or edge under the pointer.
@@ -154,6 +156,8 @@
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
+- Drop an image directly onto the Front or Side panel of the reference composer to replace that profile before applying the draft.
+
 - Clear missing cut-face links when pasting Qt XML interactively, keeping profiles found in the fragment or document.
 
 - Preview applied and retained component color images in the inspector without changing image assignments.
@@ -240,6 +244,10 @@
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
+- Use procedural vertex opacity alongside imported alpha when Model Colors is off for mixed previews.
+
+- Use vertex opacity when Model Colors is off for textured procedural previews.
+
 - Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
 
 - Select generated bones directly in the experimental rest preview with guarded click-versus-drag input and cancellable background picking; retain displayed geometry and keyboard inspection if picking preparation fails (#367).
@@ -306,6 +314,10 @@
 
 - Resolve About attribution from installed app resources without requiring the original SwiftPM build directory, and report missing packaged attribution safely (#344).
 
+- Explain why saving an Editor Session Log failed and release the report when the save panel is cancelled.
+
+- Record explicit geometry export cancellation requests in the Editor Session Log.
+
 - Allow opt-in owned source-bake mip copying through the existing pinned core, validating level counts and aggregate payload quotas; default loading remains base-only (#288).
 
 - Keep node and edge inspector actions bound to their original document and selection, preserving atomic Undo and read-only endpoint selection (#352).
@@ -352,6 +364,8 @@
 - Add canvas-scoped arrow nudges and bracket spacing, explicit precision controls, and focus-safe gesture teardown (#45).
 
 - Mirror live node and origin movement in the companion profile during canvas edits (#388).
+
+- Use B, U, and C on the canvas to toggle subdivision, rounded ends, and chamfer.
 
 - Add shared Weights From editing across selected wrapping groups with common target eligibility, exact retained references and one atomic Undo.
 
@@ -747,6 +761,10 @@
 
 - Add a Qt-free C++17 engine library and C bridge, with validated `.ds3` archive loading.
 - Add a native SwiftUI/Metal macOS viewer with file opening, orbit/zoom, wireframe, and camera fitting.
+- Keep profile names readable in narrow inspectors.
+
+- Explain and disable linked profile choices that would create a cycle.
+
 - Pin c65llc coding standards, assemble Codex instructions, and document native/C++ supplements and gaps.
 - Add document-loading regression tests, native validation commands, and a local app bundle/run script.
 

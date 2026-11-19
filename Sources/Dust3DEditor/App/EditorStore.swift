@@ -2167,6 +2167,72 @@ final class EditorStore {
 
     var canBrowseComponents: Bool { !isWorking && acceptedDocumentSource != nil }
 
+    func componentDisclosureAction(
+        _ id: String, collapsed: Bool, snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor () -> Void {
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let source = PartGraphSelectionContext(snapshot: snapshot)
+        let scope = componentBrowseEpoch
+        let disclosureEpoch = disclosure.epoch
+        return { [weak self] in
+            guard let self, self.componentBrowseGroupID == nil, self.componentBrowseEpoch == scope,
+                disclosure.epoch == disclosureEpoch, self.canBrowseComponents,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current),
+                disclosure.collapsedIDs.contains(id) != collapsed,
+                current.componentTree.visibleRows(collapsing: disclosure.collapsedIDs).contains(where: {
+                    $0.hasChildren && $0.id.utf8.elementsEqual(id.utf8)
+                })
+            else { return }
+
+            var nextIDs = disclosure.collapsedIDs
+            if collapsed { nextIDs.insert(id) } else { nextIDs.remove(id) }
+            let publish: @MainActor (Bool) -> Void = { [weak self] succeeded in
+                guard succeeded, let self, self.componentBrowseEpoch == scope, disclosure.epoch == disclosureEpoch,
+                    let latest = self.acceptedDocumentSource, source.isCurrent(in: latest)
+                else { return }
+                disclosure.collapsedIDs = nextIDs
+                self.changeComponentBrowseGroup(nil, reset: true)
+            }
+            guard collapsed, !current.selectedComponentIDs.isEmpty else {
+                publish(true)
+                return
+            }
+            let visible = Set(current.componentTree.visibleRows(collapsing: nextIDs).map { Data($0.id.utf8) })
+            let retained = current.selectedComponentIDs.filter { visible.contains(Data($0.utf8)) }
+            if retained == current.selectedComponentIDs {
+                publish(true)
+            } else {
+                self.perform(commits: false, completion: publish) {
+                    try await $0.selectComponents(retained, target: target)
+                }
+            }
+        }
+    }
+
+    func componentSidebarSelectionIsVisible(_ snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure) -> Bool
+    {
+        guard !snapshot.selectedComponentIDs.isEmpty else { return false }
+        let rows =
+            componentGroupBrowse?.children ?? snapshot.componentTree.visibleRows(collapsing: disclosure.collapsedIDs)
+        let visible = Set(rows.map { Data($0.id.utf8) })
+        return snapshot.selectedComponentIDs.allSatisfy { visible.contains(Data($0.utf8)) }
+    }
+
+    func componentSidebarDeleteAction(
+        snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor () -> Void {
+        let context = CanvasAdjustmentTarget(snapshot: snapshot)
+        let scope = componentBrowseEpoch
+        let epoch = disclosure.epoch
+        return { [weak self] in
+            guard let self, self.canSave, self.componentBrowseEpoch == scope, disclosure.epoch == epoch,
+                let current = self.acceptedDocumentSource, context.isCurrent(in: current),
+                self.componentSidebarSelectionIsVisible(current, disclosure: disclosure)
+            else { return }
+            self.componentDeletionAction(ComponentDeletionTarget(snapshot: current))()
+        }
+    }
+
     func componentBrowseAction(_ groupID: String?, snapshot: EditorSnapshot) -> @MainActor () -> Void {
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         let source = PartGraphSelectionContext(snapshot: snapshot)
@@ -2794,9 +2860,11 @@ final class EditorStore {
         !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
     }
 
-    func setGraphPartShape(_ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget) {
+    func setGraphPartShape(
+        _ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget, preserveHover: Bool = false
+    ) {
         guard canEditGraphPartShape(target) else { return }
-        perform(acceptCommittedCancellation: true) {
+        perform(acceptCommittedCancellation: true, preservePartStateHover: preserveHover) {
             try await $0.setGraphPartShape(property, value: value, target: target)
         }
     }
@@ -3010,10 +3078,23 @@ final class EditorStore {
     func renamePart(_ id: String, name: String) {
         perform { try await $0.apply([.setPartName(id: id, name: name)]) }
     }
+    private enum CanvasPartOperation {
+        case state(PartStateProperty)
+        case shape(PartModifierProperty)
+    }
+
     func canvasPartStateAction(_ property: PartStateProperty) -> (@MainActor () -> Void)? {
         let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
-        guard let handle = canvasPartStateHandler(profileLease: lease) else { return nil }
-        return { _ = handle(property, false) }
+        guard let handler = canvasPartStateHandler(profileLease: lease) else { return nil }
+        return { _ = handler.perform(.state(property), false) }
+    }
+
+    func canvasPartShapeAction(_ property: PartModifierProperty) -> (@MainActor () -> Void)? {
+        let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
+        guard let handler = canvasPartStateHandler(profileLease: lease),
+            handler.shapePart?.modifierValue(property) != nil
+        else { return nil }
+        return { _ = handler.perform(.shape(property), false) }
     }
 
     func selectedGraphOwningComponentAction() -> (@MainActor () -> Void)? {
@@ -3076,7 +3157,7 @@ final class EditorStore {
     }
 
     func canvasPartStateKeyHandler(profileLease: UUID?) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
-        let handle = canvasPartStateHandler(profileLease: profileLease)
+        let handler = canvasPartStateHandler(profileLease: profileLease)
         let openProperties = canvasComponentPropertiesAction(profileLease: profileLease)
         let selectOwner = canvasOwningComponentAction(profileLease: profileLease)
         let visibility = canvasVisibilityKeyHandler(profileLease: profileLease)
@@ -3086,8 +3167,10 @@ final class EditorStore {
             }
             if input.opensComponentProperties { return openProperties?(input.isRepeat) ?? false }
             if input.selectsOwningComponent { return selectOwner?(input.isRepeat) ?? false }
-            guard let property = input.partStateProperty, let handle else { return false }
-            return handle(property, input.isRepeat)
+            guard let handler else { return false }
+            if let shape = input.partShapeShortcut { return handler.perform(.shape(shape.property), input.isRepeat) }
+            guard let property = input.partStateProperty else { return false }
+            return handler.perform(.state(property), input.isRepeat)
         }
     }
 
@@ -3096,7 +3179,9 @@ final class EditorStore {
             && !referenceColorInteractionActive && canvasProfileMotion == nil
     }
 
-    private func canvasPartStateHandler(profileLease: UUID?) -> (@MainActor (PartStateProperty, Bool) -> Bool)? {
+    private func canvasPartStateHandler(profileLease: UUID?) -> (
+        shapePart: DocumentPart?, perform: @MainActor (CanvasPartOperation, Bool) -> Bool
+    )? {
         guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
             let context = canvasRotationContext
         else { return nil }
@@ -3105,20 +3190,34 @@ final class EditorStore {
         let hoverEpoch = canvasPartStateHoverEpoch
         let layout = precisionLayoutEpoch
         let interaction = referenceColorInteractionEpoch
-        return { [weak self] property, isRepeat in
-            guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
-                canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
-                precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction,
-                property == .locked || property == .disabled
-            else { return false }
-            if !isRepeat {
-                // A lock changes editability while the same visible graph item remains under the pointer.
-                perform(acceptCommittedCancellation: true, preservePartStateHover: property == .locked) {
-                    try await $0.toggleCanvasPartState(property, target: target)
+        let shapeTarget = GraphPartShapeTarget(snapshot: snapshot, canvasTarget: target)
+        return (
+            shapeTarget?.part,
+            { [weak self] operation, isRepeat in
+                guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
+                    canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
+                    precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction
+                else { return false }
+                switch operation {
+                case .state(let property):
+                    guard property == .locked || property == .disabled else { return false }
+                    if !isRepeat {
+                        // A lock changes editability while the same visible graph item remains under the pointer.
+                        perform(acceptCommittedCancellation: true, preservePartStateHover: property == .locked) {
+                            try await $0.toggleCanvasPartState(property, target: target)
+                        }
+                    }
+                case .shape(let property):
+                    guard let shapeTarget, let value = shapeTarget.part?.modifierValue(property),
+                        canEditGraphPartShape(shapeTarget)
+                    else { return false }
+                    if !isRepeat {
+                        setGraphPartShape(property, value: !value, target: shapeTarget, preserveHover: true)
+                    }
                 }
+                return true
             }
-            return true
-        }
+        )
     }
 
     private func canvasVisibilityKeyHandler(profileLease: UUID?) -> (
