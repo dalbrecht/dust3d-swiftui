@@ -3685,17 +3685,28 @@ final class EditorStore {
         guard let snapshot = acceptedDocumentSource else { return { _ in false } }
         let scope = canvasPrecisionKeyScope(snapshot: snapshot, lease: profileLease)
         let capturedRevision = snapshot.documentRevision
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
         let deleteTarget = acceptedDocumentSource.map {
             GraphSelectionActionTarget(snapshot: $0, action: .deleteSelection)
         }
         let tool = rotationInputContextID
-        let mode = addModeID
+        let add = addModeID
         let interaction = referenceColorInteractionEpoch
         return { [weak self] input in
+            if input.isAlternateRedo {
+                guard let self, let current = self.acceptedDocumentSource,
+                    target.isCurrent(in: current), self.ownsCanvasProfile(profileLease),
+                    self.rotationInputContextID == tool, self.addModeID == add,
+                    self.referenceColorInteractionEpoch == interaction, !self.referenceColorInteractionActive,
+                    self.canRedo, !self.isSelectingRigEdges, self.canvasProfileMotion == nil, self.originDrag == nil
+                else { return false }
+                if !input.isRepeat { self.redo() }
+                return true
+            }
             if input.isAlternateDelete {
                 guard let self, let deleteTarget, self.ownsCanvasProfile(profileLease), self.canSave,
                     !self.isSelectingRigEdges,
-                    self.rotationInputContextID == tool, self.addModeID == mode,
+                    self.rotationInputContextID == tool, self.addModeID == add,
                     self.referenceColorInteractionEpoch == interaction,
                     self.canvasProfileMotion == nil, self.originDrag == nil,
                     self.canPerformGraphSelectionAction(deleteTarget)

@@ -7,6 +7,38 @@ import XCTest
 @testable import Dust3DEditor
 
 @MainActor final class AddModeStoreTests: XCTestCase {
+    func testAlternateCanvasRedoUsesCurrentDocumentHistory() async throws {
+        let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
+        let store = EditorStore()
+        defer { store.stop() }
+        await store.load(data: original.encoded())
+        try await settle(store)
+        let stale = store.canvasPrecisionKeyHandler()
+        store.addNode(newPart: true)
+        try await settle(store)
+        let edited = try XCTUnwrap(store.snapshot?.document.encoded())
+        XCTAssertNotEqual(edited, original.encoded())
+        store.undo()
+        try await settle(store)
+        XCTAssertTrue(store.canRedo)
+
+        let redo = CanvasPrecisionKeyInput(keyCode: 16, characters: "y", modifiers: .command)
+        XCTAssertFalse(stale(redo))
+        let oldLease = store.canvasProfiles.lease
+        let oldPane = store.canvasPrecisionKeyHandler(profileLease: oldLease)
+        store.plane = .side
+        store.plane = .front
+        XCTAssertFalse(oldPane(redo))
+        let current = store.canvasPrecisionKeyHandler(profileLease: store.canvasProfiles.lease)
+        XCTAssertFalse(current(.init(keyCode: 16, characters: "y", modifiers: .control)))
+        XCTAssertTrue(current(.init(keyCode: 16, characters: "y", modifiers: .command, isRepeat: true)))
+        XCTAssertEqual(store.snapshot?.document.encoded(), original.encoded())
+        XCTAssertTrue(current(redo))
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), edited)
+        XCTAssertFalse(store.canRedo)
+    }
+
     func testTransientGhostRadiusPressPlacementAndChainingUseFrozenProjectionAndOneUndoEach() async throws {
         let original = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
         let store = EditorStore()

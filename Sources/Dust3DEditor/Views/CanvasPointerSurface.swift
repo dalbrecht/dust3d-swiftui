@@ -401,6 +401,16 @@ final class CanvasPointerView: CanvasCameraPointerView {
         else { return false }
         return radiusKey(direction)
     }
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if start == nil, !activity.hasMarquee, let window, window.firstResponder === self,
+            let input = CanvasPrecisionKeyInput.alternateRedo(event), input.permitsDispatch(in: window),
+            precisionKey?(input) == true
+        {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
     override func keyDown(with event: NSEvent) {
         if isPreviewDragging {
             if event.keyCode == 53 { cancelPreviewDrag() }
