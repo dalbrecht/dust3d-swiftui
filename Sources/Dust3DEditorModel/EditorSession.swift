@@ -995,6 +995,18 @@ public actor EditorSession {
         return fragment
     }
 
+    /// Copy a captured graph selection as plain Qt XML without changing history.
+    package func copySelectionAsQtXML(target: CanvasAdjustmentTarget) throws -> Data {
+        try Task.checkCancellation()
+        guard hasAcceptedSource, let state, target.isCurrent(in: state.snapshot) else {
+            throw EditorError.staleCanvasAdjustment
+        }
+        let snapshot = state.snapshot
+        let xml = try snapshot.document.copyingNodesAsQtXML(Set(snapshot.selectedNodes.map(\.id)))
+        try Task.checkCancellation()
+        return xml
+    }
+
     /// Serialize off the UI actor; the platform boundary supplies the transient clipboard identifier.
     /// - Parameters:
     ///   - identifier: Fresh Copy/Cut token used for transient placement bookkeeping.
