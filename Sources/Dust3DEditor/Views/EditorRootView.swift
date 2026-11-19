@@ -375,7 +375,9 @@ struct EditorRootView: View {
         guard !isImportingReferenceImage, referenceComposition == nil,
             let admit = store.referenceImageActionAdmission(fileIdentity: fileIdentity, ownsWindow: ownsWindow)
         else { return nil }
-        return EditorReferenceImageActions(canRemove: store.hasReferenceImage) { action in
+        return EditorReferenceImageActions(
+            canClearArtwork: store.canClearReferenceArtwork, canRemove: store.hasReferenceImage
+        ) { action in
             guard admit(), !isImportingReferenceImage, referenceComposition == nil else { return }
             switch action {
             case .compose:
@@ -386,6 +388,8 @@ struct EditorRootView: View {
                 referenceImageImportRequest = request
                 admitReferenceImageImport = admit
                 isImportingReferenceImage = true
+            case .clearArtwork:
+                store.clearReferenceArtwork()
             case .remove:
                 guard store.hasReferenceImage else { return }
                 store.removeReferenceImage()

@@ -4561,6 +4561,22 @@ final class EditorStore {
         }
     }
 
+    var canClearReferenceArtwork: Bool {
+        canSave && hasReferenceImage && referenceImage != nil && !isLoadingReferenceImage
+    }
+
+    func clearReferenceArtwork() {
+        guard canClearReferenceArtwork, let source = acceptedDocumentSource,
+            let png = source.document.referenceImagePNG
+        else { return }
+        let target = ReferenceCompositionTarget(snapshot: source)
+        perform(reloadReferenceImage: true, acceptCommittedCancellation: true) { session in
+            let cleared = try await ReferenceImageService.clearArtwork(png)
+            try Task.checkCancellation()
+            return try await session.applyReferenceComposition(png: cleared, origin: nil, target: target)
+        }
+    }
+
     func removeReferenceImage() {
         guard case .success(let accepted) = recoveryLoadResult else { return }
         referenceImageRemovalAction(

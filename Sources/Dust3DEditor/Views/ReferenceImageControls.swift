@@ -15,7 +15,10 @@ struct ReferenceImageControls: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Menu("Reference Image", systemImage: "photo") {
-                    EditorReferenceImageButtons(canBegin: actions != nil, canRemove: actions?.canRemove == true) {
+                    EditorReferenceImageButtons(
+                        canBegin: actions != nil, canRemove: actions?.canRemove == true,
+                        canClearArtwork: actions?.canClearArtwork == true
+                    ) {
                         actions?.perform($0)
                     }
                 }
