@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Connect two explicitly selected nodes while keeping existing edge picks.
+
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
 - Keep modified keys available to macOS and use the current keyboard layout for Fit Model.
