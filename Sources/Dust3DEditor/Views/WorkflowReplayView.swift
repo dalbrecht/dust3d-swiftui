@@ -6,9 +6,28 @@ import Dust3DRendering
 import Foundation
 import SwiftUI
 
-struct WorkflowReplayRequest: Identifiable {
-    let id = UUID()
-    let document: Dust3DDocument
+struct WorkflowReplayWindow: View {
+    let requestID: UUID?
+    let windows: WorkflowReplayWindows
+    @State private var owner = UUID()
+
+    var body: some View {
+        ZStack {
+            if let request = windows.request(requestID, owner: owner) {
+                WorkflowReplayView(document: request.document, sourceID: request.id) {
+                    windows.request(request.id, owner: owner) != nil
+                }
+            } else {
+                ContentUnavailableView {
+                    Label("No Replay", systemImage: "play.rectangle")
+                } description: {
+                    Text("Choose Replay Steps from a document window to start a new replay.")
+                }
+            }
+        }
+        .onAppear { windows.attach(requestID, owner: owner) }
+        .onDisappear { windows.close(requestID, owner: owner) }
+    }
 }
 
 private actor WorkflowReplayMeshLoader {
