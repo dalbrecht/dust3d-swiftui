@@ -1,0 +1,178 @@
+{
+  "coreRevision": "0d93595fb359de8eecfd33046d1a7b09eafee46d",
+  "generatorSources": {
+    "tools/agent_modeling/dust3d_agent/ds3.py": "89c4371580c739e858d401af98ba97739d54751caa52fe5d64f8036026716f32",
+    "tools/agent_modeling/dust3d_agent/spec.py": "d18f0f0b461282d39630935227683103c82f67c6dfc6d5ca0956c8e73e79260e"
+  },
+  "scope": "Authored Core examples and synthetic chains, without upstream Qt differential provenance.",
+  "families": [
+    {
+      "name": "bluebird",
+      "family": "Bird",
+      "provenance": "authored_core_example",
+      "sourcePath": "Sources/bluebird.json",
+      "sourceSHA256": "348f0d7d05ca44f3afa434099e8b3d8106126b5dcb3be4797bd8de17deb92791",
+      "archivePath": "bluebird.ds3",
+      "archiveSHA256": "e3d5f5ee09759706379f46c08acdf535636476e019e5fd143879ce496213da9b",
+      "archiveBytes": 12487,
+      "moving": {
+        "id": "{da7f9683-35be-5d7b-992d-6c3047e3f2d8}",
+        "type": "BirdWalk",
+        "name": "walk",
+        "duration": 1.0,
+        "authoredFrameCount": 30
+      },
+      "idle": {
+        "id": "{b5fdc3ad-ec6d-5725-94fd-f53416b32bd1}",
+        "type": "BirdIdle",
+        "name": "idle",
+        "duration": 4.0,
+        "authoredFrameCount": 90
+      }
+    },
+    {
+      "name": "fox",
+      "family": "Quadruped",
+      "provenance": "authored_core_example",
+      "sourcePath": "Sources/fox.json",
+      "sourceSHA256": "3270e62cbd0ea6739b83f0329e2e2675d05ea642fc8417e907ed09b0d5ffacaa",
+      "archivePath": "fox.ds3",
+      "archiveSHA256": "63ce3c276d9212ca27ef71878513edc3794f8289c5e6cd90331b3bdbc89413f9",
+      "archiveBytes": 19527,
+      "moving": {
+        "id": "{6f0761bc-c637-599b-9547-41ae613b7ab5}",
+        "type": "QuadrupedWalk",
+        "name": "walk",
+        "duration": 1.0,
+        "authoredFrameCount": 30
+      },
+      "idle": {
+        "id": "{6cdada3a-3aa0-58a9-9875-ba914c6b53ef}",
+        "type": "QuadrupedIdle",
+        "name": "idle",
+        "duration": 4.0,
+        "authoredFrameCount": 90
+      }
+    },
+    {
+      "name": "goblin",
+      "family": "Biped",
+      "provenance": "authored_core_example",
+      "sourcePath": "Sources/goblin.json",
+      "sourceSHA256": "b2271fe0e6eadf6c266e924f1071796632eed4ff2cbca6d7e801f84d317387a2",
+      "archivePath": "goblin.ds3",
+      "archiveSHA256": "ea14c01931a023f8e30862b12c27115d813b4f4f0685cd9d45c0729e35a67600",
+      "archiveBytes": 16374,
+      "moving": {
+        "id": "{51633c6d-0ddc-5d20-b02c-e14a9328710c}",
+        "type": "BipedWalk",
+        "name": "walk",
+        "duration": 1.0,
+        "authoredFrameCount": 30
+      },
+      "idle": {
+        "id": "{b04c690f-2b2e-521f-97f4-7158ce6f9152}",
+        "type": "BipedIdle",
+        "name": "idle",
+        "duration": 4.0,
+        "authoredFrameCount": 90
+      }
+    },
+    {
+      "name": "goldfish",
+      "family": "Fish",
+      "provenance": "authored_core_example",
+      "sourcePath": "Sources/goldfish.json",
+      "sourceSHA256": "4a52294c9f370b29f7c835251383b107399fe98bb544026916a1969cc56affa1",
+      "archivePath": "goldfish.ds3",
+      "archiveSHA256": "7ff522c3f940967b6b83028a0c56682db8bc305bda1f738c3463744697d7f4b8",
+      "archiveBytes": 43508,
+      "moving": {
+        "id": "{8af6135f-4c14-56e1-acf8-8c4c773956ba}",
+        "type": "FishSwim",
+        "name": "swim",
+        "duration": 1.0,
+        "authoredFrameCount": 30
+      },
+      "idle": {
+        "id": "{022dd850-166d-5560-abdc-8ff8f9f67664}",
+        "type": "FishIdle",
+        "name": "idle",
+        "duration": 4.0,
+        "authoredFrameCount": 90
+      }
+    },
+    {
+      "name": "insect",
+      "family": "Insect",
+      "provenance": "synthetic_body_chain",
+      "sourcePath": "Sources/insect.json",
+      "sourceSHA256": "3053cb7d15776714e98d758edeb2ad9205d93055fa89a7bf1fea65c759cbbdf6",
+      "archivePath": "insect.ds3",
+      "archiveSHA256": "f13b5498925d122377497683c45168a68506244be1eff7230e1fbbd77cdec030",
+      "archiveBytes": 2364,
+      "moving": {
+        "id": "{9078593c-a8d9-5169-830e-39ac26722f74}",
+        "type": "InsectWalk",
+        "name": "walk",
+        "duration": 1.0,
+        "authoredFrameCount": 30
+      },
+      "idle": {
+        "id": "{737f3612-66fb-5cf7-8f36-0d5a889b5116}",
+        "type": "InsectIdle",
+        "name": "idle",
+        "duration": 4.0,
+        "authoredFrameCount": 90
+      }
+    },
+    {
+      "name": "snake",
+      "family": "Snake",
+      "provenance": "synthetic_body_chain",
+      "sourcePath": "Sources/snake.json",
+      "sourceSHA256": "912c92d0b2c81f652d3762358e5338e7d66168b0dfb4eebc385be0f12b7181db",
+      "archivePath": "snake.ds3",
+      "archiveSHA256": "a89a32310332b3c32eaac941f94b941a8331348dd599fa3eff6505c3fdcf81ed",
+      "archiveBytes": 5684,
+      "moving": {
+        "id": "{e7e0988d-0128-59c1-8331-870874c735e6}",
+        "type": "SnakeSlither",
+        "name": "slither",
+        "duration": 1.0,
+        "authoredFrameCount": 30
+      },
+      "idle": {
+        "id": "{0cb38a2d-f666-576a-863d-ebcb5b38136b}",
+        "type": "SnakeIdle",
+        "name": "idle",
+        "duration": 4.0,
+        "authoredFrameCount": 90
+      }
+    },
+    {
+      "name": "spider",
+      "family": "Spider",
+      "provenance": "synthetic_body_chain",
+      "sourcePath": "Sources/spider.json",
+      "sourceSHA256": "01d6449a8ead0810632285076d3a2bcda1a7b227fc71f1cd7bfcdf46d99aa115",
+      "archivePath": "spider.ds3",
+      "archiveSHA256": "f4fa3e8277eeb0c4521d1e8ac93a5bd31e8ad3104eaac633970813db9cb19db1",
+      "archiveBytes": 2371,
+      "moving": {
+        "id": "{c392a9d4-40cf-5dc9-975e-74e97216e596}",
+        "type": "SpiderWalk",
+        "name": "walk",
+        "duration": 1.0,
+        "authoredFrameCount": 30
+      },
+      "idle": {
+        "id": "{d68bc442-4512-5ae1-ad38-6ebae477994e}",
+        "type": "SpiderIdle",
+        "name": "idle",
+        "duration": 4.0,
+        "authoredFrameCount": 90
+      }
+    }
+  ]
+}

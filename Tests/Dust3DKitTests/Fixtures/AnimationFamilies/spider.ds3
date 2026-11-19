@@ -1,0 +1,30 @@
+Ó=DUST3D 1.0 xml 0000000134
+<?xml version="1.0" encoding="UTF-8"?>
+<ds3>
+    <model name="model.xml" offset="0" size="2237"/>
+</ds3>
+<?xml version="1.0" encoding="UTF-8"?>
+<canvas originX="0.170000" originY="0.330000" originZ="0.460000" rigType="Spider">
+ <nodes>
+  <node id="{fdb8a329-03dc-5cb5-a914-aede77564123}" partId="{2033d506-18be-5140-a2af-7e9db1151538}" radius="0.070000" x="0.170000" y="0.170000" z="0.460000"/>
+  <node id="{b8290c48-9e9f-5441-bb13-3365c4ae9891}" partId="{2033d506-18be-5140-a2af-7e9db1151538}" radius="0.070000" x="0.170000" y="0.170000" z="0.640000"/>
+  <node id="{47783bac-1bfc-5040-9b55-2e2e6f6e35e3}" partId="{2033d506-18be-5140-a2af-7e9db1151538}" radius="0.070000" x="0.170000" y="0.170000" z="0.820000"/>
+  <node id="{5f769e14-1d24-56c7-b988-9444058ee653}" partId="{2033d506-18be-5140-a2af-7e9db1151538}" radius="0.070000" x="0.170000" y="0.170000" z="1.000000"/>
+ </nodes>
+ <edges>
+  <edge boneName="Head" from="{fdb8a329-03dc-5cb5-a914-aede77564123}" id="{50bb339b-7861-5808-b192-5bf5e4d9a6c5}" partId="{2033d506-18be-5140-a2af-7e9db1151538}" to="{b8290c48-9e9f-5441-bb13-3365c4ae9891}"/>
+  <edge boneName="Cephalothorax" from="{b8290c48-9e9f-5441-bb13-3365c4ae9891}" id="{1b5d9c30-1081-54d4-8d9b-c4c3fb03cf9e}" partId="{2033d506-18be-5140-a2af-7e9db1151538}" to="{47783bac-1bfc-5040-9b55-2e2e6f6e35e3}"/>
+  <edge boneName="Abdomen" from="{47783bac-1bfc-5040-9b55-2e2e6f6e35e3}" id="{76f01821-ab4f-5f30-aa8c-b5fab441a0fc}" partId="{2033d506-18be-5140-a2af-7e9db1151538}" to="{5f769e14-1d24-56c7-b988-9444058ee653}"/>
+ </edges>
+ <parts>
+  <part chamfered="false" disabled="false" id="{2033d506-18be-5140-a2af-7e9db1151538}" locked="false" name="body" rounded="true" subdived="true" target="Model" visible="true" xMirrored="false"/>
+ </parts>
+ <components>
+  <component color="#ffe0e0e0" combineMode="Normal" expanded="false" id="{ee97e56b-0248-5d16-b288-e5cb653d30ec}" linkData="{2033d506-18be-5140-a2af-7e9db1151538}" linkDataType="partId" name="body" smoothCutoffDegrees="60.000000">
+  </component>
+ </components>
+ <animations>
+  <animation durationSeconds="4.000000" frameCount="90.000000" id="{d68bc442-4512-5ae1-ad38-6ebae477994e}" name="idle" type="SpiderIdle"/>
+  <animation durationSeconds="1.000000" frameCount="30.000000" id="{c392a9d4-40cf-5dc9-975e-74e97216e596}" name="walk" type="SpiderWalk"/>
+ </animations>
+</canvas>
