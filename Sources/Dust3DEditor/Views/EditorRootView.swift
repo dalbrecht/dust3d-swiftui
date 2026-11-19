@@ -624,6 +624,7 @@ struct EditorRootView: View {
                 }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
                 .accessibilityLabel("3D mesh preview")
+                .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 if store.isUpdatingMaterials {
                     ProgressView("Updating materials…").controlSize(.small).padding(8)
                 }

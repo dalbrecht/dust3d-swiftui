@@ -242,6 +242,8 @@
 
 - Match Qt reference-image pixel selection and alpha fitting while preserving 16-bit sample precision; retain correct RGB16 transparency decoding despite a Qt reader defect (#337).
 
+- Describe keyboard orbit and camera reset in the Editor and Viewer preview accessibility hints.
+
 - Package and verify the seven pinned rig templates for native SDK consumers and installed file-preview bundles (#195).
 
 - Add searchable Keyboard Shortcuts help with native command focus restrictions (#333).
