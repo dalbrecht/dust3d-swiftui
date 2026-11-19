@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Announce animation preview errors with VoiceOver once in the active document window, suppressing retired sources and inactive-window replay (#145, #147).
+
 - Stage opt-in native animation playback, scrubbing, procedural sound, and coordinated animated FBX/WAV export with source-bound cancellation and fixed camera framing.
 
 - Orbit the 3D preview from the editing canvas with a middle-button or Option drag. Hold Shift to pan.

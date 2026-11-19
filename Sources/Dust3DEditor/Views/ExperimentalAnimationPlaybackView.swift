@@ -1,3 +1,5 @@
+import Accessibility
+import AppKit
 import SwiftUI
 
 struct ExperimentalAnimationPlaybackView: View {
@@ -6,6 +8,12 @@ struct ExperimentalAnimationPlaybackView: View {
     let loader: @Sendable (SuppliedAnimationSource, Bool) async throws -> SuppliedAnimationClip
 
     var wavDestinations: EditorGeometryExportDestinationService? = nil
+    var onPreviewErrorAnnouncement: @MainActor (String) -> Void = {
+        AccessibilityNotification.Announcement($0).post()
+    }
+    var previewAnnouncementIsActive: @MainActor (NSView) -> Bool = {
+        NSApp.isActive && $0.window?.isKeyWindow == true
+    }
 
     @State private var preview = SuppliedAnimationPreview()
     @State private var rigRevision = UUID()
@@ -94,6 +102,11 @@ struct ExperimentalAnimationPlaybackView: View {
                 }
             }
         }
+        .background(
+            AnimationPreviewErrorAnnouncement(
+                message: errorMessage, isCurrent: isCurrent,
+                isActive: previewAnnouncementIsActive, announce: onPreviewErrorAnnouncement)
+        )
         .task(id: retry) { await load() }
         .task(id: scrubID) { await scrub() }
         .task(id: clock) {
@@ -305,5 +318,20 @@ struct ExperimentalAnimationPlaybackView: View {
             pause()
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+private struct AnimationPreviewErrorAnnouncement: NSViewRepresentable {
+    let message: String?
+    let isCurrent: @MainActor () -> Bool
+    let isActive: @MainActor (NSView) -> Bool
+    let announce: @MainActor (String) -> Void
+
+    func makeNSView(context: Context) -> ReferenceCompositionErrorAnnouncementAnchor {
+        ReferenceCompositionErrorAnnouncementAnchor()
+    }
+
+    func updateNSView(_ view: ReferenceCompositionErrorAnnouncementAnchor, context: Context) {
+        view.update(message: isCurrent() ? message : nil, isActive: isActive(view), announce: announce)
     }
 }
