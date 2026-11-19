@@ -144,7 +144,7 @@ def validate_arguments(arguments):
     if not arguments or arguments[0] not in ('build', 'test'):
         raise ValueError('Only SwiftPM build and test are supported')
     value_options = {'--product', '--filter', '--configuration'}
-    switches = {'--enable-code-coverage', '--parallel'}
+    switches = {'--enable-code-coverage', '--parallel', '--disable-swift-testing'}
     experimental_features = set()
     index = 1
     while index < len(arguments):

@@ -14,6 +14,9 @@ spec.loader.exec_module(module)
 
 
 class LocalCoreIntegrationTests(unittest.TestCase):
+    def test_xctest_only_discovery_switch_is_supported(self):
+        self.assertEqual(module.validate_arguments(['test', '--disable-swift-testing']), [])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
