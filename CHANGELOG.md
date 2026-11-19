@@ -2,13 +2,7 @@
 
 ## Unreleased
 
-- Keep name, type, and keyboard actions on the animation draft that supplied them.
-
-- Keep retained animation parameter controls from editing a reopened draft.
-
-- Keep animation type and parameter controls on the selected row that supplied them.
-
-- Edit the stored animation surface material when the archive uses an unknown animation type.
+- Connect two explicitly selected nodes while keeping existing edge picks.
 
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
@@ -24,6 +18,8 @@
 - Announce reference-image composition errors with VoiceOver in the active sheet.
 - Identify the composed reference preview and profile-specific crop actions in VoiceOver.
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
+- Opt into Qt opposite-profile depth when starting a part in the dual-profile canvas and see the placement preview in both profiles.
+
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
 - Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
@@ -31,6 +27,8 @@
 - Toggle the editor sidebar from the toolbar or View menu and open Rig Settings or Animations from the Window menu.
 - Compose, import, or remove the active document’s reference image from the File menu.
 - Review and save recent document, preview, and export outcomes from Window → Session Log.
+- Configure stitching closures, segments and loop caps across selected groups in one undoable edit.
+
 - Open the bundled upstream Dust3D acknowledgements from the Help menu.
 - Open the upstream Dust3D sponsorship page from the Help menu.
 
@@ -44,6 +42,8 @@
 - Keep modified keyboard shortcuts available when the model preview has focus.
 
 - Accept Qt XML fragments by content regardless of filename suffix when using `-paste-xml`.
+- Drag the document origin marker directly in Select mode.
+
 - Show the authored order of stitching lines in each component listing.
 - Announce new Viewer errors in the active window with VoiceOver.
 
@@ -60,6 +60,8 @@
 
 - Clear missing cut-face links when opening the Editor with a Qt XML fragment.
 
+- Preserve existing recovery copies and receipts if preparing a private replacement fails.
+
 - Open requested documents and report the error when a startup Qt XML fragment cannot be pasted.
 
 - Clear missing cut-face links from Qt XML pasted in headless exports.
@@ -71,6 +73,8 @@
 - Continue a headless batch when an output destination is an existing directory.
 
 - Continue headless export batches after an unsupported output format and report the failed destination.
+
+- Give newly created component groups a saved default name that stays the same when the group is reordered.
 
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
@@ -102,6 +106,8 @@
 
 - Scope Edit → Select All to edges when the Edges sidebar has keyboard focus.
 
+- Open the Selection inspector for one owning component with Space on the canvas or Show Selection Properties in the Canvas menu.
+
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
 - Preview authored linked cross-section outlines before choosing a profile.
@@ -122,6 +128,8 @@
 
 - Select newly pasted editable nodes and edges from Qt XML so edge commands are available immediately.
 
+- Switch Viewer windows between Model Colors and neutral shading from the toolbar or View menu. The Viewer retains the current mesh and its materials while a replacement loads or if that open fails.
+
 - Edit and reset the owning Model part’s width and thickness, and toggle unified deformation, from graph selection.
 
 - Mirror the Model part that owns the current canvas selection while keeping its node and edge picks.
@@ -140,6 +148,8 @@
 
 - Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
 
+- Update the combined reference image preview while drawing, moving or resizing a crop. The document changes only on Apply.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
@@ -154,17 +164,25 @@
 
 - Open a local .ds3 document by dropping it into the editor without replacing the current document.
 
+- Enable Replay Steps when the document has model parts or a loaded reference image.
+
+- Open Replay Steps in independent windows so starting another replay keeps the current step and source of each existing replay.
+
 - Edit subdivision, chamfer, and rounded ends from a graph selection with one owning part.
 
 - Edit combine mode and smoothing for the components owning selected canvas nodes and edges while keeping graph picks in place.
 
 - Edit or clear the Equipment Slot of the Model component that owns the current canvas selection.
 
+- Highlight affected edges and announce their count when Replay Steps shows a bone assignment.
+
 - Set or clear a linked Model component’s Equipment Slot in the inspector, with Qt-compatible name storage and one-step Undo.
 
 - Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
 
 - Rotate the canvas selection by a quarter turn around the other profile’s world axis while staying in the current profile.
+
+- Select Whole Part uses exact stored ownership for graph picks and the revealed component.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
@@ -208,11 +226,15 @@
 
 - Add independent Model, Bones and Weights controls to experimental generated-rest inspection, preserving the full camera frame, selected joint and numerical properties when geometry or weight colors are hidden (#367).
 
+- Open a separate Viewer window with File → New Window or Command-N.
+
 - Add a resizable Model/Generated Rest workspace with one per-window rest session, shared camera and stale-safe focused controls; preserve selection and camera across presentation changes (#367).
 
 - Add a source-ordered generated-joint hierarchy and read-only parent, endpoint, length, radius and signed-angle inspection to the experimental rest preview; preserve copied rig data if hierarchy preparation fails (#367).
 
 - Show the selected joint’s numerical weight range and influenced body-triangle count in the experimental rest preview, publishing these values with their matching mesh (#367).
+
+- Drop a local .ds3 file from Finder onto a Viewer window to open it.
 
 - Add an isolated experimental generated-rest rig preview with grounded skeleton/body geometry, weight highlighting, all-joint selection, and guarded camera controls; keep the production core pin unchanged (#367).
 
@@ -237,6 +259,8 @@
 - Keep node and edge inspector actions bound to their original document and selection, preserving atomic Undo and read-only endpoint selection (#352).
 
 - Connect two selected endpoints from the inspector or Canvas menu, with explicit surviving part settings, stale-action protection and one Undo step (#349).
+
+- Include the upstream Dust3D authors in the Editor and Viewer About panels.
 
 - Add shared Help commands for the native project, issue reporting and upstream Dust3D, with visible link-opening failures (#348).
 
@@ -287,6 +311,8 @@
 
 - Enter a target in the node inspector to bend a chain from the keyboard.
 
+- Press H to toggle canvas visibility and Shift-H to isolate the owning part.
+
 - Shift-drag a graph selection to rotate it or bend a single endpoint chain.
 
 - Add graph auto-color from displayed reference pixels and default-color reset, with source-bound atomic Undo and stale-raster rejection (#45).
@@ -320,6 +346,8 @@
 - Add atomic Combine Mode and Normal Smoothing edits for multiple selected components, with explicit mixed values and one-step Undo.
 
 
+- Require two editable nodes for alignment to the selection center.
+
 - Select component graphs in the canvas from the sidebar context menu or by double-clicking a leaf row.
 
 - Select a whole part graph from its nodes, edges, or inspector and reveal the linked component in the sidebar. Reuse each rendered node’s validated owner for constant-time whole-part availability.
@@ -340,6 +368,8 @@
 - Reduce eligible selected nodes and reconnect their neighbors in one Undo step while preserving graph order.
 
 - Refresh selectable export-warning accessibility text when the result changes (#235).
+
+- Reuse successful geometry encodes for repeated formats in a headless batch.
 
 - Add Insert Midpoint to the edge inspector and Canvas menu, with one-step Undo and preserved edge direction.
 
@@ -380,6 +410,8 @@
 - Add stale-source animation edit targets and editor metadata workflows with latest-request list adoption, lifecycle retirement and geometry-independent history; native controls/evaluation remain pending (#145).
 
 - Add actor-owned stored-animation selection, fresh-ID creation/duplication and source-correlated list presentation, isolating optional metadata errors from graph editing; native UI/playback remain pending (#145).
+
+- Reject nonregular archive inputs before Viewer and Quick Look attempt to read them.
 
 - Preserve exact animation bytes and redo for restored parameter transactions (#145).
 
@@ -656,6 +688,14 @@
 - Add a Qt-free C++17 engine library and C bridge, with validated `.ds3` archive loading.
 - Add a native SwiftUI/Metal macOS viewer with file opening, orbit/zoom, wireframe, and camera fitting.
 - Pin c65llc coding standards, assemble Codex instructions, and document native/C++ supplements and gaps.
+- Keep name, type, and keyboard actions on the animation draft that supplied them.
+
+- Keep retained animation parameter controls from editing a reopened draft.
+
+- Keep animation type and parameter controls on the selected row that supplied them.
+
+- Edit the stored animation surface material when the archive uses an unknown animation type.
+
 - Add document-loading regression tests, native validation commands, and a local app bundle/run script.
 
 Original Dust3D release history remains in `CHANGELOGS`.
