@@ -381,8 +381,33 @@ final class EditorStore {
     }
     var frozenAddProjection: CanvasProjection? { addPlacement.isActive ? addPlacement.projection : nil }
     var addAnchorPosition: NodePosition? { snapshot?.nodes.first { $0.id == addPlacement.anchorID }?.value.position }
+    private(set) var usesQtOppositeProfileDepth = false
+    var qtAddDepthGuidePosition: NodePosition? { addPlacement.qtDepthGuidePosition }
+
+    func setQtOppositeProfileDepth(_ enabled: Bool) {
+        guard canvasProfiles.isDualProfile, !isAddingNodes, acceptedAddPlacementSource != nil else { return }
+        usesQtOppositeProfileDepth = enabled
+    }
+
+    var qtOppositeProfileDepthNeedsReference: Bool {
+        guard let snapshot = acceptedAddPlacementSource else { return false }
+        return addDepthSeed(in: snapshot) == nil
+    }
+
+    private func addDepthSeed(in snapshot: EditorSnapshot) -> AddPlacementDepthSeed? {
+        guard canvasProfiles.isDualProfile, usesQtOppositeProfileDepth else { return .origin }
+        guard snapshot.document.hasReferenceImage else { return .qtOppositeProfile(aspect: 2) }
+        if let image = referenceImageForComposition {
+            return .qtOppositeProfile(aspect: Double(image.width) / Double(image.height))
+        }
+        return AddPlacementState.anchor(in: snapshot) == nil ? nil : .origin
+    }
+
     var canBeginAddMode: Bool {
-        !isSelectingRigEdges && acceptedAddPlacementSource != nil && canvasWidth > 0 && canvasHeight > 0
+        guard !isSelectingRigEdges, let snapshot = acceptedAddPlacementSource, canvasWidth > 0, canvasHeight > 0 else {
+            return false
+        }
+        return addDepthSeed(in: snapshot) != nil
     }
     var canPlaceAddGhost: Bool {
         guard isAddingNodes, acceptedAddPlacementSource != nil, addGhostPoint != nil else { return false }
@@ -527,7 +552,10 @@ final class EditorStore {
     }
 
     func beginAddMode() {
-        guard canBeginAddMode, let snapshot = acceptedAddPlacementSource else { return }
+        guard canBeginAddMode, let snapshot = acceptedAddPlacementSource, let depthSeed = addDepthSeed(in: snapshot)
+        else {
+            return
+        }
         cancelReferenceColorCommit()
         let currentCanvasProjection = CanvasProjection(
             bounds: bounds, plane: plane, width: canvasWidth, height: canvasHeight)
@@ -537,7 +565,7 @@ final class EditorStore {
             addPlacementNotice = nil
             try addPlacement.begin(
                 snapshot: snapshot, projection: currentCanvasProjection, canvasHeight: canvasHeight,
-                destination: effectiveAddPlacementDestination)
+                destination: effectiveAddPlacementDestination, depthSeed: depthSeed)
             addModeID = UUID()
             clearCanvasHover()
         } catch { errorMessage = Self.message(error) }
@@ -1153,6 +1181,7 @@ final class EditorStore {
     private(set) var originDragPosition: NodePosition?
     private var originDrag: OriginDrag?
     private var originDragToken: UUID?
+    private var originDragIsDirect = false
     var isWireframe = false
     var showsPreviewColor = true
     var automaticallyOrbitsPreview = false
@@ -1759,26 +1788,58 @@ final class EditorStore {
 
     func cancelOriginDrag(preservingMode: Bool = false) {
         if !preservingMode { isMovingOrigin = false }
+        clearOriginDrag()
+    }
+
+    private func clearOriginDrag() {
         originDrag = nil
         originDragToken = nil
         originDragPosition = nil
+        originDragIsDirect = false
     }
 
     func beginOriginDrag(token: UUID, projection: CanvasProjection) {
-        guard isMovingOrigin, !isWorking, !stopped, let snapshot else { return }
+        guard isMovingOrigin, canSave, let snapshot = acceptedDocumentSource else { return }
         do {
-            originDrag = try OriginDrag(snapshot: snapshot, projection: projection)
-            originDragToken = token
-            originDragPosition = nil
+            installOriginDrag(
+                try OriginDrag(snapshot: snapshot, projection: projection), token: token, direct: false)
         } catch {
             cancelOriginDrag()
             errorMessage = Self.message(error)
         }
     }
 
+    func directOriginDragAction(projection: CanvasProjection, lease: UUID?) -> (@MainActor (UUID) -> Void)? {
+        let horizontal: EditingConstraint = projection.plane == .front ? .x : .z
+        guard canSave, !isMovingOrigin, !isAddingNodes, !isSelectingRigEdges, ownsCanvasProfile(lease),
+            projection.plane == plane, referenceColorCanvas?.projection == projection,
+            let source = acceptedDocumentSource, !source.locks.isSuperset(of: [horizontal, .y]),
+            let baseline = try? OriginDrag(snapshot: source, projection: projection)
+        else { return nil }
+        let layout = precisionLayoutEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        return { [weak self] token in
+            guard let self, self.canSave, !self.isMovingOrigin, !self.isAddingNodes, !self.isSelectingRigEdges,
+                self.ownsCanvasProfile(lease), self.precisionLayoutEpoch == layout, self.rotationInputContextID == tool,
+                self.addModeID == add, self.referenceColorCanvas?.projection == projection,
+                let current = self.acceptedDocumentSource, baseline.isCurrent(in: current)
+            else { return }
+            self.installOriginDrag(baseline, token: token, direct: true)
+        }
+    }
+
+    private func installOriginDrag(_ baseline: OriginDrag, token: UUID, direct: Bool) {
+        originDrag = baseline
+        originDragToken = token
+        originDragPosition = nil
+        originDragIsDirect = direct
+        if direct { cancelReferenceColorCommit() }
+    }
+
     func updateOriginDrag(token: UUID, translation: CanvasPoint) {
-        guard isMovingOrigin, !isWorking, !stopped, token == originDragToken,
-            let snapshot, let baseline = originDrag
+        guard isMovingOrigin || originDragIsDirect, canSave, token == originDragToken,
+            let snapshot = acceptedDocumentSource, let baseline = originDrag
         else { return }
         do {
             guard baseline.isCurrent(in: snapshot) else {
@@ -1797,8 +1858,13 @@ final class EditorStore {
     }
 
     func finishOriginDrag(token: UUID, translation: CanvasPoint) {
-        guard isMovingOrigin, token == originDragToken, let baseline = originDrag else { return }
-        perform { try await $0.commitOriginDrag(baseline, translation: translation) }
+        guard isMovingOrigin || originDragIsDirect, canSave, token == originDragToken, let baseline = originDrag,
+            let current = acceptedDocumentSource, baseline.isCurrent(in: current)
+        else {
+            if token == originDragToken { cancelOriginDrag() }
+            return
+        }
+        perform(acceptCommittedCancellation: true) { try await $0.commitOriginDrag(baseline, translation: translation) }
     }
 
     func cancelOriginDrag(token: UUID) {
@@ -1808,9 +1874,7 @@ final class EditorStore {
 
     func endOriginClick(token: UUID) {
         guard token == originDragToken else { return }
-        originDrag = nil
-        originDragToken = nil
-        originDragPosition = nil
+        clearOriginDrag()
     }
 
     private struct CanvasAxisLockScope: Equatable {
@@ -3584,14 +3648,22 @@ final class EditorStore {
     }
 
     func canConnectSelectedNodes(_ target: NodeConnectionTarget, ownerID: String? = nil) -> Bool {
-        guard !stopped, !isWorking, let snapshot, target.isCurrent(in: snapshot) else { return false }
+        guard !isWorking, !isAddingNodes, !isMovingOrigin, !isSelectingRigEdges, !referenceColorInteractionActive,
+            let source = acceptedDocumentSource, target.isCurrent(in: source)
+        else { return false }
         guard let ownerID else { return true }
         return target.owners.contains { $0.nodeID.utf8.elementsEqual(ownerID.utf8) }
     }
     func nodeConnectionAction(_ target: NodeConnectionTarget, ownerID: String) -> @MainActor () -> Void {
         guard canConnectSelectedNodes(target, ownerID: ownerID) else { return {} }
+        let tool = rotationInputContextID
+        let add = addModeID
+        let interaction = referenceColorInteractionEpoch
         return { [weak self] in
-            guard let self, self.canConnectSelectedNodes(target, ownerID: ownerID) else { return }
+            guard let self, self.rotationInputContextID == tool, self.addModeID == add,
+                self.referenceColorInteractionEpoch == interaction,
+                self.canConnectSelectedNodes(target, ownerID: ownerID)
+            else { return }
             self.perform(acceptCommittedCancellation: true) {
                 try await $0.connectSelectedNodes(target: target, ownerID: ownerID)
             }
@@ -3741,7 +3813,7 @@ final class EditorStore {
             / Double(preparedReferenceColors.result.referenceSize.height)
     }
     private var hasColorizeAdmission: Bool {
-        canSave && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
+        canSave && !isAddingNodes && !isMovingOrigin && !originDragIsDirect && !referenceColorInteractionActive
             && snapshot.map(GraphReferenceColorPlan.canColorize) == true
     }
     var canClearSelectionColors: Bool {

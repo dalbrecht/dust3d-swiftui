@@ -42,6 +42,15 @@ enum ReferenceCompositionRaster {
     static func compose(front: ReferenceCompositionSource?, side: ReferenceCompositionSource?) throws
         -> ReferenceCompositionResult
     {
+        let (image, layout) = try render(front: front, side: side)
+        let png = try ReferenceImageCodec.encodePNG(image)
+        try Task.checkCancellation()
+        return .init(png: png, image: image, layout: layout)
+    }
+
+    static func render(front: ReferenceCompositionSource?, side: ReferenceCompositionSource?) throws
+        -> (CGImage, ReferenceCompositionLayout)
+    {
         try Task.checkCancellation()
         let layout = try ReferenceCompositionLayout(front: front?.crop, side: side?.crop)
         try ReferenceImageCodec.validateDimensions(width: layout.width, height: layout.height)
@@ -102,9 +111,7 @@ enum ReferenceCompositionRaster {
         }
         guard let image = context.makeImage() else { throw ReferenceImageError.conversionFailed }
         try Task.checkCancellation()
-        let png = try ReferenceImageCodec.encodePNG(image)
-        try Task.checkCancellation()
-        return .init(png: png, image: image, layout: layout)
+        return (image, layout)
     }
     private static func premultipliedCrop(_ source: ReferenceCompositionSource) throws -> Data? {
         guard let straight = source.straightRGBA else { return nil }

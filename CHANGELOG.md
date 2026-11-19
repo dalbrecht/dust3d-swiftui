@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- Announce Editor preview failures in the active document window for VoiceOver users.
-
-- Add Retry Preview to the Editor’s View menu for the current document.
+- Connect two explicitly selected nodes while keeping existing edge picks.
 
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
@@ -20,6 +18,8 @@
 - Announce reference-image composition errors with VoiceOver in the active sheet.
 - Identify the composed reference preview and profile-specific crop actions in VoiceOver.
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
+- Opt into Qt opposite-profile depth when starting a part in the dual-profile canvas and see the placement preview in both profiles.
+
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
 - Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
@@ -42,6 +42,8 @@
 - Keep modified keyboard shortcuts available when the model preview has focus.
 
 - Accept Qt XML fragments by content regardless of filename suffix when using `-paste-xml`.
+- Drag the document origin marker directly in Select mode.
+
 - Show the authored order of stitching lines in each component listing.
 - Announce new Viewer errors in the active window with VoiceOver.
 
@@ -146,6 +148,8 @@
 
 - Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
 
+- Update the combined reference image preview while drawing, moving or resizing a crop. The document changes only on Apply.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
@@ -222,6 +226,8 @@
 
 - Add independent Model, Bones and Weights controls to experimental generated-rest inspection, preserving the full camera frame, selected joint and numerical properties when geometry or weight colors are hidden (#367).
 
+- Open a separate Viewer window with File → New Window or Command-N.
+
 - Add a resizable Model/Generated Rest workspace with one per-window rest session, shared camera and stale-safe focused controls; preserve selection and camera across presentation changes (#367).
 
 - Add a source-ordered generated-joint hierarchy and read-only parent, endpoint, length, radius and signed-angle inspection to the experimental rest preview; preserve copied rig data if hierarchy preparation fails (#367).
@@ -253,6 +259,8 @@
 - Keep node and edge inspector actions bound to their original document and selection, preserving atomic Undo and read-only endpoint selection (#352).
 
 - Connect two selected endpoints from the inspector or Canvas menu, with explicit surviving part settings, stale-action protection and one Undo step (#349).
+
+- Include the upstream Dust3D authors in the Editor and Viewer About panels.
 
 - Add shared Help commands for the native project, issue reporting and upstream Dust3D, with visible link-opening failures (#348).
 
@@ -337,6 +345,8 @@
 
 - Add atomic Combine Mode and Normal Smoothing edits for multiple selected components, with explicit mixed values and one-step Undo.
 
+
+- Require two editable nodes for alignment to the selection center.
 
 - Select component graphs in the canvas from the sidebar context menu or by double-clicking a leaf row.
 
@@ -676,6 +686,10 @@
 - Consume the Qt-free engine from a pinned external core revision and remove the duplicate Apple-side native adapter.
 
 - Add a Qt-free C++17 engine library and C bridge, with validated `.ds3` archive loading.
+- Announce Editor preview failures in the active document window for VoiceOver users.
+
+- Add Retry Preview to the Editor’s View menu for the current document.
+
 - Add a native SwiftUI/Metal macOS viewer with file opening, orbit/zoom, wireframe, and camera fitting.
 - Pin c65llc coding standards, assemble Codex instructions, and document native/C++ supplements and gaps.
 - Add document-loading regression tests, native validation commands, and a local app bundle/run script.
