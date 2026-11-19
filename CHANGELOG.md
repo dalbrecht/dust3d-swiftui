@@ -224,6 +224,8 @@
 
 - Add independent Model, Bones and Weights controls to experimental generated-rest inspection, preserving the full camera frame, selected joint and numerical properties when geometry or weight colors are hidden (#367).
 
+- Open a separate Viewer window with File → New Window or Command-N.
+
 - Add a resizable Model/Generated Rest workspace with one per-window rest session, shared camera and stale-safe focused controls; preserve selection and camera across presentation changes (#367).
 
 - Add a source-ordered generated-joint hierarchy and read-only parent, endpoint, length, radius and signed-angle inspection to the experimental rest preview; preserve copied rig data if hierarchy preparation fails (#367).
