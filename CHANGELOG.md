@@ -154,6 +154,8 @@
 
 - Edit a Model part’s cross-section profile and rotation directly from its graph selection.
 
+- Drop an image directly onto the Front or Side panel of the reference composer to replace that profile before applying the draft.
+
 - Clear missing cut-face links when pasting Qt XML interactively, keeping profiles found in the fragment or document.
 
 - Preview applied and retained component color images in the inspector without changing image assignments.
