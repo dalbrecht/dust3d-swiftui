@@ -572,6 +572,12 @@
 
 - Adopt owned imported surface UV/RGBA metadata with explicit RGB encoding, aligned geometry and independently bounded background Swift copies; texture rendering remains pending.
 
+- Drop selected sibling components at the end of a component listing.
+
+- Offer sibling reordering when dropping components onto a group row.
+
+- Confirm a component drop into a group before changing the hierarchy.
+
 - Adopt reviewed core `4db1bb7` for embedded imported geometry, lifetime-safe material/image metadata copies, and bounded background PNG/JPEG decoding. Imported material rendering, UV/baking and textured export remain pending; archives and original assets survive native edits and undo.
 
 - Add immutable executable build diagnostics to both apps and a repeatable editor QA packaging mode that reuses its existing identity, omits preview providers and refuses to overwrite a running target bundle.
