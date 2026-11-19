@@ -5,13 +5,15 @@ import SwiftUI
 struct ComponentStitchingControls: View {
     let store: EditorStore
     let component: DocumentComponent
+    let support: ComponentStitchingBatchSupport
 
     private var identity: String { (store.snapshot?.documentIdentity.uuidString ?? "") + component.id }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Stitching").font(.headline)
-            ForEach(ComponentStitchingClosureProperty.allCases, id: \.self) { property in
+            ForEach(ComponentStitchingClosureProperty.allCases.filter { $0 == .back || support.line }, id: \.self) {
+                property in
                 if let value = component.stitching.closureValue(property) {
                     Toggle(
                         stitchingClosureTitle(property),
@@ -47,29 +49,30 @@ struct ComponentStitchingControls: View {
                     }
                 }
             }
-            StitchingNumberControl(
-                title: "Target segments", identifier: "component-target-segments", identity: identity,
-                source: component.stitching.targetSegments.map { String($0) }
-            ) {
-                store.setComponentTargetSegments(component.id, segments: $0)
-            }
-            ForEach(ComponentStitchingScalarProperty.allCases, id: \.self) { property in
+            if support.line {
                 StitchingNumberControl(
-                    title: property == .depthRatio ? "Loop cap depth" : "Loop cap sharpness",
-                    identifier: "component-\(property.rawValue)", identity: identity,
-                    source: component.stitching.scalarValue(property).map { String($0) }
+                    title: "Target segments (0–100; 0 = automatic)", identifier: "component-target-segments",
+                    identity: identity, source: component.stitching.targetSegments.map { String($0) }
                 ) {
-                    store.setComponentStitchingScalar(component.id, property: property, value: $0)
+                    store.setComponentTargetSegments(component.id, segments: $0)
                 }
             }
-            Text(
-                "Target segments: 0–100 (0 = automatic). Loop cap depth: 0–2; sharpness: 0–1. Each choice or Apply is one undo step."
-            )
-            .font(.caption).foregroundStyle(.primary)
-            Text(
-                "Line closures join spline ends and end profiles. Loop caps use Back closed and depend on profile orientation. These settings apply to stitching children in this group."
-            )
-            .font(.caption).foregroundStyle(.primary)
+            if support.loop {
+                ForEach(ComponentStitchingScalarProperty.allCases, id: \.self) { property in
+                    StitchingNumberControl(
+                        title: property == .depthRatio ? "Loop cap depth (0–2)" : "Loop cap sharpness (0–1)",
+                        identifier: "component-\(property.rawValue)", identity: identity,
+                        source: component.stitching.scalarValue(property).map { String($0) }
+                    ) {
+                        store.setComponentStitchingScalar(component.id, property: property, value: $0)
+                    }
+                    .disabled(!support.cap)
+                }
+                if !support.cap {
+                    Text("Turn on Back closed to edit the loop cap.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
@@ -88,17 +91,25 @@ struct ComponentStitchingBatchControls: View {
                 closure(.side)
                 number(
                     "Target segments (0–100; 0 = automatic)", identifier: "batch-stitching-segments",
-                    value: target.targetSegments
+                    value: target.targetSegments, sourceValues: target.segmentDraftValues
                 ) { store.setBatchStitchingSegments($0, target: target) }
             }
             if target.supportsLoop {
                 number(
-                    "Loop cap depth (0–2)", identifier: "batch-stitching-depth", value: target.scalar(.depthRatio)
+                    "Loop cap depth (0–2)", identifier: "batch-stitching-depth", value: target.scalar(.depthRatio),
+                    sourceValues: target.scalarDraftValues(.depthRatio)
                 ) { store.setBatchStitchingScalar(.depthRatio, draft: $0, target: target) }
+                .disabled(!target.supportsCap)
                 number(
                     "Loop cap sharpness (0–1)", identifier: "batch-stitching-sharpness",
-                    value: target.scalar(.sharpness)
+                    value: target.scalar(.sharpness),
+                    sourceValues: target.scalarDraftValues(.sharpness)
                 ) { store.setBatchStitchingScalar(.sharpness, draft: $0, target: target) }
+                .disabled(!target.supportsCap)
+                if !target.supportsCap {
+                    Text("Turn on Back closed for all selected groups to edit the loop caps.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             Text("Each edit applies to all selected groups and can be undone in one step.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -127,7 +138,7 @@ struct ComponentStitchingBatchControls: View {
     }
 
     private func number<Value: Equatable & Sendable>(
-        _ title: String, identifier: String, value: ComponentMeshSelectionValue<Value>,
+        _ title: String, identifier: String, value: ComponentMeshSelectionValue<Value>, sourceValues: [Value?],
         apply: @escaping (String) -> Void
     ) -> some View {
         let source: String?
@@ -138,6 +149,7 @@ struct ComponentStitchingBatchControls: View {
         }
         return StitchingNumberControl(
             title: title, identifier: identifier, identity: identity, source: source,
+            sourceValues: sourceValues.map { $0.map { String(describing: $0) } },
             nilNotice: value == .mixed
                 ? "Mixed values. Enter a replacement." : "Unsupported source value. Enter a replacement.",
             apply: apply)
@@ -157,6 +169,7 @@ private struct StitchingNumberControl: View {
     let identifier: String
     let identity: String
     let source: String?
+    var sourceValues: [String?]? = nil
     var nilNotice = "Unsupported source value. Enter a replacement."
     let apply: (String) -> Void
     @State private var draft = ""
@@ -178,7 +191,7 @@ private struct StitchingNumberControl: View {
             }
         }
         .onChange(of: identity, initial: true) { _, _ in reset() }
-        .onChange(of: source) { _, _ in reset() }
+        .onChange(of: sourceValues ?? [source]) { _, _ in reset() }
     }
 
     private func reset() { draft = source ?? "" }

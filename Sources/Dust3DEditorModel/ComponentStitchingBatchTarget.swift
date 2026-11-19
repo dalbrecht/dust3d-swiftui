@@ -8,6 +8,7 @@ package struct ComponentStitchingBatchTarget: Sendable {
 
     package var supportsLine: Bool { support.line }
     package var supportsLoop: Bool { support.loop }
+    package var supportsCap: Bool { support.cap }
     package var supportsBack: Bool { support.back }
     var ids: [String] { target.ids }
 
@@ -16,14 +17,18 @@ package struct ComponentStitchingBatchTarget: Sendable {
         let components = snapshot.componentTree.rows.map(\.component)
         groups = snapshot.selectedComponentRows.map(\.component)
         support = ComponentStitchingBatchSupport(
-            groups: groups.count == target.count ? groups : [], components: components, parts: snapshot.parts)
+            groups: groups.count > 1 && groups.count == target.count ? groups : [], components: components,
+            parts: snapshot.parts)
     }
 
     package func isCurrent(in snapshot: EditorSnapshot) -> Bool {
         supportsBack && target.isCurrent(in: snapshot)
     }
 
-    package func permits(_ edit: ComponentStitchingEdit) -> Bool { support.permits(edit) }
+    package func permits(_ edit: ComponentStitchingEdit) -> Bool {
+        if case .scalar = edit { return supportsCap }
+        return support.permits(edit)
+    }
 
     package func closure(_ property: ComponentStitchingClosureProperty) -> ComponentMeshSelectionValue<Bool> {
         common { $0.closureValue(property) }
@@ -33,6 +38,12 @@ package struct ComponentStitchingBatchTarget: Sendable {
 
     package func scalar(_ property: ComponentStitchingScalarProperty) -> ComponentMeshSelectionValue<Double> {
         common { $0.scalarValue(property) }
+    }
+
+    package var segmentDraftValues: [Int?] { groups.map(\.stitching.targetSegments) }
+
+    package func scalarDraftValues(_ property: ComponentStitchingScalarProperty) -> [Double?] {
+        groups.map { $0.stitching.scalarValue(property) }
     }
 
     private func common<Value: Equatable & Sendable>(
