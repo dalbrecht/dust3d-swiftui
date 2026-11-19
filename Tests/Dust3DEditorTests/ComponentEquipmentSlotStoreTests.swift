@@ -107,6 +107,43 @@ final class ComponentEquipmentSlotStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.document.encoded(), changed.document.encoded())
     }
 
+    func testInspectorNameEditCannotRetargetAfterIndependentSlotEdit() async throws {
+        let source = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><parts><part id='p'/></parts><components>
+                <component id='vest' name='Vest @armor/1' linkDataType='partId' linkData='p'/>
+                </components></canvas>
+                """.utf8))
+        let stub = EquipmentSlotNoNative()
+        let store = EditorStore(
+            preview: stub, materialBaker: stub, importedMaterialLoader: stub,
+            sourceMaterialBaker: stub, animationCatalog: stub)
+        defer { store.stop() }
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectComponents(["vest"])
+        try await settle(store)
+        let first = try XCTUnwrap(store.snapshot)
+        let equipment = try XCTUnwrap(first.equipmentSlotTarget)
+        let old = try XCTUnwrap(
+            store.inspectedComponentNameAction(try XCTUnwrap(first.selectedComponent), equipment: equipment))
+        store.setComponentEquipmentSlot("armor/2", target: equipment)
+        try await settle(store)
+        old("Wrong")
+        XCTAssertFalse(store.isWorking)
+        XCTAssertEqual(store.snapshot?.selectedComponent?.name, "Vest @armor/2")
+
+        let current = try XCTUnwrap(store.snapshot)
+        let rename = try XCTUnwrap(
+            store.inspectedComponentNameAction(
+                try XCTUnwrap(current.selectedComponent), equipment: try XCTUnwrap(current.equipmentSlotTarget)))
+        rename("Body")
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.selectedComponent?.name, "Body @armor/2")
+        XCTAssertEqual(store.snapshot?.previewIdentity, first.previewIdentity)
+    }
+
     private func settle(_ store: EditorStore) async throws {
         for _ in 0..<300 {
             if !store.isWorking && !store.isGenerating && !store.isBakingMaterials { return }
