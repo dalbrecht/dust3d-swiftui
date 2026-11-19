@@ -26,3 +26,22 @@ struct EditorDocumentDrop {
         do { try await opener(url) } catch { reportError(error) }
     }
 }
+
+/// Qt gives images first choice on an empty canvas and otherwise opens the last local document.
+enum EditorCanvasDrop {
+    case reference(ReferenceCompositionDrop)
+    case document(EditorDocumentDrop)
+
+    init?(urls: [URL], acceptsReference: Bool) {
+        if acceptsReference {
+            let images = urls.filter(ReferenceCompositionDrop.supports)
+            if !images.isEmpty {
+                guard let drop = ReferenceCompositionDrop(urls: images) else { return nil }
+                self = .reference(drop)
+                return
+            }
+        }
+        guard let drop = EditorDocumentDrop(urls: urls) else { return nil }
+        self = .document(drop)
+    }
+}

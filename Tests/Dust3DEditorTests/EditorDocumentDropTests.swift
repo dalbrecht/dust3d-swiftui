@@ -25,6 +25,29 @@ final class EditorDocumentDropTests: XCTestCase {
         }
     }
 
+    func testCanvasDropPrefersReferenceImagesOnlyOnTheEmptyCanvas() throws {
+        let first = URL(fileURLWithPath: "/tmp/first.ds3")
+        let last = URL(fileURLWithPath: "/tmp/last.ds3")
+        let front = URL(fileURLWithPath: "/tmp/front.png")
+        let side = URL(fileURLWithPath: "/tmp/side.png")
+        let mixed = [first, front, last, side]
+        guard case .reference(let staged) = EditorCanvasDrop(urls: mixed, acceptsReference: true) else {
+            return XCTFail("An empty canvas should stage the reference images")
+        }
+        XCTAssertEqual(staged.front, front)
+        XCTAssertEqual(staged.side, side)
+        guard case .document(let open) = EditorCanvasDrop(urls: mixed, acceptsReference: false) else {
+            return XCTFail("A populated canvas should open the last local document")
+        }
+        XCTAssertEqual(open.url, last)
+        guard case .document(let openOnEmpty) = EditorCanvasDrop(urls: [last], acceptsReference: true) else {
+            return XCTFail("A document-only drop should open on an empty canvas")
+        }
+        XCTAssertEqual(openOnEmpty.url, last)
+        XCTAssertNil(EditorCanvasDrop(urls: [front], acceptsReference: false))
+        XCTAssertNil(EditorCanvasDrop(urls: [front, side, front, last], acceptsReference: true))
+    }
+
     @MainActor
     func testMixedDropOpensLastEligibleDocumentOnceAndPreservesOriginalError() async throws {
         enum OpenFailure: Error, Equatable { case denied }
