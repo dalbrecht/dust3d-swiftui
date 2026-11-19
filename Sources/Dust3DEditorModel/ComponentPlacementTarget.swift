@@ -4,7 +4,7 @@ import Foundation
 /// Captures the selected components and editing context for a placement interaction.
 public struct ComponentPlacementTarget: Sendable {
     private let context: CanvasAdjustmentTarget
-    let ids: [String]
+    package let ids: [String]
 
     public init?(snapshot: EditorSnapshot) {
         guard !snapshot.selectedComponentIDs.isEmpty else { return nil }
@@ -56,6 +56,21 @@ public struct ComponentPlacementTarget: Sendable {
         case .first: return unselected.first.map { .before(siblings[$0].id) }
         case .last: return unselected.last.map { .after(siblings[$0].id) }
         }
+    }
+
+    package func groupCenterSiblingPlacement(anchorID: String, in snapshot: EditorSnapshot) -> ComponentDropPlacement? {
+        guard isCurrent(in: snapshot),
+            let anchor = snapshot.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(anchorID.utf8) })
+        else { return nil }
+        let parent = anchor.component.parentID.map { Data($0.utf8) }
+        let siblings = snapshot.componentTree.rows.filter { $0.component.parentID.map { Data($0.utf8) } == parent }
+        let selection = Set(ids.map { Data($0.utf8) })
+        let selectedPositions = siblings.indices.filter { selection.contains(Data(siblings[$0].id.utf8)) }
+        guard selectedPositions.count == selection.count, let last = selectedPositions.last,
+            let anchorPosition = siblings.firstIndex(where: { $0.id.utf8.elementsEqual(anchorID.utf8) })
+        else { return nil }
+        let placement: ComponentDropPlacement = anchorPosition > last ? .after(anchor.id) : .before(anchor.id)
+        return canPlace(at: placement, in: snapshot) ? placement : nil
     }
 
     public func canPlace(at placement: ComponentDropPlacement, in snapshot: EditorSnapshot) -> Bool {

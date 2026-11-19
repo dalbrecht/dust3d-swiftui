@@ -19,6 +19,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorGeometryExportAction) private var geometryExportAction
     @FocusedValue(\.rigAssignmentCommand) private var rigAssignmentCommand
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
+    @FocusedValue(\.editorPreviewFocus) private var previewFocus
     @FocusedValue(\.editorPreviewDisplayActions) private var previewDisplayActions
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     @FocusedValue(\.editorTextEditing) private var isEditingText
@@ -209,6 +210,7 @@ struct Dust3DEditorApp: App {
                 }
                 .keyboardShortcut("s", modifiers: [.control, .command])
                 .disabled(window == nil || navigate == nil || isSidebarPresented == nil || rigAssignmentFocus.hasSheet)
+                let allowsPreviewShortcuts = rigAssignmentFocus.allowsAssignment
                 #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
                     Picker(
                         "Preview Mode",
@@ -243,45 +245,63 @@ struct Dust3DEditorApp: App {
                     .disabled(restPreviewActions?.canChangeVisibility != true)
                     Divider()
                 #endif
+                let previewOwner = store
+                let previewWindow = NSApp.keyWindow
+                let ownsPreviewMenu: @MainActor () -> Bool = { [weak previewOwner, weak previewWindow] in
+                    guard let previewOwner, let previewWindow else { return false }
+                    return NSApp.keyWindow === previewWindow && store === previewOwner && !rigAssignmentFocus.hasSheet
+                }
+                let display = previewDisplayActions?.scoped(to: ownsPreviewMenu)
+                let camera = previewCameraActions?.scoped(to: ownsPreviewMenu)
                 Toggle(
                     "Wireframe",
                     isOn: Binding(
-                        get: { previewDisplayActions?.isWireframe == true },
-                        set: { previewDisplayActions?.setWireframe($0) })
+                        get: { display?.isWireframe == true },
+                        set: { display?.setWireframe($0) })
                 )
-                .disabled(previewDisplayActions?.canChangeWireframe != true)
+                .disabled(display?.canChangeWireframe != true)
+                .keyboardShortcut(allowsPreviewShortcuts ? KeyboardShortcut("w", modifiers: []) : nil)
                 Toggle(
                     "Model Colors",
                     isOn: Binding(
-                        get: { previewDisplayActions?.showsModelColors == true },
-                        set: { previewDisplayActions?.setModelColors($0) })
+                        get: { display?.showsModelColors == true },
+                        set: { display?.setModelColors($0) })
                 )
-                .disabled(previewDisplayActions?.canChangeModelColors != true)
+                .disabled(display?.canChangeModelColors != true)
                 Divider()
                 Toggle(
                     "Rotate Preview Automatically",
                     isOn: Binding(
-                        get: {
-                            previewCameraActions?.supportsAutomaticOrbit == true
-                                && store?.automaticallyOrbitsPreview == true
+                        get: { [weak previewOwner] in
+                            ownsPreviewMenu() && camera?.supportsAutomaticOrbit == true
+                                && previewOwner?.automaticallyOrbitsPreview == true
                         },
-                        set: { enabled in
-                            guard previewCameraActions?.canAutomaticallyOrbit == true else { return }
-                            store?.automaticallyOrbitsPreview = enabled
+                        set: { [weak previewOwner] enabled in
+                            guard camera?.canAutomaticallyOrbit == true else { return }
+                            previewOwner?.automaticallyOrbitsPreview = enabled
                         })
                 )
-                .disabled(previewCameraActions?.canAutomaticallyOrbit != true)
+                .disabled(camera?.canAutomaticallyOrbit != true)
+                .keyboardShortcut(allowsPreviewShortcuts ? KeyboardShortcut("r", modifiers: []) : nil)
                 .help("Pauses during dragging, while inactive, and when Reduce Motion is enabled.")
+                Button("Focus 3D Preview") {
+                    guard !rigAssignmentFocus.hasSheet else { return }
+                    previewFocus?.moveFocus(in: NSApp.keyWindow)
+                }
+                .disabled(previewFocus == nil || rigAssignmentFocus.hasSheet)
                 PreviewCameraMenu(
-                    title: "Preview Camera", isEnabled: previewCameraActions?.canMove == true,
-                    move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() },
+                    title: "Preview Camera", isEnabled: camera?.canMove == true,
+                    allowsZoomShortcuts: allowsPreviewShortcuts,
+                    move: { camera?.move($0) }, fit: { camera?.fit() },
                     canvasWheelZoom: Binding(
-                        get: { store?.canvasWheelZoomEnabled == true },
-                        set: { enabled in
-                            guard previewCameraActions?.canZoomFromCanvas == true else { return }
-                            store?.setCanvasWheelZoomEnabled(enabled)
+                        get: { [weak previewOwner] in
+                            ownsPreviewMenu() && previewOwner?.canvasWheelZoomEnabled == true
+                        },
+                        set: { [weak previewOwner] enabled in
+                            guard camera?.canZoomFromCanvas == true else { return }
+                            previewOwner?.setCanvasWheelZoomEnabled(enabled)
                         }),
-                    canZoomFromCanvas: previewCameraActions?.canZoomFromCanvas == true)
+                    canZoomFromCanvas: camera?.canZoomFromCanvas == true)
             }
             CommandMenu("Canvas") {
                 focusCanvasMenuButton
@@ -651,6 +671,7 @@ private struct EditorNodesSidebarSelectAllKey: FocusedValueKey { typealias Value
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 private struct EditorCanvasFocusKey: FocusedValueKey { typealias Value = @MainActor () -> Bool }
 
+private struct EditorPreviewFocusKey: FocusedValueKey { typealias Value = MeshViewportFocus }
 private struct EditorSelectionPropertiesActionKey: FocusedValueKey {
     typealias Value = @MainActor () -> Bool
 }
@@ -694,6 +715,11 @@ extension FocusedValues {
     var editorNodesSidebarSelectAll: NodesSidebarSelectAll? {
         get { self[EditorNodesSidebarSelectAllKey.self] }
         set { self[EditorNodesSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorPreviewFocus: MeshViewportFocus? {
+        get { self[EditorPreviewFocusKey.self] }
+        set { self[EditorPreviewFocusKey.self] = newValue }
     }
 
     var editorCanvasFocus: (@MainActor () -> Bool)? {

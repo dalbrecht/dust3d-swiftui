@@ -56,6 +56,59 @@ final class AnimationParameterDraftTests: XCTestCase {
         XCTAssertTrue(try draft.validatedEdits().isEmpty)
     }
 
+    func testTimingStepsUseDeclaredIncrementsAndPreserveUneditedRawValues() throws {
+        var draft = try AnimationParameterDraft(record: record(), catalog: catalog())
+        XCTAssertNil(draft.steppedTimingText(name: "durationSeconds", increasing: true))
+        XCTAssertNil(draft.steppedTimingText(name: "frameCount", increasing: false))
+        XCTAssertTrue(try draft.validatedEdits().isEmpty)
+
+        draft.useDefault(name: "durationSeconds")
+        draft.useDefault(name: "frameCount")
+        XCTAssertEqual(draft.steppedTimingText(name: "durationSeconds", increasing: true), "4.1")
+        XCTAssertEqual(draft.steppedTimingText(name: "frameCount", increasing: false), "85")
+
+        draft.setText(name: "durationSeconds", value: "59.950")
+        draft.setText(name: "frameCount", value: "2")
+        XCTAssertEqual(draft.steppedTimingText(name: "durationSeconds", increasing: true), "59.99")
+        XCTAssertEqual(draft.steppedTimingText(name: "frameCount", increasing: false), "1")
+        XCTAssertEqual(draft.value(for: "durationSeconds"), "59.950")
+        draft.setText(name: "durationSeconds", value: "59.990")
+        XCTAssertNil(draft.steppedTimingText(name: "durationSeconds", increasing: true))
+    }
+
+    func testTimingStepRoundTripRestoresRawSourceAndInheritedDefault() throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><animations><animation id='a' type='Known' durationSeconds='4.000'/></animations></canvas>"
+                    .utf8))
+        var draft = try AnimationParameterDraft(record: XCTUnwrap(document.animations().first), catalog: catalog())
+        for name in ["durationSeconds", "frameCount"] {
+            draft.stepTiming(name: name, increasing: true)
+            XCTAssertEqual(try draft.validatedEdits().count, 1)
+            draft.stepTiming(name: name, increasing: false)
+            XCTAssertTrue(try draft.validatedEdits().isEmpty)
+        }
+        XCTAssertEqual(draft.value(for: "durationSeconds"), "4.000")
+        XCTAssertNil(draft.value(for: "frameCount"))
+    }
+
+    func testUnknownTimingStepRoundTripRestoresRawSourceAndInheritedDefault() throws {
+        let document = try Dust3DDocument(
+            snapshotXML: Data(
+                "<canvas><animations><animation id='a' name='Legacy' type='Future' frameCount='090'/></animations></canvas>"
+                    .utf8))
+        var draft = UnknownAnimationParameterDraft(
+            record: try XCTUnwrap(document.animations().first), catalog: try catalog())
+        for name in ["durationSeconds", "frameCount"] {
+            draft.stepTiming(name: name, increasing: true)
+            XCTAssertEqual(try draft.validatedEdits().count, 1)
+            draft.stepTiming(name: name, increasing: false)
+            XCTAssertTrue(try draft.validatedEdits().isEmpty)
+        }
+        XCTAssertNil(draft.value(for: "durationSeconds"))
+        XCTAssertEqual(draft.value(for: "frameCount"), "090")
+    }
+
     func testChangedTimingValidatesIndependentlyOfOtherUnsupportedRetainedFields() throws {
         var draft = try AnimationParameterDraft(record: record(), catalog: catalog())
         draft.setText(name: "durationSeconds", value: "1.125")

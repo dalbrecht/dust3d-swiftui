@@ -95,6 +95,10 @@ struct CanvasPrecisionKeyInput {
         default: return nil
         }
     }
+    var togglesPartMirror: Bool {
+        isBareEditingKey && (characters == "m" || characters == "M")
+    }
+
     var partShapeShortcut: CanvasPartShapeShortcut? {
         guard isBareEditingKey else { return nil }
         return CanvasPartShapeShortcut(rawValue: characters.lowercased())
@@ -115,7 +119,7 @@ struct CanvasPrecisionKeyInput {
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
         guard
             axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
-                || isAlternateDelete || partShapeShortcut != nil || visibilityShortcut != nil
+                || isAlternateDelete || togglesPartMirror || partShapeShortcut != nil || visibilityShortcut != nil
 
         else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil

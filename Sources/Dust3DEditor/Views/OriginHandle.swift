@@ -9,16 +9,18 @@ struct OriginHandle: View {
     var profileLease: UUID? = nil
     var precisionKey: ((CanvasPrecisionKeyInput) -> Bool)? = nil
     var switchProfile: ((CanvasProfileFocusRequest) -> Bool)? = nil
+    var previewDrag: CanvasPreviewDrag.Begin? = nil
 
     private var ownsProfile: Bool { store.ownsCanvasProfile(profileLease) }
 
     var body: some View {
         let point = projection.point(for: origin)
-        let handlePrecisionKey = precisionKey ?? store.canvasPrecisionKeyHandler()
+        let handlePrecisionKey = precisionKey ?? store.canvasPrecisionKeyHandler(profileLease: profileLease)
         let direct = store.directOriginDragAction(projection: projection, lease: profileLease)
         let explicit = store.isMovingOrigin && !store.isWorking
         let enabled = explicit || direct != nil
         let hitSize: CGFloat = explicit ? 44 : 20
+
         Image(systemName: "scope")
             .font(.title3)
             .foregroundStyle(store.isMovingOrigin || store.originDragPosition != nil ? Color.accentColor : .secondary)
@@ -45,7 +47,7 @@ struct OriginHandle: View {
                     precisionKey: { ownsProfile && handlePrecisionKey($0) }, isRectangular: true,
                     clickCancel: { store.endOriginClick(token: $0) },
                     admitsPrimaryPress: { store.admitsCanvasPrimaryPress(clickCount: $0, lease: profileLease) },
-                    switchProfile: switchProfile
+                    switchProfile: switchProfile, previewDrag: previewDrag
                 )
             }
             .position(x: point.x, y: point.y)

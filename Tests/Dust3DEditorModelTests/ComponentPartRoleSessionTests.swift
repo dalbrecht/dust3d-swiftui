@@ -75,6 +75,20 @@ final class ComponentPartRoleSessionTests: XCTestCase {
         XCTAssertFalse(ComponentPartRoleTarget(snapshot: replacement).isCurrent(in: independentlySelected))
     }
 
+    func testDirectStateRoleAssignmentRevealsExistingGroupWithoutHistory() throws {
+        let source = try document("target='StitchingLoop'", grouped: true)
+        var state = try EditorState(document: source)
+        try state.selectComponents(["a", "b"])
+        let selected = state.snapshot
+        try state.setSelectedComponentPartRole(.stitchingLoop, target: .init(snapshot: selected), newGroupID: nil)
+        let result = state.snapshot
+        XCTAssertEqual(result.selectedComponentID, "g")
+        XCTAssertEqual(result.componentRevealHint?.componentID, "g")
+        XCTAssertEqual(result.document.encoded(), source.encoded())
+        XCTAssertEqual(result.documentRevision, selected.documentRevision)
+        XCTAssertFalse(result.canUndo)
+    }
+
     func testAlreadyCancelledRoleTaskCannotPublishAndStateRejectsStaleBeforeMutation() async throws {
         let source = try document()
         let session = EditorSession()

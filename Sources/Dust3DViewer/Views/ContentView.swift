@@ -8,10 +8,11 @@ struct ContentView: View {
     @State private var previewFocus = MeshViewportFocus()
     @State private var isImporterPresented = false
     @State private var isFileDropTargeted = false
-    @State private var rendererError: String?
 
     var body: some View {
-        let visibleError = store.errorMessage ?? rendererError
+        let cancelOperation = isImporterPresented ? nil : store.pendingCancellation
+        let rendererAttempt = store.rendererAttemptID
+        let visibleError = store.errorMessage ?? store.rendererError
         VStack(spacing: 0) {
             if let message = visibleError {
                 HStack(alignment: .top) {
@@ -20,12 +21,16 @@ struct ContentView: View {
                         .accessibilityHidden(true)
                     Text(message).textSelection(.enabled)
                     Spacer()
-                    if let failure = store.openFailure {
-                        Button("Try Again") { store.retryOpen(failure) }
-                    }
-                    Button("Dismiss") {
-                        store.dismissFileError()
-                        rendererError = nil
+                    if store.errorMessage != nil {
+                        if let failure = store.openFailure {
+                            Button("Try Again") { store.retryOpen(failure) }
+                        }
+                        Button("Dismiss") { store.dismissFileError() }
+                    } else {
+                        if let retryPreview = store.rendererRetryAction() {
+                            Button("Retry Preview", action: retryPreview)
+                        }
+                        Button("Dismiss") { store.dismissRendererError(attemptID: rendererAttempt) }
                     }
                 }
                 .padding()
@@ -36,17 +41,23 @@ struct ContentView: View {
                     let materialRevision = store.meshRevision + store.materialRevision
                     MeshViewport(
                         mesh: mesh, isWireframe: store.isWireframe, cameraReset: 0,
-                        meshRevision: store.meshRevision + store.materialRevision, materials: store.materials,
+                        meshRevision: materialRevision, materials: store.materials,
                         showsColor: store.showsModelColors, automaticallyOrbits: store.automaticallyRotates,
                         cameraState: store.cameraState,
+                        onMaterialError: {
+                            guard store.rendererAttemptID == rendererAttempt else { return }
+                            store.materialsFailed($0, revision: materialRevision)
+                        },
+                        onMaterialRendered: {
+                            guard store.rendererAttemptID == rendererAttempt else { return }
+                            store.materialsRendered(revision: materialRevision)
+                        }
 
-                        onMaterialError: { store.materialsFailed($0, revision: materialRevision) },
-                        onMaterialRendered: { store.materialsRendered(revision: materialRevision) }
                     ) { message in
-                        rendererError = message
+                        store.reportRendererError(message, attemptID: rendererAttempt)
                     }
                     .withFocusTarget(previewFocus)
-                    .id(store.meshRevision)
+                    .id(rendererAttempt)
                     .accessibilityLabel("3D mesh preview")
                     .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 } else {
@@ -59,10 +70,13 @@ struct ContentView: View {
                             .buttonStyle(.borderedProminent)
                     }
                 }
-                if store.isLoading {
-                    ProgressView("Generating mesh…")
-                        .padding(24)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                if let revision = store.pendingOpenRevision {
+                    VStack(spacing: 12) {
+                        ProgressView("Generating mesh…")
+                        Button("Cancel Opening") { store.cancelOpen(revision: revision) }
+                    }
+                    .padding(24)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
             .contentShape(Rectangle())
@@ -79,10 +93,17 @@ struct ContentView: View {
             } isTargeted: {
                 isFileDropTargeted = $0
             }
-            if store.isUpdatingMaterials {
-                ProgressView("Updating materials…").controlSize(.small).padding(8)
+            if let requestID = store.pendingMaterialUpdateID {
+                HStack {
+                    ProgressView("Updating materials…")
+                    Button("Cancel Material Update") { store.cancelMaterialUpdate(requestID: requestID) }
+                }
+                .controlSize(.small)
+                .padding(8)
+
             }
             if let issue = store.materialIssue {
+                let retryMaterials = store.materialRetryAction()
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
                         .accessibilityHidden(true)
@@ -91,8 +112,8 @@ struct ContentView: View {
                         Text(issue).textSelection(.enabled)
                     }
                     Spacer()
-                    Button("Retry Materials") { store.retryMaterials() }
-                        .disabled(store.isLoading || store.isUpdatingMaterials)
+                    Button("Retry Materials") { retryMaterials?() }
+                        .disabled(retryMaterials == nil)
                 }
                 .font(.caption).padding(12)
             }
@@ -153,6 +174,7 @@ struct ContentView: View {
                     .help("Show triangle edges")
                     .disabled(store.mesh == nil)
                 Button(action: store.fitModel) {
+
                     Label("Fit Model", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
                 .help("Reset the camera and fit the model")
@@ -165,9 +187,11 @@ struct ContentView: View {
             case .failure(let error): store.reportFilePickerError(error)
             }
         }
+        .onExitCommand(perform: cancelOperation)
         .onOpenURL { store.open($0) }
         .onDisappear { store.stop() }
-        .onChange(of: store.meshRevision) { rendererError = nil }
+        .focusedSceneValue(\.viewerPreviewRetryStore, isImporterPresented ? nil : store)
+        .focusedSceneValue(\.viewerCancellation, cancelOperation)
         .focusedSceneValue(\.openDocument, { isImporterPresented = true })
         .focusedSceneValue(\.viewerPreviewFocus, store.mesh != nil && !isImporterPresented ? previewFocus : nil)
         .focusedSceneValue(\.viewerStore, store)

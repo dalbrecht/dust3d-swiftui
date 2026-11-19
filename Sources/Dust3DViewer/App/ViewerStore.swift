@@ -61,17 +61,31 @@ final class ViewerStore {
 
     private(set) var documentName = "Dust3D Viewer"
     private(set) var isLoading = false
+    var pendingOpenRevision: Int? { isLoading ? revision : nil }
     private(set) var isBakingMaterials = false
     var isUpdatingMaterials: Bool {
         isBakingMaterials
             || ((materials != nil)
                 && renderedMaterialRevision != meshRevision + materialRevision)
     }
+    var pendingMaterialUpdateID: UUID? { isUpdatingMaterials ? materialRequestID : nil }
     private(set) var materialIssue: String?
     private(set) var meshRevision = 0
     private(set) var materialRevision = 0
     private(set) var errorMessage: String?
     private(set) var openFailure: OpenFailure?
+    private var rendererFailure: String?
+    private var isRendererFailureDismissed = false
+    var rendererError: String? { isRendererFailureDismissed ? nil : rendererFailure }
+    func rendererRetryAction(ownsWindow: @escaping @MainActor () -> Bool = { true }) -> (@MainActor () -> Void)? {
+        guard rendererFailure != nil, ownsWindow() else { return nil }
+        let attemptID = rendererAttemptID
+        return { [weak self] in
+            guard ownsWindow() else { return }
+            self?.retryRenderer(attemptID: attemptID)
+        }
+    }
+    private(set) var rendererAttemptID = UUID()
     private let service: any MeshFileSnapshotLoading
     private let materialPreparation: any ArchiveMaterialPreparing
     private(set) var loadTask: Task<Void, Never>?
@@ -141,6 +155,7 @@ final class ViewerStore {
                 archiveData = loaded.data
                 cameraState = MeshCameraState()
                 meshRevision += 1
+                resetRendererAttempt()
                 documentName = url.lastPathComponent
                 isLoading = false
                 retryMaterials()
@@ -166,6 +181,63 @@ final class ViewerStore {
     func reportFilePickerError(_ error: any Error) {
         dismissFileError()
         errorMessage = error.localizedDescription
+    }
+
+    func cancelOpen(revision: Int) {
+        guard pendingOpenRevision == revision else { return }
+        self.revision += 1
+        loadTask?.cancel()
+        loadTask = nil
+        isLoading = false
+    }
+
+    var pendingCancellation: (() -> Void)? {
+        if let revision = pendingOpenRevision {
+            return { [weak self] in self?.cancelOpen(revision: revision) }
+        }
+        if let requestID = pendingMaterialUpdateID {
+            return { [weak self] in
+                guard let self, pendingOpenRevision == nil else { return }
+                cancelMaterialUpdate(requestID: requestID)
+            }
+        }
+        return nil
+    }
+
+    func reportRendererError(_ cause: String, attemptID: UUID) {
+        guard mesh != nil, rendererAttemptID == attemptID else { return }
+        rendererFailure = cause
+        isRendererFailureDismissed = false
+    }
+
+    func dismissRendererError(attemptID: UUID) {
+        guard rendererAttemptID == attemptID else { return }
+        isRendererFailureDismissed = true
+    }
+
+    private func retryRenderer(attemptID: UUID) {
+        guard rendererAttemptID == attemptID, rendererFailure != nil else { return }
+        resetRendererAttempt()
+        renderedMaterialRevision = nil
+    }
+
+    private func resetRendererAttempt() {
+        rendererAttemptID = UUID()
+        rendererFailure = nil
+        isRendererFailureDismissed = false
+    }
+
+    private var canRetryMaterials: Bool {
+        !isLoading && !isUpdatingMaterials && mesh != nil && archiveData != nil && materialIssue?.isEmpty == false
+    }
+
+    func materialRetryAction(ownsWindow: @escaping @MainActor () -> Bool = { true }) -> (@MainActor () -> Void)? {
+        guard canRetryMaterials, ownsWindow() else { return nil }
+        let attemptID = materialRequestID
+        return { [weak self] in
+            guard let self, ownsWindow(), self.canRetryMaterials, self.materialRequestID == attemptID else { return }
+            self.retryMaterials()
+        }
     }
 
     func retryMaterials() {
@@ -195,6 +267,13 @@ final class ViewerStore {
         }
     }
 
+    func cancelMaterialUpdate(requestID: UUID) {
+        guard pendingMaterialUpdateID == requestID else { return }
+        clearMaterials()
+        materialTask = nil
+        materialIssue = String(localized: "The material update was cancelled.")
+    }
+
     func materialsFailed(_ cause: String, revision: Int) {
         guard revision == meshRevision + materialRevision, materials != nil else { return }
         materialFailed(cause)
@@ -215,6 +294,7 @@ final class ViewerStore {
         clearMaterials()
         archiveData = nil
         mesh = nil
+        resetRendererAttempt()
         materialSourceCapabilities = .unknown
         dismissFileError()
         isLoading = false

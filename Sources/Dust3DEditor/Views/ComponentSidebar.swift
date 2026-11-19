@@ -208,6 +208,14 @@ struct ComponentSidebar: View {
                                     row, snapshot: sidebarSnapshot, scoped: browse != nil, scopeEpoch: scopeEpoch,
                                     stitchingOrdinal: stitching.ordinal(for: row.id))
                             }
+                            if !visibleRows.isEmpty {
+                                ComponentListEndDropZone(
+                                    receive: store.componentListEndDropAction(
+                                        snapshot: sidebarSnapshot, disclosure: disclosure)
+                                )
+                                .selectionDisabled()
+                                .listRowSeparator(.hidden)
+                            }
                         }
                         .contextMenu(forSelectionType: String.self) { ids in
                             if admitsRows(), !ids.isEmpty, ids.allSatisfy({ visibleKeys.contains(Data($0.utf8)) }) {
@@ -336,23 +344,29 @@ struct ComponentSidebar: View {
     }
 
     private func browsePath(_ browse: ComponentGroupBrowse, snapshot: EditorSnapshot) -> some View {
-        let parent = browse.path.dropLast().last
+        let ancestors = browse.path.dropLast()
+        let parent = ancestors.last
+        let scopeEpoch = store.componentBrowseEpoch
         let destination = parent?.title ?? "Full Component Tree"
         return VStack(alignment: .leading, spacing: 4) {
-            Button(action: store.componentBrowseAction(parent?.id, snapshot: snapshot)) {
-                Label {
-                    Text(destination)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: "chevron.up")
-                        .accessibilityHidden(true)
+            ComponentParentDropZone(
+                store: store, parent: parent.map { .component($0.id) } ?? .root, scopeEpoch: scopeEpoch
+            ) {
+                Button(action: store.componentBrowseAction(parent?.id, snapshot: snapshot)) {
+                    Label {
+                        Text(destination)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "chevron.up")
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 20)
+                    .contentShape(Rectangle())
                 }
-                .frame(minHeight: 20)
-                .contentShape(Rectangle())
+                .accessibilityLabel("Go to \(destination)")
+                .help("Go to \(destination).")
             }
-            .accessibilityLabel("Go to \(destination)")
-            .help("Go to \(destination).")
             HStack(alignment: .top, spacing: 4) {
                 Text(browse.path.last?.title ?? "Group")
                     .multilineTextAlignment(.leading)
@@ -371,6 +385,19 @@ struct ComponentSidebar: View {
                 .accessibilityLabel("Go to Ancestor Group")
                 .accessibilityValue(browse.path.map(\.title).joined(separator: " › "))
                 .help("Go to an ancestor group or the full component tree.")
+            }
+            if ancestors.count > 1 {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 4) {
+                        ForEach(ancestors.dropLast()) { row in
+                            ComponentParentDropZone(store: store, parent: .component(row.id), scopeEpoch: scopeEpoch) {
+                                Button(row.title, action: store.componentBrowseAction(row.id, snapshot: snapshot))
+                            }
+                            .help("Browse or drop components into \(row.title).")
+                        }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .focusedValue(\.editorComponentSidebarFocus, true)

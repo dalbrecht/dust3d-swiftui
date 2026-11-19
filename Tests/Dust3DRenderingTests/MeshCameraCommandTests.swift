@@ -73,6 +73,32 @@ import simd
         XCTAssertNil(weakView)
     }
 
+    func testForwardedCanvasDragUsesTheMountedCameraAndRetiresOnReset() throws {
+        let view = InteractiveMeshView(frame: .init(x: 0, y: 0, width: 400, height: 200), device: nil)
+        XCTAssertNil(view.beginCanvasDrag())
+        view.meshRevision = 1
+        let original = view.orbitCamera
+        let token = try XCTUnwrap(view.beginCanvasDrag())
+        XCTAssertTrue(view.isDraggingCamera)
+        XCTAssertNil(view.beginCanvasDrag())
+        XCTAssertTrue(view.updateCanvasDrag(token, by: .init(10, 5), pans: false))
+        XCTAssertEqual(view.orbitCamera.yaw, original.yaw + 0.1, accuracy: 0.00001)
+        XCTAssertEqual(view.orbitCamera.pitch, original.pitch - 0.05, accuracy: 0.00001)
+        XCTAssertTrue(view.updateCanvasDrag(token, by: .init(20, 10), pans: true))
+        let clip = view.orbitCamera.transform(aspect: 1) * SIMD4<Float>(0, 0, 0, 1)
+        XCTAssertEqual(clip.x / clip.w, 0.1, accuracy: 0.00001)
+        XCTAssertEqual(clip.y / clip.w, 0.1, accuracy: 0.00001)
+        view.cameraReset += 1
+        XCTAssertFalse(view.updateCanvasDrag(token, by: .init(8, 6), pans: false))
+        view.endCanvasDrag(token)
+        XCTAssertFalse(view.isDraggingCamera)
+        let current = try XCTUnwrap(view.beginCanvasDrag())
+        view.endCanvasDrag(token)
+        XCTAssertTrue(view.isDraggingCamera)
+        view.endCanvasDrag(current)
+        XCTAssertFalse(view.isDraggingCamera)
+    }
+
     func testActivationIsConsumedOnceAndRepeatingTheActionHasANewIdentity() {
         let view = InteractiveMeshView()
         let command = MeshCameraCommand(.zoomIn)

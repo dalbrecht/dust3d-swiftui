@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Orbit the 3D preview from the editing canvas with a middle-button or Option drag. Hold Shift to pan.
+
+- Add Focus 3D Preview to the Editor’s View menu.
+
 - Connect two explicitly selected nodes while keeping existing edge picks.
 
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
@@ -56,11 +60,15 @@
 - Announce new Viewer errors in the active window with VoiceOver.
 
 - Explain invalid document and Qt XML input in headless export diagnostics.
+- Keep keyboard and VoiceOver edge picks eligible for bone assignment, with removal available for existing picks.
+
 - Read shortcut key names aloud and support searching by their names.
 
 - Prefer exact key bindings when searching Keyboard Shortcuts Help.
 
 - Settle the origin from node bounds when a headless Qt XML paste creates a new document.
+
+- Preview a component color draft on the solid-color model before applying the edit.
 
 - Settle the origin when launching the Editor with a Qt XML fragment and no document, in the same Undo step as the paste.
 
@@ -90,11 +98,15 @@
 
 - Name the destinations of component breadcrumb controls, including the full tree.
 
+- Open the shared group in the component sidebar after assigning stitching roles to multiple parts.
+
 - Go to the enclosing component group from the View menu or with Command–Up Arrow while the component sidebar has focus.
 
 - Identify empty and populated groups in the component sidebar and enlarge disclosure controls.
 
 - Honor saved component collapse flags when opening older Dust3D documents.
+
+- Keep rapid canvas nudge and spacing keystrokes in order, with one Undo step for each edit.
 
 - Open the document picker with Command-double-click on blank canvas.
 
@@ -133,6 +145,8 @@
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
 
 - Offer canonical animation types for the document’s rig when creating a stored animation. Suggest an unused name based on the selected type until the name is edited.
+
+- Keep component texture actions and image picker results tied to the original selection.
 
 - Support Qt’s `-toggle-color` launch option for newly opened document windows.
 
@@ -300,6 +314,20 @@
 
 - View Front, Side, and interactive Orbit rig-template diagrams with the selected bone highlighted while assigning edges.
 
+- Keep Viewer preview retry with its active window and renderer attempt.
+
+- Keep Retry Preview available in the Viewer’s View menu after dismissing a renderer error.
+
+- Add Cancel Current Operation to the Viewer’s File menu for pending opens and material updates.
+
+- Let the focused Viewer cancel a pending open or material update with Escape.
+
+- Let Viewer users retry a failed 3D preview while keeping the accepted model and camera.
+
+- Let Viewer users cancel a material update and retry it while keeping the model visible.
+
+- Let Viewer users cancel an open in progress while keeping the current model.
+
 - Assign or clear exact stored bone names on selected edges in one atomic Undo step, with mixed-value drafts and captured-source protection shared by single-edge controls (#357).
 
 - Select editable graph edges across parts by the selected edge’s exact stored bone assignment, with stale-action protection and no history change (#355).
@@ -324,6 +352,10 @@
 
 - Use native About panels with bundled project MIT attribution and separate Help > Build Diagnostics commands in both apps, retaining the graph QA name (#344).
 
+- Disable camera input on outdated Replay Steps previews while the current frame builds.
+
+- Show a native keyboard focus ring around the 3D preview.
+
 - Use the native adjustable inspector, standard Control–Command–I visibility command, compact section switcher and an accessible toolbar visibility toggle (#341).
 
 - Announce completed geometry exports and warnings to assistive technologies, with one notification per export even for repeated destinations (#339).
@@ -345,6 +377,10 @@
 
 - Add window-local Model Colors and Wireframe controls to the View menu, preserving material transparency in neutral preview mode (#324).
 
+- Keep preview camera commands in the editor window that supplied them.
+
+- Add Editor menu shortcuts for Wireframe, Automatic Rotation, and preview zoom.
+
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
 - Show the exact authored values applied at the current replay property step.
@@ -364,6 +400,8 @@
 - Add explicit multi-group wrapping and surface-finish edits with mixed values, captured selection protection and one atomic Undo.
 
 - Retarget copied wrapping body bindings to the copied body, preserving external references and opaque wrapping metadata.
+
+- Press M on the canvas to toggle X mirror on the owning Model part.
 
 - Add wrapping surface finish authoring for coat patterns, RGB ink, belly shading and generated cloth wrinkles, with cancellable drafts and one-step Undo.
 
@@ -572,6 +610,12 @@
 
 - Adopt owned imported surface UV/RGBA metadata with explicit RGB encoding, aligned geometry and independently bounded background Swift copies; texture rendering remains pending.
 
+- Drop selected sibling components at the end of a component listing.
+
+- Offer sibling reordering when dropping components onto a group row.
+
+- Confirm a component drop into a group before changing the hierarchy.
+
 - Adopt reviewed core `4db1bb7` for embedded imported geometry, lifetime-safe material/image metadata copies, and bounded background PNG/JPEG decoding. Imported material rendering, UV/baking and textured export remain pending; archives and original assets survive native edits and undo.
 
 - Add immutable executable build diagnostics to both apps and a repeatable editor QA packaging mode that reuses its existing identity, omits preview providers and refuses to overwrite a running target bundle.
@@ -758,6 +802,14 @@
 - Explain and disable linked profile choices that would create a cycle.
 
 - Pin c65llc coding standards, assemble Codex instructions, and document native/C++ supplements and gaps.
+- Keep name, type, and keyboard actions on the animation draft that supplied them.
+
+- Keep retained animation parameter controls from editing a reopened draft.
+
+- Keep animation type and parameter controls on the selected row that supplied them.
+
+- Edit the stored animation surface material when the archive uses an unknown animation type.
+
 - Add document-loading regression tests, native validation commands, and a local app bundle/run script.
 
 Original Dust3D release history remains in `CHANGELOGS`.

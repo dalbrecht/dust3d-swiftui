@@ -25,7 +25,13 @@ enum KeyboardShortcutHelp {
         }.joined().split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
+    private static let previewMenuScope =
+        "Focused editor window, outside text and animation controls and with no modal dialog"
+
     static let entries: [Entry] = [
+        .init(action: "Wireframe", keys: "W", scope: previewMenuScope),
+        .init(action: "Rotate Preview Automatically", keys: "R", scope: previewMenuScope),
+        .init(action: "Zoom Preview", keys: "⌥- / ⌥=", scope: previewMenuScope),
         .init(action: "Undo / Redo", keys: "⌘Z / ⇧⌘Z", scope: "Focused text editor or document history"),
         .init(action: "Cut / Copy / Paste", keys: "⌘X / ⌘C / ⌘V", scope: "Focused text or editable nodes"),
         .init(action: "Select All", keys: "⌘A", scope: "Focused text or graph; unavailable in animation controls"),
@@ -60,6 +66,9 @@ enum KeyboardShortcutHelp {
         .init(
             action: "Decrease / Increase Selection Spacing", keys: "[ / ]",
             scope: "Focused canvas, node or origin marker, with editable selection and no active drag"),
+        .init(
+            action: "Toggle X Mirror", keys: "M",
+            scope: "Focused canvas with a hovered Model part or one selected Model owner"),
         .init(action: "Lock X / Y / Z / Radius", keys: "⌥⌘X / ⌥⌘Y / ⌥⌘Z / ⌥⌘R", scope: "Active document"),
         .init(action: "Orbit 3D Preview", keys: "← / → / ↑ / ↓", scope: "Focused 3D preview"),
         .init(action: "Reset Preview Camera", keys: "F", scope: "Focused 3D preview"),

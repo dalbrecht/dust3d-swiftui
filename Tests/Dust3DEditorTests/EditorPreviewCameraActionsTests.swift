@@ -69,6 +69,33 @@ final class EditorPreviewCameraActionsTests: XCTestCase {
         XCTAssertEqual(records.calls, ["panUp"])
     }
 
+    func testRetainedMenuCameraRequiresItsWindowAndPresentation() {
+        let records = PreviewCameraActionRecords()
+        let window = PreviewCameraActionRecords()
+        let actions = EditorPreviewCameraActions(
+            canMove: true, isCurrent: { records.current },
+            move: { records.calls.append(String(describing: $0)) }, fit: { records.calls.append("fit") },
+            wheelZoom: { records.calls.append("wheel \($0)") })
+        let menu = actions.scoped(to: { window.current })
+        window.current = false
+        XCTAssertFalse(menu.canMove)
+        XCTAssertFalse(menu.canAutomaticallyOrbit)
+        XCTAssertFalse(menu.canZoomFromCanvas)
+        menu.move(.zoomIn)
+        menu.fit()
+        XCTAssertFalse(menu.zoomFromCanvas(step: 1))
+        XCTAssertTrue(records.calls.isEmpty)
+
+        window.current = true
+        XCTAssertTrue(menu.canAutomaticallyOrbit)
+        menu.move(.zoomOut)
+        menu.fit()
+        XCTAssertTrue(menu.zoomFromCanvas(step: -1))
+        records.current = false
+        menu.fit()
+        XCTAssertEqual(records.calls, ["zoomOut", "fit", "wheel -1"])
+    }
+
     func testAutomaticOrbitRequiresSupportedReadyCurrentPresentation() {
         for (ready, supported, current, expected) in [
             (false, true, true, false), (true, false, true, false),
