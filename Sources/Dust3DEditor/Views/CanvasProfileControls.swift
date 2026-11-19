@@ -71,6 +71,7 @@ struct CanvasProfileHeader: View {
 
 struct CanvasProfilePanes: View {
     let store: EditorStore
+    var showSelectionProperties: (@MainActor () -> Bool)? = nil
     let focusControl: CanvasProfileFocusControl
     var previewCamera: EditorPreviewCameraActions? = nil
     @State private var requestedFocus: (lease: UUID, request: CanvasProfileFocusRequest)?
@@ -148,7 +149,8 @@ struct CanvasProfilePanes: View {
         return NodeCanvas(
             store: store, profileLease: lease,
             profileFocusRequest: requestedFocus?.lease == lease ? requestedFocus?.request : nil,
-            switchProfile: switchProfile, focusControl: focusControl, previewCamera: previewCamera
+            switchProfile: switchProfile, showSelectionProperties: showSelectionProperties, focusControl: focusControl,
+            previewCamera: previewCamera
         )
         .id(lease)
     }
