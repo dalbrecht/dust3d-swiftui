@@ -18,6 +18,51 @@ final class PartGraphSelectionTests: XCTestCase {
                     .utf8))
     }
 
+    func testWholePartUsesExactStoredOwnership() throws {
+        let part = "\u{00E9}"
+        let alias = "e\u{0301}"
+        let xml = """
+            <canvas>
+            <nodes>
+            <node id='a' partId='\(part)' x='0' y='0' z='0' radius='0.1'/>
+            <node id='b' partId='\(part)' x='1' y='0' z='0' radius='0.1'/>
+            <node id='c' partId='\(alias)' x='2' y='0' z='0' radius='0.1'/>
+            <node id='d' partId='\(alias)' x='3' y='0' z='0' radius='0.1'/>
+            </nodes>
+            <edges>
+            <edge id='ab' partId='\(part)' from='a' to='b'/>
+            <edge id='cd' partId='\(alias)' from='c' to='d'/>
+            </edges>
+            <parts><part id='\(part)'/></parts>
+            <components>
+            <component id='alias' linkData='\(alias)' linkDataType='partId'/>
+            <component id='owner' linkData='\(part)' linkDataType='partId'/>
+            </components>
+            </canvas>
+            """
+        let document = try Dust3DDocument(snapshotXML: Data(xml.utf8))
+        var state = try EditorState(document: document)
+
+        for target in [PartGraphTarget.part(part), .node("a"), .edge("ab")] {
+            XCTAssertTrue(state.snapshot.canSelectWholePart(target))
+            try state.selectWholePart(target)
+            XCTAssertEqual(state.snapshot.selectedIDs, ["a", "b"])
+            XCTAssertEqual(state.snapshot.selectedEdgeIDs, ["ab"])
+            XCTAssertEqual(state.snapshot.componentRevealHint?.componentID, "owner")
+        }
+
+        let before = state.snapshot
+        for target in [PartGraphTarget.part(alias), .node("c"), .edge("cd")] {
+            XCTAssertFalse(state.snapshot.canSelectWholePart(target))
+            XCTAssertThrowsError(try state.selectWholePart(target))
+        }
+        XCTAssertEqual(state.snapshot.selectedIDs, before.selectedIDs)
+        XCTAssertEqual(state.snapshot.selectedEdgeIDs, before.selectedEdgeIDs)
+        XCTAssertEqual(state.snapshot.componentRevealHint, before.componentRevealHint)
+        XCTAssertEqual(state.snapshot.document.encoded(), document.encoded())
+        XCTAssertFalse(state.snapshot.canUndo)
+    }
+
     func testRevealLookupUsesUniqueExactOwnersAndRejectsStaleSnapshots() throws {
         let source = try document(malformed: true)
         let xml = String(decoding: source.modelXML, as: UTF8.self)

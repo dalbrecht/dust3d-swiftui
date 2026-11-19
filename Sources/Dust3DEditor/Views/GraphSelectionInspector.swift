@@ -29,6 +29,9 @@ struct GraphSelectionInspector: View {
             GraphColorizeControls(store: store)
             EdgeBoneSelectionControls(store: store)
             NodeReductionControls(store: store)
+            if store.snapshot?.selectedIDs.count == 2 {
+                NodeConnectionControls(store: store)
+            }
             Button("Delete Graph Selection", role: .destructive) { store.deleteSelection() }
                 .disabled(!store.canDeleteGraphSelection)
             Text(
