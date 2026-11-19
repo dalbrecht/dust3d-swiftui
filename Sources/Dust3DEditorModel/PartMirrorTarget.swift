@@ -37,10 +37,10 @@ public struct PartMirrorTarget: Sendable {
 public enum PartMirrorError: Error, Equatable, Sendable { case staleTarget }
 
 extension EditorSnapshot {
-    /// Inspect one Model owner directly, including shared component links.
+    /// Inspect one procedural or imported model owner, including shared component links.
     public var mirrorInspectorPart: DocumentPart? {
         guard let part = selectedPart ?? selectedLinkedComponentPart,
-            part.target == .model
+            part.supportsMirroring
         else { return nil }
         return part
     }

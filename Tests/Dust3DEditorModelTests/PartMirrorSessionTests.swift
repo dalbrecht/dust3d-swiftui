@@ -123,6 +123,31 @@ import XCTest
             XCTAssertEqual(error as? PartMirrorError, .staleTarget)
         }
     }
+    func testImportedOwnerCanMirrorFromInspectorWithExactUndo() async throws {
+        let original = try Dust3DDocument(
+            snapshotXML: Data(
+                """
+                <canvas><nodes><node id='n' partId='i' x='2' y='.5' z='.5' radius='.2'/></nodes>
+                <parts><part id='i' target='ImportedModel'/></parts><components>
+                <component id='a' linkDataType='partId' linkData='i'/>
+                <component id='b' linkDataType='partId' linkData='i'/>
+                </components></canvas>
+                """.utf8))
+        let session = EditorSession()
+        _ = try await session.open(data: original.encoded())
+        let selected = try await session.selectComponents(["a", "b"])
+        XCTAssertEqual(selected.mirrorInspectorPart?.id, "i")
+        let inspector = PartMirrorTarget(snapshot: selected, partID: "i")
+        let mirrored = try await session.setPartXMirrored(true, target: inspector)
+        XCTAssertEqual(mirrored.mirrorInspectorPart?.xMirrored, true)
+        XCTAssertEqual(mirrored.origin, .init(x: 2, y: 0.5, z: 0.5))
+        XCTAssertEqual(mirrored.nodes, selected.nodes)
+        XCTAssertEqual(mirrored.selectedComponentIDs, selected.selectedComponentIDs)
+
+        let undo = try await session.undo()
+        XCTAssertEqual(undo.document.encoded(), original.encoded())
+    }
+
     func testEpochsAndUnavailableIdentityNeverRetarget() async throws {
         for change in 0..<4 {
             let doc = try source()
