@@ -15,7 +15,7 @@ struct OriginHandle: View {
 
     var body: some View {
         let point = projection.point(for: origin)
-        let handlePrecisionKey = precisionKey ?? store.canvasPrecisionKeyHandler(profileLease: profileLease)
+        let handlePrecisionKey = precisionKey ?? store.canvasPrecisionKeyHandler()
         let direct = store.directOriginDragAction(projection: projection, lease: profileLease)
         let explicit = store.isMovingOrigin && !store.isWorking
         let enabled = explicit || direct != nil
