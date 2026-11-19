@@ -140,6 +140,8 @@
 
 - Add new parts and paste components into the browsed group when placement is automatic.
 
+- Keep rig template and eyelid edits tied to the document displayed when the control was drawn.
+
 - Assign selected edges to the chosen template bone from the Rig menu or with Command–Return.
 
 - Select edges without moving or selecting nodes while preparing a bone assignment.
@@ -242,6 +244,8 @@
 
 - Match Qt reference-image pixel selection and alpha fitting while preserving 16-bit sample precision; retain correct RGB16 transparency decoding despite a Qt reader defect (#337).
 
+- Describe keyboard orbit and camera reset in the Editor and Viewer preview accessibility hints.
+
 - Package and verify the seven pinned rig templates for native SDK consumers and installed file-preview bundles (#195).
 
 - Add searchable Keyboard Shortcuts help with native command focus restrictions (#333).
@@ -321,6 +325,8 @@
 - Highlight the hovered node or edge in both canvas profiles, with node hits taking precedence over edges.
 - Preserve numeric move and scale controls for mixed and edge-only selections, expose additive node accessibility actions, and batch graph edge deletion into one validated XML mutation.
 
+- Suggest the Qt-style `_copy` name when duplicating a stored animation and include its type in the accessible list row.
+
 - Select nodes and edges together, with explicit graph editing modes and one-step batch midpoint insertion.
 
 - Reduce eligible selected nodes and reconnect their neighbors in one Undo step while preserving graph order.
@@ -339,11 +345,15 @@
 
 - Add original procedural OBJ export to the editor toolbar and File menu, with captured-revision publication, source protection, cancellation/drain feedback and preserved export warnings (#281).
 
+- Explain when Qt treats a near-default part deformation scale as 1.
+
 - Add owned Swift base/UV worker-request packets backed by the existing core codec, with bounded input and preserved error receipts; worker execution remains separate (#277).
 
 - Retain valid mesh previews across animation metadata Undo/Redo using history-owned geometry/material identities; reject obsolete auxiliary preview results (#275).
 
 - Upgrade the pinned native core to reviewed revision `48b0ce2d`, including removal of automatic stitching debug SVG writes; feature quarantines remain in place (#272).
+
+- Sort animation inspector names numerically while preserving archive order.
 
 - Preserve the latest waiting preview independently for up to eight document scopes, with FIFO fairness and explicit backlog diagnostics (#271).
 
@@ -379,6 +389,8 @@
 
 - Add an explicit-fixture QA launcher using process-local AppKit restoration isolation while preserving normal launches and saved state (#257).
 
+- Open the last eligible Dust3D document in a mixed Finder drop.
+
 - Recheck actual recovery storage before each write so failed shrinking replacements cannot fund growth beyond the retained-byte budget (#248).
 
 - Reject recovery capture after a failed replacement load, preserving its original error and the previous accepted document (#248).
@@ -397,11 +409,15 @@
 
 - Route selectable node-ID copying through the native read-only field editor instead of copying a graph fragment (#235).
 
+- Restore Metallic, Roughness, and Glow defaults from the Part inspector.
+
 - Refresh the selectable node ID accessibility value when inspector selection changes while retaining copyability (#235).
 
 - Move and resize existing reference-image crops with Draw/Adjust tools and eight visible handles; preserve numeric editing, bounded geometry and atomic composition Apply (#56).
 
 - Bound editor preview work to one active operation and one latest waiting archive; retire queued cancellation promptly and keep cleanup serialized with explicit backlog errors (#243).
+
+- List Cut Face parts and existing linked profiles in Front view order.
 
 - Select mixed material preparation without imported-only image admission, and clear supported surface-detail notices only after a confirmed source-baked frame.
 
@@ -413,6 +429,8 @@
 - Add bounded explicit Metal mip uploads and trilinear sampling with conservative Float caps and minified-alpha routing; native/app mip adoption remains pending.
 
 - Validate owned texture mip chains and cumulative copies; reject unavailable sampling levels in the base-only source-bake loader. Native mip and GPU adoption remain pending.
+
+- Copy selected nodes and inherited junctions as Qt XML.
 
 - Render mixed imported/procedural materials in macOS Quick Look and thumbnails, retaining ordinary geometry on optional material failure and reporting original causes.
 

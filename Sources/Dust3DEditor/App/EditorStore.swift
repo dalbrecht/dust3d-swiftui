@@ -1192,7 +1192,11 @@ final class EditorStore {
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
     var canSave: Bool { !isWorking && acceptedDocumentSource != nil }
-    var canEditRigSettings: Bool { canSave }
+    var canEditRigSettings: Bool { rigSettingsTarget != nil }
+    var rigSettingsTarget: RigSettingsTarget? {
+        guard !isWorking, let source = acceptedDocumentSource else { return nil }
+        return RigSettingsTarget(snapshot: source)
+    }
 
     private var acceptedDocumentSource: EditorSnapshot? {
         guard !stopped, case .success(let accepted) = recoveryLoadResult,
@@ -1432,13 +1436,18 @@ final class EditorStore {
     }
 
     func setRigType(_ type: DocumentRigType) {
-        guard canEditRigSettings else { return }
-        perform { try await $0.apply([.setRigType(type)]) }
+        guard let target = rigSettingsTarget else { return }
+        editRigSettings(.template(type), target: target)
     }
 
     func setHeadHasEyelids(_ enabled: Bool) {
-        guard canEditRigSettings else { return }
-        perform { try await $0.apply([.setHeadHasEyelids(enabled)]) }
+        guard let target = rigSettingsTarget else { return }
+        editRigSettings(.eyelids(enabled), target: target)
+    }
+
+    func editRigSettings(_ edit: RigSettingsEdit, target: RigSettingsTarget) {
+        guard rigSettingsTarget == target else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.editRigSettings(edit, target: target) }
     }
 
     func recoverySnapshot(documentID: UUID) throws -> EditorRecoverySnapshot {
@@ -2427,10 +2436,34 @@ final class EditorStore {
         editGraphPartCrossSection(.rotation(value), target: target)
     }
 
-    func setPartMaterial(_ id: String, property: PartMaterialProperty, value: String) {
-        guard !isWorking, !stopped, let scalar = parsePartMaterial(value, property: property) else { return }
-        perform {
-            try await $0.apply([.setPartMaterial(id: id, property: property, value: scalar)])
+    func setPartMaterial(
+        _ id: String, property: PartMaterialProperty, value: String, target: CanvasAdjustmentTarget? = nil
+    ) {
+        guard !isWorking, !stopped else { return }
+        if let target, !admitsInspectedPartMaterialEdit(id, target: target) { return }
+        guard let scalar = parsePartMaterial(value, property: property) else { return }
+        commitPartMaterial(id, property: property, value: scalar, target: target)
+    }
+
+    func resetInspectedPartMaterial(
+        _ id: String, property: PartMaterialProperty, target: CanvasAdjustmentTarget
+    ) {
+        guard !isWorking, !stopped, admitsInspectedPartMaterialEdit(id, target: target) else { return }
+        commitPartMaterial(id, property: property, value: property.defaultValue, target: target)
+    }
+
+    private func admitsInspectedPartMaterialEdit(_ id: String, target: CanvasAdjustmentTarget) -> Bool {
+        guard let source = acceptedDocumentSource, target.isCurrent(in: source), let part = source.inspectedPart
+        else { return false }
+        return part.id.utf8.elementsEqual(id.utf8) && part.target == .model
+    }
+
+    private func commitPartMaterial(
+        _ id: String, property: PartMaterialProperty, value: Double, target: CanvasAdjustmentTarget?
+    ) {
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply(
+                [.setPartMaterial(id: id, property: property, value: value)], selecting: nil, target: target)
         }
     }
 
@@ -3226,8 +3259,22 @@ final class EditorStore {
     var canCopyNodes: Bool { !isWorking && snapshot?.canCopyNodes == true }
     var canCutNodes: Bool { canSave && !isSelectingRigEdges && snapshot?.canCutNodes == true }
 
+    private enum GraphClipboardDestination {
+        case native(any EditorClipboardWriting)
+        case qtXML(EditorPasteboard, CanvasAdjustmentTarget)
+    }
+
     /// Clipboard promise registration succeeds before a Cut can mutate the document.
     func copyNodes(cut: Bool = false, to pasteboard: any EditorClipboardWriting) {
+        copyGraph(to: .native(pasteboard), cut: cut)
+    }
+
+    func copyNodesAsQtXML(to pasteboard: EditorPasteboard) {
+        guard let snapshot = acceptedDocumentSource else { return }
+        copyGraph(to: .qtXML(pasteboard, CanvasAdjustmentTarget(snapshot: snapshot)))
+    }
+
+    private func copyGraph(to destination: GraphClipboardDestination, cut: Bool = false) {
         guard cut ? canCutNodes : canCopyNodes, !stopped else { return }
         let sourceIdentity = acceptedDocumentSource?.documentIdentity
         cancelColorImagePreparation()
@@ -3238,9 +3285,18 @@ final class EditorStore {
         operation = Task {
             defer { if operationRequestID == requestID { isWorking = false } }
             do {
-                let data = try await session.copyRepresentations(identifier: UUID().uuidString, onlyEditable: cut)
-                guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
-                try pasteboard.write(data.native, snapshotXML: data.snapshotXML)
+                switch destination {
+                case .native(let pasteboard):
+                    let data = try await session.copyRepresentations(identifier: UUID().uuidString, onlyEditable: cut)
+                    guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
+                    try pasteboard.write(data.native, snapshotXML: data.snapshotXML)
+                case .qtXML(let pasteboard, let target):
+                    let xml = try await session.copySelectionAsQtXML(target: target)
+                    guard !Task.isCancelled, !stopped, operationRequestID == requestID,
+                        acceptedDocumentSource.map({ target.isCurrent(in: $0) }) == true
+                    else { return }
+                    try pasteboard.writeQtXML(xml)
+                }
                 if cut {
                     guard !Task.isCancelled, operationRequestID == requestID,
                         let sourceIdentity, acceptedDocumentSource?.documentIdentity == sourceIdentity
