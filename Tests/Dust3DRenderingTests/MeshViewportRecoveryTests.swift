@@ -6,6 +6,17 @@ import XCTest
 
 @MainActor
 final class MeshViewportRecoveryTests: XCTestCase {
+    func testNativePreviewHelpExplainsKeysOnlyWhileCameraInputIsAvailable() {
+        let view = InteractiveMeshView(frame: .zero, device: nil)
+        XCTAssertEqual(view.accessibilityHelp(), "Use the arrow keys to orbit and F to reset the camera.")
+        view.cameraInteractionAllowed = { false }
+        XCTAssertNil(view.accessibilityHelp())
+
+        view.setAccessibilityHelp("Use the View menu to move the camera.")
+        view.cameraInteractionAllowed = { true }
+        XCTAssertEqual(view.accessibilityHelp(), "Use the View menu to move the camera.")
+    }
+
     func testFailureReportsOncePerRevisionAndRetriesTheNextRevisionWithoutADevice() async {
         let view = InteractiveMeshView(frame: .zero, device: nil)
         view.isPaused = true

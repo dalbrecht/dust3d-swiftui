@@ -839,6 +839,7 @@ final class EditorStore {
         }
     }
     var mesh: IndexedMesh? { previewState.value?.mesh }
+    private var previewRecoveryPending = false
     var previewSourceHints: MeshSourceHints? {
         guard !previewState.isStale, !isWorking, !stopped else { return nil }
         return previewState.value?.sourceHints
@@ -900,7 +901,8 @@ final class EditorStore {
     var materialViewportRevision: Int { previewState.revision + materialState.revision }
     var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
-    var renderError: String? {
+    private(set) var previewRendererAttemptID = UUID()
+    private(set) var renderError: String? {
         didSet { if renderError != nil { previewCameraCommand = nil } }
     }
     var bounds = CanvasBounds(nodes: []) {
@@ -1187,7 +1189,11 @@ final class EditorStore {
 
     var locks: Set<EditingConstraint> { snapshot?.locks ?? [] }
     var canSave: Bool { !isWorking && acceptedDocumentSource != nil }
-    var canEditRigSettings: Bool { canSave }
+    var canEditRigSettings: Bool { rigSettingsTarget != nil }
+    var rigSettingsTarget: RigSettingsTarget? {
+        guard !isWorking, let source = acceptedDocumentSource else { return nil }
+        return RigSettingsTarget(snapshot: source)
+    }
 
     private var acceptedDocumentSource: EditorSnapshot? {
         guard !stopped, case .success(let accepted) = recoveryLoadResult,
@@ -1427,13 +1433,18 @@ final class EditorStore {
     }
 
     func setRigType(_ type: DocumentRigType) {
-        guard canEditRigSettings else { return }
-        perform { try await $0.apply([.setRigType(type)]) }
+        guard let target = rigSettingsTarget else { return }
+        editRigSettings(.template(type), target: target)
     }
 
     func setHeadHasEyelids(_ enabled: Bool) {
-        guard canEditRigSettings else { return }
-        perform { try await $0.apply([.setHeadHasEyelids(enabled)]) }
+        guard let target = rigSettingsTarget else { return }
+        editRigSettings(.eyelids(enabled), target: target)
+    }
+
+    func editRigSettings(_ edit: RigSettingsEdit, target: RigSettingsTarget) {
+        guard rigSettingsTarget == target else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.editRigSettings(edit, target: target) }
     }
 
     func recoverySnapshot(documentID: UUID) throws -> EditorRecoverySnapshot {
@@ -2079,6 +2090,28 @@ final class EditorStore {
             && acceptedDocumentSource.map { context.isCurrent(in: $0) } == true
     }
 
+    func componentSidebarPrimaryAction(
+        snapshot: EditorSnapshot, rows: [ComponentTreeRow], scopeEpoch: UUID, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor (Set<String>) -> Void {
+        let source = PartGraphSelectionContext(snapshot: snapshot)
+        let disclosureEpoch = disclosure.epoch
+        let scoped = componentBrowseGroupID != nil
+        return { [weak self] ids in
+            guard let self, disclosure.epoch == disclosureEpoch,
+                self.admitsComponentSidebarInput(context: source, scopeEpoch: scopeEpoch),
+                ids.count == 1, let id = ids.first,
+                let row = rows.first(where: { $0.id.utf8.elementsEqual(id.utf8) })
+            else { return }
+            if row.component.isGroup, scoped || row.hasChildren {
+                self.componentBrowseAction(id, snapshot: snapshot)()
+            } else if row.hasChildren {
+                disclosure.collapsedIDs.remove(id)
+            } else {
+                self.selectComponentGraph(ComponentGraphSelectionTarget(snapshot: snapshot, componentIDs: ids))
+            }
+        }
+    }
+
     func selectBrowsedComponents(_ ids: Set<String>, scopeEpoch: UUID) {
         guard canBrowseComponents, componentBrowseEpoch == scopeEpoch,
             componentGroupBrowse.map({ ids.allSatisfy($0.contains) }) != false
@@ -2420,10 +2453,34 @@ final class EditorStore {
         editGraphPartCrossSection(.rotation(value), target: target)
     }
 
-    func setPartMaterial(_ id: String, property: PartMaterialProperty, value: String) {
-        guard !isWorking, !stopped, let scalar = parsePartMaterial(value, property: property) else { return }
-        perform {
-            try await $0.apply([.setPartMaterial(id: id, property: property, value: scalar)])
+    func setPartMaterial(
+        _ id: String, property: PartMaterialProperty, value: String, target: CanvasAdjustmentTarget? = nil
+    ) {
+        guard !isWorking, !stopped else { return }
+        if let target, !admitsInspectedPartMaterialEdit(id, target: target) { return }
+        guard let scalar = parsePartMaterial(value, property: property) else { return }
+        commitPartMaterial(id, property: property, value: scalar, target: target)
+    }
+
+    func resetInspectedPartMaterial(
+        _ id: String, property: PartMaterialProperty, target: CanvasAdjustmentTarget
+    ) {
+        guard !isWorking, !stopped, admitsInspectedPartMaterialEdit(id, target: target) else { return }
+        commitPartMaterial(id, property: property, value: property.defaultValue, target: target)
+    }
+
+    private func admitsInspectedPartMaterialEdit(_ id: String, target: CanvasAdjustmentTarget) -> Bool {
+        guard let source = acceptedDocumentSource, target.isCurrent(in: source), let part = source.inspectedPart
+        else { return false }
+        return part.id.utf8.elementsEqual(id.utf8) && part.target == .model
+    }
+
+    private func commitPartMaterial(
+        _ id: String, property: PartMaterialProperty, value: Double, target: CanvasAdjustmentTarget?
+    ) {
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply(
+                [.setPartMaterial(id: id, property: property, value: value)], selecting: nil, target: target)
         }
     }
 
@@ -2666,16 +2723,33 @@ final class EditorStore {
     func removeComponentColor(_ id: String) {
         perform { try await $0.apply([.setComponentColor(id: id, color: nil)]) }
     }
-    func setComponentSmoothCutoff(_ id: String, degrees: String) {
+    func setComponentSmoothCutoff(
+        _ id: String, degrees: String, target: CanvasAdjustmentTarget? = nil
+    ) {
         guard !isWorking, !stopped else { return }
-        guard let value = Double(degrees), value.isFinite, (0...180).contains(value) else {
+        if let target, !admitsInspectedComponentMeshEdit(id, target: target) { return }
+        guard let value = ComponentMeshSmoothingInput.value(degrees) else {
             errorMessage = Self.message(DocumentError.invalidComponentSmoothing)
             return
         }
-        perform { try await $0.apply([.setComponentSmoothCutoffDegrees(id: id, degrees: value)]) }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply(
+                [.setComponentSmoothCutoffDegrees(id: id, degrees: value)], selecting: nil, target: target)
+        }
     }
-    func setComponentCombineMode(_ id: String, mode: ComponentCombineMode) {
-        perform { try await $0.apply([.setComponentCombineMode(id: id, mode: mode)]) }
+    func setComponentCombineMode(
+        _ id: String, mode: ComponentCombineMode, target: CanvasAdjustmentTarget? = nil
+    ) {
+        if let target, !admitsInspectedComponentMeshEdit(id, target: target) { return }
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply([.setComponentCombineMode(id: id, mode: mode)], selecting: nil, target: target)
+        }
+    }
+    private func admitsInspectedComponentMeshEdit(_ id: String, target: CanvasAdjustmentTarget) -> Bool {
+        guard let source = acceptedDocumentSource, target.isCurrent(in: source),
+            let component = source.selectedComponent, component.id.utf8.elementsEqual(id.utf8)
+        else { return false }
+        return source.showsComponentSmoothing(for: [component])
     }
     func renameComponent(_ id: String, name: String) {
         perform { try await $0.apply([.setComponentName(id: id, name: name)]) }
@@ -3101,8 +3175,22 @@ final class EditorStore {
     var canCopyNodes: Bool { !isWorking && snapshot?.canCopyNodes == true }
     var canCutNodes: Bool { canSave && !isSelectingRigEdges && snapshot?.canCutNodes == true }
 
+    private enum GraphClipboardDestination {
+        case native(any EditorClipboardWriting)
+        case qtXML(EditorPasteboard, CanvasAdjustmentTarget)
+    }
+
     /// Clipboard promise registration succeeds before a Cut can mutate the document.
     func copyNodes(cut: Bool = false, to pasteboard: any EditorClipboardWriting) {
+        copyGraph(to: .native(pasteboard), cut: cut)
+    }
+
+    func copyNodesAsQtXML(to pasteboard: EditorPasteboard) {
+        guard let snapshot = acceptedDocumentSource else { return }
+        copyGraph(to: .qtXML(pasteboard, CanvasAdjustmentTarget(snapshot: snapshot)))
+    }
+
+    private func copyGraph(to destination: GraphClipboardDestination, cut: Bool = false) {
         guard cut ? canCutNodes : canCopyNodes, !stopped else { return }
         let sourceIdentity = acceptedDocumentSource?.documentIdentity
         cancelColorImagePreparation()
@@ -3113,9 +3201,18 @@ final class EditorStore {
         operation = Task {
             defer { if operationRequestID == requestID { isWorking = false } }
             do {
-                let data = try await session.copyRepresentations(identifier: UUID().uuidString, onlyEditable: cut)
-                guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
-                try pasteboard.write(data.native, snapshotXML: data.snapshotXML)
+                switch destination {
+                case .native(let pasteboard):
+                    let data = try await session.copyRepresentations(identifier: UUID().uuidString, onlyEditable: cut)
+                    guard !Task.isCancelled, !stopped, operationRequestID == requestID else { return }
+                    try pasteboard.write(data.native, snapshotXML: data.snapshotXML)
+                case .qtXML(let pasteboard, let target):
+                    let xml = try await session.copySelectionAsQtXML(target: target)
+                    guard !Task.isCancelled, !stopped, operationRequestID == requestID,
+                        acceptedDocumentSource.map({ target.isCurrent(in: $0) }) == true
+                    else { return }
+                    try pasteboard.writeQtXML(xml)
+                }
                 if cut {
                     guard !Task.isCancelled, operationRequestID == requestID,
                         let sourceIdentity, acceptedDocumentSource?.documentIdentity == sourceIdentity
@@ -3776,9 +3873,11 @@ final class EditorStore {
     }
 
     private func clearPreview() {
+        resetPreviewRenderer()
         clearMaterials()
         generation?.cancel()
         previewState.clear()
+        previewRecoveryPending = false
         previewCacheStatistics = nil
         previewSourceIssue = nil
         let previousScope = previewScopeID
@@ -3797,7 +3896,7 @@ final class EditorStore {
     private func generate(_ snapshot: EditorSnapshot, preservingFailure: Bool = false) {
         clearMaterials()
         generation?.cancel()
-        renderError = nil
+        resetPreviewRenderer()
         guard snapshot.hasEnabledGeometry else {
             clearPreview()
             return
@@ -3822,16 +3921,19 @@ final class EditorStore {
                 previewSourceIssue = result.sourceIssue
                 if let output = result.output {
                     previewState.succeed(output, requestID: requestID)
+                    if previewRecoveryPending { diagnostics?.record(.previewRecovered) }
                     if let currentSnapshot = self.snapshot { generateMaterials(currentSnapshot) }
                 } else {
                     previewState.succeedEmpty(requestID: requestID)
                 }
+                previewRecoveryPending = false
             } catch {
                 guard !Task.isCancelled, !stopped, scopeID == previewScopeID,
                     self.snapshot?.previewIdentity.geometry == snapshot.previewIdentity.geometry,
                     previewState.isCurrent(requestID: requestID)
                 else { return }
                 previewState.fail(Self.message(error), requestID: requestID)
+                previewRecoveryPending = true
                 diagnostics?.record(.previewFailed)
             }
         }
@@ -3871,8 +3973,27 @@ final class EditorStore {
         }
     }
 
-    func retryPreview() {
-        guard !stopped, !isGenerating, let snapshot else { return }
+    func reportPreviewRendererError(_ cause: String, attemptID: UUID, revision: Int) {
+        guard !stopped, mesh != nil, previewRendererAttemptID == attemptID,
+            materialViewportRevision == revision
+        else { return }
+        renderError = cause
+    }
+
+    private func resetPreviewRenderer() {
+        previewRendererAttemptID = UUID()
+        renderError = nil
+    }
+
+    func retryPreview(rendererAttemptID: UUID? = nil) {
+        guard !stopped, !isGenerating, let snapshot,
+            rendererAttemptID == nil || rendererAttemptID == previewRendererAttemptID
+        else { return }
+        if renderError != nil, mesh != nil {
+            resetPreviewRenderer()
+            renderedMaterialRevision = nil
+            return
+        }
         generate(snapshot)
     }
 
