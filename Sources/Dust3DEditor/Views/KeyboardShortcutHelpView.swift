@@ -33,6 +33,8 @@ enum KeyboardShortcutHelp {
         .init(action: "Rotate Preview Automatically", keys: "R", scope: previewMenuScope),
         .init(action: "Zoom Preview", keys: "⌥- / ⌥=", scope: previewMenuScope),
         .init(action: "Undo / Redo", keys: "⌘Z / ⇧⌘Z", scope: "Focused text editor or document history"),
+        .init(
+            action: "Redo in Canvas", keys: "⌘Y", scope: "Focused canvas or graph handle with available document redo"),
         .init(action: "Cut / Copy / Paste", keys: "⌘X / ⌘C / ⌘V", scope: "Focused text or editable nodes"),
         .init(action: "Select All", keys: "⌘A", scope: "Focused text or graph; unavailable in animation controls"),
         .init(action: "Select All Nodes", keys: "⇧⌘A", scope: "Active document"),
@@ -59,7 +61,7 @@ enum KeyboardShortcutHelp {
             action: "Delete Graph Selection", keys: "Delete",
             scope: "Graph selection, outside text, animation and component sidebar controls"),
         .init(
-            action: "Delete in Canvas", keys: "Forward Delete / ⌃D",
+            action: "Delete in Canvas", keys: "Backspace (Delete) / Forward Delete / ⌃D",
             scope: "Focused canvas or graph handle with an editable selection and no active drag"),
         .init(
             action: "Nudge Selection or Origin", keys: "← / → / ↑ / ↓",

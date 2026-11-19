@@ -7,6 +7,11 @@ import XCTest
 @testable import Dust3DEditor
 @testable import Dust3DRendering
 
+@MainActor final class CanvasKeyboardTestWindow: NSWindow {
+    var acceptsCanvasKeys = true
+    override var isKeyWindow: Bool { acceptsCanvasKeys }
+}
+
 @MainActor final class PrecisionCanvasInputTests: XCTestCase {
     private let a = "{11111111-1111-4111-8111-111111111111}"
     private let b = "{22222222-2222-4222-8222-222222222222}"
@@ -25,6 +30,70 @@ import XCTest
         document = try document.applying(.addEdge(id: edge, from: a, to: b))
         return try document.applying(.setOrigin(.init(x: 0.5, y: 0.5, z: 0.5)))
     }
+    func testPrecisionAndQuarterTurnMenusRequireTheirOriginalCommandScope() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let source = try document()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectGraph(nodes: [a], edges: [edge])
+        try await settle(store)
+        store.setCanvasHeight(200)
+
+        var isInScope = false
+        let unavailable = CanvasPrecisionActions(store: store) { isInScope }
+        XCTAssertTrue(unavailable.entries.allSatisfy { !$0.enabled })
+        XCTAssertNil(OrthogonalQuarterTurnActions(store: store, isInScope: { isInScope }).positive)
+
+        isInScope = true
+        let nudge = try XCTUnwrap(
+            CanvasPrecisionActions(store: store) { isInScope }.entries.first { $0.action == .left })
+        let turn = try XCTUnwrap(OrthogonalQuarterTurnActions(store: store, isInScope: { isInScope }).positive)
+        XCTAssertTrue(nudge.enabled)
+        isInScope = false
+        nudge.invoke()
+        turn()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+
+        isInScope = true
+        nudge.invoke()
+        try await settle(store)
+        let nudged = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(try nudged.document.node(id: a).position.x, -0.005, accuracy: 1e-12)
+        turn()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), nudged.document.encoded())
+
+        try XCTUnwrap(OrthogonalQuarterTurnActions(store: store, isInScope: { isInScope }).positive)()
+        try await settle(store)
+        XCTAssertNotEqual(store.snapshot?.document.encoded(), nudged.document.encoded())
+    }
+
+    func testBackspaceDeletesTheFocusedGraphSelectionWithOneUndo() async throws {
+        let store = EditorStore()
+        defer { store.stop() }
+        let source = try document()
+        await store.load(data: source.encoded())
+        try await settle(store)
+        store.selectGraph(nodes: [], edges: [edge])
+        try await settle(store)
+
+        let handler = store.canvasPrecisionKeyHandler()
+        let backspace = "\u{7F}"
+        XCTAssertFalse(handler(.init(keyCode: 51, characters: backspace, modifiers: .option)))
+        XCTAssertTrue(handler(.init(keyCode: 51, characters: backspace, modifiers: [], isRepeat: true)))
+        XCTAssertFalse(store.canUndo)
+        XCTAssertTrue(handler(.init(keyCode: 51, characters: backspace, modifiers: [])))
+        try await settle(store)
+        XCTAssertTrue(store.snapshot?.edges.isEmpty == true)
+        store.undo()
+        try await settle(store)
+        XCTAssertEqual(store.snapshot?.document.encoded(), source.encoded())
+        XCTAssertFalse(store.canUndo)
+    }
+
     func testForwardDeleteRemovesTheCapturedGraphSelectionWithOneUndo() async throws {
         let store = EditorStore()
         defer { store.stop() }
@@ -183,7 +252,8 @@ import XCTest
     }
     func testNativeCanvasAndNodeKeyBoundaryRequiresActualFirstResponderAndPassesUnsupportedKeys() throws {
         let root = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
-        let window = NSWindow(contentRect: root.bounds, styleMask: [.titled], backing: .buffered, defer: false)
+        let window = CanvasKeyboardTestWindow(
+            contentRect: root.bounds, styleMask: [.titled], backing: .buffered, defer: false)
         window.contentView = root
         defer { window.contentView = nil }
         let canvas = CanvasPointerView(frame: root.bounds)
@@ -201,6 +271,10 @@ import XCTest
         canvas.keyDown(with: try key(124, window: window))
         XCTAssertEqual(keys, 0)
         XCTAssertTrue(window.makeFirstResponder(canvas))
+        window.acceptsCanvasKeys = false
+        canvas.keyDown(with: try key(124, window: window))
+        XCTAssertEqual(keys, 0, "An inactive canvas must pass precision keys through")
+        window.acceptsCanvasKeys = true
         canvas.keyDown(with: try key(124, window: window))
         XCTAssertEqual(keys, 1)
         canvas.keyDown(with: try key(124, window: window, modifiers: [.command]))
@@ -216,6 +290,10 @@ import XCTest
         }
         root.addSubview(node)
         XCTAssertTrue(window.makeFirstResponder(node))
+        window.acceptsCanvasKeys = false
+        node.keyDown(with: try key(123, window: window))
+        XCTAssertEqual(keys, 1, "An inactive node must pass precision keys through")
+        window.acceptsCanvasKeys = true
         node.keyDown(with: try key(123, window: window))
         XCTAssertEqual(keys, 2)
     }
@@ -265,7 +343,7 @@ import XCTest
         store.select(a)
         try await settle(store)
         let host = NSHostingView(rootView: NodeCanvas(store: store))
-        let window = NSWindow(
+        let window = CanvasKeyboardTestWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled], backing: .buffered,
             defer: false)
         window.contentView = host

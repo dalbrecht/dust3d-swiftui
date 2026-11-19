@@ -51,13 +51,15 @@ struct CanvasPrecisionPanel: View {
         let invoke: @MainActor () -> Void
     }
     let entries: [Entry]
-    init(store: EditorStore?) {
-        if let store {
-            entries = CanvasPrecisionAction.allCases.map {
-                Entry(action: $0, enabled: store.canPerformCanvasPrecision($0), invoke: store.canvasPrecisionAction($0))
+    init(store: EditorStore?, isInScope: @escaping @MainActor () -> Bool = { true }) {
+        entries = CanvasPrecisionAction.allCases.map { action in
+            guard isInScope(), let store, store.canPerformCanvasPrecision(action) else {
+                return Entry(action: action, enabled: false, invoke: {})
             }
-        } else {
-            entries = CanvasPrecisionAction.allCases.map { Entry(action: $0, enabled: false, invoke: {}) }
+            let invoke = store.canvasPrecisionAction(action)
+            return Entry(action: action, enabled: true) {
+                if isInScope() { invoke() }
+            }
         }
     }
 }
@@ -65,10 +67,6 @@ struct CanvasPrecisionPanel: View {
 struct CanvasPrecisionMenu: View {
     let actions: CanvasPrecisionActions
     let contextual: Bool
-    init(store: EditorStore?, contextual: Bool = false) {
-        actions = CanvasPrecisionActions(store: store)
-        self.contextual = contextual
-    }
     init(actions: CanvasPrecisionActions, contextual: Bool = false) {
         self.actions = actions
         self.contextual = contextual

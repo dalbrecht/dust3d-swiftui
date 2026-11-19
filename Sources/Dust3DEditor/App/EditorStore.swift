@@ -756,6 +756,24 @@ final class EditorStore {
     var canAdjustSelectionRadius: Bool {
         !isSelectingRigEdges && canSave && canvasHeight > 0 && snapshot?.canAdjustSelectionRadius == true
     }
+    func canvasRadiusAction(
+        direction: Double, isInScope: @escaping @MainActor () -> Bool
+    ) -> (@MainActor () -> Void)? {
+        guard direction.isFinite, direction != 0, isInScope(), canAdjustRadiusInput,
+            let source = acceptedDocumentSource
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: source)
+        let layout = precisionLayoutEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        return { [weak self] in
+            guard let self, isInScope(), self.canAdjustRadiusInput, let current = self.acceptedDocumentSource,
+                target.isCurrent(in: current), self.precisionLayoutEpoch == layout,
+                self.rotationInputContextID == tool, self.addModeID == add
+            else { return }
+            self.adjustSelectionRadius(direction: direction)
+        }
+    }
     func adjustSelectionRadius(direction: Double) {
         if isAddingNodes {
             guard !isWorking, direction.isFinite, direction != 0 else { return }
@@ -3817,17 +3835,28 @@ final class EditorStore {
         guard let snapshot = acceptedDocumentSource else { return { _ in false } }
         let scope = canvasPrecisionKeyScope(snapshot: snapshot, lease: profileLease)
         let capturedRevision = snapshot.documentRevision
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
         let deleteTarget = acceptedDocumentSource.map {
             GraphSelectionActionTarget(snapshot: $0, action: .deleteSelection)
         }
         let tool = rotationInputContextID
-        let mode = addModeID
+        let add = addModeID
         let interaction = referenceColorInteractionEpoch
         return { [weak self] input in
+            if input.isAlternateRedo {
+                guard let self, let current = self.acceptedDocumentSource,
+                    target.isCurrent(in: current), self.ownsCanvasProfile(profileLease),
+                    self.rotationInputContextID == tool, self.addModeID == add,
+                    self.referenceColorInteractionEpoch == interaction, !self.referenceColorInteractionActive,
+                    self.canRedo, !self.isSelectingRigEdges, self.canvasProfileMotion == nil, self.originDrag == nil
+                else { return false }
+                if !input.isRepeat { self.redo() }
+                return true
+            }
             if input.isAlternateDelete {
                 guard let self, let deleteTarget, self.ownsCanvasProfile(profileLease), self.canSave,
                     !self.isSelectingRigEdges,
-                    self.rotationInputContextID == tool, self.addModeID == mode,
+                    self.rotationInputContextID == tool, self.addModeID == add,
                     self.referenceColorInteractionEpoch == interaction,
                     self.canvasProfileMotion == nil, self.originDrag == nil,
                     self.canPerformGraphSelectionAction(deleteTarget)
@@ -3969,18 +3998,21 @@ final class EditorStore {
         let capturedTarget = target ?? CanvasAdjustmentTarget(snapshot: snapshot)
         perform { try await $0.rotateSelection(degrees: degrees, plane: capturedPlane, target: capturedTarget) }
     }
-    @discardableResult
-    func handleCanvasRotationInput(
-        characters: String, modifiers: NSEvent.ModifierFlags,
-        animationFocus: Bool, nativeTextFocus: Bool
-    ) -> Bool {
-        guard canRotateCanvasSelection,
+    func canvasRotationShortcutAction(
+        characters: String, isInScope: @escaping @MainActor () -> Bool
+    ) -> (@MainActor (NSEvent.ModifierFlags) -> Void)? {
+        guard isInScope(), canRotateCanvasSelection,
             let degrees = CanvasRotationInput.degrees(
-                characters: characters, modifiers: modifiers,
-                animationFocus: animationFocus, nativeTextFocus: nativeTextFocus)
-        else { return false }
-        rotateCanvasSelection(degrees: degrees)
-        return true
+                characters: characters, modifiers: [], animationFocus: false, nativeTextFocus: false)
+        else { return nil }
+        let rotate = canvasRotationAction(degrees: degrees)
+        return { modifiers in
+            guard isInScope(),
+                CanvasRotationInput.degrees(
+                    characters: characters, modifiers: modifiers, animationFocus: false, nativeTextFocus: false) != nil
+            else { return }
+            rotate()
+        }
     }
     private func canRotateOrthogonalQuarterTurn(profileLease: UUID?) -> Bool {
         !isSelectingRigEdges && canSave && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive

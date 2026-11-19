@@ -70,8 +70,24 @@ struct CanvasPrecisionKeyInput {
         modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty
     }
 
+    static func alternateRedo(_ event: NSEvent) -> Self? {
+        guard event.type == .keyDown else { return nil }
+        let input = Self(
+            keyCode: event.keyCode, characters: event.charactersIgnoringModifiers ?? "",
+            modifiers: event.modifierFlags, isRepeat: event.isARepeat)
+        return input.isAlternateRedo ? input : nil
+    }
+
+    var isAlternateRedo: Bool {
+        modifiers.intersection([.command, .control, .option, .shift, .function]) == .command
+            && characters.lowercased() == "y"
+    }
+
     var isAlternateDelete: Bool {
         let editingModifiers = modifiers.intersection([.command, .control, .option, .shift, .function])
+        if characters == "\u{7F}" {  // AppKit's character for the keyboard Delete key
+            return editingModifiers.isEmpty
+        }
         if characters == "\u{F728}" {  // AppKit's forward-delete function character
             return editingModifiers.isEmpty || editingModifiers == .function
         }
@@ -95,6 +111,11 @@ struct CanvasPrecisionKeyInput {
         default: return nil
         }
     }
+    @MainActor static func permitsDispatch(in window: NSWindow) -> Bool {
+        window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
+            && NSApp.modalWindow == nil
+    }
+
     var togglesPartMirror: Bool {
         isBareEditingKey && (characters == "m" || characters == "M")
     }
@@ -119,7 +140,8 @@ struct CanvasPrecisionKeyInput {
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
         guard
             axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
-                || isAlternateDelete || togglesPartMirror || partShapeShortcut != nil || visibilityShortcut != nil
+                || isAlternateRedo || isAlternateDelete || togglesPartMirror || partShapeShortcut != nil
+                || visibilityShortcut != nil
 
         else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil

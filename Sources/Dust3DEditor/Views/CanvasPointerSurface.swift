@@ -396,18 +396,30 @@ final class CanvasPointerView: CanvasCameraPointerView {
         if isAddingNodes { cancelInput() }
     }
     func routeRadiusKey(_ event: NSEvent) -> Bool {
-        guard enabled, start == nil, window?.firstResponder === self,
-            let direction = CanvasRadiusKey.direction(for: event)
+        guard enabled, start == nil, let window, window.firstResponder === self,
+            CanvasPrecisionKeyInput.permitsDispatch(in: window), let direction = CanvasRadiusKey.direction(for: event)
         else { return false }
         return radiusKey(direction)
     }
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if start == nil, !activity.hasMarquee, let window, window.firstResponder === self,
+            let input = CanvasPrecisionKeyInput.alternateRedo(event), input.permitsDispatch(in: window),
+            precisionKey?(input) == true
+        {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
     override func keyDown(with event: NSEvent) {
         if isPreviewDragging {
             if event.keyCode == 53 { cancelPreviewDrag() }
             return
         }
         // The captured precision handler admits keyboard edits independently of pointer picking.
-        if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self {
+        if start == nil, !activity.hasMarquee, superview != nil, let window, window.firstResponder === self,
+            CanvasPrecisionKeyInput.permitsDispatch(in: window)
+        {
             let input = CanvasPrecisionKeyInput(event)
             if CanvasProfileSwitchKey.route(event, in: window, switchProfile: switchProfile)
                 || CanvasAddModeKey.route(event, in: window, handle: addModeKey)
