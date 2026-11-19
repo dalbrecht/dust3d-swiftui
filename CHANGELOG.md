@@ -232,6 +232,12 @@
 
 - Keep profile controls visible in narrow editor windows and give Front and Side equal drawing space.
 
+- Use the View menu to orbit, pan, zoom, and fit the model in the active Viewer window.
+
+- Toggle Viewer wireframe from the View menu or with W.
+
+- Toggle automatic model rotation from the Viewer’s View menu or with R.
+
 - Click a companion profile to make it the editing pane without placing or selecting a graph element.
 
 - Press E with a graph selection and canvas focus, or choose Switch Editing Profile in the Canvas menu, to edit the selection in the opposite profile.
