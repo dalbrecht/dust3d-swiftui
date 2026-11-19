@@ -13,4 +13,9 @@ public struct ReferenceCompositionTarget: Sendable {
         documentRevision = snapshot.documentRevision
         constraintRevision = snapshot.constraintRevision
     }
+
+    package func isCurrent(in snapshot: EditorSnapshot) -> Bool {
+        documentIdentity == snapshot.documentIdentity && documentRevision == snapshot.documentRevision
+            && constraintRevision == snapshot.constraintRevision
+    }
 }

@@ -1,13 +1,34 @@
+import AppKit
 import CoreGraphics
 import Dust3DDocument
 import Dust3DEditorModel
 import Dust3DKit
 import Dust3DRendering
+import Foundation
 import SwiftUI
 
-struct WorkflowReplayRequest: Identifiable {
-    let id = UUID()
-    let document: Dust3DDocument
+struct WorkflowReplayWindow: View {
+    let requestID: UUID?
+    let windows: WorkflowReplayWindows
+    @State private var owner = UUID()
+
+    var body: some View {
+        ZStack {
+            if let request = windows.request(requestID, owner: owner) {
+                WorkflowReplayView(document: request.document, sourceID: request.id) {
+                    windows.request(request.id, owner: owner) != nil
+                }
+            } else {
+                ContentUnavailableView {
+                    Label("No Replay", systemImage: "play.rectangle")
+                } description: {
+                    Text("Choose Replay Steps from a document window to start a new replay.")
+                }
+            }
+        }
+        .onAppear { windows.attach(requestID, owner: owner) }
+        .onDisappear { windows.close(requestID, owner: owner) }
+    }
 }
 
 private actor WorkflowReplayMeshLoader {
@@ -25,6 +46,8 @@ enum WorkflowReplayPlaybackPhase: Equatable {
     case ready
     case inProgress
     case complete
+
+    var canGoBack: Bool { self == .inProgress || self == .complete }
 
     func canAdvance(waitsForReference: Bool) -> Bool {
         self != .empty && self != .complete && !waitsForReference
@@ -69,6 +92,35 @@ enum WorkflowReplayMeshStatus: Equatable {
     }
 }
 
+struct WorkflowReplayBoneHighlight {
+    private let name: BoneNameIdentity
+    private let edgeIDs: Set<Data>
+
+    init?(plan: WorkflowReplayPlan, completedSteps: Int) {
+        guard completedSteps > 0, completedSteps <= plan.steps.count,
+            case .assignBone(let name, let edgeIDs) = plan.steps[completedSteps - 1]
+        else { return nil }
+        self.name = name
+        self.edgeIDs = Set(edgeIDs.map { Data($0.utf8) })
+    }
+
+    var status: String {
+        edgeIDs.count == 1 ? "Assign 1 edge to \(name.rawValue)" : "Assign \(edgeIDs.count) edges to \(name.rawValue)"
+    }
+
+    func visibleEdgeIDs(in frame: (nodes: [DocumentNode], edges: [DocumentEdge])) -> Set<Data> {
+        let visibleNodes = Set(frame.nodes.lazy.filter(\.isVisible).map { Data($0.id.utf8) })
+        return Set(
+            frame.edges.compactMap { edge in
+                let id = Data(edge.id.utf8)
+                guard edgeIDs.contains(id), visibleNodes.contains(Data(edge.fromID.utf8)),
+                    visibleNodes.contains(Data(edge.toID.utf8))
+                else { return nil }
+                return id
+            })
+    }
+}
+
 struct WorkflowReplayView: View {
     private enum Presentation: String, CaseIterable {
         case front = "Front (X/Y)"
@@ -79,6 +131,7 @@ struct WorkflowReplayView: View {
     let document: Dust3DDocument
     let sourceID: UUID
     let isCurrentSource: @MainActor () -> Bool
+    @Environment(\.appearsActive) private var appearsActive
     @Environment(\.newDocument) private var newDocument
     @State private var checkpoint = WorkflowReplayCheckpoint()
     @State private var checkpointRevision = 0
@@ -88,6 +141,7 @@ struct WorkflowReplayView: View {
     @State private var isPlaying = false
     @State private var speed = Double(WorkflowReplaySpeed.initial)
     @State private var presentation: Presentation = .front
+    @State private var previewFocus = MeshViewportFocus()
     @State private var meshLoader = WorkflowReplayMeshLoader()
     @State private var mesh: IndexedMesh?
     @State private var materials: MeshMaterialContent?
@@ -129,15 +183,22 @@ struct WorkflowReplayView: View {
                     }
                 }
             } else if let plan, let phase = playbackPhase {
+                let boneHighlight = WorkflowReplayBoneHighlight(plan: plan, completedSteps: completedSteps)
                 VStack(alignment: .leading) {
                     Picker("View", selection: $presentation) {
                         ForEach(Presentation.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     if presentation == .mesh {
+                        Button("Focus 3D Preview") {
+                            guard mesh != nil, requestedMeshStep == meshStep else { return }
+                            previewFocus.moveFocus(in: NSApp.keyWindow)
+                        }
+                        .disabled(mesh == nil || requestedMeshStep != meshStep)
+                        .help("Use the arrow keys to orbit and F to reset the camera.")
                         meshPreview
                     } else {
-                        replayCanvas(plan, plane: presentation == .front ? .front : .side)
+                        replayCanvas(plan, plane: presentation == .front ? .front : .side, boneHighlight: boneHighlight)
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Step \(completedSteps) of \(plan.steps.count)")
@@ -166,7 +227,8 @@ struct WorkflowReplayView: View {
                             case .edge: Text("Connect Nodes")
                             case .addAnimation(_, let name): Text("Add Animation \(name)").lineLimit(2)
                             case .setRigType(let type): Text("Set Rig Type to \(type)")
-                            case .assignBone(let name, _): Text("Assign Edges to \(name.rawValue)").lineLimit(2)
+                            case .assignBone:
+                                if let boneHighlight { Text(boneHighlight.status).lineLimit(2) }
                             }
                         }
                     }
@@ -190,6 +252,7 @@ struct WorkflowReplayView: View {
                             retireCheckpoint()
                             isPlaying = false
                             completedSteps = 0
+                            announceStep(total: plan.steps.count)
                         }
                         .disabled(phase == .ready)
                         Button(isPlaying ? "Pause" : "Play") {
@@ -197,6 +260,9 @@ struct WorkflowReplayView: View {
                             isPlaying.toggle()
                         }
                         .disabled(phase == .complete)
+                        Button("Previous Step") { rewind(plan) }
+                            .disabled(!phase.canGoBack)
+                            .keyboardShortcut(.leftArrow, modifiers: .option)
                         Button("Next Step") { advance(plan) }
                             .disabled(!phase.canAdvance(waitsForReference: waitsForReference))
                             .keyboardShortcut(.rightArrow, modifiers: .option)
@@ -300,9 +366,9 @@ struct WorkflowReplayView: View {
             guard let interval = playbackInterval, let plan else { return }
             while !Task.isCancelled, completedSteps < plan.steps.count {
                 do { try await Task.sleep(for: .milliseconds(interval)) } catch { return }
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, isPlaying else { return }
                 if let requestedMeshStep, meshStep != requestedMeshStep { continue }
-                advance(plan)
+                advance(plan, automatic: true)
             }
         }
     }
@@ -312,11 +378,28 @@ struct WorkflowReplayView: View {
         checkpoint.cancel()
     }
 
-    private func advance(_ plan: WorkflowReplayPlan) {
+    private func rewind(_ plan: WorkflowReplayPlan) {
+        guard playbackPhase?.canGoBack == true else { return }
+        retireCheckpoint()
+        isPlaying = false
+        completedSteps -= 1
+        announceStep(total: plan.steps.count)
+    }
+
+    private func advance(_ plan: WorkflowReplayPlan, automatic: Bool = false) {
         guard playbackPhase?.canAdvance(waitsForReference: waitsForReference) == true else { return }
         retireCheckpoint()
         completedSteps = min(completedSteps + 1, plan.steps.count)
         if completedSteps == plan.steps.count { isPlaying = false }
+        announceStep(total: plan.steps.count, automatic: automatic)
+    }
+
+    private func announceStep(total: Int, automatic: Bool = false) {
+        if let message = WorkflowReplayStepAnnouncement.message(
+            step: completedSteps, total: total, automatic: automatic, active: NSApp.isActive && appearsActive)
+        {
+            AccessibilityNotification.Announcement(message).post()
+        }
     }
 
     private var meshPreview: some View {
@@ -333,6 +416,7 @@ struct WorkflowReplayView: View {
                 ) { message in
                     if requestedMeshStep == meshStep { meshFailure = message }
                 }
+                .withFocusTarget(previewFocus)
                 .opacity(status == .updating ? 0.35 : 1)
                 .allowsHitTesting(status != .updating)
                 .accessibilityHidden(status == .updating)
@@ -352,8 +436,11 @@ struct WorkflowReplayView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func replayCanvas(_ plan: WorkflowReplayPlan, plane: EditingPlane) -> some View {
+    private func replayCanvas(
+        _ plan: WorkflowReplayPlan, plane: EditingPlane, boneHighlight: WorkflowReplayBoneHighlight?
+    ) -> some View {
         let frame = plan.frame(after: completedSteps)
+        let highlighted = boneHighlight?.visibleEdgeIDs(in: frame)
         let nodes = Dictionary(uniqueKeysWithValues: frame.nodes.filter(\.isVisible).map { ($0.id, $0) })
         return Canvas { context, size in
             let reference: (image: CGImage, bounds: CanvasBounds)?
@@ -379,13 +466,27 @@ struct WorkflowReplayView: View {
                 let value = projection.point(for: node.value.position)
                 return CGPoint(x: value.x, y: value.y)
             }
+            var assignmentPath = Path()
             for edge in frame.edges {
                 guard let start = nodes[edge.fromID], let end = nodes[edge.toID] else { continue }
+                let from = point(start)
+                let to = point(end)
                 var path = Path()
-                path.move(to: point(start))
-                path.addLine(to: point(end))
+                path.move(to: from)
+                path.addLine(to: to)
                 context.stroke(path, with: .foreground, lineWidth: 1.5)
+                if highlighted?.contains(Data(edge.id.utf8)) == true {
+                    if from == to {
+                        // A depth-aligned edge can collapse to a point in one profile.
+                        assignmentPath.addEllipse(in: CGRect(x: from.x - 6, y: from.y - 6, width: 12, height: 12))
+                    } else {
+                        assignmentPath.addPath(path)
+                    }
+                }
             }
+            context.stroke(
+                assignmentPath, with: .color(.accentColor),
+                style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [7, 5]))
             for node in frame.nodes where node.isVisible {
                 let center = point(node)
                 let radius = max(3, node.value.radius * projection.scale)
@@ -395,7 +496,9 @@ struct WorkflowReplayView: View {
         }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .accessibilityLabel("Reconstructed graph")
-        .accessibilityValue("\(frame.nodes.count) nodes and \(frame.edges.count) edges")
+        .accessibilityValue(
+            "\(frame.nodes.count) nodes and \(frame.edges.count) edges"
+                + (highlighted.map { ", \($0.count) assignment edges highlighted" } ?? ""))
     }
 }
 

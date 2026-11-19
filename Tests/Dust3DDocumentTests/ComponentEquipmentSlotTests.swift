@@ -66,6 +66,21 @@ final class ComponentEquipmentSlotTests: XCTestCase {
         XCTAssertNotEqual(edited.encoded(), original.encoded())
     }
 
+    func testBaseRenamePreservesExactSlotSpellingAndRejectsUnsupportedOwnership() throws {
+        let slot = "arme\u{0301}/2 "
+        let source = try makeDocument(name: "  Vest @label  @" + slot)
+        let changed = try source.applying(.setComponentBaseNamePreservingEquipmentSlot(id: "a", name: "Body"))
+        let renamed = try XCTUnwrap(try changed.components().first { $0.id == "a" })
+        XCTAssertEqual(Array(try XCTUnwrap(renamed.equipmentSlot).utf8), Array(slot.utf8))
+        XCTAssertEqual(renamed.equipmentRenameBaseName, "Body")
+        for id in ["group", "non-model", "missing-part"] {
+            let raw = try source.applying(.setComponentName(id: id, name: "Raw @armor/2"))
+            XCTAssertThrowsError(
+                try raw.applying(.setComponentBaseNamePreservingEquipmentSlot(id: id, name: "Body")), id)
+            XCTAssertEqual(try raw.components().first { $0.id == id }?.name, "Raw @armor/2")
+        }
+    }
+
     func testEquipmentEditsRejectComponentsWithoutALinkedModelPart() throws {
         let source = try makeDocument()
         for id in ["group", "non-model", "missing-part"] {

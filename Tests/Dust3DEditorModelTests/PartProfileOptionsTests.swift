@@ -19,6 +19,18 @@ final class PartProfileOptionsTests: XCTestCase {
         return document
     }
 
+    func testSpokenTitlesUseIdentityOnlyToDisambiguateVisibleDuplicateNames() throws {
+        let parts = try document().editorContents().parts
+        let all = PartProfileOptions.candidates(in: parts, excluding: owner, matching: "")
+        XCTAssertEqual(
+            PartProfileOptions.spokenTitles(for: all),
+            [first: "Duplicate Curve 曲線, \(first)", second: "Duplicate Curve 曲線, \(second)"])
+
+        let one = PartProfileOptions.candidates(in: parts, excluding: owner, matching: first)
+        XCTAssertEqual(PartProfileOptions.spokenTitles(for: one), [first: "Duplicate Curve 曲線"])
+        XCTAssertEqual(PartProfileOptions.spokenTitles(for: []), [:])
+    }
+
     func testCandidatesExcludeLegacyIdentitiesAndSelfWithoutRewritingSource() throws {
         let document = try document()
         let parts = try document.editorContents().parts

@@ -6,9 +6,19 @@ import Dust3DKit
 import Dust3DRendering
 import SwiftUI
 
-private enum EditorInspectorSection: String, CaseIterable, Hashable {
+enum EditorInspectorSection: String, CaseIterable, Hashable {
     case selection = "Selection"
     case animations = "Animations"
+}
+
+struct EditorInspectorPresentation {
+    var isPresented = true
+    var section = EditorInspectorSection.selection
+
+    mutating func showSelectionProperties() {
+        section = .selection
+        isPresented = true
+    }
 }
 
 struct EditorRootView: View {
@@ -24,10 +34,10 @@ struct EditorRootView: View {
     @State private var sidebarNodeQuery = ""
     @State private var sidebarDisclosure = ComponentSidebarDisclosure()
     @State private var rigInspectorDocumentID: UUID?
-    @State private var isInspectorPresented = true
-    @State private var inspectorSection = EditorInspectorSection.selection
+    @State private var inspectorPresentation = EditorInspectorPresentation()
     @State private var recoveryRegistrationID: UUID?
     @State private var isImportingReferenceImage = false
+    @State private var referenceImageImportRequest: UUID?
     @State private var admitReferenceImageImport: (@MainActor () -> Bool)?
     @State private var referenceComposition: ReferenceCompositionPresentation?
     @State private var isOpeningDroppedDocument = false
@@ -62,11 +72,15 @@ struct EditorRootView: View {
         #endif
     }
 
+    private var selectionPropertiesAction: (@MainActor () -> Bool)? {
+        store.selectionPropertiesAction { inspectorPresentation.showSelectionProperties() }
+    }
+
     var body: some View {
         let fitAction = toolbarFitAction
         editorLayout
             .frame(minWidth: 800, minHeight: 600)
-            .inspector(isPresented: $isInspectorPresented) {
+            .inspector(isPresented: $inspectorPresentation.isPresented) {
                 inspectorContent.inspectorColumnWidth(min: 250, ideal: 250, max: 400)
             }
             #if MOTE3D_EXPERIMENTAL_GENERATED_RIG
@@ -116,7 +130,7 @@ struct EditorRootView: View {
                     } label: {
                         Label("Fit", systemImage: "arrow.up.left.and.arrow.down.right")
                     }
-                    EditorInspectorVisibilityControl(isPresented: $isInspectorPresented)
+                    EditorInspectorVisibilityControl(isPresented: $inspectorPresentation.isPresented)
                     let navigateInspector = inspectorNavigation
                     Button {
                         navigateInspector?(.animations)
@@ -136,6 +150,7 @@ struct EditorRootView: View {
                 }
             }
             .focusedSceneValue(\.editorStore, store)
+            .focusedSceneValue(\.editorSelectionPropertiesAction, selectionPropertiesAction)
             .focusedSceneValue(\.editorReferenceImageActions, referenceImageActions)
             .focusedSceneValue(\.editorInspectorNavigation, inspectorNavigation)
             .focusedSceneValue(\.editorSidebarVisibility, isSidebarPresented)
@@ -220,12 +235,12 @@ struct EditorRootView: View {
             case .sidebar(let visible):
                 isSidebarPresented = visible
             case .rig:
-                isInspectorPresented = true
-                inspectorSection = .selection
+                inspectorPresentation.isPresented = true
+                inspectorPresentation.section = .selection
                 rigInspectorDocumentID = store.snapshot?.documentIdentity
             case .animations:
-                isInspectorPresented = true
-                inspectorSection = .animations
+                inspectorPresentation.isPresented = true
+                inspectorPresentation.section = .animations
             }
         }
     }
@@ -361,6 +376,8 @@ struct EditorRootView: View {
                 guard let target = store.referenceCompositionTarget else { return }
                 referenceComposition = ReferenceCompositionPresentation(target: target)
             case .importImage:
+                guard let request = store.chooseReferenceImage(fileIdentity: fileIdentity) else { return }
+                referenceImageImportRequest = request
                 admitReferenceImageImport = admit
                 isImportingReferenceImage = true
             case .remove:
@@ -371,14 +388,20 @@ struct EditorRootView: View {
     }
 
     private func finishReferenceImageImport(_ result: Result<URL, Error>) {
-        defer { admitReferenceImageImport = nil }
-        guard admitReferenceImageImport?() == true else { return }
-        switch result {
-        case .success(let url):
-            store.importReferenceImage(from: url)
-        case .failure(let error):
-            if (error as? CocoaError)?.code != .userCancelled { store.errorMessage = EditorStore.message(error) }
+        let request = referenceImageImportRequest
+        defer {
+            referenceImageImportRequest = nil
+            admitReferenceImageImport = nil
         }
+        guard let request else { return }
+        guard admitReferenceImageImport?() == true else {
+            store.cancelReferenceImageChoice(requestID: request)
+            return
+        }
+        let source = $file
+        store.finishReferenceImageChoice(
+            requestID: request, result: result.map { [$0] },
+            currentFileIdentity: { source.wrappedValue.identity })
     }
 
     private var canvasWithGetStarted: some View {
@@ -386,29 +409,32 @@ struct EditorRootView: View {
         let source = $file
         let actions = EditorGetStartedActions(
             store: store, fileIdentity: identity, ownsWindow: { source.wrappedValue.identity == identity })
-        return CanvasProfilePanes(store: store, focusControl: canvasFocus, previewCamera: previewCameraActions)
-            .overlay(alignment: .bottom) {
-                if let actions {
-                    EditorGetStartedCard(actions: actions, openDocument: openDocument) { target in
-                        guard referenceComposition == nil else { return }
-                        referenceComposition = ReferenceCompositionPresentation(target: target)
-                    }
-                    .padding(12)
+        return CanvasProfilePanes(
+            store: store, showSelectionProperties: selectionPropertiesAction, focusControl: canvasFocus,
+            previewCamera: previewCameraActions
+        )
+        .overlay(alignment: .bottom) {
+            if let actions {
+                EditorGetStartedCard(actions: actions, openDocument: openDocument) { target in
+                    guard referenceComposition == nil else { return }
+                    referenceComposition = ReferenceCompositionPresentation(target: target)
                 }
+                .padding(12)
             }
-            .dropDestination(for: URL.self) { urls, _ in
-                guard source.wrappedValue.identity == identity, referenceComposition == nil,
-                    let drop = EditorCanvasDrop(urls: urls, acceptsReference: actions != nil)
-                else { return false }
-                switch drop {
-                case .reference(let images):
-                    guard let presentation = actions?.referenceDrop(images) else { return false }
-                    referenceComposition = presentation
-                    return true
-                case .document(let document):
-                    return openDroppedDocument(document)
-                }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            guard source.wrappedValue.identity == identity, referenceComposition == nil,
+                let drop = EditorCanvasDrop(urls: urls, acceptsReference: actions != nil)
+            else { return false }
+            switch drop {
+            case .reference(let images):
+                guard let presentation = actions?.referenceDrop(images) else { return false }
+                referenceComposition = presentation
+                return true
+            case .document(let document):
+                return openDroppedDocument(document)
             }
+        }
     }
 
     private func openDroppedDocument(_ drop: EditorDocumentDrop) -> Bool {
@@ -428,15 +454,15 @@ struct EditorRootView: View {
     private func openDocument() { NSDocumentController.shared.openDocument(nil) }
 
     private var inspectorContent: some View {
-        let visibility = $isInspectorPresented
-        let section = $inspectorSection
+        let visibility = $inspectorPresentation.isPresented
+        let section = $inspectorPresentation.section
         return VStack(spacing: 0) {
-            Picker("Inspector section", selection: $inspectorSection) {
+            Picker("Inspector section", selection: $inspectorPresentation.section) {
                 ForEach(EditorInspectorSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented).labelsHidden().padding(10)
             Divider()
-            if inspectorSection == .animations {
+            if inspectorPresentation.section == .animations {
                 AnimationPanel(store: store)
             } else {
                 NodeInspector(store: store, rigInspectorDocumentID: $rigInspectorDocumentID) {
