@@ -355,6 +355,10 @@
 
 - Add window-local Model Colors and Wireframe controls to the View menu, preserving material transparency in neutral preview mode (#324).
 
+- Keep preview camera commands in the editor window that supplied them.
+
+- Add Editor menu shortcuts for Wireframe, Automatic Rotation, and preview zoom.
+
 - Add native menu actions for orbiting, panning, zooming and fitting the focused 3D preview without changing the document (#322).
 
 - Show the exact authored values applied at the current replay property step.
