@@ -939,7 +939,8 @@ final class EditorStore {
     var materialViewportRevision: Int { previewState.revision + materialState.revision }
     var isGenerating: Bool { previewState.isGenerating }
     var errorMessage: String?
-    var renderError: String? {
+    private(set) var previewRendererAttemptID = UUID()
+    private(set) var renderError: String? {
         didSet { if renderError != nil { previewCameraCommand = nil } }
     }
     var bounds = CanvasBounds(nodes: []) {
@@ -2459,10 +2460,34 @@ final class EditorStore {
         editGraphPartCrossSection(.rotation(value), target: target)
     }
 
-    func setPartMaterial(_ id: String, property: PartMaterialProperty, value: String) {
-        guard !isWorking, !stopped, let scalar = parsePartMaterial(value, property: property) else { return }
-        perform {
-            try await $0.apply([.setPartMaterial(id: id, property: property, value: scalar)])
+    func setPartMaterial(
+        _ id: String, property: PartMaterialProperty, value: String, target: CanvasAdjustmentTarget? = nil
+    ) {
+        guard !isWorking, !stopped else { return }
+        if let target, !admitsInspectedPartMaterialEdit(id, target: target) { return }
+        guard let scalar = parsePartMaterial(value, property: property) else { return }
+        commitPartMaterial(id, property: property, value: scalar, target: target)
+    }
+
+    func resetInspectedPartMaterial(
+        _ id: String, property: PartMaterialProperty, target: CanvasAdjustmentTarget
+    ) {
+        guard !isWorking, !stopped, admitsInspectedPartMaterialEdit(id, target: target) else { return }
+        commitPartMaterial(id, property: property, value: property.defaultValue, target: target)
+    }
+
+    private func admitsInspectedPartMaterialEdit(_ id: String, target: CanvasAdjustmentTarget) -> Bool {
+        guard let source = acceptedDocumentSource, target.isCurrent(in: source), let part = source.inspectedPart
+        else { return false }
+        return part.id.utf8.elementsEqual(id.utf8) && part.target == .model
+    }
+
+    private func commitPartMaterial(
+        _ id: String, property: PartMaterialProperty, value: Double, target: CanvasAdjustmentTarget?
+    ) {
+        perform(acceptCommittedCancellation: target != nil) {
+            try await $0.apply(
+                [.setPartMaterial(id: id, property: property, value: value)], selecting: nil, target: target)
         }
     }
 
@@ -3815,6 +3840,7 @@ final class EditorStore {
     }
 
     private func clearPreview() {
+        resetPreviewRenderer()
         clearMaterials()
         generation?.cancel()
         previewState.clear()
@@ -3836,7 +3862,7 @@ final class EditorStore {
     private func generate(_ snapshot: EditorSnapshot, preservingFailure: Bool = false) {
         clearMaterials()
         generation?.cancel()
-        renderError = nil
+        resetPreviewRenderer()
         guard snapshot.hasEnabledGeometry else {
             clearPreview()
             return
@@ -3910,8 +3936,27 @@ final class EditorStore {
         }
     }
 
-    func retryPreview() {
-        guard !stopped, !isGenerating, let snapshot else { return }
+    func reportPreviewRendererError(_ cause: String, attemptID: UUID, revision: Int) {
+        guard !stopped, mesh != nil, previewRendererAttemptID == attemptID,
+            materialViewportRevision == revision
+        else { return }
+        renderError = cause
+    }
+
+    private func resetPreviewRenderer() {
+        previewRendererAttemptID = UUID()
+        renderError = nil
+    }
+
+    func retryPreview(rendererAttemptID: UUID? = nil) {
+        guard !stopped, !isGenerating, let snapshot,
+            rendererAttemptID == nil || rendererAttemptID == previewRendererAttemptID
+        else { return }
+        if renderError != nil, mesh != nil {
+            resetPreviewRenderer()
+            renderedMaterialRevision = nil
+            return
+        }
         generate(snapshot)
     }
 

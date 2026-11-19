@@ -2,7 +2,14 @@ import Dust3DDocument
 import Dust3DEditorModel
 import SwiftUI
 
-enum AnimationNameAction { case rename, duplicate }
+enum AnimationNameAction {
+    case rename, duplicate
+
+    func initialName(for row: AnimationListRow) -> AnimationNameText {
+        let storedName = row.source.name ?? ""
+        return AnimationNameText(self == .duplicate ? storedName + "_copy" : storedName)
+    }
+}
 
 /// Stored document animation management. No controls in this view invoke native evaluation.
 struct AnimationPanel: View {
@@ -120,6 +127,7 @@ struct AnimationPanel: View {
                 .tag(row.id)
                 .help("\(row.title) · \(row.source.id)")
                 .accessibilityLabel("Animation \(row.title)")
+                .accessibilityValue(Text(row.typeLabel))
             }
         }
         .listStyle(.inset)
@@ -210,7 +218,7 @@ struct AnimationPanel: View {
             nameTarget = try AnimationEditTarget(snapshot: value, animationID: row.source.id)
             sourceTitle = row.title
             nameAction = action
-            name = AnimationNameText(action == .rename ? (row.source.name ?? "") : row.title + " copy")
+            name = action.initialName(for: row)
         } catch { store.errorMessage = error.localizedDescription }
     }
     private func submitName() {

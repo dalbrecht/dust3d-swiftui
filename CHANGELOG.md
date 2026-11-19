@@ -102,6 +102,8 @@
 
 - Repair edge directions in an unambiguous open chain from the Edge Inspector, with one-step Undo.
 
+- Edit duration and sample count for named stored animations whose type is unknown.
+
 - Choose Lasso in Drag Selection to pick graph items within a freehand outline and preview the affected picks while drawing.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
@@ -312,10 +314,14 @@
 
 - Preview a new node and adjust its radius before placing it on the canvas in Add mode. Keep cancellation bound to its placement request, refit on selection exit, discard held presses across tool changes, and allow inward placement at document coordinate limits.
 
+- Keep Next Step available during Replay Steps playback.
+
 - Adjust selected node radii using canvas-focused keyboard input or the canvas wheel, with one-step Undo. Radius menu and inspector actions remain available independently of canvas focus.
 
 - Highlight the hovered node or edge in both canvas profiles, with node hits taking precedence over edges.
 - Preserve numeric move and scale controls for mixed and edge-only selections, expose additive node accessibility actions, and batch graph edge deletion into one validated XML mutation.
+
+- Suggest the Qt-style `_copy` name when duplicating a stored animation and include its type in the accessible list row.
 
 - Select nodes and edges together, with explicit graph editing modes and one-step batch midpoint insertion.
 
@@ -335,6 +341,8 @@
 
 - Add original procedural OBJ export to the editor toolbar and File menu, with captured-revision publication, source protection, cancellation/drain feedback and preserved export warnings (#281).
 
+- Explain when Qt treats a near-default part deformation scale as 1.
+
 - Add owned Swift base/UV worker-request packets backed by the existing core codec, with bounded input and preserved error receipts; worker execution remains separate (#277).
 
 - Retain valid mesh previews across animation metadata Undo/Redo using history-owned geometry/material identities; reject obsolete auxiliary preview results (#275).
@@ -346,6 +354,8 @@
 - Refresh native text Undo/Redo command availability after editing and undo-manager changes (#145).
 
 - Clear removed animation selections when publishing edits and history transitions, independently of list reads (#145).
+
+- Retry a failed Editor renderer using the accepted mesh and prepared materials.
 
 - Add a native stored-animation inspector with selection, source-bound rename/duplicate/delete, inline exact-text drafts and scoped graph shortcuts; playback remains unavailable (#145).
 
@@ -359,6 +369,8 @@
 
 - Connect accepted editor snapshots to an injected export workflow with source revision receipts, history preservation and lifecycle cancellation; native encoder/menu binding remains unavailable by default (#146).
 
+- Add keyboard-focusable Zoom In and Zoom Out buttons to Quick Look previews.
+
 - Serialize final export source checks and atomic publication with accepted editor commands, preserving committed success on late task cancellation; native UI binding remains pending (#146).
 
 - Add current-document export admission around background encoding, rejecting replaced documents and stale revisions without publishing output; app-level publication coordination remains pending (#146).
@@ -370,6 +382,8 @@
 - Open multiple .ds3 documents at launch using positional paths or repeated --open-document flags.
 
 - Add an explicit-fixture QA launcher using process-local AppKit restoration isolation while preserving normal launches and saved state (#257).
+
+- Open the last eligible Dust3D document in a mixed Finder drop.
 
 - Recheck actual recovery storage before each write so failed shrinking replacements cannot fund growth beyond the retained-byte budget (#248).
 
@@ -388,6 +402,8 @@
 - Add lossless, undoable stored rig-template and eyelid parameters with actor-prepared snapshots; skeleton generation and pose preview remain unavailable (#246).
 
 - Route selectable node-ID copying through the native read-only field editor instead of copying a graph fragment (#235).
+
+- Restore Metallic, Roughness, and Glow defaults from the Part inspector.
 
 - Refresh the selectable node ID accessibility value when inspector selection changes while retaining copyability (#235).
 
