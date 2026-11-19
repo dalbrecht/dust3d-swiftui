@@ -35,6 +35,7 @@ public struct MeshViewport: NSViewRepresentable {
     let cameraCommand: MeshCameraCommand?
     private var canvasWheelZoom: MeshCameraWheelZoom?
     private var focusTarget: MeshViewportFocus?
+    private var animationGround: (lease: UUID, restBounds: RenderBounds, offset: SIMD2<Double>)?
     let pickingRevision: UUID?
     let onPick: (@MainActor (MeshPickInput) -> Void)?
     let cameraState: MeshCameraState?
@@ -172,6 +173,12 @@ public struct MeshViewport: NSViewRepresentable {
         return next
     }
 
+    package func withAnimationGround(lease: UUID, restBounds: RenderBounds, offset: SIMD2<Double>) -> Self {
+        var next = self
+        next.animationGround = (lease, restBounds, offset)
+        return next
+    }
+
     public func makeNSView(context: Context) -> InteractiveMeshView {
         let view = InteractiveMeshView()
         view.device = MTLCreateSystemDefaultDevice()
@@ -206,6 +213,13 @@ public struct MeshViewport: NSViewRepresentable {
         view.updatePicking(revision: pickingRevision, callback: onPick)
         view.cameraInteractionAllowed = cameraInteractionAllowed
         view.adoptCameraState(cameraState)
+        let animationLease = animationGround?.lease
+        if view.animationLease != animationLease {
+            view.animationLease = animationLease
+            view.renderer = nil
+            view.meshRevision = nil
+            view.failedMeshRevision = nil
+        }
         if view.alphaRequest.update(blendsVertexAlpha: blendsVertexAlpha) {
             view.meshRevision = nil
             view.failedMeshRevision = nil
@@ -222,9 +236,18 @@ public struct MeshViewport: NSViewRepresentable {
                 guard let device = view.device else {
                     throw RendererError.unavailable("This Mac does not provide a Metal device.")
                 }
-                let renderer = try MeshRenderer(
-                    mesh: mesh, device: device, colorPixelFormat: view.colorPixelFormat,
-                    depthPixelFormat: view.depthStencilPixelFormat, blendsVertexAlpha: blendsVertexAlpha)
+                let renderer: MeshRenderer
+                if let animationGround, let current = view.renderer, view.meshRevision != nil,
+                    case .expanded(let pose) = mesh
+                {
+                    try current.replaceAnimationFrame(mesh: pose, groundOffset: animationGround.offset)
+                    renderer = current
+                } else {
+                    renderer = try MeshRenderer(
+                        mesh: mesh, device: device, colorPixelFormat: view.colorPixelFormat,
+                        depthPixelFormat: view.depthStencilPixelFormat, blendsVertexAlpha: blendsVertexAlpha,
+                        referenceBounds: animationGround?.restBounds)
+                }
                 renderer.camera = view.orbitCamera
                 view.meshRevision = meshRevision
                 view.failedMeshRevision = nil
@@ -235,13 +258,16 @@ public struct MeshViewport: NSViewRepresentable {
                 let message = error.localizedDescription
                 let alphaEpoch = view.alphaRequest.epoch
                 DispatchQueue.main.async {
-                    guard view.failedMeshRevision == meshRevision,
+                    guard view.failedMeshRevision == meshRevision, view.animationLease == animationLease,
                         view.alphaRequest.accepts(alphaEpoch)
                     else { return }
                     onError(message)
                 }
                 return
             }
+        }
+        if view.meshRevision == meshRevision {
+            view.renderer?.animationGroundOffset = animationGround?.offset
         }
         do {
             try view.renderer?.updateDrawRange(drawRange)
@@ -547,6 +573,7 @@ public class InteractiveMeshView: MTKView {
     }
 
     deinit { materialTask?.cancel() }
+    var animationLease: UUID?
     var meshRevision: Int?
     var failedMeshRevision: Int?
     var cameraReset = 0

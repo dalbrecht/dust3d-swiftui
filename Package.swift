@@ -1,3 +1,4 @@
+import Foundation
 // swift-tools-version: 6.0
 import PackageDescription
 
@@ -76,3 +77,8 @@ let package = Package(
     ],
     cxxLanguageStandard: .cxx17
 )
+
+if ProcessInfo.processInfo.environment["DUST3D_EXPERIMENTAL_ANIMATION"] == "1" {
+    package.targets.first { $0.name == "Dust3DEditor" }?.dependencies.append(
+        .product(name: "Dust3DExperimentalAnimation", package: "dust3d-core"))
+}

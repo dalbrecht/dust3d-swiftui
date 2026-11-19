@@ -125,7 +125,7 @@ public enum MeshLoader {
         return try operation(handle)
     }
 
-    static func loadingError(_ error: Dust3DError) -> MeshLoadingError {
+    package static func loadingError(_ error: Dust3DError) -> MeshLoadingError {
         var error = error
         let message = withUnsafeBytes(of: &error.message) { bytes in
             String(decoding: bytes.prefix(while: { $0 != 0 }), as: UTF8.self)

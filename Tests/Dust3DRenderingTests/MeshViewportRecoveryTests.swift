@@ -6,6 +6,43 @@ import XCTest
 
 @MainActor
 final class MeshViewportRecoveryTests: XCTestCase {
+    func testAnimationViewportReusesRendererWithinClipAndRetiresItOnReplacement() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        let view = InteractiveMeshView(frame: .zero, device: device)
+        view.isPaused = true
+        view.depthStencilPixelFormat = .depth32Float
+        let vertices = [SIMD3<Float>(-1, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)].map {
+            MeshVertex(position: $0, normal: SIMD3(0, 0, 1), color: SIMD4(1, 0, 0, 1))
+        }
+        let mesh = Mesh(vertices: vertices, nodeCount: 3, partCount: 1, warning: "")
+        let bounds = try RenderBounds(vertices: vertices)
+        let lease = UUID()
+        func update(_ lease: UUID, sample: Int, offset: Double, wireframe: Bool = false) {
+            MeshViewport(mesh: mesh, isWireframe: wireframe, cameraReset: 0, meshRevision: sample) { XCTFail($0) }
+                .withAnimationGround(lease: lease, restBounds: bounds, offset: SIMD2(offset, 0))
+                .updateRenderer(in: view)
+        }
+
+        update(lease, sample: 0, offset: 0)
+        let renderer = try XCTUnwrap(view.renderer)
+        renderer.camera.orbit(horizontal: 20, vertical: -10)
+        let camera = renderer.camera
+        update(lease, sample: 0, offset: 0.25, wireframe: true)
+        XCTAssertTrue(view.renderer === renderer)
+        XCTAssertTrue(renderer.isWireframe)
+        XCTAssertEqual(renderer.camera.yaw, camera.yaw)
+        XCTAssertEqual(renderer.camera.pitch, camera.pitch)
+        XCTAssertEqual(renderer.animationGroundOffset, SIMD2(0.25, 0))
+        update(lease, sample: 1, offset: 0.5)
+        XCTAssertTrue(view.renderer === renderer)
+        XCTAssertEqual(view.meshRevision, 1)
+        XCTAssertFalse(renderer.isWireframe)
+        XCTAssertEqual(renderer.animationGroundOffset, SIMD2(0.5, 0))
+        update(UUID(), sample: 1, offset: 0)
+        XCTAssertFalse(view.renderer === renderer)
+        XCTAssertEqual(view.renderer?.animationGroundOffset, .zero)
+    }
+
     func testPreviewUsesAnInsetNativeFocusRingAndHandlesTinyBounds() {
         let view = InteractiveMeshView(frame: .init(x: 0, y: 0, width: 120, height: 80), device: nil)
         XCTAssertTrue(view.acceptsFirstResponder)

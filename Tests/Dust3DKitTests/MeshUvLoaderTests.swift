@@ -12,8 +12,13 @@ final class MeshUvLoaderTests: XCTestCase {
             XCTAssertEqual(result.metadata.triangles.count, result.geometry.triangleCount)
             XCTAssertFalse(result.metadata.charts.isEmpty)
             XCTAssertTrue(result.metadata.triangles.contains(where: \.hasMapping))
-            if name == "RoundedCrossing" {
-                XCTAssertTrue(result.metadata.triangles.contains { !$0.hasMapping })
+            for triangle in result.metadata.triangles {
+                let corners = [triangle.corners.first, triangle.corners.second, triangle.corners.third]
+                for corner in corners {
+                    XCTAssertTrue(corner.x.isFinite && corner.y.isFinite)
+                    XCTAssertTrue((0...1).contains(corner.x) && (0...1).contains(corner.y))
+                    if !triangle.hasMapping { XCTAssertEqual(corner, .zero) }
+                }
             }
             if name == "Sword" { XCTAssertFalse(result.metadata.gradients.isEmpty) }
             let copied = result.metadata

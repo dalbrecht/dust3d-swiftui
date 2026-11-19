@@ -144,7 +144,7 @@ def validate_arguments(arguments):
     if not arguments or arguments[0] not in ('build', 'test'):
         raise ValueError('Only SwiftPM build and test are supported')
     value_options = {'--product', '--filter', '--configuration'}
-    switches = {'--enable-code-coverage', '--parallel'}
+    switches = {'--enable-code-coverage', '--parallel', '--disable-swift-testing'}
     experimental_features = set()
     index = 1
     while index < len(arguments):
@@ -153,7 +153,7 @@ def validate_arguments(arguments):
             index += 1
         elif option == '-Xswiftc' and arguments[index + 1:index + 2] in (
                 ['-DMOTE3D_EXPERIMENTAL_HOLLOW'], ['-DMOTE3D_EXPERIMENTAL_RIG_TEMPLATE'],
-                ['-DMOTE3D_EXPERIMENTAL_GENERATED_RIG']):
+                ['-DMOTE3D_EXPERIMENTAL_GENERATED_RIG'], ['-DMOTE3D_EXPERIMENTAL_FISH_IDLE']):
             experimental_features.add(arguments[index + 1][2:])
             index += 2
         elif option in value_options and index + 1 < len(arguments) and not arguments[index + 1].startswith('-'):
@@ -162,6 +162,15 @@ def validate_arguments(arguments):
             raise ValueError(f'Unsupported SwiftPM argument: {option}')
 
     return sorted(experimental_features)
+
+
+def environment_for_swift_command(environment, command, experimental_features):
+    result = dict(environment)
+    result.pop('DUST3D_EXPERIMENTAL_ANIMATION', None)
+    required = {'MOTE3D_EXPERIMENTAL_FISH_IDLE', 'MOTE3D_EXPERIMENTAL_GENERATED_RIG'}
+    if command in ('build', 'test') and required.issubset(experimental_features):
+        result['DUST3D_EXPERIMENTAL_ANIMATION'] = '1'
+    return result
 
 
 def run_guarded(action, validate):
@@ -202,7 +211,8 @@ def run(app, core, root, arguments):
                '--config-path', str(work / 'config'), '--security-path', str(work / 'security')]
     env = dict(os.environ, CLANG_MODULE_CACHE_PATH=str(work / 'clang'), SWIFTPM_MODULECACHE_OVERRIDE=str(work / 'modules'), GIT_OPTIONAL_LOCKS='0')
     def swift(*args):
-        subprocess.run(['xcrun', 'swift', *args], cwd=snapshot_app, env=env, check=True)
+        subprocess.run(['xcrun', 'swift', *args], cwd=snapshot_app,
+                       env=environment_for_swift_command(env, args[0], experimental_features), check=True)
     run_guarded(lambda: swift('package', *options, 'resolve'), lambda: restore_resolved(resolved, saved))
     run_guarded(lambda: swift('package', *options, 'edit', 'dust3d-core', '--path', str(core)),
                 lambda: restore_resolved(resolved, saved))

@@ -66,9 +66,35 @@ public struct GeneratedRig: Sendable {
             cancellation: OpaquePointer? = nil
         ) throws -> Self {
             try Task.checkCancellation()
+            return try withNativeBones(hierarchy.bones) { bones in
+                try hierarchy.type.utf8CString.withUnsafeBufferPointer { type in
+                    try data.withUnsafeBytes { archive in
+                        var options = dust3d_generated_rig_default_options()
+                        options.head_has_eyelids = headHasEyelids ? 1 : 0
+                        options.cancellation = cancellation
+                        var error = Dust3DError()
+                        guard
+                            let owner = dust3d_generated_rig_load(
+                                archive.bindMemory(to: UInt8.self).baseAddress, archive.count,
+                                type.baseAddress, type.count - 1, bones.baseAddress, bones.count, &options, &error)
+                        else {
+                            throw MeshLoader.loadingError(error)
+                        }
+                        defer { dust3d_generated_rig_destroy(owner) }
+                        try Task.checkCancellation()
+                        return try copy(owner, expectedNames: hierarchy.bones.map(\.name))
+                    }
+                }
+            }
+        }
+
+        /// Borrow source-order template names only for the synchronous operation.
+        package static func withNativeBones<T>(
+            _ bones: [RigTemplateBone], _ body: (UnsafeBufferPointer<Dust3DGeneratedRigBoneInput>) throws -> T
+        ) rethrows -> T {
             var bytes: [CChar] = []
             var offsets: [(Int, Int)] = []
-            for bone in hierarchy.bones {
+            for bone in bones {
                 let name = bytes.count
                 bytes.append(contentsOf: bone.name.utf8.map { CChar(bitPattern: $0) })
                 let parent = bytes.count
@@ -77,7 +103,7 @@ public struct GeneratedRig: Sendable {
             }
             return try bytes.withUnsafeBufferPointer { names in
                 var inputs: [Dust3DGeneratedRigBoneInput] = []
-                for (index, bone) in hierarchy.bones.enumerated() {
+                for (index, bone) in bones.enumerated() {
                     var input = Dust3DGeneratedRigBoneInput()
                     input.name = names.baseAddress?.advanced(by: offsets[index].0)
                     input.name_length = bone.name.utf8.count
@@ -85,26 +111,7 @@ public struct GeneratedRig: Sendable {
                     input.parent_length = bone.parentName.utf8.count
                     inputs.append(input)
                 }
-                return try hierarchy.type.utf8CString.withUnsafeBufferPointer { type in
-                    try inputs.withUnsafeBufferPointer { bones in
-                        try data.withUnsafeBytes { archive in
-                            var options = dust3d_generated_rig_default_options()
-                            options.head_has_eyelids = headHasEyelids ? 1 : 0
-                            options.cancellation = cancellation
-                            var error = Dust3DError()
-                            guard
-                                let owner = dust3d_generated_rig_load(
-                                    archive.bindMemory(to: UInt8.self).baseAddress, archive.count,
-                                    type.baseAddress, type.count - 1, bones.baseAddress, bones.count, &options, &error)
-                            else {
-                                throw MeshLoader.loadingError(error)
-                            }
-                            defer { dust3d_generated_rig_destroy(owner) }
-                            try Task.checkCancellation()
-                            return try copy(owner, expectedNames: hierarchy.bones.map(\.name))
-                        }
-                    }
-                }
+                return try inputs.withUnsafeBufferPointer(body)
             }
         }
 
@@ -122,7 +129,7 @@ public struct GeneratedRig: Sendable {
             }
         }
 
-        private static func copy(_ owner: OpaquePointer, expectedNames: [String]) throws -> Self {
+        package static func copy(_ owner: OpaquePointer, expectedNames: [String]) throws -> Self {
             let count = dust3d_generated_rig_joint_count(owner)
             let payload = dust3d_generated_rig_output_bytes(owner)
             let eyelids = dust3d_generated_rig_eyelids_generated(owner)

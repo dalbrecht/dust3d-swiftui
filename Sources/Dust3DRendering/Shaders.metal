@@ -39,6 +39,40 @@ fragment float4 meshFragment(VertexOutput input [[stage_in]])
     return float4(input.color.rgb * (0.25 + 0.55 * key + 0.2 * fill), input.color.a);
 }
 
+struct AnimationGroundUniforms {
+    float4x4 transform;
+    float4x4 rotation;
+    float4 centerAndRadius;
+    float2 phase;
+};
+
+struct AnimationGroundOutput {
+    float4 position [[position]];
+    float2 checkerPosition;
+};
+
+vertex AnimationGroundOutput animationGroundVertex(uint index [[vertex_id]],
+    constant AnimationGroundUniforms& uniforms [[buffer(0)]])
+{
+    const float2 corners[] = {
+        {-10.0, -10.0}, {10.0, -10.0}, {10.0, 10.0},
+        {-10.0, -10.0}, {10.0, 10.0}, {-10.0, 10.0}
+    };
+    float3 world = float3(corners[index].x, 0.0, corners[index].y);
+    float3 fitted = (world - uniforms.centerAndRadius.xyz) / uniforms.centerAndRadius.w;
+    AnimationGroundOutput output;
+    output.position = uniforms.transform * float4(fitted, 1.0);
+    output.checkerPosition = (uniforms.rotation * float4(world, 1.0)).xz + uniforms.phase;
+    return output;
+}
+
+fragment float4 animationGroundFragment(AnimationGroundOutput input [[stage_in]])
+{
+    float2 cells = floor(input.checkerPosition * 2.0);
+    float parity = fract((cells.x + cells.y) * 0.5) * 2.0;
+    return float4(float3(mix(0.92, 0.98, parity)), 1.0);
+}
+
 struct BakedMeshVertex {
     float4 position;
     float4 normal;

@@ -8,6 +8,63 @@ import XCTest
 
 @MainActor
 final class IndexedMetalRenderingTests: XCTestCase {
+    func testAnimationGroundMovesByHalfUnitAndRepeatsAfterOneUnit() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        let vertices = [SIMD3<Float>(-1, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)].map {
+            MeshVertex(position: $0, normal: SIMD3(0, 0, 1), color: SIMD4(1, 0, 0, 1))
+        }
+        let mesh = RenderMesh.expanded(Mesh(vertices: vertices, nodeCount: 0, partCount: 1, warning: ""))
+        let bounds = try RenderBounds(vertices: vertices)
+        let renderer = try MeshRenderer(mesh: mesh, device: device, referenceBounds: bounds)
+        renderer.camera = OrbitCamera(yaw: 0, pitch: 0.4)
+        renderer.animationGroundOffset = .zero
+        let stationary = try pixels(renderer, device: device)
+        renderer.animationGroundOffset = SIMD2(0.5, 0)
+        let shifted = try pixels(renderer, device: device)
+        let checkerPixels = stride(from: 0, to: stationary.count, by: 4).filter {
+            stationary[$0] == 235 || stationary[$0] == 250
+        }
+        XCTAssertGreaterThan(checkerPixels.count, 100)
+        XCTAssertGreaterThan(
+            checkerPixels.filter { Int(stationary[$0]) + Int(shifted[$0]) == 485 }.count,
+            checkerPixels.count * 9 / 10)
+        renderer.animationGroundOffset = SIMD2(1, 0)
+        XCTAssertEqual(try pixels(renderer, device: device), stationary)
+        renderer.animationGroundOffset = SIMD2(-0.5, 0)
+        XCTAssertEqual(try pixels(renderer, device: device), shifted)
+        renderer.animationGroundOffset = nil
+        let meshOnly = try MeshRenderer(mesh: mesh, device: device)
+        meshOnly.camera = renderer.camera
+        XCTAssertEqual(try pixels(renderer, device: device), try pixels(meshOnly, device: device))
+    }
+
+    func testAnimationFrameReplacementKeepsTheCameraAndPublishesMeshAndGroundTogether() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
+        func mesh(_ translation: Float) -> Mesh {
+            let vertices = [SIMD3<Float>(-1, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)].map {
+                MeshVertex(position: $0 + SIMD3(translation, 0, 0), normal: SIMD3(0, 0, 1), color: SIMD4(1, 0, 0, 1))
+            }
+            return Mesh(vertices: vertices, nodeCount: 0, partCount: 1, warning: "")
+        }
+
+        let rest = mesh(0)
+        let pose = mesh(0.5)
+        let bounds = try RenderBounds(vertices: rest.vertices)
+        let renderer = try MeshRenderer(mesh: .expanded(rest), device: device, referenceBounds: bounds)
+        renderer.camera = OrbitCamera(yaw: 0.3, pitch: 0.4)
+        try renderer.replaceAnimationFrame(mesh: pose, groundOffset: SIMD2(0.5, -0.25))
+        let reference = try MeshRenderer(mesh: .expanded(pose), device: device, referenceBounds: bounds)
+        reference.camera = renderer.camera
+        reference.animationGroundOffset = SIMD2(0.5, -0.25)
+        let expected = try pixels(reference, device: device)
+        XCTAssertEqual(try pixels(renderer, device: device), expected)
+        XCTAssertEqual(renderer.camera.yaw, 0.3)
+
+        let invalid = Mesh(vertices: [], nodeCount: 0, partCount: 0, warning: "")
+        XCTAssertThrowsError(try renderer.replaceAnimationFrame(mesh: invalid, groundOffset: .zero))
+        XCTAssertEqual(try pixels(renderer, device: device), expected)
+    }
+
     func testIndexedAndExpandedProductionPassesRenderTheSameSolidAndWireframe() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device is available") }
         var document = try Dust3DDocument(data: Dust3DDocument.emptyArchive())
