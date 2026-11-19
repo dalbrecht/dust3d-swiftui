@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a keyboard-accessible Focus 3D Preview control to Replay Steps.
+
 - Add a Focus Object button for keyboard orbit in Quick Look.
 
 - Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
