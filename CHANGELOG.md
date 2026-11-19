@@ -98,6 +98,8 @@
 
 - Keep rapid canvas wheel adjustments to radius and spacing in order, with one Undo step for each edit.
 
+- Select editable geometry from the Canvas menu without including hidden or locked parts.
+
 - Stop cancelled preview requests before they start fallback mesh generation.
 
 - Set Hard Joins and Extra Rings on the Model part that owns the current graph selection.
