@@ -345,6 +345,8 @@
 
 - Refresh selectable export-warning accessibility text when the result changes (#235).
 
+- Reuse successful geometry encodes for repeated formats in a headless batch.
+
 - Add Insert Midpoint to the edge inspector and Canvas menu, with one-step Undo and preserved edge direction.
 
 - Bind origin-move callbacks to their pointer gesture so cancelled drags cannot affect a later gesture; Escape prioritizes origin mode over a concurrent export (#45).
