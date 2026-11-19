@@ -15,11 +15,12 @@ struct OriginHandle: View {
 
     var body: some View {
         let point = projection.point(for: origin)
-        let handlePrecisionKey = precisionKey ?? store.canvasPrecisionKeyHandler()
+        let handlePrecisionKey = precisionKey ?? store.canvasPrecisionKeyHandler(profileLease: profileLease)
         let direct = store.directOriginDragAction(projection: projection, lease: profileLease)
         let explicit = store.isMovingOrigin && !store.isWorking
         let enabled = explicit || direct != nil
         let hitSize: CGFloat = explicit ? 44 : 20
+
         Image(systemName: "scope")
             .font(.title3)
             .foregroundStyle(store.isMovingOrigin || store.originDragPosition != nil ? Color.accentColor : .secondary)

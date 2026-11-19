@@ -100,6 +100,8 @@
 
 - Honor saved component collapse flags when opening older Dust3D documents.
 
+- Keep rapid canvas nudge and spacing keystrokes in order, with one Undo step for each edit.
+
 - Open the document picker with Command-double-click on blank canvas.
 
 - Select All in the focused Nodes sidebar selects the filtered node rows.
