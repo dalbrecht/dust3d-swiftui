@@ -17,6 +17,13 @@ struct CanvasPartStateMenu: View {
             Button("Toggle X Mirror on Owning Part") { if admitsInput() { mirror?() } }
                 .help("Press M while the canvas has keyboard focus.")
                 .disabled(mirror == nil)
+            Divider()
+            ForEach(CanvasPartShapeShortcut.allCases, id: \.self) { shortcut in
+                let toggle = store?.canvasPartShapeAction(shortcut.property)
+                Button(shortcut.title) { if admitsInput() { toggle?() } }
+                    .help("Press \(shortcut.keyLabel) while the canvas has keyboard focus.")
+                    .disabled(toggle == nil)
+            }
         }
         .disabled(!admitsInput() || lock == nil || disable == nil)
     }

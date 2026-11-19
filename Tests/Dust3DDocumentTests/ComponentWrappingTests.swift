@@ -108,7 +108,34 @@ final class ComponentWrappingTests: XCTestCase {
         let disabled = try changed.applying(.setComponentWrapMode(id: "g", mode: .none))
         XCTAssertEqual(try settings(disabled).scalarValue(.thickness), 0.004)
     }
-    func testInvalidEditsAndLinkedOwnersRejectAtomicallyAndDefaultsRemoveOnlyChangedAttributes() throws {
+    func testChangedSkinDefaultsRemainAuthoredWhenSwitchingToCloth() throws {
+        let source = try document(
+            "wrap='Skin' wrapOffset='0.03' wrapSmoothness='0.09' wrapKeep='true' wrapFaces='1200' wrapThickness='0.01'")
+        var history = DocumentHistory(document: source)
+        for command in [
+            DocumentCommand.setComponentWrapScalar(id: "g", property: .offset, value: 0),
+            .setComponentWrapScalar(id: "g", property: .smoothness, value: 0.02),
+            .setComponentWrapScalar(id: "g", property: .thickness, value: 0),
+            .setComponentWrapKeepChildren(id: "g", value: false),
+            .setComponentWrapFaces(id: "g", faces: 1600),
+        ] {
+            try history.apply(command)
+        }
+        let skin = history.document.encoded()
+        try history.apply(.setComponentWrapMode(id: "g", mode: .cloth))
+        let reopened = try Dust3DDocument(data: history.document.encoded())
+        let cloth = try settings(reopened)
+        XCTAssertEqual(cloth.mode, .cloth)
+        XCTAssertEqual(cloth.scalarValue(.offset), 0)
+        XCTAssertEqual(cloth.scalarValue(.smoothness), 0.02)
+        XCTAssertEqual(cloth.scalarValue(.thickness), 0)
+        XCTAssertEqual(cloth.keepsChildren, false)
+        XCTAssertEqual(cloth.targetFaces, 1600)
+        XCTAssertTrue(history.undo())
+        XCTAssertEqual(history.document.encoded(), skin)
+    }
+
+    func testInvalidEditsRejectAndChangedScalarDefaultsStayAuthored() throws {
         let source = try document("wrap='Cloth'")
         for property in ComponentWrappingScalarProperty.allCases {
             for value in [-1, property.bounds.upperBound + 1, Double.nan, .infinity, 1e-50] {
@@ -126,7 +153,8 @@ final class ComponentWrappingTests: XCTestCase {
                 .setComponentWrapScalar(id: "g", property: property, value: property.defaultValue(for: .cloth)))
             let group = try XCTUnwrap(
                 try XMLDocument(data: reset.modelXML).nodes(forXPath: "//component[@id='g']").first as? XMLElement)
-            XCTAssertNil(group.attribute(forName: property.rawValue))
+            XCTAssertEqual(
+                group.attribute(forName: property.rawValue)?.stringValue, String(property.defaultValue(for: .cloth)))
         }
         for faces in [63, 20001, Int.min, Int.max] {
             XCTAssertThrowsError(try source.applying(.setComponentWrapFaces(id: "g", faces: faces)))
@@ -149,7 +177,7 @@ final class ComponentWrappingTests: XCTestCase {
             }
         }
     }
-    func testUnknownDefaultsCanBeReplacedExplicitlyAndChangedDefaultsRemoveAttributes() throws {
+    func testUnknownDefaultsCanBeReplacedAndChangedDefaultsStayAuthored() throws {
         let unknown = try document("wrap='Future' wrapKeep='future' wrapFaces='40000' wrapOffset='future'")
         var changed = try unknown.applying(.setComponentWrapKeepChildren(id: "g", value: false))
         changed = try changed.applying(.setComponentWrapFaces(id: "g", faces: 1600))
@@ -163,8 +191,8 @@ final class ComponentWrappingTests: XCTestCase {
         changed = try changed.applying(.setComponentWrapFaces(id: "g", faces: 1200))
         let group = try XCTUnwrap(
             try XMLDocument(data: changed.modelXML).nodes(forXPath: "//component[@id='g']").first as? XMLElement)
-        XCTAssertNil(group.attribute(forName: "wrapKeep"))
-        XCTAssertNil(group.attribute(forName: "wrapFaces"))
+        XCTAssertEqual(group.attribute(forName: "wrapKeep")?.stringValue, "true")
+        XCTAssertEqual(group.attribute(forName: "wrapFaces")?.stringValue, "1200")
         XCTAssertEqual(group.attribute(forName: "wrapOffset")?.stringValue, "0.0")
         let source = try document()
         XCTAssertEqual(try source.applying(.setComponentWrapMode(id: "g", mode: .none)).encoded(), source.encoded())

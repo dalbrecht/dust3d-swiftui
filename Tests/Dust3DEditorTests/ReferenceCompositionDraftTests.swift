@@ -23,6 +23,59 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         }
     }
 
+    @MainActor func testPanelDropUsesFirstSupportedURLAndPreservesOtherProfile() async throws {
+        let input = try source()
+        let draft = ReferenceCompositionDraft(service: ImmediateCompositionService(source: input))
+        defer { draft.stop() }
+        draft.useExisting(input.image)
+        try await settle(draft)
+        draft.setCrop(profile: .front, values: ["1", "0", "2", "2"])
+        try await settle(draft)
+        draft.importSource(url: URL(fileURLWithPath: "/previous"), profile: .side)
+        try await settle(draft)
+        draft.setCrop(profile: .side, values: ["0", "0", "1", "2"])
+        try await settle(draft)
+        draft.toggleSideMirror()
+        try await settle(draft)
+        let originalFront = try XCTUnwrap(draft.front)
+
+        let unsupported = URL(fileURLWithPath: "/tmp/geometry.ds3")
+        let remote = try XCTUnwrap(URL(string: "file://remote.example/tmp/reference.png"))
+        let selected = URL(fileURLWithPath: "/tmp/replacement.PNG")
+        let later = URL(fileURLWithPath: "/tmp/invalid.png")
+        XCTAssertFalse(draft.importDroppedSource(urls: [unsupported, remote], profile: .side))
+        XCTAssertTrue(draft.canApply)
+        XCTAssertTrue(draft.importDroppedSource(urls: [unsupported, remote, selected, later], profile: .side))
+        XCTAssertFalse(draft.canApply)
+        try await settle(draft)
+        XCTAssertTrue(draft.canApply)
+        XCTAssertNil(draft.errorMessage)
+        XCTAssertTrue(draft.front?.image === originalFront.image)
+        XCTAssertEqual(draft.front?.crop, originalFront.crop)
+        XCTAssertEqual(draft.side?.crop, input.crop)
+        XCTAssertEqual(draft.side?.isMirrored, false)
+    }
+
+    @MainActor func testPanelDropIgnoresLateReadAfterClosingComposer() async throws {
+        let service = HeldCompositionService(source: try source())
+        let draft = ReferenceCompositionDraft(service: service)
+        let image = URL(fileURLWithPath: "/tmp/front.png")
+        XCTAssertTrue(draft.importDroppedSource(urls: [image], profile: .front))
+        for _ in 0..<300 {
+            if await service.isWaiting { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let isWaiting = await service.isWaiting
+        XCTAssertTrue(isWaiting)
+        draft.stop()
+        await service.release()
+        try await Task.sleep(for: .milliseconds(20))
+        XCTAssertFalse(draft.importDroppedSource(urls: [image], profile: .front))
+        XCTAssertNil(draft.front)
+        XCTAssertNil(draft.result)
+        XCTAssertFalse(draft.canApply)
+    }
+
     @MainActor func testPanelDropImportsOneLocalImageIntoTheChosenProfile() async throws {
         let input = try source()
         let service = HeldDropCompositionService(source: input)
@@ -30,7 +83,6 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         defer { draft.stop() }
 
         let url = URL(fileURLWithPath: "/tmp/reference.PNG")
-        XCTAssertFalse(draft.importDroppedSource(urls: [url, url], profile: .side))
         XCTAssertFalse(draft.importDroppedSource(urls: [URL(fileURLWithPath: "/tmp/model.ds3")], profile: .side))
         XCTAssertTrue(draft.importDroppedSource(urls: [url], profile: .side))
         try await settle(draft)
@@ -352,6 +404,111 @@ final class ReferenceCompositionDraftTests: XCTestCase {
         XCTAssertNotNil(draft.errorMessage)
     }
 
+    @MainActor func testLiveCropPreviewPublishesDuringSustainedInputAndCommitsOnlyFinalCrop() async throws {
+        let input = try source()
+        let service = HeldPreviewCompositionService()
+        let draft = ReferenceCompositionDraft(service: service)
+        defer { draft.stop() }
+        draft.useExisting(input.image)
+        try await waitForComposition(service)
+        try await service.releaseFirst()
+        try await settle(draft)
+        let original = try XCTUnwrap(draft.result?.png)
+        let expected = try XCTUnwrap(draft.front)
+        let context = draft.cropPreviewContext
+        let gesture = UUID()
+        let first = try ReferenceImageCrop(size: input.crop.size, x: 0, y: 0, width: 1, height: 2)
+        let middle = try ReferenceImageCrop(size: input.crop.size, x: 0, y: 0, width: 2, height: 2)
+        let latest = try ReferenceImageCrop(size: input.crop.size, x: 1, y: 0, width: 3, height: 2)
+
+        draft.previewCrop(first, profile: .front, expectedSource: expected, gesture: gesture, context: context)
+        try await waitForComposition(service)
+        draft.previewCrop(middle, profile: .front, expectedSource: expected, gesture: gesture, context: context)
+        draft.previewCrop(latest, profile: .front, expectedSource: expected, gesture: gesture, context: context)
+        XCTAssertFalse(draft.canApply)
+        XCTAssertEqual(draft.result?.png, original)
+        XCTAssertEqual(draft.front?.crop, expected.crop)
+        try await Task.sleep(for: .milliseconds(20))
+        let heldCount = await service.count
+        XCTAssertEqual(heldCount, 1)
+
+        try await service.releaseFirst()
+        try await waitForComposition(service)
+        let firstLayout = try ReferenceCompositionLayout(front: first, side: nil)
+        XCTAssertEqual(
+            draft.cropPreviewImage?.width, firstLayout.width,
+            "A completed frame must publish while the latest sample is still in flight")
+        XCTAssertEqual(draft.result?.png, original)
+        let renderedCrop = await service.firstFrontCrop
+        XCTAssertEqual(renderedCrop, latest)
+        let layout = try ReferenceCompositionLayout(front: latest, side: nil)
+        try await service.releaseFirst()
+        for _ in 0..<300 {
+            if draft.cropPreviewImage?.width == layout.width { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(draft.cropPreviewImage?.width, layout.width)
+        XCTAssertEqual(draft.result?.png, original)
+        XCTAssertFalse(draft.canApply)
+
+        draft.commitPointerCrop(latest, profile: .front, expectedSource: expected, context: context)
+        draft.setCropping(gesture, isActive: false)
+        XCTAssertNil(draft.cropPreviewImage)
+        XCTAssertFalse(draft.canApply)
+        try await waitForComposition(service)
+        try await service.releaseFirst()
+        try await settle(draft)
+        XCTAssertEqual(draft.front?.crop, latest)
+        XCTAssertEqual(draft.result?.layout, layout)
+        XCTAssertTrue(draft.canApply)
+    }
+
+    @MainActor func testLiveCropPreviewRejectsCancelledAndReplacedGestureResults() async throws {
+        let input = try source()
+        let service = HeldPreviewCompositionService()
+        let draft = ReferenceCompositionDraft(service: service)
+        draft.useExisting(input.image)
+        try await waitForComposition(service)
+        try await service.releaseFirst()
+        try await settle(draft)
+        let original = try XCTUnwrap(draft.result?.png)
+        let expected = try XCTUnwrap(draft.front)
+        let context = draft.cropPreviewContext
+        let gesture = UUID()
+        let crop = try ReferenceImageCrop(size: input.crop.size, x: 1, y: 0, width: 2, height: 2)
+
+        draft.previewCrop(crop, profile: .front, expectedSource: expected, gesture: gesture, context: context)
+        try await waitForComposition(service)
+        draft.setCropping(gesture, isActive: false)
+        XCTAssertTrue(draft.canApply)
+        try await service.releaseFirst()
+        try await Task.sleep(for: .milliseconds(20))
+        XCTAssertNil(draft.cropPreviewImage)
+        XCTAssertEqual(draft.result?.png, original)
+
+        draft.previewCrop(crop, profile: .front, expectedSource: expected, gesture: UUID(), context: context)
+        try await waitForComposition(service)
+        draft.useExisting(input.image)
+        draft.commitPointerCrop(crop, profile: .front, expectedSource: expected, context: context)
+        XCTAssertEqual(draft.front?.crop, expected.crop)
+        try await waitForComposition(service, count: 2)
+        draft.stop()
+        XCTAssertFalse(draft.canApply)
+        try await service.releaseFirst()
+        try await service.releaseFirst()
+        try await Task.sleep(for: .milliseconds(20))
+        XCTAssertNil(draft.cropPreviewImage)
+        XCTAssertNil(draft.result)
+    }
+
+    @MainActor private func waitForComposition(_ service: HeldPreviewCompositionService, count: Int = 1) async throws {
+        for _ in 0..<300 {
+            if await service.count >= count { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("Composition did not reach its controlled barrier")
+    }
+
     @MainActor func testObsoletePreviewCannotReplaceNewerDraft() async throws {
         let input = try source()
         let service = HeldPreviewCompositionService()
@@ -404,7 +561,9 @@ private actor ImmediateCompositionService: ReferenceCompositionServing {
     let source: ReferenceCompositionSource
     init(source: ReferenceCompositionSource) { self.source = source }
     func importSource(url: URL) throws -> ReferenceCompositionSource {
-        if url.lastPathComponent == "invalid" { throw ReferenceImageError.fileReadFailed("fixture read failure") }
+        if ["invalid", "invalid.png"].contains(url.lastPathComponent) {
+            throw ReferenceImageError.fileReadFailed("fixture read failure")
+        }
         return source
     }
     func compose(front: ReferenceCompositionSource?, side: ReferenceCompositionSource?) throws
@@ -439,6 +598,7 @@ private actor HeldPreviewCompositionService: ReferenceCompositionServing {
             CheckedContinuation<ReferenceCompositionResult, Never>
         )] = []
     var count: Int { pending.count }
+    var firstFrontCrop: ReferenceImageCrop? { pending.first?.0?.crop }
     func importSource(url: URL) throws -> ReferenceCompositionSource { throw ReferenceImageError.invalidImage }
     func compose(front: ReferenceCompositionSource?, side: ReferenceCompositionSource?) async
         -> ReferenceCompositionResult

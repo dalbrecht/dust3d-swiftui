@@ -19,12 +19,37 @@ enum CanvasPrecisionAction: CaseIterable, Hashable, Sendable {
     }
 }
 
+enum CanvasPartShapeShortcut: String, CaseIterable {
+    case subdivision = "b"
+    case roundedEnds = "u"
+    case chamfer = "c"
+
+    var property: PartModifierProperty {
+        switch self {
+        case .subdivision: .subdivision
+        case .roundedEnds: .roundedEnds
+        case .chamfer: .chamfer
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .subdivision: "Toggle Subdivision"
+        case .roundedEnds: "Toggle Rounded Ends"
+        case .chamfer: "Toggle Chamfer"
+        }
+    }
+
+    var keyLabel: String { rawValue.uppercased() }
+}
+
 enum CanvasVisibilityShortcut: Equatable {
     case toggle
     case isolate
 }
 
-/// Only actual bare arrow/bracket events belong to this responder boundary.
+/// Routes canvas navigation and bare graph editing keys at the canvas responder boundary.
+
 struct CanvasPrecisionKeyInput {
     let keyCode: UInt16
     let characters: String
@@ -74,6 +99,11 @@ struct CanvasPrecisionKeyInput {
         isBareEditingKey && (characters == "m" || characters == "M")
     }
 
+    var partShapeShortcut: CanvasPartShapeShortcut? {
+        guard isBareEditingKey else { return nil }
+        return CanvasPartShapeShortcut(rawValue: characters.lowercased())
+    }
+
     var visibilityShortcut: CanvasVisibilityShortcut? {
         guard modifiers.intersection([.command, .control, .option, .function]).isEmpty,
             characters == "h" || characters == "H"
@@ -89,11 +119,23 @@ struct CanvasPrecisionKeyInput {
     @MainActor func permitsDispatch(in window: NSWindow) -> Bool {
         guard
             axisLockConstraint != nil || partStateProperty != nil || selectsOwningComponent || opensComponentProperties
-                || isAlternateDelete || togglesPartMirror || visibilityShortcut != nil
+                || isAlternateDelete || togglesPartMirror || partShapeShortcut != nil || visibilityShortcut != nil
 
         else { return true }
         return window.isKeyWindow && window.attachedSheet == nil && window.sheetParent == nil
             && NSApp.modalWindow == nil
+    }
+
+    private var isSelectionPropertiesShortcut: Bool {
+        characters == " " && modifiers.intersection([.command, .control, .option, .shift, .function]).isEmpty
+    }
+
+    var requiresActiveCanvasWindow: Bool { partStateProperty != nil || isSelectionPropertiesShortcut }
+
+    @MainActor
+    func routeSelectionProperties(action: (@MainActor () -> Bool)?) -> Bool {
+        guard isSelectionPropertiesShortcut, let action else { return false }
+        return isRepeat || action()
     }
 
     var action: CanvasPrecisionAction? {

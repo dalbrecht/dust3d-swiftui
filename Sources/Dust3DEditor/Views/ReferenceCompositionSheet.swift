@@ -53,10 +53,10 @@ import UniformTypeIdentifiers
                         }
                     }
                     GroupBox("Composed preview") {
-                        if let result = draft.result {
-                            Image(result.image, scale: 1, label: Text("Composed turnaround image"))
+                        if let image = draft.cropPreviewImage ?? draft.result?.image {
+                            Image(image, scale: 1, label: Text("Composed turnaround image"))
                                 .resizable().scaledToFit()
-                                .accessibilityValue("\(result.image.width) by \(result.image.height) pixels")
+                                .accessibilityValue("\(image.width) by \(image.height) pixels")
                         } else {
                             ContentUnavailableView(
                                 draft.isWorking ? "Preparing preview…" : "Import a profile to begin",
@@ -153,6 +153,7 @@ private struct ReferenceCropField: Hashable {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Button("Import \(profile.rawValue)…", action: importImage)
+                        .help("Choose an image or drop it onto this profile panel")
                     Button("Remove") { draft.remove(profile) }
                         .accessibilityLabel("Remove \(profile.rawValue) reference image")
                         .disabled(source == nil)
@@ -170,17 +171,28 @@ private struct ReferenceCropField: Hashable {
                     }
                     .pickerStyle(.segmented)
                     .help("Draw a new crop, or move and resize the existing rectangle.")
-                    ReferenceCropPreview(source: source, isAdjusting: isAdjustingCrop) { crop in
+                    let context = draft.cropPreviewContext
+                    let adjusting = isAdjustingCrop
+                    ReferenceCropPreview(source: source, isAdjusting: adjusting) { crop in
+                        guard context == draft.cropPreviewContext, adjusting == isAdjustingCrop else { return }
+                        draft.commitPointerCrop(crop, profile: profile, expectedSource: source, context: context)
                         isAdjustingCrop = true
-                        draft.setPointerCrop(crop, profile: profile, expectedSource: source)
                     } failure: {
+                        guard context == draft.cropPreviewContext, adjusting == isAdjustingCrop else { return }
                         draft.reportRejectedInput($0)
                     } activity: { identifier, isActive in
+                        guard !isActive || (context == draft.cropPreviewContext && adjusting == isAdjustingCrop) else {
+                            return
+                        }
                         draft.setCropping(identifier, isActive: isActive)
+                    } preview: { crop, identifier in
+                        guard adjusting == isAdjustingCrop else { return }
+                        draft.previewCrop(
+                            crop, profile: profile, expectedSource: source, gesture: identifier, context: context)
                     }
                     .id(
                         PreviewIdentity(
-                            image: ObjectIdentifier(source.image), isMirrored: source.isMirrored,
+                            context: context, image: ObjectIdentifier(source.image), isMirrored: source.isMirrored,
                             crop: [
                                 source.displayedCrop.x, source.displayedCrop.y, source.displayedCrop.width,
                                 source.displayedCrop.height,
@@ -216,7 +228,11 @@ private struct ReferenceCropField: Hashable {
                     Button("Use Full Image") { draft.useFullImage(profile) }
                         .accessibilityLabel("Use full \(profile.rawValue) reference image")
                 } else {
-                    ContentUnavailableView("No \(profile.rawValue) source", systemImage: "photo").frame(height: 180)
+                    ContentUnavailableView(
+                        "No \(profile.rawValue) source", systemImage: "photo",
+                        description: Text("Drop an image here or use Import \(profile.rawValue).")
+                    )
+                    .frame(height: 180)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -251,6 +267,7 @@ private struct ReferenceCropField: Hashable {
 }
 
 private struct PreviewIdentity: Hashable {
+    let context: UUID
     let image: ObjectIdentifier
     let isMirrored: Bool
     let crop: [Int]
@@ -263,6 +280,7 @@ struct ReferenceCropPreview: View {
     let select: (ReferenceImageCrop) -> Void
     let failure: (Error) -> Void
     let activity: (UUID, Bool) -> Void
+    var preview: (ReferenceImageCrop?, UUID) -> Void = { _, _ in }
     @State private var gestureIdentity = UUID()
     @GestureState private var drag: DragGesture.Value?
 
@@ -307,7 +325,11 @@ struct ReferenceCropPreview: View {
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 3).updating($drag) { value, state, _ in state = value }
+                        .onChanged { value in
+                            preview(try? selection(projection, value: value), gestureIdentity)
+                        }
                         .onEnded { value in
+                            defer { activity(gestureIdentity, false) }
                             do {
                                 select(try selection(projection, value: value))
                             } catch { failure(error) }
