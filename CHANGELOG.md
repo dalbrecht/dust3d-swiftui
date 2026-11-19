@@ -2,11 +2,7 @@
 
 ## Unreleased
 
-- Add a keyboard-accessible Focus 3D Preview control to Replay Steps.
-
-- Add a Focus Object button for keyboard orbit in Quick Look.
-
-- Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
+- Connect two explicitly selected nodes while keeping existing edge picks.
 
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
 
@@ -22,6 +18,8 @@
 - Announce reference-image composition errors with VoiceOver in the active sheet.
 - Identify the composed reference preview and profile-specific crop actions in VoiceOver.
 - Defer VoiceOver announcements for incomplete crop numbers until focus leaves that profile’s fields.
+- Opt into Qt opposite-profile depth when starting a part in the dual-profile canvas and see the placement preview in both profiles.
+
 - Keep Apply disabled when either reference profile has invalid crop numbers.
 - Focus the drawing canvas from the Canvas menu.
 - Discard focused inspector deformation, rotation, and smoothing drafts with Escape.
@@ -44,6 +42,8 @@
 - Keep modified keyboard shortcuts available when the model preview has focus.
 
 - Accept Qt XML fragments by content regardless of filename suffix when using `-paste-xml`.
+- Drag the document origin marker directly in Select mode.
+
 - Show the authored order of stitching lines in each component listing.
 - Announce new Viewer errors in the active window with VoiceOver.
 
@@ -60,6 +60,8 @@
 
 - Clear missing cut-face links when opening the Editor with a Qt XML fragment.
 
+- Preserve existing recovery copies and receipts if preparing a private replacement fails.
+
 - Open requested documents and report the error when a startup Qt XML fragment cannot be pasted.
 
 - Clear missing cut-face links from Qt XML pasted in headless exports.
@@ -71,6 +73,8 @@
 - Continue a headless batch when an output destination is an existing directory.
 
 - Continue headless export batches after an unsupported output format and report the failed destination.
+
+- Give newly created component groups a saved default name that stays the same when the group is reordered.
 
 - Continue saving headless DS3 outputs in a mixed batch when another output fails.
 
@@ -101,6 +105,8 @@
 - Connect selected endpoints on separate islands of a legacy part, preserving any remaining islands as separate parts in the same Undo step.
 
 - Scope Edit → Select All to edges when the Edges sidebar has keyboard focus.
+
+- Open the Selection inspector for one owning component with Space on the canvas or Show Selection Properties in the Canvas menu.
 
 - Lock or enable the hovered part from the canvas, using L or J when the canvas has keyboard focus.
 
@@ -142,6 +148,8 @@
 
 - Reset the Document Origin draft when replacing a document, even when both documents have the same origin.
 
+- Update the combined reference image preview while drawing, moving or resizing a crop. The document changes only on Apply.
+
 - Reorder one component among its siblings from the component sidebar actions or row context menu, with one-step Undo.
 
 - Browse a component group’s direct children and navigate back through its breadcrumb.
@@ -173,6 +181,8 @@
 - Keep Escape with focused text fields, sheets, and animation controls while preserving canvas and geometry export cancellation.
 
 - Rotate the canvas selection by a quarter turn around the other profile’s world axis while staying in the current profile.
+
+- Select Whole Part uses exact stored ownership for graph picks and the revealed component.
 
 - Show Front and Side together in an optional Side by Side workspace, with one editing pane and a read-only companion sharing the graph selection (#387).
 
@@ -216,6 +226,8 @@
 
 - Add independent Model, Bones and Weights controls to experimental generated-rest inspection, preserving the full camera frame, selected joint and numerical properties when geometry or weight colors are hidden (#367).
 
+- Open a separate Viewer window with File → New Window or Command-N.
+
 - Add a resizable Model/Generated Rest workspace with one per-window rest session, shared camera and stale-safe focused controls; preserve selection and camera across presentation changes (#367).
 
 - Add a source-ordered generated-joint hierarchy and read-only parent, endpoint, length, radius and signed-angle inspection to the experimental rest preview; preserve copied rig data if hierarchy preparation fails (#367).
@@ -247,6 +259,8 @@
 - Keep node and edge inspector actions bound to their original document and selection, preserving atomic Undo and read-only endpoint selection (#352).
 
 - Connect two selected endpoints from the inspector or Canvas menu, with explicit surviving part settings, stale-action protection and one Undo step (#349).
+
+- Include the upstream Dust3D authors in the Editor and Viewer About panels.
 
 - Add shared Help commands for the native project, issue reporting and upstream Dust3D, with visible link-opening failures (#348).
 
@@ -297,6 +311,8 @@
 
 - Enter a target in the node inspector to bend a chain from the keyboard.
 
+- Press H to toggle canvas visibility and Shift-H to isolate the owning part.
+
 - Shift-drag a graph selection to rotate it or bend a single endpoint chain.
 
 - Add graph auto-color from displayed reference pixels and default-color reset, with source-bound atomic Undo and stale-raster rejection (#45).
@@ -317,6 +333,12 @@
 
 - Drag component rows before or after siblings, into groups, or to the document root.
 
+- Add a keyboard-accessible Focus 3D Preview control to Replay Steps.
+
+- Add a Focus Object button for keyboard orbit in Quick Look.
+
+- Add Focus 3D Preview to the Viewer’s View menu for keyboard camera control.
+
 - Select all visible component rows with Command-A when the component sidebar has focus (#386).
 
 - Place selected components before or after a sibling from the inspector, with one-step Undo.
@@ -329,6 +351,8 @@
 
 - Add atomic Combine Mode and Normal Smoothing edits for multiple selected components, with explicit mixed values and one-step Undo.
 
+
+- Require two editable nodes for alignment to the selection center.
 
 - Select component graphs in the canvas from the sidebar context menu or by double-clicking a leaf row.
 
