@@ -19,6 +19,7 @@ struct Dust3DEditorApp: App {
     @FocusedValue(\.editorGeometryExportAction) private var geometryExportAction
     @FocusedValue(\.rigAssignmentCommand) private var rigAssignmentCommand
     @FocusedValue(\.editorPreviewCameraActions) private var previewCameraActions
+    @FocusedValue(\.editorPreviewFocus) private var previewFocus
     @FocusedValue(\.editorPreviewDisplayActions) private var previewDisplayActions
     @FocusedValue(\.editorAnimationFocus) private var isAnimationFocused
     @FocusedValue(\.editorTextEditing) private var isEditingText
@@ -272,6 +273,11 @@ struct Dust3DEditorApp: App {
                 )
                 .disabled(previewCameraActions?.canAutomaticallyOrbit != true)
                 .help("Pauses during dragging, while inactive, and when Reduce Motion is enabled.")
+                Button("Focus 3D Preview") {
+                    guard !rigAssignmentFocus.hasSheet else { return }
+                    previewFocus?.moveFocus(in: NSApp.keyWindow)
+                }
+                .disabled(previewFocus == nil || rigAssignmentFocus.hasSheet)
                 PreviewCameraMenu(
                     title: "Preview Camera", isEnabled: previewCameraActions?.canMove == true,
                     move: { previewCameraActions?.move($0) }, fit: { previewCameraActions?.fit() },
@@ -331,6 +337,18 @@ struct Dust3DEditorApp: App {
                 Button("Select All Nodes") { store?.selectAllNodes() }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
                     .disabled(store?.snapshot == nil || store?.isWorking != false || store?.isSelectingRigEdges == true)
+                let selectEditableGeometry = canvasOwner?.selectEditableGeometryAction()
+                Button("Select Editable Geometry") {
+                    guard let canvasWindow, NSApp.keyWindow === canvasWindow, store === canvasOwner,
+                        rigAssignmentFocus.allowsAssignment, isComponentSidebarFocused != true
+                    else { return }
+                    selectEditableGeometry?()
+                }
+                .disabled(
+                    canvasWindow == nil || selectEditableGeometry == nil || !rigAssignmentFocus.allowsAssignment
+                        || isComponentSidebarFocused == true
+                )
+                .help("Select visible editable nodes and edges while keeping locked geometry out of the selection.")
                 Button("Select Owning Component") {
                     guard let canvasWindow, NSApp.keyWindow === canvasWindow, store === canvasOwner,
                         rigAssignmentFocus.allowsAssignment
@@ -639,6 +657,7 @@ private struct EditorNodesSidebarSelectAllKey: FocusedValueKey { typealias Value
 private struct EditorStoreKey: FocusedValueKey { typealias Value = EditorStore }
 private struct EditorCanvasFocusKey: FocusedValueKey { typealias Value = @MainActor () -> Bool }
 
+private struct EditorPreviewFocusKey: FocusedValueKey { typealias Value = MeshViewportFocus }
 private struct EditorSelectionPropertiesActionKey: FocusedValueKey {
     typealias Value = @MainActor () -> Bool
 }
@@ -682,6 +701,11 @@ extension FocusedValues {
     var editorNodesSidebarSelectAll: NodesSidebarSelectAll? {
         get { self[EditorNodesSidebarSelectAllKey.self] }
         set { self[EditorNodesSidebarSelectAllKey.self] = newValue }
+    }
+
+    var editorPreviewFocus: MeshViewportFocus? {
+        get { self[EditorPreviewFocusKey.self] }
+        set { self[EditorPreviewFocusKey.self] = newValue }
     }
 
     var editorCanvasFocus: (@MainActor () -> Bool)? {

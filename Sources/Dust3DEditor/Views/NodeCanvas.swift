@@ -47,8 +47,9 @@ struct NodeCanvas: View {
             let colorizeActions = GraphColorizeActions(store: store, admitsInput: admitsInput)
             let graphActions = GraphSelectionMenuActions(store: store, admitsInput: admitsInput)
             let cancelAddInput = store.canvasAddCancellationAction()
-            let handlePrecisionKey = store.canvasPrecisionKeyHandler()
+            let handlePrecisionKey = store.canvasPrecisionKeyHandler(profileLease: profileLease)
             let zoomPreview = store.canvasPreviewWheelAction(lease: profileLease, camera: previewCamera)
+            let previewDrag = store.canvasPreviewDragAction(lease: profileLease, camera: previewCamera)
             let handleAxisLockKey = store.canvasAxisLockKeyHandler(profileLease: profileLease)
             let handlePartStateKey = store.canvasPartStateKeyHandler(profileLease: profileLease)
             let precisionKey: (CanvasPrecisionKeyInput) -> Bool = {
@@ -160,6 +161,11 @@ struct NodeCanvas: View {
                             lasso.clear()
                         }
                     },
+                    edgeStrokeGesture: { point in
+                        edgeStrokeGesture(at: point, projection: projection) {
+                            admitsNodeInput() && store.addModeID == addModeID
+                        }
+                    },
                     precisionKey: precisionKey, tracksHoverWhileDisabled: store.tracksPartStateHoverWhileWorking,
                     isAddingNodes: store.isAddingNodes,
                     addPress: { if admitsInput() { store.placeAddNode(at: $0, modeID: addModeID) } },
@@ -169,7 +175,8 @@ struct NodeCanvas: View {
                     ownsProfile: {
                         ownsProfile && store.snapshot?.documentIdentity == documentID && store.addModeID == addModeID
                     }, switchProfile: switchProfile,
-                    focusControl: focusControl, focusTarget: focusTarget, addModeKey: addModeKey
+                    focusControl: focusControl, focusTarget: focusTarget, addModeKey: addModeKey,
+                    previewDrag: previewDrag
                 )
                 .id(
                     "\(store.plane.rawValue)-\(store.snapshot?.documentIdentity.uuidString ?? "empty")-\(geometry.size.width)-\(geometry.size.height)-\(addModeID)"
@@ -179,7 +186,9 @@ struct NodeCanvas: View {
                     Self.selectionAccessibilityLabel(
                         usesLasso: store.canvasUsesLasso, selectsRigEdges: store.isSelectingRigEdges)
                 )
-                .help("Drag to select. Shift adds, Command toggles, and Command-Option removes hit nodes and edges.")
+                .help(
+                    "Drag an edge to move it or drag empty canvas to select. Shift adds, Command toggles, and Command-Option removes hit nodes and edges. Middle-drag or Option-drag orbits the 3D preview. Hold Shift to pan."
+                )
                 if let marquee {
                     let frame = CGRect(
                         x: marquee.minimum.x, y: marquee.minimum.y,
@@ -358,7 +367,7 @@ struct NodeCanvas: View {
                         switchProfile: switchProfile,
                         retainVisibilityFocus: { request in
                             if let documentID { visibilityFocus = (documentID, request) }
-                        }, addModeKey: addModeKey
+                        }, addModeKey: addModeKey, previewDrag: previewDrag
                     )
                     .id(addModeID)
                     .id(selectionEpoch)
@@ -368,7 +377,7 @@ struct NodeCanvas: View {
                 if let origin = store.originDragPosition ?? store.snapshot?.origin {
                     OriginHandle(
                         store: store, origin: origin, projection: projection, profileLease: profileLease,
-                        precisionKey: precisionKey, switchProfile: switchProfile
+                        precisionKey: precisionKey, switchProfile: switchProfile, previewDrag: previewDrag
                     )
                     .allowsHitTesting(!store.isAddingNodes && !store.isSelectingRigEdges)
                 }
@@ -474,6 +483,54 @@ struct NodeCanvas: View {
         }
         .background(.background)
     }
+    private func edgeStrokeGesture(
+        at point: CanvasPoint, projection: CanvasProjection, admitsInput: @escaping @MainActor () -> Bool
+    ) -> CanvasEdgeStrokeGesture? {
+        func currentSnapshot() -> EditorSnapshot? {
+            guard admitsInput(), store.canPickGraph, !store.isWorking, !store.isAddingNodes, !store.isMovingOrigin,
+                store.plane == projection.plane
+            else { return nil }
+            return store.snapshot
+        }
+        guard let snapshot = currentSnapshot(),
+            let baseline = NodeDrag.edgeStroke(at: point, snapshot: snapshot, projection: projection)
+        else { return nil }
+        let token = UUID()
+        func clear() {
+            nodeDrag.cancel(token: token)
+            store.clearCanvasProfileMotion(token: token, lease: profileLease)
+        }
+        return CanvasEdgeStrokeGesture(
+            begin: {
+                guard let current = currentSnapshot(), baseline.isCurrent(in: current) else { return }
+                nodeDrag.begin(token: token, baseline: baseline)
+                store.beginCanvasProfileMotion(token: token, lease: profileLease)
+            },
+            update: { translation in
+                guard let current = currentSnapshot() else {
+                    clear()
+                    return
+                }
+                nodeDrag.update(token: token, snapshot: current, translation: translation)
+                if let preview = nodeDrag.preview {
+                    store.updateCanvasProfileMotion(.ordinary(preview), token: token, lease: profileLease)
+                } else {
+                    store.clearCanvasProfileMotion(token: token, lease: profileLease)
+                }
+            },
+            finish: { translation in
+                guard let current = currentSnapshot(), let drag = nodeDrag.finish(token: token),
+                    drag.isCurrent(in: current)
+                else {
+                    clear()
+                    return
+                }
+                store.clearCanvasProfileMotion(token: token, lease: profileLease)
+                store.commitNodeDrag(drag, translation: translation)
+            },
+            cancel: { clear() })
+    }
+
     private func clearSelectionRegion() {
         marquee = nil
         lasso.clear()
@@ -560,6 +617,7 @@ private struct NodeHandle: View {
     let switchProfile: ((CanvasProfileFocusRequest) -> Bool)?
     let retainVisibilityFocus: (CanvasProfileFocusRequest) -> Void
     let addModeKey: CanvasAddModeKey.Handler?
+    var previewDrag: CanvasPreviewDrag.Begin? = nil
 
     var body: some View {
         let point = projection.point(for: position)
@@ -583,7 +641,8 @@ private struct NodeHandle: View {
                 doubleClick: doubleClick,
                 precisionKey: precisionKey,
                 beginShiftDrag: beginShiftDrag, admitsPrimaryPress: admitsPrimaryPress,
-                switchProfile: switchProfile, retainVisibilityFocus: retainVisibilityFocus, addModeKey: addModeKey
+                switchProfile: switchProfile, retainVisibilityFocus: retainVisibilityFocus, addModeKey: addModeKey,
+                previewDrag: previewDrag
             ).frame(width: 36, height: 36)
         }
         .frame(width: 36, height: 36)

@@ -711,6 +711,7 @@ final class EditorStore {
     func setCanvasHeight(_ height: Double) {
         let next = height.isFinite && height > 0 ? height : 0
         if next != canvasHeight {
+            precisionHeightEpoch = UUID()
             precisionLayoutEpoch = UUID()
             canvasPartStateHover = nil
         }
@@ -923,6 +924,34 @@ final class EditorStore {
         }
     }
 
+    func canvasPreviewDragAction(
+        lease: UUID?, camera: EditorPreviewCameraActions?
+    ) -> CanvasPreviewDrag.Begin? {
+        guard let source = acceptedDocumentSource, let camera, camera.canMove else { return nil }
+        let profile = rigEdgeSelectionEpoch
+        let tool = rotationInputContextID
+        let add = addModeID
+        let renderer = previewRevision
+        let document = source.documentIdentity
+        let revision = source.documentRevision
+        let isCurrent: @MainActor () -> Bool = { [weak self] in
+            guard let self, self.admitsCanvasSelectionInput(epoch: profile, lease: lease),
+                self.rotationInputContextID == tool, self.addModeID == add, self.previewRevision == renderer,
+                !self.isWorking, !self.isAddingNodes, !self.isMovingOrigin,
+                self.originDrag == nil, !self.referenceColorInteractionActive,
+                let current = self.acceptedDocumentSource, current.documentIdentity == document,
+                current.documentRevision == revision
+            else { return false }
+            return camera.canMove
+        }
+        return {
+            guard isCurrent(), let target = camera.beginCanvasDrag() else { return nil }
+            return .init(
+                update: { delta, pans in isCurrent() && target.update(delta, pans) },
+                end: target.end)
+        }
+    }
+
     func zoomPreviewFromCanvas(step: Int) {
         guard canMovePreviewCamera, canvasWheelZoomEnabled, step == 1 || step == -1 else { return }
         canvasWheelZoom.append(step: step)
@@ -1035,6 +1064,7 @@ final class EditorStore {
         }
     }
     private var precisionLayoutEpoch = UUID()
+    private var precisionHeightEpoch = UUID()
     private var precisionCanvasIdentity: ReferenceColorCanvasIdentity?
     private var rotationInputContextID = UUID()
     private(set) var canvasProfiles = CanvasProfileWorkspace()
@@ -1425,10 +1455,34 @@ final class EditorStore {
         performAnimationMutation(completion: completion) { try await $0.editAnimation(edits, target: target) }
     }
 
+    func editAnimationParameters(
+        _ edits: [AnimationEdit], target: AnimationEditTarget,
+        refreshed: @escaping @MainActor (EditorAnimationSnapshot?) -> Void
+    ) {
+        performAnimationMutation(refreshed: refreshed) { try await $0.editAnimation(edits, target: target) }
+    }
+
     func editAnimation(
         _ edit: AnimationEdit, target: AnimationEditTarget, completion: (@MainActor (Bool) -> Void)? = nil
     ) {
         performAnimationMutation(completion: completion) { try await $0.editAnimation(edit, target: target) }
+    }
+
+    func animationSelectedRowAction(
+        snapshot: EditorAnimationSnapshot,
+        perform: @escaping @MainActor (AnimationListRow, AnimationEditTarget) -> Void
+    ) -> @MainActor () -> Void {
+        guard let row = snapshot.list.selectedRow,
+            let target = try? AnimationEditTarget(snapshot: snapshot, animationID: row.source.id)
+        else { return {} }
+        let request = animationRequestID
+        return { [weak self] in
+            guard let self, self.canManageAnimations, self.animationRequestID == request,
+                let current = self.animationSnapshot, current.list.selectedID == row.id,
+                target.isCurrent(in: current.editor)
+            else { return }
+            perform(row, target)
+        }
     }
 
     func duplicateAnimation(
@@ -1439,14 +1493,20 @@ final class EditorStore {
 
     private func performAnimationMutation(
         completion: (@MainActor (Bool) -> Void)? = nil,
+        refreshed: (@MainActor (EditorAnimationSnapshot?) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorAnimationSnapshot
     ) {
         guard canManageAnimations else {
             completion?(false)
+            refreshed?(nil)
             return
         }
         let refreshAfterPublication: @MainActor (Bool) -> Void = { [weak self] succeeded in
-            if succeeded { self?.refreshAnimations() }
+            if succeeded, let self {
+                self.requestAnimations(completion: refreshed) { try await $0.animationSnapshot() }
+            } else {
+                refreshed?(nil)
+            }
             completion?(succeeded)
         }
         perform(completion: refreshAfterPublication) { session in
@@ -1456,9 +1516,13 @@ final class EditorStore {
     }
 
     private func requestAnimations(
+        completion: (@MainActor (EditorAnimationSnapshot?) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorAnimationSnapshot
     ) {
-        guard !isWorking, let source = acceptedDocumentSource else { return }
+        guard !isWorking, let source = acceptedDocumentSource else {
+            completion?(nil)
+            return
+        }
         let sourceIdentity = source.documentIdentity
         let sourceRevision = source.documentRevision
         let requestID = UUID()
@@ -1467,17 +1531,22 @@ final class EditorStore {
         animationQueryFailure = nil
         isLoadingAnimations = true
         animationQuery = Task { [weak self, session] in
+            var accepted: EditorAnimationSnapshot?
             defer {
                 if let self, self.animationRequestID == requestID { self.isLoadingAnimations = false }
+                completion?(accepted)
             }
             do {
                 let result = try await action(session)
                 guard !Task.isCancelled, let self, self.animationRequestID == requestID, !self.isWorking,
                     let current = self.acceptedDocumentSource,
                     current.documentIdentity == result.editor.documentIdentity,
-                    current.documentRevision == result.editor.documentRevision
+                    current.documentRevision == result.editor.documentRevision,
+                    completion == nil
+                        || (current.documentIdentity == sourceIdentity && current.documentRevision == sourceRevision)
                 else { return }
                 self.animationValue = result
+                accepted = result
             } catch {
                 guard !Task.isCancelled, let self, self.animationRequestID == requestID,
                     let current = self.acceptedDocumentSource,
@@ -1595,11 +1664,13 @@ final class EditorStore {
     /// Scene callers supply their FileDocument identity so recovery cannot relabel retained preview state.
     func load(data: Data, fileIdentity: UUID? = nil) async {
         stopComponentColorDraftPreview()
+        canvasPrecisionQueue = nil
         graphComponentRevealLookup = nil
         canvasAxisLockQueue = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil, reset: true)
         pendingComponentDrag = nil
+        componentGroupDropProposal = nil
         invalidateReferenceColors()
         referenceColorApplyToken = UUID()
         referenceColorOperationID = nil
@@ -1618,7 +1689,9 @@ final class EditorStore {
         stopped = false
         isWorking = true
         recoveryLoadResult = nil
+        componentColorImageChoiceRequest = nil
         qtXMLFilePasteRequest = nil
+        referenceImageFileRequest = nil
         defer { if operationRequestID == requestID { isWorking = false } }
         do {
             let next = try await session.open(data: data)
@@ -1658,9 +1731,47 @@ final class EditorStore {
 
         func isCurrent(in snapshot: EditorSnapshot) -> Bool {
             switch self {
-            case .component(let target): target.isCurrent(in: snapshot)
+            case .component(let target): target.isCurrentColorImage(in: snapshot)
             case .graph(let target): !target.graphColorImageComponents(in: snapshot).isEmpty
             }
+        }
+    }
+
+    func componentColorImageDestination(componentID: String) -> ComponentColorImageDestination? {
+        guard let source = acceptedDocumentSource, let target = ComponentColorImageTarget(snapshot: source),
+            target.componentID.utf8.elementsEqual(componentID.utf8)
+        else { return nil }
+        return .component(target)
+    }
+
+    private struct ComponentColorImageChoiceRequest {
+        let id = UUID()
+        let destination: ComponentColorImageDestination
+    }
+
+    private var componentColorImageChoiceRequest: ComponentColorImageChoiceRequest?
+    var componentColorImageChoiceRequestID: UUID? { componentColorImageChoiceRequest?.id }
+
+    func chooseComponentColorImage(destination: ComponentColorImageDestination) {
+        guard componentColorImageChoiceRequest == nil, canEditComponentColorImage(destination) else { return }
+        componentColorImageChoiceRequest = .init(destination: destination)
+    }
+
+    func cancelComponentColorImageChoice(requestID: UUID) {
+        guard componentColorImageChoiceRequestID == requestID else { return }
+        componentColorImageChoiceRequest = nil
+    }
+
+    func finishComponentColorImageChoice(requestID: UUID, result: Result<[URL], any Error>) {
+        guard let request = componentColorImageChoiceRequest, request.id == requestID else { return }
+        componentColorImageChoiceRequest = nil
+        guard canEditComponentColorImage(request.destination) else { return }
+        do {
+            let urls = try result.get()
+            guard urls.count == 1, let url = urls.first else { throw ColorImageError.invalidFile }
+            importComponentColorImage(url: url, destination: request.destination)
+        } catch {
+            if (error as? CocoaError)?.code != .userCancelled { errorMessage = Self.message(error) }
         }
     }
 
@@ -1675,7 +1786,7 @@ final class EditorStore {
         let components: [DocumentComponent]
         switch destination {
         case .component(let target):
-            guard target.isCurrent(in: source), let component = source.selectedComponent else { return nil }
+            guard target.isCurrentColorImage(in: source), let component = source.selectedComponent else { return nil }
             components = [component]
         case .graph(let target):
             components = target.graphColorImageComponents(in: source)
@@ -2173,6 +2284,72 @@ final class EditorStore {
 
     var canBrowseComponents: Bool { !isWorking && acceptedDocumentSource != nil }
 
+    func componentDisclosureAction(
+        _ id: String, collapsed: Bool, snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor () -> Void {
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let source = PartGraphSelectionContext(snapshot: snapshot)
+        let scope = componentBrowseEpoch
+        let disclosureEpoch = disclosure.epoch
+        return { [weak self] in
+            guard let self, self.componentBrowseGroupID == nil, self.componentBrowseEpoch == scope,
+                disclosure.epoch == disclosureEpoch, self.canBrowseComponents,
+                let current = self.acceptedDocumentSource, target.isCurrent(in: current),
+                disclosure.collapsedIDs.contains(id) != collapsed,
+                current.componentTree.visibleRows(collapsing: disclosure.collapsedIDs).contains(where: {
+                    $0.hasChildren && $0.id.utf8.elementsEqual(id.utf8)
+                })
+            else { return }
+
+            var nextIDs = disclosure.collapsedIDs
+            if collapsed { nextIDs.insert(id) } else { nextIDs.remove(id) }
+            let publish: @MainActor (Bool) -> Void = { [weak self] succeeded in
+                guard succeeded, let self, self.componentBrowseEpoch == scope, disclosure.epoch == disclosureEpoch,
+                    let latest = self.acceptedDocumentSource, source.isCurrent(in: latest)
+                else { return }
+                disclosure.collapsedIDs = nextIDs
+                self.changeComponentBrowseGroup(nil, reset: true)
+            }
+            guard collapsed, !current.selectedComponentIDs.isEmpty else {
+                publish(true)
+                return
+            }
+            let visible = Set(current.componentTree.visibleRows(collapsing: nextIDs).map { Data($0.id.utf8) })
+            let retained = current.selectedComponentIDs.filter { visible.contains(Data($0.utf8)) }
+            if retained == current.selectedComponentIDs {
+                publish(true)
+            } else {
+                self.perform(commits: false, completion: publish) {
+                    try await $0.selectComponents(retained, target: target)
+                }
+            }
+        }
+    }
+
+    func componentSidebarSelectionIsVisible(_ snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure) -> Bool
+    {
+        guard !snapshot.selectedComponentIDs.isEmpty else { return false }
+        let rows =
+            componentGroupBrowse?.children ?? snapshot.componentTree.visibleRows(collapsing: disclosure.collapsedIDs)
+        let visible = Set(rows.map { Data($0.id.utf8) })
+        return snapshot.selectedComponentIDs.allSatisfy { visible.contains(Data($0.utf8)) }
+    }
+
+    func componentSidebarDeleteAction(
+        snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor () -> Void {
+        let context = CanvasAdjustmentTarget(snapshot: snapshot)
+        let scope = componentBrowseEpoch
+        let epoch = disclosure.epoch
+        return { [weak self] in
+            guard let self, self.canSave, self.componentBrowseEpoch == scope, disclosure.epoch == epoch,
+                let current = self.acceptedDocumentSource, context.isCurrent(in: current),
+                self.componentSidebarSelectionIsVisible(current, disclosure: disclosure)
+            else { return }
+            self.componentDeletionAction(ComponentDeletionTarget(snapshot: current))()
+        }
+    }
+
     func componentBrowseAction(_ groupID: String?, snapshot: EditorSnapshot) -> @MainActor () -> Void {
         let target = CanvasAdjustmentTarget(snapshot: snapshot)
         let source = PartGraphSelectionContext(snapshot: snapshot)
@@ -2231,6 +2408,7 @@ final class EditorStore {
         componentBrowseGroupID = groupID
         componentBrowseEpoch = UUID()
         pendingComponentDrag = nil
+        componentGroupDropProposal = nil
         if changed, addPlacementDestination == .selection {
             workingGroupRevision = UUID()
             if addPlacement.anchorID == nil { cancelAddMode() }
@@ -2378,10 +2556,39 @@ final class EditorStore {
             try await $0.reparentComponents(to: parent, target: target)
         }
     }
+    struct ComponentGroupDropProposal: Identifiable {
+        let id = UUID()
+        let destinationTitle: String
+        let sourceTitle: String?
+        let componentCount: Int
+        fileprivate let placement: ComponentDropPlacement
+        fileprivate let siblingReorder: ComponentDropPlacement?
+        fileprivate let target: ComponentPlacementTarget
+        fileprivate let scopeEpoch: UUID
+        fileprivate let clearsMovedPicks: Bool
+
+        var siblingReorderTitle: String? {
+            switch siblingReorder {
+            case .before: "Reorder Before “\(destinationTitle)”"
+            case .after: "Reorder After “\(destinationTitle)”"
+            default: nil
+            }
+        }
+    }
+
+    private var componentGroupDropProposal: ComponentGroupDropProposal?
+    var pendingComponentGroupDrop: ComponentGroupDropProposal? {
+        guard let proposal = componentGroupDropProposal, canSave, proposal.scopeEpoch == componentBrowseEpoch,
+            let snapshot, proposal.target.isCurrent(in: snapshot)
+        else { return nil }
+        return proposal
+    }
+
     @ObservationIgnored private var pendingComponentDrag: (token: UUID, target: ComponentPlacementTarget)?
 
     func beginComponentDrag(grabbedID: String) -> UUID? {
         pendingComponentDrag = nil
+        componentGroupDropProposal = nil
         guard canSave, let snapshot,
             let target = ComponentPlacementTarget(snapshot: snapshot, grabbedID: grabbedID)
         else { return nil }
@@ -2390,14 +2597,72 @@ final class EditorStore {
         return token
     }
 
-    func dropComponents(token: UUID, at placement: ComponentDropPlacement) -> Bool {
+    func dropComponents(token: UUID, at placement: ComponentDropPlacement, offersSiblingReorder: Bool = false) -> Bool {
         guard let target = consumeComponentDrag(token) else { return false }
+        if case .into(let parentID?) = placement {
+            guard let snapshot, target.canPlace(at: placement, in: snapshot),
+                let destination = snapshot.componentTree.rows.first(where: { $0.id.utf8.elementsEqual(parentID.utf8) })
+            else { return false }
+            let sourceTitle =
+                target.ids.count == 1
+                ? snapshot.componentTree.rows.first { row in
+                    target.ids[0].utf8.elementsEqual(row.id.utf8)
+                }?.title : nil
+            componentGroupDropProposal = ComponentGroupDropProposal(
+                destinationTitle: destination.title, sourceTitle: sourceTitle, componentCount: target.ids.count,
+                placement: placement,
+                siblingReorder: offersSiblingReorder
+                    ? target.groupCenterSiblingPlacement(anchorID: parentID, in: snapshot) : nil,
+                target: target, scopeEpoch: componentBrowseEpoch,
+                clearsMovedPicks: componentGroupBrowse?.path.dropLast().contains {
+                    $0.id.utf8.elementsEqual(parentID.utf8)
+                } == true)
+            return true
+        }
         return placeComponents(at: placement, target: target)
     }
 
-    func dropComponents(token: UUID, in parent: ComponentParent) -> Bool {
-        guard let target = consumeComponentDrag(token) else { return false }
-        return placeComponents(at: .into(parentID: parent.componentID), target: target)
+    func dropComponents(
+        token: UUID, in parent: ComponentParent, scopeEpoch: UUID? = nil, offersSiblingReorder: Bool = false
+    ) -> Bool {
+        guard scopeEpoch == nil || scopeEpoch == componentBrowseEpoch else { return false }
+        return dropComponents(
+            token: token, at: .into(parentID: parent.componentID), offersSiblingReorder: offersSiblingReorder)
+    }
+
+    @discardableResult
+    func confirmComponentGroupDrop(_ id: UUID) -> Bool {
+        guard let proposal = pendingComponentGroupDrop, proposal.id == id else { return false }
+        componentGroupDropProposal = nil
+        return placeComponents(
+            at: proposal.placement, target: proposal.target, clearingMovedPicks: proposal.clearsMovedPicks)
+    }
+
+    @discardableResult
+    func confirmComponentGroupSiblingReorder(_ id: UUID) -> Bool {
+        guard let proposal = pendingComponentGroupDrop, proposal.id == id, let placement = proposal.siblingReorder
+        else { return false }
+        componentGroupDropProposal = nil
+        return placeComponents(at: placement, target: proposal.target)
+    }
+
+    func cancelComponentGroupDrop(_ id: UUID) {
+        if componentGroupDropProposal?.id == id { componentGroupDropProposal = nil }
+    }
+
+    func componentListEndDropAction(
+        snapshot: EditorSnapshot, disclosure: ComponentSidebarDisclosure
+    ) -> @MainActor @Sendable (UUID) -> Bool {
+        let source = PartGraphSelectionContext(snapshot: snapshot)
+        let scope = componentBrowseEpoch
+        let disclosureEpoch = disclosure.epoch
+        let parentID = componentBrowseGroupID
+        return { [weak self] token in
+            guard let self, disclosure.epoch == disclosureEpoch,
+                self.admitsComponentSidebarInput(context: source, scopeEpoch: scope)
+            else { return false }
+            return self.dropComponents(token: token, at: .end(parentID: parentID))
+        }
     }
 
     private func consumeComponentDrag(_ token: UUID) -> ComponentPlacementTarget? {
@@ -2408,10 +2673,12 @@ final class EditorStore {
     }
 
     @discardableResult
-    func placeComponents(at placement: ComponentDropPlacement, target: ComponentPlacementTarget) -> Bool {
+    func placeComponents(
+        at placement: ComponentDropPlacement, target: ComponentPlacementTarget, clearingMovedPicks: Bool = false
+    ) -> Bool {
         guard canSave, let snapshot, target.canPlace(at: placement, in: snapshot) else { return false }
         perform(acceptCommittedCancellation: true) {
-            try await $0.placeComponents(at: placement, target: target)
+            try await $0.placeComponents(at: placement, target: target, clearingMovedPicks: clearingMovedPicks)
         }
         return true
     }
@@ -2593,6 +2860,13 @@ final class EditorStore {
 
     func setPartFillLoopInterior(_ id: String, value: Bool) {
         perform { try await $0.apply([.setPartFillLoopInterior(id: id, value: value)]) }
+    }
+    func canEditGraphLoopInterior(_ target: GraphLoopInteriorTarget) -> Bool {
+        !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
+    }
+    func setGraphLoopInterior(_ value: Bool, target: GraphLoopInteriorTarget) {
+        guard canEditGraphLoopInterior(target) else { return }
+        perform(acceptCommittedCancellation: true) { try await $0.setGraphLoopInterior(value, target: target) }
     }
     func setPartTarget(_ id: String, target: PartTarget) {
         perform { try await $0.apply([.setPartTarget(id: id, target: target)]) }
@@ -2793,9 +3067,11 @@ final class EditorStore {
         !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
     }
 
-    func setGraphPartShape(_ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget) {
+    func setGraphPartShape(
+        _ property: PartModifierProperty, value: Bool, target: GraphPartShapeTarget, preserveHover: Bool = false
+    ) {
         guard canEditGraphPartShape(target) else { return }
-        perform(acceptCommittedCancellation: true) {
+        perform(acceptCommittedCancellation: true, preservePartStateHover: preserveHover) {
             try await $0.setGraphPartShape(property, value: value, target: target)
         }
     }
@@ -3067,6 +3343,29 @@ final class EditorStore {
     func renameComponent(_ id: String, name: String) {
         perform { try await $0.apply([.setComponentName(id: id, name: name)]) }
     }
+    func inspectedComponentNameAction(
+        _ component: DocumentComponent, equipment: ComponentEquipmentSlotTarget?
+    ) -> (@MainActor (String) -> Void)? {
+        guard canSave, let snapshot, let selected = snapshot.selectedComponent,
+            selected.id.utf8.elementsEqual(component.id.utf8), selected.name.utf8.elementsEqual(component.name.utf8)
+        else { return nil }
+        let context = CanvasAdjustmentTarget(snapshot: snapshot)
+        return { [weak self] name in
+            guard let self, self.canSave, let current = self.acceptedDocumentSource, context.isCurrent(in: current)
+            else { return }
+            if let equipment {
+                self.perform(acceptCommittedCancellation: true) {
+                    try await $0.renameEquipmentComponentBase(name, target: equipment)
+                }
+            } else {
+                self.perform(acceptCommittedCancellation: true) {
+                    try await $0.apply(
+                        [.setComponentName(id: component.id, name: name)], selecting: nil, target: context)
+                }
+            }
+        }
+    }
+
     func canEditComponentEquipmentSlot(_ target: ComponentEquipmentSlotTarget) -> Bool {
         !isWorking && acceptedDocumentSource.map { target.isCurrent(in: $0) } == true
     }
@@ -3104,10 +3403,23 @@ final class EditorStore {
     func renamePart(_ id: String, name: String) {
         perform { try await $0.apply([.setPartName(id: id, name: name)]) }
     }
+    private enum CanvasPartOperation {
+        case state(PartStateProperty)
+        case shape(PartModifierProperty)
+    }
+
     func canvasPartStateAction(_ property: PartStateProperty) -> (@MainActor () -> Void)? {
         let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
-        guard let handle = canvasPartStateHandler(profileLease: lease) else { return nil }
-        return { _ = handle(property, false) }
+        guard let handler = canvasPartStateHandler(profileLease: lease) else { return nil }
+        return { _ = handler.perform(.state(property), false) }
+    }
+
+    func canvasPartShapeAction(_ property: PartModifierProperty) -> (@MainActor () -> Void)? {
+        let lease = canvasProfiles.isDualProfile ? canvasProfiles.lease : nil
+        guard let handler = canvasPartStateHandler(profileLease: lease),
+            handler.shapePart?.modifierValue(property) != nil
+        else { return nil }
+        return { _ = handler.perform(.shape(property), false) }
     }
 
     func selectedGraphOwningComponentAction() -> (@MainActor () -> Void)? {
@@ -3170,7 +3482,7 @@ final class EditorStore {
     }
 
     func canvasPartStateKeyHandler(profileLease: UUID?) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
-        let handle = canvasPartStateHandler(profileLease: profileLease)
+        let handler = canvasPartStateHandler(profileLease: profileLease)
         let openProperties = canvasComponentPropertiesAction(profileLease: profileLease)
         let selectOwner = canvasOwningComponentAction(profileLease: profileLease)
         let visibility = canvasVisibilityKeyHandler(profileLease: profileLease)
@@ -3180,8 +3492,10 @@ final class EditorStore {
             }
             if input.opensComponentProperties { return openProperties?(input.isRepeat) ?? false }
             if input.selectsOwningComponent { return selectOwner?(input.isRepeat) ?? false }
-            guard let property = input.partStateProperty, let handle else { return false }
-            return handle(property, input.isRepeat)
+            guard let handler else { return false }
+            if let shape = input.partShapeShortcut { return handler.perform(.shape(shape.property), input.isRepeat) }
+            guard let property = input.partStateProperty else { return false }
+            return handler.perform(.state(property), input.isRepeat)
         }
     }
 
@@ -3190,7 +3504,9 @@ final class EditorStore {
             && !referenceColorInteractionActive && canvasProfileMotion == nil
     }
 
-    private func canvasPartStateHandler(profileLease: UUID?) -> (@MainActor (PartStateProperty, Bool) -> Bool)? {
+    private func canvasPartStateHandler(profileLease: UUID?) -> (
+        shapePart: DocumentPart?, perform: @MainActor (CanvasPartOperation, Bool) -> Bool
+    )? {
         guard canToggleCanvasPartState, ownsCanvasProfile(profileLease), let snapshot = acceptedDocumentSource,
             let context = canvasRotationContext
         else { return nil }
@@ -3199,20 +3515,34 @@ final class EditorStore {
         let hoverEpoch = canvasPartStateHoverEpoch
         let layout = precisionLayoutEpoch
         let interaction = referenceColorInteractionEpoch
-        return { [weak self] property, isRepeat in
-            guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
-                canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
-                precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction,
-                property == .locked || property == .disabled
-            else { return false }
-            if !isRepeat {
-                // A lock changes editability while the same visible graph item remains under the pointer.
-                perform(acceptCommittedCancellation: true, preservePartStateHover: property == .locked) {
-                    try await $0.toggleCanvasPartState(property, target: target)
+        let shapeTarget = GraphPartShapeTarget(snapshot: snapshot, canvasTarget: target)
+        return (
+            shapeTarget?.part,
+            { [weak self] operation, isRepeat in
+                guard let self, canToggleCanvasPartState, ownsCanvasProfile(profileLease),
+                    canvasRotationContext == context, canvasPartStateHoverEpoch == hoverEpoch,
+                    precisionLayoutEpoch == layout, referenceColorInteractionEpoch == interaction
+                else { return false }
+                switch operation {
+                case .state(let property):
+                    guard property == .locked || property == .disabled else { return false }
+                    if !isRepeat {
+                        // A lock changes editability while the same visible graph item remains under the pointer.
+                        perform(acceptCommittedCancellation: true, preservePartStateHover: property == .locked) {
+                            try await $0.toggleCanvasPartState(property, target: target)
+                        }
+                    }
+                case .shape(let property):
+                    guard let shapeTarget, let value = shapeTarget.part?.modifierValue(property),
+                        canEditGraphPartShape(shapeTarget)
+                    else { return false }
+                    if !isRepeat {
+                        setGraphPartShape(property, value: !value, target: shapeTarget, preserveHover: true)
+                    }
                 }
+                return true
             }
-            return true
-        }
+        )
     }
 
     private func canvasVisibilityKeyHandler(profileLease: UUID?) -> (
@@ -3284,6 +3614,25 @@ final class EditorStore {
         guard !isSelectingRigEdges else { return }
         perform(commits: false, selectionOnly: true) { try await $0.toggleSelection(id) }
     }
+    private var admitsEditableGeometrySelection: Bool {
+        canSave && !isSelectingRigEdges && !isAddingNodes && !isMovingOrigin && !referenceColorInteractionActive
+    }
+
+    func selectEditableGeometryAction() -> (@MainActor () -> Void)? {
+        guard admitsEditableGeometrySelection, let snapshot, snapshot.canSelectEditableGeometry else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let tool = rotationInputContextID
+        let add = addModeID
+        let interaction = referenceColorInteractionEpoch
+        return { [weak self] in
+            guard let self, self.admitsEditableGeometrySelection, let current = self.acceptedDocumentSource,
+                target.isCurrent(in: current), self.rotationInputContextID == tool, self.addModeID == add,
+                self.referenceColorInteractionEpoch == interaction
+            else { return }
+            self.perform(commits: false, selectionOnly: true) { try await $0.selectEditableGeometry(target: target) }
+        }
+    }
+
     func selectAllNodes() {
         guard !isSelectingRigEdges else { return }
         perform(commits: false, selectionOnly: true) { try await $0.selectAllNodes() }
@@ -3342,8 +3691,13 @@ final class EditorStore {
         !isSelectingRigEdges && !isWorking && !stopped && snapshot.map { transform.canApply(in: $0) } == true
     }
     func canPerformCanvasPrecision(_ action: CanvasPrecisionAction) -> Bool {
-        guard !isSelectingRigEdges, canSave, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
-            canvasHeight.isFinite, canvasHeight > 0, let snapshot
+        guard canSave, let snapshot else { return false }
+        return admitsCanvasPrecision(action, snapshot: snapshot)
+    }
+
+    private func admitsCanvasPrecision(_ action: CanvasPrecisionAction, snapshot: EditorSnapshot) -> Bool {
+        guard !isSelectingRigEdges, !isAddingNodes, !referenceColorInteractionActive, originDrag == nil,
+            canvasHeight.isFinite, canvasHeight > 0
         else { return false }
         if action.isSpacing {
             let factor = 1 + (action == .increaseSpacing ? 10 : -10) / canvasHeight
@@ -3360,8 +3714,32 @@ final class EditorStore {
         let admitted = canPerformCanvasPrecision(action)
         return { if admitted { _ = handler(action) } }
     }
-    func canvasPrecisionKeyHandler() -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
-        let handler = canvasPrecisionHandler()
+    private struct CanvasPrecisionKeyScope: Equatable {
+        let documentIdentity: UUID
+        let selectionRevision: Int
+        let constraintRevision: Int
+        let lease: UUID?
+        let heightEpoch: UUID
+        let toolEpoch: UUID
+        let addEpoch: UUID
+        let interactionEpoch: UUID
+    }
+
+    private struct CanvasPrecisionQueue {
+        let id = UUID()
+        let scope: CanvasPrecisionKeyScope
+        let firstRevision: Int
+        var revision: Int
+        var operationID: UUID?
+        var pending: [CanvasPrecisionAction] = []
+    }
+
+    @ObservationIgnored private var canvasPrecisionQueue: CanvasPrecisionQueue?
+
+    func canvasPrecisionKeyHandler(profileLease: UUID? = nil) -> @MainActor (CanvasPrecisionKeyInput) -> Bool {
+        guard let snapshot = acceptedDocumentSource else { return { _ in false } }
+        let scope = canvasPrecisionKeyScope(snapshot: snapshot, lease: profileLease)
+        let capturedRevision = snapshot.documentRevision
         let deleteTarget = acceptedDocumentSource.map {
             GraphSelectionActionTarget(snapshot: $0, action: .deleteSelection)
         }
@@ -3370,7 +3748,8 @@ final class EditorStore {
         let interaction = referenceColorInteractionEpoch
         return { [weak self] input in
             if input.isAlternateDelete {
-                guard let self, let deleteTarget, self.canSave, !self.isSelectingRigEdges,
+                guard let self, let deleteTarget, self.ownsCanvasProfile(profileLease), self.canSave,
+                    !self.isSelectingRigEdges,
                     self.rotationInputContextID == tool, self.addModeID == mode,
                     self.referenceColorInteractionEpoch == interaction,
                     self.canvasProfileMotion == nil, self.originDrag == nil,
@@ -3379,9 +3758,59 @@ final class EditorStore {
                 if !input.isRepeat { self.graphSelectionAction(deleteTarget)() }
                 return true
             }
-            guard let action = input.action else { return false }
-            return handler(action)
+            guard let self, let action = input.action, let current = self.canvasPrecisionSource(scope),
+                self.admitsCanvasPrecision(action, snapshot: current)
+            else { return false }
+            if let queue = self.canvasPrecisionQueue {
+                guard queue.scope == scope, queue.operationID == self.operationRequestID,
+                    (queue.firstRevision...queue.revision).contains(capturedRevision),
+                    current.documentRevision == queue.revision
+                else { return false }
+                if queue.pending.count < 32 { self.canvasPrecisionQueue?.pending.append(action) }
+                return true
+            }
+            guard !self.isWorking, capturedRevision == current.documentRevision else { return false }
+            self.canvasPrecisionQueue = CanvasPrecisionQueue(
+                scope: scope, firstRevision: capturedRevision, revision: capturedRevision)
+            self.dispatchQueuedCanvasPrecision(action, snapshot: current)
+            return true
         }
+    }
+
+    private func canvasPrecisionKeyScope(snapshot: EditorSnapshot, lease: UUID?) -> CanvasPrecisionKeyScope {
+        CanvasPrecisionKeyScope(
+            documentIdentity: snapshot.documentIdentity, selectionRevision: snapshot.selectionRevision,
+            constraintRevision: snapshot.constraintRevision, lease: lease, heightEpoch: precisionHeightEpoch,
+            toolEpoch: rotationInputContextID, addEpoch: addModeID, interactionEpoch: referenceColorInteractionEpoch)
+    }
+
+    private func canvasPrecisionSource(_ scope: CanvasPrecisionKeyScope) -> EditorSnapshot? {
+        guard ownsCanvasProfile(scope.lease), let current = acceptedDocumentSource,
+            canvasPrecisionKeyScope(snapshot: current, lease: scope.lease) == scope
+        else { return nil }
+        return current
+    }
+
+    private func dispatchQueuedCanvasPrecision(_ action: CanvasPrecisionAction, snapshot: EditorSnapshot) {
+        guard let queue = canvasPrecisionQueue else { return }
+        dispatchCanvasPrecision(
+            action, height: canvasHeight, plane: plane, target: CanvasAdjustmentTarget(snapshot: snapshot),
+            completion: { [weak self] succeeded in
+                guard let self, var active = canvasPrecisionQueue, active.id == queue.id else { return }
+                guard succeeded, active.operationID == operationRequestID, !isWorking,
+                    let current = canvasPrecisionSource(queue.scope),
+                    current.documentRevision == queue.revision || current.documentRevision == queue.revision + 1,
+                    let next = active.pending.first, admitsCanvasPrecision(next, snapshot: current)
+                else {
+                    canvasPrecisionQueue = nil
+                    return
+                }
+                active.revision = current.documentRevision
+                active.pending.removeFirst()
+                canvasPrecisionQueue = active
+                dispatchQueuedCanvasPrecision(next, snapshot: current)
+            })
+        if canvasPrecisionQueue?.id == queue.id { canvasPrecisionQueue?.operationID = operationRequestID }
     }
     private func canvasPrecisionHandler() -> @MainActor (CanvasPrecisionAction) -> Bool {
         let target = snapshot.map(CanvasAdjustmentTarget.init)
@@ -3404,12 +3833,13 @@ final class EditorStore {
     func performCanvasPrecision(_ action: CanvasPrecisionAction) { canvasPrecisionAction(action)() }
     private func dispatchCanvasPrecision(
         _ action: CanvasPrecisionAction, height: Double, plane: EditingPlane,
-        target: CanvasAdjustmentTarget
+        target: CanvasAdjustmentTarget, completion: (@MainActor (Bool) -> Void)? = nil
     ) {
         let preservesOriginMode = isMovingOrigin
         if action.isSpacing {
             let factor = 1 + (action == .increaseSpacing ? 10 : -10) / height
-            perform(acceptCommittedCancellation: true, preserveOriginMode: preservesOriginMode) {
+            perform(acceptCommittedCancellation: true, preserveOriginMode: preservesOriginMode, completion: completion)
+            {
                 try await $0.scaleSelectionPositions(factor: factor, target: target)
             }
         } else {
@@ -3419,11 +3849,13 @@ final class EditorStore {
                 x: plane == .front ? horizontal / height : 0,
                 y: vertical / height, z: plane == .side ? horizontal / height : 0)
             if preservesOriginMode {
-                perform(acceptCommittedCancellation: true, preserveOriginMode: true) {
+                perform(acceptCommittedCancellation: true, preserveOriginMode: true, completion: completion) {
                     try await $0.nudgeOrigin(by: delta, target: target)
                 }
             } else {
-                perform(acceptCommittedCancellation: true) { try await $0.moveSelection(by: delta, target: target) }
+                perform(acceptCommittedCancellation: true, completion: completion) {
+                    try await $0.moveSelection(by: delta, target: target)
+                }
             }
         }
     }
@@ -3731,6 +4163,35 @@ final class EditorStore {
     }
 
     func deleteSelection() { perform { try await $0.deleteSelection() } }
+
+    var inspectorNodeDraftSource: InspectorNodeDraftSource? { InspectorNodeDraftSource(acceptedDocumentSource) }
+
+    func nodeInspectorActions(source: InspectorNodeDraftSource, draft: InspectorNodeDraft)
+        -> (reset: @MainActor () -> Void, apply: @MainActor () -> Void)?
+    {
+        guard !isWorking, let snapshot = acceptedDocumentSource, InspectorNodeDraftSource(snapshot) == source,
+            let node = snapshot.selectedNode, node.isEditable
+        else { return nil }
+        let target = CanvasAdjustmentTarget(snapshot: snapshot)
+        let admitsDraft: @MainActor () -> Bool = { [weak self, weak draft] in
+            guard let self, !self.isWorking, let current = self.acceptedDocumentSource else { return false }
+            return target.isCurrent(in: current) && draft?.source == source
+        }
+        return (
+            reset: { [weak draft] in
+                guard admitsDraft() else { return }
+                draft?.reset(source.geometry)
+            },
+            apply: { [weak self, weak draft] in
+                guard let self, let draft, admitsDraft() else { return }
+                let position = NodePosition(x: draft.x, y: draft.y, z: draft.z)
+                let radius = draft.radius
+                self.perform {
+                    try await $0.editInspectorNode(id: node.id, position: position, radius: radius, target: target)
+                }
+            }
+        )
+    }
 
     func edit(id: String, position: NodePosition, radius: Double) {
         perform { try await $0.edit(id: id, position: position, radius: radius) }
@@ -4100,16 +4561,119 @@ final class EditorStore {
         }
     }
 
+    private struct ReferenceImageFileRequest {
+        let id = UUID()
+        let fileIdentity: UUID?
+        let target: ReferenceCompositionTarget
+    }
+
+    private var referenceImageFileRequest: ReferenceImageFileRequest?
+    var referenceImageFileRequestID: UUID? { referenceImageFileRequest?.id }
+
+    private func referenceImageEditTarget(fileIdentity: UUID?) -> ReferenceCompositionTarget? {
+        guard case .success(let accepted) = recoveryLoadResult, accepted.fileIdentity == fileIdentity else {
+            return nil
+        }
+        return referenceCompositionTarget
+    }
+
+    private func isCurrentReferenceImageTarget(_ target: ReferenceCompositionTarget, fileIdentity: UUID?) -> Bool {
+        guard let source = acceptedDocumentSource, case .success(let accepted) = recoveryLoadResult,
+            accepted.fileIdentity == fileIdentity
+        else { return false }
+        return target.isCurrent(in: source)
+    }
+
+    func canChooseReferenceImage(fileIdentity: UUID?) -> Bool {
+        referenceImageFileRequest == nil && referenceImageEditTarget(fileIdentity: fileIdentity) != nil
+    }
+
+    @discardableResult
+    func chooseReferenceImage(fileIdentity: UUID?) -> UUID? {
+        guard referenceImageFileRequest == nil, let target = referenceImageEditTarget(fileIdentity: fileIdentity)
+        else { return nil }
+        let request = ReferenceImageFileRequest(fileIdentity: fileIdentity, target: target)
+        referenceImageFileRequest = request
+        return request.id
+    }
+
+    func cancelReferenceImageChoice(requestID: UUID) {
+        guard referenceImageFileRequestID == requestID else { return }
+        referenceImageFileRequest = nil
+    }
+
+    @discardableResult
+    func finishReferenceImageChoice(
+        requestID: UUID, result: Result<[URL], any Error>, currentFileIdentity: @escaping @MainActor () -> UUID?
+    ) -> Task<Void, Never>? {
+        guard let request = referenceImageFileRequest, request.id == requestID else { return nil }
+        referenceImageFileRequest = nil
+        guard !isWorking, currentFileIdentity() == request.fileIdentity,
+            isCurrentReferenceImageTarget(request.target, fileIdentity: request.fileIdentity)
+        else { return nil }
+        do {
+            let urls = try result.get()
+            guard urls.count == 1, let url = urls.first else {
+                throw ReferenceImageError.fileReadFailed("Choose one image file.")
+            }
+            startReferenceImageImport(
+                from: url, target: request.target, fileIdentity: request.fileIdentity,
+                currentFileIdentity: { currentFileIdentity() })
+            return operation
+        } catch {
+            if (error as? CocoaError)?.code != .userCancelled { errorMessage = Self.message(error) }
+            return nil
+        }
+    }
+
     func importReferenceImage(from url: URL) {
+        guard case .success(let accepted) = recoveryLoadResult,
+            let target = referenceImageEditTarget(fileIdentity: accepted.fileIdentity)
+        else { return }
+        startReferenceImageImport(
+            from: url, target: target, fileIdentity: accepted.fileIdentity,
+            currentFileIdentity: { accepted.fileIdentity })
+    }
+
+    private func startReferenceImageImport(
+        from url: URL, target: ReferenceCompositionTarget, fileIdentity: UUID?,
+        currentFileIdentity: @escaping @MainActor () -> UUID?
+    ) {
         let service = referenceImages
-        perform(reloadReferenceImage: true) { session in
-            let png = try await service.importImage(url: url)
-            return try await session.apply([.setReferenceImagePNG(png)])
+        let isCurrent: @MainActor () -> Bool = { [weak self] in
+            currentFileIdentity() == fileIdentity
+                && self?.isCurrentReferenceImageTarget(target, fileIdentity: fileIdentity) == true
+        }
+        perform(
+            reloadReferenceImage: true, admitsPublication: { isCurrent() },
+            { session in
+                try Task.checkCancellation()
+                guard await isCurrent() else { throw CancellationError() }
+                let png = try await service.importImage(url: url)
+                try Task.checkCancellation()
+                guard await isCurrent() else { throw CancellationError() }
+                return try await session.applyReferenceComposition(png: png, origin: nil, target: target)
+            })
+    }
+
+    func referenceImageRemovalAction(
+        fileIdentity: UUID?, currentFileIdentity: @escaping @MainActor () -> UUID?
+    ) -> (@MainActor () -> Void)? {
+        guard hasReferenceImage, let target = referenceImageEditTarget(fileIdentity: fileIdentity) else { return nil }
+        return { [weak self] in
+            guard let self, self.canSave, currentFileIdentity() == fileIdentity,
+                self.isCurrentReferenceImageTarget(target, fileIdentity: fileIdentity)
+            else { return }
+            self.perform(
+                reloadReferenceImage: true, admitsPublication: { currentFileIdentity() == fileIdentity },
+                { try await $0.removeReferenceImage(target: target) })
         }
     }
 
     func removeReferenceImage() {
-        perform(reloadReferenceImage: true) { try await $0.apply([.setReferenceImagePNG(nil)]) }
+        guard case .success(let accepted) = recoveryLoadResult else { return }
+        referenceImageRemovalAction(
+            fileIdentity: accepted.fileIdentity, currentFileIdentity: { accepted.fileIdentity })?()
     }
 
     func movePreviewCamera(_ action: MeshCameraCommand.Action) {
@@ -4141,16 +4705,20 @@ final class EditorStore {
 
     func stop() {
         stopComponentColorDraftPreview()
+        canvasPrecisionQueue = nil
         graphComponentRevealLookup = nil
         canvasAxisLockQueue = nil
         changeRigEdgeSelection(false)
         changeComponentBrowseGroup(nil)
         canvasGraphHoverCache = CanvasGraphHover.Cache()
+        componentColorImageChoiceRequest = nil
         qtXMLFilePasteRequest = nil
+        referenceImageFileRequest = nil
         canvasProfileMotion = nil
         boneEdgeHover = nil
         previewCameraCommand = nil
         pendingComponentDrag = nil
+        componentGroupDropProposal = nil
         invalidateReferenceColors()
         referenceColorApplyToken = UUID()
         referenceColorOperationID = nil
@@ -4180,6 +4748,7 @@ final class EditorStore {
         commits: Bool = true, reloadReferenceImage: Bool = false, acceptCommittedCancellation: Bool = false,
         selectionOnly: Bool = false, preserveOriginMode: Bool = false, preservePartStateHover: Bool = false,
         preserveCanvasFit: Bool = false,
+        admitsPublication: @escaping @MainActor () -> Bool = { true },
         completion: (@MainActor (Bool) -> Void)? = nil,
         _ action: @escaping @Sendable (EditorSession) async throws -> EditorSnapshot
     ) {
@@ -4208,7 +4777,9 @@ final class EditorStore {
             }
             do {
                 let next = try await action(session)
-                guard !Task.isCancelled || acceptCommittedCancellation, !stopped, operationRequestID == requestID else {
+                guard !Task.isCancelled || acceptCommittedCancellation, !stopped, operationRequestID == requestID,
+                    admitsPublication()
+                else {
                     return
                 }
                 if acceptCommittedCancellation && next.documentIdentity != snapshot?.documentIdentity { return }
@@ -4244,7 +4815,9 @@ final class EditorStore {
                 }
                 succeeded = true
             } catch {
-                if !Task.isCancelled, operationRequestID == requestID { errorMessage = Self.message(error) }
+                if !Task.isCancelled, operationRequestID == requestID, admitsPublication() {
+                    errorMessage = Self.message(error)
+                }
             }
         }
     }

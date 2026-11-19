@@ -17,14 +17,18 @@ final class EditorAnimationAuthoringWorkflow {
         case type(AnimationEditTarget)
         case parameters(AnimationEditTarget)
     }
+    enum EditKind { case type, parameters }
+
     private let store: EditorStore
     private var stopped = false
+    private var draftID = UUID()
+    private var parameterControlsID = UUID()
     private var lastIssue: (any Error)?
     private(set) var mode = Mode.idle
     private(set) var sourceTitle = ""
     private(set) var sourceType: String?
     private(set) var parameterDraft: AnimationParameterDraft?
-    private(set) var unknownTimingDraft: UnknownAnimationTimingDraft?
+    private(set) var unknownParameterDraft: UnknownAnimationParameterDraft?
     private(set) var isSubmitting = false
     private var creationNameKeys: Set<String> = []
     private var suggestedName = AnimationNameText("")
@@ -61,7 +65,7 @@ final class EditorAnimationAuthoringWorkflow {
     var canBeginParameters: Bool {
         guard canBegin, let record = store.animationSnapshot?.list.selectedRow?.source, let type = record.type
         else { return false }
-        return catalog?.clip(type: type) != nil || UnknownAnimationTimingDraft.admits(record)
+        return catalog?.clip(type: type) != nil || UnknownAnimationParameterDraft.admits(record)
     }
     var selectedClip: AnimationClipDefinition? {
         typeChoices.first { $0.type.utf8.elementsEqual(selectedType) }
@@ -110,6 +114,13 @@ final class EditorAnimationAuthoringWorkflow {
         }
     }
 
+    var dismissalTitle: String {
+        if case .parameters = mode, isCurrent, (try? validatedParameterEdits().isEmpty) == true {
+            return "Done"
+        }
+        return "Cancel"
+    }
+
     func creationAction() -> @MainActor () -> Void {
         guard canBeginCreation, let value = store.animationSnapshot,
             let target = try? AnimationCreationTarget(snapshot: value)
@@ -142,24 +153,29 @@ final class EditorAnimationAuthoringWorkflow {
         return candidate
     }
 
-    func beginType() {
-        guard canBeginType, let value = store.animationSnapshot, let row = value.list.selectedRow else { return }
-        do {
-            let target = try AnimationEditTarget(snapshot: value, animationID: row.source.id)
-            reset()
-            sourceTitle = row.title
-            sourceType = row.source.type
-            selectedType = Array((row.source.type ?? "").utf8)
-            mode = .type(target)
-        } catch { lastIssue = error }
-    }
-    func beginParameters() {
-        guard canBeginParameters, let value = store.animationSnapshot, let row = value.list.selectedRow, let catalog
-        else {
-            return
+    func editAction(_ kind: EditKind) -> @MainActor () -> Void {
+        guard kind == .type ? canBeginType : canBeginParameters, let snapshot = store.animationSnapshot else {
+            return {}
         }
+        return store.animationSelectedRowAction(snapshot: snapshot) { [weak self] row, target in
+            guard let self, kind == .type ? canBeginType : canBeginParameters, let catalog else { return }
+            switch kind {
+            case .type:
+                reset()
+                sourceTitle = row.title
+                sourceType = row.source.type
+                selectedType = Array((row.source.type ?? "").utf8)
+                mode = .type(target)
+            case .parameters:
+                installParameters(row, target: target, catalog: catalog)
+            }
+        }
+    }
+
+    private func installParameters(
+        _ row: AnimationListRow, target: AnimationEditTarget, catalog: AnimationAuthoringCatalog
+    ) {
         do {
-            let target = try AnimationEditTarget(snapshot: value, animationID: row.source.id)
             let hasDeclaredType = row.source.type.flatMap { catalog.clip(type: $0) } != nil
             let draft = hasDeclaredType ? try AnimationParameterDraft(record: row.source, catalog: catalog) : nil
             reset()
@@ -167,28 +183,67 @@ final class EditorAnimationAuthoringWorkflow {
             sourceType = row.source.type
             parameterDraft = draft
             if !hasDeclaredType {
-                unknownTimingDraft = UnknownAnimationTimingDraft(record: row.source, timing: catalog.timing)
+                unknownParameterDraft = UnknownAnimationParameterDraft(record: row.source, catalog: catalog)
             }
             mode = .parameters(target)
         } catch { lastIssue = error }
     }
+
     func parameterValue(for name: String) -> String? {
-        parameterDraft?.value(for: name) ?? unknownTimingDraft?.value(for: name)
+        parameterDraft?.value(for: name) ?? unknownParameterDraft?.value(for: name)
     }
+    func draftAction(_ action: @escaping @MainActor (EditorAnimationAuthoringWorkflow) -> Void)
+        -> @MainActor () -> Void
+    {
+        let invoke: @MainActor (()) -> Void = draftAction { workflow, _ in action(workflow) }
+        return { invoke(()) }
+    }
+
+    func draftAction<Value>(_ action: @escaping @MainActor (EditorAnimationAuthoringWorkflow, Value) -> Void)
+        -> @MainActor (Value) -> Void
+    {
+        let currentDraftID = draftID
+        return { [weak self] value in
+            guard let self, !stopped, !isSubmitting, isActive, draftID == currentDraftID else { return }
+            action(self, value)
+        }
+    }
+
+    func parameterAction<Value>(_ action: @escaping @MainActor (EditorAnimationAuthoringWorkflow, Value) -> Void)
+        -> @MainActor (Value) -> Void
+    {
+        let controlsID = parameterControlsID
+        return draftAction { workflow, value in
+            guard workflow.isCurrent, workflow.parameterControlsID == controlsID else { return }
+            action(workflow, value)
+        }
+    }
+
     func setText(name: String, value: String?) {
         guard !isSubmitting else { return }
         if var draft = parameterDraft {
             draft.setText(name: name, value: value)
             parameterDraft = draft
         } else {
-            unknownTimingDraft?.setText(name: name, value: value)
+            unknownParameterDraft?.setText(name: name, value: value)
+        }
+        lastIssue = nil
+    }
+
+    func stepTiming(name: String, increasing: Bool) {
+        guard !isSubmitting else { return }
+        if var draft = parameterDraft {
+            draft.stepTiming(name: name, increasing: increasing)
+            parameterDraft = draft
+        } else {
+            unknownParameterDraft?.stepTiming(name: name, increasing: increasing)
         }
         lastIssue = nil
     }
 
     private func validatedParameterEdits() throws -> [AnimationEdit] {
         if let parameterDraft { return try parameterDraft.validatedEdits() }
-        return try unknownTimingDraft?.validatedEdits() ?? []
+        return try unknownParameterDraft?.validatedEdits() ?? []
     }
     func useDefault(name: String) { setText(name: name, value: nil) }
     func setSlider(name: String, index: Double) {
@@ -223,8 +278,17 @@ final class EditorAnimationAuthoringWorkflow {
                 store.editAnimation(.setType(clip.type), target: target, completion: completion)
             case .parameters(let target):
                 let edits = try validatedParameterEdits()
+                let submittedDraft = draftID
                 isSubmitting = true
-                store.editAnimation(edits, target: target, completion: completion)
+                store.editAnimationParameters(edits, target: target) { [weak self] refreshed in
+                    guard let self, !stopped, draftID == submittedDraft else { return }
+                    isSubmitting = false
+                    guard let refreshed, let row = refreshed.list.selectedRow, let catalog,
+                        row.id.elementsEqual(target.animationID.utf8),
+                        let nextTarget = try? AnimationEditTarget(snapshot: refreshed, animationID: target.animationID)
+                    else { return }
+                    installParameters(row, target: nextTarget, catalog: catalog)
+                }
             }
         } catch {
             isSubmitting = false
@@ -238,11 +302,13 @@ final class EditorAnimationAuthoringWorkflow {
         reset()
     }
     private func reset() {
+        draftID = UUID()
+        parameterControlsID = UUID()
         mode = .idle
         sourceTitle = ""
         sourceType = nil
         parameterDraft = nil
-        unknownTimingDraft = nil
+        unknownParameterDraft = nil
         selectedType = []
         creationNameKeys = []
         suggestedName = AnimationNameText("")
