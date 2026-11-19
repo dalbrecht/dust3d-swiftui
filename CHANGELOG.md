@@ -236,6 +236,10 @@
 
 - Support trackpad pinch zoom and rotation-driven horizontal orbit in mesh previews, pausing automatic motion during gestures and invalidating obsolete picking input (#367).
 
+- Use procedural vertex opacity alongside imported alpha when Model Colors is off for mixed previews.
+
+- Use vertex opacity when Model Colors is off for textured procedural previews.
+
 - Expose experimental preview mode and generated-rest Model/Bones/Weights controls in the View menu with current-window and presentation guards (#367).
 
 - Select generated bones directly in the experimental rest preview with guarded click-versus-drag input and cancellable background picking; retain displayed geometry and keyboard inspection if picking preparation fails (#367).
