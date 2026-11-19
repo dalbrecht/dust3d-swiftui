@@ -100,6 +100,8 @@
 
 - Repair edge directions in an unambiguous open chain from the Edge Inspector, with one-step Undo.
 
+- Edit duration and sample count for named stored animations whose type is unknown.
+
 - Choose Lasso in Drag Selection to pick graph items within a freehand outline and preview the affected picks while drawing.
 
 - Print the authored rig templates as XML with the headless `-list-rigs` command.
@@ -358,6 +360,8 @@
 - Add lossless stored-animation listing and create/rename/type/parameter/duplicate/delete commands with exact history and opaque-data preservation; native evaluation/playback remain quarantined (#145).
 
 - Connect accepted editor snapshots to an injected export workflow with source revision receipts, history preservation and lifecycle cancellation; native encoder/menu binding remains unavailable by default (#146).
+
+- Add keyboard-focusable Zoom In and Zoom Out buttons to Quick Look previews.
 
 - Serialize final export source checks and atomic publication with accepted editor commands, preserving committed success on late task cancellation; native UI binding remains pending (#146).
 
