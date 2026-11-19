@@ -28,6 +28,7 @@ struct EditorRootView: View {
     private let claimLaunchNeutralPreview: @MainActor (URL) async -> Bool
     @State private var store: EditorStore
     @State private var canvasFocus = CanvasProfileFocusControl()
+    @State private var previewFocus = MeshViewportFocus()
     @State private var exportDestinations: EditorGeometryExportDestinationService
     @State private var exportWorkflow: EditorGeometryExportWorkflow
     @State private var isSidebarPresented = true
@@ -530,14 +531,16 @@ struct EditorRootView: View {
                 },
                 move: { [weak store] in store?.movePreviewCamera($0) },
                 fit: { [weak store] in store?.fitPreviewCamera() },
-                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) },
+                beginDrag: { [weak previewFocus] in previewFocus?.beginCanvasDrag() })
         #else
             return EditorPreviewCameraActions(
                 canMove: store.canMovePreviewCamera,
                 isCurrent: { [weak store] in store?.canMovePreviewCamera == true },
                 move: { [weak store] in store?.movePreviewCamera($0) },
                 fit: { [weak store] in store?.fitPreviewCamera() },
-                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) })
+                wheelZoom: { [weak store] in store?.zoomPreviewFromCanvas(step: $0) },
+                beginDrag: { [weak previewFocus] in previewFocus?.beginCanvasDrag() })
         #endif
     }
 
@@ -653,6 +656,8 @@ struct EditorRootView: View {
                     store.reportPreviewRendererError(error, attemptID: rendererAttempt, revision: materialRevision)
                 }
                 .withCanvasWheelZoom(store.canvasWheelZoom)
+                .withFocusTarget(previewFocus)
+                .focusedSceneValue(\.editorPreviewFocus, previewFocus)
                 .accessibilityLabel("3D mesh preview")
                 .accessibilityHint(MeshViewport.keyboardCameraHelp)
                 if store.isUpdatingMaterials {

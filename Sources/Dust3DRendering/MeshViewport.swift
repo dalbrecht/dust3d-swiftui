@@ -183,6 +183,7 @@ public struct MeshViewport: NSViewRepresentable {
     }
     public static func dismantleNSView(_ view: InteractiveMeshView, coordinator: ()) {
         view.focusTarget?.unbind(view)
+        view.cancelCameraInteraction()
         view.automaticOrbitBinding.dismantle()
         view.cancelMaterialUpload()
         // A queued geometry diagnostic belongs to the retired view.
@@ -540,11 +541,14 @@ public class InteractiveMeshView: MTKView {
     private var lastDragLocation: CGPoint?
     private var isMiddleButtonDragging = false
     private var reversesHorizontalOrbit = false
-    var isDraggingCamera: Bool { lastDragLocation != nil || gestureActivity.isActive }
+    private var canvasDrag: (id: UUID, meshRevision: Int, reset: Int)?
+    private var discardsConcurrentTrackpadGesture = false
+    var isDraggingCamera: Bool { lastDragLocation != nil || gestureActivity.isActive || canvasDrag != nil }
 
     /// Lifecycle loss discards incomplete input before automatic orbit reconciles.
     func cancelCameraInteraction() {
         gestureActivity.cancel()
+        canvasDrag = nil
         cancelPicking()
         cameraState?.invalidateProjection(interactionAllowed: cameraInteractionAllowed)
         fallbackInputRevision = UUID()
@@ -564,6 +568,17 @@ public class InteractiveMeshView: MTKView {
         phase: NSEvent.Phase, update: (inout OrbitCamera) -> Bool
     ) {
         let phase = cameraGesturePhase(phase)
+        if canvasDrag != nil {
+            if phase != .none { discardsConcurrentTrackpadGesture = true }
+            return
+        }
+        if phase == .mayBegin || phase == .began || phase == .none {
+            discardsConcurrentTrackpadGesture = false
+        }
+        if discardsConcurrentTrackpadGesture {
+            if phase == .ended || phase == .cancelled { discardsConcurrentTrackpadGesture = false }
+            return
+        }
         guard lastDragLocation == nil else {
             if phase != .none { gestureActivity.discardContinuation() }
             return
@@ -658,7 +673,7 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func mouseDown(with event: NSEvent) {
-        guard !isMiddleButtonDragging, !gestureActivity.isActive else { return }
+        guard canvasDrag == nil, !isMiddleButtonDragging, !gestureActivity.isActive else { return }
         window?.makeFirstResponder(self)
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
@@ -679,6 +694,30 @@ public class InteractiveMeshView: MTKView {
         automaticOrbitBinding.cameraInputChanged()
     }
 
+    func beginCanvasDrag() -> UUID? {
+        guard cameraInteractionAllowed(), !isDraggingCamera, let meshRevision else { return nil }
+        let id = UUID()
+        canvasDrag = (id, meshRevision, cameraReset)
+        reversesHorizontalOrbit = abs(orbitCamera.pitch.remainder(dividingBy: 2 * .pi)) > .pi / 2
+        automaticOrbitBinding.cameraInputChanged()
+        return id
+    }
+
+    func updateCanvasDrag(_ id: UUID, by delta: SIMD2<Float>, pans: Bool) -> Bool {
+        guard let canvasDrag, canvasDrag.id == id, canvasDrag.meshRevision == meshRevision,
+            canvasDrag.reset == cameraReset, cameraInteractionAllowed()
+        else { return false }
+        let motion = !pans && reversesHorizontalOrbit ? SIMD2(-delta.x, delta.y) : delta
+        dragCamera(by: motion, pans: pans)
+        return true
+    }
+
+    func endCanvasDrag(_ id: UUID) {
+        guard canvasDrag?.id == id else { return }
+        canvasDrag = nil
+        automaticOrbitBinding.cameraInputChanged()
+    }
+
     private func dragCamera(by delta: SIMD2<Float>, pans: Bool) {
         var camera = orbitCamera
         let motion = !pans && reversesHorizontalOrbit ? SIMD2(-delta.x, delta.y) : delta
@@ -690,7 +729,7 @@ public class InteractiveMeshView: MTKView {
     }
 
     public override func mouseDragged(with event: NSEvent) {
-        guard !isMiddleButtonDragging, lastDragLocation != nil else { return }
+        guard canvasDrag == nil, !isMiddleButtonDragging, lastDragLocation != nil else { return }
         guard cameraInteractionAllowed() else {
             cancelCameraInteraction()
             return

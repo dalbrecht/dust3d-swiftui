@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Orbit the 3D preview from the editing canvas with a middle-button or Option drag. Hold Shift to pan.
+
+- Add Focus 3D Preview to the Editor’s View menu.
+
 - Connect two explicitly selected nodes while keeping existing edge picks.
 
 - Keep the File menu’s export cancellation action available when Escape is reserved for another control.
